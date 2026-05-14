@@ -33,7 +33,7 @@ Antes de escribir cualquier código, lee completamente:
 - **Base de datos:** PostgreSQL (misma estructura de Supabase, nueva instancia)
 - **Autenticación:** Django REST Framework + SimpleJWT
 - **IA:** Groq API (mismo modelo, misma lógica de prompt)
-- **Deploy Backend:** Railway
+- **Deploy Backend:** DigitalOcean App Platform
 - **Deploy Frontend:** Expo EAS Build (iOS + Android) + Vercel para landing
 - **CDN/Proxy:** Cloudflare
 
@@ -53,7 +53,7 @@ pyfit/
     ai/             ← App de generación con IA
     requirements.txt
     Dockerfile
-    railway.toml
+    .do/app.yaml
 
   mobile/           ← React Native + Expo
     app/            ← Expo Router (estructura similar a Next.js App Router)
@@ -661,7 +661,7 @@ EXPO_PUBLIC_API_URL=https://api.pyfit.app
 16. **Historial** (lista + calendario)
 17. **Estadísticas** (4 secciones)
 18. **Perfil** (con modales)
-19. **Deploy backend en Railway**
+19. **Deploy backend en DigitalOcean App Platform**
 20. **Deploy mobile con Expo EAS**
 
 ---

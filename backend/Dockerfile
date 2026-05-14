@@ -11,8 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput 2>/dev/null || true
+RUN python manage.py collectstatic --noinput
+
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["python", "-m", "gunicorn", "pyfit.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+CMD ["./entrypoint.sh"]
