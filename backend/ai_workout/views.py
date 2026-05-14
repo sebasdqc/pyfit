@@ -1,0 +1,652 @@
+import json
+from datetime import date, timedelta
+from groq import Groq
+from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle
+from workouts.models import Session, Exercise, UserAdaptationProfile, UserExerciseProfile
+from checkins.models import DailyCheckin
+
+
+# ─── Fatiga & RPE helpers ─────────────────────────────────────────────────────
+
+def calcular_fatiga(sesiones_qs):
+    from django.utils import timezone
+    ahora = timezone.now()
+    hace_72h = ahora - timedelta(hours=72)
+    ultimas = sesiones_qs.filter(created_at__gte=hace_72h)
+    count = ultimas.count()
+    if count >= 3:
+        return 'alto'
+    if count == 2:
+        return 'medio'
+    return 'bajo'
+
+
+def calcular_rpe_target(fatiga, estado_animo, hrv):
+    rpe = 7
+    if fatiga == 'alto':
+        rpe -= 2
+    elif fatiga == 'medio':
+        rpe -= 1
+    if estado_animo <= 2:
+        rpe -= 1
+    elif estado_animo >= 5:
+        rpe += 1
+    if hrv:
+        if hrv < 50:
+            rpe -= 1
+        elif hrv > 80:
+            rpe += 1
+    return max(4, min(9, rpe))
+
+
+# ─── Phase 1 & 2: Exercise pool ───────────────────────────────────────────────
+
+def _get_exercise_pool(user, location, dolor_hoy=''):
+    """
+    Returns (grouped_dict, flat_list) of valid exercises for this user/location.
+
+    Filtering rules:
+    - Only active exercises
+    - equipamiento must be a subset of location.implementos ([] = always valid)
+    - Exclude exercises whose contraindicaciones overlap with:
+        * active user injury zones
+        * zones mentioned in dolor_hoy text
+    """
+    implementos_disponibles = set(location.implementos or [])
+
+    # Gather forbidden zones from injuries
+    injury_zones = set(
+        user.injuries.filter(activa=True).values_list('zona', flat=True)
+    )
+
+    # Parse dolor_hoy for zone keywords
+    DOLOR_KEYWORDS = {
+        'rodilla': 'rodilla',
+        'lumbar': 'lumbar',
+        'espalda': 'lumbar',
+        'hombro': 'hombro',
+        'cuello': 'cuello',
+        'cadera': 'cadera',
+        'tobillo': 'tobillo',
+        'muñeca': 'muñeca',
+        'codo': 'codo',
+    }
+    if dolor_hoy:
+        dolor_lower = dolor_hoy.lower()
+        for kw, zona in DOLOR_KEYWORDS.items():
+            if kw in dolor_lower:
+                injury_zones.add(zona)
+
+    all_active = Exercise.objects.filter(activo=True)
+
+    flat_list = []
+    grouped = {}
+
+    for ex in all_active:
+        # Equipment check: exercise equipment must be subset of available
+        eq_set = set(ex.equipamiento)
+        if eq_set and not eq_set.issubset(implementos_disponibles):
+            continue
+
+        # Contraindication check
+        contra_set = set(ex.contraindicaciones)
+        if contra_set & injury_zones:
+            continue
+
+        flat_list.append(ex.nombre)
+        patron = ex.patron_movimiento
+        if patron not in grouped:
+            grouped[patron] = []
+        grouped[patron].append(ex.nombre)
+
+    return grouped, flat_list
+
+
+# ─── Phase 3 & 4: Adaptation context ─────────────────────────────────────────
+
+def _build_adaptation_context(user):
+    """
+    Returns a descriptive text block about the user's training adaptation history.
+    """
+    try:
+        ap = user.adaptation_profile
+    except UserAdaptationProfile.DoesNotExist:
+        return 'Sin historial suficiente (menos de 3 sesiones completadas).'
+
+    if ap.total_sesiones < 3:
+        return 'Sin historial suficiente (menos de 3 sesiones completadas).'
+
+    lines = [
+        f'Total sesiones completadas: {ap.total_sesiones}',
+    ]
+
+    if ap.rpe_bias is not None:
+        bias = float(ap.rpe_bias)
+        if bias > 0.5:
+            lines.append(
+                f'Sesga RPE: el usuario percibe el esfuerzo {bias:+.1f} puntos MÁS alto que el objetivo — '
+                f'considera prescribir RPE ligeramente más bajo para compensar.'
+            )
+        elif bias < -0.5:
+            lines.append(
+                f'Sesga RPE: el usuario percibe el esfuerzo {bias:+.1f} puntos MÁS bajo que el objetivo — '
+                f'puede manejar mayor intensidad de la prescrita.'
+            )
+        else:
+            lines.append(f'RPE percibido muy alineado con el objetivo (desviación: {bias:+.1f}).')
+
+    if ap.cumplimiento_promedio is not None:
+        lines.append(f'Cumplimiento promedio histórico: {float(ap.cumplimiento_promedio):.0f}%.')
+
+    if ap.rating_promedio is not None:
+        lines.append(f'Satisfacción media de sesiones: {float(ap.rating_promedio):.1f}/5.')
+
+    if ap.volumen_tolerado_semana is not None:
+        lines.append(
+            f'Volumen tolerado con ≥80% cumplimiento: {ap.volumen_tolerado_semana} sesiones/semana.'
+        )
+
+    if ap.patron_preferido:
+        PATRON_LABELS = {
+            'empuje_horizontal': 'empuje horizontal',
+            'empuje_vertical': 'empuje vertical',
+            'jale_horizontal': 'jale horizontal',
+            'jale_vertical': 'jale vertical',
+            'sentadilla': 'sentadilla/cuádriceps',
+            'bisagra': 'bisagra/cadena posterior',
+            'core': 'core',
+            'cardio': 'cardio/metabólico',
+            'movilidad': 'movilidad/flexibilidad',
+        }
+        label = PATRON_LABELS.get(ap.patron_preferido, ap.patron_preferido)
+        lines.append(f'Patrón de movimiento más frecuente: {label}.')
+
+    if ap.semanas_carga_consecutivas > 0:
+        lines.append(
+            f'Semanas de carga consecutivas (≥2 sesiones/semana): {ap.semanas_carga_consecutivas}.'
+        )
+
+    # Top exercises by frequency
+    top_exs = (
+        UserExerciseProfile.objects.filter(user=user)
+        .order_by('-veces_realizado')[:5]
+    )
+    if top_exs:
+        nombres = ', '.join(ep.exercise_nombre for ep in top_exs)
+        lines.append(f'Ejercicios más realizados: {nombres}.')
+
+    return ' '.join(lines)
+
+
+# ─── Phase 5: Periodization state ─────────────────────────────────────────────
+
+def _calcular_estado_mesociclo(user):
+    """
+    Returns a dict describing current periodization state:
+    - necesita_deload: bool
+    - recomendacion: string
+    """
+    try:
+        ap = user.adaptation_profile
+    except UserAdaptationProfile.DoesNotExist:
+        return {
+            'necesita_deload': False,
+            'recomendacion': 'Fase inicial — construye hábito antes de periodizar.',
+        }
+
+    if ap.total_sesiones < 3:
+        return {
+            'necesita_deload': False,
+            'recomendacion': 'Historial insuficiente — aplica principios generales de progresión.',
+        }
+
+    # Check deload conditions
+    necesita_deload = False
+    if ap.semanas_carga_consecutivas >= 3:
+        # Check cumplimiento last 3 weeks
+        hoy = date.today()
+        hace_3_semanas = hoy - timedelta(weeks=3)
+        from workouts.models import Session as SessionModel, SessionFeedback
+        from django.db.models import Avg
+        cum_3_semanas = (
+            SessionModel.objects.filter(
+                user=user,
+                fecha__gte=hace_3_semanas,
+                feedback__isnull=False,
+            ).aggregate(avg=Avg('feedback__cumplimiento'))['avg'] or 100
+        )
+        if cum_3_semanas < 75:
+            necesita_deload = True
+
+    if necesita_deload:
+        recomendacion = (
+            f'DELOAD recomendado: {ap.semanas_carga_consecutivas} semanas de carga consecutivas '
+            f'con cumplimiento reciente bajo. Reduce volumen e intensidad en un 40-50%. '
+            f'Prioriza movilidad, técnica y recuperación activa.'
+        )
+    elif ap.semanas_carga_consecutivas >= 2:
+        recomendacion = (
+            f'Fase de PROGRESIÓN: {ap.semanas_carga_consecutivas} semanas de carga consecutivas '
+            f'con buen cumplimiento. Mantén o incrementa ligeramente el volumen/intensidad '
+            f'(+2.5-5% en carga o +1 serie por patrón).'
+        )
+    else:
+        recomendacion = (
+            'Fase de ADAPTACIÓN: el usuario está en las primeras semanas. '
+            'Prioriza consistencia, técnica correcta y progresión gradual.'
+        )
+
+    return {
+        'necesita_deload': necesita_deload,
+        'recomendacion': recomendacion,
+    }
+
+
+# ─── Prompt builder ───────────────────────────────────────────────────────────
+
+def _format_exercise_pool(grouped):
+    """Format grouped exercise dict as a readable text block."""
+    if not grouped:
+        return 'No hay ejercicios en el banco para la ubicación actual.'
+
+    PATRON_LABELS = {
+        'empuje_horizontal': 'EMPUJE HORIZONTAL (pectoral, tríceps)',
+        'empuje_vertical': 'EMPUJE VERTICAL (deltoides, tríceps)',
+        'jale_horizontal': 'JALE HORIZONTAL (dorsal, romboides)',
+        'jale_vertical': 'JALE VERTICAL (dorsal, bíceps)',
+        'sentadilla': 'SENTADILLA / CUÁDRICEPS',
+        'bisagra': 'BISAGRA / CADENA POSTERIOR (glúteos, isquiotibiales)',
+        'core': 'CORE / ABDOMEN',
+        'cardio': 'CARDIO / METABÓLICO',
+        'movilidad': 'MOVILIDAD / FLEXIBILIDAD',
+    }
+
+    lines = []
+    for patron, exercises in sorted(grouped.items()):
+        label = PATRON_LABELS.get(patron, patron.upper())
+        lines.append(f'{label}:')
+        for ex in exercises:
+            lines.append(f'  - {ex}')
+    return '\n'.join(lines)
+
+
+def build_prompt(ctx):
+    exercise_pool_text = _format_exercise_pool(ctx.get('exercise_pool', {}))
+    adaptation_text = ctx.get('adaptation_context', 'Sin historial suficiente.')
+    mesociclo = ctx.get('estado_mesociclo', {})
+    mesociclo_text = mesociclo.get('recomendacion', '')
+    deload_warning = (
+        '\n*** ATENCIÓN: El atleta necesita DELOAD. Reduce volumen e intensidad en un 40-50%. ***'
+        if mesociclo.get('necesita_deload')
+        else ''
+    )
+
+    return f"""
+Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
+
+PERFIL COMPLETO DEL ATLETA:
+- Nombre: {ctx['nombre']}
+- Edad: {ctx['edad'] or 'no especificada'}
+- Sexo biológico: {ctx['sexo'] or 'no especificado'}
+- Peso: {f"{ctx['peso']} kg" if ctx['peso'] else 'no especificado'}
+- Altura: {f"{ctx['altura']} cm" if ctx['altura'] else 'no especificada'}
+- Objetivo principal: {ctx['objetivo']}
+- Nivel de experiencia: {ctx['nivel']}
+- Experiencia deportiva previa: {ctx['experiencia_deportiva'] or 'ninguna especificada'}
+- Lesiones o limitaciones: {ctx['lesiones'] or 'ninguna'}
+- Estilo de entrenamiento preferido: {ctx['estilo_entrenamiento'] or 'no especificado'}
+- Ejercicios favoritos: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
+- Ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
+- Días de entrenamiento por semana: {ctx['dias_semana'] or 3}
+- Horario preferido: {ctx['horario_preferido'] or 'no especificado'}
+- Nivel de estrés habitual: {ctx['nivel_estres'] or 'no especificado'}
+- Tipo de trabajo: {ctx['tipo_trabajo'] or 'no especificado'}
+
+MARCADORES DE RENDIMIENTO (1RM):
+- Sentadilla: {f"{ctx['rm_sentadilla']} kg" if ctx['rm_sentadilla'] else 'desconocido'}
+- Peso muerto: {f"{ctx['rm_peso_muerto']} kg" if ctx['rm_peso_muerto'] else 'desconocido'}
+- Press banca: {f"{ctx['rm_press_banca']} kg" if ctx['rm_press_banca'] else 'desconocido'}
+- Press hombro: {f"{ctx['rm_press_hombro']} kg" if ctx['rm_press_hombro'] else 'desconocido'}
+
+ESTADO HOY:
+- Estado de ánimo: {ctx['estado_animo']}/5
+- Horas de sueño: {ctx['calidad_sueno']}h
+- HRV: {ctx['hrv'] or 'no disponible'}
+- Notas del usuario: {ctx['notas'] or 'ninguna'}
+- Dolor o molestia HOY: {ctx['dolor_hoy'] or 'ninguno reportado'}
+- Foco de entrenamiento solicitado: {', '.join(ctx['foco_entrenamiento']) if ctx['foco_entrenamiento'] else 'libre — decide tú según el contexto'}
+- Fatiga acumulada últimas 72h: {ctx['fatiga']}
+- RPE objetivo calculado: {ctx['rpe_target']}/10
+
+SESIÓN DE HOY:
+- Ubicación: {ctx['ubicacion_nombre']} ({ctx['ubicacion_tipo']})
+- Implementos disponibles: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}
+- Duración disponible: {ctx['duracion']} minutos
+
+COMPETICIÓN PRÓXIMA:
+{f"- {ctx['competicion_nombre']} el {ctx['competicion_fecha']}" if ctx.get('competicion_nombre') else '- Ninguna en los próximos 14 días'}
+
+FASE DEL CICLO MENSTRUAL:
+{ctx.get('fases_ciclo') or 'No aplica o no disponible'}
+
+---
+
+BANCO DE EJERCICIOS VALIDADOS:
+Los siguientes ejercicios han sido pre-filtrados para esta sesión: cumplen con los implementos disponibles y NO tienen contraindicaciones con las lesiones activas ni el dolor reportado hoy.
+
+{exercise_pool_text}
+
+INSTRUCCIÓN CRÍTICA: DEBES elegir ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. Si el banco no tiene suficientes ejercicios para un patrón, puedes crear uno nuevo SOLO si cumple con los implementos disponibles y no tiene contraindicaciones con el usuario.
+
+---
+
+HISTORIAL DE ADAPTACIÓN DEL USUARIO:
+{adaptation_text}
+
+---
+
+ESTADO DEL MESOCICLO:
+{mesociclo_text}{deload_warning}
+
+---
+
+PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
+
+1. VOLUMEN EFECTIVO (Schoenfeld, 2017; Krieger, 2010)
+   - Principiante: 10-15 series semanales por grupo muscular
+   - Intermedio: 15-20 series semanales
+   - Avanzado: 20-25 series semanales
+   - Distribuye el volumen de hoy según la fatiga acumulada: si es ALTA reduce 30-40%, si es MEDIA reduce 15-20%
+   - Nunca superes el umbral de volumen máximo recuperable (MRV) en una sola sesión
+
+2. INTENSIDAD Y RPE (Zourdos et al., 2016; Helms et al., 2018)
+   - RPE objetivo para hoy: {ctx['rpe_target']}/10
+   - Si tienes 1RM disponible, calcula las cargas usando la fórmula de Epley: Carga = 1RM × (1 - reps/30)
+   - RIR (Reps In Reserve) = 10 - RPE. Hoy el atleta debe terminar cada serie con {10 - ctx['rpe_target']} reps en reserva
+   - Fatiga alta o HRV bajo → prioriza RPE 6-7, técnica sobre carga
+   - Estado de ánimo bajo (≤2) → reduce intensidad, aumenta componente de movilidad
+
+3. SELECCIÓN DE EJERCICIOS (Baz-Valle et al., 2022)
+   - USA EXCLUSIVAMENTE los implementos disponibles: {', '.join(ctx['implementos']) if ctx['implementos'] else 'peso corporal'}
+   - NUNCA incluyas ejercicios que requieran implementos no disponibles
+   - Prioriza ejercicios multiarticulares (mayor estímulo hormonal y neuromuscular)
+   - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión
+   - Respeta ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
+   - Considera ejercicios favoritos cuando sea apropiado: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
+   - Patrones de movimiento a cubrir según objetivo: empuje, tracción, piernas, core
+
+4. ESTRUCTURA DE LA SESIÓN (NSCA Guidelines, 2022)
+   - Calentamiento: activación neuromuscular progresiva, movilidad específica, 8-12 min
+   - Bloque principal: ejercicios ordenados de mayor a menor demanda neuromuscular (compuestos primero)
+   - Vuelta a la calma: estiramientos estáticos, trabajo de movilidad, respiración, 8-10 min
+   - Tiempo total: exactamente {ctx['duracion']} minutos incluyendo todas las fases
+
+5. PERIODIZACIÓN SEGÚN OBJETIVO (Issurin, 2010; Bompa & Buzzichelli, 2018)
+   - Pérdida de grasa: densidad alta, descansos cortos (45-75s), supersets ocasionales
+   - Ganancia muscular: 3-4 series, 6-12 reps, descansos 90-120s, énfasis en tensión mecánica
+   - Rendimiento deportivo: trabajo de potencia, movimientos explosivos, especificidad
+   - Resistencia: volumen moderado-alto, intensidad moderada, descansos cortos
+   - Salud general: variedad, movimientos funcionales, bajo impacto articular
+
+6. ADAPTACIONES POR SEXO BIOLÓGICO (Sung et al., 2014; Tarnopolsky, 2008)
+   {'- Las mujeres tienen mayor resistencia a la fatiga → pueden manejar más volumen por sesión\n   - Mayor capacidad de recuperación → descansos pueden ser ligeramente más cortos\n   - Énfasis en cadena posterior y glúteos cuando sea apropiado al objetivo' if ctx['sexo'] == 'femenino' else '- Mayor capacidad de generar fuerza máxima → puede priorizar trabajo de alta intensidad\n   - Responde bien a volumen alto con recuperación adecuada' if ctx['sexo'] == 'masculino' else '- Aplica principios generales de periodización'}
+
+7. CONTEXTO DE VIDA (Kreher & Schwartz, 2012)
+   - Trabajo {ctx['tipo_trabajo'] or 'mixto'}: {'ya tiene demanda física diaria, reduce volumen total en 10-15%' if ctx['tipo_trabajo'] == 'activo' else 'mayor potencial de recuperación entre sesiones' if ctx['tipo_trabajo'] == 'sedentario' else 'considera fatiga acumulada moderada'}
+   - Estrés {ctx['nivel_estres'] or 'moderado'}: {'el cortisol elevado interfiere con la recuperación, reduce intensidad y prioriza ejercicios placenteros' if ctx['nivel_estres'] == 'alto' else 'óptimo para sesiones de alta demanda' if ctx['nivel_estres'] == 'bajo' else 'monitorea señales de fatiga'}
+   - Sueño {ctx['calidad_sueno']}h: {'privación de sueño significativa, reduce RPE objetivo en 1 punto adicional' if float(ctx['calidad_sueno']) < 6 else 'sueño subóptimo, modera la intensidad' if float(ctx['calidad_sueno']) < 7 else 'recuperación adecuada'}
+
+---
+
+INSTRUCCIONES FINALES:
+0. RESTRICCIONES ABSOLUTAS — estas son reglas que NO puedes violar bajo ninguna circunstancia:
+   - Si hay dolor o molestia reportada hoy ("{ctx['dolor_hoy'] or 'ninguno'}"), NUNCA incluyas ejercicios que involucren esa zona corporal. Esto es innegociable.
+   - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
+   - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
+   - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.
+1. Genera UNA sesión completa para HOY, no un plan semanal
+2. Cada ejercicio debe ser ejecutable con los implementos disponibles — verifica esto antes de incluirlo
+3. La nota del entrenador DEBE citar al menos 2 principios científicos específicos explicando POR QUÉ la sesión está diseñada así hoy
+4. Las notas de cada ejercicio deben incluir un cue técnico clave basado en biomecánica
+5. Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown
+
+JSON requerido:
+{{
+  "titulo": "nombre descriptivo y motivador de la sesión",
+  "objetivo_sesion": "qué adaptación fisiológica específica se busca hoy en una frase",
+  "rpe_target": {ctx['rpe_target']},
+  "duracion_total": {ctx['duracion']},
+  "fases": [
+    {{
+      "nombre": "Calentamiento",
+      "duracion_minutos": 10,
+      "ejercicios": [
+        {{
+          "nombre": "nombre del ejercicio",
+          "series": 2,
+          "repeticiones": "30 segundos",
+          "descanso_segundos": 15,
+          "rpe_sugerido": 4,
+          "notas": "cue técnico biomecánico específico"
+        }}
+      ]
+    }},
+    {{
+      "nombre": "Bloque principal",
+      "duracion_minutos": 40,
+      "ejercicios": []
+    }},
+    {{
+      "nombre": "Vuelta a la calma",
+      "duracion_minutos": 10,
+      "ejercicios": []
+    }}
+  ],
+  "nota_del_entrenador": "máximo 2 oraciones explicando por qué esta sesión está diseñada así HOY específicamente, basado en el estado del usuario"
+}}
+"""
+
+
+# ─── Main generate view ───────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([GenerateSessionRateThrottle])
+def generate_session(request):
+    user = request.user
+    hoy = date.today()
+    hace_14_dias = hoy - timedelta(days=14)
+
+    try:
+        perfil = user.profile
+    except Exception:
+        return Response({'error': 'Perfil no encontrado. Completa el onboarding.'}, status=400)
+
+    try:
+        checkin = user.checkins.select_related('location').get(fecha=hoy)
+    except DailyCheckin.DoesNotExist:
+        return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
+
+    if not checkin.location:
+        return Response({'error': 'El check-in debe tener una ubicación.'}, status=400)
+
+    sesiones_recientes = user.sessions.filter(created_at__date__gte=hace_14_dias)
+    fatiga = calcular_fatiga(sesiones_recientes)
+    rpe_target = calcular_rpe_target(fatiga, checkin.estado_animo, checkin.hrv)
+
+    competicion = user.competitions.filter(
+        fecha__gte=hoy,
+        fecha__lte=hoy + timedelta(days=14)
+    ).order_by('fecha').first()
+
+    loc = checkin.location
+
+    # Phase 1 & 2: Build exercise pool
+    exercise_pool, exercise_flat_list = _get_exercise_pool(
+        user, loc, dolor_hoy=checkin.dolor_hoy or ''
+    )
+
+    # Phase 3 & 4: Adaptation context
+    adaptation_context = _build_adaptation_context(user)
+
+    # Phase 5: Periodization / mesocycle state
+    estado_mesociclo = _calcular_estado_mesociclo(user)
+
+    ctx = {
+        'nombre': perfil.nombre,
+        'objetivo': perfil.objetivo or 'salud general',
+        'nivel': perfil.nivel,
+        'lesiones': perfil.lesiones,
+        'experiencia_deportiva': perfil.experiencia_deportiva,
+        'edad': perfil.edad,
+        'sexo': perfil.sexo,
+        'peso': perfil.peso,
+        'altura': perfil.altura,
+        'dias_semana': perfil.dias_semana,
+        'horario_preferido': perfil.horario_preferido,
+        'nivel_estres': perfil.nivel_estres,
+        'tipo_trabajo': perfil.tipo_trabajo,
+        'estilo_entrenamiento': perfil.estilo_entrenamiento,
+        'ejercicios_favoritos': perfil.ejercicios_favoritos,
+        'ejercicios_evitar': perfil.ejercicios_evitar,
+        'rm_sentadilla': perfil.rm_sentadilla,
+        'rm_peso_muerto': perfil.rm_peso_muerto,
+        'rm_press_banca': perfil.rm_press_banca,
+        'rm_press_hombro': perfil.rm_press_hombro,
+        'estado_animo': checkin.estado_animo,
+        'calidad_sueno': checkin.calidad_sueno,
+        'hrv': checkin.hrv,
+        'notas': checkin.notas,
+        'fatiga': fatiga,
+        'rpe_target': rpe_target,
+        'duracion': checkin.duracion_disponible,
+        'ubicacion_nombre': loc.nombre,
+        'ubicacion_tipo': loc.tipo,
+        'implementos': loc.implementos or [],
+        'competicion_nombre': competicion.nombre if competicion else None,
+        'competicion_fecha': str(competicion.fecha) if competicion else None,
+        'fases_ciclo': None,
+        'dolor_hoy': checkin.dolor_hoy,
+        'foco_entrenamiento': checkin.foco_entrenamiento or [],
+        'exercise_pool': exercise_pool,
+        'adaptation_context': adaptation_context,
+        'estado_mesociclo': estado_mesociclo,
+    }
+
+    prompt = build_prompt(ctx)
+
+    groq_client = Groq(api_key=settings.GROQ_API_KEY)
+    completion = groq_client.chat.completions.create(
+        model='llama-3.3-70b-versatile',
+        messages=[{'role': 'user', 'content': prompt}],
+        max_tokens=2048,
+    )
+    text = completion.choices[0].message.content
+    clean = text.replace('```json', '').replace('```', '').strip()
+    sesion_generada = json.loads(clean)
+
+    volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
+    sesion = Session.objects.create(
+        user=user,
+        checkin=checkin,
+        location=loc,
+        fecha=hoy,
+        duracion_planificada=checkin.duracion_disponible,
+        rpe_target=rpe_target,
+        volumen_relativo=volumen,
+        prompt_usado=prompt,
+        respuesta_ia=sesion_generada,
+    )
+
+    return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
+
+
+# ─── Regenerar ejercicio ──────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([RegenerarEjercicioRateThrottle])
+def regenerar_ejercicio(request):
+    nombre_ejercicio = request.data.get('nombre', '')
+    contexto_sesion = request.data.get('contexto', '')
+    implementos = request.data.get('implementos', [])
+    razon = request.data.get('razon', '')
+
+    prompt = f"""Eres un entrenador personal de élite. Necesito que regeneres UN ejercicio alternativo.
+
+Ejercicio a reemplazar: {nombre_ejercicio}
+Razón del reemplazo: {razon or 'el usuario quiere variedad'}
+Implementos disponibles: {', '.join(implementos) if implementos else 'solo peso corporal'}
+Contexto de la sesión: {contexto_sesion}
+
+Genera UN ejercicio alternativo que:
+1. Sea ejecutable con los implementos disponibles
+2. Trabaje el mismo grupo muscular o patrón de movimiento
+3. Sea diferente al ejercicio original
+
+Responde ÚNICAMENTE con JSON válido:
+{{
+  "nombre": "nombre del ejercicio alternativo",
+  "series": 3,
+  "repeticiones": "10-12",
+  "descanso_segundos": 90,
+  "rpe_sugerido": 7,
+  "notas": "cue técnico clave"
+}}"""
+
+    groq_client = Groq(api_key=settings.GROQ_API_KEY)
+    completion = groq_client.chat.completions.create(
+        model='llama-3.3-70b-versatile',
+        messages=[{'role': 'user', 'content': prompt}],
+        max_tokens=300,
+    )
+    text = completion.choices[0].message.content
+    clean = text.replace('```json', '').replace('```', '').strip()
+    ejercicio = json.loads(clean)
+    return Response({'ejercicio': ejercicio})
+
+
+# ─── Ejercicio demo ───────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ejercicio_demo(request):
+    nombre = request.query_params.get('nombre', '')
+    if not nombre:
+        return Response({'error': 'Se requiere el parámetro nombre'}, status=400)
+
+    MUSCULOS = {
+        'sentadilla': '🦵', 'press': '💪', 'remo': '🏋️', 'peso muerto': '🏋️',
+        'plancha': '🧱', 'burpee': '🔥', 'dominada': '💪', 'fondos': '💪',
+        'zancada': '🦵', 'hip thrust': '🍑', 'curl': '💪', 'extensión': '🦵',
+        'abdominales': '🧱', 'elevación': '🏋️', 'salto': '🔥',
+    }
+    emoji = '💪'
+    nombre_lower = nombre.lower()
+    for key, val in MUSCULOS.items():
+        if key in nombre_lower:
+            emoji = val
+            break
+
+    gif_url = ''
+    imagen_url = ''
+    try:
+        ejercicio = Exercise.objects.get(nombre__iexact=nombre)
+        gif_url = ejercicio.gif_url or ''
+        imagen_url = ejercicio.imagen_url or ''
+    except Exercise.DoesNotExist:
+        pass
+
+    youtube_query = f"{nombre} ejercicio técnica correcta"
+    return Response({
+        'emoji': emoji,
+        'gif_url': gif_url,
+        'imagen_url': imagen_url,
+        'youtube_query': youtube_query,
+        'youtube_url': f"https://www.youtube.com/results?search_query={youtube_query.replace(' ', '+')}",
+    })
