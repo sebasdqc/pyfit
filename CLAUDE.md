@@ -634,10 +634,24 @@ EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
 ```
 
-### Mobile React Native (.env)
+### Mobile React Native
+
+El proyecto tiene dos archivos de entorno en `mobile/`:
+
+- `.env.development` → apunta a la IP local del backend Django (`http://192.168.0.118:8000`)
+- `.env.production` → apunta al backend en DigitalOcean (`https://sea-lion-app-a2j4f.ondigitalocean.app`)
+- `.env` → el que usa Expo al correr `npx expo start` (copiar desde uno de los anteriores)
+
+**Para cambiar de entorno, copiar el archivo correspondiente a `.env`:**
+```bash
+# Desarrollo local
+cp mobile/.env.development mobile/.env
+
+# Producción (DigitalOcean)
+cp mobile/.env.production mobile/.env
 ```
-EXPO_PUBLIC_API_URL=https://api.pyfit.app
-```
+
+Ninguno de estos archivos se sube a GitHub (están en `.gitignore`).
 
 ---
 
