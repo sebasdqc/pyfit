@@ -1,12 +1,19 @@
 from django.contrib import admin
 from django.urls import path
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from users import views as user_views
 from checkins import views as checkin_views
 from workouts import views as workout_views
 from ai_workout import views as ai_views
 
+
+def health(request):
+    return JsonResponse({'status': 'ok'})
+
+
 urlpatterns = [
+    path('api/health/', health),
     path('admin/', admin.site.urls),
 
     # Auth

@@ -3,6 +3,6 @@ builder = "dockerfile"
 
 [deploy]
 startCommand = "python manage.py migrate && gunicorn pyfit.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
-healthcheckPath = "/api/auth/login/"
+healthcheckPath = "/api/health/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
