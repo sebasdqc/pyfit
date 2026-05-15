@@ -7,6 +7,7 @@ import {
   Modal,
   StyleSheet,
   Dimensions,
+  RefreshControl,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
@@ -97,6 +98,20 @@ function cumplimientoBgColor(c: number): string {
   if (c >= 90) return 'rgba(50,200,150,0.15)'
   if (c >= 70) return 'rgba(144,238,144,0.15)'
   return 'rgba(255,170,50,0.15)'
+}
+
+function getEjerciciosSintesis(ia?: RespuestaIA, max = 3): string {
+  if (!ia?.fases) return ''
+  const nombres: string[] = []
+  for (const fase of ia.fases) {
+    for (const ej of fase.ejercicios) {
+      if (ej.nombre) nombres.push(ej.nombre)
+    }
+  }
+  if (!nombres.length) return ''
+  const shown = nombres.slice(0, max)
+  const rest = nombres.length - shown.length
+  return shown.join(' · ') + (rest > 0 ? ` +${rest}` : '')
 }
 
 function getDayColor(session?: Session): string | null {
@@ -516,6 +531,7 @@ function ListView({
             const titulo = session.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'
             const duracion = session.respuesta_ia?.duracion_total ?? session.duracion_planificada
             const feedback = session.feedback
+            const ejercicios = getEjerciciosSintesis(session.respuesta_ia)
             return (
               <TouchableOpacity
                 key={session.id}
@@ -538,7 +554,12 @@ function ListView({
                   )}
                 </View>
                 <Text style={styles.sessionTitle} numberOfLines={1}>{titulo}</Text>
-                <Text style={styles.sessionMeta}>{duracion} min{feedback ? ` · RPE ${feedback.rpe_real}` : ''}</Text>
+                <Text style={styles.sessionMeta}>
+                  {duracion} min{feedback ? ` · RPE ${feedback.rpe_real} · ${feedback.cumplimiento}% cumpl.` : ''}
+                </Text>
+                {!!ejercicios && (
+                  <Text style={styles.sessionEjercicios} numberOfLines={1}>{ejercicios}</Text>
+                )}
               </TouchableOpacity>
             )
           })}
@@ -789,22 +810,28 @@ function DayModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ padding: 20 }}
           >
-            {daySessions.map(s => (
-              <TouchableOpacity
-                key={s.id}
-                style={styles.sessionCard}
-                onPress={() => { onClose(); setTimeout(() => onSelectSession(s), 300) }}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {s.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'}
-                </Text>
-                <Text style={styles.sessionMeta}>
-                  {s.respuesta_ia?.duracion_total ?? s.duracion_planificada} min
-                  {s.feedback ? ` · ${s.feedback.cumplimiento}% cumplimiento` : ' · Sin feedback'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {daySessions.map(s => {
+              const ejercicios = getEjerciciosSintesis(s.respuesta_ia)
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={styles.sessionCard}
+                  onPress={() => { onClose(); setTimeout(() => onSelectSession(s), 300) }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.sessionTitle} numberOfLines={1}>
+                    {s.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'}
+                  </Text>
+                  <Text style={styles.sessionMeta}>
+                    {s.respuesta_ia?.duracion_total ?? s.duracion_planificada} min
+                    {s.feedback ? ` · RPE ${s.feedback.rpe_real} · ${s.feedback.cumplimiento}%` : ' · Sin feedback'}
+                  </Text>
+                  {!!ejercicios && (
+                    <Text style={styles.sessionEjercicios} numberOfLines={1}>{ejercicios}</Text>
+                  )}
+                </TouchableOpacity>
+              )
+            })}
           </ScrollView>
         </View>
       </View>
@@ -821,6 +848,7 @@ export default function HistorialScreen() {
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
@@ -840,6 +868,12 @@ export default function HistorialScreen() {
       setLoading(false)
     }
   }, [])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchSessions()
+    setRefreshing(false)
+  }, [fetchSessions])
 
   useEffect(() => {
     fetchSessions()
@@ -870,6 +904,14 @@ export default function HistorialScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
       >
         {/* Page title */}
         <Text style={styles.pageTitle}>Historial</Text>
@@ -1095,6 +1137,12 @@ function makeStyles(c: Colors) {
       color: c.inkMuted,
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 12,
+    },
+    sessionEjercicios: {
+      color: c.inkFaint,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 11,
+      marginTop: 4,
     },
   })
 }

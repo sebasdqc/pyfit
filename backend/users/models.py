@@ -1,5 +1,9 @@
+import random
+import string
+from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -120,3 +124,21 @@ class UserInjury(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.zona} ({self.severidad})'
+
+
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'password_reset_codes'
+
+    def is_valid(self):
+        return timezone.now() < self.created_at + timedelta(minutes=15)
+
+    @classmethod
+    def generate_for(cls, user):
+        cls.objects.filter(user=user).delete()
+        code = ''.join(random.choices(string.digits, k=6))
+        return cls.objects.create(user=user, code=code)

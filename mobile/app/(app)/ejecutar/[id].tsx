@@ -349,23 +349,26 @@ export default function EjecutarScreen() {
   }, [flatList.length])
 
   useEffect(() => {
-    if (timerActivo && timerSegundos > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimerSegundos(prev => {
-          if (prev <= 1) {
-            if (intervalRef.current) clearInterval(intervalRef.current)
-            setTimerActivo(false)
-            advanceExercise()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
+    // Re-creating the interval on every tick caused timer drift; create once
+    // per active rest period and let the functional updater drive the count.
+    if (!timerActivo) return
+    intervalRef.current = setInterval(() => {
+      setTimerSegundos(prev => {
+        if (prev <= 1) {
+          setTimerActivo(false)
+          advanceExercise()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
-  }, [timerActivo, timerSegundos, advanceExercise])
+  }, [timerActivo, advanceExercise])
 
   // ── Series logic ────────────────────────────────────────────────────────────
 
@@ -593,10 +596,18 @@ export default function EjecutarScreen() {
                 </Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.allSeriesDoneCard}>
-                <Text style={styles.allSeriesDoneText}>
-                  ✓ Todas las series completadas
-                </Text>
+              <View>
+                <View style={styles.allSeriesDoneCard}>
+                  <Text style={styles.allSeriesDoneText}>✓ Todas las series completadas</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.completarBtn, { backgroundColor: faseStyle.color, marginTop: 10 }]}
+                  onPress={advanceExercise}
+                >
+                  <Text style={styles.completarBtnText}>
+                    {currentIndex + 1 < flatList.length ? 'Siguiente ejercicio →' : 'Finalizar sesión →'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>

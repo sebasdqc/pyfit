@@ -7,41 +7,37 @@ import Svg, { Path, Circle } from 'react-native-svg'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
-function IconHome({ focused }: { focused: boolean }) {
-  const c = focused ? COLORS.accent : COLORS.inkMuted
+function IconHome({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke={c} strokeWidth={1.8} strokeLinejoin="round" />
-      <Path d="M9 21V12h6v9" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+      <Path d="M9 21V12h6v9" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   )
 }
 
-function IconStats({ focused }: { focused: boolean }) {
-  const c = focused ? COLORS.accent : COLORS.inkMuted
+function IconStats({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M18 20V10M12 20V4M6 20v-6" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M18 20V10M12 20V4M6 20v-6" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   )
 }
 
-function IconHistory({ focused }: { focused: boolean }) {
-  const c = focused ? COLORS.accent : COLORS.inkMuted
+function IconHistory({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 8v4l3 3" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M3.05 11a9 9 0 1 0 .5-3M3 5v6h6" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M12 8v4l3 3" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M3.05 11a9 9 0 1 0 .5-3M3 5v6h6" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
 }
 
-function IconProfile({ focused }: { focused: boolean }) {
-  const c = focused ? COLORS.accent : COLORS.inkMuted
+function IconProfile({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={8} r={4} stroke={c} strokeWidth={1.8} />
-      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
+      <Circle cx={12} cy={8} r={4} stroke={color} strokeWidth={1.8} />
+      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   )
 }
@@ -103,7 +99,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
         const icon = options.tabBarIcon?.({
           focused,
-          color: focused ? COLORS.accent : COLORS.inkMuted,
+          color: focused ? colors.accent : colors.inkMuted,
           size: 22,
         })
         const label = options.tabBarLabel as string
@@ -138,14 +134,14 @@ export default function AppLayout() {
         name="dashboard/index"
         options={{
           tabBarLabel: 'Inicio',
-          tabBarIcon: ({ focused }) => <IconHome focused={focused} />,
+          tabBarIcon: ({ color }) => <IconHome color={color} />,
         }}
       />
       <Tabs.Screen
         name="estadisticas/index"
         options={{
           tabBarLabel: 'Stats',
-          tabBarIcon: ({ focused }) => <IconStats focused={focused} />,
+          tabBarIcon: ({ color }) => <IconStats color={color} />,
         }}
       />
       <Tabs.Screen
@@ -156,14 +152,14 @@ export default function AppLayout() {
         name="historial/index"
         options={{
           tabBarLabel: 'Historial',
-          tabBarIcon: ({ focused }) => <IconHistory focused={focused} />,
+          tabBarIcon: ({ color }) => <IconHistory color={color} />,
         }}
       />
       <Tabs.Screen
         name="perfil/index"
         options={{
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ focused }) => <IconProfile focused={focused} />,
+          tabBarIcon: ({ color }) => <IconProfile color={color} />,
         }}
       />
       {/* Screens fuera del tab bar */}

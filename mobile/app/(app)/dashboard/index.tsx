@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  RefreshControl,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle, Path } from 'react-native-svg'
@@ -224,6 +225,7 @@ export default function DashboardScreen() {
 
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const weekDays = getCurrentWeek()
@@ -240,6 +242,12 @@ export default function DashboardScreen() {
       setLoading(false)
     }
   }, [])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchDashboard()
+    setRefreshing(false)
+  }, [fetchDashboard])
 
   useEffect(() => {
     fetchDashboard()
@@ -259,6 +267,14 @@ export default function DashboardScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
       >
         {/* ── Header ── */}
         <View style={styles.header}>

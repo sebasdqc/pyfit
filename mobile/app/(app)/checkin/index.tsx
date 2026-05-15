@@ -26,11 +26,6 @@ interface Location {
   implementos: string[]
 }
 
-interface CheckinExistente {
-  id: number
-  fecha: string
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FOCOS: string[] = [
@@ -125,7 +120,6 @@ export default function CheckinScreen() {
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
   // Check-in state
-  const [checkinExistente, setCheckinExistente] = useState<CheckinExistente | null>(null)
   const [checkingExistente, setCheckingExistente] = useState(true)
 
   // Locations
@@ -154,7 +148,8 @@ export default function CheckinScreen() {
       ])
 
       if (checkinRes.status === 'fulfilled' && checkinRes.value?.id) {
-        setCheckinExistente(checkinRes.value)
+        router.replace('/(app)/generate')
+        return
       }
       if (locsRes.status === 'fulfilled') {
         const locs: Location[] = locsRes.value ?? []
@@ -220,32 +215,6 @@ export default function CheckinScreen() {
           style={styles.gradient}
         />
         <ActivityIndicator color={colors.accent} size="large" />
-      </View>
-    )
-  }
-
-  // ── Already checked in today ──
-  if (checkinExistente) {
-    return (
-      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
-        <LinearGradient
-          colors={['rgba(37,99,255,0.25)', 'transparent']}
-          style={styles.gradient}
-        />
-        <View style={styles.alreadyCard}>
-          <Text style={styles.alreadyEmoji}>✅</Text>
-          <Text style={styles.alreadyTitle}>Ya hiciste check-in hoy</Text>
-          <Text style={styles.alreadySubtitle}>
-            Completaste el check-in del {formatTodayFull().split(',')[0]}.
-          </Text>
-          <TouchableOpacity
-            style={styles.generateBtn}
-            onPress={() => router.replace('/(app)/generate')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.generateBtnText}>Ir a generar sesión →</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     )
   }

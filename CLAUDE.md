@@ -636,22 +636,24 @@ EMAIL_HOST_PASSWORD=
 
 ### Mobile React Native
 
-El proyecto tiene dos archivos de entorno en `mobile/`:
+El proyecto tiene templates de entorno en `mobile/`. Expo carga automáticamente `.env.development` en desarrollo con mayor prioridad que `.env`, por eso los templates usan nombres sin punto inicial para que Expo no los cargue automáticamente:
 
-- `.env.development` → apunta a la IP local del backend Django (`http://192.168.0.118:8000`)
-- `.env.production` → apunta al backend en DigitalOcean (`https://sea-lion-app-a2j4f.ondigitalocean.app`)
-- `.env` → el que usa Expo al correr `npx expo start` (copiar desde uno de los anteriores)
+- `env.development.template` → IP local del backend Django (`http://192.168.0.118:8000`)
+- `env.production.template` → backend en DigitalOcean (`https://sea-lion-app-a2j4f.ondigitalocean.app`)
+- `.env` → el único archivo que Expo lee (editar directamente o copiar desde un template)
 
-**Para cambiar de entorno, copiar el archivo correspondiente a `.env`:**
+**Para cambiar de entorno, copiar el template correspondiente a `.env`:**
 ```bash
 # Desarrollo local
-cp mobile/.env.development mobile/.env
+cp mobile/env.development.template mobile/.env
 
 # Producción (DigitalOcean)
-cp mobile/.env.production mobile/.env
+cp mobile/env.production.template mobile/.env
 ```
 
-Ninguno de estos archivos se sube a GitHub (están en `.gitignore`).
+Después de cambiar el `.env`, reiniciar Expo con `npx expo start --clear` para que tome el nuevo valor.
+
+El archivo `.env` no se sube a GitHub (está en `.gitignore`). Los templates sí se suben.
 
 ---
 

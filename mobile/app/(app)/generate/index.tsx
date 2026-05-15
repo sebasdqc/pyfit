@@ -42,7 +42,7 @@ interface Sesion {
 }
 
 interface SesionResponse {
-  session_id: string | number
+  sesion_id: string | number
   sesion: Sesion
 }
 
@@ -257,7 +257,7 @@ export default function GenerateScreen() {
     setError(null)
     try {
       const data: SesionResponse = await apiPost('/api/sessions/generate/', {})
-      setSesionId(String(data.session_id))
+      setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
     } catch (err: any) {
       setError(err.message || 'Error generando la sesión')

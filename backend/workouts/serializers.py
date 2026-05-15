@@ -3,6 +3,8 @@ from .models import Session, SessionExercise, SessionFeedback, Competition
 
 
 class SessionFeedbackSerializer(serializers.ModelSerializer):
+    notas = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+
     class Meta:
         model = SessionFeedback
         fields = ['id', 'rpe_real', 'cumplimiento', 'rating', 'notas', 'created_at']

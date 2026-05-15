@@ -54,6 +54,9 @@ class UserExerciseProfile(models.Model):
     class Meta:
         db_table = 'user_exercise_profiles'
         unique_together = [['user', 'exercise_nombre']]
+        indexes = [
+            models.Index(fields=['user', '-veces_realizado']),
+        ]
 
     def __str__(self):
         return f'{self.user} - {self.exercise_nombre}'
@@ -94,6 +97,10 @@ class Session(models.Model):
     class Meta:
         db_table = 'sessions'
         ordering = ['-fecha', '-created_at']
+        indexes = [
+            models.Index(fields=['user', '-fecha']),
+            models.Index(fields=['user', '-created_at']),
+        ]
 
     def __str__(self):
         return f'{self.user} - {self.fecha}'
@@ -119,7 +126,7 @@ class SessionFeedback(models.Model):
     rpe_real = models.DecimalField(max_digits=3, decimal_places=1)
     cumplimiento = models.IntegerField()
     rating = models.IntegerField()
-    notas = models.TextField(blank=True)
+    notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

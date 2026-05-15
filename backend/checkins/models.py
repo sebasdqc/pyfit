@@ -13,13 +13,16 @@ class DailyCheckin(models.Model):
     )
     duracion_disponible = models.IntegerField()
     foco_entrenamiento = models.JSONField(default=list, blank=True)
-    dolor_hoy = models.TextField(blank=True)
-    notas = models.TextField(blank=True)
+    dolor_hoy = models.TextField(blank=True, null=True)
+    notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'daily_checkin'
         unique_together = [['user', 'fecha']]
+        indexes = [
+            models.Index(fields=['user', '-fecha']),
+        ]
 
     def __str__(self):
         return f'{self.user} - {self.fecha}'

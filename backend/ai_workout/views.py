@@ -1,14 +1,43 @@
 import json
+import logging
 from datetime import date, timedelta
 from groq import Groq
 from django.conf import settings
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle
-from workouts.models import Session, Exercise, UserAdaptationProfile, UserExerciseProfile
+from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile
 from checkins.models import DailyCheckin
+
+logger = logging.getLogger(__name__)
+
+# Timeout for the Groq HTTP request (seconds). Keep below gunicorn worker timeout.
+GROQ_TIMEOUT_SECONDS = 30
+
+
+def _call_groq(prompt: str, max_tokens: int) -> dict:
+    """
+    Call Groq and return parsed JSON. Raises ValueError on parse/empty response,
+    or any underlying Groq exception. Caller is responsible for translating
+    exceptions into HTTP responses.
+    """
+    if not settings.GROQ_API_KEY:
+        raise RuntimeError('GROQ_API_KEY not configured')
+
+    groq_client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS)
+    completion = groq_client.chat.completions.create(
+        model='llama-3.3-70b-versatile',
+        messages=[{'role': 'user', 'content': prompt}],
+        max_tokens=max_tokens,
+    )
+    text = (completion.choices[0].message.content or '').strip()
+    if not text:
+        raise ValueError('Empty response from AI')
+    clean = text.replace('```json', '').replace('```', '').strip()
+    return json.loads(clean)
 
 
 # ─── Fatiga & RPE helpers ─────────────────────────────────────────────────────
@@ -152,18 +181,7 @@ def _build_adaptation_context(user):
         )
 
     if ap.patron_preferido:
-        PATRON_LABELS = {
-            'empuje_horizontal': 'empuje horizontal',
-            'empuje_vertical': 'empuje vertical',
-            'jale_horizontal': 'jale horizontal',
-            'jale_vertical': 'jale vertical',
-            'sentadilla': 'sentadilla/cuádriceps',
-            'bisagra': 'bisagra/cadena posterior',
-            'core': 'core',
-            'cardio': 'cardio/metabólico',
-            'movilidad': 'movilidad/flexibilidad',
-        }
-        label = PATRON_LABELS.get(ap.patron_preferido, ap.patron_preferido)
+        label = PATRON_LABELS_CORTO.get(ap.patron_preferido, ap.patron_preferido)
         lines.append(f'Patrón de movimiento más frecuente: {label}.')
 
     if ap.semanas_carga_consecutivas > 0:
@@ -249,26 +267,40 @@ def _calcular_estado_mesociclo(user):
 
 # ─── Prompt builder ───────────────────────────────────────────────────────────
 
+# Movement pattern labels — used in adaptation context and exercise pool formatting.
+PATRON_LABELS_CORTO = {
+    'empuje_horizontal': 'empuje horizontal',
+    'empuje_vertical': 'empuje vertical',
+    'jale_horizontal': 'jale horizontal',
+    'jale_vertical': 'jale vertical',
+    'sentadilla': 'sentadilla/cuádriceps',
+    'bisagra': 'bisagra/cadena posterior',
+    'core': 'core',
+    'cardio': 'cardio/metabólico',
+    'movilidad': 'movilidad/flexibilidad',
+}
+
+PATRON_LABELS_LARGO = {
+    'empuje_horizontal': 'EMPUJE HORIZONTAL (pectoral, tríceps)',
+    'empuje_vertical': 'EMPUJE VERTICAL (deltoides, tríceps)',
+    'jale_horizontal': 'JALE HORIZONTAL (dorsal, romboides)',
+    'jale_vertical': 'JALE VERTICAL (dorsal, bíceps)',
+    'sentadilla': 'SENTADILLA / CUÁDRICEPS',
+    'bisagra': 'BISAGRA / CADENA POSTERIOR (glúteos, isquiotibiales)',
+    'core': 'CORE / ABDOMEN',
+    'cardio': 'CARDIO / METABÓLICO',
+    'movilidad': 'MOVILIDAD / FLEXIBILIDAD',
+}
+
+
 def _format_exercise_pool(grouped):
     """Format grouped exercise dict as a readable text block."""
     if not grouped:
         return 'No hay ejercicios en el banco para la ubicación actual.'
 
-    PATRON_LABELS = {
-        'empuje_horizontal': 'EMPUJE HORIZONTAL (pectoral, tríceps)',
-        'empuje_vertical': 'EMPUJE VERTICAL (deltoides, tríceps)',
-        'jale_horizontal': 'JALE HORIZONTAL (dorsal, romboides)',
-        'jale_vertical': 'JALE VERTICAL (dorsal, bíceps)',
-        'sentadilla': 'SENTADILLA / CUÁDRICEPS',
-        'bisagra': 'BISAGRA / CADENA POSTERIOR (glúteos, isquiotibiales)',
-        'core': 'CORE / ABDOMEN',
-        'cardio': 'CARDIO / METABÓLICO',
-        'movilidad': 'MOVILIDAD / FLEXIBILIDAD',
-    }
-
     lines = []
     for patron, exercises in sorted(grouped.items()):
-        label = PATRON_LABELS.get(patron, patron.upper())
+        label = PATRON_LABELS_LARGO.get(patron, patron.upper())
         lines.append(f'{label}:')
         for ex in exercises:
             lines.append(f'  - {ex}')
@@ -540,30 +572,83 @@ def generate_session(request):
 
     prompt = build_prompt(ctx)
 
-    groq_client = Groq(api_key=settings.GROQ_API_KEY)
-    completion = groq_client.chat.completions.create(
-        model='llama-3.3-70b-versatile',
-        messages=[{'role': 'user', 'content': prompt}],
-        max_tokens=2048,
-    )
-    text = completion.choices[0].message.content
-    clean = text.replace('```json', '').replace('```', '').strip()
-    sesion_generada = json.loads(clean)
+    try:
+        sesion_generada = _call_groq(prompt, max_tokens=2048)
+    except json.JSONDecodeError:
+        logger.exception('Groq returned invalid JSON for user %s', user.id)
+        return Response(
+            {'error': 'La IA devolvió una respuesta inválida. Intenta de nuevo.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    except (ValueError, RuntimeError) as e:
+        logger.exception('AI generation failed for user %s', user.id)
+        return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    except Exception:
+        logger.exception('Unexpected error during AI generation for user %s', user.id)
+        return Response(
+            {'error': 'Servicio de IA no disponible. Intenta de nuevo en unos segundos.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    # Basic shape validation — the prompt asks for these keys; reject if missing.
+    if not isinstance(sesion_generada, dict) or 'fases' not in sesion_generada:
+        logger.error('Groq response missing "fases" for user %s: %s', user.id, sesion_generada)
+        return Response(
+            {'error': 'La IA devolvió una respuesta incompleta. Intenta de nuevo.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
 
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
-    sesion = Session.objects.create(
-        user=user,
-        checkin=checkin,
-        location=loc,
-        fecha=hoy,
-        duracion_planificada=checkin.duracion_disponible,
-        rpe_target=rpe_target,
-        volumen_relativo=volumen,
-        prompt_usado=prompt,
-        respuesta_ia=sesion_generada,
-    )
+
+    with transaction.atomic():
+        sesion = Session.objects.create(
+            user=user,
+            checkin=checkin,
+            location=loc,
+            fecha=hoy,
+            duracion_planificada=checkin.duracion_disponible,
+            rpe_target=rpe_target,
+            volumen_relativo=volumen,
+            prompt_usado=prompt,
+            respuesta_ia=sesion_generada,
+        )
+        _persist_session_exercises(sesion, sesion_generada)
 
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
+
+
+def _persist_session_exercises(sesion, sesion_generada):
+    """Parse the AI response and create SessionExercise rows for analytics/history."""
+    orden = 1
+    to_create = []
+    for fase in sesion_generada.get('fases', []) or []:
+        for ej in fase.get('ejercicios', []) or []:
+            try:
+                nombre = str(ej.get('nombre', '')).strip()[:200]
+                if not nombre:
+                    continue
+                series = int(ej.get('series', 0) or 0)
+                descanso = int(ej.get('descanso_segundos', 0) or 0)
+                repeticiones = str(ej.get('repeticiones', ''))[:50]
+                rpe_raw = ej.get('rpe_sugerido')
+                rpe = float(rpe_raw) if rpe_raw is not None else None
+                notas = str(ej.get('notas', '') or '')
+                to_create.append(SessionExercise(
+                    session=sesion,
+                    orden=orden,
+                    nombre=nombre,
+                    series=series,
+                    repeticiones=repeticiones,
+                    descanso_segundos=descanso,
+                    rpe_sugerido=rpe,
+                    notas=notas,
+                ))
+                orden += 1
+            except (TypeError, ValueError):
+                # Skip malformed exercise entries rather than failing the whole save
+                continue
+    if to_create:
+        SessionExercise.objects.bulk_create(to_create)
 
 
 # ─── Regenerar ejercicio ──────────────────────────────────────────────────────
@@ -572,10 +657,30 @@ def generate_session(request):
 @permission_classes([IsAuthenticated])
 @throttle_classes([RegenerarEjercicioRateThrottle])
 def regenerar_ejercicio(request):
-    nombre_ejercicio = request.data.get('nombre', '')
-    contexto_sesion = request.data.get('contexto', '')
-    implementos = request.data.get('implementos', [])
-    razon = request.data.get('razon', '')
+    # Sanitize and bound user inputs so they cannot bloat the prompt or smuggle
+    # multi-line content that derails the model.
+    def _clean(value, max_len):
+        if value is None:
+            return ''
+        text = str(value).replace('\n', ' ').replace('\r', ' ').strip()
+        return text[:max_len]
+
+    nombre_ejercicio = _clean(request.data.get('nombre'), 120)
+    contexto_sesion = _clean(request.data.get('contexto'), 500)
+    razon = _clean(request.data.get('razon'), 200)
+
+    implementos_raw = request.data.get('implementos') or []
+    if not isinstance(implementos_raw, list):
+        implementos_raw = []
+    implementos = [
+        _clean(item, 50) for item in implementos_raw[:30] if _clean(item, 50)
+    ]
+
+    if not nombre_ejercicio:
+        return Response(
+            {'error': 'El nombre del ejercicio es requerido'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     prompt = f"""Eres un entrenador personal de élite. Necesito que regeneres UN ejercicio alternativo.
 
@@ -599,15 +704,27 @@ Responde ÚNICAMENTE con JSON válido:
   "notas": "cue técnico clave"
 }}"""
 
-    groq_client = Groq(api_key=settings.GROQ_API_KEY)
-    completion = groq_client.chat.completions.create(
-        model='llama-3.3-70b-versatile',
-        messages=[{'role': 'user', 'content': prompt}],
-        max_tokens=300,
-    )
-    text = completion.choices[0].message.content
-    clean = text.replace('```json', '').replace('```', '').strip()
-    ejercicio = json.loads(clean)
+    try:
+        ejercicio = _call_groq(prompt, max_tokens=300)
+    except json.JSONDecodeError:
+        logger.exception('Groq returned invalid JSON in regenerar for user %s', request.user.id)
+        return Response(
+            {'error': 'La IA devolvió una respuesta inválida.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    except Exception:
+        logger.exception('Regenerar ejercicio failed for user %s', request.user.id)
+        return Response(
+            {'error': 'No se pudo regenerar el ejercicio. Intenta de nuevo.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    if not isinstance(ejercicio, dict) or 'nombre' not in ejercicio:
+        return Response(
+            {'error': 'La IA devolvió una respuesta incompleta.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
     return Response({'ejercicio': ejercicio})
 
 

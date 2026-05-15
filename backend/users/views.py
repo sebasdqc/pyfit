@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle
-from .models import Profile, UserLocation, UserInjury
+from .models import Profile, UserLocation, UserInjury, PasswordResetCode
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -65,18 +65,53 @@ def reset_password(request):
     email = request.data.get('email', '').lower().strip()
     try:
         user = User.objects.get(email=email)
-        refresh = RefreshToken.for_user(user)
-        reset_url = f"{settings.FRONTEND_URL}/auth/reset?token={str(refresh.access_token)}"
+        reset_code = PasswordResetCode.generate_for(user)
         send_mail(
-            subject='Recupera tu contraseña — PyFit',
-            message=f'Haz clic aquí para restablecer tu contraseña: {reset_url}',
+            subject='Tu código de recuperación — PyFit',
+            message=(
+                f'Tu código de verificación es: {reset_code.code}\n\n'
+                f'Este código expira en 15 minutos.\n\n'
+                f'Si no solicitaste esto, ignora este mensaje.'
+            ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
     except User.DoesNotExist:
         pass
-    return Response({'detail': 'Si el email existe, recibirás el enlace de recuperación.'})
+    return Response({'detail': 'Si el email existe, recibirás el código de verificación.'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def confirm_reset(request):
+    email = request.data.get('email', '').lower().strip()
+    code = request.data.get('code', '').strip()
+    new_password = request.data.get('new_password', '')
+
+    if not email or not code or not new_password:
+        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(new_password) < 8:
+        return Response({'error': 'La contraseña debe tener al menos 8 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_code = PasswordResetCode.objects.filter(user=user, code=code).latest('created_at')
+    except PasswordResetCode.DoesNotExist:
+        return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not reset_code.is_valid():
+        reset_code.delete()
+        return Response({'error': 'El código ha expirado. Solicita uno nuevo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+    reset_code.delete()
+    return Response({'detail': 'Contraseña actualizada correctamente'})
 
 
 @api_view(['POST'])

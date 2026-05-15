@@ -2,6 +2,9 @@ import { getAccessToken, getRefreshToken, saveTokens, clearTokens, clearUser } f
 import { router } from 'expo-router'
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'
+if (__DEV__) {
+  console.log('[API] BASE_URL:', BASE_URL)
+}
 
 async function getHeaders(includeAuth = true): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -30,6 +33,10 @@ async function tryRefresh(): Promise<boolean> {
   }
 }
 
+// Per-request timeout (ms). Generation can take ~10s on Groq slow days; keep
+// generous but bounded so the UI never spins forever.
+const REQUEST_TIMEOUT_MS = 45000
+
 async function request(
   method: string,
   path: string,
@@ -45,7 +52,21 @@ async function request(
     fetchOptions.body = JSON.stringify(payload)
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, fetchOptions)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  fetchOptions.signal = controller.signal
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, fetchOptions)
+  } catch (err: any) {
+    clearTimeout(timeoutId)
+    if (err?.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Verifica tu conexión.')
+    }
+    throw new Error('Sin conexión al servidor. Verifica tu red.')
+  }
+  clearTimeout(timeoutId)
 
   if (res.status === 401 && !isRetry) {
     const refreshed = await tryRefresh()
