@@ -80,6 +80,10 @@ const DIAS = [1, 2, 3, 4, 5, 6, 7]
 const ZONAS_LESION = ['Rodilla', 'Lumbar', 'Hombro', 'Cuello', 'Cadera', 'Tobillo', 'Muñeca', 'Codo']
 const SEVERIDADES = ['Leve', 'Moderada', 'Crónica']
 
+function normalize(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
 const LISTA_EJERCICIOS = [
   'Sentadilla con barra', 'Sentadilla frontal', 'Sentadilla sumo', 'Sentadilla goblet',
   'Sentadilla búlgara', 'Sentadilla hack', 'Peso muerto convencional', 'Peso muerto rumano',
@@ -201,7 +205,7 @@ function ExerciseSelector({
   const selected = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
   const filtered = query.length > 0
     ? LISTA_EJERCICIOS.filter(
-        (e) => e.toLowerCase().includes(query.toLowerCase()) && !selected.includes(e)
+        (e) => normalize(e).includes(normalize(query)) && !selected.includes(e)
       ).slice(0, 6)
     : []
 
@@ -1121,7 +1125,7 @@ function makeStyles(c: Colors) {
     headerLogo: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 20,
-      color: c.white,
+      color: c.inkPrimary,
       letterSpacing: -0.5,
     },
     dotsRow: {
@@ -1160,14 +1164,14 @@ function makeStyles(c: Colors) {
     welcomeText: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 26,
-      color: c.white,
+      color: c.inkPrimary,
       letterSpacing: -0.5,
       marginBottom: 6,
     },
     stepTitle: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 24,
-      color: c.white,
+      color: c.inkPrimary,
       letterSpacing: -0.5,
       marginBottom: 6,
     },
@@ -1194,11 +1198,11 @@ function makeStyles(c: Colors) {
     input: {
       backgroundColor: c.glassBg,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      borderColor: c.borderDefault,
       borderRadius: 14,
       paddingHorizontal: 16,
       paddingVertical: 14,
-      color: c.white,
+      color: c.inkPrimary,
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 15,
     },
@@ -1257,7 +1261,7 @@ function makeStyles(c: Colors) {
       width: 44,
       height: 26,
       borderRadius: 13,
-      backgroundColor: 'rgba(255,255,255,0.1)',
+      backgroundColor: c.glassBg,
       justifyContent: 'center',
       paddingHorizontal: 3,
     },
@@ -1476,7 +1480,7 @@ function makeStyles(c: Colors) {
       zIndex: 100,
       backgroundColor: c.sheetBg,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.15)',
+      borderColor: c.borderBright,
       borderRadius: 14,
       marginTop: 4,
       overflow: 'hidden',
@@ -1485,7 +1489,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 16,
       paddingVertical: 13,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.06)',
+      borderBottomColor: c.borderDefault,
     },
     dropdownItemText: {
       fontFamily: 'SpaceGrotesk-Regular',
@@ -1500,7 +1504,7 @@ function makeStyles(c: Colors) {
     dateText: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 15,
-      color: c.white,
+      color: c.inkPrimary,
     },
     datePlaceholder: {
       fontFamily: 'SpaceGrotesk-Regular',
@@ -1517,7 +1521,7 @@ function makeStyles(c: Colors) {
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      borderColor: c.borderDefault,
       paddingBottom: 34,
     },
     dateHeader: {
@@ -1527,7 +1531,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 20,
       paddingVertical: 16,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.08)',
+      borderBottomColor: c.borderDefault,
     },
     dateTitle: {
       fontFamily: 'SpaceGrotesk-SemiBold',
@@ -1554,7 +1558,7 @@ function makeStyles(c: Colors) {
     },
     unitToggleRow: {
       flexDirection: 'row',
-      backgroundColor: 'rgba(255,255,255,0.06)',
+      backgroundColor: c.glassBg,
       borderRadius: 8,
       padding: 2,
     },
