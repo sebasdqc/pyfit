@@ -1,7 +1,10 @@
+import logging
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -79,6 +82,8 @@ def reset_password(request):
         )
     except User.DoesNotExist:
         pass
+    except Exception:
+        logger.exception('reset_password: unexpected error for email=%s', email)
     return Response({'detail': 'Si el email existe, recibirás el código de verificación.'})
 
 
@@ -98,11 +103,17 @@ def confirm_reset(request):
         user = User.objects.get(email=email)
     except User.DoesNotExist:
         return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        logger.exception('confirm_reset: db error looking up user email=%s', email)
+        return Response({'error': 'Error interno. Intenta de nuevo.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     try:
         reset_code = PasswordResetCode.objects.filter(user=user, code=code).latest('created_at')
     except PasswordResetCode.DoesNotExist:
         return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        logger.exception('confirm_reset: db error looking up reset code user=%s', user.pk)
+        return Response({'error': 'Error interno. Intenta de nuevo.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if not reset_code.is_valid():
         reset_code.delete()
