@@ -57,6 +57,7 @@ type FormData = {
   horarios: string[]
   diasFijos: boolean | null
   objetivos: string[]
+  objetivoSecundario: string | null
   horizonteTemporal: string | null
   motivacion: string
 }
@@ -420,7 +421,7 @@ export default function OnboardingScreen() {
     lugares: [], equipamiento: [],
     tiempoNormal: null, tiempoOcupado: null,
     horarios: [], diasFijos: null,
-    objetivos: [], horizonteTemporal: null, motivacion: '',
+    objetivos: [], objetivoSecundario: null, horizonteTemporal: null, motivacion: '',
   })
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -550,6 +551,7 @@ export default function OnboardingScreen() {
         duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
         objetivos_multiples: data.objetivos,
         objetivo: data.objetivos[0] ?? '',
+        objetivo_secundario: data.objetivoSecundario,
         horizonte_temporal: data.horizonteTemporal,
         motivacion: data.motivacion.trim(),
       })
@@ -1328,8 +1330,18 @@ export default function OnboardingScreen() {
               <TouchableOpacity key={obj.id}
                 style={[styles.objetivoCard, on && styles.objetivoCardOn]}
                 onPress={() => {
-                  if (on) set('objetivos', data.objetivos.filter(x => x !== obj.id))
-                  else set('objetivos', [...data.objetivos, obj.id])
+                  if (on) {
+                    set('objetivos', data.objetivos.filter(x => x !== obj.id))
+                  } else {
+                    // if this was the secondary, clear it
+                    const wasSecondary = data.objetivoSecundario === obj.id
+                    setData(prev => ({
+                      ...prev,
+                      objetivos: [...prev.objetivos, obj.id],
+                      ...(wasSecondary ? { objetivoSecundario: null } : {}),
+                    }))
+                    setError('')
+                  }
                 }}
                 activeOpacity={0.8}>
                 <Text style={styles.objetivoIcon}>{obj.icon}</Text>
@@ -1342,6 +1354,42 @@ export default function OnboardingScreen() {
             )
           })}
         </View>
+
+        {/* Secondary objective — shown once at least one primary is selected */}
+        {(() => {
+          const remaining = OBJETIVOS.filter(o => !data.objetivos.includes(o.id))
+          if (data.objetivos.length === 0 || remaining.length === 0) return null
+          return (
+            <View style={styles.secundarioSection}>
+              <View style={styles.secundarioDivider} />
+              <Text style={styles.secundarioQ}>
+                ¿Hay algo más que quieras de tu entrenamiento, aunque no sea lo principal?
+              </Text>
+              <Text style={styles.secundarioSub}>
+                A veces el segundo objetivo es el que más importa.
+              </Text>
+              <View style={styles.objetivosGrid}>
+                {remaining.map(obj => {
+                  const on = data.objetivoSecundario === obj.id
+                  return (
+                    <TouchableOpacity key={obj.id}
+                      style={[styles.objetivoCard, styles.objetivoCardSecundario, on && styles.objetivoCardOn]}
+                      onPress={() => set('objetivoSecundario', on ? null : obj.id)}
+                      activeOpacity={0.8}>
+                      <Text style={styles.objetivoIcon}>{obj.icon}</Text>
+                      <Text style={[styles.objetivoLabel, on && styles.objetivoLabelOn]}>
+                        {obj.label}
+                      </Text>
+                      <Text style={styles.objetivoTagline}>{obj.tagline}</Text>
+                      {on && <View style={styles.objetivoDot} />}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <Text style={styles.secundarioNote}>Opcional — puedes continuar sin seleccionar.</Text>
+            </View>
+          )
+        })()}
       </ScrollView>
     )
   }
@@ -1894,6 +1942,25 @@ function makeStyles(c: Colors) {
     objetivoDot: {
       position: 'absolute', top: 12, right: 12,
       width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
+
+    objetivoCardSecundario: { opacity: 0.88 },
+
+    secundarioSection: { marginTop: 4 },
+    secundarioDivider: {
+      height: 1, backgroundColor: c.borderDefault, marginVertical: 28,
+    },
+    secundarioQ: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 17,
+      color: c.inkPrimary, letterSpacing: -0.3, lineHeight: 25, marginBottom: 6,
+    },
+    secundarioSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkMuted, lineHeight: 19, marginBottom: 16,
+    },
+    secundarioNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkFaint, textAlign: 'center', marginTop: 12,
     },
 
     // Block 4 — horizonte
