@@ -123,7 +123,7 @@ export default function LoginScreen() {
         }
       } else {
         await register(email.trim(), password)
-        router.replace('/(auth)/onboarding')
+        router.replace('/(auth)/onboarding-intro' as any)
       }
     } catch (e: any) {
       setError(e.message || 'Ocurrió un error. Intenta de nuevo.')
