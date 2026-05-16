@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '../../../lib/colors'
@@ -19,10 +21,10 @@ import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Decision  { icon: string; text: string }
-interface Evidence  { text: string; reference: string }
-interface Resumen   { decisiones: Decision[]; evidencia: Evidence | null }
-interface Logro     { icon: string; titulo: string; descripcion: string }
+interface Decision     { icon: string; text: string }
+interface Evidence     { text: string; reference: string }
+interface Resumen      { decisiones: Decision[]; evidencia: Evidence | null }
+interface Logro        { icon: string; titulo: string; descripcion: string }
 interface ProximaSesion { tipo: string; dia: string }
 
 // ─── Step config ──────────────────────────────────────────────────────────────
@@ -109,13 +111,19 @@ function OptionRow({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+
+  function handlePress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+    onPress()
+  }
+
   return (
     <TouchableOpacity
       style={[
         styles.optRow,
         selected && { backgroundColor: color + '18', borderColor: color, borderWidth: 1.5 },
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.82}
     >
       <View style={[styles.optIconBox, { backgroundColor: selected ? color + '30' : colors.cardBg }]}>
@@ -150,19 +158,22 @@ function TrainerSummary({
 
   if (loading) {
     return (
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryAccentBorder} />
-        <View style={styles.summaryInner}>
-          <SkeletonLine width="70%" height={11} styles={styles} />
-          <SkeletonLine width="50%" height={9} styles={styles} />
-          <View style={styles.summaryDivider} />
-          <SkeletonLine width="90%" styles={styles} />
-          <SkeletonLine width="80%" styles={styles} />
-          <View style={styles.summaryDivider} />
-          <SkeletonLine width="95%" styles={styles} />
-          <SkeletonLine width="40%" styles={styles} />
+      <>
+        <Text style={styles.loadingLabel}>Analizando con el coach...</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryAccentBorder} />
+          <View style={styles.summaryInner}>
+            <SkeletonLine width="70%" height={11} styles={styles} />
+            <SkeletonLine width="50%" height={9} styles={styles} />
+            <View style={styles.summaryDivider} />
+            <SkeletonLine width="90%" styles={styles} />
+            <SkeletonLine width="80%" styles={styles} />
+            <View style={styles.summaryDivider} />
+            <SkeletonLine width="95%" styles={styles} />
+            <SkeletonLine width="40%" styles={styles} />
+          </View>
         </View>
-      </View>
+      </>
     )
   }
 
@@ -208,42 +219,74 @@ function TrainerSummary({
   )
 }
 
-// ─── Step 3 — Achievement Card ────────────────────────────────────────────────
+// ─── Step 3 — Achievement Card (animated) ─────────────────────────────────────
 
 function AchievementCard({
-  logro, loading, styles,
+  logro, styles,
 }: {
-  logro: Logro | null
-  loading: boolean
+  logro: Logro
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
 
-  if (loading) {
-    return (
-      <View style={styles.achievementCard}>
-        <View style={styles.skeletonCircle} />
-        <SkeletonLine width="60%" height={20} styles={styles} />
-        <SkeletonLine width="88%" height={12} styles={styles} />
-        <SkeletonLine width="72%" height={12} styles={styles} />
-      </View>
-    )
-  }
+  // Entrance animation values
+  const cardOpacity = useRef(new Animated.Value(0)).current
+  const cardSlide   = useRef(new Animated.Value(24)).current
+  const iconScale   = useRef(new Animated.Value(0.4)).current
+  const iconPulse   = useRef(new Animated.Value(1)).current
 
-  if (!logro) return null
+  useEffect(() => {
+    // Haptic on achievement reveal
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+
+    // Card slides up and fades in
+    Animated.parallel([
+      Animated.timing(cardOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
+      Animated.spring(cardSlide, { toValue: 0, tension: 80, friction: 10, useNativeDriver: true }),
+    ]).start()
+
+    // Icon bounces in with spring
+    Animated.spring(iconScale, {
+      toValue: 1, tension: 55, friction: 5, delay: 160, useNativeDriver: true,
+    }).start()
+
+    // Gentle continuous pulse after entrance
+    const pulseTimer = setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(iconPulse, { toValue: 1.07, duration: 1400, useNativeDriver: true }),
+          Animated.timing(iconPulse, { toValue: 1.0,  duration: 1400, useNativeDriver: true }),
+        ])
+      ).start()
+    }, 900)
+
+    return () => clearTimeout(pulseTimer)
+  }, [])
 
   return (
-    <View style={styles.achievementCard}>
-      <View style={[styles.achievementIconCircle, { backgroundColor: colors.accent + '1a' }]}>
-        <Text style={styles.achievementIconEmoji}>{logro.icon}</Text>
-      </View>
+    <Animated.View
+      style={[
+        styles.achievementCard,
+        { opacity: cardOpacity, transform: [{ translateY: cardSlide }] },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.achievementIconCircle,
+          { backgroundColor: colors.accent + '1a', transform: [{ scale: iconScale }] },
+        ]}
+      >
+        <Animated.View style={{ transform: [{ scale: iconPulse }] }}>
+          <Text style={styles.achievementIconEmoji}>{logro.icon}</Text>
+        </Animated.View>
+      </Animated.View>
       <Text style={styles.achievementTitulo}>{logro.titulo}</Text>
       <Text style={styles.achievementDesc}>{logro.descripcion}</Text>
-    </View>
+    </Animated.View>
   )
 }
 
-// ─── Step 3 — Next Session Card ───────────────────────────────────────────────
+// ─── Step 3 — Next Session Card (animated) ────────────────────────────────────
 
 function NextSessionCard({
   proximaSesion, styles,
@@ -251,21 +294,31 @@ function NextSessionCard({
   proximaSesion: ProximaSesion
   styles: ReturnType<typeof makeStyles>
 }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1, duration: 360, delay: 280, useNativeDriver: true,
+    }).start()
+  }, [])
+
   return (
-    <View style={styles.nextSessionCard}>
-      <View style={styles.nextSessionLeft}>
-        <Text style={styles.nextSessionLabel}>TU PRÓXIMA SESIÓN</Text>
-        <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
-        <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <View style={styles.nextSessionCard}>
+        <View style={styles.nextSessionLeft}>
+          <Text style={styles.nextSessionLabel}>TU PRÓXIMA SESIÓN</Text>
+          <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
+          <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.agendarBtn}
+          onPress={() => Alert.alert('Próximamente', 'Pronto podrás agendar sesiones directamente en tu calendario.')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.agendarBtnText}>📅  Agendar</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.agendarBtn}
-        onPress={() => Alert.alert('Próximamente', 'Pronto podrás agendar sesiones directamente en tu calendario.')}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.agendarBtnText}>📅  Agendar</Text>
-      </TouchableOpacity>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -289,15 +342,27 @@ export default function FeedbackScreen() {
   const [resumenLoading, setResumenLoading] = useState(false)
 
   // ── Step 3 state ───────────────────────────────────────────────────────────
-  const [logro,          setLogro]          = useState<Logro | null>(null)
-  const [logroLoading,   setLogroLoading]   = useState(false)
-  const [proximaSesion,  setProximaSesion]  = useState<ProximaSesion | null>(null)
+  const [logro,         setLogro]         = useState<Logro | null>(null)
+  const [logroLoading,  setLogroLoading]  = useState(false)
+  const [proximaSesion, setProximaSesion] = useState<ProximaSesion | null>(null)
 
   // ── Step nav ───────────────────────────────────────────────────────────────
   const [step, setStep] = useState(1)
+  const step1Complete   = rpeChoice !== null && sensacion !== null
+  const canAdvance      = step === 1 ? step1Complete : true
 
-  const step1Complete = rpeChoice !== null && sensacion !== null
-  const canAdvance    = step === 1 ? step1Complete : true
+  // ── Step transition animation ──────────────────────────────────────────────
+  const contentFade  = useRef(new Animated.Value(0)).current
+  const contentSlide = useRef(new Animated.Value(18)).current
+
+  useEffect(() => {
+    contentFade.setValue(0)
+    contentSlide.setValue(18)
+    Animated.parallel([
+      Animated.timing(contentFade,  { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.spring(contentSlide, { toValue: 0, tension: 90, friction: 12, useNativeDriver: true }),
+    ]).start()
+  }, [step])
 
   // ── Fetch resumen on step 2 ────────────────────────────────────────────────
   useEffect(() => {
@@ -333,29 +398,41 @@ export default function FeedbackScreen() {
   }
 
   function toggleZona(zona: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
     setZonasMolestia(prev =>
       prev.includes(zona) ? prev.filter(z => z !== zona) : [...prev, zona]
     )
   }
 
   function goNext() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
     setStep(s => s + 1)
-    setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 60)
   }
 
   function handleListo() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     router.replace('/(app)/dashboard')
     const { rating, cumplimiento } = sensacionToMetrics(sensacion)
     apiPost(`/api/sessions/${id}/feedback/`, {
-      rpe_real:    rpeChoice ?? 7,
-      cumplimiento,
-      rating,
-      notas:       notas.trim() || null,
+      rpe_real: rpeChoice ?? 7, cumplimiento, rating,
+      notas: notas.trim() || null,
     }).catch(() => {})
   }
 
   function handleCompartir() {
     Alert.alert('Próximamente', 'La función de compartir sesiones estará disponible pronto.')
+  }
+
+  function handleSkip() {
+    Alert.alert(
+      'Saltar feedback',
+      'El feedback ayuda a mejorar tu próximo entrenamiento.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Saltar', style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },
+      ]
+    )
   }
 
   const currentStepCfg = STEP_CONFIG[step - 1]
@@ -372,161 +449,193 @@ export default function FeedbackScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ── Close / skip row ── */}
+        <View style={styles.closeRow}>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            onPress={handleSkip}
+            activeOpacity={0.6}
+            disabled={step >= 3}
+            style={{ opacity: step < 3 ? 1 : 0 }}
+            hitSlop={{ top: 8, bottom: 8, left: 16, right: 0 }}
+          >
+            <Text style={styles.closeBtnText}>×</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Progress bar ── */}
         <ProgressBar step={step} />
 
-        {/* ── Step label ── */}
-        <Text style={styles.stepLabel}>CIERRE DE SESIÓN · PASO {step} DE 3</Text>
+        {/* ── Animated content block ── */}
+        <Animated.View
+          style={{ opacity: contentFade, transform: [{ translateY: contentSlide }] }}
+        >
+          {/* Step label */}
+          <Text style={styles.stepLabel}>CIERRE DE SESIÓN · PASO {step} DE 3</Text>
 
-        {/* ── Title block ── */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.pageTitle}>{currentStepCfg.title}</Text>
-          <Text style={styles.pageSubtitle}>{currentStepCfg.subtitle}</Text>
-        </View>
+          {/* Title */}
+          <View style={styles.titleBlock}>
+            <Text style={styles.pageTitle}>{currentStepCfg.title}</Text>
+            <Text style={styles.pageSubtitle}>{currentStepCfg.subtitle}</Text>
+          </View>
 
-        {/* ════════════ PASO 1 ════════════ */}
-        {step === 1 && (
-          <View style={styles.stepContent}>
+          {/* ════════════ PASO 1 ════════════ */}
+          {step === 1 && (
+            <View style={styles.stepContent}>
 
-            <Text style={styles.questionLabel}>¿CÓMO FUE EL ESFUERZO DE HOY?</Text>
-            <View style={styles.optList}>
-              {RPE_OPTIONS.map(opt => (
-                <OptionRow
-                  key={opt.rpe}
-                  icon={opt.icon}
-                  label={opt.label}
-                  color={opt.color}
-                  selected={rpeChoice === opt.rpe}
-                  onPress={() => setRpeChoice(opt.rpe)}
-                  styles={styles}
-                />
-              ))}
-            </View>
-
-            <Text style={[styles.questionLabel, { marginTop: 8 }]}>¿CÓMO ESTÁ TU CUERPO AHORA?</Text>
-            <View style={styles.optList}>
-              {SENSACION_OPTIONS.map(opt => (
-                <OptionRow
-                  key={opt.id}
-                  icon={opt.icon}
-                  label={opt.label}
-                  color={opt.color}
-                  selected={sensacion === opt.id}
-                  onPress={() => selectSensacion(opt.id)}
-                  styles={styles}
-                />
-              ))}
-            </View>
-
-            {sensacion === 'molestia' && (
-              <View style={styles.zonasCard}>
-                <Text style={styles.zonasTitle}>ZONAS DE MOLESTIA</Text>
-                <View style={styles.zonasGrid}>
-                  {ZONAS_MOLESTIA.map(zona => {
-                    const on = zonasMolestia.includes(zona)
-                    return (
-                      <TouchableOpacity
-                        key={zona}
-                        style={[styles.zonaChip, on && styles.zonaChipOn]}
-                        onPress={() => toggleZona(zona)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={[styles.zonaChipText, on && styles.zonaChipTextOn]}>
-                          {zona}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
+              <Text style={styles.questionLabel}>¿CÓMO FUE EL ESFUERZO DE HOY?</Text>
+              <View style={styles.optList}>
+                {RPE_OPTIONS.map(opt => (
+                  <OptionRow
+                    key={opt.rpe}
+                    icon={opt.icon}
+                    label={opt.label}
+                    color={opt.color}
+                    selected={rpeChoice === opt.rpe}
+                    onPress={() => setRpeChoice(opt.rpe)}
+                    styles={styles}
+                  />
+                ))}
               </View>
-            )}
 
-            <Text style={[styles.questionLabel, { marginTop: 8 }]}>NOTA DE SESIÓN (OPCIONAL)</Text>
-            <View style={styles.notaCard}>
-              <TextInput
-                style={[styles.notaInput, { color: colors.inkPrimary }]}
-                placeholder="¿Algo que quieras recordar de esta sesión?"
-                placeholderTextColor={colors.inkMuted}
-                value={notas}
-                onChangeText={t => setNotas(t.slice(0, 140))}
-                multiline
-                textAlignVertical="top"
-                maxLength={140}
-              />
-              <Text style={styles.notaCounter}>{notas.length} / 140</Text>
+              <Text style={[styles.questionLabel, { marginTop: 8 }]}>¿CÓMO ESTÁ TU CUERPO AHORA?</Text>
+              <View style={styles.optList}>
+                {SENSACION_OPTIONS.map(opt => (
+                  <OptionRow
+                    key={opt.id}
+                    icon={opt.icon}
+                    label={opt.label}
+                    color={opt.color}
+                    selected={sensacion === opt.id}
+                    onPress={() => selectSensacion(opt.id)}
+                    styles={styles}
+                  />
+                ))}
+              </View>
+
+              {sensacion === 'molestia' && (
+                <View style={styles.zonasCard}>
+                  <Text style={styles.zonasTitle}>ZONAS DE MOLESTIA</Text>
+                  <View style={styles.zonasGrid}>
+                    {ZONAS_MOLESTIA.map(zona => {
+                      const on = zonasMolestia.includes(zona)
+                      return (
+                        <TouchableOpacity
+                          key={zona}
+                          style={[styles.zonaChip, on && styles.zonaChipOn]}
+                          onPress={() => toggleZona(zona)}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={[styles.zonaChipText, on && styles.zonaChipTextOn]}>
+                            {zona}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <Text style={[styles.questionLabel, { marginTop: 8 }]}>NOTA DE SESIÓN (OPCIONAL)</Text>
+              <View style={styles.notaCard}>
+                <TextInput
+                  style={[styles.notaInput, { color: colors.inkPrimary }]}
+                  placeholder="¿Algo que quieras recordar de esta sesión?"
+                  placeholderTextColor={colors.inkMuted}
+                  value={notas}
+                  onChangeText={t => setNotas(t.slice(0, 140))}
+                  multiline
+                  textAlignVertical="top"
+                  maxLength={140}
+                />
+                <Text style={styles.notaCounter}>{notas.length} / 140</Text>
+              </View>
+
             </View>
+          )}
 
-          </View>
-        )}
+          {/* ════════════ PASO 2 — Coach summary ════════════ */}
+          {step === 2 && (
+            <View style={styles.stepContent}>
+              <TrainerSummary resumen={resumen} loading={resumenLoading} styles={styles} />
+            </View>
+          )}
 
-        {/* ════════════ PASO 2 — Coach summary ════════════ */}
-        {step === 2 && (
-          <View style={styles.stepContent}>
-            <TrainerSummary resumen={resumen} loading={resumenLoading} styles={styles} />
-          </View>
-        )}
+          {/* ════════════ PASO 3 — Achievement + próxima sesión ════════════ */}
+          {step === 3 && (
+            <View style={styles.stepContent}>
+              {logroLoading ? (
+                <>
+                  <Text style={styles.loadingLabel}>Generando tu logro de hoy...</Text>
+                  <View style={styles.achievementCard}>
+                    <View style={styles.skeletonCircle} />
+                    <SkeletonLine width="55%" height={22} styles={styles} />
+                    <SkeletonLine width="85%" height={12} styles={styles} />
+                    <SkeletonLine width="70%" height={12} styles={styles} />
+                  </View>
+                </>
+              ) : logro ? (
+                <AchievementCard logro={logro} styles={styles} />
+              ) : null}
 
-        {/* ════════════ PASO 3 — Achievement + próxima sesión ════════════ */}
-        {step === 3 && (
-          <View style={styles.stepContent}>
-            <AchievementCard logro={logro} loading={logroLoading} styles={styles} />
-            {proximaSesion && !logroLoading && (
-              <NextSessionCard proximaSesion={proximaSesion} styles={styles} />
-            )}
-          </View>
-        )}
+              {proximaSesion && !logroLoading && (
+                <NextSessionCard proximaSesion={proximaSesion} styles={styles} />
+              )}
+            </View>
+          )}
 
-        {/* ── Buttons ── */}
-        {step < 3 ? (
-          <TouchableOpacity
-            style={[styles.primaryBtn, !canAdvance && styles.primaryBtnDisabled]}
-            onPress={goNext}
-            disabled={!canAdvance}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={canAdvance
-                ? [colors.accent, colors.accentLight]
-                : [colors.borderDefault, colors.borderDefault]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={[styles.primaryBtnText, !canAdvance && { color: colors.inkMuted }]}>
-              Continuar
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <>
+          {/* ── Buttons ── */}
+          {step < 3 ? (
             <TouchableOpacity
-              style={styles.listoBtn}
-              onPress={handleListo}
+              style={[styles.primaryBtn, !canAdvance && styles.primaryBtnDisabled]}
+              onPress={goNext}
+              disabled={!canAdvance}
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={[colors.accent, colors.accentLight]}
+                colors={canAdvance
+                  ? [colors.accent, colors.accentLight]
+                  : [colors.borderDefault, colors.borderDefault]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.listoBtnText}>✓  Listo</Text>
+              <Text style={[styles.primaryBtnText, !canAdvance && { color: colors.inkMuted }]}>
+                Continuar
+              </Text>
             </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.listoBtn}
+                onPress={handleListo}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[colors.accent, colors.accentLight]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={styles.listoBtnText}>✓  Listo</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.compartirBtn}
-              onPress={handleCompartir}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.compartirBtnText}>↗  Compartir mi sesión</Text>
-            </TouchableOpacity>
-          </>
-        )}
+              <TouchableOpacity
+                style={styles.compartirBtn}
+                onPress={handleCompartir}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.compartirBtnText}>↗  Compartir mi sesión</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-        <View style={{ height: 40 }} />
+          <View style={{ height: 40 }} />
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -536,57 +645,62 @@ export default function FeedbackScreen() {
 
 function makeStyles(c: Colors) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: c.bg },
+    root:    { flex: 1, backgroundColor: c.bg },
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
-    scroll: { flex: 1 },
+    scroll:  { flex: 1 },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+
+    // Close / skip row
+    closeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+      minHeight: 28,
+    },
+    closeBtnText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 28,
+      color: c.inkMuted,
+      lineHeight: 32,
+    },
 
     // Step chrome
     stepLabel: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 1.0,
-      textTransform: 'uppercase',
-      color: c.inkMuted,
-      marginBottom: 18,
+      fontSize: 9, letterSpacing: 1.0, textTransform: 'uppercase',
+      color: c.inkMuted, marginBottom: 18,
     },
     titleBlock: { marginBottom: 28, gap: 8 },
     pageTitle: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 32,
-      color: c.inkPrimary,
-      letterSpacing: -0.8,
-      lineHeight: 38,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 32,
+      color: c.inkPrimary, letterSpacing: -0.8, lineHeight: 38,
     },
     pageSubtitle: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      color: c.inkSecondary,
-      lineHeight: 21,
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkSecondary, lineHeight: 21,
     },
     stepContent: { gap: 12, marginBottom: 32 },
 
     // Question label
     questionLabel: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 1.0,
-      textTransform: 'uppercase',
-      color: c.inkMuted,
-      marginBottom: 2,
+      fontSize: 9, letterSpacing: 1.0, textTransform: 'uppercase',
+      color: c.inkMuted, marginBottom: 2,
+    },
+
+    // Loading label (step 2 + 3 skeletons)
+    loadingLabel: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase',
+      color: c.inkMuted, textAlign: 'center', marginBottom: 16,
     },
 
     // Option rows
     optList: { gap: 8 },
     optRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 16,
-      padding: 14,
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, padding: 14,
     },
     optIconBox: {
       width: 40, height: 40, borderRadius: 12,
@@ -594,8 +708,7 @@ function makeStyles(c: Colors) {
     },
     optIcon: { fontSize: 20, lineHeight: 24 },
     optLabel: {
-      flex: 1,
-      fontFamily: 'SpaceGrotesk-Medium',
+      flex: 1, fontFamily: 'SpaceGrotesk-Medium',
       fontSize: 14, lineHeight: 20, letterSpacing: -0.1,
     },
     optRadio: {
@@ -629,7 +742,9 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 16, padding: 14, gap: 8,
     },
-    notaInput: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, lineHeight: 22, minHeight: 60 },
+    notaInput: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, lineHeight: 22, minHeight: 60,
+    },
     notaCounter: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.4,
       color: c.inkMuted, textAlign: 'right',
@@ -674,15 +789,12 @@ function makeStyles(c: Colors) {
     evidenceRef: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.2,
     },
-    summaryEmptyText: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, lineHeight: 20,
-    },
+    summaryEmptyText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, lineHeight: 20 },
 
     // ── Step 3 — Achievement card ─────────────────────────────────────────────
     achievementCard: {
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
-      borderRadius: 24, padding: 32,
-      alignItems: 'center', gap: 16,
+      borderRadius: 24, padding: 32, alignItems: 'center', gap: 16,
     },
     achievementIconCircle: {
       width: 80, height: 80, borderRadius: 40,
@@ -713,9 +825,7 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
       color: c.inkPrimary, letterSpacing: -0.2, lineHeight: 20,
     },
-    nextSessionDia: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkSecondary,
-    },
+    nextSessionDia: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkSecondary },
     agendarBtn: {
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
       borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
@@ -728,9 +838,7 @@ function makeStyles(c: Colors) {
 
     // ── Skeleton ──────────────────────────────────────────────────────────────
     skeletonLine: { backgroundColor: c.borderBright, borderRadius: 4 },
-    skeletonCircle: {
-      width: 80, height: 80, borderRadius: 40, backgroundColor: c.borderBright,
-    },
+    skeletonCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: c.borderBright },
 
     // ── Buttons ───────────────────────────────────────────────────────────────
     primaryBtn: {
@@ -758,8 +866,7 @@ function makeStyles(c: Colors) {
       marginTop: 8,
     },
     compartirBtnText: {
-      fontFamily: 'SpaceGrotesk-Medium', fontSize: 15,
-      color: c.inkMuted, letterSpacing: -0.1,
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 15, color: c.inkMuted, letterSpacing: -0.1,
     },
   })
 }
