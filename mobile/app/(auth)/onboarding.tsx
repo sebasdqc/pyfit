@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -25,20 +26,52 @@ type FormData = {
   alturaUnit: 'cm' | 'ft'
   usaCicloMenstrual: boolean
   frecuenciaHistorica: number | null
+  deportes: string[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FRECUENCIA_OPTIONS = [
-  { label: 'Casi nunca',          sublabel: '0 o 1 días por semana',   value: 1, badge: '0–1' },
+  { label: 'Casi nunca',           sublabel: '0 o 1 días por semana',   value: 1, badge: '0–1' },
   { label: '1–2 veces por semana', sublabel: 'Entrenamiento ocasional', value: 2, badge: '1–2' },
   { label: '3–4 veces por semana', sublabel: 'La frecuencia más común', value: 3, badge: '3–4' },
   { label: '5–6 veces por semana', sublabel: 'Alta dedicación',          value: 5, badge: '5–6' },
-  { label: 'Todos los días',      sublabel: '7 días por semana',        value: 7, badge: '7'   },
+  { label: 'Todos los días',       sublabel: '7 días por semana',        value: 7, badge: '7'   },
+]
+
+const DEPORTES = [
+  // Fuerza y acondicionamiento
+  'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
+  // Running y ciclismo
+  'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
+  // Acuáticos
+  'Natación', 'Waterpolo', 'Surf', 'Remo', 'Kayak', 'Vela', 'Nado en aguas abiertas',
+  // Deportes de equipo
+  'Fútbol', 'Baloncesto', 'Voleibol', 'Rugby', 'Béisbol', 'Hockey', 'Handball', 'Fútbol americano', 'Ultimate Frisbee', 'Lacrosse',
+  // Raqueta
+  'Tenis', 'Pádel', 'Squash', 'Bádminton', 'Tenis de mesa',
+  // Artes marciales y combate
+  'Boxeo', 'MMA', 'Judo', 'Karate', 'Muay Thai', 'Wrestling', 'Jiu-Jitsu Brasileño', 'Kickboxing', 'Taekwondo', 'Esgrima',
+  // Atletismo
+  'Atletismo', 'Velocidad / Sprints', 'Salto de altura', 'Salto de longitud', 'Lanzamiento',
+  // Exterior y aventura
+  'Senderismo', 'Escalada en roca', 'Boulder', 'Montañismo', 'Parkour',
+  // Mente y cuerpo
+  'Yoga', 'Pilates', 'Tai Chi', 'Gimnasia artística', 'Gimnasia rítmica',
+  // Danza y expresión
+  'Danza contemporánea', 'Zumba', 'Baile urbano', 'Pole fitness',
+  // Invierno
+  'Esquí alpino', 'Esquí de fondo', 'Snowboard', 'Patinaje sobre hielo',
+  // Otros
+  'Golf', 'Equitación', 'Tiro con arco', 'Ciclismo indoor', 'Raquetbol',
 ]
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function normalize(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -46,17 +79,20 @@ function formatDate(d: Date) {
 export default function OnboardingScreen() {
   const { colors } = useTheme()
   const styles = useMemo(() => makeStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
 
   const [data, setData] = useState<FormData>({
     nombre: '', fechaNacimiento: null, sexo: '',
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
-    usaCicloMenstrual: false, frecuenciaHistorica: null,
+    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
   })
   const [screenIndex, setScreenIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [tempDate, setTempDate] = useState(new Date(2000, 0, 1))
+  const [deportesExpanded, setDeportesExpanded] = useState(false)
+  const [deportesQuery, setDeportesQuery] = useState('')
 
   const screens = useMemo<ScreenId[]>(() => [
     'b1_personal',
@@ -119,6 +155,7 @@ export default function OnboardingScreen() {
         altura: alturaCm,
         usa_ciclo_menstrual: data.usaCicloMenstrual,
         dias_semana: data.frecuenciaHistorica ?? 3,
+        experiencia_deportiva: data.deportes.join(', '),
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -213,6 +250,7 @@ export default function OnboardingScreen() {
   // ─── Screen: ciclo menstrual ─────────────────────────────────────────────────
 
   function renderCiclo() {
+    const on = data.usaCicloMenstrual
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
@@ -224,16 +262,31 @@ export default function OnboardingScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[styles.cicloCard, data.usaCicloMenstrual && styles.cicloCardOn]}
-          onPress={() => set('usaCicloMenstrual', !data.usaCicloMenstrual)}
-          activeOpacity={0.85}>
-          <View style={[styles.cicloBox, data.usaCicloMenstrual && styles.cicloBoxOn]}>
-            {data.usaCicloMenstrual && <Text style={styles.cicloCheck}>✓</Text>}
-          </View>
-          <Text style={styles.cicloCardText}>
-            Sí, quiero que Zyfit considere mi ciclo{' '}
-            <Text style={styles.cicloCardMuted}>— lo configuro después</Text>
-          </Text>
+          onPress={() => set('usaCicloMenstrual', !on)}
+          activeOpacity={0.88}>
+          <LinearGradient
+            colors={on
+              ? [colors.accent, colors.accentDark]
+              : ['transparent', 'transparent']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={[styles.cicloCard, !on && styles.cicloCardOff]}>
+            <View style={styles.cicloCardRow}>
+              <View style={[styles.cicloBox, on && styles.cicloBoxOn]}>
+                {on
+                  ? <Text style={styles.cicloCheck}>✓</Text>
+                  : <View style={styles.cicloBoxInner} />
+                }
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cicloCardTitle, on && styles.cicloCardTitleOn]}>
+                  Sí, quiero que Zyfit considere mi ciclo
+                </Text>
+                <Text style={[styles.cicloCardSub, on && styles.cicloCardSubOn]}>
+                  Lo configuro después desde mi perfil
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
         </TouchableOpacity>
 
         <Text style={styles.cicloNote}>
@@ -246,9 +299,13 @@ export default function OnboardingScreen() {
   // ─── Screen: historial ───────────────────────────────────────────────────────
 
   function renderHistorial() {
+    const filteredDeportes = deportesQuery.length > 1
+      ? DEPORTES.filter(d => normalize(d).includes(normalize(deportesQuery)))
+      : DEPORTES
+
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         <Text style={styles.historialQ}>
           ¿Cuántas veces a la semana has entrenado en los últimos 3 meses?
@@ -274,6 +331,74 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )
         })}
+
+        {/* Deportes selector */}
+        <View style={styles.deportesSection}>
+          <TouchableOpacity
+            style={styles.deportesHeader}
+            onPress={() => setDeportesExpanded(e => !e)}
+            activeOpacity={0.8}>
+            <View>
+              <Text style={styles.deportesLabel}>EJERCICIO FÍSICO QUE REALIZAS</Text>
+              {data.deportes.length > 0 && (
+                <Text style={styles.deportesCount}>
+                  {data.deportes.length} seleccionado{data.deportes.length > 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.deportesChevron, deportesExpanded && styles.deportesChevronUp]}>
+              ›
+            </Text>
+          </TouchableOpacity>
+
+          {/* Selected chips always visible */}
+          {data.deportes.length > 0 && (
+            <View style={styles.selectedRow}>
+              {data.deportes.map(d => (
+                <TouchableOpacity key={d} style={styles.selectedChip}
+                  onPress={() => set('deportes', data.deportes.filter(x => x !== d))}>
+                  <Text style={styles.selectedChipText}>{d}</Text>
+                  <Text style={styles.selectedChipX}> ×</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {deportesExpanded && (
+            <View style={styles.deportesDropdown}>
+              <TextInput
+                style={styles.deportesSearch}
+                placeholder="Buscar deporte..."
+                placeholderTextColor={colors.inkMuted}
+                value={deportesQuery}
+                onChangeText={setDeportesQuery}
+                autoCorrect={false}
+              />
+              <View style={styles.deportesGrid}>
+                {filteredDeportes.map(d => {
+                  const selected = data.deportes.includes(d)
+                  return (
+                    <TouchableOpacity key={d}
+                      style={[styles.deporteChip, selected && styles.deporteChipOn]}
+                      onPress={() => {
+                        if (selected) {
+                          set('deportes', data.deportes.filter(x => x !== d))
+                        } else {
+                          set('deportes', [...data.deportes, d])
+                        }
+                      }}
+                      activeOpacity={0.75}>
+                      <Text style={[styles.deporteChipText, selected && styles.deporteChipTextOn]}>
+                        {selected ? '✓ ' : ''}{d}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
       </ScrollView>
     )
   }
@@ -292,9 +417,11 @@ export default function OnboardingScreen() {
     <View style={styles.root}>
       <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
 
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
+      {/* Safe-area spacer + progress bar */}
+      <View style={{ paddingTop: insets.top }}>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
+        </View>
       </View>
 
       {/* Header */}
@@ -303,7 +430,6 @@ export default function OnboardingScreen() {
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <View>
-          <Text style={styles.blockNum}>BLOQUE 1 DE 6</Text>
           <Text style={styles.blockTitle}>Quién eres físicamente</Text>
         </View>
       </View>
@@ -375,15 +501,11 @@ function makeStyles(c: Colors) {
     progressFill: { height: 3, backgroundColor: c.accent },
 
     header: {
-      paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20,
-      flexDirection: 'row', alignItems: 'flex-start', gap: 16,
+      paddingHorizontal: 24, paddingTop: 18, paddingBottom: 20,
+      flexDirection: 'row', alignItems: 'center', gap: 16,
     },
-    backBtn: { paddingTop: 4, paddingRight: 4 },
+    backBtn: { paddingRight: 4 },
     backArrow: { fontSize: 22, color: c.inkSecondary },
-    blockNum: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
-      color: c.accent, letterSpacing: 1.5, marginBottom: 4,
-    },
     blockTitle: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 21,
       color: c.inkPrimary, letterSpacing: -0.4,
@@ -441,22 +563,29 @@ function makeStyles(c: Colors) {
       color: c.inkSecondary, lineHeight: 25, marginBottom: 28,
     },
     cicloCard: {
-      flexDirection: 'row', alignItems: 'flex-start', gap: 16,
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 16, padding: 20, marginBottom: 16,
+      borderRadius: 18, padding: 22, marginBottom: 16,
     },
-    cicloCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent },
+    cicloCardOff: {
+      backgroundColor: c.cardBg, borderWidth: 1.5, borderColor: c.borderBright,
+    },
+    cicloCardRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
     cicloBox: {
-      width: 24, height: 24, borderRadius: 7, borderWidth: 2,
+      width: 30, height: 30, borderRadius: 9, borderWidth: 2,
       borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    cicloBoxOn: { backgroundColor: c.accent, borderColor: c.accent },
-    cicloCheck: { color: '#ffffff', fontSize: 14, fontFamily: 'SpaceGrotesk-Bold' },
-    cicloCardText: {
-      fontFamily: 'SpaceGrotesk-Medium', fontSize: 15,
-      color: c.inkPrimary, lineHeight: 22, flex: 1,
+    cicloBoxOn: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.6)' },
+    cicloBoxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: c.borderBright },
+    cicloCheck: { color: '#ffffff', fontSize: 16, fontFamily: 'SpaceGrotesk-Bold' },
+    cicloCardTitle: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
+      color: c.inkPrimary, lineHeight: 21,
     },
-    cicloCardMuted: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular' },
+    cicloCardTitleOn: { color: '#ffffff' },
+    cicloCardSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkMuted, marginTop: 2,
+    },
+    cicloCardSubOn: { color: 'rgba(255,255,255,0.7)' },
     cicloNote: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18,
     },
@@ -481,9 +610,7 @@ function makeStyles(c: Colors) {
     freqContent: { flex: 1 },
     freqLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
     freqLabelOn: { color: c.accent },
-    freqSub: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2,
-    },
+    freqSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
     freqBadge: {
       backgroundColor: c.glassBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
     },
@@ -492,6 +619,72 @@ function makeStyles(c: Colors) {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.5,
     },
     freqBadgeTextOn: { color: c.accent },
+
+    // Deportes selector
+    deportesSection: {
+      marginTop: 20,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: c.cardBg,
+    },
+    deportesHeader: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 18, paddingVertical: 16,
+    },
+    deportesLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 1.2,
+    },
+    deportesCount: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.accent, marginTop: 3,
+    },
+    deportesChevron: {
+      fontSize: 22, color: c.inkMuted,
+      transform: [{ rotate: '90deg' }],
+    },
+    deportesChevronUp: {
+      transform: [{ rotate: '-90deg' }],
+    },
+    selectedRow: {
+      flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+      paddingHorizontal: 18, paddingBottom: 14,
+    },
+    selectedChip: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: c.accent,
+      borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    },
+    selectedChipText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.accent,
+    },
+    selectedChipX: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.accent, lineHeight: 18,
+    },
+    deportesDropdown: {
+      borderTopWidth: 1, borderTopColor: c.borderDefault,
+      paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16,
+    },
+    deportesSearch: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      marginBottom: 14,
+    },
+    deportesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    deporteChip: {
+      paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+    },
+    deporteChipOn: {
+      backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent,
+    },
+    deporteChipText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary,
+    },
+    deporteChipTextOn: { color: c.accent },
 
     // Footer
     footer: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8 },
