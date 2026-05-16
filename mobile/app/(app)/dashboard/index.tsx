@@ -100,16 +100,6 @@ function formatHeaderDate(): string {
   return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
 }
 
-function nivelLabel(nivel: string): string {
-  const map: Record<string, string> = {
-    rookie: 'Rookie',
-    atleta: 'Atleta',
-    elite: 'Élite',
-    leyenda: 'Leyenda',
-  }
-  return map[nivel?.toLowerCase()] ?? nivel ?? 'Rookie'
-}
-
 // ─── Bell Icon ────────────────────────────────────────────────────────────────
 
 function BellIcon() {
@@ -134,85 +124,46 @@ function BellIcon() {
   )
 }
 
-// ─── Circulo Progreso ─────────────────────────────────────────────────────────
+// ─── RPE Card ─────────────────────────────────────────────────────────────────
 
-function CirculoProgreso({
-  porcentaje,
-  color,
-  size = 90,
-  label,
+function RPECard({
+  metrica,
+  colors,
+  styles,
 }: {
-  porcentaje: number
-  color: string
-  size?: number
-  label: string
+  metrica: MetricaData | undefined
+  colors: Colors
+  styles: ReturnType<typeof makeStyles>
 }) {
-  const { colors } = useTheme()
-  const radio = (size - 14) / 2
-  const circunferencia = 2 * Math.PI * radio
-  const offset = circunferencia - (Math.min(porcentaje, 100) / 100) * circunferencia
+  const rpeDisplay = metrica?.valor_display ?? '—'
+  const progreso = metrica?.progreso_pct ?? 0
+  const descripcion = metrica?.descripcion ?? 'Entrena de forma consistente para ver tu RPE promedio.'
+
   return (
-    <View style={{ alignItems: 'center', gap: 8 }}>
-      <View style={{ width: size, height: size }}>
-        <Svg
-          width={size}
-          height={size}
-          style={{ transform: [{ rotate: '-90deg' }] }}
-        >
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radio}
-            fill="none"
-            stroke={colors.borderDefault}
-            strokeWidth="7"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radio}
-            fill="none"
-            stroke={color}
-            strokeWidth="7"
-            strokeDasharray={`${circunferencia} ${circunferencia}`}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-          />
-        </Svg>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: size,
-            height: size,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            style={{
-              color: colors.inkPrimary,
-              fontFamily: 'SpaceGrotesk-Bold',
-              fontSize: 17,
-            }}
-          >
-            {porcentaje}%
-          </Text>
+    <View style={styles.rpeCard}>
+      <Text style={styles.rpeSectionLabel}>TU MOMENTO</Text>
+      <Text style={styles.rpeSubLabel}>RPE PROMEDIO · ESTA SEMANA</Text>
+
+      <View style={styles.rpeBody}>
+        {/* Big number — left */}
+        <Text style={styles.rpeBigNumber}>{rpeDisplay}</Text>
+
+        {/* Insight text — right */}
+        <View style={styles.rpeTextWrap}>
+          <Text style={styles.rpeDesc}>{descripcion}</Text>
         </View>
       </View>
-      <Text
-        style={{
-          color: colors.inkMuted,
-          fontFamily: 'JetBrainsMono-Regular',
-          fontSize: 9,
-          letterSpacing: 0.6,
-          textTransform: 'uppercase',
-          textAlign: 'center',
-        }}
-      >
-        {label}
-      </Text>
+
+      {/* Progress bar */}
+      <View style={styles.rpeBarBg}>
+        <View style={[styles.rpeBarFill, { width: `${progreso}%` as any }]} />
+      </View>
+
+      {/* Scale labels */}
+      <View style={styles.rpeBarScaleRow}>
+        <Text style={styles.rpeBarScaleLabel}>0</Text>
+        <Text style={styles.rpeBarScaleLabel}>10</Text>
+      </View>
     </View>
   )
 }
@@ -451,66 +402,6 @@ function CTACard({
   )
 }
 
-// ─── Metrica Card (Zone 4) ────────────────────────────────────────────────────
-
-function MetricaCard({
-  metrica,
-  colors,
-  styles,
-}: {
-  metrica: MetricaData
-  colors: Colors
-  styles: ReturnType<typeof makeStyles>
-}) {
-  const TIPO_COLOR: Record<MetricaData['tipo'], string> = {
-    rpe:         colors.accent,
-    consistencia: '#32c896',
-    progreso:    '#6ce5ff',
-    racha:       '#ffaa32',
-  }
-  const color = TIPO_COLOR[metrica.tipo] ?? colors.accent
-
-  return (
-    <View style={styles.z4Wrap}>
-      <Text style={styles.z4SectionLabel}>TU MOMENTO</Text>
-
-      {/* Metric type tag */}
-      <View style={[styles.z4Tag, { backgroundColor: `${color}1a`, borderColor: `${color}40` }]}>
-        <Text style={[styles.z4TagText, { color }]}>{metrica.label}</Text>
-      </View>
-
-      {/* Big value + unit + trend */}
-      <View style={styles.z4ValueRow}>
-        <Text style={[styles.z4Value, { color }]}>{metrica.valor_display}</Text>
-        <Text style={styles.z4Unit}>{metrica.unidad}</Text>
-        {metrica.tendencia === 'up' && (
-          <View style={[styles.z4TrendBadge, { backgroundColor: 'rgba(50,200,150,0.15)' }]}>
-            <Text style={[styles.z4TrendText, { color: '#32c896' }]}>↑</Text>
-          </View>
-        )}
-        {metrica.tendencia === 'down' && (
-          <View style={[styles.z4TrendBadge, { backgroundColor: 'rgba(255,68,68,0.15)' }]}>
-            <Text style={[styles.z4TrendText, { color: '#ff4444' }]}>↓</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Progress bar */}
-      <View style={styles.z4BarBg}>
-        <View
-          style={[
-            styles.z4BarFill,
-            { width: `${metrica.progreso_pct}%` as any, backgroundColor: color },
-          ]}
-        />
-      </View>
-
-      {/* Description */}
-      <Text style={styles.z4Desc}>{metrica.descripcion}</Text>
-    </View>
-  )
-}
-
 // ─── Insight Card (Zone 5) ────────────────────────────────────────────────────
 
 function InsightCard({
@@ -518,25 +409,29 @@ function InsightCard({
   colors,
   styles,
 }: {
-  texto: string
+  texto: string | null
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
+  const isEmpty = !texto
   return (
     <View style={styles.z5Wrap}>
       <Text style={styles.z5SectionLabel}>Tu entrenador</Text>
-      <View style={styles.z5Card}>
-        {/* Decorative left bar */}
-        <View style={styles.z5Bar} />
+      <View style={[styles.z5Card, isEmpty && styles.z5CardEmpty]}>
+        <View style={[styles.z5Bar, isEmpty && { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
         <View style={styles.z5Content}>
-          {/* Tag */}
           <View style={styles.z5TagRow}>
-            <View style={styles.z5Tag}>
-              <Text style={styles.z5TagText}>INSIGHT DE LA SEMANA</Text>
+            <View style={[styles.z5Tag, isEmpty && styles.z5TagEmpty]}>
+              <Text style={[styles.z5TagText, isEmpty && { color: colors.inkMuted }]}>
+                {isEmpty ? 'SIN DATOS AÚN' : 'INSIGHT DE LA SEMANA'}
+              </Text>
             </View>
           </View>
-          {/* Insight text */}
-          <Text style={styles.z5Text}>{texto}</Text>
+          <Text style={[styles.z5Text, isEmpty && styles.z5TextEmpty]}>
+            {isEmpty
+              ? 'Realiza tu primer entrenamiento para ver el análisis de tu entrenador aquí.'
+              : texto}
+          </Text>
         </View>
       </View>
     </View>
@@ -666,187 +561,31 @@ export default function DashboardScreen() {
           />
         )}
 
-        {/* ── ZONA 4 — Métrica destacada ── */}
+        {/* ── RPE Promedio ── */}
         {loading ? (
-          <View style={[styles.z4Wrap, { opacity: 0.5 }]}>
-            <Skeleton width={70} height={10} borderRadius={4} style={{ marginBottom: 12 }} />
-            <Skeleton width={110} height={16} borderRadius={4} style={{ marginBottom: 16 }} />
-            <Skeleton width="50%" height={54} borderRadius={6} style={{ marginBottom: 14 }} />
-            <Skeleton width="100%" height={4} borderRadius={2} style={{ marginBottom: 10 }} />
-            <Skeleton width="75%" height={13} borderRadius={4} />
+          <View style={[styles.rpeCard, { opacity: 0.5 }]}>
+            <Skeleton width={140} height={10} borderRadius={4} style={{ marginBottom: 16 }} />
+            <View style={styles.rpeBody}>
+              <Skeleton width={80} height={60} borderRadius={6} />
+              <View style={styles.rpeTextWrap}>
+                <Skeleton width="90%" height={13} borderRadius={4} />
+                <Skeleton width="70%" height={13} borderRadius={4} style={{ marginTop: 6 }} />
+              </View>
+            </View>
+            <Skeleton width="100%" height={4} borderRadius={2} style={{ marginTop: 18, marginBottom: 6 }} />
           </View>
-        ) : !!data?.metrica && (
-          <MetricaCard metrica={data.metrica} colors={colors} styles={styles} />
+        ) : (
+          <RPECard metrica={data?.metrica} colors={colors} styles={styles} />
         )}
-
-        {/* ── Progress Circles ── */}
-        <View style={styles.circlesCard}>
-          {loading ? (
-            <View style={styles.circlesRow}>
-              <View style={{ alignItems: 'center', gap: 8 }}>
-                <Skeleton width={90} height={90} borderRadius={45} />
-                <Skeleton width={60} height={9} borderRadius={4} />
-              </View>
-              <View style={styles.circlesDivider} />
-              <View style={{ alignItems: 'center', gap: 8 }}>
-                <Skeleton width={90} height={90} borderRadius={45} />
-                <Skeleton width={60} height={9} borderRadius={4} />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.circlesRow}>
-              <CirculoProgreso
-                porcentaje={data?.fatiga_porcentaje ?? 0}
-                color={colors.orange}
-                label="Fatiga"
-              />
-              <View style={styles.circlesDivider} />
-              <CirculoProgreso
-                porcentaje={data?.volumen_porcentaje ?? 0}
-                color={colors.accent}
-                label="Volumen sem."
-              />
-            </View>
-          )}
-        </View>
-
-        {/* ── Ranking Card ── */}
-        <TouchableOpacity
-          style={styles.rankCard}
-          onPress={() => Alert.alert('Ranking global', 'Próximamente')}
-          activeOpacity={0.75}
-        >
-          {/* Left accent strip */}
-          <View style={styles.rankStrip} />
-          <View style={styles.rankContent}>
-            {loading ? (
-              <View style={{ gap: 6 }}>
-                <Skeleton width={80} height={13} borderRadius={4} />
-                <Skeleton width={120} height={11} borderRadius={4} />
-              </View>
-            ) : (
-              <>
-                <View style={styles.rankTopRow}>
-                  <Text style={styles.rankNivel}>{nivelLabel(data?.nivel ?? '')}</Text>
-                  <Text style={styles.rankProx}>Ver ranking →</Text>
-                </View>
-                <View style={styles.rankStatsRow}>
-                  <Text style={styles.rankStat}>
-                    <Text style={{ color: colors.accent, fontFamily: 'SpaceGrotesk-Bold' }}>
-                      {data?.puntos_totales ?? 0}
-                    </Text>
-                    {'  pts'}
-                  </Text>
-                  <Text style={styles.rankStatDot}>·</Text>
-                  <Text style={styles.rankStat}>
-                    <Text style={{ color: colors.orange, fontFamily: 'SpaceGrotesk-Bold' }}>
-                      {data?.racha_actual ?? 0}
-                    </Text>
-                    {'  días de racha'}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        {/* ── Last Sessions ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Últimas sesiones</Text>
-            <TouchableOpacity onPress={() => router.push('/(app)/historial')} activeOpacity={0.7}>
-              <Text style={styles.sectionLink}>Ver todo</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            [0, 1, 2].map(i => (
-              <View key={i} style={[styles.sessionCard, { marginBottom: 10 }]}>
-                <Skeleton width={80} height={11} borderRadius={4} />
-                <Skeleton width={160} height={14} borderRadius={4} style={{ marginTop: 6 }} />
-                <Skeleton width={100} height={10} borderRadius={4} style={{ marginTop: 5 }} />
-              </View>
-            ))
-          ) : error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity onPress={fetchDashboard} style={styles.retryBtn} activeOpacity={0.8}>
-                <Text style={styles.retryText}>Reintentar</Text>
-              </TouchableOpacity>
-            </View>
-          ) : !data?.ultimas_sesiones?.length ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Aún no tienes sesiones registradas.</Text>
-            </View>
-          ) : (
-            data.ultimas_sesiones.slice(0, 3).map(session => {
-              const titulo = session.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'
-              const duracion = session.respuesta_ia?.duracion_total ?? session.duracion_planificada
-              const cumplimiento = session.feedback?.cumplimiento
-              return (
-                <TouchableOpacity
-                  key={session.id}
-                  style={styles.sessionCard}
-                  onPress={() => router.push('/(app)/historial')}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.sessionTopRow}>
-                    <Text style={styles.sessionDate}>{formatSessionDate(session.fecha)}</Text>
-                    {cumplimiento != null && (
-                      <View
-                        style={[
-                          styles.cumplimientoBadge,
-                          {
-                            backgroundColor:
-                              cumplimiento >= 90
-                                ? 'rgba(50,200,150,0.15)'
-                                : cumplimiento >= 70
-                                ? 'rgba(79,140,255,0.15)'
-                                : 'rgba(255,170,50,0.15)',
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.cumplimientoText,
-                            {
-                              color:
-                                cumplimiento >= 90
-                                  ? colors.green
-                                  : cumplimiento >= 70
-                                  ? colors.accent
-                                  : colors.orange,
-                            },
-                          ]}
-                        >
-                          {cumplimiento}%
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.sessionTitle} numberOfLines={1}>
-                    {titulo}
-                  </Text>
-                  <Text style={styles.sessionDur}>{duracion} min</Text>
-                </TouchableOpacity>
-              )
-            })
-          )}
-        </View>
 
         {/* ── ZONA 5 — Insight del entrenador ── */}
-        {!loading && !!data?.insight_entrenador && (
-          <InsightCard texto={data.insight_entrenador} colors={colors} styles={styles} />
+        {!loading && (
+          <InsightCard
+            texto={data?.insight_entrenador ?? null}
+            colors={colors}
+            styles={styles}
+          />
         )}
-
-        {/* ── Ver todo historial button ── */}
-        <TouchableOpacity
-          style={styles.historialBtn}
-          onPress={() => router.push('/(app)/historial')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.historialBtnText}>Ver todo el historial</Text>
-        </TouchableOpacity>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -1082,8 +821,8 @@ function makeStyles(c: Colors) {
       flex: 1,
     },
 
-    // ── Zone 4 — Métrica destacada
-    z4Wrap: {
+    // ── RPE Card
+    rpeCard: {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
@@ -1091,225 +830,66 @@ function makeStyles(c: Colors) {
       padding: 20,
       marginBottom: 20,
     },
-    z4SectionLabel: {
+    rpeSectionLabel: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 2,
-      marginBottom: 12,
-    },
-    z4Tag: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 8,
-      borderWidth: 1,
-      marginBottom: 16,
-    },
-    z4TagText: {
-      fontFamily: 'JetBrainsMono-Medium',
-      fontSize: 9,
-      letterSpacing: 1.8,
+      marginBottom: 4,
       textTransform: 'uppercase',
     },
-    z4ValueRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 8,
+    rpeSubLabel: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      color: c.inkFaint,
+      letterSpacing: 1.5,
       marginBottom: 16,
+      textTransform: 'uppercase',
     },
-    z4Value: {
+    rpeBody: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      marginBottom: 18,
+    },
+    rpeBigNumber: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 52,
+      fontSize: 56,
+      color: c.accent,
       letterSpacing: -2,
-      lineHeight: 56,
+      lineHeight: 60,
+      minWidth: 80,
     },
-    z4Unit: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 18,
-      color: c.inkSecondary,
-      paddingBottom: 8,
+    rpeTextWrap: {
+      flex: 1,
     },
-    z4TrendBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      marginLeft: 4,
-      marginBottom: 8,
-    },
-    z4TrendText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 14,
-    },
-    z4BarBg: {
-      height: 4,
-      backgroundColor: c.borderDefault,
-      borderRadius: 2,
-      marginBottom: 12,
-      overflow: 'hidden',
-    },
-    z4BarFill: {
-      height: 4,
-      borderRadius: 2,
-    },
-    z4Desc: {
+    rpeDesc: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 13,
       color: c.inkSecondary,
-      lineHeight: 19,
+      lineHeight: 20,
     },
-
-    // Circles
-    circlesCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
-      padding: 22,
-      marginBottom: 16,
-    },
-    circlesRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-    },
-    circlesDivider: {
-      width: 1,
-      height: 70,
+    rpeBarBg: {
+      height: 4,
       backgroundColor: c.borderDefault,
-    },
-
-    // Ranking card
-    rankCard: {
-      flexDirection: 'row',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 18,
-      marginBottom: 24,
+      borderRadius: 2,
+      marginBottom: 6,
       overflow: 'hidden',
     },
-    rankStrip: {
-      width: 4,
+    rpeBarFill: {
+      height: 4,
+      borderRadius: 2,
       backgroundColor: c.accent,
     },
-    rankContent: {
-      flex: 1,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
-      gap: 6,
-    },
-    rankTopRow: {
+    rpeBarScaleRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
     },
-    rankNivel: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      letterSpacing: -0.4,
-    },
-    rankProx: {
-      color: c.inkMuted,
+    rpeBarScaleLabel: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      letterSpacing: 0.2,
-    },
-    rankStatsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    rankStat: {
-      color: c.inkSecondary,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-    },
-    rankStatDot: {
-      color: c.inkMuted,
-      fontSize: 14,
-    },
-
-    // Section header
-    sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    sectionTitle: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 16,
-      letterSpacing: -0.3,
-    },
-    sectionLink: {
-      color: c.accent,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 11,
-      letterSpacing: 0.2,
-    },
-
-    // Session cards
-    sessionCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      padding: 14,
-      marginBottom: 8,
-      gap: 4,
-    },
-    sessionTopRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    sessionDate: {
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
+      fontSize: 9,
+      color: c.inkFaint,
       letterSpacing: 0.3,
-      textTransform: 'uppercase',
-    },
-    sessionTitle: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 14,
-      letterSpacing: -0.2,
-    },
-    sessionDur: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-    },
-    cumplimientoBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 20,
-    },
-    cumplimientoText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      letterSpacing: 0.3,
-    },
-
-    // Historial button
-    historialBtn: {
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignItems: 'center',
-      marginTop: 4,
-      marginBottom: 8,
-    },
-    historialBtnText: {
-      color: c.inkSecondary,
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 14,
-      letterSpacing: -0.2,
     },
 
     // ── Zone 5 — Insight del entrenador
@@ -1365,6 +945,17 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
       lineHeight: 22,
       letterSpacing: -0.1,
+    },
+    z5CardEmpty: {
+      borderColor: 'rgba(255,255,255,0.05)',
+    },
+    z5TagEmpty: {
+      backgroundColor: 'rgba(255,255,255,0.04)',
+      borderColor: 'rgba(255,255,255,0.10)',
+    },
+    z5TextEmpty: {
+      color: c.inkMuted,
+      fontStyle: 'italic',
     },
 
     // Error / empty states
