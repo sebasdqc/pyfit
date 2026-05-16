@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import Svg, { Circle } from 'react-native-svg'
 import { router } from 'expo-router'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiPost } from '../../../lib/api'
+import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +46,70 @@ interface Sesion {
 interface SesionResponse {
   sesion_id: string | number
   sesion: Sesion
+}
+
+interface CheckinData {
+  id: number
+  estado_fisico:       number | null
+  estado_animo:        number
+  duracion_disponible: number
+  foco_entrenamiento:  string[]
+}
+
+// ─── Checkin chip helpers ─────────────────────────────────────────────────────
+
+type Chip = { icon: string; label: string; color: string }
+
+function fisicoChip(v: number | null): Chip | null {
+  const map: Record<number, Chip> = {
+    4: { icon: '⚡', label: 'Fresco',    color: '#32c896' },
+    3: { icon: '👍', label: 'Bien',      color: '#4f8cff' },
+    2: { icon: '😮‍💨', label: 'Pesado',    color: '#ffaa32' },
+    1: { icon: '⚠️', label: 'Molestia',  color: '#ff6b6b' },
+  }
+  return v != null ? (map[v] ?? null) : null
+}
+
+function animoChip(v: number): Chip | null {
+  const map: Record<number, Chip> = {
+    5: { icon: '🎯', label: 'Enfocado',  color: '#32c896' },
+    3: { icon: '😐', label: 'Normal',    color: '#4f8cff' },
+    2: { icon: '💭', label: 'Distraído', color: '#ffaa32' },
+    1: { icon: '😴', label: 'Agotado',   color: '#ff6b6b' },
+  }
+  return map[v] ?? null
+}
+
+function tiempoChip(v: number): Chip {
+  return { icon: '⏱', label: `${v} min`, color: 'rgba(255,255,255,0.55)' }
+}
+
+function intencionChip(foco: string[]): Chip | null {
+  const map: Record<string, Chip> = {
+    descargar: { icon: '💥', label: 'Descargar',   color: '#ffaa32' },
+    moverme:   { icon: '🚶', label: 'Moverme',     color: '#32c896' },
+    serio:     { icon: '💪', label: 'En serio',    color: '#4f8cff' },
+    recuperar: { icon: '🌊', label: 'Recuperarme', color: '#6ce5ff' },
+  }
+  return foco?.[0] ? (map[foco[0]] ?? null) : null
+}
+
+function buildCheckinChips(c: CheckinData): Chip[] {
+  return [
+    fisicoChip(c.estado_fisico),
+    animoChip(c.estado_animo),
+    tiempoChip(c.duracion_disponible),
+    intencionChip(c.foco_entrenamiento),
+  ].filter(Boolean) as Chip[]
+}
+
+// ─── Date helper ──────────────────────────────────────────────────────────────
+
+function formatDateES(): string {
+  const d = new Date()
+  const DAYS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
 }
 
 // ─── Ring constants ───────────────────────────────────────────────────────────
@@ -381,9 +445,10 @@ export default function GenerateScreen() {
   const [retryKey,     setRetryKey]     = useState(0)
   const contentFade = useRef(new Animated.Value(0)).current
 
-  const [error,       setError]       = useState<string | null>(null)
-  const [sesionId,    setSesionId]    = useState<string | null>(null)
-  const [sesion,      setSesion]      = useState<Sesion | null>(null)
+  const [error,        setError]        = useState<string | null>(null)
+  const [sesionId,     setSesionId]     = useState<string | null>(null)
+  const [sesion,       setSesion]       = useState<Sesion | null>(null)
+  const [checkin,      setCheckin]      = useState<CheckinData | null>(null)
   const [regenerating, setRegenerating] = useState<string | null>(null)
 
   const generate = useCallback(async () => {
@@ -393,9 +458,17 @@ export default function GenerateScreen() {
     contentFade.setValue(0)
     setError(null)
     try {
-      const data: SesionResponse = await apiPost('/api/sessions/generate/', {})
+      const [sessionRes, checkinRes] = await Promise.allSettled([
+        apiPost('/api/sessions/generate/', {}),
+        apiGet('/api/checkins/today/'),
+      ])
+      if (sessionRes.status === 'rejected') throw sessionRes.reason
+      const data: SesionResponse = sessionRes.value
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
+      if (checkinRes.status === 'fulfilled' && checkinRes.value?.id) {
+        setCheckin(checkinRes.value)
+      }
     } catch (err: any) {
       setError(err.message || 'Error generando la sesión')
     } finally {
@@ -452,7 +525,8 @@ export default function GenerateScreen() {
     router.push(`/(app)/feedback/${sesionId}`)
   }
 
-  const rir = sesion ? (10 - sesion.rpe_target).toFixed(0) : '—'
+  const rir          = sesion ? (10 - sesion.rpe_target).toFixed(0) : '—'
+  const checkinChips = useMemo(() => checkin ? buildCheckinChips(checkin) : [], [checkin])
 
   return (
     <View style={styles.root}>
@@ -492,9 +566,32 @@ export default function GenerateScreen() {
           >
             {/* Header */}
             <View style={styles.sessionHeader}>
+              <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
               <Text style={styles.sessionTitle}>{sesion.titulo}</Text>
               <Text style={styles.sessionObjetivo}>{sesion.objetivo_sesion}</Text>
+              <Text style={styles.sessionMeta}>{formatDateES()} · {sesion.duracion_total} min</Text>
             </View>
+
+            {/* Checkin context chips */}
+            {checkinChips.length > 0 && (
+              <>
+                <View style={styles.chipsDivider} />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.chipsScroll}
+                  contentContainerStyle={styles.chipsContent}
+                >
+                  {checkinChips.map((chip, i) => (
+                    <View key={i} style={[styles.chip, { borderColor: chip.color + '40' }]}>
+                      <Text style={styles.chipIcon}>{chip.icon}</Text>
+                      <Text style={[styles.chipLabel, { color: chip.color }]}>{chip.label}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.chipsDivider} />
+              </>
+            )}
 
             {/* Stats row */}
             <View style={styles.statsRow}>
@@ -624,21 +721,70 @@ function makeStyles(c: Colors) {
 
     // Session header
     sessionHeader: {
-      marginBottom: 20,
+      marginBottom: 16,
+    },
+    headerEyebrow: {
+      fontFamily:    'JetBrainsMono-Regular',
+      fontSize:      10,
+      color:         c.inkMuted,
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      marginBottom:  12,
     },
     sessionTitle: {
       fontFamily:    'SpaceGrotesk-Bold',
-      fontSize:      24,
+      fontSize:      28,
       color:         c.inkPrimary,
-      letterSpacing: -0.5,
-      lineHeight:    30,
-      marginBottom:   8,
+      letterSpacing: -0.7,
+      lineHeight:    34,
+      marginBottom:   6,
     },
     sessionObjetivo: {
-      fontFamily: 'InstrumentSerif-Italic',
-      fontSize:   16,
-      color:      c.inkSecondary,
-      lineHeight: 24,
+      fontFamily:   'InstrumentSerif-Italic',
+      fontSize:     15,
+      color:        c.inkSecondary,
+      lineHeight:   22,
+      marginBottom:  8,
+    },
+    sessionMeta: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   13,
+      color:      c.inkMuted,
+      letterSpacing: 0.1,
+    },
+
+    // Checkin chips
+    chipsDivider: {
+      height:          1,
+      backgroundColor: c.borderDefault,
+      marginVertical:  16,
+    },
+    chipsScroll: {
+      marginHorizontal: -20,
+    },
+    chipsContent: {
+      paddingHorizontal: 20,
+      gap:               8,
+      flexDirection:     'row',
+      alignItems:        'center',
+    },
+    chip: {
+      flexDirection:     'row',
+      alignItems:        'center',
+      gap:               6,
+      backgroundColor:   c.cardBg,
+      borderWidth:       1,
+      borderRadius:      20,
+      paddingVertical:    7,
+      paddingHorizontal: 12,
+    },
+    chipIcon: {
+      fontSize: 13,
+    },
+    chipLabel: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize:   13,
+      lineHeight: 18,
     },
 
     // Stats
