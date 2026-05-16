@@ -615,6 +615,128 @@ def _sugerir_entrenamiento(ultima_sesion, objetivo):
     return 'Fuerza full body'
 
 
+def _proxima_sesion(user, sesion_actual):
+    objetivo = ''
+    try:
+        objetivo = user.profile.objetivo or ''
+    except Exception:
+        pass
+    tipo = _sugerir_entrenamiento(sesion_actual, objetivo)
+    dia_sugerido = date.today() + timedelta(days=2)
+    DIAS_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    return {'tipo': tipo, 'dia': DIAS_ES[dia_sugerido.weekday()]}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_logro(request, pk):
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    proxima = _proxima_sesion(request.user, session)
+
+    if session.logro is not None:
+        return Response({'logro': session.logro, 'proxima_sesion': proxima})
+
+    total_sesiones = request.user.sessions.count()
+    racha = 0
+    nivel = ''
+    objetivo_usuario = ''
+    try:
+        profile = request.user.profile
+        racha = profile.racha_actual
+        nivel = profile.nivel or ''
+        objetivo_usuario = profile.objetivo or ''
+    except Exception:
+        pass
+
+    respuesta = session.respuesta_ia or {}
+    titulo = respuesta.get('titulo', '')
+    ejercicios_list = []
+    for fase in respuesta.get('fases', []):
+        for ej in fase.get('ejercicios', []):
+            n = ej.get('nombre', '').strip()
+            if n:
+                ejercicios_list.append(n)
+
+    hace_7 = date.today() - timedelta(days=7)
+    sesiones_semana = request.user.sessions.filter(fecha__gte=hace_7).count()
+
+    ctx_parts = [
+        f'Número de sesión total: {total_sesiones}',
+        f'Sesiones esta semana: {sesiones_semana}',
+        f'Racha actual: {racha} días',
+    ]
+    if nivel:
+        ctx_parts.append(f'Nivel: {nivel}')
+    if objetivo_usuario:
+        ctx_parts.append(f'Objetivo del atleta: {objetivo_usuario}')
+    if titulo:
+        ctx_parts.append(f'Sesión de hoy: {titulo}')
+    if ejercicios_list:
+        ctx_parts.append(f'Ejercicios: {", ".join(ejercicios_list[:6])}')
+
+    contexto = '\n'.join(f'- {l}' for l in ctx_parts)
+
+    fallback = {
+        'icon': '🎯',
+        'titulo': f'Sesión {total_sesiones} completada.',
+        'descripcion': 'Cada sesión suma a tu perfil adaptativo.',
+    }
+
+    prompt = f"""Eres el entrenador IA de una app de fitness. Genera un logro específico para este atleta tras completar esta sesión.
+
+Datos:
+{contexto}
+
+Responde ÚNICAMENTE con JSON válido (sin markdown):
+{{
+  "icon": "emoji representativo",
+  "titulo": "el logro en 1 oración directa",
+  "descripcion": "1-2 oraciones con contexto concreto de progreso"
+}}
+
+Elige el logro más relevante según los datos:
+- Milestone sesiones si total_sesiones es redondo o notable (5, 10, 25, 50...)
+- Racha si racha >= 3 (menciona el número exacto)
+- Consistencia semanal si sesiones_semana >= 3
+- General si no aplica ninguno (referencia siempre un número real)
+
+Reglas: titulo máximo 7 palabras. Sin signos de exclamación. En español. Sin emojis en titulo ni descripcion."""
+
+    try:
+        import groq as _groq, json as _json
+        from django.conf import settings as _settings
+        client = _groq.Groq(api_key=_settings.GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=[{'role': 'user', 'content': prompt}],
+            max_tokens=200,
+            temperature=0.65,
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        data = _json.loads(raw.strip())
+        logro_data = {
+            'icon': str(data.get('icon', fallback['icon'])),
+            'titulo': str(data.get('titulo', fallback['titulo'])),
+            'descripcion': str(data.get('descripcion', fallback['descripcion'])),
+        }
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'session_logro error {pk}: {e}', exc_info=True)
+        logro_data = fallback
+
+    session.logro = logro_data
+    session.save(update_fields=['logro'])
+    return Response({'logro': logro_data, 'proxima_sesion': proxima})
+
+
 def _cta_sugerido(user, total_sesiones, fatiga_pct):
     from datetime import date
     hoy = date.today()

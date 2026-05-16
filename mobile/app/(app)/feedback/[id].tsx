@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -20,27 +19,18 @@ import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Decision {
-  icon: string
-  text: string
-}
-
-interface Evidence {
-  text: string
-  reference: string
-}
-
-interface Resumen {
-  decisiones: Decision[]
-  evidencia: Evidence | null
-}
+interface Decision  { icon: string; text: string }
+interface Evidence  { text: string; reference: string }
+interface Resumen   { decisiones: Decision[]; evidencia: Evidence | null }
+interface Logro     { icon: string; titulo: string; descripcion: string }
+interface ProximaSesion { tipo: string; dia: string }
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 
 const STEP_CONFIG = [
-  { title: 'Carga y esfuerzo',    subtitle: 'Cuéntanos cómo estuvo el trabajo de hoy.' },
+  { title: 'Carga y esfuerzo',     subtitle: 'Cuéntanos cómo estuvo el trabajo de hoy.' },
   { title: 'Lo que dice el coach', subtitle: 'Por qué se diseñó así tu sesión de hoy.' },
-  { title: 'Cierre de sesión',     subtitle: 'Último dato antes de guardar.' },
+  { title: 'Tu logro de hoy',      subtitle: 'Sesión cerrada. Lo que viene después.' },
 ] as const
 
 // ─── Option data ──────────────────────────────────────────────────────────────
@@ -64,15 +54,16 @@ const ZONAS_MOLESTIA = [
   'Cadera', 'Rodilla', 'Tobillo', 'Muñeca',
 ]
 
-const RATING_EMOJIS = ['😞', '😕', '😐', '🙂', '😄']
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getCumplimientoColor(value: number, c: Colors): string {
-  if (value >= 90) return c.green
-  if (value >= 70) return c.accentLight
-  if (value >= 50) return c.orange
-  return c.red
+function sensacionToMetrics(s: string | null): { rating: number; cumplimiento: number } {
+  switch (s) {
+    case 'activado': return { rating: 5, cumplimiento: 95 }
+    case 'cansado':  return { rating: 4, cumplimiento: 80 }
+    case 'cargado':  return { rating: 3, cumplimiento: 70 }
+    case 'molestia': return { rating: 2, cumplimiento: 65 }
+    default:         return { rating: 3, cumplimiento: 80 }
+  }
 }
 
 // ─── Progress Bar ─────────────────────────────────────────────────────────────
@@ -140,53 +131,10 @@ function OptionRow({
   )
 }
 
-// ─── Stepper ──────────────────────────────────────────────────────────────────
-
-function Stepper({
-  onIncrement, onDecrement, displayValue, color, styles,
-}: {
-  onIncrement: () => void
-  onDecrement: () => void
-  displayValue: string
-  color: string
-  styles: ReturnType<typeof makeStyles>
-}) {
-  const { colors } = useTheme()
-  return (
-    <View style={styles.stepperRow}>
-      <TouchableOpacity
-        style={[styles.stepperBtn, { borderColor: colors.borderDefault }]}
-        onPress={onDecrement}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Text style={styles.stepperBtnText}>−</Text>
-      </TouchableOpacity>
-      <View style={[styles.stepperValueContainer, { borderColor: color + '55' }]}>
-        <Text style={[styles.stepperValue, { color }]}>{displayValue}</Text>
-      </View>
-      <TouchableOpacity
-        style={[styles.stepperBtn, { borderColor: colors.borderDefault }]}
-        onPress={onIncrement}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Text style={styles.stepperBtnText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-// ─── Section Card ─────────────────────────────────────────────────────────────
-
-function SectionCard({ children, styles }: { children: React.ReactNode; styles: ReturnType<typeof makeStyles> }) {
-  return <View style={styles.sectionCard}>{children}</View>
-}
-
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonLine({ width, height = 12, styles }: { width: string | number; height?: number; styles: ReturnType<typeof makeStyles> }) {
-  return (
-    <View style={[styles.skeletonLine, { width: width as any, height }]} />
-  )
+  return <View style={[styles.skeletonLine, { width: width as any, height }]} />
 }
 
 // ─── Step 2 — Trainer Summary ─────────────────────────────────────────────────
@@ -235,13 +183,8 @@ function TrainerSummary({
     <View style={styles.summaryCard}>
       <View style={styles.summaryAccentBorder} />
       <View style={styles.summaryInner}>
-
-        {/* Header */}
         <Text style={styles.summaryHeaderLabel}>DECISIONES DEL ENTRENADOR</Text>
-
         <View style={styles.summaryDivider} />
-
-        {/* Decision items */}
         {resumen.decisiones.map((d, i) => (
           <View key={i} style={styles.decisionRow}>
             <View style={styles.decisionIconBox}>
@@ -250,8 +193,6 @@ function TrainerSummary({
             <Text style={styles.decisionText}>{d.text}</Text>
           </View>
         ))}
-
-        {/* Evidence */}
         {resumen.evidencia && (
           <>
             <View style={styles.summaryDivider} />
@@ -262,8 +203,68 @@ function TrainerSummary({
             </View>
           </>
         )}
-
       </View>
+    </View>
+  )
+}
+
+// ─── Step 3 — Achievement Card ────────────────────────────────────────────────
+
+function AchievementCard({
+  logro, loading, styles,
+}: {
+  logro: Logro | null
+  loading: boolean
+  styles: ReturnType<typeof makeStyles>
+}) {
+  const { colors } = useTheme()
+
+  if (loading) {
+    return (
+      <View style={styles.achievementCard}>
+        <View style={styles.skeletonCircle} />
+        <SkeletonLine width="60%" height={20} styles={styles} />
+        <SkeletonLine width="88%" height={12} styles={styles} />
+        <SkeletonLine width="72%" height={12} styles={styles} />
+      </View>
+    )
+  }
+
+  if (!logro) return null
+
+  return (
+    <View style={styles.achievementCard}>
+      <View style={[styles.achievementIconCircle, { backgroundColor: colors.accent + '1a' }]}>
+        <Text style={styles.achievementIconEmoji}>{logro.icon}</Text>
+      </View>
+      <Text style={styles.achievementTitulo}>{logro.titulo}</Text>
+      <Text style={styles.achievementDesc}>{logro.descripcion}</Text>
+    </View>
+  )
+}
+
+// ─── Step 3 — Next Session Card ───────────────────────────────────────────────
+
+function NextSessionCard({
+  proximaSesion, styles,
+}: {
+  proximaSesion: ProximaSesion
+  styles: ReturnType<typeof makeStyles>
+}) {
+  return (
+    <View style={styles.nextSessionCard}>
+      <View style={styles.nextSessionLeft}>
+        <Text style={styles.nextSessionLabel}>TU PRÓXIMA SESIÓN</Text>
+        <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
+        <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
+      </View>
+      <TouchableOpacity
+        style={styles.agendarBtn}
+        onPress={() => Alert.alert('Próximamente', 'Pronto podrás agendar sesiones directamente en tu calendario.')}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.agendarBtnText}>📅  Agendar</Text>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -271,11 +272,11 @@ function TrainerSummary({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function FeedbackScreen() {
-  const { id }      = useLocalSearchParams<{ id: string }>()
-  const { colors }  = useTheme()
-  const styles      = useMemo(() => makeStyles(colors), [colors])
-  const insets      = useSafeAreaInsets()
-  const scrollRef   = useRef<ScrollView>(null)
+  const { id }     = useLocalSearchParams<{ id: string }>()
+  const { colors } = useTheme()
+  const styles     = useMemo(() => makeStyles(colors), [colors])
+  const insets     = useSafeAreaInsets()
+  const scrollRef  = useRef<ScrollView>(null)
 
   // ── Step 1 state ───────────────────────────────────────────────────────────
   const [rpeChoice,     setRpeChoice]     = useState<number | null>(null)
@@ -288,18 +289,17 @@ export default function FeedbackScreen() {
   const [resumenLoading, setResumenLoading] = useState(false)
 
   // ── Step 3 state ───────────────────────────────────────────────────────────
-  const [rating,        setRating]        = useState<number | null>(null)
-  const [cumplimiento,  setCumplimiento]  = useState(80)
-  const [cumplModified, setCumplModified] = useState(false)
+  const [logro,          setLogro]          = useState<Logro | null>(null)
+  const [logroLoading,   setLogroLoading]   = useState(false)
+  const [proximaSesion,  setProximaSesion]  = useState<ProximaSesion | null>(null)
 
-  // ── Submit state ───────────────────────────────────────────────────────────
-  const [submitting, setSubmitting] = useState(false)
-  const [step,       setStep]       = useState(1)
+  // ── Step nav ───────────────────────────────────────────────────────────────
+  const [step, setStep] = useState(1)
 
   const step1Complete = rpeChoice !== null && sensacion !== null
   const canAdvance    = step === 1 ? step1Complete : true
 
-  // ── Fetch resumen when entering step 2 ────────────────────────────────────
+  // ── Fetch resumen on step 2 ────────────────────────────────────────────────
   useEffect(() => {
     if (step !== 2 || resumen !== null || resumenLoading) return
     setResumenLoading(true)
@@ -307,6 +307,22 @@ export default function FeedbackScreen() {
       .then((data: Resumen) => setResumen(data))
       .catch(() => setResumen({ decisiones: [], evidencia: null }))
       .finally(() => setResumenLoading(false))
+  }, [step])
+
+  // ── Fetch logro on step 3 ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (step !== 3 || logro !== null || logroLoading) return
+    setLogroLoading(true)
+    apiGet(`/api/sessions/${id}/logro/`)
+      .then((data: { logro: Logro; proxima_sesion: ProximaSesion }) => {
+        setLogro(data.logro)
+        setProximaSesion(data.proxima_sesion)
+      })
+      .catch(() => {
+        setLogro({ icon: '🎯', titulo: 'Sesión completada.', descripcion: 'Cerramos esta sesión en tu historial.' })
+        setProximaSesion(null)
+      })
+      .finally(() => setLogroLoading(false))
   }, [step])
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -322,37 +338,27 @@ export default function FeedbackScreen() {
     )
   }
 
-  function incrementCumpl() { setCumplimiento(v => Math.min(v + 5, 100)); setCumplModified(true) }
-  function decrementCumpl() { setCumplimiento(v => Math.max(v - 5, 0)); setCumplModified(true) }
-
   function goNext() {
-    if (step < 3) {
-      setStep(s => s + 1)
-      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 60)
-    } else {
-      handleFinalizar()
-    }
+    setStep(s => s + 1)
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 60)
   }
 
-  async function handleFinalizar() {
-    setSubmitting(true)
-    try {
-      await apiPost(`/api/sessions/${id}/feedback/`, {
-        rpe_real:    rpeChoice ?? 7,
-        cumplimiento,
-        rating:      rating ?? 3,
-        notas:       notas.trim() || null,
-      })
-      router.replace('/(app)/dashboard')
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo guardar el feedback')
-    } finally {
-      setSubmitting(false)
-    }
+  function handleListo() {
+    router.replace('/(app)/dashboard')
+    const { rating, cumplimiento } = sensacionToMetrics(sensacion)
+    apiPost(`/api/sessions/${id}/feedback/`, {
+      rpe_real:    rpeChoice ?? 7,
+      cumplimiento,
+      rating,
+      notas:       notas.trim() || null,
+    }).catch(() => {})
+  }
+
+  function handleCompartir() {
+    Alert.alert('Próximamente', 'La función de compartir sesiones estará disponible pronto.')
   }
 
   const currentStepCfg = STEP_CONFIG[step - 1]
-  const primaryLabel   = step === 3 ? 'Cerrar sesión' : 'Continuar'
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -464,85 +470,61 @@ export default function FeedbackScreen() {
           </View>
         )}
 
-        {/* ════════════ PASO 3 ════════════ */}
+        {/* ════════════ PASO 3 — Achievement + próxima sesión ════════════ */}
         {step === 3 && (
           <View style={styles.stepContent}>
-
-            {/* Rating */}
-            <SectionCard styles={styles}>
-              <Text style={styles.sectionTitle}>Rating general</Text>
-              <Text style={styles.sectionSubtitle}>¿Cómo valorarías esta sesión en general?</Text>
-              <View style={styles.emojiRow}>
-                {RATING_EMOJIS.map((emoji, idx) => {
-                  const value      = idx + 1
-                  const isSelected = rating === value
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[styles.emojiBtn, isSelected && styles.emojiBtnSelected]}
-                      onPress={() => setRating(value)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.emojiChar, isSelected && styles.emojiCharSelected]}>
-                        {emoji}
-                      </Text>
-                      {isSelected && <Text style={styles.emojiValueLabel}>{value}</Text>}
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </SectionCard>
-
-            {/* Cumplimiento */}
-            <SectionCard styles={styles}>
-              <Text style={styles.sectionTitle}>¿Cuánto completaste?</Text>
-              <Text style={styles.sectionSubtitle}>Porcentaje de ejercicios y series realizados</Text>
-              <Stepper
-                onIncrement={incrementCumpl}
-                onDecrement={decrementCumpl}
-                displayValue={`${cumplimiento}%`}
-                color={getCumplimientoColor(cumplimiento, colors)}
-                styles={styles}
-              />
-              <View style={styles.cumplimientoBar}>
-                <View
-                  style={[
-                    styles.cumplimientoFill,
-                    {
-                      width: `${cumplimiento}%` as any,
-                      backgroundColor: getCumplimientoColor(cumplimiento, colors),
-                    },
-                  ]}
-                />
-              </View>
-            </SectionCard>
-
+            <AchievementCard logro={logro} loading={logroLoading} styles={styles} />
+            {proximaSesion && !logroLoading && (
+              <NextSessionCard proximaSesion={proximaSesion} styles={styles} />
+            )}
           </View>
         )}
 
-        {/* ── Primary button ── */}
-        <TouchableOpacity
-          style={[styles.primaryBtn, !canAdvance && styles.primaryBtnDisabled]}
-          onPress={goNext}
-          disabled={!canAdvance || submitting}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={canAdvance
-              ? [colors.accent, colors.accentLight]
-              : [colors.borderDefault, colors.borderDefault]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-          {submitting && step === 3 ? (
-            <ActivityIndicator size="small" color="#000" />
-          ) : (
+        {/* ── Buttons ── */}
+        {step < 3 ? (
+          <TouchableOpacity
+            style={[styles.primaryBtn, !canAdvance && styles.primaryBtnDisabled]}
+            onPress={goNext}
+            disabled={!canAdvance}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={canAdvance
+                ? [colors.accent, colors.accentLight]
+                : [colors.borderDefault, colors.borderDefault]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={[styles.primaryBtnText, !canAdvance && { color: colors.inkMuted }]}>
-              {primaryLabel}
+              Continuar
             </Text>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.listoBtn}
+              onPress={handleListo}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[colors.accent, colors.accentLight]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.listoBtnText}>✓  Listo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.compartirBtn}
+              onPress={handleCompartir}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.compartirBtnText}>↗  Compartir mi sesión</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -554,20 +536,10 @@ export default function FeedbackScreen() {
 
 function makeStyles(c: Colors) {
   return StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: c.bg,
-    },
-    gradient: {
-      position: 'absolute',
-      top: 0, left: 0, right: 0,
-      height: 400,
-    },
+    root: { flex: 1, backgroundColor: c.bg },
+    gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
     scroll: { flex: 1 },
-    scrollContent: {
-      paddingHorizontal: 20,
-      paddingBottom: 40,
-    },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
 
     // Step chrome
     stepLabel: {
@@ -578,10 +550,7 @@ function makeStyles(c: Colors) {
       color: c.inkMuted,
       marginBottom: 18,
     },
-    titleBlock: {
-      marginBottom: 28,
-      gap: 8,
-    },
+    titleBlock: { marginBottom: 28, gap: 8 },
     pageTitle: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 32,
@@ -595,10 +564,7 @@ function makeStyles(c: Colors) {
       color: c.inkSecondary,
       lineHeight: 21,
     },
-    stepContent: {
-      gap: 12,
-      marginBottom: 32,
-    },
+    stepContent: { gap: 12, marginBottom: 32 },
 
     // Question label
     questionLabel: {
@@ -623,298 +589,177 @@ function makeStyles(c: Colors) {
       padding: 14,
     },
     optIconBox: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
+      width: 40, height: 40, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
     optIcon: { fontSize: 20, lineHeight: 24 },
     optLabel: {
       flex: 1,
       fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 14,
-      lineHeight: 20,
-      letterSpacing: -0.1,
+      fontSize: 14, lineHeight: 20, letterSpacing: -0.1,
     },
     optRadio: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: c.borderBright,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
+      width: 20, height: 20, borderRadius: 10,
+      borderWidth: 1.5, borderColor: c.borderBright,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
     optRadioDot: { width: 10, height: 10, borderRadius: 5 },
 
-    // Zonas de molestia
+    // Zonas
     zonasCard: {
       backgroundColor: 'rgba(255,68,68,0.06)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,68,68,0.25)',
-      borderRadius: 16,
-      padding: 16,
-      gap: 12,
+      borderWidth: 1, borderColor: 'rgba(255,68,68,0.25)',
+      borderRadius: 16, padding: 16, gap: 12,
     },
     zonasTitle: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 1.0,
-      textTransform: 'uppercase',
-      color: c.red,
+      fontSize: 9, letterSpacing: 1.0, textTransform: 'uppercase', color: c.red,
     },
     zonasGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     zonaChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      backgroundColor: c.cardBg,
+      paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+      borderWidth: 1, borderColor: c.borderBright, backgroundColor: c.cardBg,
     },
-    zonaChipOn: {
-      backgroundColor: 'rgba(255,68,68,0.15)',
-      borderColor: 'rgba(255,68,68,0.5)',
-    },
+    zonaChipOn: { backgroundColor: 'rgba(255,68,68,0.15)', borderColor: 'rgba(255,68,68,0.5)' },
     zonaChipText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
     zonaChipTextOn: { color: c.red, fontFamily: 'SpaceGrotesk-Medium' },
 
-    // Nota section C
+    // Nota
     notaCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 16,
-      padding: 14,
-      gap: 8,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, padding: 14, gap: 8,
     },
-    notaInput: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      lineHeight: 22,
-      minHeight: 60,
-    },
+    notaInput: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, lineHeight: 22, minHeight: 60 },
     notaCounter: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 0.4,
-      color: c.inkMuted,
-      textAlign: 'right',
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.4,
+      color: c.inkMuted, textAlign: 'right',
     },
 
-    // ── Step 2 — Trainer summary card ─────────────────────────────────────────
+    // ── Step 2 — Trainer summary ──────────────────────────────────────────────
     summaryCard: {
       flexDirection: 'row',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
-      overflow: 'hidden',
-      minHeight: 180,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, overflow: 'hidden', minHeight: 180,
     },
     summaryAccentBorder: {
-      width: 3,
-      backgroundColor: c.accent,
-      borderRadius: 3,
-      margin: 12,
-      marginRight: 0,
-      alignSelf: 'stretch',
+      width: 3, backgroundColor: c.accent, borderRadius: 3,
+      margin: 12, marginRight: 0, alignSelf: 'stretch',
     },
-    summaryInner: {
-      flex: 1,
-      padding: 16,
-      gap: 12,
-    },
+    summaryInner: { flex: 1, padding: 16, gap: 12 },
     summaryHeaderLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 1.0,
-      textTransform: 'uppercase',
-      color: c.accent,
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      letterSpacing: 1.0, textTransform: 'uppercase', color: c.accent,
     },
-    summaryDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: c.borderDefault,
-    },
-    decisionRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-    },
+    summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderDefault },
+    decisionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
     decisionIconBox: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      backgroundColor: c.glassBg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-      marginTop: 1,
+      width: 32, height: 32, borderRadius: 8, backgroundColor: c.glassBg,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
     },
     decisionIcon: { fontSize: 16, lineHeight: 20 },
     decisionText: {
-      flex: 1,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      color: c.inkSecondary,
-      lineHeight: 20,
-      letterSpacing: -0.1,
+      flex: 1, fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 13, color: c.inkSecondary, lineHeight: 20, letterSpacing: -0.1,
     },
     evidenceBlock: {
-      backgroundColor: 'rgba(79,140,255,0.06)',
-      borderRadius: 12,
-      padding: 14,
-      gap: 6,
+      backgroundColor: 'rgba(79,140,255,0.06)', borderRadius: 12, padding: 14, gap: 6,
     },
     evidenceLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 8,
-      letterSpacing: 1.0,
-      textTransform: 'uppercase',
-      color: c.accentLight,
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 8,
+      letterSpacing: 1.0, textTransform: 'uppercase', color: c.accentLight,
     },
     evidenceText: {
-      fontFamily: 'InstrumentSerif-Italic',
-      fontSize: 13,
-      color: c.inkSecondary,
-      lineHeight: 20,
+      fontFamily: 'InstrumentSerif-Italic', fontSize: 13, color: c.inkSecondary, lineHeight: 20,
     },
     evidenceRef: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      color: c.inkMuted,
-      letterSpacing: 0.2,
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.2,
     },
     summaryEmptyText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      lineHeight: 20,
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, lineHeight: 20,
     },
 
-    // Skeleton
-    skeletonLine: {
-      backgroundColor: c.borderBright,
-      borderRadius: 4,
+    // ── Step 3 — Achievement card ─────────────────────────────────────────────
+    achievementCard: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 24, padding: 32,
+      alignItems: 'center', gap: 16,
+    },
+    achievementIconCircle: {
+      width: 80, height: 80, borderRadius: 40,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    achievementIconEmoji: { fontSize: 40, lineHeight: 48 },
+    achievementTitulo: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: c.inkPrimary,
+      letterSpacing: -0.5, textAlign: 'center', lineHeight: 28,
+    },
+    achievementDesc: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkSecondary,
+      textAlign: 'center', lineHeight: 22, letterSpacing: -0.1,
     },
 
-    // Section card (step 3)
-    sectionCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
-      padding: 20,
-      gap: 12,
+    // ── Step 3 — Next session card ────────────────────────────────────────────
+    nextSessionCard: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, padding: 16,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
     },
-    sectionTitle: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 16,
-      color: c.inkPrimary,
-      letterSpacing: -0.2,
+    nextSessionLeft: { flex: 1, gap: 4 },
+    nextSessionLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      letterSpacing: 1.0, textTransform: 'uppercase', color: c.inkMuted,
     },
-    sectionSubtitle: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      color: c.inkMuted,
-      lineHeight: 18,
-      marginTop: -6,
+    nextSessionTipo: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
+      color: c.inkPrimary, letterSpacing: -0.2, lineHeight: 20,
     },
-
-    // Stepper
-    stepperRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      justifyContent: 'center',
-      marginTop: 4,
+    nextSessionDia: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkSecondary,
     },
-    stepperBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      borderWidth: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: c.cardBg,
+    agendarBtn: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    stepperBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 20,
-      color: c.inkPrimary,
-      lineHeight: 24,
-    },
-    stepperValueContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderRadius: 14,
-      paddingVertical: 12,
-      backgroundColor: c.glassBg,
-    },
-    stepperValue: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 26,
-      letterSpacing: -0.5,
+    agendarBtnText: {
+      fontFamily: 'JetBrainsMono-Medium', fontSize: 11,
+      color: c.inkSecondary, letterSpacing: 0.3,
     },
 
-    // Cumplimiento bar
-    cumplimientoBar: {
-      height: 4,
-      backgroundColor: c.borderDefault,
-      borderRadius: 2,
-      overflow: 'hidden',
-      marginTop: 4,
-    },
-    cumplimientoFill: { height: 4, borderRadius: 2 },
-
-    // Emoji rating
-    emojiRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: 4,
-    },
-    emojiBtn: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: 'transparent',
-      marginHorizontal: 2,
-      gap: 4,
-    },
-    emojiBtnSelected: {
-      backgroundColor: 'rgba(79,140,255,0.12)',
-      borderColor: 'rgba(79,140,255,0.35)',
-    },
-    emojiChar: { fontSize: 26, opacity: 0.5 },
-    emojiCharSelected: { opacity: 1 },
-    emojiValueLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      color: c.accentLight,
-      letterSpacing: 0.5,
+    // ── Skeleton ──────────────────────────────────────────────────────────────
+    skeletonLine: { backgroundColor: c.borderBright, borderRadius: 4 },
+    skeletonCircle: {
+      width: 80, height: 80, borderRadius: 40, backgroundColor: c.borderBright,
     },
 
-    // Primary button
+    // ── Buttons ───────────────────────────────────────────────────────────────
     primaryBtn: {
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      minHeight: 54,
+      borderRadius: 16, paddingVertical: 16,
+      alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden', minHeight: 54,
     },
     primaryBtnDisabled: { opacity: 0.45 },
     primaryBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      color: '#fff',
-      letterSpacing: -0.2,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', letterSpacing: -0.2,
+    },
+    listoBtn: {
+      borderRadius: 16, paddingVertical: 16,
+      alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden', minHeight: 54,
+    },
+    listoBtnText: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', letterSpacing: -0.2,
+    },
+    compartirBtn: {
+      borderRadius: 16, paddingVertical: 14,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1, borderColor: c.borderBright,
+      backgroundColor: 'transparent', minHeight: 50,
+      marginTop: 8,
+    },
+    compartirBtnText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 15,
+      color: c.inkMuted, letterSpacing: -0.1,
     },
   })
 }

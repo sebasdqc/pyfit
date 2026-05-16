@@ -94,6 +94,7 @@ class Session(models.Model):
     respuesta_ia = models.JSONField(null=True, blank=True)
     decisiones = models.JSONField(null=True, blank=True)  # [{"icon": "...", "text": "..."}]
     evidencia = models.JSONField(null=True, blank=True)   # {"text": "...", "reference": "..."}
+    logro = models.JSONField(null=True, blank=True)       # {"icon": "...", "titulo": "...", "descripcion": "..."}
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
