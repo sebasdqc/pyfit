@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
+import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { Colors } from '../../lib/colors'
@@ -14,7 +15,21 @@ import { apiPut } from '../../lib/api'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Sexo = 'masculino' | 'femenino' | 'otro' | ''
-type ScreenId = 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
+type LesionEstado = 'activa' | 'superada'
+type LesionGravedad = 'leve' | 'moderada' | 'severa'
+type LesionTiempo = '1-3m' | '3-6m' | '6-12m' | '+1a'
+
+type Lesion = {
+  zona: string
+  estado: LesionEstado
+  gravedad?: LesionGravedad
+  especialista?: boolean
+  tiempo?: LesionTiempo
+}
+
+type ScreenId =
+  | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
+  | 'b2_lesiones'
 
 type FormData = {
   nombre: string
@@ -28,6 +43,7 @@ type FormData = {
   frecuenciaHistorica: number | null
   deportes: string[]
   calidadSueno: string | null
+  lesiones: Lesion[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -41,36 +57,57 @@ const FRECUENCIA_OPTIONS = [
 ]
 
 const SUENO_OPTIONS = [
-  { value: '<6h',       label: 'Menos de 6h',   sublabel: 'Sueño corto o fragmentado', icon: '😓' },
-  { value: '6-7h',      label: '6–7h irregular', sublabel: 'Varía mucho cada noche',    icon: '😐' },
-  { value: '7-8h',      label: '7–8h estable',  sublabel: 'La cantidad recomendada',   icon: '😴' },
-  { value: '>8h',       label: 'Más de 8h',     sublabel: 'Largo o con mucha fatiga',  icon: '💤' },
+  { value: '<6h',  label: 'Menos de 6h',   sublabel: 'Sueño corto o fragmentado', icon: '😓' },
+  { value: '6-7h', label: '6–7h irregular', sublabel: 'Varía mucho cada noche',    icon: '😐' },
+  { value: '7-8h', label: '7–8h estable',  sublabel: 'La cantidad recomendada',   icon: '😴' },
+  { value: '>8h',  label: 'Más de 8h',     sublabel: 'Largo o con mucha fatiga',  icon: '💤' },
 ]
 
+const ZONE_LABELS: Record<string, string> = {
+  cabeza:      'Cabeza / Cuello',
+  hombro_izq:  'Hombro izquierdo',
+  hombro_der:  'Hombro derecho',
+  brazo_izq:   'Brazo / Codo izq.',
+  brazo_der:   'Brazo / Codo der.',
+  muneca_izq:  'Muñeca / Mano izq.',
+  muneca_der:  'Muñeca / Mano der.',
+  pecho:       'Pecho / Tórax',
+  abdomen:     'Abdomen / Core',
+  lumbar:      'Espalda / Lumbar',
+  cadera:      'Cadera / Glúteos',
+  muslo_izq:   'Muslo izquierdo',
+  muslo_der:   'Muslo derecho',
+  rodilla_izq: 'Rodilla izquierda',
+  rodilla_der: 'Rodilla derecha',
+  tobillo_izq: 'Tobillo / Pie izq.',
+  tobillo_der: 'Tobillo / Pie der.',
+}
+
+const TIEMPO_LABELS: Record<LesionTiempo, string> = {
+  '1-3m': '1–3 meses',
+  '3-6m': '3–6 meses',
+  '6-12m': '6–12 meses',
+  '+1a':  'Más de 1 año',
+}
+
+const GRAVEDAD_CONFIG: Record<LesionGravedad, { color: string; bg: string; label: string }> = {
+  leve:     { color: '#32c896', bg: 'rgba(50,200,150,0.15)',  label: 'Leve' },
+  moderada: { color: '#ffaa32', bg: 'rgba(255,170,50,0.15)',  label: 'Moderada' },
+  severa:   { color: '#ff4444', bg: 'rgba(255,68,68,0.15)',   label: 'Severa' },
+}
+
 const DEPORTES = [
-  // Fuerza y acondicionamiento
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
-  // Running y ciclismo
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
-  // Acuáticos
   'Natación', 'Waterpolo', 'Surf', 'Remo', 'Kayak', 'Vela', 'Nado en aguas abiertas',
-  // Deportes de equipo
   'Fútbol', 'Baloncesto', 'Voleibol', 'Rugby', 'Béisbol', 'Hockey', 'Handball', 'Fútbol americano', 'Ultimate Frisbee', 'Lacrosse',
-  // Raqueta
   'Tenis', 'Pádel', 'Squash', 'Bádminton', 'Tenis de mesa',
-  // Artes marciales y combate
   'Boxeo', 'MMA', 'Judo', 'Karate', 'Muay Thai', 'Wrestling', 'Jiu-Jitsu Brasileño', 'Kickboxing', 'Taekwondo', 'Esgrima',
-  // Atletismo
   'Atletismo', 'Velocidad / Sprints', 'Salto de altura', 'Salto de longitud', 'Lanzamiento',
-  // Exterior y aventura
   'Senderismo', 'Escalada en roca', 'Boulder', 'Montañismo', 'Parkour',
-  // Mente y cuerpo
   'Yoga', 'Pilates', 'Tai Chi', 'Gimnasia artística', 'Gimnasia rítmica',
-  // Danza y expresión
   'Danza contemporánea', 'Zumba', 'Baile urbano', 'Pole fitness',
-  // Invierno
   'Esquí alpino', 'Esquí de fondo', 'Snowboard', 'Patinaje sobre hielo',
-  // Otros
   'Golf', 'Equitación', 'Tiro con arco', 'Ciclismo indoor', 'Raquetbol',
 ]
 
@@ -82,6 +119,156 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
+function getBlockTitle(screen: ScreenId): string {
+  switch (screen) {
+    case 'b1_personal':
+    case 'b1_ciclo':
+    case 'b1_historial':
+    case 'b1_sueno':
+      return 'Quién eres físicamente'
+    case 'b2_lesiones':
+      return 'Tu cuerpo tiene historia'
+  }
+}
+
+// ─── SVG Body Map ─────────────────────────────────────────────────────────────
+
+function BodyMap({
+  lesiones,
+  editingZona,
+  onZonePress,
+}: {
+  lesiones: Lesion[]
+  editingZona: string | null
+  onZonePress: (zone: string) => void
+}) {
+  function zoneFill(id: string) {
+    if (editingZona === id) return 'rgba(79,140,255,0.32)'
+    const inj = lesiones.find(l => l.zona === id)
+    if (!inj) return 'rgba(255,255,255,0.07)'
+    return inj.estado === 'activa' ? 'rgba(255,68,68,0.26)' : 'rgba(50,200,150,0.22)'
+  }
+  function zoneStroke(id: string) {
+    if (editingZona === id) return '#4f8cff'
+    const inj = lesiones.find(l => l.zona === id)
+    if (!inj) return 'rgba(255,255,255,0.14)'
+    return inj.estado === 'activa' ? '#ff4444' : '#32c896'
+  }
+  function dotColor(id: string) {
+    const inj = lesiones.find(l => l.zona === id)
+    if (!inj) return null
+    return inj.estado === 'activa' ? '#ff4444' : '#32c896'
+  }
+  function press(id: string) { return () => onZonePress(id) }
+
+  // ViewBox: 0 0 180 360  (centered at x=90)
+  return (
+    <Svg width={160} height={320} viewBox="0 0 180 360">
+
+      {/* ── Decorative body shapes (visual layer) ── */}
+
+      {/* Head */}
+      <Circle cx={90} cy={26} r={20} fill={zoneFill('cabeza')} stroke={zoneStroke('cabeza')} strokeWidth={1.2} />
+      {/* Neck */}
+      <Rect x={82} y={46} width={16} height={13} rx={4} fill={zoneFill('cabeza')} stroke={zoneStroke('cabeza')} strokeWidth={1.2} />
+
+      {/* Left shoulder */}
+      <Ellipse cx={57} cy={65} rx={17} ry={10} fill={zoneFill('hombro_izq')} stroke={zoneStroke('hombro_izq')} strokeWidth={1.2} />
+      {/* Right shoulder */}
+      <Ellipse cx={123} cy={65} rx={17} ry={10} fill={zoneFill('hombro_der')} stroke={zoneStroke('hombro_der')} strokeWidth={1.2} />
+
+      {/* Chest */}
+      <Rect x={63} y={57} width={54} height={54} rx={10} fill={zoneFill('pecho')} stroke={zoneStroke('pecho')} strokeWidth={1.2} />
+      {/* Abdomen */}
+      <Rect x={65} y={111} width={50} height={43} rx={8} fill={zoneFill('abdomen')} stroke={zoneStroke('abdomen')} strokeWidth={1.2} />
+      {/* Hips */}
+      <Rect x={58} y={153} width={64} height={29} rx={10} fill={zoneFill('cadera')} stroke={zoneStroke('cadera')} strokeWidth={1.2} />
+
+      {/* Left upper arm */}
+      <Rect x={38} y={60} width={20} height={52} rx={10} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
+      {/* Left elbow */}
+      <Circle cx={48} cy={117} r={9} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
+      {/* Left forearm */}
+      <Rect x={39} y={125} width={18} height={36} rx={9} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
+      {/* Left hand */}
+      <Rect x={37} y={162} width={22} height={20} rx={7} fill={zoneFill('muneca_izq')} stroke={zoneStroke('muneca_izq')} strokeWidth={1.2} />
+
+      {/* Right upper arm */}
+      <Rect x={122} y={60} width={20} height={52} rx={10} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
+      {/* Right elbow */}
+      <Circle cx={132} cy={117} r={9} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
+      {/* Right forearm */}
+      <Rect x={123} y={125} width={18} height={36} rx={9} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
+      {/* Right hand */}
+      <Rect x={121} y={162} width={22} height={20} rx={7} fill={zoneFill('muneca_der')} stroke={zoneStroke('muneca_der')} strokeWidth={1.2} />
+
+      {/* Left thigh */}
+      <Rect x={60} y={182} width={26} height={56} rx={9} fill={zoneFill('muslo_izq')} stroke={zoneStroke('muslo_izq')} strokeWidth={1.2} />
+      {/* Left knee */}
+      <Circle cx={73} cy={243} r={11} fill={zoneFill('rodilla_izq')} stroke={zoneStroke('rodilla_izq')} strokeWidth={1.2} />
+      {/* Left calf */}
+      <Rect x={62} y={254} width={22} height={48} rx={9} fill={zoneFill('tobillo_izq')} stroke={zoneStroke('tobillo_izq')} strokeWidth={1.2} />
+      {/* Left foot */}
+      <Rect x={58} y={300} width={28} height={18} rx={7} fill={zoneFill('tobillo_izq')} stroke={zoneStroke('tobillo_izq')} strokeWidth={1.2} />
+
+      {/* Right thigh */}
+      <Rect x={94} y={182} width={26} height={56} rx={9} fill={zoneFill('muslo_der')} stroke={zoneStroke('muslo_der')} strokeWidth={1.2} />
+      {/* Right knee */}
+      <Circle cx={107} cy={243} r={11} fill={zoneFill('rodilla_der')} stroke={zoneStroke('rodilla_der')} strokeWidth={1.2} />
+      {/* Right calf */}
+      <Rect x={96} y={254} width={22} height={48} rx={9} fill={zoneFill('tobillo_der')} stroke={zoneStroke('tobillo_der')} strokeWidth={1.2} />
+      {/* Right foot */}
+      <Rect x={94} y={300} width={28} height={18} rx={7} fill={zoneFill('tobillo_der')} stroke={zoneStroke('tobillo_der')} strokeWidth={1.2} />
+
+      {/* ── Injury indicator dots ── */}
+      {([
+        ['cabeza',      90,  26],
+        ['hombro_izq',  55,  65],
+        ['hombro_der', 125,  65],
+        ['brazo_izq',   48, 100],
+        ['brazo_der',  132, 100],
+        ['muneca_izq',  48, 172],
+        ['muneca_der', 132, 172],
+        ['pecho',       90,  84],
+        ['abdomen',     90, 132],
+        ['cadera',      90, 167],
+        ['muslo_izq',   73, 210],
+        ['muslo_der',  107, 210],
+        ['rodilla_izq', 73, 243],
+        ['rodilla_der',107, 243],
+        ['tobillo_izq', 73, 278],
+        ['tobillo_der',107, 278],
+      ] as [string, number, number][]).map(([id, cx, cy]) => {
+        const c = dotColor(id)
+        return c ? <Circle key={id} cx={cx} cy={cy} r={5} fill={c} opacity={0.9} /> : null
+      })}
+
+      {/* ── Touch zones (transparent overlays, drawn last = on top) ── */}
+
+      <Rect x={65} y={57} width={50} height={56} fill="transparent" onPress={press('pecho')} />
+      <Rect x={65} y={111} width={50} height={44} fill="transparent" onPress={press('abdomen')} />
+      <Rect x={54} y={153} width={72} height={30} fill="transparent" onPress={press('cadera')} />
+
+      <Rect x={56} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_izq')} />
+      <Rect x={88} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_der')} />
+      <Rect x={56} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_izq')} />
+      <Rect x={90} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_der')} />
+      <Rect x={54} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_izq')} />
+      <Rect x={92} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_der')} />
+
+      <Rect x={32} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_izq')} />
+      <Rect x={116} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_der')} />
+      <Rect x={32} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_izq')} />
+      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_der')} />
+
+      <Rect x={32} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_izq')} />
+      <Rect x={112} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_der')} />
+
+      <Rect x={64} y={2} width={52} height={66} fill="transparent" onPress={press('cabeza')} />
+    </Svg>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
@@ -89,24 +276,40 @@ export default function OnboardingScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
+  // ── Form data ──────────────────────────────────────────────────────────────
   const [data, setData] = useState<FormData>({
     nombre: '', fechaNacimiento: null, sexo: '',
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
-    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [], calidadSueno: null,
+    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
+    calidadSueno: null, lesiones: [],
   })
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // ── Block 1 helpers ────────────────────────────────────────────────────────
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [tempDate, setTempDate] = useState(new Date(2000, 0, 1))
   const [deportesExpanded, setDeportesExpanded] = useState(false)
   const [deportesQuery, setDeportesQuery] = useState('')
 
+  // ── Block 2 — lesion modal ─────────────────────────────────────────────────
+  const [editingZona, setEditingZona] = useState<string | null>(null)
+  const [draftEstado, setDraftEstado] = useState<LesionEstado | null>(null)
+  const [draftGravedad, setDraftGravedad] = useState<LesionGravedad | null>(null)
+  const [draftEspecialista, setDraftEspecialista] = useState(false)
+  const [draftTiempo, setDraftTiempo] = useState<LesionTiempo | null>(null)
+  const [lesionError, setLesionError] = useState('')
+
+  // ── Screens array ─────────────────────────────────────────────────────────
   const screens = useMemo<ScreenId[]>(() => [
     'b1_personal',
     ...(data.sexo === 'femenino' ? ['b1_ciclo' as ScreenId] : []),
     'b1_historial',
     'b1_sueno',
+    'b2_lesiones',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -118,6 +321,7 @@ export default function OnboardingScreen() {
     setError('')
   }
 
+  // ── Validation ─────────────────────────────────────────────────────────────
   function validate(): string | null {
     if (currentScreen === 'b1_personal') {
       if (!data.nombre.trim()) return 'El nombre es requerido.'
@@ -169,6 +373,7 @@ export default function OnboardingScreen() {
         dias_semana: data.frecuenciaHistorica ?? 3,
         experiencia_deportiva: data.deportes.join(', '),
         calidad_sueno_habitual: data.calidadSueno,
+        lesiones: data.lesiones,
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -178,7 +383,42 @@ export default function OnboardingScreen() {
     }
   }
 
-  // ─── Screen: personal data ───────────────────────────────────────────────────
+  // ── Lesion modal handlers ──────────────────────────────────────────────────
+
+  function openLesionModal(zona: string) {
+    const existing = data.lesiones.find(l => l.zona === zona)
+    setDraftEstado(existing?.estado ?? null)
+    setDraftGravedad(existing?.gravedad ?? null)
+    setDraftEspecialista(existing?.especialista ?? false)
+    setDraftTiempo(existing?.tiempo ?? null)
+    setLesionError('')
+    setEditingZona(zona)
+  }
+
+  function saveLesion() {
+    if (!editingZona) return
+    if (!draftEstado) { setLesionError('Indica si la lesión está activa o superada.'); return }
+    if (draftEstado === 'activa' && !draftGravedad) { setLesionError('Selecciona la gravedad.'); return }
+    if (draftEstado === 'superada' && !draftTiempo) { setLesionError('Indica cuánto tiempo ha pasado.'); return }
+
+    const lesion: Lesion = {
+      zona: editingZona,
+      estado: draftEstado,
+      ...(draftEstado === 'activa'
+        ? { gravedad: draftGravedad!, especialista: draftEspecialista }
+        : { tiempo: draftTiempo! }),
+    }
+    set('lesiones', [...data.lesiones.filter(l => l.zona !== editingZona), lesion])
+    setEditingZona(null)
+  }
+
+  function deleteLesion() {
+    if (!editingZona) return
+    set('lesiones', data.lesiones.filter(l => l.zona !== editingZona))
+    setEditingZona(null)
+  }
+
+  // ── Block 1: personal data ─────────────────────────────────────────────────
 
   function renderPersonal() {
     return (
@@ -260,7 +500,7 @@ export default function OnboardingScreen() {
     )
   }
 
-  // ─── Screen: ciclo menstrual ─────────────────────────────────────────────────
+  // ── Block 1: ciclo menstrual ───────────────────────────────────────────────
 
   function renderCiclo() {
     const on = data.usaCicloMenstrual
@@ -274,21 +514,14 @@ export default function OnboardingScreen() {
           Si quieres, Zyfit lo integra en tu entrenamiento.
         </Text>
 
-        <TouchableOpacity
-          onPress={() => set('usaCicloMenstrual', !on)}
-          activeOpacity={0.88}>
+        <TouchableOpacity onPress={() => set('usaCicloMenstrual', !on)} activeOpacity={0.88}>
           <LinearGradient
-            colors={on
-              ? [colors.accent, colors.accentDark]
-              : ['transparent', 'transparent']}
+            colors={on ? [colors.accent, colors.accentDark] : ['transparent', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={[styles.cicloCard, !on && styles.cicloCardOff]}>
             <View style={styles.cicloCardRow}>
               <View style={[styles.cicloBox, on && styles.cicloBoxOn]}>
-                {on
-                  ? <Text style={styles.cicloCheck}>✓</Text>
-                  : <View style={styles.cicloBoxInner} />
-                }
+                {on ? <Text style={styles.cicloCheck}>✓</Text> : <View style={styles.cicloBoxInner} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cicloCardTitle, on && styles.cicloCardTitleOn]}>
@@ -309,7 +542,7 @@ export default function OnboardingScreen() {
     )
   }
 
-  // ─── Screen: historial ───────────────────────────────────────────────────────
+  // ── Block 1: training history ──────────────────────────────────────────────
 
   function renderHistorial() {
     const filteredDeportes = deportesQuery.length > 1
@@ -345,12 +578,9 @@ export default function OnboardingScreen() {
           )
         })}
 
-        {/* Deportes selector */}
         <View style={styles.deportesSection}>
-          <TouchableOpacity
-            style={styles.deportesHeader}
-            onPress={() => setDeportesExpanded(e => !e)}
-            activeOpacity={0.8}>
+          <TouchableOpacity style={styles.deportesHeader}
+            onPress={() => setDeportesExpanded(e => !e)} activeOpacity={0.8}>
             <View>
               <Text style={styles.deportesLabel}>EJERCICIO FÍSICO QUE REALIZAS</Text>
               {data.deportes.length > 0 && (
@@ -359,12 +589,9 @@ export default function OnboardingScreen() {
                 </Text>
               )}
             </View>
-            <Text style={[styles.deportesChevron, deportesExpanded && styles.deportesChevronUp]}>
-              ›
-            </Text>
+            <Text style={[styles.deportesChevron, deportesExpanded && styles.deportesChevronUp]}>›</Text>
           </TouchableOpacity>
 
-          {/* Selected chips always visible */}
           {data.deportes.length > 0 && (
             <View style={styles.selectedRow}>
               {data.deportes.map(d => (
@@ -379,14 +606,9 @@ export default function OnboardingScreen() {
 
           {deportesExpanded && (
             <View style={styles.deportesDropdown}>
-              <TextInput
-                style={styles.deportesSearch}
-                placeholder="Buscar deporte..."
-                placeholderTextColor={colors.inkMuted}
-                value={deportesQuery}
-                onChangeText={setDeportesQuery}
-                autoCorrect={false}
-              />
+              <TextInput style={styles.deportesSearch} placeholder="Buscar deporte..."
+                placeholderTextColor={colors.inkMuted} value={deportesQuery}
+                onChangeText={setDeportesQuery} autoCorrect={false} />
               <View style={styles.deportesGrid}>
                 {filteredDeportes.map(d => {
                   const selected = data.deportes.includes(d)
@@ -394,11 +616,8 @@ export default function OnboardingScreen() {
                     <TouchableOpacity key={d}
                       style={[styles.deporteChip, selected && styles.deporteChipOn]}
                       onPress={() => {
-                        if (selected) {
-                          set('deportes', data.deportes.filter(x => x !== d))
-                        } else {
-                          set('deportes', [...data.deportes, d])
-                        }
+                        if (selected) set('deportes', data.deportes.filter(x => x !== d))
+                        else set('deportes', [...data.deportes, d])
                       }}
                       activeOpacity={0.75}>
                       <Text style={[styles.deporteChipText, selected && styles.deporteChipTextOn]}>
@@ -411,12 +630,11 @@ export default function OnboardingScreen() {
             </View>
           )}
         </View>
-
       </ScrollView>
     )
   }
 
-  // ─── Screen: sleep quality ───────────────────────────────────────────────────
+  // ── Block 1: sleep quality ─────────────────────────────────────────────────
 
   function renderSueno() {
     return (
@@ -434,8 +652,7 @@ export default function OnboardingScreen() {
           {SUENO_OPTIONS.map(opt => {
             const on = data.calidadSueno === opt.value
             return (
-              <TouchableOpacity
-                key={opt.value}
+              <TouchableOpacity key={opt.value}
                 style={[styles.suenoCard, on && styles.suenoCardOn]}
                 onPress={() => set('calidadSueno', opt.value)}
                 activeOpacity={0.8}>
@@ -451,12 +668,99 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ── Block 2: injuries ──────────────────────────────────────────────────────
+
+  function renderLesiones() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.lesionesTitle}>Lesiones activas o pasadas</Text>
+        <Text style={styles.lesionesSub}>
+          Toca una zona del cuerpo para registrarla. Esto nos permite protegerte.
+        </Text>
+
+        {/* Body silhouette */}
+        <View style={styles.bodyMapWrap}>
+          <BodyMap
+            lesiones={data.lesiones}
+            editingZona={editingZona}
+            onZonePress={openLesionModal}
+          />
+
+          {/* Lumbar chip — not visible from front view */}
+          <TouchableOpacity
+            style={[
+              styles.lumbarChip,
+              data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipOn,
+            ]}
+            onPress={() => openLesionModal('lumbar')}
+            activeOpacity={0.8}>
+            <Text style={[
+              styles.lumbarChipText,
+              data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipTextOn,
+            ]}>
+              + Espalda / Lumbar
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Legend */}
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#ff4444' }]} />
+            <Text style={styles.legendText}>Activa</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#32c896' }]} />
+            <Text style={styles.legendText}>Superada</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+            <Text style={styles.legendText}>Seleccionada</Text>
+          </View>
+        </View>
+
+        {/* Added injuries list */}
+        {data.lesiones.length > 0 && (
+          <View style={styles.lesionesListSection}>
+            <Text style={styles.lesionesListTitle}>LESIONES REGISTRADAS</Text>
+            {data.lesiones.map(l => (
+              <TouchableOpacity key={l.zona} style={styles.lesionCard}
+                onPress={() => openLesionModal(l.zona)} activeOpacity={0.85}>
+                <View style={[styles.lesionStatusBar,
+                  { backgroundColor: l.estado === 'activa' ? '#ff4444' : '#32c896' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lesionCardZona}>{ZONE_LABELS[l.zona] ?? l.zona}</Text>
+                  <Text style={styles.lesionCardDetail}>
+                    {l.estado === 'activa'
+                      ? `Activa · ${GRAVEDAD_CONFIG[l.gravedad!].label}${l.especialista ? ' · Vista por especialista' : ''}`
+                      : `Superada · hace ${TIEMPO_LABELS[l.tiempo!]}`}
+                  </Text>
+                </View>
+                <Text style={styles.lesionCardEdit}>Editar ›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Skip */}
+        {data.lesiones.length === 0 && (
+          <Text style={styles.lesionesSkipNote}>
+            Sin lesiones que reportar — puedes continuar.
+          </Text>
+        )}
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
       case 'b1_personal':  return renderPersonal()
       case 'b1_ciclo':     return renderCiclo()
       case 'b1_historial': return renderHistorial()
       case 'b1_sueno':     return renderSueno()
+      case 'b2_lesiones':  return renderLesiones()
     }
   }
 
@@ -478,9 +782,7 @@ export default function OnboardingScreen() {
         <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <View>
-          <Text style={styles.blockTitle}>Quién eres físicamente</Text>
-        </View>
+        <Text style={styles.blockTitle}>{getBlockTitle(currentScreen)}</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }}
@@ -532,6 +834,113 @@ export default function OnboardingScreen() {
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(_, d) => { if (d) setTempDate(d) }}
               maximumDate={new Date()} minimumDate={new Date(1930, 0, 1)} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Lesion modal */}
+      <Modal transparent animationType="slide" visible={editingZona !== null}>
+        <View style={styles.dateOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingZona(null)} />
+          <View style={styles.lesionSheet}>
+            <View style={styles.sheetHandle} />
+
+            <Text style={styles.sheetZonaLabel}>
+              {ZONE_LABELS[editingZona ?? ''] ?? ''}
+            </Text>
+
+            {/* Estado */}
+            <Text style={styles.sheetSectionLabel}>ESTADO</Text>
+            <View style={styles.estadoRow}>
+              {(['activa', 'superada'] as const).map(e => (
+                <TouchableOpacity key={e}
+                  style={[styles.estadoBtn, draftEstado === e && (e === 'activa' ? styles.estadoBtnActiva : styles.estadoBtnSuperada)]}
+                  onPress={() => { setDraftEstado(e); setLesionError('') }}
+                  activeOpacity={0.8}>
+                  <Text style={[styles.estadoBtnText, draftEstado === e && styles.estadoBtnTextOn]}>
+                    {e === 'activa' ? '🔴  Activa' : '✅  Superada'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Gravedad (if activa) */}
+            {draftEstado === 'activa' && (
+              <>
+                <Text style={styles.sheetSectionLabel}>GRAVEDAD</Text>
+                <View style={styles.gravRow}>
+                  {(['leve', 'moderada', 'severa'] as const).map(g => {
+                    const cfg = GRAVEDAD_CONFIG[g]
+                    const on = draftGravedad === g
+                    return (
+                      <TouchableOpacity key={g}
+                        style={[styles.gravBtn,
+                          { borderColor: on ? cfg.color : 'rgba(255,255,255,0.12)',
+                            backgroundColor: on ? cfg.bg : 'rgba(255,255,255,0.04)' }]}
+                        onPress={() => { setDraftGravedad(g); setLesionError('') }}
+                        activeOpacity={0.8}>
+                        <Text style={[styles.gravBtnText, { color: on ? cfg.color : 'rgba(255,255,255,0.5)' }]}>
+                          {cfg.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                <TouchableOpacity style={styles.especialistaRow}
+                  onPress={() => setDraftEspecialista(v => !v)} activeOpacity={0.85}>
+                  <View style={[styles.miniCheck, draftEspecialista && styles.miniCheckOn]}>
+                    {draftEspecialista && <Text style={styles.miniCheckMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.especialistaText}>Ya fue evaluada por un especialista</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Tiempo (if superada) */}
+            {draftEstado === 'superada' && (
+              <>
+                <Text style={styles.sheetSectionLabel}>¿HACE CUÁNTO SE SUPERÓ?</Text>
+                <View style={styles.tiempoGrid}>
+                  {(['1-3m', '3-6m', '6-12m', '+1a'] as const).map(t => {
+                    const on = draftTiempo === t
+                    return (
+                      <TouchableOpacity key={t}
+                        style={[styles.tiempoBtn, on && styles.tiempoBtnOn]}
+                        onPress={() => { setDraftTiempo(t); setLesionError('') }}
+                        activeOpacity={0.8}>
+                        <Text style={[styles.tiempoText, on && styles.tiempoTextOn]}>
+                          {TIEMPO_LABELS[t]}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </>
+            )}
+
+            {!!lesionError && (
+              <Text style={styles.lesionModalError}>{lesionError}</Text>
+            )}
+
+            {/* Sheet buttons */}
+            <View style={styles.sheetBtns}>
+              {data.lesiones.find(l => l.zona === editingZona) && (
+                <TouchableOpacity style={styles.deleteBtn} onPress={deleteLesion} activeOpacity={0.8}>
+                  <Text style={styles.deleteBtnText}>Eliminar</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.saveWrap, !data.lesiones.find(l => l.zona === editingZona) && { flex: 1 }]}
+                onPress={saveLesion} activeOpacity={0.88}>
+                <LinearGradient colors={[colors.accent, colors.accentDark]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.saveBtn}>
+                  <Text style={styles.saveBtnText}>
+                    {data.lesiones.find(l => l.zona === editingZona) ? 'Actualizar' : 'Agregar lesión'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -597,9 +1006,7 @@ function makeStyles(c: Colors) {
     unitToggle: { flexDirection: 'row', backgroundColor: c.glassBg, borderRadius: 8, padding: 2 },
     unitBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6 },
     unitBtnOn: { backgroundColor: c.accent },
-    unitBtnText: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.5,
-    },
+    unitBtnText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.5 },
     unitBtnTextOn: { color: '#ffffff' },
 
     // Ciclo
@@ -611,12 +1018,8 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Medium', fontSize: 16,
       color: c.inkSecondary, lineHeight: 25, marginBottom: 28,
     },
-    cicloCard: {
-      borderRadius: 18, padding: 22, marginBottom: 16,
-    },
-    cicloCardOff: {
-      backgroundColor: c.cardBg, borderWidth: 1.5, borderColor: c.borderBright,
-    },
+    cicloCard: { borderRadius: 18, padding: 22, marginBottom: 16 },
+    cicloCardOff: { backgroundColor: c.cardBg, borderWidth: 1.5, borderColor: c.borderBright },
     cicloCardRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
     cicloBox: {
       width: 30, height: 30, borderRadius: 9, borderWidth: 2,
@@ -625,19 +1028,11 @@ function makeStyles(c: Colors) {
     cicloBoxOn: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.6)' },
     cicloBoxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: c.borderBright },
     cicloCheck: { color: '#ffffff', fontSize: 16, fontFamily: 'SpaceGrotesk-Bold' },
-    cicloCardTitle: {
-      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
-      color: c.inkPrimary, lineHeight: 21,
-    },
+    cicloCardTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, lineHeight: 21 },
     cicloCardTitleOn: { color: '#ffffff' },
-    cicloCardSub: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
-      color: c.inkMuted, marginTop: 2,
-    },
+    cicloCardSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
     cicloCardSubOn: { color: 'rgba(255,255,255,0.7)' },
-    cicloNote: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18,
-    },
+    cicloNote: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18 },
 
     // Historial
     historialQ: {
@@ -660,58 +1055,31 @@ function makeStyles(c: Colors) {
     freqLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
     freqLabelOn: { color: c.accent },
     freqSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
-    freqBadge: {
-      backgroundColor: c.glassBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
-    },
+    freqBadge: { backgroundColor: c.glassBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     freqBadgeOn: { backgroundColor: 'rgba(79,140,255,0.2)' },
-    freqBadgeText: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.5,
-    },
+    freqBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.5 },
     freqBadgeTextOn: { color: c.accent },
 
-    // Deportes selector
     deportesSection: {
-      marginTop: 20,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 16,
-      overflow: 'hidden',
-      backgroundColor: c.cardBg,
+      marginTop: 20, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, overflow: 'hidden', backgroundColor: c.cardBg,
     },
     deportesHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 18, paddingVertical: 16,
     },
-    deportesLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
-      color: c.inkMuted, letterSpacing: 1.2,
-    },
-    deportesCount: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
-      color: c.accent, marginTop: 3,
-    },
-    deportesChevron: {
-      fontSize: 22, color: c.inkMuted,
-      transform: [{ rotate: '90deg' }],
-    },
-    deportesChevronUp: {
-      transform: [{ rotate: '-90deg' }],
-    },
-    selectedRow: {
-      flexDirection: 'row', flexWrap: 'wrap', gap: 8,
-      paddingHorizontal: 18, paddingBottom: 14,
-    },
+    deportesLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 1.2 },
+    deportesCount: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.accent, marginTop: 3 },
+    deportesChevron: { fontSize: 22, color: c.inkMuted, transform: [{ rotate: '90deg' }] },
+    deportesChevronUp: { transform: [{ rotate: '-90deg' }] },
+    selectedRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingBottom: 14 },
     selectedChip: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: c.accent,
       borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     },
-    selectedChipText: {
-      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.accent,
-    },
-    selectedChipX: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.accent, lineHeight: 18,
-    },
+    selectedChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.accent },
+    selectedChipX: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.accent, lineHeight: 18 },
     deportesDropdown: {
       borderTopWidth: 1, borderTopColor: c.borderDefault,
       paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16,
@@ -719,20 +1087,15 @@ function makeStyles(c: Colors) {
     deportesSearch: {
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
       borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
-      marginBottom: 14,
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, marginBottom: 14,
     },
     deportesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     deporteChip: {
       paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20,
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
     },
-    deporteChipOn: {
-      backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent,
-    },
-    deporteChipText: {
-      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary,
-    },
+    deporteChipOn: { backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent },
+    deporteChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary },
     deporteChipTextOn: { color: c.accent },
 
     // Sueño
@@ -744,31 +1107,141 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
       color: c.inkMuted, lineHeight: 20, marginBottom: 28,
     },
-    suenoGrid: {
-      flexDirection: 'row', flexWrap: 'wrap', gap: 12,
-    },
+    suenoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     suenoCard: {
-      width: '47%',
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative',
     },
-    suenoCardOn: {
-      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
-    },
+    suenoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
     suenoIcon: { fontSize: 30, marginBottom: 12 },
-    suenoLabel: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
-      color: c.inkPrimary, lineHeight: 20, marginBottom: 6,
-    },
+    suenoLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: c.inkPrimary, lineHeight: 20, marginBottom: 6 },
     suenoLabelOn: { color: c.accent },
-    suenoSublabel: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
-      color: c.inkMuted, lineHeight: 17,
-    },
+    suenoSublabel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 17 },
     suenoActiveDot: {
       position: 'absolute', top: 14, right: 14,
       width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
     },
+
+    // Block 2 — lesiones
+    lesionesTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, letterSpacing: -0.4, lineHeight: 30, marginBottom: 8,
+    },
+    lesionesSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 20, marginBottom: 24,
+    },
+    bodyMapWrap: { alignItems: 'center', marginBottom: 16 },
+    lumbarChip: {
+      marginTop: 14,
+      paddingHorizontal: 20, paddingVertical: 10,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 20,
+    },
+    lumbarChipOn: { backgroundColor: 'rgba(255,68,68,0.12)', borderColor: '#ff4444' },
+    lumbarChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: c.inkSecondary },
+    lumbarChipTextOn: { color: '#ff4444' },
+
+    legendRow: {
+      flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 24,
+    },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDot: { width: 8, height: 8, borderRadius: 4 },
+    legendText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
+
+    lesionesListSection: { marginBottom: 16 },
+    lesionesListTitle: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 1.2, marginBottom: 12,
+    },
+    lesionCard: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, overflow: 'hidden', marginBottom: 8,
+    },
+    lesionStatusBar: { width: 4, alignSelf: 'stretch' },
+    lesionCardZona: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
+      color: c.inkPrimary, paddingTop: 14, paddingLeft: 14,
+    },
+    lesionCardDetail: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkMuted, paddingBottom: 14, paddingLeft: 14, marginTop: 3,
+    },
+    lesionCardEdit: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
+      color: c.accentLight, paddingRight: 14,
+    },
+    lesionesSkipNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkMuted, textAlign: 'center', marginTop: 8, marginBottom: 8,
+    },
+
+    // Lesion modal sheet
+    lesionSheet: {
+      backgroundColor: c.sheetBg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      borderWidth: 1, borderColor: c.borderDefault, paddingBottom: 40, paddingHorizontal: 24,
+    },
+    sheetHandle: {
+      width: 40, height: 4, borderRadius: 2,
+      backgroundColor: c.borderBright, alignSelf: 'center', marginTop: 12, marginBottom: 20,
+    },
+    sheetZonaLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20,
+      color: c.inkPrimary, letterSpacing: -0.3, marginBottom: 22,
+    },
+    sheetSectionLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 1.2, marginBottom: 10,
+    },
+    estadoRow: { flexDirection: 'row', gap: 10, marginBottom: 22 },
+    estadoBtn: {
+      flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center',
+      backgroundColor: c.glassBg, borderWidth: 1.5, borderColor: c.borderBright,
+    },
+    estadoBtnActiva: { backgroundColor: 'rgba(255,68,68,0.12)', borderColor: '#ff4444' },
+    estadoBtnSuperada: { backgroundColor: 'rgba(50,200,150,0.12)', borderColor: '#32c896' },
+    estadoBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.inkSecondary },
+    estadoBtnTextOn: { color: c.inkPrimary },
+
+    gravRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
+    gravBtn: {
+      flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
+      borderWidth: 1.5,
+    },
+    gravBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13 },
+
+    especialistaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 22 },
+    miniCheck: {
+      width: 24, height: 24, borderRadius: 7, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
+    },
+    miniCheckOn: { backgroundColor: 'rgba(79,140,255,0.2)', borderColor: c.accent },
+    miniCheckMark: { color: c.accent, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
+    especialistaText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkSecondary, flex: 1 },
+
+    tiempoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 22 },
+    tiempoBtn: {
+      paddingHorizontal: 16, paddingVertical: 11, borderRadius: 12,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+    },
+    tiempoBtnOn: { backgroundColor: 'rgba(50,200,150,0.12)', borderColor: '#32c896' },
+    tiempoText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: c.inkSecondary },
+    tiempoTextOn: { color: '#32c896' },
+
+    lesionModalError: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.red,
+      marginBottom: 12,
+    },
+    sheetBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    deleteBtn: {
+      paddingHorizontal: 20, paddingVertical: 16, borderRadius: 14, alignItems: 'center',
+      backgroundColor: 'rgba(255,68,68,0.08)', borderWidth: 1, borderColor: 'rgba(255,68,68,0.25)',
+    },
+    deleteBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.red },
+    saveWrap: { flex: 2, borderRadius: 14, overflow: 'hidden' },
+    saveBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+    saveBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.2 },
 
     // Footer
     footer: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8 },
@@ -787,9 +1260,7 @@ function makeStyles(c: Colors) {
     nextWrap: { flex: 2, borderRadius: 14, overflow: 'hidden' },
     nextWrapFull: { flex: 1 },
     nextBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
-    nextBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3,
-    },
+    nextBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3 },
 
     // Date picker
     dateOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
@@ -799,7 +1270,8 @@ function makeStyles(c: Colors) {
     },
     dateHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: c.borderDefault,
+      paddingHorizontal: 20, paddingVertical: 16,
+      borderBottomWidth: 1, borderBottomColor: c.borderDefault,
     },
     dateCancel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
     dateTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
