@@ -30,6 +30,7 @@ type Lesion = {
 type ScreenId =
   | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
   | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
+  | 'b3_lugar' | 'b3_equipamiento' | 'b3_tiempo_horario'
 
 type FormData = {
   nombre: string
@@ -48,6 +49,12 @@ type FormData = {
   motivoLimitacion: string
   condicionesMedicas: string[]
   notasMedicas: string
+  lugares: string[]
+  equipamiento: string[]
+  tiempoNormal: string | null
+  tiempoOcupado: string | null
+  horarios: string[]
+  diasFijos: boolean | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -146,6 +153,51 @@ const CONDICIONES_MEDICAS = [
   'Lupus',
 ]
 
+const LUGARES = [
+  { id: 'gimnasio_completo', icon: '🏋️', label: 'Gimnasio completo',    desc: 'Máquinas, pesas libres, zonas de cardio — todo disponible' },
+  { id: 'gimnasio_basico',   icon: '🔩', label: 'Gimnasio básico',      desc: 'Mancuernas, barras, algo de cardio — lo esencial' },
+  { id: 'casa_equipado',     icon: '🏠', label: 'Casa con material',    desc: 'Tengo equipamiento en casa' },
+  { id: 'casa_sin',          icon: '🧘', label: 'Casa sin material',    desc: 'Solo mi cuerpo y espacio libre' },
+  { id: 'exterior',          icon: '🌳', label: 'Al aire libre',        desc: 'Parque, pista, playa, calle' },
+]
+
+const EQUIPAMIENTO_CATS = [
+  {
+    cat: 'Pesas y barras',
+    items: ['Mancuernas ajustables', 'Mancuernas fijas', 'Barra olímpica + discos', 'Barra corta (EZ)', 'Kettlebell(s)', 'Barra de dominadas'],
+  },
+  {
+    cat: 'Máquinas y accesorios',
+    items: ['Banco de pesas', 'Máquina de poleas / Multifuerza', 'TRX / Suspensión', 'Bandas elásticas', 'Balón medicinal', 'Step / Cajón pliométrico', 'Paralelas'],
+  },
+  {
+    cat: 'Cardio y movilidad',
+    items: ['Cuerda de saltar', 'Colchoneta / Mat', 'Foam roller', 'Bicicleta estática', 'Cinta de correr', 'Remo (ergómetro)'],
+  },
+]
+
+const TIEMPO_NORMAL_OPTS = [
+  { value: '20-30', label: '20–30 min', sub: 'Sesión corta pero efectiva' },
+  { value: '30-45', label: '30–45 min', sub: 'Lo mínimo recomendado' },
+  { value: '45-60', label: '45–60 min', sub: 'La duración ideal' },
+  { value: '60-90', label: '60–90 min', sub: 'Sesión completa' },
+  { value: '90+',   label: '90+ min',   sub: 'Sesión larga, sin prisa' },
+]
+
+const TIEMPO_OCUPADO_OPTS = [
+  { value: '10-15', label: '10–15 min', sub: 'Microentrenamiento' },
+  { value: '15-20', label: '15–20 min', sub: 'Express' },
+  { value: '20-30', label: '20–30 min', sub: 'Suficiente para lo esencial' },
+  { value: '30-45', label: '30–45 min', sub: 'La mayoría puede con esto' },
+]
+
+const HORARIO_OPTS = [
+  { value: 'manana',   icon: '🌅', label: 'Mañana',   sub: 'Antes de las 10h' },
+  { value: 'mediodia', icon: '☀️', label: 'Mediodía',  sub: '12–15h' },
+  { value: 'tarde',    icon: '🌆', label: 'Tarde',     sub: '16–20h' },
+  { value: 'noche',    icon: '🌙', label: 'Noche',     sub: 'Después de las 20h' },
+]
+
 const DEPORTES = [
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
@@ -180,6 +232,10 @@ function getBlockTitle(screen: ScreenId): string {
     case 'b2_limitaciones':
     case 'b2_historial_medico':
       return 'Tu cuerpo tiene historia'
+    case 'b3_lugar':
+    case 'b3_equipamiento':
+    case 'b3_tiempo_horario':
+      return 'Cómo y dónde entrenas'
   }
 }
 
@@ -336,6 +392,9 @@ export default function OnboardingScreen() {
     calidadSueno: null, lesiones: [],
     ejerciciosEvitar: [], motivoLimitacion: '',
     condicionesMedicas: [], notasMedicas: '',
+    lugares: [], equipamiento: [],
+    tiempoNormal: null, tiempoOcupado: null,
+    horarios: [], diasFijos: null,
   })
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -370,6 +429,9 @@ export default function OnboardingScreen() {
     'b2_lesiones',
     'b2_limitaciones',
     'b2_historial_medico',
+    'b3_lugar',
+    'b3_equipamiento',
+    'b3_tiempo_horario',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -397,6 +459,15 @@ export default function OnboardingScreen() {
     }
     if (currentScreen === 'b1_sueno') {
       if (!data.calidadSueno) return 'Selecciona tu calidad de sueño habitual.'
+    }
+    if (currentScreen === 'b3_lugar') {
+      if (data.lugares.length === 0) return 'Selecciona al menos un lugar de entrenamiento.'
+    }
+    if (currentScreen === 'b3_tiempo_horario') {
+      if (!data.tiempoNormal) return 'Indica cuánto tiempo tienes en un día normal.'
+      if (!data.tiempoOcupado) return 'Indica cuánto tiempo tienes en un día ocupado.'
+      if (data.horarios.length === 0) return 'Selecciona cuándo sueles entrenar.'
+      if (data.diasFijos === null) return 'Indica si tienes días fijos de entrenamiento.'
     }
     return null
   }
@@ -438,6 +509,11 @@ export default function OnboardingScreen() {
         condiciones_medicas: data.condicionesMedicas,
         notas_medicas: data.notasMedicas.trim(),
         motivo_limitacion: data.motivoLimitacion.trim(),
+        horario_preferido: data.horarios.join('/'),
+        lugares_entrenamiento: data.lugares,
+        implementos: data.equipamiento,
+        duracion_disponible: data.tiempoNormal ? parseInt(data.tiempoNormal) : null,
+        duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -976,15 +1052,237 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ── Block 3: location ─────────────────────────────────────────────────────
+
+  function renderLugar() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Dónde entrenas?</Text>
+        <Text style={styles.b3Sub}>
+          La realidad es mixta. Selecciona todos los que aplican — tu rutina se adaptará.
+        </Text>
+
+        {LUGARES.map(loc => {
+          const on = data.lugares.includes(loc.id)
+          return (
+            <TouchableOpacity key={loc.id}
+              style={[styles.lugarCard, on && styles.lugarCardOn]}
+              onPress={() => {
+                if (on) set('lugares', data.lugares.filter(x => x !== loc.id))
+                else set('lugares', [...data.lugares, loc.id])
+              }}
+              activeOpacity={0.8}>
+              <Text style={styles.lugarIcon}>{loc.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.lugarLabel, on && styles.lugarLabelOn]}>{loc.label}</Text>
+                <Text style={styles.lugarDesc}>{loc.desc}</Text>
+              </View>
+              <View style={[styles.lugarCheck, on && styles.lugarCheckOn]}>
+                {on && <Text style={styles.lugarCheckMark}>✓</Text>}
+              </View>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 3: equipment ────────────────────────────────────────────────────
+
+  function renderEquipamiento() {
+    const sinNada = data.equipamiento.includes('ninguno')
+
+    function toggleEquip(item: string) {
+      if (item === 'ninguno') {
+        set('equipamiento', sinNada ? [] : ['ninguno'])
+      } else {
+        const withoutNinguno = data.equipamiento.filter(x => x !== 'ninguno')
+        if (withoutNinguno.includes(item))
+          set('equipamiento', withoutNinguno.filter(x => x !== item))
+        else
+          set('equipamiento', [...withoutNinguno, item])
+      }
+    }
+
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Con qué equipamiento cuentas?</Text>
+        <Text style={styles.b3Sub}>
+          Incluye lo que tengas disponible, ya sea en casa o en tu lugar de entrenamiento habitual.
+        </Text>
+
+        {/* No equipment toggle */}
+        <TouchableOpacity
+          style={[styles.ningunCard, sinNada && styles.ningunCardOn]}
+          onPress={() => toggleEquip('ninguno')}
+          activeOpacity={0.8}>
+          <Text style={[styles.ningunLabel, sinNada && styles.ningunLabelOn]}>
+            {sinNada ? '✓  ' : ''}Solo mi cuerpo — sin equipamiento
+          </Text>
+        </TouchableOpacity>
+
+        {/* Equipment categories */}
+        {!sinNada && EQUIPAMIENTO_CATS.map(cat => (
+          <View key={cat.cat} style={styles.equipCat}>
+            <Text style={styles.equipCatLabel}>{cat.cat.toUpperCase()}</Text>
+            <View style={styles.deportesGrid}>
+              {cat.items.map(item => {
+                const sel = data.equipamiento.includes(item)
+                return (
+                  <TouchableOpacity key={item}
+                    style={[styles.deporteChip, sel && styles.deporteChipOn]}
+                    onPress={() => toggleEquip(item)}
+                    activeOpacity={0.75}>
+                    <Text style={[styles.deporteChipText, sel && styles.deporteChipTextOn]}>
+                      {sel ? '✓ ' : ''}{item}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        ))}
+
+        {!sinNada && data.equipamiento.length === 0 && (
+          <Text style={styles.skipNote}>Sin selección — puedes continuar.</Text>
+        )}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 3: time + schedule ──────────────────────────────────────────────
+
+  function renderTiempoHorario() {
+    function toggleHorario(h: string) {
+      if (data.horarios.includes(h)) {
+        set('horarios', data.horarios.filter(x => x !== h))
+      } else if (data.horarios.length < 2) {
+        set('horarios', [...data.horarios, h])
+      }
+    }
+
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        {/* Section: Normal day */}
+        <Text style={styles.tiempoSectionQ}>
+          ¿Cuánto tiempo tienes en un día normal?
+        </Text>
+        <View style={styles.tiempoRow}>
+          {TIEMPO_NORMAL_OPTS.map(opt => {
+            const on = data.tiempoNormal === opt.value
+            return (
+              <TouchableOpacity key={opt.value}
+                style={[styles.tiempoPill, on && styles.tiempoPillOn]}
+                onPress={() => set('tiempoNormal', opt.value)}
+                activeOpacity={0.8}>
+                <Text style={[styles.tiempoPillLabel, on && styles.tiempoPillLabelOn]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.tiempoPillSub, on && styles.tiempoPillSubOn]}>
+                  {opt.sub}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Section: Busy day */}
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
+          ¿Y en un día ocupado?
+        </Text>
+        <Text style={styles.tiempoSectionNote}>
+          Para rutinas de emergencia cuando el tiempo escasea.
+        </Text>
+        <View style={styles.tiempoRow}>
+          {TIEMPO_OCUPADO_OPTS.map(opt => {
+            const on = data.tiempoOcupado === opt.value
+            return (
+              <TouchableOpacity key={opt.value}
+                style={[styles.tiempoPill, on && styles.tiempoPillOn]}
+                onPress={() => set('tiempoOcupado', opt.value)}
+                activeOpacity={0.8}>
+                <Text style={[styles.tiempoPillLabel, on && styles.tiempoPillLabelOn]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.tiempoPillSub, on && styles.tiempoPillSubOn]}>
+                  {opt.sub}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Section: Time of day */}
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
+          ¿Cuándo sueles entrenar?
+        </Text>
+        <Text style={styles.tiempoSectionNote}>
+          Máximo 2 opciones — para notificaciones y check-ins en el momento correcto.
+        </Text>
+        <View style={styles.horarioGrid}>
+          {HORARIO_OPTS.map(opt => {
+            const on = data.horarios.includes(opt.value)
+            const disabled = !on && data.horarios.length >= 2
+            return (
+              <TouchableOpacity key={opt.value}
+                style={[styles.horarioCard, on && styles.horarioCardOn, disabled && styles.horarioCardDisabled]}
+                onPress={() => toggleHorario(opt.value)}
+                activeOpacity={0.8}>
+                <Text style={styles.horarioIcon}>{opt.icon}</Text>
+                <Text style={[styles.horarioLabel, on && styles.horarioLabelOn]}>{opt.label}</Text>
+                <Text style={styles.horarioSub}>{opt.sub}</Text>
+                {on && <View style={styles.horarioDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Section: Fixed days */}
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
+          ¿Tienes días fijos de entrenamiento?
+        </Text>
+        <View style={styles.diasRow}>
+          <TouchableOpacity
+            style={[styles.diasBtn, data.diasFijos === true && styles.diasBtnOn]}
+            onPress={() => set('diasFijos', true)}
+            activeOpacity={0.8}>
+            <Text style={[styles.diasBtnText, data.diasFijos === true && styles.diasBtnTextOn]}>
+              📅  Sí, días fijos
+            </Text>
+            <Text style={styles.diasBtnSub}>Mismo día cada semana</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.diasBtn, data.diasFijos === false && styles.diasBtnOn]}
+            onPress={() => set('diasFijos', false)}
+            activeOpacity={0.8}>
+            <Text style={[styles.diasBtnText, data.diasFijos === false && styles.diasBtnTextOn]}>
+              🔄  Varía
+            </Text>
+            <Text style={styles.diasBtnSub}>Depende de la semana</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
-      case 'b1_personal':       return renderPersonal()
-      case 'b1_ciclo':          return renderCiclo()
-      case 'b1_historial':      return renderHistorial()
-      case 'b1_sueno':          return renderSueno()
-      case 'b2_lesiones':       return renderLesiones()
-      case 'b2_limitaciones':   return renderLimitaciones()
-      case 'b2_historial_medico': return renderHistorialMedico()
+      case 'b1_personal':          return renderPersonal()
+      case 'b1_ciclo':             return renderCiclo()
+      case 'b1_historial':         return renderHistorial()
+      case 'b1_sueno':             return renderSueno()
+      case 'b2_lesiones':          return renderLesiones()
+      case 'b2_limitaciones':      return renderLimitaciones()
+      case 'b2_historial_medico':  return renderHistorialMedico()
+      case 'b3_lugar':             return renderLugar()
+      case 'b3_equipamiento':      return renderEquipamiento()
+      case 'b3_tiempo_horario':    return renderTiempoHorario()
     }
   }
 
@@ -1345,6 +1643,98 @@ function makeStyles(c: Colors) {
       position: 'absolute', top: 14, right: 14,
       width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
     },
+
+    // Block 3
+    b3Title: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, letterSpacing: -0.4, lineHeight: 31, marginBottom: 10,
+    },
+    b3Sub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 21, marginBottom: 24,
+    },
+
+    // Location cards
+    lugarCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 18, paddingVertical: 18, paddingHorizontal: 18, marginBottom: 10,
+    },
+    lugarCardOn: { backgroundColor: 'rgba(79,140,255,0.09)', borderColor: c.accent, borderWidth: 1.5 },
+    lugarIcon: { fontSize: 28, width: 36, textAlign: 'center' },
+    lugarLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary, marginBottom: 3 },
+    lugarLabelOn: { color: c.accent },
+    lugarDesc: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 17 },
+    lugarCheck: {
+      width: 26, height: 26, borderRadius: 13, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
+    },
+    lugarCheckOn: { backgroundColor: c.accent, borderColor: c.accent },
+    lugarCheckMark: { color: '#fff', fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
+
+    // Equipment
+    ningunCard: {
+      paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 20,
+      backgroundColor: c.glassBg, borderWidth: 1.5, borderColor: c.borderBright,
+      alignItems: 'center',
+    },
+    ningunCardOn: { backgroundColor: 'rgba(50,200,150,0.1)', borderColor: '#32c896' },
+    ningunLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkSecondary },
+    ningunLabelOn: { color: '#32c896' },
+    equipCat: { marginBottom: 20 },
+    equipCatLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 1.2, marginBottom: 10,
+    },
+
+    // Time range pills
+    tiempoSectionQ: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 18,
+      color: c.inkPrimary, letterSpacing: -0.3, lineHeight: 26, marginBottom: 6,
+    },
+    tiempoSectionNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkMuted, lineHeight: 19, marginBottom: 14,
+    },
+    tiempoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+    tiempoPill: {
+      paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      alignItems: 'center', minWidth: '30%', flex: 1,
+    },
+    tiempoPillOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    tiempoPillLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.inkPrimary, marginBottom: 2 },
+    tiempoPillLabelOn: { color: c.accent },
+    tiempoPillSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: c.inkMuted, textAlign: 'center' },
+    tiempoPillSubOn: { color: 'rgba(79,140,255,0.7)' },
+
+    // Horario cards (2-column grid)
+    horarioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
+    horarioCard: {
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 18, padding: 18, alignItems: 'center', position: 'relative',
+    },
+    horarioCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    horarioCardDisabled: { opacity: 0.35 },
+    horarioIcon: { fontSize: 28, marginBottom: 8 },
+    horarioLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: c.inkPrimary, marginBottom: 3 },
+    horarioLabelOn: { color: c.accent },
+    horarioSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
+    horarioDot: {
+      position: 'absolute', top: 12, right: 12,
+      width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
+
+    // Fixed days
+    diasRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
+    diasBtn: {
+      flex: 1, paddingVertical: 16, paddingHorizontal: 14, borderRadius: 16,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, alignItems: 'center',
+    },
+    diasBtnOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    diasBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, marginBottom: 4 },
+    diasBtnTextOn: { color: c.accent },
+    diasBtnSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, textAlign: 'center' },
 
     // Block 2 — limitaciones
     limitTitle: {
