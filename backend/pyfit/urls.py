@@ -53,6 +53,7 @@ urlpatterns = [
     path('api/stats/dashboard/', workout_views.stats_dashboard),
     path('api/stats/full/', workout_views.stats_full),
     path('api/stats/profile/', workout_views.stats_profile),
+    path('api/stats/rpe-semanal/', workout_views.stats_rpe_semanal),
 
     # Competitions
     path('api/competitions/', workout_views.competitions),

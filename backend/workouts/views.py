@@ -1167,3 +1167,70 @@ def competition_detail(request, pk):
         return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
     comp.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Filtro → foco_entrenamiento values ───────────────────────────────────────
+
+_FOCO_MAP = {
+    'fuerza':    ['serio'],
+    'cardio':    ['descargar'],
+    'movilidad': ['recuperar', 'moverme'],
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_rpe_semanal(request):
+    """
+    Weekly RPE averages from registration week to current week.
+    Query param: ?filtro=todo|fuerza|cardio|movilidad
+    Uses feedback.rpe_real when available, falls back to session.rpe_target.
+    """
+    user = request.user
+    filtro = request.GET.get('filtro', 'todo')
+    hoy = date.today()
+    fecha_registro = user.date_joined.date()
+    semanas_entrenando = max(1, (hoy - fecha_registro).days // 7 + 1)
+
+    sesiones = (
+        user.sessions
+        .select_related('feedback', 'checkin')
+        .filter(fecha__gte=fecha_registro)
+        .order_by('fecha')
+    )
+
+    # Apply tipo filter via checkin.foco_entrenamiento
+    if filtro in _FOCO_MAP:
+        focos = _FOCO_MAP[filtro]
+        sesiones = [
+            s for s in sesiones
+            if s.checkin and any(f in (s.checkin.foco_entrenamiento or []) for f in focos)
+        ]
+    else:
+        sesiones = list(sesiones)
+
+    # Group RPE by week number (1-indexed from registration)
+    from collections import defaultdict
+    rpe_por_semana: dict = defaultdict(list)
+    for s in sesiones:
+        week_num = (s.fecha - fecha_registro).days // 7 + 1
+        rpe = (
+            float(s.feedback.rpe_real)
+            if s.feedback and s.feedback.rpe_real is not None
+            else float(s.rpe_target)
+        )
+        rpe_por_semana[week_num].append(rpe)
+
+    semanas = [
+        {
+            'semana_num': w,
+            'label': f'Sem {w}',
+            'rpe': round(sum(rpas) / len(rpas), 1),
+        }
+        for w, rpas in sorted(rpe_por_semana.items())
+    ]
+
+    return Response({
+        'semanas_entrenando': semanas_entrenando,
+        'semanas': semanas,
+    })
