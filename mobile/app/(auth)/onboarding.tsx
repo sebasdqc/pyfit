@@ -14,7 +14,7 @@ import { apiPut } from '../../lib/api'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Sexo = 'masculino' | 'femenino' | 'otro' | ''
-type ScreenId = 'b1_personal' | 'b1_ciclo' | 'b1_historial'
+type ScreenId = 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
 
 type FormData = {
   nombre: string
@@ -27,6 +27,7 @@ type FormData = {
   usaCicloMenstrual: boolean
   frecuenciaHistorica: number | null
   deportes: string[]
+  calidadSueno: string | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -37,6 +38,13 @@ const FRECUENCIA_OPTIONS = [
   { label: '3–4 veces por semana', sublabel: 'La frecuencia más común', value: 3, badge: '3–4' },
   { label: '5–6 veces por semana', sublabel: 'Alta dedicación',          value: 5, badge: '5–6' },
   { label: 'Todos los días',       sublabel: '7 días por semana',        value: 7, badge: '7'   },
+]
+
+const SUENO_OPTIONS = [
+  { value: '<6h',       label: 'Menos de 6h',   sublabel: 'Sueño corto o fragmentado', icon: '😓' },
+  { value: '6-7h',      label: '6–7h irregular', sublabel: 'Varía mucho cada noche',    icon: '😐' },
+  { value: '7-8h',      label: '7–8h estable',  sublabel: 'La cantidad recomendada',   icon: '😴' },
+  { value: '>8h',       label: 'Más de 8h',     sublabel: 'Largo o con mucha fatiga',  icon: '💤' },
 ]
 
 const DEPORTES = [
@@ -84,7 +92,7 @@ export default function OnboardingScreen() {
   const [data, setData] = useState<FormData>({
     nombre: '', fechaNacimiento: null, sexo: '',
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
-    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
+    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [], calidadSueno: null,
   })
   const [screenIndex, setScreenIndex] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -98,6 +106,7 @@ export default function OnboardingScreen() {
     'b1_personal',
     ...(data.sexo === 'femenino' ? ['b1_ciclo' as ScreenId] : []),
     'b1_historial',
+    'b1_sueno',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -121,6 +130,9 @@ export default function OnboardingScreen() {
     }
     if (currentScreen === 'b1_historial') {
       if (data.frecuenciaHistorica === null) return 'Selecciona tu frecuencia de entrenamiento.'
+    }
+    if (currentScreen === 'b1_sueno') {
+      if (!data.calidadSueno) return 'Selecciona tu calidad de sueño habitual.'
     }
     return null
   }
@@ -156,6 +168,7 @@ export default function OnboardingScreen() {
         usa_ciclo_menstrual: data.usaCicloMenstrual,
         dias_semana: data.frecuenciaHistorica ?? 3,
         experiencia_deportiva: data.deportes.join(', '),
+        calidad_sueno_habitual: data.calidadSueno,
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -403,11 +416,47 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ─── Screen: sleep quality ───────────────────────────────────────────────────
+
+  function renderSueno() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.suenoQ}>
+          ¿Cómo describirías tu calidad de sueño habitualmente?
+        </Text>
+        <Text style={styles.suenoSub}>
+          El sueño es uno de los factores que más impacta tu recuperación y progreso.
+        </Text>
+
+        <View style={styles.suenoGrid}>
+          {SUENO_OPTIONS.map(opt => {
+            const on = data.calidadSueno === opt.value
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.suenoCard, on && styles.suenoCardOn]}
+                onPress={() => set('calidadSueno', opt.value)}
+                activeOpacity={0.8}>
+                <Text style={styles.suenoIcon}>{opt.icon}</Text>
+                <Text style={[styles.suenoLabel, on && styles.suenoLabelOn]}>{opt.label}</Text>
+                <Text style={styles.suenoSublabel}>{opt.sublabel}</Text>
+                {on && <View style={styles.suenoActiveDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
       case 'b1_personal':  return renderPersonal()
       case 'b1_ciclo':     return renderCiclo()
       case 'b1_historial': return renderHistorial()
+      case 'b1_sueno':     return renderSueno()
     }
   }
 
@@ -685,6 +734,41 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary,
     },
     deporteChipTextOn: { color: c.accent },
+
+    // Sueño
+    suenoQ: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, letterSpacing: -0.4, lineHeight: 31, marginBottom: 10,
+    },
+    suenoSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 20, marginBottom: 28,
+    },
+    suenoGrid: {
+      flexDirection: 'row', flexWrap: 'wrap', gap: 12,
+    },
+    suenoCard: {
+      width: '47%',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative',
+    },
+    suenoCardOn: {
+      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
+    },
+    suenoIcon: { fontSize: 30, marginBottom: 12 },
+    suenoLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
+      color: c.inkPrimary, lineHeight: 20, marginBottom: 6,
+    },
+    suenoLabelOn: { color: c.accent },
+    suenoSublabel: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkMuted, lineHeight: 17,
+    },
+    suenoActiveDot: {
+      position: 'absolute', top: 14, right: 14,
+      width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
 
     // Footer
     footer: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8 },
