@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -8,8 +8,11 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  TextInput,
+  Animated,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
@@ -49,13 +52,24 @@ interface Feedback {
   notas?: string
 }
 
+interface Checkin {
+  estado_fisico?: number | null
+  estado_animo?: number | null
+  dolor_hoy?: string | null
+}
+
 interface Session {
   id: number
   fecha: string
   duracion_planificada: number
   respuesta_ia: RespuestaIA
   feedback?: Feedback
+  checkin?: Checkin | null
 }
+
+type FilterTipo = 'Todo' | 'Fuerza' | 'Cardio' | 'Movilidad' | 'HIIT' | 'Funcional'
+
+const FILTER_TIPOS: FilterTipo[] = ['Todo', 'Fuerza', 'Cardio', 'Movilidad', 'HIIT', 'Funcional']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -114,6 +128,84 @@ function getEjerciciosSintesis(ia?: RespuestaIA, max = 3): string {
   return shown.join(' · ') + (rest > 0 ? ` +${rest}` : '')
 }
 
+// ─── Type & state visual config ──────────────────────────────────────────────
+
+const TIPO_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
+  'Fuerza Tren Inferior': { icon: '🦵', color: '#4f8cff', bg: 'rgba(79,140,255,0.15)' },
+  'Fuerza Tren Superior': { icon: '💪', color: '#4f8cff', bg: 'rgba(79,140,255,0.15)' },
+  'Fuerza':               { icon: '⚡', color: '#4f8cff', bg: 'rgba(79,140,255,0.15)' },
+  'HIIT':                 { icon: '🔥', color: '#ffaa32', bg: 'rgba(255,170,50,0.15)'  },
+  'Cardio':               { icon: '❤️', color: '#ff4444', bg: 'rgba(255,68,68,0.15)'   },
+  'Movilidad':            { icon: '🌊', color: '#6ce5ff', bg: 'rgba(108,229,255,0.15)' },
+  'Funcional':            { icon: '⚙️', color: '#32c896', bg: 'rgba(50,200,150,0.15)'  },
+}
+const DEFAULT_TIPO = { icon: '🏋️', color: '#4f8cff', bg: 'rgba(79,140,255,0.15)' }
+
+function getTipoConfig(ia?: RespuestaIA) {
+  return TIPO_CONFIG[inferTipoSesion(ia)] ?? DEFAULT_TIPO
+}
+
+function getRpeColor(rpe: number): string {
+  if (rpe < 6) return '#32c896'
+  if (rpe < 8) return '#ffaa32'
+  return '#ff4444'
+}
+
+// Level index = level - 1 (levels 1–4)
+const FISICO_CONFIG = [
+  { icon: '⊗', color: '#ff4444' },
+  { icon: '◌', color: '#ffaa32' },
+  { icon: '◎', color: '#4f8cff' },
+  { icon: '◉', color: '#32c896' },
+]
+const MENTAL_CONFIG = [
+  { icon: '⊗', color: '#ff4444' },
+  { icon: '◌', color: '#ffaa32' },
+  { icon: '◎', color: '#4f8cff' },
+  { icon: '◉', color: '#32c896' },
+]
+
+// ─── Week grouping ────────────────────────────────────────────────────────────
+
+function getWeekStartDate(dateStr: string): Date {
+  const d = new Date(Date.UTC(
+    parseInt(dateStr.slice(0, 4)),
+    parseInt(dateStr.slice(5, 7)) - 1,
+    parseInt(dateStr.slice(8, 10)),
+  ))
+  const dow = d.getUTCDay() || 7  // 1=Mon … 7=Sun
+  d.setUTCDate(d.getUTCDate() - (dow - 1))
+  return d
+}
+
+function formatWeekLabel(ws: Date): string {
+  const we = new Date(ws)
+  we.setUTCDate(we.getUTCDate() + 6)
+  const sd = ws.getUTCDate()
+  const ed = we.getUTCDate()
+  const sm = MONTH_NAMES_ES[ws.getUTCMonth()].toLowerCase()
+  const em = MONTH_NAMES_ES[we.getUTCMonth()].toLowerCase()
+  if (sm === em) return `Semana del ${sd} al ${ed} de ${sm}`
+  return `Semana del ${sd} de ${sm} al ${ed} de ${em}`
+}
+
+function groupByWeek(sessions: Session[]): { key: string; label: string; sessions: Session[] }[] {
+  const map = new Map<string, { ws: Date; sessions: Session[] }>()
+  for (const s of sessions) {
+    const ws = getWeekStartDate(s.fecha)
+    const key = `${ws.getUTCFullYear()}-${String(ws.getUTCMonth() + 1).padStart(2, '0')}-${String(ws.getUTCDate()).padStart(2, '0')}`
+    if (!map.has(key)) map.set(key, { ws, sessions: [] })
+    map.get(key)!.sessions.push(s)
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, { ws, sessions: sArr }]) => ({
+      key,
+      label: formatWeekLabel(ws),
+      sessions: sArr.sort((a, b) => b.fecha.localeCompare(a.fecha)),
+    }))
+}
+
 function getDayColor(session?: Session): string | null {
   if (!session) return null
   if (!session.feedback) return COLORS.accent
@@ -121,22 +213,59 @@ function getDayColor(session?: Session): string | null {
   return cumplimientoColor(c)
 }
 
-function groupByMonth(sessions: Session[]): { key: string; label: string; sessions: Session[] }[] {
-  const map = new Map<string, Session[]>()
+function inferTipoSesion(ia?: RespuestaIA): string {
+  const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
+  if (/inferior|pierna|cuádricep|femoral|glúteo|sentadilla/.test(text)) return 'Fuerza Tren Inferior'
+  if (/superior|pecho|espalda|hombro|bícep|trícep|jalón|press/.test(text)) return 'Fuerza Tren Superior'
+  if (/hiit|interval/.test(text)) return 'HIIT'
+  if (/cardio/.test(text)) return 'Cardio'
+  if (/movilidad|flexib|stretch|yoga/.test(text)) return 'Movilidad'
+  if (/funcional|crossfit/.test(text)) return 'Funcional'
+  if (/fuerza/.test(text)) return 'Fuerza'
+  return 'Entrenamiento'
+}
+
+function matchesTipo(session: Session, tipo: FilterTipo): boolean {
+  if (tipo === 'Todo') return true
+  const t = inferTipoSesion(session.respuesta_ia)
+  if (tipo === 'Fuerza') return t.startsWith('Fuerza')
+  return t === tipo
+}
+
+function countActiveWeeks(sessions: Session[]): number {
+  const weeks = new Set<string>()
   for (const s of sessions) {
-    const d = new Date(s.fecha + 'T00:00:00')
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(s)
+    const d = new Date(Date.UTC(
+      parseInt(s.fecha.slice(0, 4)),
+      parseInt(s.fecha.slice(5, 7)) - 1,
+      parseInt(s.fecha.slice(8, 10)),
+    ))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+    weeks.add(`${d.getUTCFullYear()}-W${weekNo}`)
   }
-  return Array.from(map.entries()).map(([key, sArr]) => {
-    const d = new Date(sArr[0].fecha + 'T00:00:00')
-    return {
-      key,
-      label: `${MONTH_NAMES_ES[d.getMonth()]} ${d.getFullYear()}`,
-      sessions: sArr.sort((a, b) => b.fecha.localeCompare(a.fecha)),
+  return weeks.size
+}
+
+function getMostFrequent(sessions: Session[]): { tipo: string; count: number } | null {
+  if (!sessions.length) return null
+  const map = new Map<string, { count: number; lastFecha: string }>()
+  for (const s of sessions) {
+    const tipo = inferTipoSesion(s.respuesta_ia)
+    const entry = map.get(tipo) ?? { count: 0, lastFecha: '' }
+    entry.count++
+    if (s.fecha > entry.lastFecha) entry.lastFecha = s.fecha
+    map.set(tipo, entry)
+  }
+  let best: { tipo: string; count: number; lastFecha: string } | null = null
+  for (const [tipo, v] of map) {
+    if (!best || v.count > best.count || (v.count === best.count && v.lastFecha > best.lastFecha)) {
+      best = { tipo, count: v.count, lastFecha: v.lastFecha }
     }
-  })
+  }
+  return best ? { tipo: best.tipo, count: best.count } : null
 }
 
 function getLast6Months(): { year: number; month: number }[] {
@@ -500,20 +629,176 @@ function makeModalStyles(c: Colors) {
   })
 }
 
+// ─── Session Card ─────────────────────────────────────────────────────────────
+
+function SessionCard({
+  session,
+  isExpanded,
+  onToggle,
+  styles,
+  colors,
+}: {
+  session: Session
+  isExpanded: boolean
+  onToggle: () => void
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+}) {
+  const rotAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
+
+  useEffect(() => {
+    Animated.timing(rotAnim, {
+      toValue: isExpanded ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [isExpanded])
+
+  const chevronRotate = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] })
+
+  const ia          = session.respuesta_ia
+  const titulo      = ia?.titulo ?? 'Sesión de entrenamiento'
+  const duracion    = ia?.duracion_total ?? session.duracion_planificada
+  const feedback    = session.feedback
+  const checkin     = session.checkin
+  const tipoConf    = getTipoConfig(ia)
+  const rpe         = feedback?.rpe_real
+  const fisico      = checkin?.estado_fisico    // 1-4
+  const mental      = checkin?.estado_animo != null ? Math.min(checkin.estado_animo, 4) : undefined
+  const dolor       = checkin?.dolor_hoy
+
+  const allEjercicios = ia?.fases?.flatMap(f => f.ejercicios) ?? []
+
+  return (
+    <TouchableOpacity style={styles.sessionCard2} onPress={onToggle} activeOpacity={0.78}>
+      {/* ── Top row ── */}
+      <View style={styles.cardRow}>
+        {/* Left: tipo icon */}
+        <View style={[styles.typeIconBox, { backgroundColor: tipoConf.bg }]}>
+          <Text style={styles.typeIconText}>{tipoConf.icon}</Text>
+        </View>
+
+        {/* Center */}
+        <View style={styles.cardCenter}>
+          <Text style={styles.cardTitle} numberOfLines={isExpanded ? 2 : 1}>{titulo}</Text>
+          <View style={styles.cardMeta}>
+            <Text style={styles.cardMetaDate}>{formatDate(session.fecha)}</Text>
+            <View style={styles.metaDot} />
+            <Text style={styles.cardMetaDur}>⏱ {duracion}m</Text>
+            {dolor ? (
+              <View style={styles.dolorTag}>
+                <Text style={styles.dolorTagText}>{dolor}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Right */}
+        <View style={styles.cardRight}>
+          {rpe != null ? (
+            <View style={[styles.rpeBadge, { borderColor: `${getRpeColor(rpe)}55` }]}>
+              <Text style={[styles.rpeBadgeVal, { color: getRpeColor(rpe) }]}>{rpe}</Text>
+              <Text style={styles.rpeBadgeLabel}>RPE</Text>
+            </View>
+          ) : <View style={styles.rpeBadgeSpacer} />}
+
+          {(fisico != null || mental != null) && (
+            <View style={styles.estadoRow}>
+              {fisico != null && fisico >= 1 && fisico <= 4 && (
+                <Text style={[styles.estadoIcon, { color: FISICO_CONFIG[fisico - 1].color }]}>
+                  {FISICO_CONFIG[fisico - 1].icon}
+                </Text>
+              )}
+              {mental != null && mental >= 1 && mental <= 4 && (
+                <Text style={[styles.estadoIcon, { color: MENTAL_CONFIG[mental - 1].color }]}>
+                  {MENTAL_CONFIG[mental - 1].icon}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <Animated.Text style={[styles.chevron, { transform: [{ rotate: chevronRotate }] }]}>
+            ⌄
+          </Animated.Text>
+        </View>
+      </View>
+
+      {/* ── Expanded detail ── */}
+      {isExpanded && (
+        <>
+          <View style={styles.expandDivider} />
+          <View style={styles.expandContent}>
+
+            {/* Ejercicios */}
+            {allEjercicios.length > 0 && (
+              <View>
+                <Text style={styles.ejSectionLabel}>EJERCICIOS</Text>
+                {allEjercicios.map((ej, i) => (
+                  <View key={i}>
+                    {i > 0 && <View style={styles.ejDivider} />}
+                    <View style={styles.ejRow}>
+                      <Text style={styles.ejName} numberOfLines={1}>{ej.nombre}</Text>
+                      <Text style={styles.ejMeta}>
+                        {ej.series ? `${ej.series}×${ej.repeticiones}` : ej.repeticiones}
+                        {ej.rpe_sugerido ? ` · RPE ${ej.rpe_sugerido}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Nota de sesión */}
+            {feedback?.notas ? (
+              <View style={styles.noteBlock}>
+                <Text style={styles.noteIcon}>📝</Text>
+                <Text style={styles.noteText}>{feedback.notas}</Text>
+              </View>
+            ) : null}
+
+          </View>
+        </>
+      )}
+    </TouchableOpacity>
+  )
+}
+
 // ─── List View ────────────────────────────────────────────────────────────────
 
+type WeekGroup = { key: string; label: string; sessions: Session[] }
+
 function ListView({
-  sessions,
+  weeks,
+  hasFilters,
+  hasMore,
+  isLoadingMore,
   onSelectSession,
 }: {
-  sessions: Session[]
+  weeks: WeekGroup[]
+  hasFilters: boolean
+  hasMore: boolean
+  isLoadingMore: boolean
   onSelectSession: (s: Session) => void
 }) {
   const { colors } = useTheme()
   const styles = useMemo(() => makeStyles(colors), [colors])
-  const grouped = groupByMonth(sessions)
 
-  if (!grouped.length) {
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  function handleToggle(id: number) {
+    setExpandedId(prev => prev === id ? null : id)
+  }
+
+  if (!weeks.length) {
+    if (hasFilters) {
+      return (
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyFilterIcon}>◎</Text>
+          <Text style={styles.emptyText}>No encontramos sesiones con ese filtro</Text>
+          <Text style={styles.emptySubtext}>Prueba con otro término o categoría.</Text>
+        </View>
+      )
+    }
     return (
       <View style={styles.emptyBox}>
         <Text style={styles.emptyText}>Aún no tienes sesiones registradas.</Text>
@@ -524,47 +809,30 @@ function ListView({
 
   return (
     <>
-      {grouped.map(group => (
-        <View key={group.key} style={styles.monthGroup}>
-          <Text style={styles.monthLabel}>{group.label}</Text>
-          {group.sessions.map(session => {
-            const titulo = session.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'
-            const duracion = session.respuesta_ia?.duracion_total ?? session.duracion_planificada
-            const feedback = session.feedback
-            const ejercicios = getEjerciciosSintesis(session.respuesta_ia)
-            return (
-              <TouchableOpacity
-                key={session.id}
-                style={styles.sessionCard}
-                onPress={() => onSelectSession(session)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.sessionTopRow}>
-                  <Text style={styles.sessionDate}>{formatDate(session.fecha)}</Text>
-                  {feedback ? (
-                    <View style={[styles.cumplBadge, { backgroundColor: cumplimientoBgColor(feedback.cumplimiento) }]}>
-                      <Text style={[styles.cumplText, { color: cumplimientoColor(feedback.cumplimiento) }]}>
-                        {feedback.cumplimiento}%
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.cumplBadge, { backgroundColor: 'rgba(79,140,255,0.12)' }]}>
-                      <Text style={[styles.cumplText, { color: colors.accent }]}>SIN FEEDBACK</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.sessionTitle} numberOfLines={1}>{titulo}</Text>
-                <Text style={styles.sessionMeta}>
-                  {duracion} min{feedback ? ` · RPE ${feedback.rpe_real} · ${feedback.cumplimiento}% cumpl.` : ''}
-                </Text>
-                {!!ejercicios && (
-                  <Text style={styles.sessionEjercicios} numberOfLines={1}>{ejercicios}</Text>
-                )}
-              </TouchableOpacity>
-            )
-          })}
+      {weeks.map(group => (
+        <View key={group.key} style={styles.weekGroup}>
+          <Text style={styles.weekLabel}>{group.label.toUpperCase()}</Text>
+          {group.sessions.map(session => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              isExpanded={expandedId === session.id}
+              onToggle={() => handleToggle(session.id)}
+              styles={styles}
+              colors={colors}
+            />
+          ))}
         </View>
       ))}
+
+      {/* Footer */}
+      <View style={styles.listFooter}>
+        {isLoadingMore ? (
+          <Text style={styles.listFooterLoading}>· · ·</Text>
+        ) : !hasMore ? (
+          <Text style={styles.listFooterEnd}>Has llegado al inicio de tu historial.</Text>
+        ) : null}
+      </View>
     </>
   )
 }
@@ -839,23 +1107,79 @@ function DayModal({
   )
 }
 
+// ─── Summary Block ───────────────────────────────────────────────────────────
+
+function SummaryBlock({
+  sessions, styles, colors,
+}: {
+  sessions: Session[]
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+}) {
+  const totalSesiones  = sessions.length
+  const semanasActivas = countActiveWeeks(sessions)
+  const masFrec        = getMostFrequent(sessions)
+
+  return (
+    <View style={styles.summaryGrid}>
+      {/* Row 1: dos cards de igual ancho */}
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>SESIONES</Text>
+          <Text style={styles.summaryNumber}>{totalSesiones}</Text>
+          <Text style={styles.summarySub}>Completadas</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>SEMANAS</Text>
+          <Text style={styles.summaryNumber}>{semanasActivas}</Text>
+          <Text style={styles.summarySub}>Activas</Text>
+        </View>
+      </View>
+
+      {/* Row 2: card full-width horizontal */}
+      <View style={[styles.summaryCard, styles.summaryCardWide]}>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Text style={styles.summaryLabel}>ENTRENAMIENTO MÁS FRECUENTE</Text>
+          <Text style={styles.summaryWideTitle} numberOfLines={1}>
+            {masFrec?.tipo ?? '—'}
+          </Text>
+        </View>
+        {masFrec && (
+          <View style={[styles.summaryBadge, { backgroundColor: `${colors.accent}20` }]}>
+            <Text style={[styles.summaryBadgeText, { color: colors.accent }]}>
+              {masFrec.count} veces
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  )
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HistorialScreen() {
   const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
+  const styles   = useMemo(() => makeStyles(colors), [colors])
+  const insets   = useSafeAreaInsets()
 
-  const [view, setView] = useState<'lista' | 'calendario'>('lista')
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [loading, setLoading] = useState(true)
+  // ── View & data ────────────────────────────────────────────────────────────
+  const [view,       setView]       = useState<'lista' | 'calendario'>('lista')
+  const [sessions,   setSessions]   = useState<Session[]>([])
+  const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
 
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  // ── Search & filters ───────────────────────────────────────────────────────
+  const [searchOpen,  setSearchOpen]  = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [tipoFilter,  setTipoFilter]  = useState<FilterTipo>('Todo')
+
+  // ── Modals ─────────────────────────────────────────────────────────────────
+  const [selectedSession,    setSelectedSession]    = useState<Session | null>(null)
   const [sessionModalVisible, setSessionModalVisible] = useState(false)
-
-  const [daySessions, setDaySessions] = useState<Session[]>([])
-  const [dayModalVisible, setDayModalVisible] = useState(false)
+  const [daySessions,        setDaySessions]        = useState<Session[]>([])
+  const [dayModalVisible,    setDayModalVisible]    = useState(false)
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -875,9 +1199,65 @@ export default function HistorialScreen() {
     setRefreshing(false)
   }, [fetchSessions])
 
-  useEffect(() => {
-    fetchSessions()
-  }, [fetchSessions])
+  useEffect(() => { fetchSessions() }, [fetchSessions])
+
+  const filteredSessions = useMemo(() => {
+    let result = sessions
+
+    if (tipoFilter !== 'Todo') {
+      result = result.filter(s => matchesTipo(s, tipoFilter))
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(s => {
+        const titulo   = (s.respuesta_ia?.titulo          ?? '').toLowerCase()
+        const objetivo = (s.respuesta_ia?.objetivo_sesion ?? '').toLowerCase()
+        const tipo     = inferTipoSesion(s.respuesta_ia).toLowerCase()
+        const ejercs   = s.respuesta_ia?.fases?.flatMap(f => f.ejercicios.map(e => e.nombre.toLowerCase())) ?? []
+        return titulo.includes(q) || objetivo.includes(q) || tipo.includes(q) || ejercs.some(n => n.includes(q))
+      })
+    }
+
+    return result
+  }, [sessions, searchQuery, tipoFilter])
+
+  const hasFilters = searchQuery.trim().length > 0 || tipoFilter !== 'Todo'
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  const allWeeks = useMemo(() => groupByWeek(filteredSessions), [filteredSessions])
+  const [visibleWeekCount, setVisibleWeekCount] = useState(3)
+  const [isLoadingMore,    setIsLoadingMore]    = useState(false)
+
+  // Reset visible range whenever filters change
+  useEffect(() => { setVisibleWeekCount(3) }, [filteredSessions])
+
+  const visibleWeeks = useMemo(() => allWeeks.slice(0, visibleWeekCount), [allWeeks, visibleWeekCount])
+  const hasMore      = visibleWeekCount < allWeeks.length
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || isLoadingMore) return
+    setIsLoadingMore(true)
+    setTimeout(() => {
+      setVisibleWeekCount(prev => Math.min(prev + 3, allWeeks.length))
+      setIsLoadingMore(false)
+    }, 400)
+  }, [hasMore, isLoadingMore, allWeeks.length])
+
+  function handleScroll({ nativeEvent }: any) {
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250) {
+      loadMore()
+    }
+  }
+
+  function toggleSearch() {
+    if (searchOpen) {
+      setSearchQuery('')
+      setTipoFilter('Todo')
+    }
+    setSearchOpen(v => !v)
+  }
 
   function openSession(s: Session) {
     setSelectedSession(s)
@@ -885,25 +1265,21 @@ export default function HistorialScreen() {
   }
 
   function openDay(ds: Session[]) {
-    if (ds.length === 1) {
-      openSession(ds[0])
-    } else {
-      setDaySessions(ds)
-      setDayModalVisible(true)
-    }
+    if (ds.length === 1) openSession(ds[0])
+    else { setDaySessions(ds); setDayModalVisible(true) }
   }
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={[colors.gradientTop, 'transparent']}
-        style={styles.gradient}
-      />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={300}
+        onScroll={handleScroll}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -913,35 +1289,92 @@ export default function HistorialScreen() {
           />
         }
       >
-        {/* Page title */}
-        <Text style={styles.pageTitle}>Historial</Text>
-
-        {/* Toggle */}
-        <View style={styles.toggleRow}>
+        {/* ── Header ── */}
+        <Text style={styles.sectionLabel}>HISTORIAL</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
+            {loading ? '...' : `${sessions.length} sesiones.`}
+          </Text>
           <TouchableOpacity
-            style={[styles.toggleBtn, view === 'lista' && styles.toggleBtnActive]}
-            onPress={() => setView('lista')}
-            activeOpacity={0.8}
+            onPress={toggleSearch}
+            activeOpacity={0.7}
+            style={[styles.searchBtn, { borderColor: searchOpen ? colors.accent : colors.borderBright }]}
           >
-            <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>
-              Lista
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, view === 'calendario' && styles.toggleBtnActive]}
-            onPress={() => setView('calendario')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>
-              Calendario
+            <Text style={[styles.searchBtnIcon, { color: searchOpen ? colors.accent : colors.inkMuted }]}>
+              {searchOpen ? '✕' : '⌕'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Content */}
+        {/* ── Search block ── */}
+        {searchOpen && (
+          <View style={styles.searchBlock}>
+            <TextInput
+              style={[styles.searchInput, { color: colors.inkPrimary, borderColor: colors.borderBright }]}
+              placeholder="Buscar ejercicio o tipo de sesión..."
+              placeholderTextColor={colors.inkMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
+            >
+              {FILTER_TIPOS.map(tipo => {
+                const active = tipoFilter === tipo
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    onPress={() => setTipoFilter(tipo)}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.filterPill,
+                      active && { backgroundColor: colors.accent, borderColor: colors.accent },
+                    ]}
+                  >
+                    <Text style={[styles.filterPillText, { color: active ? '#fff' : colors.inkMuted }]}>
+                      {tipo}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Summary ── */}
+        {!loading && !error && sessions.length > 0 && (
+          <SummaryBlock sessions={sessions} styles={styles} colors={colors} />
+        )}
+
+        {/* ── View toggle ── */}
+        {!loading && !error && (
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, view === 'lista' && styles.toggleBtnActive]}
+              onPress={() => setView('lista')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>Lista</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, view === 'calendario' && styles.toggleBtnActive]}
+              onPress={() => setView('calendario')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>Calendario</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Content ── */}
         {loading ? (
           <View style={styles.loadingBox}>
-            <Text style={styles.loadingText}>Cargando historial...</Text>
+            <Text style={styles.loadingText}>Cargando historial…</Text>
           </View>
         ) : error ? (
           <View style={styles.errorBox}>
@@ -951,22 +1384,25 @@ export default function HistorialScreen() {
             </TouchableOpacity>
           </View>
         ) : view === 'lista' ? (
-          <ListView sessions={sessions} onSelectSession={openSession} />
+          <ListView
+            weeks={visibleWeeks}
+            hasFilters={hasFilters}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onSelectSession={openSession}
+          />
         ) : (
-          <CalendarView sessions={sessions} onSelectDay={openDay} />
+          <CalendarView sessions={filteredSessions} onSelectDay={openDay} />
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Session detail modal */}
       <SessionModal
         session={selectedSession}
         visible={sessionModalVisible}
         onClose={() => setSessionModalVisible(false)}
       />
-
-      {/* Day sessions modal (multiple sessions on same day) */}
       <DayModal
         daySessions={daySessions}
         visible={dayModalVisible}
@@ -999,12 +1435,129 @@ function makeStyles(c: Colors) {
       paddingTop: 60,
       paddingHorizontal: 20,
     },
+    sectionLabel: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 12,
+    },
     pageTitle: {
+      flex: 1,
       color: c.inkPrimary,
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 26,
+      fontSize: 28,
       letterSpacing: -0.8,
+    },
+    searchBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.cardBg,
+    },
+    searchBtnIcon: {
+      fontSize: 18,
+      lineHeight: 20,
+    },
+    searchBlock: {
+      marginBottom: 14,
+      gap: 10,
+    },
+    searchInput: {
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 14,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingVertical: 2,
+    },
+    filterPill: {
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      backgroundColor: c.cardBg,
+    },
+    filterPillText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      letterSpacing: 0.4,
+    },
+    summaryGrid: {
+      gap: 10,
       marginBottom: 20,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    summaryCard: {
+      flex: 1,
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 16,
+      padding: 16,
+      gap: 3,
+    },
+    summaryCardWide: {
+      flex: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    summaryLabel: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+    summaryNumber: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 28,
+      letterSpacing: -0.8,
+      lineHeight: 32,
+    },
+    summarySub: {
+      color: c.inkMuted,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 11,
+    },
+    summaryWideTitle: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 15,
+      letterSpacing: -0.3,
+      flex: 1,
+    },
+    summaryBadge: {
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    summaryBadgeText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 10,
+      letterSpacing: 0.3,
     },
     toggleRow: {
       flexDirection: 'row',
@@ -1073,6 +1626,11 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       gap: 8,
     },
+    emptyFilterIcon: {
+      color: c.inkFaint,
+      fontSize: 36,
+      marginBottom: 4,
+    },
     emptyText: {
       color: c.inkSecondary,
       fontFamily: 'SpaceGrotesk-SemiBold',
@@ -1085,17 +1643,213 @@ function makeStyles(c: Colors) {
       fontSize: 13,
       textAlign: 'center',
     },
-    monthGroup: {
+    weekGroup: {
       marginBottom: 24,
     },
-    monthLabel: {
+    weekLabel: {
       color: c.inkMuted,
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
+      fontSize: 9,
       letterSpacing: 0.8,
       textTransform: 'uppercase',
       marginBottom: 10,
     },
+    // ── Session Card 2 (accordion) ──────────────────────────────────────────
+    sessionCard2: {
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 8,
+    },
+    cardRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    typeIconBox: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    typeIconText: {
+      fontSize: 22,
+      lineHeight: 26,
+    },
+    cardCenter: {
+      flex: 1,
+      gap: 4,
+      minWidth: 0,
+    },
+    cardTitle: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 14,
+      letterSpacing: -0.2,
+    },
+    cardMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      flexWrap: 'wrap',
+    },
+    cardMetaDate: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      letterSpacing: 0.2,
+    },
+    metaDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: c.inkFaint,
+    },
+    cardMetaDur: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+    },
+    dolorTag: {
+      backgroundColor: 'rgba(255,170,50,0.15)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,170,50,0.3)',
+      borderRadius: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+    },
+    dolorTagText: {
+      color: '#ffaa32',
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      letterSpacing: 0.2,
+    },
+    cardRight: {
+      alignItems: 'center',
+      gap: 5,
+      flexShrink: 0,
+    },
+    rpeBadge: {
+      borderWidth: 1,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      alignItems: 'center',
+      minWidth: 42,
+    },
+    rpeBadgeVal: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 15,
+      letterSpacing: -0.3,
+    },
+    rpeBadgeLabel: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 7,
+      letterSpacing: 0.4,
+    },
+    rpeBadgeSpacer: {
+      height: 36,
+    },
+    estadoRow: {
+      flexDirection: 'row',
+      gap: 3,
+    },
+    estadoIcon: {
+      fontSize: 12,
+      lineHeight: 14,
+    },
+    chevron: {
+      color: c.inkMuted,
+      fontSize: 16,
+      lineHeight: 18,
+    },
+    expandDivider: {
+      height: 1,
+      backgroundColor: c.borderDefault,
+      marginTop: 12,
+      marginBottom: 12,
+    },
+    expandContent: {
+      gap: 14,
+    },
+    ejSectionLabel: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      letterSpacing: 1.0,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+    },
+    ejRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 7,
+      gap: 8,
+    },
+    ejName: {
+      flex: 1,
+      color: c.inkSecondary,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 13,
+    },
+    ejMeta: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      letterSpacing: 0.2,
+      textAlign: 'right',
+      flexShrink: 0,
+    },
+    ejDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderDefault,
+    },
+    noteBlock: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 12,
+      padding: 12,
+    },
+    noteIcon: {
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    noteText: {
+      flex: 1,
+      color: c.inkSecondary,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 13,
+      lineHeight: 19,
+      fontStyle: 'italic',
+    },
+    listFooter: {
+      paddingVertical: 24,
+      alignItems: 'center',
+    },
+    listFooterLoading: {
+      color: c.inkFaint,
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 18,
+      letterSpacing: 4,
+    },
+    listFooterEnd: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      letterSpacing: 0.3,
+      textAlign: 'center',
+    },
+    // ── Legacy card (used by DayModal) ──────────────────────────────────────
     sessionCard: {
       backgroundColor: c.cardBg,
       borderWidth: 1,
