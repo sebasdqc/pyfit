@@ -436,7 +436,7 @@ export default function EjecutarScreen() {
   if (loading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <Text style={styles.loadingText}>Cargando sesión...</Text>
       </View>
     )
@@ -445,7 +445,7 @@ export default function EjecutarScreen() {
   if (error) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <Text style={styles.errorTitle}>Error</Text>
         <Text style={styles.errorMsg}>{error}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -459,7 +459,7 @@ export default function EjecutarScreen() {
   if (completed) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <Text style={styles.completionEmoji}>🎉</Text>
         <Text style={styles.completionTitle}>¡Sesión completada!</Text>
         <Text style={styles.completionSubtitle}>
@@ -479,7 +479,7 @@ export default function EjecutarScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       {/* Progress bar */}
       <ProgressBar current={currentIndex} total={flatList.length} />

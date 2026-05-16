@@ -708,7 +708,7 @@ export default function EstadisticasScreen() {
   if (initialLoading) {
     return (
       <View style={styles.root}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <View style={styles.centerWrap}>
           <ActivityIndicator color={colors.accent} size="large" />
         </View>
@@ -719,7 +719,7 @@ export default function EstadisticasScreen() {
   if (error) {
     return (
       <View style={styles.root}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <View style={styles.centerWrap}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
@@ -748,7 +748,7 @@ export default function EstadisticasScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       <ScrollView
         style={styles.scroll}

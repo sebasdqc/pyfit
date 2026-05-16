@@ -47,7 +47,7 @@ function IconProfile({ color }: { color: string }) {
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const { colors, isDark } = useTheme()
+  const { colors, isDark, palette } = useTheme()
 
   const bottomPad = insets.bottom > 0 ? insets.bottom + 4 : 12
 
@@ -62,7 +62,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       {
         width,
         paddingBottom: bottomPad,
-        backgroundColor: isDark ? 'rgba(0,0,0,0.97)' : 'rgba(242,244,249,0.97)',
+        backgroundColor: palette === 'light' ? 'rgba(242,244,249,0.97)' : palette === 'rosado' ? 'rgba(13,0,9,0.97)' : 'rgba(0,0,0,0.97)',
         borderTopColor: colors.borderDefault,
       },
     ]}>

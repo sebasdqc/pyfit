@@ -1794,7 +1794,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       {/* Safe-area spacer + progress bar */}
       <View style={{ paddingTop: insets.top }}>

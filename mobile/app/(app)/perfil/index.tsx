@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Linking } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Linking, Modal, Pressable } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
-import { useTheme } from '../../../lib/theme'
+import { useTheme, Palette } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
 import { logout } from '../../../lib/auth'
 
@@ -141,7 +141,8 @@ const DEFAULT: Profile = {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function PerfilScreen() {
-  const { colors, isDark, toggleTheme } = useTheme()
+  const { colors, palette, setPalette } = useTheme()
+  const [showPalettePicker, setShowPalettePicker] = useState(false)
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -205,9 +206,16 @@ export default function PerfilScreen() {
   const badgeCiclo = profile.usa_ciclo_menstrual ? 'Activo' : 'Configurar'
   const subPreferencias = profile.estilo_entrenamiento ? capitalizeFirst(profile.estilo_entrenamiento) : undefined
 
+  const PALETTE_OPTIONS: { id: Palette; label: string; icon: string }[] = [
+    { id: 'dark',   label: 'Dark mode', icon: '🌙' },
+    { id: 'light',  label: 'Light mode', icon: '☀️' },
+    { id: 'rosado', label: 'Rosado',    icon: '🌸' },
+  ]
+  const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
+
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       <ScrollView
         style={styles.scroll}
@@ -215,27 +223,22 @@ export default function PerfilScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── HEADER ── */}
-        <View style={{ position: 'relative' }}>
-          <View style={styles.header}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
-            <Text style={styles.nombre}>{loading ? '...' : (profile.nombre || 'Usuario')}</Text>
-            <View style={styles.nivelPill}>
-              <Text style={styles.nivelPillText}>{nivel}</Text>
-              {!statsLoading && (profileStats?.semanas_activas ?? 0) > 0 && (
-                <>
-                  <View style={styles.nivelPillSep} />
-                  <Text style={styles.nivelPillText}>
-                    {profileStats!.semanas_activas} semanas activas
-                  </Text>
-                </>
-              )}
-            </View>
+        <View style={styles.header}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={styles.themeToggle}>
-            <Text style={{ fontSize: 18 }}>{isDark ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
+          <Text style={styles.nombre}>{loading ? '...' : (profile.nombre || 'Usuario')}</Text>
+          <View style={styles.nivelPill}>
+            <Text style={styles.nivelPillText}>{nivel}</Text>
+            {!statsLoading && (profileStats?.semanas_activas ?? 0) > 0 && (
+              <>
+                <View style={styles.nivelPillSep} />
+                <Text style={styles.nivelPillText}>
+                  {profileStats!.semanas_activas} semanas activas
+                </Text>
+              </>
+            )}
+          </View>
         </View>
 
         {/* ── MÉTRICAS ── */}
@@ -341,6 +344,48 @@ export default function PerfilScreen() {
         <Text style={styles.version}>Zyfit · v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Dismiss overlay — before button wrap so dropdown stays on top */}
+      {showPalettePicker && (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => setShowPalettePicker(false)}
+        />
+      )}
+
+      {/* ── THEME BUTTON — outside ScrollView so dropdown renders on top ── */}
+      <View style={[styles.themeButtonWrap, { top: insets.top + 28 }]}>
+        <TouchableOpacity
+          onPress={() => setShowPalettePicker(v => !v)}
+          activeOpacity={0.7}
+          style={styles.themeToggle}
+        >
+          <Text style={{ fontSize: 18 }}>{currentIcon}</Text>
+        </TouchableOpacity>
+
+        {showPalettePicker && (
+          <View style={[styles.paletteDropdown, { backgroundColor: colors.sheetBg, borderColor: colors.borderBright }]}>
+            {PALETTE_OPTIONS.map((opt, i) => (
+              <React.Fragment key={opt.id}>
+                {i > 0 && <View style={[styles.dropdownDivider, { backgroundColor: colors.borderDefault }]} />}
+                <TouchableOpacity
+                  onPress={() => { setPalette(opt.id); setShowPalettePicker(false) }}
+                  activeOpacity={0.7}
+                  style={styles.dropdownRow}
+                >
+                  <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
+                  <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
+                    {opt.label}
+                  </Text>
+                  {palette === opt.id && (
+                    <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   )
 }
@@ -375,12 +420,30 @@ function makeStyles(c: Colors) {
       fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
     },
     nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(79,140,255,0.5)' },
+    themeButtonWrap: {
+      position: 'absolute', right: 20,
+      alignItems: 'flex-end', zIndex: 100,
+    },
     themeToggle: {
-      position: 'absolute', top: 0, right: 0,
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       alignItems: 'center', justifyContent: 'center',
     },
+    paletteDropdown: {
+      marginTop: 6, borderRadius: 14, borderWidth: 1,
+      overflow: 'hidden', minWidth: 160,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
+    },
+    dropdownRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 14, paddingVertical: 11,
+    },
+    dropdownLabel: {
+      flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
+    },
+    dropdownCheck: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 },
+    dropdownDivider: { height: 1 },
 
     // Metrics grid
     metricsGrid: { flexDirection: 'row', gap: 12, marginBottom: 28 },

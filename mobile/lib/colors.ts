@@ -17,6 +17,7 @@ export const DARK_COLORS = {
   borderBright: 'rgba(255,255,255,0.15)',
   cardBg: 'rgba(255,255,255,0.05)',
   glassBg: 'rgba(255,255,255,0.07)',
+  gradientTop: 'rgba(37,99,255,0.25)',
 }
 
 export const LIGHT_COLORS = {
@@ -38,10 +39,32 @@ export const LIGHT_COLORS = {
   borderBright: 'rgba(13,17,23,0.16)',
   cardBg: 'rgba(13,17,23,0.05)',
   glassBg: 'rgba(13,17,23,0.04)',
+  gradientTop: 'rgba(37,99,255,0.18)',
+}
+
+export const PINK_COLORS = {
+  bg: '#0d0009',
+  sheetBg: '#180011',
+  white: '#ffffff',
+  accent: '#f472b6',
+  accentLight: '#f9a8d4',
+  accentDark: '#ec4899',
+  cyan: '#e879f9',
+  green: '#34d399',
+  orange: '#fb923c',
+  red: '#f87171',
+  inkPrimary: '#fdf2f8',
+  inkSecondary: 'rgba(253,242,248,0.62)',
+  inkMuted: 'rgba(253,242,248,0.38)',
+  inkFaint: 'rgba(253,242,248,0.16)',
+  borderDefault: 'rgba(244,114,182,0.13)',
+  borderBright: 'rgba(244,114,182,0.26)',
+  cardBg: 'rgba(244,114,182,0.07)',
+  glassBg: 'rgba(244,114,182,0.09)',
+  gradientTop: 'rgba(236,72,153,0.22)',
 }
 
 // Keep COLORS alias pointing to dark for backward compatibility
-// with any static references still in the codebase
 export const COLORS = DARK_COLORS
 
 export type Colors = typeof DARK_COLORS

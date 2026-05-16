@@ -145,7 +145,7 @@ export default function FeedbackScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={['rgba(37,99,255,0.25)', 'transparent']}
+        colors={[colors.gradientTop, 'transparent']}
         style={styles.gradient}
       />
 

@@ -12,7 +12,7 @@ export default function OnboardingIntroScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['rgba(37,99,255,0.30)', 'transparent']}
+        colors={[colors.gradientTop, 'transparent']}
         style={styles.gradient}
       />
 

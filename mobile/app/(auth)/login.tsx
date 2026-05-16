@@ -135,7 +135,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['rgba(37,99,255,0.25)', 'transparent']}
+        colors={[colors.gradientTop, 'transparent']}
         style={styles.gradient}
       />
 

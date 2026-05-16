@@ -571,7 +571,7 @@ export default function CheckinScreen() {
   if (initializing) {
     return (
       <View style={[styles.root, styles.centered]}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <ActivityIndicator color={colors.accent} size="large" />
       </View>
     )
@@ -583,7 +583,7 @@ export default function CheckinScreen() {
   if (currentScreen === 'd5_procesando') {
     return (
       <View style={[styles.root, styles.centered]}>
-        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         {renderD5()}
       </View>
     )
@@ -592,7 +592,7 @@ export default function CheckinScreen() {
   if (currentScreen === 'd6_resumen') {
     return (
       <View style={styles.root}>
-        <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}>
@@ -604,7 +604,7 @@ export default function CheckinScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       {/* Progress bar + header (D1–D4 only) */}
       <View style={{ paddingTop: insets.top }}>

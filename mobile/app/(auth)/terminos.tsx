@@ -47,7 +47,7 @@ export default function TerminosScreen() {
   return (
     <View style={s.root}>
       <LinearGradient
-        colors={['rgba(37,99,255,0.2)', 'transparent']}
+        colors={[colors.gradientTop, 'transparent']}
         style={s.gradient}
       />
 

@@ -103,7 +103,7 @@ export default function EntrenamientoScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <LinearGradient colors={['rgba(37,99,255,0.15)', 'transparent']}
+      <LinearGradient colors={[colors.gradientTop, 'transparent']}
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
