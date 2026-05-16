@@ -601,7 +601,7 @@ export default function OnboardingScreen() {
         usa_ciclo_menstrual: data.usaCicloMenstrual,
         dias_semana: data.frecuenciaHistorica ?? 3,
         experiencia_deportiva: data.deportes.join(', '),
-        calidad_sueno_habitual: data.calidadSueno,
+        calidad_sueno_habitual: data.calidadSueno ?? '',
         lesiones: data.lesiones.map(l => {
           const label = ZONE_LABELS[l.zona] ?? l.zona
           const parts: string[] = [label, l.estado]
@@ -619,11 +619,11 @@ export default function OnboardingScreen() {
         duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
         objetivos_multiples: data.objetivos,
         objetivo: data.objetivos[0] ?? '',
-        objetivo_secundario: data.objetivoSecundario,
-        horizonte_temporal: data.horizonteTemporal,
+        objetivo_secundario: data.objetivoSecundario ?? '',
+        horizonte_temporal: data.horizonteTemporal ?? '',
         motivacion: data.motivacion.trim(),
         razones_abandono: data.razonesAbandono,
-        estilo_coaching: data.estiloCoaching,
+        estilo_coaching: data.estiloCoaching ?? '',
         tipos_entrenamiento: data.tiposEntrenamiento,
       })
       setSaveComplete(true)
