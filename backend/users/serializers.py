@@ -53,5 +53,10 @@ class ProfileSerializer(serializers.ModelSerializer):
             'rm_sentadilla', 'rm_peso_muerto', 'rm_press_banca', 'rm_press_hombro',
             'usa_ciclo_menstrual', 'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',
             'created_at', 'locations',
+            # Onboarding extended fields
+            'calidad_sueno_habitual', 'condiciones_medicas', 'notas_medicas', 'motivo_limitacion',
+            'lugares_entrenamiento', 'implementos_perfil', 'duracion_disponible', 'duracion_minima',
+            'objetivo_secundario', 'horizonte_temporal', 'motivacion',
+            'razones_abandono', 'estilo_coaching', 'tipos_entrenamiento',
         ]
         read_only_fields = ['id', 'email', 'edad', 'nivel_label', 'racha_actual', 'mejor_racha', 'puntos_totales', 'logros', 'created_at', 'locations']

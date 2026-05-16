@@ -133,6 +133,33 @@ class SessionFeedback(models.Model):
         db_table = 'session_feedback'
 
 
+class DailyCoachInsight(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_insights')
+    fecha = models.DateField()
+    texto = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'daily_coach_insights'
+        unique_together = [['user', 'fecha']]
+
+    def __str__(self):
+        return f'{self.user} - {self.fecha}'
+
+
+class TrainingDNA(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='training_dna')
+    texto = models.TextField()
+    total_sesiones_at_generation = models.IntegerField(default=0)
+    generated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'training_dna'
+
+    def __str__(self):
+        return f'TrainingDNA — {self.user}'
+
+
 class Competition(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='competitions')
     nombre = models.CharField(max_length=200)

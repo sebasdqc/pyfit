@@ -20,7 +20,7 @@ class Profile(models.Model):
     SEXO_CHOICES = [('masculino', 'Masculino'), ('femenino', 'Femenino'), ('otro', 'Otro')]
     ESTRES_CHOICES = [('bajo', 'Bajo'), ('moderado', 'Moderado'), ('alto', 'Alto')]
     TRABAJO_CHOICES = [('sedentario', 'Sedentario'), ('mixto', 'Mixto'), ('activo', 'Activo')]
-    HORARIO_CHOICES = [('mañana', 'Mañana'), ('tarde', 'Tarde'), ('noche', 'Noche')]
+    HORARIO_CHOICES = [('mañana', 'Mañana'), ('mediodia', 'Mediodía'), ('tarde', 'Tarde'), ('noche', 'Noche')]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     nombre = models.CharField(max_length=100)
@@ -35,7 +35,7 @@ class Profile(models.Model):
     altura = models.IntegerField(null=True, blank=True)
     sexo = models.CharField(max_length=20, choices=SEXO_CHOICES, blank=True)
     dias_semana = models.IntegerField(default=3)
-    horario_preferido = models.CharField(max_length=20, choices=HORARIO_CHOICES, blank=True)
+    horario_preferido = models.CharField(max_length=40, blank=True)
     nivel_estres = models.CharField(max_length=20, choices=ESTRES_CHOICES, blank=True)
     tipo_trabajo = models.CharField(max_length=20, choices=TRABAJO_CHOICES, blank=True)
     ejercicios_favoritos = models.TextField(blank=True)
@@ -45,6 +45,22 @@ class Profile(models.Model):
     rm_press_banca = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
     rm_press_hombro = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
     usa_ciclo_menstrual = models.BooleanField(default=False)
+
+    # Onboarding extended fields
+    calidad_sueno_habitual = models.CharField(max_length=30, blank=True)
+    condiciones_medicas = models.JSONField(default=list, blank=True)
+    notas_medicas = models.TextField(blank=True)
+    motivo_limitacion = models.TextField(blank=True)
+    lugares_entrenamiento = models.JSONField(default=list, blank=True)
+    implementos_perfil = models.JSONField(default=list, blank=True)
+    duracion_disponible = models.IntegerField(null=True, blank=True)
+    duracion_minima = models.IntegerField(null=True, blank=True)
+    objetivo_secundario = models.CharField(max_length=200, blank=True)
+    horizonte_temporal = models.CharField(max_length=50, blank=True)
+    motivacion = models.TextField(blank=True)
+    razones_abandono = models.JSONField(default=list, blank=True)
+    estilo_coaching = models.CharField(max_length=20, blank=True)
+    tipos_entrenamiento = models.JSONField(default=list, blank=True)
     racha_actual = models.IntegerField(default=0)
     mejor_racha = models.IntegerField(default=0)
     puntos_totales = models.IntegerField(default=0)
