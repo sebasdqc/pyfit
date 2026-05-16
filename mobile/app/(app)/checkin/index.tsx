@@ -1,430 +1,659 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TouchableOpacity, ScrollView,
+  StyleSheet, ActivityIndicator,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
+import Svg, { Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
-import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { Colors } from '../../../lib/colors'
 import { apiGet, apiPost } from '../../../lib/api'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types + Constants ────────────────────────────────────────────────────────
 
-interface Location {
-  id: number
-  nombre: string
-  tipo: string
-  implementos: string[]
+const ESTADO_FISICO_OPTS = [
+  { id: 'fresco'   as const, label: 'Fresco, listo para todo',             color: '#32c896', bg: 'rgba(50,200,150,0.1)',  border: 'rgba(50,200,150,0.45)'  },
+  { id: 'bien'     as const, label: 'Bien, con algo de cansancio normal',   color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)'  },
+  { id: 'pesado'   as const, label: 'Pesado, dormí mal o vengo de mucho',   color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.45)'  },
+  { id: 'molestia' as const, label: 'Algo me molesta físicamente',          color: '#ff6b6b', bg: 'rgba(255,68,68,0.1)',  border: 'rgba(255,107,107,0.45)' },
+]
+type EstadoFisico = typeof ESTADO_FISICO_OPTS[number]['id']
+
+const ESTADO_MENTAL_OPTS = [
+  { id: 'enfocado'  as const, label: 'Enfocado y con energía',              color: '#32c896', bg: 'rgba(50,200,150,0.1)',  border: 'rgba(50,200,150,0.45)'  },
+  { id: 'normal'    as const, label: 'Normal, día corriente',               color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)'  },
+  { id: 'distraido' as const, label: 'Distraído o con cosas encima',        color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.45)'  },
+  { id: 'agotado'   as const, label: 'Agotado mentalmente',                 color: '#ff6b6b', bg: 'rgba(255,68,68,0.1)',  border: 'rgba(255,107,107,0.45)' },
+]
+type EstadoMental = typeof ESTADO_MENTAL_OPTS[number]['id']
+
+const MENTAL_TO_ANIMO: Record<EstadoMental, number> = {
+  enfocado: 5, normal: 3, distraido: 2, agotado: 1,
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const FOCOS: string[] = [
-  'Pecho',
-  'Espalda',
-  'Piernas',
-  'Hombros',
-  'Brazos',
-  'Core',
-  'Full body',
-  'Cardio',
-  'Movilidad',
+const TIEMPO_OPTS = [
+  { id: 'menos20'  as const, label: 'Menos de 20 min', minutos: 15,  color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',  border: 'rgba(255,170,50,0.45)'  },
+  { id: 'treinta'  as const, label: '30–40 min',        minutos: 35,  color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)'  },
+  { id: 'cuarenta' as const, label: '45–60 min',        minutos: 52,  color: '#32c896', bg: 'rgba(50,200,150,0.1)',  border: 'rgba(50,200,150,0.45)'  },
+  { id: 'hora'     as const, label: 'Más de una hora',  minutos: 75,  color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)', border: 'rgba(108,229,255,0.45)' },
 ]
+type TiempoDispo = typeof TIEMPO_OPTS[number]['id']
 
-const ANIMO_EMOJIS = ['😞', '😕', '😐', '🙂', '😄']
-
-const ZONAS_DOLOR = ['Rodilla', 'Lumbar', 'Hombro', 'Cuello', 'Cadera', 'Tobillo', 'Muñeca', 'Codo']
-
-const MONTH_SHORT = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'jul', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+const INTENCION_OPTS = [
+  { id: 'descargar' as const, label: 'Descargar energía',        color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',   border: 'rgba(255,170,50,0.45)'   },
+  { id: 'moverme'   as const, label: 'Moverme aunque sea poco',  color: '#32c896', bg: 'rgba(50,200,150,0.1)',   border: 'rgba(50,200,150,0.45)'   },
+  { id: 'serio'     as const, label: 'Entrenar en serio',        color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',   border: 'rgba(79,140,255,0.45)'   },
+  { id: 'recuperar' as const, label: 'Recuperarme activamente',  color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)',  border: 'rgba(108,229,255,0.45)'  },
 ]
+type TipoIntencion = typeof INTENCION_OPTS[number]['id']
 
-const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const INTENCION_NOTAS: Record<TipoIntencion, string> = {
+  descargar: 'Alta intensidad para soltar tensión acumulada',
+  moverme:   'Movimiento consciente — aparecer ya es ganar',
+  serio:     'Progresión de carga y trabajo estructurado',
+  recuperar: 'Cardio suave y movilidad para regenerar',
+}
+
+const ZONE_LABELS: Record<string, string> = {
+  cabeza:      'Cabeza / Cuello',
+  hombro_izq:  'Hombro izq.',
+  hombro_der:  'Hombro der.',
+  brazo_izq:   'Codo / Brazo izq.',
+  brazo_der:   'Codo / Brazo der.',
+  muneca_izq:  'Muñeca izq.',
+  muneca_der:  'Muñeca der.',
+  pecho:       'Pecho',
+  abdomen:     'Abdomen',
+  lumbar:      'Lumbar',
+  cadera:      'Cadera',
+  muslo_izq:   'Muslo izq.',
+  muslo_der:   'Muslo der.',
+  rodilla_izq: 'Rodilla izq.',
+  rodilla_der: 'Rodilla der.',
+  tobillo_izq: 'Tobillo izq.',
+  tobillo_der: 'Tobillo der.',
+}
+
+const ZONE_DOTS: Record<string, [number, number]> = {
+  cabeza: [90, 26], hombro_izq: [55, 65], hombro_der: [125, 65],
+  brazo_izq: [48, 100], brazo_der: [132, 100],
+  muneca_izq: [48, 172], muneca_der: [132, 172],
+  pecho: [90, 84], abdomen: [90, 132], cadera: [90, 167],
+  muslo_izq: [73, 210], muslo_der: [107, 210],
+  rodilla_izq: [73, 243], rodilla_der: [107, 243],
+  tobillo_izq: [73, 278], tobillo_der: [107, 278],
+}
+
+const SCREENS = ['d1', 'd2', 'd3', 'd4', 'd5_procesando', 'd6_resumen'] as const
+const N_INTERACTIVE = 4
+
+interface Location { id: number; nombre: string; tipo: string }
+
+// ─── Body Map ─────────────────────────────────────────────────────────────────
+
+function CheckinBodyMap({
+  selectedZones,
+  onZonePress,
+}: {
+  selectedZones: string[]
+  onZonePress: (id: string) => void
+}) {
+  const SEL  = 'rgba(255,107,107,0.26)'
+  const SSEL = '#ff6b6b'
+  const DEF  = 'rgba(255,255,255,0.07)'
+  const SDEF = 'rgba(255,255,255,0.14)'
+
+  function f(id: string) { return selectedZones.includes(id) ? SEL  : DEF  }
+  function s(id: string) { return selectedZones.includes(id) ? SSEL : SDEF }
+  function p(id: string) { return () => onZonePress(id) }
+
+  return (
+    <Svg width={160} height={320} viewBox="0 0 180 360">
+      <Circle cx={90} cy={26} r={20} fill={f('cabeza')} stroke={s('cabeza')} strokeWidth={1.2} />
+      <Rect x={82} y={46} width={16} height={13} rx={4} fill={f('cabeza')} stroke={s('cabeza')} strokeWidth={1.2} />
+
+      <Ellipse cx={57}  cy={65} rx={17} ry={10} fill={f('hombro_izq')} stroke={s('hombro_izq')} strokeWidth={1.2} />
+      <Ellipse cx={123} cy={65} rx={17} ry={10} fill={f('hombro_der')} stroke={s('hombro_der')} strokeWidth={1.2} />
+
+      <Rect x={63} y={57}  width={54} height={54} rx={10} fill={f('pecho')}   stroke={s('pecho')}   strokeWidth={1.2} />
+      <Rect x={65} y={111} width={50} height={43} rx={8}  fill={f('abdomen')} stroke={s('abdomen')} strokeWidth={1.2} />
+      <Rect x={58} y={153} width={64} height={29} rx={10} fill={f('cadera')}  stroke={s('cadera')}  strokeWidth={1.2} />
+
+      <Rect   x={38}  y={60}  width={20} height={52} rx={10} fill={f('brazo_izq')}  stroke={s('brazo_izq')}  strokeWidth={1.2} />
+      <Circle cx={48} cy={117} r={9}                          fill={f('brazo_izq')}  stroke={s('brazo_izq')}  strokeWidth={1.2} />
+      <Rect   x={39}  y={125} width={18} height={36} rx={9}  fill={f('brazo_izq')}  stroke={s('brazo_izq')}  strokeWidth={1.2} />
+      <Rect   x={37}  y={162} width={22} height={20} rx={7}  fill={f('muneca_izq')} stroke={s('muneca_izq')} strokeWidth={1.2} />
+
+      <Rect   x={122} y={60}  width={20} height={52} rx={10} fill={f('brazo_der')}  stroke={s('brazo_der')}  strokeWidth={1.2} />
+      <Circle cx={132} cy={117} r={9}                         fill={f('brazo_der')}  stroke={s('brazo_der')}  strokeWidth={1.2} />
+      <Rect   x={123} y={125} width={18} height={36} rx={9}  fill={f('brazo_der')}  stroke={s('brazo_der')}  strokeWidth={1.2} />
+      <Rect   x={121} y={162} width={22} height={20} rx={7}  fill={f('muneca_der')} stroke={s('muneca_der')} strokeWidth={1.2} />
+
+      <Rect   x={60}  y={182} width={26} height={56} rx={9}  fill={f('muslo_izq')}   stroke={s('muslo_izq')}   strokeWidth={1.2} />
+      <Circle cx={73} cy={243} r={11}                         fill={f('rodilla_izq')} stroke={s('rodilla_izq')} strokeWidth={1.2} />
+      <Rect   x={62}  y={254} width={22} height={48} rx={9}  fill={f('tobillo_izq')} stroke={s('tobillo_izq')} strokeWidth={1.2} />
+      <Rect   x={58}  y={300} width={28} height={18} rx={7}  fill={f('tobillo_izq')} stroke={s('tobillo_izq')} strokeWidth={1.2} />
+
+      <Rect   x={94}  y={182} width={26} height={56} rx={9}  fill={f('muslo_der')}   stroke={s('muslo_der')}   strokeWidth={1.2} />
+      <Circle cx={107} cy={243} r={11}                        fill={f('rodilla_der')} stroke={s('rodilla_der')} strokeWidth={1.2} />
+      <Rect   x={96}  y={254} width={22} height={48} rx={9}  fill={f('tobillo_der')} stroke={s('tobillo_der')} strokeWidth={1.2} />
+      <Rect   x={94}  y={300} width={28} height={18} rx={7}  fill={f('tobillo_der')} stroke={s('tobillo_der')} strokeWidth={1.2} />
+
+      {Object.keys(ZONE_DOTS).filter(id => selectedZones.includes(id)).map(id => {
+        const [cx, cy] = ZONE_DOTS[id]
+        return <Circle key={id} cx={cx} cy={cy} r={5} fill={SSEL} opacity={0.9} />
+      })}
+
+      <Rect x={65}  y={57}  width={50} height={56} fill="transparent" onPress={p('pecho')} />
+      <Rect x={65}  y={111} width={50} height={44} fill="transparent" onPress={p('abdomen')} />
+      <Rect x={54}  y={153} width={72} height={30} fill="transparent" onPress={p('cadera')} />
+      <Rect x={56}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_izq')} />
+      <Rect x={88}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_der')} />
+      <Rect x={56}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_izq')} />
+      <Rect x={90}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_der')} />
+      <Rect x={54}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_izq')} />
+      <Rect x={92}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_der')} />
+      <Rect x={32}  y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_izq')} />
+      <Rect x={116} y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_der')} />
+      <Rect x={32}  y={158} width={32} height={28} fill="transparent" onPress={p('muneca_izq')} />
+      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={p('muneca_der')} />
+      <Rect x={32}  y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_izq')} />
+      <Rect x={112} y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_der')} />
+      <Rect x={64}  y={2}   width={52} height={66} fill="transparent" onPress={p('cabeza')} />
+    </Svg>
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTodayFull(): string {
+function formatDate(): string {
   const d = new Date()
-  return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} de ${MONTH_SHORT[d.getMonth()]} de ${d.getFullYear()}`
+  const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function SectionLabel({ text }: { text: string }) {
-  const { colors } = useTheme()
-  const styles = React.useMemo(() => makeStyles(colors), [colors])
-  return (
-    <Text style={styles.sectionLabel}>{text}</Text>
-  )
-}
-
-function StepperField({
-  value,
-  min,
-  max,
-  step,
-  unit,
-  onChangeValue,
-}: {
-  value: number
-  min: number
-  max: number
-  step: number
-  unit: string
-  onChangeValue: (v: number) => void
-}) {
-  const { colors } = useTheme()
-  const styles = React.useMemo(() => makeStyles(colors), [colors])
-  return (
-    <View style={styles.stepperRow}>
-      <TouchableOpacity
-        style={styles.stepperBtn}
-        onPress={() => onChangeValue(clamp(value - step, min, max))}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.stepperBtnText}>−</Text>
-      </TouchableOpacity>
-      <Text style={styles.stepperValue}>
-        {value}
-        <Text style={styles.stepperUnit}> {unit}</Text>
-      </Text>
-      <TouchableOpacity
-        style={styles.stepperBtn}
-        onPress={() => onChangeValue(clamp(value + step, min, max))}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.stepperBtnText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckinScreen() {
   const { colors } = useTheme()
-  const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const styles = useMemo(() => makeStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
 
-  // Check-in state
-  const [checkingExistente, setCheckingExistente] = useState(true)
-
-  // Locations
-  const [locations, setLocations] = useState<Location[]>([])
-  const [loadingLocations, setLoadingLocations] = useState(true)
-
-  // Form fields
-  const [focoSeleccionado, setFocoSeleccionado] = useState<string[]>([])
-  const [estadoAnimo, setEstadoAnimo] = useState<number>(3) // 1-5
-  const [calidadSueno, setCalidadSueno] = useState<number>(7)  // hours * 2 = allow .5 steps
-  const [hrv, setHrv] = useState<string>('')
+  // ── Init ──────────────────────────────────────────────────────────────────
+  const [initializing, setInitializing] = useState(true)
   const [locationId, setLocationId] = useState<number | null>(null)
-  const [duracion, setDuracion] = useState<number>(45)
-  const [dolorHoy, setDolorHoy] = useState<string[]>([])
-  const [notas, setNotas] = useState<string>('')
 
-  // Submit
-  const [submitting, setSubmitting] = useState(false)
-
-  // ── Load today's check-in and locations ──
   const loadData = useCallback(async () => {
     try {
       const [checkinRes, locsRes] = await Promise.allSettled([
         apiGet('/api/checkins/today/'),
         apiGet('/api/locations/'),
       ])
-
       if (checkinRes.status === 'fulfilled' && checkinRes.value?.id) {
         router.replace('/(app)/generate')
         return
       }
       if (locsRes.status === 'fulfilled') {
         const locs: Location[] = locsRes.value ?? []
-        setLocations(locs)
         if (locs.length > 0) setLocationId(locs[0].id)
       }
     } catch {
       // non-fatal
     } finally {
-      setCheckingExistente(false)
-      setLoadingLocations(false)
+      setInitializing(false)
     }
   }, [])
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  useEffect(() => { loadData() }, [loadData])
 
-  // ── Toggle foco ──
-  function toggleFoco(f: string) {
-    setFocoSeleccionado(prev =>
-      prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f],
-    )
+  // ── Form state ────────────────────────────────────────────────────────────
+  const [estadoFisico, setEstadoFisico] = useState<EstadoFisico | null>(null)
+  const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
+  const [estadoMental, setEstadoMental] = useState<EstadoMental | null>(null)
+  const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
+  const [intencion, setIntencion] = useState<TipoIntencion | null>(null)
+
+  // ── Nav state ─────────────────────────────────────────────────────────────
+  const [screenIndex, setScreenIndex] = useState(0)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [checkinSaved, setCheckinSaved] = useState(false)
+  const [procesandoTimer, setProcesandoTimer] = useState(false)
+
+  const currentScreen = SCREENS[screenIndex]
+  const isInteractive = screenIndex < N_INTERACTIVE
+  const isLastInteractive = screenIndex === N_INTERACTIVE - 1
+  const canContinue = isInteractive && !submitting && (
+    screenIndex === 0 ? !!estadoFisico :
+    screenIndex === 1 ? !!estadoMental :
+    screenIndex === 2 ? !!tiempoDispo :
+    !!intencion
+  )
+
+  function toggleZona(id: string) {
+    setZonasDolorHoy(prev => prev.includes(id) ? prev.filter(z => z !== id) : [...prev, id])
   }
 
-  // ── Submit ──
-  async function handleSubmit() {
-    if (focoSeleccionado.length === 0) {
-      Alert.alert('Foco requerido', 'Selecciona al menos un foco de entrenamiento.')
-      return
-    }
-    if (locationId === null) {
-      Alert.alert('Ubicación requerida', 'Selecciona una ubicación de entrenamiento.')
-      return
-    }
+  function validate(): string | null {
+    if (screenIndex === 0 && !estadoFisico) return 'Indica cómo está tu cuerpo hoy.'
+    if (screenIndex === 1 && !estadoMental) return 'Indica cómo está tu cabeza hoy.'
+    if (screenIndex === 2 && !tiempoDispo) return 'Indica cuánto tiempo tienes hoy.'
+    if (screenIndex === 3 && !intencion) return 'Indica qué necesitas de este entrenamiento.'
+    return null
+  }
 
+  function goNext() {
+    const err = validate()
+    if (err) { setError(err); return }
+    setError('')
+    setScreenIndex(i => i + 1)
+  }
+
+  async function handleSubmit() {
     setSubmitting(true)
     try {
+      const zonaLabels = zonasDolorHoy.map(z => ZONE_LABELS[z] ?? z)
+      const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
+      const intencionOpt = INTENCION_OPTS.find(o => o.id === intencion)
       await apiPost('/api/checkins/', {
-        foco_entrenamiento: focoSeleccionado,
-        estado_animo: estadoAnimo,
-        calidad_sueno: calidadSueno,
-        hrv: hrv.trim() !== '' ? parseInt(hrv, 10) : null,
+        foco_entrenamiento: intencion ? [intencion] : [],
+        estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
+        calidad_sueno: 7,
+        hrv: null,
         location: locationId,
-        duracion_disponible: duracion,
-        dolor_hoy: dolorHoy.length > 0 ? dolorHoy.map(z => z.toLowerCase()).join(', ') : null,
-        notas: notas.trim() || null,
+        duracion_disponible: tiempoOpt?.minutos ?? 45,
+        dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
+        notas: intencionOpt ? `Intención: ${intencionOpt.label}` : null,
       })
-      router.replace('/(app)/generate')
+      setCheckinSaved(true)
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar el check-in. Inténtalo de nuevo.')
+      setScreenIndex(3)
+      setError(e.message ?? 'No se pudo guardar. Inténtalo de nuevo.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // ── Loading state ──
-  if (checkingExistente) {
+  // ── D5 processing orchestration ───────────────────────────────────────────
+
+  useEffect(() => {
+    if (currentScreen !== 'd5_procesando') return
+    setCheckinSaved(false)
+    setProcesandoTimer(false)
+    handleSubmit()
+    const t = setTimeout(() => setProcesandoTimer(true), 2500)
+    return () => clearTimeout(t)
+  }, [currentScreen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (currentScreen !== 'd5_procesando') return
+    if (checkinSaved && procesandoTimer) setScreenIndex(i => i + 1)
+  }, [checkinSaved, procesandoTimer, currentScreen])
+
+  // ── Summary builders ─────────────────────────────────────────────────────
+
+  function buildSummaryText(): string {
+    const parts: string[] = []
+    const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
+    if (tiempoOpt) parts.push(`${tiempoOpt.minutos} min disponibles`)
+    const mentalLabels: Record<EstadoMental, string> = {
+      enfocado: 'energía y foco altos', normal: 'estado normal',
+      distraido: 'estrés moderado', agotado: 'agotamiento mental',
+    }
+    if (estadoMental) parts.push(mentalLabels[estadoMental])
+    if (zonasDolorHoy.length > 0) {
+      const labels = zonasDolorHoy.slice(0, 2).map(z => (ZONE_LABELS[z] ?? z).split('/')[0].trim().toLowerCase())
+      const extra = zonasDolorHoy.length > 2 ? ` (+${zonasDolorHoy.length - 2})` : ''
+      parts.push(`molestia en ${labels.join(' y ')}${extra}`)
+    }
+    return parts.join(' · ')
+  }
+
+  function buildPronosticoText(): string {
+    if (!intencion) return ''
+    const base: Record<TipoIntencion, string> = {
+      descargar: 'circuito de alta intensidad para liberar tensión',
+      moverme:   'activación suave con movilidad articular',
+      serio:     'fuerza progresiva con carga controlada',
+      recuperar: 'cardio de baja intensidad y movilidad',
+    }
+    let text = base[intencion]
+    if (zonasDolorHoy.length > 0) {
+      const labels = zonasDolorHoy.slice(0, 2).map(z =>
+        (ZONE_LABELS[z] ?? z).split('/')[0].trim().toLowerCase()
+      )
+      text += ` — sin carga directa en ${labels.join(' ni ')}`
+    }
+    if (tiempoDispo === 'menos20') text = 'sesión express: ' + text
+    else if (tiempoDispo === 'hora') text += ', con tiempo para trabajar cada detalle'
+    return text + '.'
+  }
+
+  // ── Dimension renders ─────────────────────────────────────────────────────
+
+  function renderD1() {
     return (
-      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <LinearGradient
-          colors={['rgba(37,99,255,0.25)', 'transparent']}
-          style={styles.gradient}
-        />
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 1 — ESTADO FÍSICO</Text>
+        <Text style={styles.question}>¿Cómo está{'\n'}tu cuerpo hoy?</Text>
+        <Text style={styles.questionSub}>La pregunta más honesta primero</Text>
+
+        <View style={styles.optionsWrap}>
+          {ESTADO_FISICO_OPTS.map(opt => {
+            const on = estadoFisico === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setEstadoFisico(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {estadoFisico === 'molestia' && (
+          <View style={styles.zonaSection}>
+            <View style={styles.zonaDivider} />
+            <Text style={styles.zonaEyebrow}>¿EN QUÉ ZONA?</Text>
+            <Text style={styles.zonaSub}>
+              Toca las zonas que te molestan. El sistema las tomará en cuenta al diseñar tu rutina.
+            </Text>
+            <View style={styles.bodyMapWrap}>
+              <CheckinBodyMap selectedZones={zonasDolorHoy} onZonePress={toggleZona} />
+              <TouchableOpacity
+                style={[styles.lumbarChip, zonasDolorHoy.includes('lumbar') && styles.lumbarChipOn]}
+                onPress={() => toggleZona('lumbar')} activeOpacity={0.8}>
+                <Text style={[styles.lumbarChipText, zonasDolorHoy.includes('lumbar') && styles.lumbarChipTextOn]}>
+                  + Lumbar / Espalda
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {zonasDolorHoy.length > 0 ? (
+              <View style={styles.selectedZonas}>
+                {zonasDolorHoy.map(z => (
+                  <TouchableOpacity key={z} style={styles.zonaChip} onPress={() => toggleZona(z)} activeOpacity={0.8}>
+                    <Text style={styles.zonaChipText}>{ZONE_LABELS[z] ?? z}</Text>
+                    <Text style={styles.zonaChipX}> ×</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.zonaHint}>Toca el mapa para indicar las zonas afectadas</Text>
+            )}
+          </View>
+        )}
+      </>
+    )
+  }
+
+  function renderD2() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 2 — ESTADO MENTAL</Text>
+        <Text style={styles.question}>¿Cómo está{'\n'}tu cabeza hoy?</Text>
+        <Text style={styles.questionSub}>La variable más subestimada en fitness</Text>
+
+        <View style={styles.optionsWrap}>
+          {ESTADO_MENTAL_OPTS.map(opt => {
+            const on = estadoMental === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setEstadoMental(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </>
+    )
+  }
+
+  function renderD3() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 3 — TIEMPO DISPONIBLE</Text>
+        <Text style={styles.question}>¿Cuánto tiempo{'\n'}tienes hoy?</Text>
+        <Text style={styles.questionSub}>La variable más práctica</Text>
+
+        <View style={styles.optionsWrap}>
+          {TIEMPO_OPTS.map(opt => {
+            const on = tiempoDispo === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setTiempoDispo(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
+                <Text style={[styles.tiempoMinutos, on && { color: opt.color }]}>
+                  {opt.minutos} min
+                </Text>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <Text style={styles.tiempoNote}>
+          Sin esto el sistema no puede calibrar volumen ni densidad de carga.
+        </Text>
+      </>
+    )
+  }
+
+  function renderD4() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 4 — INTENCIÓN</Text>
+        <Text style={styles.question}>¿Qué necesitas de{'\n'}este entrenamiento?</Text>
+        <Text style={styles.questionSub}>La más corta. La más poderosa.</Text>
+
+        <View style={styles.optionsWrap}>
+          {INTENCION_OPTS.map(opt => {
+            const on = intencion === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setIntencion(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18 }}>
+                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
+                    {INTENCION_NOTAS[opt.id]}
+                  </Text>
+                </View>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </>
+    )
+  }
+
+  function renderD5() {
+    return (
+      <View style={styles.procesandoWrap}>
+        <ActivityIndicator color={colors.accent} size="large" />
+        <Text style={styles.procesandoTitle}>Construyendo tu{'\n'}entrenamiento de hoy...</Text>
+        <Text style={styles.procesandoSub}>Analizando tus 4 dimensiones</Text>
+      </View>
+    )
+  }
+
+  function renderD6() {
+    const intencionOpt = INTENCION_OPTS.find(o => o.id === intencion)
+    const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
+    return (
+      <View style={[styles.resumenWrap, { paddingTop: insets.top + 24 }]}>
+        <View style={styles.resumenCheckCircle}>
+          <Text style={styles.resumenCheckMark}>✓</Text>
+        </View>
+        <Text style={styles.resumenEyebrow}>CHECKIN LISTO</Text>
+        <Text style={styles.resumenTitle}>Tu análisis de hoy</Text>
+
+        {/* Pills */}
+        <View style={styles.resumenPills}>
+          {tiempoOpt && (
+            <View style={[styles.resumenPill, { borderColor: tiempoOpt.color }]}>
+              <Text style={[styles.resumenPillText, { color: tiempoOpt.color }]}>
+                {tiempoOpt.minutos} min
+              </Text>
+            </View>
+          )}
+          {intencionOpt && (
+            <View style={[styles.resumenPill, { borderColor: intencionOpt.color }]}>
+              <Text style={[styles.resumenPillText, { color: intencionOpt.color }]}>
+                {intencionOpt.label}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Card */}
+        <View style={styles.resumenCard}>
+          <Text style={styles.resumenDataText}>{buildSummaryText()}</Text>
+          <View style={styles.resumenDivider} />
+          <Text style={styles.resumenSesionEyebrow}>TU SESIÓN DE HOY SERÁ</Text>
+          <Text style={styles.resumenSesionText}>{buildPronosticoText()}</Text>
+        </View>
+
+        <Text style={styles.resumenNote}>
+          Este es el punto de partida. La IA ajusta cada variable en tiempo real.
+        </Text>
+
+        {/* CTA */}
+        <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
+          <TouchableOpacity
+            style={styles.nextWrap}
+            onPress={() => router.replace('/(app)/generate')}
+            activeOpacity={0.88}>
+            <LinearGradient
+              colors={[colors.accent, colors.accentDark]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.nextBtn}>
+              <Text style={styles.nextBtnText}>Ver mi entrenamiento</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (initializing) {
+    return (
+      <View style={[styles.root, styles.centered]}>
+        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
         <ActivityIndicator color={colors.accent} size="large" />
       </View>
     )
   }
 
-  // ── Main form ──
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  // D5 and D6 are full-screen overlays — no chrome
+  if (currentScreen === 'd5_procesando') {
+    return (
+      <View style={[styles.root, styles.centered]}>
+        <LinearGradient colors={['rgba(37,99,255,0.25)', 'transparent']} style={styles.gradient} />
+        {renderD5()}
+      </View>
+    )
+  }
+
+  if (currentScreen === 'd6_resumen') {
+    return (
+      <View style={styles.root}>
+        <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}>
+          {renderD6()}
+        </ScrollView>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['rgba(37,99,255,0.25)', 'transparent']}
-        style={styles.gradient}
-      />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ── Title ── */}
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>Check-in de hoy</Text>
-            <Text style={styles.subtitle}>{formatTodayFull()}</Text>
-          </View>
+      <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
 
-          {/* ── 1. Foco de entrenamiento ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Foco de entrenamiento" />
-            <View style={styles.chipsWrap}>
-              {FOCOS.map(f => {
-                const selected = focoSeleccionado.includes(f)
-                return (
-                  <TouchableOpacity
-                    key={f}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => toggleFoco(f)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      {f}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
-
-          {/* ── 2. Estado de ánimo ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="¿Cómo te sientes hoy?" />
-            <View style={styles.animoRow}>
-              {ANIMO_EMOJIS.map((emoji, i) => {
-                const val = i + 1
-                const selected = estadoAnimo === val
-                return (
-                  <TouchableOpacity
-                    key={val}
-                    style={[styles.animoBtn, selected && styles.animoBtnSelected]}
-                    onPress={() => setEstadoAnimo(val)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.animoEmoji}>{emoji}</Text>
-                    {selected && (
-                      <View style={styles.animoDot} />
-                    )}
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
-
-          {/* ── 3. Calidad de sueño ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Calidad de sueño (horas)" />
-            <StepperField
-              value={calidadSueno}
-              min={3}
-              max={12}
-              step={0.5}
-              unit="h"
-              onChangeValue={setCalidadSueno}
-            />
-          </View>
-
-          {/* ── 4. HRV ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="HRV (opcional)" />
-            <TextInput
-              style={styles.textInput}
-              value={hrv}
-              onChangeText={setHrv}
-              placeholder="Ej. 65"
-              placeholderTextColor={colors.inkMuted}
-              keyboardType="number-pad"
-              maxLength={4}
-            />
-          </View>
-
-          {/* ── 5. Ubicación ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Ubicación" />
-            {loadingLocations ? (
-              <View style={styles.locationLoading}>
-                <ActivityIndicator color={colors.accent} size="small" />
-              </View>
-            ) : locations.length === 0 ? (
-              <View style={styles.noLocations}>
-                <Text style={styles.noLocationsText}>
-                  No tienes ubicaciones guardadas. Añade una en tu perfil.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.locationsGrid}>
-                {locations.map(loc => {
-                  const selected = locationId === loc.id
-                  return (
-                    <TouchableOpacity
-                      key={loc.id}
-                      style={[styles.locationCard, selected && styles.locationCardSelected]}
-                      onPress={() => setLocationId(loc.id)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.locationName, selected && { color: colors.accent }]}>
-                        {loc.nombre}
-                      </Text>
-                      <Text style={styles.locationTipo}>{loc.tipo}</Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            )}
-          </View>
-
-          {/* ── 6. Duración disponible ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Duración disponible" />
-            <StepperField
-              value={duracion}
-              min={20}
-              max={120}
-              step={5}
-              unit="min"
-              onChangeValue={setDuracion}
-            />
-          </View>
-
-          {/* ── 7. Dolor o molestia ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Dolor o molestia hoy" />
-            <View style={styles.chipsWrap}>
-              {ZONAS_DOLOR.map(zona => {
-                const selected = dolorHoy.includes(zona)
-                return (
-                  <TouchableOpacity
-                    key={zona}
-                    style={[styles.chip, selected && styles.dolorChipSelected]}
-                    onPress={() =>
-                      setDolorHoy(prev =>
-                        prev.includes(zona) ? prev.filter(z => z !== zona) : [...prev, zona],
-                      )
-                    }
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.chipText, selected && styles.dolorChipTextSelected]}>
-                      {zona}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-            {dolorHoy.length === 0 && (
-              <Text style={styles.dolorHint}>Sin dolor — toca para indicar zonas afectadas</Text>
-            )}
-          </View>
-
-          {/* ── 8. Notas ── */}
-          <View style={styles.fieldBlock}>
-            <SectionLabel text="Notas (opcional)" />
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              value={notas}
-              onChangeText={setNotas}
-              placeholder="Algo más que quieras registrar..."
-              placeholderTextColor={colors.inkMuted}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* ── Submit ── */}
+      {/* Progress bar + header (D1–D4 only) */}
+      <View style={{ paddingTop: insets.top }}>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, {
+            width: `${Math.round((screenIndex + 1) / N_INTERACTIVE * 100)}%` as any,
+          }]} />
+        </View>
+        <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.submitBtnText}>Comenzar →</Text>
-            )}
+            onPress={() => screenIndex === 0 ? router.back() : setScreenIndex(i => i - 1)}
+            style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
+          <Text style={styles.headerDate}>{formatDate()}</Text>
+        </View>
+      </View>
 
-          <View style={{ height: 48 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      {/* Content */}
+      <ScrollView
+        key={screenIndex}
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        { screenIndex === 0 ? renderD1()
+        : screenIndex === 1 ? renderD2()
+        : screenIndex === 2 ? renderD3()
+        : renderD4() }
+        <View style={{ height: 24 }} />
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 28) }]}>
+        {!!error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+        <TouchableOpacity
+          style={[styles.nextWrap, !canContinue && styles.nextWrapDisabled]}
+          onPress={goNext}
+          disabled={!canContinue}
+          activeOpacity={0.88}>
+          <LinearGradient
+            colors={[colors.accent, colors.accentDark]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={styles.nextBtn}>
+            <Text style={styles.nextBtnText}>
+              {isLastInteractive ? 'Construir mi entrenamiento' : 'Continuar'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   )
 }
@@ -433,307 +662,193 @@ export default function CheckinScreen() {
 
 function makeStyles(c: Colors) {
   return StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: c.bg,
+    root: { flex: 1, backgroundColor: c.bg },
+    centered: { alignItems: 'center', justifyContent: 'center' },
+    gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 420 },
+
+    progressTrack: { height: 3, backgroundColor: c.borderDefault },
+    progressFill: { height: 3, backgroundColor: c.accent },
+
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 24, paddingTop: 16, paddingBottom: 6,
     },
-    gradient: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 400,
-    },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingTop: 60,
-      paddingHorizontal: 20,
+    backBtn: { padding: 4 },
+    backArrow: { fontSize: 22, color: c.inkSecondary },
+    headerDate: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.inkMuted, letterSpacing: 0.3,
     },
 
-    // Title
-    titleBlock: {
-      marginBottom: 28,
-      gap: 4,
+    scrollContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
+
+    eyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.accent, letterSpacing: 2, marginBottom: 18,
     },
-    title: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 28,
-      letterSpacing: -0.8,
+    question: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 32,
+      color: c.inkPrimary, letterSpacing: -0.9, lineHeight: 40, marginBottom: 8,
     },
-    subtitle: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      letterSpacing: -0.1,
+    questionSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 20, marginBottom: 32, fontStyle: 'italic',
     },
 
-    // Field block
-    fieldBlock: {
-      marginBottom: 22,
-      gap: 10,
+    optionsWrap: { gap: 10 },
+    estadoCard: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 18, overflow: 'hidden', minHeight: 72,
     },
-    sectionLabel: {
-      color: c.inkSecondary,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      letterSpacing: 1,
-      textTransform: 'uppercase',
+    estadoBar: { width: 4, alignSelf: 'stretch' },
+    estadoLabel: {
+      flex: 1, paddingVertical: 22, paddingHorizontal: 18,
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16,
+      color: c.inkPrimary, lineHeight: 22,
+    },
+    estadoRadio: {
+      width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
+      marginRight: 20, flexShrink: 0,
+    },
+    estadoRadioDot: { width: 10, height: 10, borderRadius: 5 },
+
+    // Zone sub-question
+    zonaSection: { marginTop: 28 },
+    zonaDivider: { height: 1, backgroundColor: c.borderDefault, marginBottom: 24 },
+    zonaEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: '#ff6b6b', letterSpacing: 2, marginBottom: 10,
+    },
+    zonaSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 21, marginBottom: 24,
+    },
+    bodyMapWrap: { alignItems: 'center', marginBottom: 8 },
+    lumbarChip: {
+      marginTop: 12, paddingHorizontal: 18, paddingVertical: 9,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 20,
+    },
+    lumbarChipOn: { backgroundColor: 'rgba(255,68,68,0.1)', borderColor: '#ff6b6b' },
+    lumbarChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary },
+    lumbarChipTextOn: { color: '#ff6b6b' },
+    selectedZonas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+    zonaChip: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: 'rgba(255,68,68,0.1)', borderWidth: 1,
+      borderColor: 'rgba(255,107,107,0.4)', borderRadius: 20,
+      paddingHorizontal: 12, paddingVertical: 6,
+    },
+    zonaChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: '#ff6b6b' },
+    zonaChipX: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: '#ff6b6b', lineHeight: 18 },
+    zonaHint: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkFaint, textAlign: 'center', marginTop: 16, fontStyle: 'italic',
     },
 
-    // Chips (foco)
-    chipsWrap: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
+    tiempoMinutos: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.inkMuted, letterSpacing: 0.5, marginRight: 12,
     },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 20,
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-    },
-    chipSelected: {
-      backgroundColor: 'rgba(79,140,255,0.18)',
-      borderColor: c.accent,
-    },
-    chipText: {
-      color: c.inkSecondary,
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 13,
-      letterSpacing: -0.1,
-    },
-    chipTextSelected: {
-      color: c.accent,
+    tiempoNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkFaint, lineHeight: 19, marginTop: 24,
+      fontStyle: 'italic', textAlign: 'center',
     },
 
-    // Animo
-    animoRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingHorizontal: 8,
-    },
-    animoBtn: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      gap: 4,
-    },
-    animoBtnSelected: {
-      backgroundColor: 'rgba(79,140,255,0.15)',
-      borderColor: c.accent,
-    },
-    animoEmoji: {
-      fontSize: 24,
-    },
-    animoDot: {
-      position: 'absolute',
-      bottom: 6,
-      width: 5,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: c.accent,
+    // D4 — Intención
+    intencionNota: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkMuted, lineHeight: 17, marginTop: 3,
     },
 
-    // Stepper
-    stepperRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      overflow: 'hidden',
-      alignSelf: 'flex-start',
-      minWidth: 180,
+    // D5 — Processing
+    procesandoWrap: { alignItems: 'center', paddingHorizontal: 40 },
+    procesandoTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 24,
+      color: c.inkPrimary, letterSpacing: -0.6, lineHeight: 32,
+      textAlign: 'center', marginTop: 32, marginBottom: 10,
     },
-    stepperBtn: {
-      width: 48,
-      height: 48,
-      alignItems: 'center',
-      justifyContent: 'center',
+    procesandoSub: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.inkMuted, letterSpacing: 1.5, textAlign: 'center',
+    },
+
+    // D6 — Resumen
+    resumenWrap: {
+      flex: 1, paddingHorizontal: 24, alignItems: 'center',
+    },
+    resumenCheckCircle: {
+      width: 64, height: 64, borderRadius: 32,
+      borderWidth: 2, borderColor: c.accent,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 20,
+    },
+    resumenCheckMark: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 28,
+      color: c.accent, lineHeight: 32,
+    },
+    resumenEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.accent, letterSpacing: 2.5, marginBottom: 6,
+    },
+    resumenTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 26,
+      color: c.inkPrimary, letterSpacing: -0.6, marginBottom: 20,
+    },
+    resumenPills: {
+      flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center',
+    },
+    resumenPill: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 20, borderWidth: 1,
       backgroundColor: c.glassBg,
     },
-    stepperBtnText: {
-      color: c.inkSecondary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 22,
-      lineHeight: 24,
+    resumenPillText: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, letterSpacing: 0.1,
     },
-    stepperValue: {
-      flex: 1,
-      textAlign: 'center',
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 18,
-      letterSpacing: -0.4,
+    resumenCard: {
+      width: '100%',
+      backgroundColor: c.cardBg, borderWidth: 1,
+      borderColor: c.borderBright, borderRadius: 20, padding: 20,
+      marginBottom: 16,
     },
-    stepperUnit: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-    },
-
-    // TextInput
-    textInput: {
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 15,
-    },
-    textArea: {
-      minHeight: 90,
-      paddingTop: 13,
-    },
-
-    // Locations
-    locationLoading: {
-      paddingVertical: 16,
-      alignItems: 'center',
-    },
-    noLocations: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      padding: 16,
-    },
-    noLocationsText: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      textAlign: 'center',
-    },
-    locationsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-    },
-    locationCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      gap: 2,
-      minWidth: 120,
-    },
-    locationCardSelected: {
-      backgroundColor: 'rgba(79,140,255,0.12)',
-      borderColor: c.accent,
-    },
-    locationName: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 14,
-      letterSpacing: -0.2,
-    },
-    locationTipo: {
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      letterSpacing: 0.3,
-      textTransform: 'uppercase',
-    },
-
-    // Submit
-    submitBtn: {
-      backgroundColor: c.accent,
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: 'center',
-      marginTop: 10,
-      shadowColor: c.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 12,
-      elevation: 6,
-    },
-    submitBtnDisabled: {
-      opacity: 0.6,
-    },
-    submitBtnText: {
-      color: c.white,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      letterSpacing: -0.3,
-    },
-
-    dolorChipSelected: {
-      backgroundColor: 'rgba(255,68,68,0.15)',
-      borderColor: 'rgba(255,100,100,0.5)',
-    },
-    dolorChipTextSelected: {
-      color: 'rgba(255,150,150,0.95)',
-    },
-    dolorHint: {
-      color: c.inkFaint,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      marginTop: 6,
+    resumenDataText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 20, marginBottom: 16,
       fontStyle: 'italic',
     },
+    resumenDivider: { height: 1, backgroundColor: c.borderDefault, marginBottom: 14 },
+    resumenSesionEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.accent, letterSpacing: 2, marginBottom: 8,
+    },
+    resumenSesionText: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16,
+      color: c.inkPrimary, lineHeight: 24, letterSpacing: -0.2,
+    },
+    resumenNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
+      color: c.inkFaint, textAlign: 'center', lineHeight: 18,
+      fontStyle: 'italic', paddingHorizontal: 16, marginBottom: 24,
+    },
+    resumenFooter: { width: '100%', marginTop: 'auto' as any, paddingTop: 8 },
 
-    // Already checked-in
-    alreadyCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 24,
-      padding: 32,
-      alignItems: 'center',
-      gap: 12,
-      width: '100%',
+    // Footer
+    footer: { paddingHorizontal: 24, paddingTop: 12 },
+    errorBox: {
+      backgroundColor: 'rgba(255,68,68,0.1)', borderWidth: 1,
+      borderColor: 'rgba(255,68,68,0.25)', borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12,
     },
-    alreadyEmoji: {
-      fontSize: 48,
-    },
-    alreadyTitle: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 22,
-      letterSpacing: -0.5,
-      textAlign: 'center',
-    },
-    alreadySubtitle: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      textAlign: 'center',
-      lineHeight: 20,
-    },
-    generateBtn: {
-      marginTop: 8,
-      backgroundColor: c.accent,
-      paddingHorizontal: 28,
-      paddingVertical: 14,
-      borderRadius: 14,
-      shadowColor: c.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      elevation: 5,
-    },
-    generateBtnText: {
-      color: c.white,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 15,
-      letterSpacing: -0.2,
+    errorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.red },
+    nextWrap: { borderRadius: 14, overflow: 'hidden' },
+    nextWrapDisabled: { opacity: 0.3 },
+    nextBtn: { paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
+    nextBtnText: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
+      color: '#ffffff', letterSpacing: 0.3,
     },
   })
 }

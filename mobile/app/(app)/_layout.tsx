@@ -166,6 +166,18 @@ export default function AppLayout() {
       <Tabs.Screen name="generate/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="ejecutar/[id]" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
+      {/* Perfil sub-screens */}
+      <Tabs.Screen name="perfil/datos-personales" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/entrenamiento" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/objetivos" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/ubicaciones" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/lesiones" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/ciclo" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/preferencias" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/ciencia" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/bibliografia" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/glosario" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/referidos" options={{ href: null, tabBarLabel: '' }} />
     </Tabs>
   )
 }

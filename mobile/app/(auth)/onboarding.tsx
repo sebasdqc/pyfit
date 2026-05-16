@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
@@ -32,6 +32,8 @@ type ScreenId =
   | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
   | 'b3_lugar' | 'b3_equipamiento' | 'b3_tiempo_horario'
   | 'b4_objetivo' | 'b4_horizonte'
+  | 'b5_abandono' | 'b5_coaching' | 'b5_entreno'
+  | 'b6_procesando' | 'b6_beta'
 
 type FormData = {
   nombre: string
@@ -60,6 +62,9 @@ type FormData = {
   objetivoSecundario: string | null
   horizonteTemporal: string | null
   motivacion: string
+  razonesAbandono: string[]
+  estiloCoaching: 'directo' | 'calido' | 'tecnico' | null
+  tiposEntrenamiento: string[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -221,6 +226,44 @@ const HORIZONTE_OPTS = [
   { value: 'libre',  label: 'Sin fecha fija',   sub: 'Proceso, no destino' },
 ]
 
+const ABANDONO_OPTIONS = [
+  { id: 'tiempo',       icon: '⏰', label: 'Falta de tiempo',       sub: 'El día a día se come los planes' },
+  { id: 'aburrimiento', icon: '😴', label: 'Aburrimiento',          sub: 'Lo mismo una y otra vez' },
+  { id: 'lesion',       icon: '🩹', label: 'Lesión',                sub: 'El cuerpo me frenó' },
+  { id: 'resultados',   icon: '📉', label: 'No ver resultados',     sub: 'El esfuerzo no se reflejaba' },
+  { id: 'no_saber',     icon: '🤷', label: 'No saber qué hacer',    sub: 'Sin guía ni estructura clara' },
+  { id: 'motivacion',   icon: '🔋', label: 'Pérdida de motivación', sub: 'El impulso inicial se agotó' },
+]
+
+const COACHING_STYLES = [
+  {
+    id: 'directo' as const,
+    icon: '⚡', label: 'Directo y exigente',
+    desc: 'Sin rodeos. Me dices exactamente qué hacer y con qué intensidad.',
+    color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.5)',
+  },
+  {
+    id: 'calido' as const,
+    icon: '🌱', label: 'Motivacional y cálido',
+    desc: 'Me animas, celebras mis avances y me acompañas en los días difíciles.',
+    color: '#32c896', bg: 'rgba(50,200,150,0.1)', border: 'rgba(50,200,150,0.5)',
+  },
+  {
+    id: 'tecnico' as const,
+    icon: '🔬', label: 'Técnico y explicativo',
+    desc: 'Explicas el porqué de cada decisión. Quiero entender, no solo seguir.',
+    color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)', border: 'rgba(108,229,255,0.5)',
+  },
+]
+
+const TIPOS_ENTRENAMIENTO = [
+  { id: 'fuerza',    icon: '🏋️', label: 'Fuerza',     sub: 'Levantamiento y resistencia progresiva' },
+  { id: 'cardio',    icon: '🏃', label: 'Cardio',      sub: 'Resistencia cardiovascular' },
+  { id: 'movilidad', icon: '🧘', label: 'Movilidad',   sub: 'Flexibilidad y rango de movimiento' },
+  { id: 'hiit',      icon: '🔥', label: 'HIIT',        sub: 'Alta intensidad por intervalos' },
+  { id: 'funcional', icon: '⚙️', label: 'Funcional',  sub: 'Movimientos potenciados del día a día' },
+]
+
 const DEPORTES = [
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
@@ -262,6 +305,13 @@ function getBlockTitle(screen: ScreenId): string {
     case 'b4_objetivo':
     case 'b4_horizonte':
       return 'Lo que quieres lograr'
+    case 'b5_abandono':
+    case 'b5_coaching':
+    case 'b5_entreno':
+      return 'Tu relación con el entrenamiento'
+    case 'b6_procesando':
+    case 'b6_beta':
+      return ''
   }
 }
 
@@ -422,6 +472,7 @@ export default function OnboardingScreen() {
     tiempoNormal: null, tiempoOcupado: null,
     horarios: [], diasFijos: null,
     objetivos: [], objetivoSecundario: null, horizonteTemporal: null, motivacion: '',
+    razonesAbandono: [], estiloCoaching: null, tiposEntrenamiento: [],
   })
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -447,6 +498,10 @@ export default function OnboardingScreen() {
   const [draftTiempo, setDraftTiempo] = useState<LesionTiempo | null>(null)
   const [lesionError, setLesionError] = useState('')
 
+  // ── Block 6 ────────────────────────────────────────────────────────────────
+  const [animCount, setAnimCount] = useState(0)
+  const [saveComplete, setSaveComplete] = useState(false)
+
   // ── Screens array ─────────────────────────────────────────────────────────
   const screens = useMemo<ScreenId[]>(() => [
     'b1_personal',
@@ -461,6 +516,11 @@ export default function OnboardingScreen() {
     'b3_tiempo_horario',
     'b4_objetivo',
     'b4_horizonte',
+    'b5_abandono',
+    'b5_coaching',
+    'b5_entreno',
+    'b6_procesando',
+    'b6_beta',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -504,6 +564,9 @@ export default function OnboardingScreen() {
     if (currentScreen === 'b4_horizonte') {
       if (!data.horizonteTemporal) return 'Selecciona un horizonte temporal.'
     }
+    if (currentScreen === 'b5_coaching') {
+      if (!data.estiloCoaching) return 'Elige cómo quieres que te guíe tu entrenador.'
+    }
     return null
   }
 
@@ -539,14 +602,19 @@ export default function OnboardingScreen() {
         dias_semana: data.frecuenciaHistorica ?? 3,
         experiencia_deportiva: data.deportes.join(', '),
         calidad_sueno_habitual: data.calidadSueno,
-        lesiones: data.lesiones,
+        lesiones: data.lesiones.map(l => {
+          const label = ZONE_LABELS[l.zona] ?? l.zona
+          const parts: string[] = [label, l.estado]
+          if (l.gravedad) parts.push(l.gravedad)
+          return parts.join(': ')
+        }).join('; '),
         ejercicios_evitar: data.ejerciciosEvitar.join(', '),
         condiciones_medicas: data.condicionesMedicas,
         notas_medicas: data.notasMedicas.trim(),
         motivo_limitacion: data.motivoLimitacion.trim(),
         horario_preferido: data.horarios.join('/'),
         lugares_entrenamiento: data.lugares,
-        implementos: data.equipamiento,
+        implementos_perfil: data.equipamiento,
         duracion_disponible: data.tiempoNormal ? parseInt(data.tiempoNormal) : null,
         duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
         objetivos_multiples: data.objetivos,
@@ -554,14 +622,67 @@ export default function OnboardingScreen() {
         objetivo_secundario: data.objetivoSecundario,
         horizonte_temporal: data.horizonteTemporal,
         motivacion: data.motivacion.trim(),
+        razones_abandono: data.razonesAbandono,
+        estilo_coaching: data.estiloCoaching,
+        tipos_entrenamiento: data.tiposEntrenamiento,
       })
-      router.replace('/(app)/dashboard')
+      setSaveComplete(true)
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Intenta de nuevo.')
     } finally {
       setLoading(false)
     }
   }
+
+  // ── Block 6 — variable counter + processing effects ──────────────────────
+
+  function countVariables(): number {
+    let n = 5 // nombre, fecha, sexo, peso, altura
+    if (data.usaCicloMenstrual) n++
+    if (data.frecuenciaHistorica !== null) n++
+    n += data.deportes.length
+    if (data.calidadSueno) n++
+    n += data.lesiones.length
+    n += data.ejerciciosEvitar.length
+    if (data.motivoLimitacion.trim()) n++
+    n += data.condicionesMedicas.length
+    n += data.lugares.length
+    n += data.equipamiento.length
+    if (data.tiempoNormal) n++
+    if (data.tiempoOcupado) n++
+    n += data.horarios.length
+    if (data.diasFijos !== null) n++
+    n += data.objetivos.length
+    if (data.objetivoSecundario) n++
+    if (data.horizonteTemporal) n++
+    if (data.motivacion.trim()) n++
+    n += data.razonesAbandono.length
+    if (data.estiloCoaching) n++
+    n += data.tiposEntrenamiento.length
+    return Math.max(n, 18)
+  }
+
+  useEffect(() => {
+    if (currentScreen !== 'b6_procesando') return
+    setAnimCount(0)
+    setSaveComplete(false)
+    const target = countVariables()
+    let step = 0
+    const totalSteps = 28
+    const timer = setInterval(() => {
+      step++
+      setAnimCount(Math.min(Math.round((step / totalSteps) * target), target))
+      if (step >= totalSteps) clearInterval(timer)
+    }, 55)
+    handleSave()
+    return () => clearInterval(timer)
+  }, [currentScreen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!saveComplete || currentScreen !== 'b6_procesando') return
+    const t = setTimeout(() => setScreenIndex(i => i + 1), 700)
+    return () => clearTimeout(t)
+  }, [saveComplete, currentScreen])
 
   // ── Lesion modal handlers ──────────────────────────────────────────────────
 
@@ -1452,6 +1573,201 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ── Block 6: processing ──────────────────────────────────────────────────────
+
+  function renderProcesando() {
+    return (
+      <View style={styles.procesandoWrap}>
+        {!!error ? (
+          <>
+            <Text style={styles.procesandoErrorTitle}>Algo salió mal</Text>
+            <Text style={styles.procesandoErrorSub}>{error}</Text>
+            <TouchableOpacity
+              style={styles.procesandoRetryBtn}
+              onPress={() => { setError(''); setSaveComplete(false); handleSave() }}
+              activeOpacity={0.8}>
+              <Text style={styles.procesandoRetryText}>Intentar de nuevo</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.procesandoEyebrow}>CONSTRUYENDO TU PERFIL</Text>
+            <Text style={styles.procesandoNum}>{animCount}</Text>
+            <Text style={styles.procesandoNumLabel}>variables personalizadas</Text>
+            <Text style={styles.procesandoSubText}>
+              Calibrando tu entrenamiento con cada dato que nos compartiste.
+            </Text>
+            <ActivityIndicator color={colors.accent} size="small" style={{ marginTop: 32 }} />
+          </>
+        )}
+      </View>
+    )
+  }
+
+  // ── Block 6: beta welcome ─────────────────────────────────────────────────────
+
+  function renderBeta() {
+    const total = countVariables()
+    return (
+      <View style={styles.betaWrap}>
+        <View style={styles.betaContent}>
+          <Text style={styles.betaEyebrow}>PERFIL LISTO</Text>
+          <Text style={styles.betaTitle}>
+            Tu entrenador{'\n'}ya te conoce.
+          </Text>
+          <Text style={styles.betaBody}>
+            Analizamos{' '}
+            <Text style={styles.betaAccent}>{total} variables personalizadas</Text>
+            {' '}para construir algo que se adapta a ti — no al revés.
+          </Text>
+
+          <View style={styles.betaDivider} />
+
+          <View style={styles.betaTagRow}>
+            <View style={styles.betaTag}>
+              <Text style={styles.betaTagText}>BETA · ACCESO TEMPRANO</Text>
+            </View>
+          </View>
+          <Text style={styles.betaBetaDesc}>
+            Estás entre los primeros en usar PyFit. Tu uso y feedback construyen
+            la versión final. Gracias por confiar desde el principio.
+          </Text>
+        </View>
+
+        <View style={styles.betaFooter}>
+          <TouchableOpacity
+            style={styles.betaBtnWrap}
+            onPress={() => router.replace('/(app)/dashboard')}
+            activeOpacity={0.88}>
+            <LinearGradient
+              colors={[colors.accent, colors.accentDark]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.betaBtn}>
+              <Text style={styles.betaBtnText}>COMENZAR MI ENTRENAMIENTO</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // ── Block 5: abandonment reasons ─────────────────────────────────────────────
+
+  function renderAbandono() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Qué te ha hecho abandonar antes?</Text>
+        <Text style={styles.b3Sub}>
+          Sin juicio — esto nos ayuda a anticipar tu punto de quiebre y actuar antes de que llegues a él.
+        </Text>
+
+        <View style={styles.abandonoGrid}>
+          {ABANDONO_OPTIONS.map(opt => {
+            const on = data.razonesAbandono.includes(opt.id)
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.abandonoCard, on && styles.abandonoCardOn]}
+                onPress={() => {
+                  if (on) set('razonesAbandono', data.razonesAbandono.filter(x => x !== opt.id))
+                  else set('razonesAbandono', [...data.razonesAbandono, opt.id])
+                }}
+                activeOpacity={0.8}>
+                <Text style={styles.abandonoIcon}>{opt.icon}</Text>
+                <Text style={[styles.abandonoLabel, on && styles.abandonoLabelOn]}>{opt.label}</Text>
+                <Text style={styles.abandonoItemSub}>{opt.sub}</Text>
+                {on && <View style={styles.abandonoDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {data.razonesAbandono.length === 0 && (
+          <Text style={styles.skipNote}>Opcional — puedes continuar sin seleccionar.</Text>
+        )}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 5: coaching style ───────────────────────────────────────────────────
+
+  function renderCoaching() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Cómo prefieres que te guíe tu entrenador?</Text>
+        <Text style={styles.b3Sub}>
+          Esto ajusta el tono de cada interacción. Puedes cambiarlo cuando quieras desde tu perfil.
+        </Text>
+
+        {COACHING_STYLES.map(style => {
+          const on = data.estiloCoaching === style.id
+          return (
+            <TouchableOpacity key={style.id}
+              style={[
+                styles.coachingCard,
+                on && { backgroundColor: style.bg, borderColor: style.border, borderWidth: 1.5 },
+              ]}
+              onPress={() => set('estiloCoaching', on ? null : style.id)}
+              activeOpacity={0.8}>
+              <Text style={styles.coachingIcon}>{style.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.coachingLabel, on && { color: style.color }]}>
+                  {style.label}
+                </Text>
+                <Text style={styles.coachingDesc}>{style.desc}</Text>
+              </View>
+              <View style={[styles.coachingRadio, on && { borderColor: style.color }]}>
+                {on && <View style={[styles.coachingRadioDot, { backgroundColor: style.color }]} />}
+              </View>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 5: training types ───────────────────────────────────────────────────
+
+  function renderEntreno() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Qué tipos de entrenamiento te interesan?</Text>
+        <Text style={styles.b3Sub}>
+          Sin jerarquía — todos son igual de válidos. Selecciona los que te llaman.
+        </Text>
+
+        <View style={styles.entrenoGrid}>
+          {TIPOS_ENTRENAMIENTO.map(tipo => {
+            const on = data.tiposEntrenamiento.includes(tipo.id)
+            return (
+              <TouchableOpacity key={tipo.id}
+                style={[styles.entrenoCard, on && styles.entrenoCardOn]}
+                onPress={() => {
+                  if (on) set('tiposEntrenamiento', data.tiposEntrenamiento.filter(x => x !== tipo.id))
+                  else set('tiposEntrenamiento', [...data.tiposEntrenamiento, tipo.id])
+                }}
+                activeOpacity={0.8}>
+                <Text style={styles.entrenoIcon}>{tipo.icon}</Text>
+                <Text style={[styles.entrenoLabel, on && styles.entrenoLabelOn]}>{tipo.label}</Text>
+                <Text style={styles.entrenoItemSub}>{tipo.sub}</Text>
+                {on && <View style={styles.entrenoDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {data.tiposEntrenamiento.length === 0 && (
+          <Text style={styles.skipNote}>Opcional — puedes continuar sin seleccionar.</Text>
+        )}
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
       case 'b1_personal':          return renderPersonal()
@@ -1466,6 +1782,11 @@ export default function OnboardingScreen() {
       case 'b3_tiempo_horario':    return renderTiempoHorario()
       case 'b4_objetivo':          return renderObjetivo()
       case 'b4_horizonte':         return renderHorizonte()
+      case 'b5_abandono':          return renderAbandono()
+      case 'b5_coaching':          return renderCoaching()
+      case 'b5_entreno':           return renderEntreno()
+      case 'b6_procesando':        return renderProcesando()
+      case 'b6_beta':              return renderBeta()
     }
   }
 
@@ -1483,42 +1804,46 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.blockTitle}>{getBlockTitle(currentScreen)}</Text>
-      </View>
+      {currentScreen !== 'b6_procesando' && currentScreen !== 'b6_beta' && (
+        <View style={styles.header}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.blockTitle}>{getBlockTitle(currentScreen)}</Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         {renderContent()}
 
-        <View style={styles.footer}>
-          {!!error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-          <View style={styles.btnRow}>
-            {screenIndex > 0 && (
-              <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}>
-                <Text style={styles.backSecondaryText}>Atrás</Text>
-              </TouchableOpacity>
+        {currentScreen !== 'b6_procesando' && currentScreen !== 'b6_beta' && (
+          <View style={styles.footer}>
+            {!!error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             )}
-            <TouchableOpacity
-              style={[styles.nextWrap, screenIndex === 0 && styles.nextWrapFull]}
-              onPress={goNext} disabled={loading} activeOpacity={0.88}>
-              <LinearGradient colors={[colors.accent, colors.accentDark]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
-                {loading
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.nextBtnText}>{isLast ? 'Guardar y continuar' : 'Continuar'}</Text>
-                }
-              </LinearGradient>
-            </TouchableOpacity>
+            <View style={styles.btnRow}>
+              {screenIndex > 0 && (
+                <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}>
+                  <Text style={styles.backSecondaryText}>Atrás</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.nextWrap, screenIndex === 0 && styles.nextWrapFull]}
+                onPress={goNext} disabled={loading} activeOpacity={0.88}>
+                <LinearGradient colors={[colors.accent, colors.accentDark]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+                  {loading
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.nextBtnText}>Continuar</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
 
       {/* Date picker */}
@@ -2179,6 +2504,140 @@ function makeStyles(c: Colors) {
     nextWrapFull: { flex: 1 },
     nextBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
     nextBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3 },
+
+    // Block 6 — procesando
+    procesandoWrap: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 32,
+    },
+    procesandoEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.accent, letterSpacing: 2, marginBottom: 28,
+    },
+    procesandoNum: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 96,
+      color: c.accent, letterSpacing: -6, lineHeight: 100,
+      marginBottom: 10,
+    },
+    procesandoNumLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 12,
+      color: c.inkMuted, letterSpacing: 0.8, marginBottom: 32,
+    },
+    procesandoSubText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 15,
+      color: c.inkMuted, textAlign: 'center', lineHeight: 24,
+    },
+    procesandoErrorTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, textAlign: 'center', marginBottom: 12,
+    },
+    procesandoErrorSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.red, textAlign: 'center', lineHeight: 21, marginBottom: 28,
+    },
+    procesandoRetryBtn: {
+      paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14,
+      backgroundColor: 'rgba(79,140,255,0.1)', borderWidth: 1, borderColor: c.accent,
+    },
+    procesandoRetryText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.accent },
+
+    // Block 6 — beta
+    betaWrap: { flex: 1, paddingHorizontal: 28, paddingBottom: 40 },
+    betaContent: { flex: 1, justifyContent: 'center' },
+    betaEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.accent, letterSpacing: 2, marginBottom: 22,
+    },
+    betaTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 40,
+      color: c.inkPrimary, letterSpacing: -1.2, lineHeight: 48, marginBottom: 20,
+    },
+    betaBody: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 17,
+      color: c.inkSecondary, lineHeight: 28,
+    },
+    betaAccent: {
+      fontFamily: 'SpaceGrotesk-Bold', color: c.accent,
+    },
+    betaDivider: {
+      height: 1, backgroundColor: c.borderDefault, marginVertical: 28,
+    },
+    betaTagRow: { flexDirection: 'row', marginBottom: 14 },
+    betaTag: {
+      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+      backgroundColor: 'rgba(79,140,255,0.12)', borderWidth: 1, borderColor: c.accent,
+    },
+    betaTagText: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.accent, letterSpacing: 1.5,
+    },
+    betaBetaDesc: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 23,
+    },
+    betaFooter: { paddingTop: 16 },
+    betaBtnWrap: { borderRadius: 16, overflow: 'hidden' },
+    betaBtn: { paddingVertical: 20, alignItems: 'center', justifyContent: 'center' },
+    betaBtnText: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
+      color: '#ffffff', letterSpacing: 2,
+    },
+
+    // Block 5 — abandono
+    abandonoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    abandonoCard: {
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, padding: 18, alignItems: 'flex-start', position: 'relative', minHeight: 110,
+    },
+    abandonoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    abandonoIcon: { fontSize: 28, marginBottom: 8 },
+    abandonoLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
+      color: c.inkPrimary, lineHeight: 19, marginBottom: 4,
+    },
+    abandonoLabelOn: { color: c.accent },
+    abandonoItemSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: c.inkMuted, lineHeight: 16 },
+    abandonoDot: {
+      position: 'absolute', top: 12, right: 12,
+      width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
+
+    // Block 5 — coaching
+    coachingCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, paddingVertical: 20, paddingHorizontal: 20, marginBottom: 12,
+    },
+    coachingIcon: { fontSize: 32, width: 40, textAlign: 'center' },
+    coachingLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16,
+      color: c.inkPrimary, marginBottom: 5,
+    },
+    coachingDesc: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted, lineHeight: 19 },
+    coachingRadio: {
+      width: 24, height: 24, borderRadius: 12, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    coachingRadioDot: { width: 10, height: 10, borderRadius: 5 },
+
+    // Block 5 — training types
+    entrenoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    entrenoCard: {
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative', minHeight: 110,
+    },
+    entrenoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    entrenoIcon: { fontSize: 28, marginBottom: 8 },
+    entrenoLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
+      color: c.inkPrimary, lineHeight: 19, marginBottom: 4,
+    },
+    entrenoLabelOn: { color: c.accent },
+    entrenoItemSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: c.inkMuted, lineHeight: 16 },
+    entrenoDot: {
+      position: 'absolute', top: 12, right: 12,
+      width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
 
     // Date picker
     dateOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
