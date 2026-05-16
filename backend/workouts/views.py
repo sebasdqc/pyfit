@@ -1324,3 +1324,108 @@ def stats_consistencia_mensual(request):
         'fecha_registro_year':   fecha_registro.year,
         'fecha_registro_month':  fecha_registro.month,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_cuerpo_contexto(request):
+    """
+    Weekly averages of estado_fisico and estado_animo (as 1-4 scale),
+    plus the distribution of intencion de entrenamiento from foco_entrenamiento.
+    Only weeks with >= 2 checkins are included in the bar chart data.
+    """
+    user = request.user
+    fecha_registro = user.date_joined.date()
+
+    checkins = user.checkins.filter(fecha__gte=fecha_registro).order_by('fecha')
+
+    fisico_por_semana: dict = defaultdict(list)
+    mental_por_semana: dict = defaultdict(list)
+    intencion_counts = {'serio': 0, 'descargar': 0, 'moverme': 0, 'recuperar': 0}
+
+    for ci in checkins:
+        week_num = (ci.fecha - fecha_registro).days // 7 + 1
+        if ci.estado_fisico is not None:
+            fisico_por_semana[week_num].append(ci.estado_fisico)
+        if ci.estado_animo is not None:
+            mental_por_semana[week_num].append(min(ci.estado_animo, 4))
+        for foco in (ci.foco_entrenamiento or []):
+            if foco in intencion_counts:
+                intencion_counts[foco] += 1
+
+    semanas_fisico = [
+        {'semana_num': w, 'label': f'S{w}', 'promedio': round(sum(v) / len(v), 1)}
+        for w, v in sorted(fisico_por_semana.items()) if len(v) >= 2
+    ]
+    semanas_mental = [
+        {'semana_num': w, 'label': f'S{w}', 'promedio': round(sum(v) / len(v), 1)}
+        for w, v in sorted(mental_por_semana.items()) if len(v) >= 2
+    ]
+
+    return Response({
+        'semanas_fisico': semanas_fisico,
+        'semanas_mental': semanas_mental,
+        'intencion_counts': intencion_counts,
+        'total_checkins': checkins.count(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_ejercicios_top(request):
+    """
+    Top 5 exercises by frequency across all completed sessions.
+    Tie-broken by RPE desc. Includes variacion = avg(last 3 RPE) - avg(first 3 RPE),
+    or null when fewer than 3 appearances.
+    """
+    user = request.user
+
+    sesiones = (
+        user.sessions
+        .select_related('feedback', 'checkin')
+        .prefetch_related('exercises')
+        .order_by('fecha', 'created_at')
+    )
+
+    def foco_to_cat(foco_list):
+        for f in (foco_list or []):
+            if f == 'serio':                 return 'Fuerza'
+            if f == 'descargar':             return 'Cardio'
+            if f in ('moverme', 'recuperar'): return 'Movilidad'
+        return 'General'
+
+    ejercicio_apariciones: dict = defaultdict(list)
+
+    for s in sesiones:
+        rpe = (
+            float(s.feedback.rpe_real)
+            if s.feedback and s.feedback.rpe_real is not None
+            else float(s.rpe_target)
+        )
+        foco = s.checkin.foco_entrenamiento if s.checkin else []
+        categoria = foco_to_cat(foco)
+        for ex in s.exercises.all():
+            ejercicio_apariciones[ex.nombre].append({'rpe': rpe, 'categoria': categoria})
+
+    result = []
+    for nombre, apariciones in ejercicio_apariciones.items():
+        count    = len(apariciones)
+        rpe_vals = [a['rpe'] for a in apariciones]
+        rpe_prom = round(sum(rpe_vals) / count, 1)
+        categoria = Counter(a['categoria'] for a in apariciones).most_common(1)[0][0]
+
+        if count >= 3:
+            variacion = round(sum(rpe_vals[-3:]) / 3 - sum(rpe_vals[:3]) / 3, 1)
+        else:
+            variacion = None
+
+        result.append({
+            'nombre':       nombre,
+            'count':        count,
+            'categoria':    categoria,
+            'rpe_promedio': rpe_prom,
+            'variacion':    variacion,
+        })
+
+    result.sort(key=lambda x: (-x['count'], -x['rpe_promedio']))
+    return Response(result[:5])

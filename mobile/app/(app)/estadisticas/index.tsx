@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import Svg, { Line, Path, Circle, Text as SvgText } from 'react-native-svg'
+import Svg, { Line, Path, Circle, Rect, Text as SvgText } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
@@ -45,6 +45,23 @@ interface ConsistData {
   sesiones_planificadas: number
   fecha_registro_year: number
   fecha_registro_month: number
+}
+
+interface SemanaEstado { semana_num: number; label: string; promedio: number }
+
+interface EjercicioTop {
+  nombre: string
+  count: number
+  categoria: string
+  rpe_promedio: number
+  variacion: number | null
+}
+
+interface CuerpoData {
+  semanas_fisico: SemanaEstado[]
+  semanas_mental: SemanaEstado[]
+  intencion_counts: { serio: number; descargar: number; moverme: number; recuperar: number }
+  total_checkins: number
 }
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
@@ -181,6 +198,251 @@ function RPELineChart({
         </React.Fragment>
       ))}
     </Svg>
+  )
+}
+
+// ─── Bar chart for estados (1–4 scale) ───────────────────────────────────────
+
+const BC_DATA_H = 70  // bar area height per spec
+const BC_PAD_T  = 20  // space above bars for tooltip
+const BC_PAD_B  = 16  // X labels
+const BC_SIDE   = 8
+const BC_SVG_H  = BC_PAD_T + BC_DATA_H + BC_PAD_B
+
+function bcY(v: number): number {
+  return BC_PAD_T + BC_DATA_H * (1 - (Math.min(Math.max(v, 1), 4) - 1) / 3)
+}
+
+function EstadoBarChart({
+  semanas, color, containerW,
+}: {
+  semanas: SemanaEstado[]
+  color: string
+  containerW: number
+}) {
+  const [tipIdx, setTipIdx] = useState<number | null>(null)
+  const dataW = containerW - BC_SIDE * 2
+  const n = semanas.length
+  if (n === 0 || dataW <= 0) return null
+
+  const barW  = Math.min(20, Math.floor((dataW / n) * 0.55))
+  const step  = n <= 1 ? 0 : dataW / (n - 1)
+  const xStep = n <= 8 ? 1 : n <= 16 ? 2 : 4
+
+  return (
+    <Svg width={containerW} height={BC_SVG_H}>
+      {[1, 2, 3, 4].map(v => (
+        <Line key={v}
+          x1={BC_SIDE} y1={bcY(v)}
+          x2={containerW - BC_SIDE} y2={bcY(v)}
+          stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+      ))}
+
+      {semanas.map((s, i) => {
+        const cx   = BC_SIDE + (n === 1 ? dataW / 2 : i * step)
+        const top  = bcY(s.promedio)
+        const barH = Math.max((BC_PAD_T + BC_DATA_H) - top, 4)
+        const barY = (BC_PAD_T + BC_DATA_H) - barH
+        const pressed = tipIdx === i
+
+        return (
+          <React.Fragment key={i}>
+            <Rect
+              x={cx - barW / 2} y={barY} width={barW} height={barH}
+              rx={3}
+              fill={pressed ? color : `${color}70`}
+              onPress={() => setTipIdx(pressed ? null : i)}
+            />
+            {pressed && (
+              <SvgText
+                x={cx} y={barY - 4}
+                fontSize={9} fill={color} textAnchor="middle"
+              >
+                {s.promedio.toFixed(1)}
+              </SvgText>
+            )}
+            {i % xStep === 0 && (
+              <SvgText
+                x={cx} y={BC_PAD_T + BC_DATA_H + 12}
+                fontSize={8} fill="rgba(255,255,255,0.28)" textAnchor="middle"
+              >
+                {s.label}
+              </SvgText>
+            )}
+          </React.Fragment>
+        )
+      })}
+    </Svg>
+  )
+}
+
+// ─── Donut chart for intención ────────────────────────────────────────────────
+
+const INTENCION_DEFS = [
+  { id: 'serio',     label: 'Entrenar en serio',      color: '#4f8cff' },
+  { id: 'descargar', label: 'Descargar energía',       color: '#ffaa32' },
+  { id: 'moverme',   label: 'Moverme aunque sea poco', color: '#32c896' },
+  { id: 'recuperar', label: 'Recuperarme activamente', color: '#6ce5ff' },
+] as const
+
+function roundToHundred(vals: number[]): number[] {
+  const total = vals.reduce((a, b) => a + b, 0)
+  if (total === 0) return vals.map(() => 0)
+  const raw     = vals.map(v => (v / total) * 100)
+  const floored = raw.map(Math.floor)
+  const rem     = 100 - floored.reduce((a, b) => a + b, 0)
+  const fracs   = raw.map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac)
+  for (let k = 0; k < rem; k++) floored[fracs[k].i]++
+  return floored
+}
+
+function arcPath(cx: number, cy: number, R: number, r: number, a0: number, a1: number): string {
+  const x1 = cx + R * Math.cos(a0), y1 = cy + R * Math.sin(a0)
+  const x2 = cx + R * Math.cos(a1), y2 = cy + R * Math.sin(a1)
+  const x3 = cx + r * Math.cos(a1), y3 = cy + r * Math.sin(a1)
+  const x4 = cx + r * Math.cos(a0), y4 = cy + r * Math.sin(a0)
+  const lg  = a1 - a0 > Math.PI ? 1 : 0
+  return [
+    `M${x1.toFixed(2)},${y1.toFixed(2)}`,
+    `A${R},${R},0,${lg},1,${x2.toFixed(2)},${y2.toFixed(2)}`,
+    `L${x3.toFixed(2)},${y3.toFixed(2)}`,
+    `A${r},${r},0,${lg},0,${x4.toFixed(2)},${y4.toFixed(2)}`,
+    'Z',
+  ].join(' ')
+}
+
+function DonutChart({
+  counts, containerW,
+}: {
+  counts: CuerpoData['intencion_counts']
+  containerW: number
+}) {
+  const raw   = INTENCION_DEFS.map(d => counts[d.id] ?? 0)
+  const total = raw.reduce((a, b) => a + b, 0)
+  const pcts  = roundToHundred(raw)
+
+  const CX = containerW / 2
+  const CY = 45
+  const R  = 34
+  const ri = 21
+  const GAP = 0.05 // radians gap between adjacent segments
+
+  const angles = raw.map(c => (total > 0 ? (c / total) : 0) * Math.PI * 2)
+  let cursor   = -Math.PI / 2
+
+  return (
+    <>
+      <Svg width={containerW} height={90}>
+        {/* Background ring */}
+        <Circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={R - ri} />
+
+        {INTENCION_DEFS.map((def, i) => {
+          const angle = angles[i]
+          if (angle < 0.01) { cursor += angle; return null }
+          const isFull = angle >= Math.PI * 2 - 0.01
+          const a0 = cursor + (isFull ? 0 : GAP / 2)
+          const a1 = cursor + angle - (isFull ? 0 : GAP / 2)
+          cursor += angle
+          if (isFull) {
+            return (
+              <React.Fragment key={def.id}>
+                <Circle cx={CX} cy={CY} r={R}  fill={def.color} />
+                <Circle cx={CX} cy={CY} r={ri} fill="#000000" />
+              </React.Fragment>
+            )
+          }
+          return <Path key={def.id} d={arcPath(CX, CY, R, ri, a0, a1)} fill={def.color} />
+        })}
+      </Svg>
+
+      {/* Legend: 2×2 grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+        {INTENCION_DEFS.map((def, i) => (
+          <View key={def.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '47%' }}>
+            <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: def.color }} />
+            <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 10, color: 'rgba(255,255,255,0.55)', flex: 1 }} numberOfLines={1}>
+              {def.label}
+            </Text>
+            <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: def.color }}>
+              {pcts[i]}%
+            </Text>
+          </View>
+        ))}
+      </View>
+    </>
+  )
+}
+
+// ─── Top exercises list ───────────────────────────────────────────────────────
+
+function EjercicioTopList({
+  ejercicios, styles, colors,
+}: {
+  ejercicios: EjercicioTop[]
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+}) {
+  if (ejercicios.length === 0) {
+    return (
+      <View style={[styles.chartCenter, { height: 80 }]}>
+        <Text style={styles.emptyText}>
+          Completa sesiones para ver tus ejercicios más entrenados.
+        </Text>
+      </View>
+    )
+  }
+
+  function varColor(v: number): string {
+    if (v < 0) return colors.green
+    if (v > 0) return colors.orange
+    return colors.inkMuted
+  }
+
+  function varArrow(v: number): string {
+    if (v < 0) return '↓'
+    if (v > 0) return '↑'
+    return '='
+  }
+
+  function varLabel(v: number): string {
+    if (v === 0) return '0.0'
+    const sign = v > 0 ? '+' : ''
+    return `${sign}${v.toFixed(1)}`
+  }
+
+  return (
+    <View>
+      {ejercicios.map((ej, i) => (
+        <View key={ej.nombre}>
+          {i > 0 && <View style={styles.exDivider} />}
+          <View style={styles.exRow}>
+            {/* Position */}
+            <Text style={styles.exPos}>{i + 1}</Text>
+
+            {/* Name + meta */}
+            <View style={styles.exCenter}>
+              <Text style={styles.exNombre} numberOfLines={1}>{ej.nombre}</Text>
+              <Text style={styles.exMeta}>
+                {ej.count} {ej.count === 1 ? 'vez' : 'veces'} · {ej.categoria}
+              </Text>
+            </View>
+
+            {/* RPE + variation */}
+            <View style={styles.exRight}>
+              <Text style={styles.exRpe}>{ej.rpe_promedio.toFixed(1)}</Text>
+              {ej.variacion !== null ? (
+                <Text style={[styles.exVar, { color: varColor(ej.variacion) }]}>
+                  {varArrow(ej.variacion)} {varLabel(ej.variacion)}
+                </Text>
+              ) : (
+                <Text style={styles.exVarPrimeras}>Primeras</Text>
+              )}
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
   )
 }
 
@@ -353,6 +615,12 @@ export default function EstadisticasScreen() {
   const [rpeData,      setRpeData]      = useState<RPEData | null>(null)
   const [rpeChartBusy, setRpeChartBusy] = useState(false)
 
+  // ── Block 3 state ─────────────────────────────────────────────────────────
+  const [cuerpoData, setCuerpoData] = useState<CuerpoData | null>(null)
+
+  // ── Block 4 state ─────────────────────────────────────────────────────────
+  const [ejerciciosData, setEjerciciosData] = useState<EjercicioTop[] | null>(null)
+
   // ── Block 2 state ─────────────────────────────────────────────────────────
   const now = new Date()
   const [mesActual,      setMesActual]      = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
@@ -378,6 +646,24 @@ export default function EstadisticasScreen() {
     }
   }, [])
 
+  const fetchEjercicios = useCallback(async (isInitial = false) => {
+    try {
+      const res: EjercicioTop[] = await apiGet('/api/stats/ejercicios-top/')
+      setEjerciciosData(res)
+    } catch (e: any) {
+      if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+    }
+  }, [])
+
+  const fetchCuerpo = useCallback(async (isInitial = false) => {
+    try {
+      const res: CuerpoData = await apiGet('/api/stats/cuerpo-contexto/')
+      setCuerpoData(res)
+    } catch (e: any) {
+      if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+    }
+  }, [])
+
   const fetchConsist = useCallback(async (year: number, month: number, isInitial = false) => {
     if (!isInitial) setConsistLoading(true)
     try {
@@ -396,6 +682,8 @@ export default function EstadisticasScreen() {
     Promise.all([
       fetchRPE('todo', true),
       fetchConsist(year, month, true),
+      fetchCuerpo(true),
+      fetchEjercicios(true),
     ]).finally(() => setInitialLoading(false))
   }, []) // eslint-disable-line
 
@@ -441,6 +729,7 @@ export default function EstadisticasScreen() {
               Promise.all([
                 fetchRPE(filtro, true),
                 fetchConsist(mesActual.year, mesActual.month, true),
+                fetchCuerpo(true),
               ]).finally(() => setInitialLoading(false))
             }}
             style={styles.retryBtn}
@@ -535,6 +824,73 @@ export default function EstadisticasScreen() {
           styles={styles}
         />
 
+        {/* ── Bloque 3: Tu cuerpo en contexto ── */}
+        <Text style={styles.blockLabel}>TU CUERPO EN CONTEXTO</Text>
+
+        {/* Card 1 — Estado físico */}
+        <View style={styles.card}>
+          <Text style={styles.cardMiniTitle}>Estado físico promedio por semana</Text>
+          {cuerpoData && cuerpoData.semanas_fisico.length > 0 ? (
+            <EstadoBarChart
+              semanas={cuerpoData.semanas_fisico}
+              color={colors.green}
+              containerW={cardInnerW}
+            />
+          ) : (
+            <View style={styles.chartCenter}>
+              <Text style={styles.emptyText}>
+                {cuerpoData
+                  ? 'Completa al menos 2 semanas con check-in para ver tu estado físico.'
+                  : 'Cargando...'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Card 2 — Estado mental */}
+        <View style={styles.card}>
+          <Text style={styles.cardMiniTitle}>Estado mental promedio por semana</Text>
+          {cuerpoData && cuerpoData.semanas_mental.length > 0 ? (
+            <EstadoBarChart
+              semanas={cuerpoData.semanas_mental}
+              color={colors.cyan}
+              containerW={cardInnerW}
+            />
+          ) : (
+            <View style={styles.chartCenter}>
+              <Text style={styles.emptyText}>
+                {cuerpoData
+                  ? 'Completa al menos 2 semanas con check-in para ver tu estado mental.'
+                  : 'Cargando...'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Card 3 — Intención de entrenamiento */}
+        <View style={styles.card}>
+          <Text style={styles.cardMiniTitle}>Intención de entrenamiento</Text>
+          {cuerpoData && cuerpoData.total_checkins >= 5 ? (
+            <DonutChart counts={cuerpoData.intencion_counts} containerW={cardInnerW} />
+          ) : (
+            <View style={[styles.chartCenter, { height: 80 }]}>
+              <Text style={styles.emptyText}>
+                Sigue entrenando para ver tu perfil de intención.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Bloque 4: Tus ejercicios más entrenados ── */}
+        <Text style={styles.blockLabel}>TUS EJERCICIOS MÁS ENTRENADOS</Text>
+        <View style={styles.card}>
+          <EjercicioTopList
+            ejercicios={ejerciciosData ?? []}
+            styles={styles}
+            colors={colors}
+          />
+        </View>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -585,6 +941,12 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1,
       borderColor: c.borderDefault, borderRadius: 20,
       padding: 16, marginBottom: 20,
+    },
+
+    // Card mini title
+    cardMiniTitle: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: c.inkMuted,
+      marginBottom: 14, letterSpacing: 0.1,
     },
 
     // Filter tabs
@@ -638,5 +1000,17 @@ function makeStyles(c: Colors) {
     metricDivider: { width: 1, height: 44, backgroundColor: c.borderDefault },
     metricValue:   { fontFamily: 'SpaceGrotesk-Bold', fontSize: 26, letterSpacing: -0.8 },
     metricLabel:   { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.8, textTransform: 'uppercase' },
+
+    // Exercise top list
+    exRow:         { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 },
+    exDivider:     { height: 1, backgroundColor: c.borderDefault },
+    exPos:         { fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: c.inkFaint, width: 28, textAlign: 'center', letterSpacing: -0.5 },
+    exCenter:      { flex: 1, gap: 3 },
+    exNombre:      { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, color: c.inkPrimary, letterSpacing: -0.2 },
+    exMeta:        { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.3 },
+    exRight:       { alignItems: 'flex-end', gap: 3, minWidth: 64 },
+    exRpe:         { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 18, color: c.inkPrimary, letterSpacing: -0.4 },
+    exVar:         { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 0.2 },
+    exVarPrimeras: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkFaint, letterSpacing: 0.2 },
   })
 }

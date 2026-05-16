@@ -13,6 +13,7 @@ class DailyCheckin(models.Model):
     )
     duracion_disponible = models.IntegerField()
     foco_entrenamiento = models.JSONField(default=list, blank=True)
+    estado_fisico = models.IntegerField(null=True, blank=True)
     dolor_hoy = models.TextField(blank=True, null=True)
     notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
