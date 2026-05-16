@@ -103,6 +103,19 @@ function buildCheckinChips(c: CheckinData): Chip[] {
   ].filter(Boolean) as Chip[]
 }
 
+// ─── Resumen types + helper ───────────────────────────────────────────────────
+
+interface Decision { icon: string; text: string }
+interface Evidencia { text: string; reference: string }
+interface Resumen { decisiones: Decision[]; evidencia: Evidencia }
+
+function toParrafo(decisiones: Decision[]): string {
+  return decisiones.map(d => {
+    const t = d.text.trim()
+    return /[.!?]$/.test(t) ? t : t + '.'
+  }).join(' ')
+}
+
 // ─── Date helper ──────────────────────────────────────────────────────────────
 
 function formatDateES(): string {
@@ -307,6 +320,144 @@ const loadStyles = StyleSheet.create({
   },
 })
 
+// ─── Justification Card ───────────────────────────────────────────────────────
+
+function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; loading: boolean }) {
+  if (!loading && !resumen) return null
+
+  return (
+    <View style={jStyles.card}>
+      <View style={jStyles.tag}>
+        <Text style={jStyles.tagText}>✦  POR QUÉ ESTA RUTINA</Text>
+      </View>
+
+      {loading && !resumen ? (
+        <View style={jStyles.skeletons}>
+          <View style={[jStyles.skel, { width: '100%' }]} />
+          <View style={[jStyles.skel, { width: '88%' }]} />
+          <View style={[jStyles.skel, { width: '94%' }]} />
+          <View style={jStyles.divider} />
+          <View style={[jStyles.skel, { width: '80%' }]} />
+          <View style={[jStyles.skel, { width: '55%', marginTop: 4 }]} />
+        </View>
+      ) : resumen ? (
+        <>
+          <Text style={jStyles.parrafo}>{toParrafo(resumen.decisiones)}</Text>
+          <View style={jStyles.divider} />
+          <Text style={jStyles.evidenciaText}>{resumen.evidencia.text}</Text>
+          <Text style={jStyles.evidenciaRef}>{resumen.evidencia.reference}</Text>
+        </>
+      ) : null}
+    </View>
+  )
+}
+
+const jStyles = StyleSheet.create({
+  card: {
+    borderLeftWidth:  3,
+    borderLeftColor:  '#4f8cff',
+    borderWidth:      1,
+    borderColor:      'rgba(255,255,255,0.07)',
+    backgroundColor:  'rgba(79,140,255,0.05)',
+    borderRadius:     16,
+    padding:          16,
+    marginBottom:     12,
+  },
+  tag: {
+    marginBottom: 12,
+  },
+  tagText: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:       9,
+    color:         '#7ab6ff',
+    letterSpacing:  1.8,
+    textTransform: 'uppercase',
+  },
+  parrafo: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.78)',
+    lineHeight: 23,
+  },
+  divider: {
+    height:          1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    marginVertical:  14,
+  },
+  evidenciaText: {
+    fontFamily:   'InstrumentSerif-Italic',
+    fontSize:     13,
+    color:        'rgba(255,255,255,0.48)',
+    lineHeight:   20,
+    marginBottom:  6,
+  },
+  evidenciaRef: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:      10,
+    color:         'rgba(255,255,255,0.28)',
+    letterSpacing:  0.5,
+  },
+  skeletons: {
+    gap: 8,
+  },
+  skel: {
+    height:          12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius:     4,
+  },
+})
+
+// ─── Param Card ───────────────────────────────────────────────────────────────
+
+function ParamCard({ value, unit, label }: { value: string; unit: string; label: string }) {
+  return (
+    <View style={pStyles.card}>
+      <View style={pStyles.valueRow}>
+        <Text style={pStyles.value}>{value}</Text>
+        <Text style={pStyles.unit}>{unit}</Text>
+      </View>
+      <Text style={pStyles.label}>{label}</Text>
+    </View>
+  )
+}
+
+const pStyles = StyleSheet.create({
+  card: {
+    flex:            1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth:     1,
+    borderColor:     'rgba(255,255,255,0.08)',
+    borderRadius:    16,
+    padding:         16,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems:    'baseline',
+    gap:           4,
+    marginBottom:  8,
+  },
+  value: {
+    fontFamily:    'SpaceGrotesk-Bold',
+    fontSize:      30,
+    color:         '#e8efff',
+    letterSpacing: -0.5,
+    lineHeight:    34,
+  },
+  unit: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   13,
+    color:      'rgba(255,255,255,0.4)',
+    lineHeight: 18,
+  },
+  label: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:       9,
+    color:         'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase',
+    letterSpacing:  1.5,
+  },
+})
+
 // ─── Stats Chip ───────────────────────────────────────────────────────────────
 
 function StatChip({ label }: { label: string }) {
@@ -445,11 +596,13 @@ export default function GenerateScreen() {
   const [retryKey,     setRetryKey]     = useState(0)
   const contentFade = useRef(new Animated.Value(0)).current
 
-  const [error,        setError]        = useState<string | null>(null)
-  const [sesionId,     setSesionId]     = useState<string | null>(null)
-  const [sesion,       setSesion]       = useState<Sesion | null>(null)
-  const [checkin,      setCheckin]      = useState<CheckinData | null>(null)
-  const [regenerating, setRegenerating] = useState<string | null>(null)
+  const [error,          setError]          = useState<string | null>(null)
+  const [sesionId,       setSesionId]       = useState<string | null>(null)
+  const [sesion,         setSesion]         = useState<Sesion | null>(null)
+  const [checkin,        setCheckin]        = useState<CheckinData | null>(null)
+  const [resumen,        setResumen]        = useState<Resumen | null>(null)
+  const [resumenLoading, setResumenLoading] = useState(false)
+  const [regenerating,   setRegenerating]   = useState<string | null>(null)
 
   const generate = useCallback(async () => {
     setApiDone(false)
@@ -477,6 +630,17 @@ export default function GenerateScreen() {
   }, [contentFade])
 
   useEffect(() => { generate() }, [generate])
+
+  // Fetch justification lazily once session ID is known
+  useEffect(() => {
+    if (!sesionId) return
+    setResumen(null)
+    setResumenLoading(true)
+    apiGet(`/api/sessions/${sesionId}/resumen/`)
+      .then(setResumen)
+      .catch(() => {})
+      .finally(() => setResumenLoading(false))
+  }, [sesionId])
 
   const handleReady = useCallback(() => {
     setContentReady(true)
@@ -527,6 +691,18 @@ export default function GenerateScreen() {
 
   const rir          = sesion ? (10 - sesion.rpe_target).toFixed(0) : '—'
   const checkinChips = useMemo(() => checkin ? buildCheckinChips(checkin) : [], [checkin])
+
+  const totalEjercicios = useMemo(
+    () => sesion?.fases.flatMap(f => f.ejercicios).length ?? 0,
+    [sesion],
+  )
+  const totalSeries = useMemo(
+    () => sesion?.fases
+      .filter(f => f.nombre === 'principal')
+      .flatMap(f => f.ejercicios)
+      .reduce((s, ej) => s + ej.series, 0) ?? 0,
+    [sesion],
+  )
 
   return (
     <View style={styles.root}>
@@ -593,11 +769,35 @@ export default function GenerateScreen() {
               </>
             )}
 
-            {/* Stats row */}
-            <View style={styles.statsRow}>
-              <StatChip label={`⏱ ${sesion.duracion_total} min`} />
-              <StatChip label={`RPE ${sesion.rpe_target}/10`} />
-              <StatChip label={`RIR ${rir}`} />
+            {/* Justification card */}
+            <JustificacionCard resumen={resumen} loading={resumenLoading} />
+
+            {/* Parameters grid */}
+            <View style={styles.paramsSection}>
+              <View style={styles.paramsRow}>
+                <ParamCard
+                  value={String(sesion.duracion_total)}
+                  unit="min"
+                  label="Duración"
+                />
+                <ParamCard
+                  value={String(totalEjercicios)}
+                  unit="ej."
+                  label="Ejercicios"
+                />
+              </View>
+              <View style={styles.paramsRow}>
+                <ParamCard
+                  value={String(totalSeries)}
+                  unit="series"
+                  label="Trabajo"
+                />
+                <ParamCard
+                  value={String(sesion.rpe_target)}
+                  unit="/10"
+                  label="Intensidad RPE"
+                />
+              </View>
             </View>
 
             {/* Trainer note */}
@@ -787,13 +987,17 @@ function makeStyles(c: Colors) {
       lineHeight: 18,
     },
 
-    // Stats
-    statsRow: {
-      flexDirection: 'row',
-      gap:           8,
-      marginBottom:  20,
-      flexWrap:      'wrap',
+    // Params grid
+    paramsSection: {
+      gap:          10,
+      marginBottom: 24,
     },
+    paramsRow: {
+      flexDirection: 'row',
+      gap:           10,
+    },
+
+    // Stats (kept for StatChip reuse elsewhere)
     statChip: {
       backgroundColor: c.cardBg,
       borderWidth:     1,
