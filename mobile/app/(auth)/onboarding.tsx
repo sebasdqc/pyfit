@@ -31,6 +31,7 @@ type ScreenId =
   | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
   | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
   | 'b3_lugar' | 'b3_equipamiento' | 'b3_tiempo_horario'
+  | 'b4_objetivo' | 'b4_horizonte'
 
 type FormData = {
   nombre: string
@@ -55,6 +56,9 @@ type FormData = {
   tiempoOcupado: string | null
   horarios: string[]
   diasFijos: boolean | null
+  objetivos: string[]
+  horizonteTemporal: string | null
+  motivacion: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -198,6 +202,24 @@ const HORARIO_OPTS = [
   { value: 'noche',    icon: '🌙', label: 'Noche',     sub: 'Después de las 20h' },
 ]
 
+const OBJETIVOS = [
+  { id: 'verse_mejor',     icon: '✨', label: 'Quiero verme mejor',             tagline: 'Composición corporal y estética' },
+  { id: 'sentirse_fuerte', icon: '💪', label: 'Quiero sentirme más fuerte',     tagline: 'Ganar fuerza y músculo' },
+  { id: 'rendimiento',     icon: '🏆', label: 'Quiero mejorar mi rendimiento',  tagline: 'Velocidad, resistencia, explosividad' },
+  { id: 'energia',         icon: '⚡', label: 'Quiero más energía en mi día',   tagline: 'Vitalidad y bienestar diario' },
+  { id: 'salud',           icon: '❤️', label: 'Quiero mejorar mi salud',        tagline: 'Prevención y calidad de vida' },
+  { id: 'mantener',        icon: '🛡️', label: 'Quiero mantener lo que tengo',   tagline: 'Consistencia y conservación' },
+]
+
+const HORIZONTE_OPTS = [
+  { value: '4-6w',   label: '4–6 semanas',     sub: 'Quiero ver algo rápido' },
+  { value: '3m',     label: '3 meses',          sub: 'Meta a corto plazo' },
+  { value: '6m',     label: '6 meses',          sub: 'Transformación real' },
+  { value: '1y',     label: '1 año o más',      sub: 'Cambio de estilo de vida' },
+  { value: 'evento', label: 'Tengo un evento',  sub: 'Boda, competición, viaje...' },
+  { value: 'libre',  label: 'Sin fecha fija',   sub: 'Proceso, no destino' },
+]
+
 const DEPORTES = [
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
@@ -236,6 +258,9 @@ function getBlockTitle(screen: ScreenId): string {
     case 'b3_equipamiento':
     case 'b3_tiempo_horario':
       return 'Cómo y dónde entrenas'
+    case 'b4_objetivo':
+    case 'b4_horizonte':
+      return 'Lo que quieres lograr'
   }
 }
 
@@ -395,6 +420,7 @@ export default function OnboardingScreen() {
     lugares: [], equipamiento: [],
     tiempoNormal: null, tiempoOcupado: null,
     horarios: [], diasFijos: null,
+    objetivos: [], horizonteTemporal: null, motivacion: '',
   })
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -432,6 +458,8 @@ export default function OnboardingScreen() {
     'b3_lugar',
     'b3_equipamiento',
     'b3_tiempo_horario',
+    'b4_objetivo',
+    'b4_horizonte',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -468,6 +496,12 @@ export default function OnboardingScreen() {
       if (!data.tiempoOcupado) return 'Indica cuánto tiempo tienes en un día ocupado.'
       if (data.horarios.length === 0) return 'Selecciona cuándo sueles entrenar.'
       if (data.diasFijos === null) return 'Indica si tienes días fijos de entrenamiento.'
+    }
+    if (currentScreen === 'b4_objetivo') {
+      if (data.objetivos.length === 0) return 'Elige al menos un objetivo.'
+    }
+    if (currentScreen === 'b4_horizonte') {
+      if (!data.horizonteTemporal) return 'Selecciona un horizonte temporal.'
     }
     return null
   }
@@ -514,6 +548,10 @@ export default function OnboardingScreen() {
         implementos: data.equipamiento,
         duracion_disponible: data.tiempoNormal ? parseInt(data.tiempoNormal) : null,
         duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
+        objetivos_multiples: data.objetivos,
+        objetivo: data.objetivos[0] ?? '',
+        horizonte_temporal: data.horizonteTemporal,
+        motivacion: data.motivacion.trim(),
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -1271,6 +1309,101 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ── Block 4: main objective ───────────────────────────────────────────────
+
+  function renderObjetivo() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Qué quieres lograr?</Text>
+        <Text style={styles.b3Sub}>
+          Cada objetivo da forma a tu rutina. Elige todos los que reflejan lo que buscas.
+        </Text>
+
+        <View style={styles.objetivosGrid}>
+          {OBJETIVOS.map(obj => {
+            const on = data.objetivos.includes(obj.id)
+            return (
+              <TouchableOpacity key={obj.id}
+                style={[styles.objetivoCard, on && styles.objetivoCardOn]}
+                onPress={() => {
+                  if (on) set('objetivos', data.objetivos.filter(x => x !== obj.id))
+                  else set('objetivos', [...data.objetivos, obj.id])
+                }}
+                activeOpacity={0.8}>
+                <Text style={styles.objetivoIcon}>{obj.icon}</Text>
+                <Text style={[styles.objetivoLabel, on && styles.objetivoLabelOn]}>
+                  {obj.label}
+                </Text>
+                <Text style={styles.objetivoTagline}>{obj.tagline}</Text>
+                {on && <View style={styles.objetivoDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </ScrollView>
+    )
+  }
+
+  // ── Block 4: time horizon + motivation ────────────────────────────────────
+
+  function renderHorizonte() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.b3Title}>¿Cuándo quieres ver resultados?</Text>
+        <Text style={styles.b3Sub}>
+          Sin presión — solo para ajustar la intensidad y ritmo de progresión.
+        </Text>
+
+        <View style={styles.horizonteGrid}>
+          {HORIZONTE_OPTS.map(opt => {
+            const on = data.horizonteTemporal === opt.value
+            return (
+              <TouchableOpacity key={opt.value}
+                style={[styles.horizonteCard, on && styles.horizonteCardOn]}
+                onPress={() => set('horizonteTemporal', opt.value)}
+                activeOpacity={0.8}>
+                <Text style={[styles.horizonteLabel, on && styles.horizonteLabelOn]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.horizonteSub, on && styles.horizonteSubOn]}>
+                  {opt.sub}
+                </Text>
+                {on && <View style={styles.horizonteDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Motivation text */}
+        <View style={[styles.fieldGroup, { marginTop: 32 }]}>
+          <Text style={styles.motivTitle}>
+            ¿Hay algo concreto que te está motivando ahora?
+          </Text>
+          <Text style={styles.motivSub}>
+            Un evento, una sensación, una persona. Breve y honesto.
+            Esto alimenta tus mensajes de logro personalizados.
+          </Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            placeholder="Ej: una boda en agosto, volver a correr sin cansarme, sentirme bien en la playa..."
+            placeholderTextColor={'rgba(255,255,255,0.28)'}
+            value={data.motivacion}
+            onChangeText={v => set('motivacion', v)}
+            multiline
+            numberOfLines={3}
+            maxLength={200}
+            textAlignVertical="top"
+          />
+          <Text style={styles.charCount}>{data.motivacion.length}/200</Text>
+        </View>
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
       case 'b1_personal':          return renderPersonal()
@@ -1283,6 +1416,8 @@ export default function OnboardingScreen() {
       case 'b3_lugar':             return renderLugar()
       case 'b3_equipamiento':      return renderEquipamiento()
       case 'b3_tiempo_horario':    return renderTiempoHorario()
+      case 'b4_objetivo':          return renderObjetivo()
+      case 'b4_horizonte':         return renderHorizonte()
     }
   }
 
@@ -1735,6 +1870,60 @@ function makeStyles(c: Colors) {
     diasBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, marginBottom: 4 },
     diasBtnTextOn: { color: c.accent },
     diasBtnSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, textAlign: 'center' },
+
+    // Block 4 — objetivo
+    objetivosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    objetivoCard: {
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative',
+      minHeight: 120,
+    },
+    objetivoCardOn: {
+      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
+    },
+    objetivoIcon: { fontSize: 32, marginBottom: 10 },
+    objetivoLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
+      color: c.inkPrimary, lineHeight: 20, marginBottom: 5,
+    },
+    objetivoLabelOn: { color: c.accent },
+    objetivoTagline: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 11,
+      color: c.inkMuted, lineHeight: 16,
+    },
+    objetivoDot: {
+      position: 'absolute', top: 12, right: 12,
+      width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
+    },
+
+    // Block 4 — horizonte
+    horizonteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    horizonteCard: {
+      width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16, position: 'relative',
+    },
+    horizonteCardOn: {
+      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
+    },
+    horizonteLabel: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
+      color: c.inkPrimary, marginBottom: 4,
+    },
+    horizonteLabelOn: { color: c.accent },
+    horizonteSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
+    horizonteSubOn: { color: 'rgba(79,140,255,0.65)' },
+    horizonteDot: {
+      position: 'absolute', top: 10, right: 10,
+      width: 7, height: 7, borderRadius: 4, backgroundColor: c.accent,
+    },
+    motivTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 18,
+      color: c.inkPrimary, letterSpacing: -0.3, lineHeight: 26, marginBottom: 8,
+    },
+    motivSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkMuted, lineHeight: 19, marginBottom: 14,
+    },
 
     // Block 2 — limitaciones
     limitTitle: {
