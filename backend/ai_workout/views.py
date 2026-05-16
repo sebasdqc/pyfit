@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import date, timedelta
+from types import SimpleNamespace
 from groq import Groq
 from django.conf import settings
 from django.db import transaction
@@ -504,8 +505,12 @@ def generate_session(request):
     except DailyCheckin.DoesNotExist:
         return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
 
-    if not checkin.location:
-        return Response({'error': 'El check-in debe tener una ubicación.'}, status=400)
+    if checkin.location:
+        loc = checkin.location
+    else:
+        loc = user.locations.order_by('created_at').first()
+        if not loc:
+            loc = SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
 
     sesiones_recientes = user.sessions.filter(created_at__date__gte=hace_14_dias)
     fatiga = calcular_fatiga(sesiones_recientes)
@@ -515,8 +520,6 @@ def generate_session(request):
         fecha__gte=hoy,
         fecha__lte=hoy + timedelta(days=14)
     ).order_by('fecha').first()
-
-    loc = checkin.location
 
     # Phase 1 & 2: Build exercise pool
     exercise_pool, exercise_flat_list = _get_exercise_pool(
@@ -600,11 +603,13 @@ def generate_session(request):
 
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
 
+    db_location = loc if isinstance(loc, user.locations.model) else None
+
     with transaction.atomic():
         sesion = Session.objects.create(
             user=user,
             checkin=checkin,
-            location=loc,
+            location=db_location,
             fecha=hoy,
             duracion_planificada=checkin.duracion_disponible,
             rpe_target=rpe_target,

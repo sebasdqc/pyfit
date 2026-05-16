@@ -334,8 +334,8 @@ export default function GenerateScreen() {
           <TouchableOpacity style={styles.retryBtn} onPress={generate}>
             <Text style={styles.retryBtnText}>Intentar de nuevo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backBtnText}>Volver</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(app)/dashboard')}>
+            <Text style={styles.backBtnText}>Volver al inicio</Text>
           </TouchableOpacity>
         </View>
       ) : sesion ? (
