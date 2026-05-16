@@ -1,539 +1,44 @@
 import React, { useState, useMemo } from 'react'
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import { COLORS, Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
-import { apiPut, apiPost } from '../../lib/api'
-import { getUser, saveUser } from '../../lib/storage'
+import { Colors } from '../../lib/colors'
+import { apiPut } from '../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Location {
-  nombre: string
-  tipo: string
-  implementos: string[]
-}
+type Sexo = 'masculino' | 'femenino' | 'otro' | ''
+type ScreenId = 'b1_personal' | 'b1_ciclo' | 'b1_historial'
 
-interface Injury {
-  zona: string
-  severidad: string
-}
-
-interface OnboardingData {
-  // Step 1
+type FormData = {
   nombre: string
-  objetivos: string[]
-  nivel: string
-  experiencia_deportiva: string
-  lesiones: Injury[]
-  // Step 2
-  sexo: string
+  fechaNacimiento: Date | null
+  sexo: Sexo
   peso: string
-  unidad_peso: 'kg' | 'lb'
+  pesoUnit: 'kg' | 'lb'
   altura: string
-  unidad_altura: 'cm' | 'ft'
-  fecha_nacimiento: string
-  usa_ciclo_menstrual: boolean
-  // Step 3
-  dias_semana: number
-  horario_preferido: string
-  nivel_estres: string
-  tipo_trabajo: string
-  // Step 4
-  estilo_entrenamiento: string
-  ejercicios_favoritos: string
-  ejercicios_evitar: string
-  rm_sentadilla: string
-  rm_peso_muerto: string
-  rm_press_banca: string
-  rm_press_hombro: string
-  // Step 5
-  locations: Location[]
+  alturaUnit: 'cm' | 'ft'
+  usaCicloMenstrual: boolean
+  frecuenciaHistorica: number | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const OBJETIVOS = ['Perder grasa', 'Ganar músculo', 'Rendimiento deportivo', 'Resistencia', 'Salud general']
-const NIVELES = ['Principiante', 'Intermedio', 'Avanzado']
-const SEXOS = ['Masculino', 'Femenino', 'Otro']
-const HORARIOS = ['Mañana', 'Tarde', 'Noche']
-const ESTRES = ['Bajo', 'Moderado', 'Alto']
-const TRABAJOS = ['Sedentario', 'Mixto', 'Activo']
-const ESTILOS = ['Fuerza', 'Hipertrofia', 'HIIT', 'Funcional', 'Cardio', 'Mixto']
-const TIPOS_LUGAR = ['Gimnasio', 'Casa', 'Exterior']
-const IMPLEMENTOS = ['Barras', 'Mancuernas', 'Máquinas', 'TRX', 'Kettlebells', 'Bandas elásticas', 'Cajón pliométrico', 'Anillas']
-const DIAS = [1, 2, 3, 4, 5, 6, 7]
-
-const ZONAS_LESION = ['Rodilla', 'Lumbar', 'Hombro', 'Cuello', 'Cadera', 'Tobillo', 'Muñeca', 'Codo']
-const SEVERIDADES = ['Leve', 'Moderada', 'Crónica']
-
-function normalize(s: string) {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-}
-
-const LISTA_EJERCICIOS = [
-  'Sentadilla con barra', 'Sentadilla frontal', 'Sentadilla sumo', 'Sentadilla goblet',
-  'Sentadilla búlgara', 'Sentadilla hack', 'Peso muerto convencional', 'Peso muerto rumano',
-  'Peso muerto sumo', 'Peso muerto con mancuernas', 'Press banca plano', 'Press banca inclinado',
-  'Press banca declinado', 'Press banca con mancuernas', 'Aperturas con mancuernas',
-  'Fondos en paralelas', 'Press militar con barra', 'Press hombro con mancuernas',
-  'Elevaciones laterales', 'Elevaciones frontales', 'Face pull', 'Pájaros',
-  'Dominadas', 'Jalón al pecho', 'Remo con barra', 'Remo con mancuerna',
-  'Remo en polea', 'Pull over', 'Curl de bíceps con barra', 'Curl de bíceps con mancuernas',
-  'Curl martillo', 'Curl en polea', 'Extensión de tríceps en polea',
-  'Press francés', 'Patada de tríceps', 'Fondos en banco', 'Hip thrust',
-  'Puente de glúteos', 'Patada de glúteo en polea', 'Abducción de cadera',
-  'Zancadas', 'Zancadas caminando', 'Estocadas laterales', 'Prensa de piernas',
-  'Extensión de cuádriceps', 'Curl femoral', 'Elevación de gemelos de pie',
-  'Elevación de gemelos sentado', 'Plancha', 'Plancha lateral', 'Crunch',
-  'Crunch inverso', 'Elevación de piernas', 'Rueda abdominal', 'Russian twist',
-  'Dead bug', 'Bird dog', 'Superman', 'Hyperextensión lumbar',
-  'Swing con kettlebell', 'Turkish get up', 'Clean con kettlebell',
-  'Burpees', 'Mountain climbers', 'Saltos al cajón', 'Step up',
-  'Movilidad torácica', 'Movilidad de cadera', 'Estiramiento de isquiotibiales',
-  'Estiramiento de cuádriceps', 'Estiramiento de pectoral', 'Foam roller',
+const FRECUENCIA_OPTIONS = [
+  { label: 'Casi nunca',          sublabel: '0 o 1 días por semana',   value: 1, badge: '0–1' },
+  { label: '1–2 veces por semana', sublabel: 'Entrenamiento ocasional', value: 2, badge: '1–2' },
+  { label: '3–4 veces por semana', sublabel: 'La frecuencia más común', value: 3, badge: '3–4' },
+  { label: '5–6 veces por semana', sublabel: 'Alta dedicación',          value: 5, badge: '5–6' },
+  { label: 'Todos los días',      sublabel: '7 días por semana',        value: 7, badge: '7'   },
 ]
 
-function capitalizeFirst(s: string) {
-  if (!s) return s
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-// ─── Chip component ───────────────────────────────────────────────────────────
-
-function Chip({
-  label,
-  selected,
-  onPress,
-  multi = false,
-}: {
-  label: string
-  selected: boolean
-  onPress: () => void
-  multi?: boolean
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  return (
-    <TouchableOpacity
-      style={[styles.chip, selected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </TouchableOpacity>
-  )
-}
-
-// ─── Section label ────────────────────────────────────────────────────────────
-
-function Label({ text }: { text: string }) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  return <Text style={styles.label}>{text}</Text>
-}
-
-// ─── Text field ───────────────────────────────────────────────────────────────
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType = 'default',
-  multiline = false,
-}: {
-  label: string
-  value: string
-  onChangeText: (v: string) => void
-  placeholder?: string
-  keyboardType?: any
-  multiline?: boolean
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  return (
-    <View style={styles.fieldGroup}>
-      <Label text={label} />
-      <TextInput
-        style={[styles.input, multiline && styles.inputMulti]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder || ''}
-        placeholderTextColor={colors.inkMuted}
-        keyboardType={keyboardType}
-        autoCapitalize="none"
-        autoCorrect={false}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-      />
-    </View>
-  )
-}
-
-// ─── Exercise selector ────────────────────────────────────────────────────────
-
-function ExerciseSelector({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-
-  const selected = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
-  const filtered = query.length > 0
-    ? LISTA_EJERCICIOS.filter(
-        (e) => normalize(e).includes(normalize(query)) && !selected.includes(e)
-      ).slice(0, 6)
-    : []
-
-  function add(exercise: string) {
-    onChange([...selected, exercise].join(', '))
-    setQuery('')
-    setOpen(false)
-  }
-
-  function remove(exercise: string) {
-    onChange(selected.filter((e) => e !== exercise).join(', '))
-  }
-
-  return (
-    <View style={styles.fieldGroup}>
-      <Label text={label} />
-      {selected.length > 0 && (
-        <View style={[styles.chipsRow, { marginBottom: 10 }]}>
-          {selected.map((ex) => (
-            <TouchableOpacity
-              key={ex}
-              style={styles.exChip}
-              onPress={() => remove(ex)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.exChipText}>{ex}</Text>
-              <Text style={styles.exChipRemove}>×</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-      <View>
-        <TextInput
-          style={styles.input}
-          value={query}
-          onChangeText={(v) => { setQuery(v); setOpen(v.length > 0) }}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder={placeholder || 'Buscar ejercicio...'}
-          placeholderTextColor={colors.inkMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {open && filtered.length > 0 && (
-          <View style={styles.dropdown}>
-            {filtered.map((ex) => (
-              <TouchableOpacity
-                key={ex}
-                style={styles.dropdownItem}
-                onPress={() => add(ex)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.dropdownItemText}>{ex}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-    </View>
-  )
-}
-
-// ─── Injury selector ─────────────────────────────────────────────────────────
-
-function InjurySelector({
-  value,
-  onChange,
-}: {
-  value: Injury[]
-  onChange: (v: Injury[]) => void
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  const [zona, setZona] = useState('')
-  const [severidad, setSeveridad] = useState('')
-
-  function add() {
-    if (!zona || !severidad) return
-    onChange([...value, { zona, severidad }])
-    setZona('')
-    setSeveridad('')
-  }
-
-  function remove(idx: number) {
-    onChange(value.filter((_, i) => i !== idx))
-  }
-
-  return (
-    <View style={styles.fieldGroup}>
-      <Label text="LESIONES O LIMITACIONES (opcional)" />
-
-      {value.length > 0 && (
-        <View style={{ marginBottom: 12, gap: 8 }}>
-          {value.map((inj, i) => (
-            <View key={i} style={styles.injuryTag}>
-              <Text style={styles.injuryTagText}>
-                {capitalizeFirst(inj.zona)} · {capitalizeFirst(inj.severidad)}
-              </Text>
-              <TouchableOpacity onPress={() => remove(i)} activeOpacity={0.7}>
-                <Text style={styles.injuryRemove}>×</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <Label text="ZONA AFECTADA" />
-      <View style={styles.chipsRow}>
-        {ZONAS_LESION.map((z) => (
-          <Chip key={z} label={z} selected={zona === z} onPress={() => setZona(z === zona ? '' : z)} />
-        ))}
-      </View>
-
-      {zona !== '' && (
-        <>
-          <Label text="SEVERIDAD" />
-          <View style={styles.chipsRow}>
-            {SEVERIDADES.map((sv) => (
-              <Chip key={sv} label={sv} selected={severidad === sv} onPress={() => setSeveridad(sv === severidad ? '' : sv)} />
-            ))}
-          </View>
-          <TouchableOpacity
-            style={[styles.addInjuryBtn, (!zona || !severidad) && { opacity: 0.4 }]}
-            onPress={add}
-            disabled={!zona || !severidad}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addInjuryBtnText}>+ Agregar lesión</Text>
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
-  )
-}
-
-// ─── Date picker field ────────────────────────────────────────────────────────
-
-function DatePickerField({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (v: string) => void
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  const [show, setShow] = useState(false)
-
-  const parsed = value ? new Date(value + 'T12:00:00') : new Date(2000, 0, 1)
-  const dateValue = isNaN(parsed.getTime()) ? new Date(2000, 0, 1) : parsed
-
-  function toISO(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-
-  function formatDisplay(s: string): string {
-    if (!s) return 'Seleccionar fecha'
-    const [y, m, d] = s.split('-')
-    return `${d}/${m}/${y}`
-  }
-
-  function calcAge(s: string): string {
-    if (!s) return ''
-    const [y, m, d] = s.split('-').map(Number)
-    const born = new Date(y, m - 1, d)
-    if (isNaN(born.getTime())) return ''
-    const today = new Date()
-    let age = today.getFullYear() - born.getFullYear()
-    if (today.getMonth() < born.getMonth() ||
-        (today.getMonth() === born.getMonth() && today.getDate() < born.getDate())) age--
-    return age > 0 && age < 120 ? `${age} años` : ''
-  }
-
-  function handleChange(_: any, selected?: Date) {
-    if (Platform.OS === 'android') setShow(false)
-    if (selected) onChange(toISO(selected))
-  }
-
-  const age = calcAge(value)
-
-  return (
-    <View style={styles.fieldGroup}>
-      <Label text="FECHA DE NACIMIENTO" />
-      <TouchableOpacity
-        style={[styles.input, styles.dateTouchable]}
-        onPress={() => setShow(true)}
-        activeOpacity={0.7}
-      >
-        <Text style={value ? styles.dateText : styles.datePlaceholder}>
-          {formatDisplay(value)}
-        </Text>
-      </TouchableOpacity>
-      {!!age && <Text style={styles.ageHint}>{age}</Text>}
-
-      {/* Android: shows dialog directly */}
-      {show && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={dateValue}
-          mode="date"
-          display="default"
-          onChange={handleChange}
-          maximumDate={new Date()}
-          minimumDate={new Date(1930, 0, 1)}
-        />
-      )}
-
-      {/* iOS: modal con spinner */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={show} transparent animationType="slide">
-          <View style={styles.dateOverlay}>
-            <View style={styles.dateCard}>
-              <View style={styles.dateHeader}>
-                <TouchableOpacity onPress={() => setShow(false)}>
-                  <Text style={styles.dateCancel}>Cancelar</Text>
-                </TouchableOpacity>
-                <Text style={styles.dateTitle}>Fecha de nacimiento</Text>
-                <TouchableOpacity onPress={() => setShow(false)}>
-                  <Text style={styles.dateDone}>Listo</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={dateValue}
-                mode="date"
-                display="spinner"
-                onChange={handleChange}
-                maximumDate={new Date()}
-                minimumDate={new Date(1930, 0, 1)}
-              />
-            </View>
-          </View>
-        </Modal>
-      )}
-    </View>
-  )
-}
-
-// ─── Step dot indicator ───────────────────────────────────────────────────────
-
-function StepDots({ current, total }: { current: number; total: number }) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-  return (
-    <View style={styles.dotsRow}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.dot,
-            i === current && styles.dotActive,
-            i < current && styles.dotDone,
-          ]}
-        />
-      ))}
-    </View>
-  )
-}
-
-// ─── Location card ────────────────────────────────────────────────────────────
-
-function LocationCard({
-  loc,
-  index,
-  onChange,
-  onRemove,
-}: {
-  loc: Location
-  index: number
-  onChange: (updated: Location) => void
-  onRemove: () => void
-}) {
-  const { colors } = useTheme()
-  const styles = useMemo(() => makeStyles(colors), [colors])
-
-  function toggleImplemento(imp: string) {
-    const current = loc.implementos
-    if (current.includes(imp)) {
-      onChange({ ...loc, implementos: current.filter((i) => i !== imp) })
-    } else {
-      onChange({ ...loc, implementos: [...current, imp] })
-    }
-  }
-
-  return (
-    <View style={styles.locationCard}>
-      <View style={styles.locationHeader}>
-        <Text style={styles.locationTitle}>Ubicación {index + 1}</Text>
-        {index > 0 && (
-          <TouchableOpacity onPress={onRemove} activeOpacity={0.7}>
-            <Text style={styles.removeText}>Eliminar</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <Field
-        label="NOMBRE"
-        value={loc.nombre}
-        onChangeText={(v) => onChange({ ...loc, nombre: v })}
-        placeholder="Ej: Mi gimnasio"
-      />
-
-      <Label text="TIPO" />
-      <View style={styles.chipsRow}>
-        {TIPOS_LUGAR.map((t) => (
-          <Chip
-            key={t}
-            label={t}
-            selected={loc.tipo === t}
-            onPress={() => onChange({ ...loc, tipo: t })}
-          />
-        ))}
-      </View>
-
-      <Label text="IMPLEMENTOS DISPONIBLES" />
-      <View style={styles.chipsRow}>
-        {IMPLEMENTOS.map((imp) => (
-          <Chip
-            key={imp}
-            label={imp}
-            selected={loc.implementos.includes(imp)}
-            onPress={() => toggleImplemento(imp)}
-            multi
-          />
-        ))}
-      </View>
-    </View>
-  )
+function formatDate(d: Date) {
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -542,554 +47,319 @@ export default function OnboardingScreen() {
   const { colors } = useTheme()
   const styles = useMemo(() => makeStyles(colors), [colors])
 
-  const [step, setStep] = useState(0)
+  const [data, setData] = useState<FormData>({
+    nombre: '', fechaNacimiento: null, sexo: '',
+    peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
+    usaCicloMenstrual: false, frecuenciaHistorica: null,
+  })
+  const [screenIndex, setScreenIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [tempDate, setTempDate] = useState(new Date(2000, 0, 1))
 
-  const [data, setData] = useState<OnboardingData>({
-    nombre: '',
-    objetivos: [],
-    nivel: '',
-    experiencia_deportiva: '',
-    lesiones: [],
-    sexo: '',
-    peso: '',
-    unidad_peso: 'kg',
-    altura: '',
-    unidad_altura: 'cm',
-    fecha_nacimiento: '',
-    usa_ciclo_menstrual: false,
-    dias_semana: 3,
-    horario_preferido: '',
-    nivel_estres: '',
-    tipo_trabajo: '',
-    estilo_entrenamiento: '',
-    ejercicios_favoritos: '',
-    ejercicios_evitar: '',
-    rm_sentadilla: '',
-    rm_peso_muerto: '',
-    rm_press_banca: '',
-    rm_press_hombro: '',
-    locations: [{ nombre: '', tipo: '', implementos: [] }],
-  })
+  const screens = useMemo<ScreenId[]>(() => [
+    'b1_personal',
+    ...(data.sexo === 'femenino' ? ['b1_ciclo' as ScreenId] : []),
+    'b1_historial',
+  ], [data.sexo])
 
-  function set(field: keyof OnboardingData, value: any) {
-    setData((prev) => ({ ...prev, [field]: value }))
+  const currentScreen = screens[screenIndex]
+  const isLast = screenIndex === screens.length - 1
+  const progress = (screenIndex + 1) / Math.max(screens.length, 1)
+
+  function set<K extends keyof FormData>(key: K, value: FormData[K]) {
+    setData(prev => ({ ...prev, [key]: value }))
+    setError('')
   }
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
-
-  function goNext() {
-    setError('')
-    if (step < 4) {
-      setStep((s) => s + 1)
-    } else {
-      handleFinish()
+  function validate(): string | null {
+    if (currentScreen === 'b1_personal') {
+      if (!data.nombre.trim()) return 'El nombre es requerido.'
+      if (!data.fechaNacimiento) return 'La fecha de nacimiento es requerida.'
+      if (!data.sexo) return 'Selecciona tu sexo biológico.'
+      const p = Number(data.peso.replace(',', '.'))
+      if (!data.peso || isNaN(p) || p <= 0) return 'Ingresa un peso válido.'
+      const a = Number(data.altura.replace(',', '.'))
+      if (!data.altura || isNaN(a) || a <= 0) return 'Ingresa una altura válida.'
     }
+    if (currentScreen === 'b1_historial') {
+      if (data.frecuenciaHistorica === null) return 'Selecciona tu frecuencia de entrenamiento.'
+    }
+    return null
+  }
+
+  async function goNext() {
+    const err = validate()
+    if (err) { setError(err); return }
+    setError('')
+    if (!isLast) { setScreenIndex(i => i + 1); return }
+    await handleSave()
   }
 
   function goBack() {
+    if (screenIndex === 0) { router.back(); return }
+    setScreenIndex(i => i - 1)
     setError('')
-    if (step > 0) setStep((s) => s - 1)
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
-
-  async function handleFinish() {
+  async function handleSave() {
     setLoading(true)
-    setError('')
     try {
-      const pesoKg = data.peso
-        ? data.unidad_peso === 'lb'
-          ? parseFloat(data.peso) * 0.453592
-          : parseFloat(data.peso)
-        : null
-      const alturaCm = data.altura
-        ? data.unidad_altura === 'ft'
-          ? Math.round(parseFloat(data.altura) * 30.48)
-          : parseInt(data.altura)
-        : null
+      const pesoNum = Number(data.peso.replace(',', '.'))
+      const alturaNum = Number(data.altura.replace(',', '.'))
+      const pesoKg = data.pesoUnit === 'lb' ? (pesoNum * 0.453592).toFixed(1) : String(pesoNum)
+      const alturaCm = data.alturaUnit === 'ft' ? Math.round(alturaNum * 30.48) : Math.round(alturaNum)
 
-      const profilePayload: Record<string, any> = {
-        nombre: data.nombre,
-        objetivo: data.objetivos[0] || '',
-        objetivos_multiples: data.objetivos,
-        nivel: data.nivel ? data.nivel.toLowerCase() : '',
-        experiencia_deportiva: data.experiencia_deportiva,
-        sexo: data.sexo ? data.sexo.toLowerCase() : '',
+      await apiPut('/api/profile/', {
+        nombre: data.nombre.trim(),
+        fecha_nacimiento: data.fechaNacimiento!.toISOString().split('T')[0],
+        sexo: data.sexo,
         peso: pesoKg,
         altura: alturaCm,
-        fecha_nacimiento: data.fecha_nacimiento || null,
-        usa_ciclo_menstrual: data.usa_ciclo_menstrual,
-        dias_semana: data.dias_semana,
-        horario_preferido: data.horario_preferido ? data.horario_preferido.toLowerCase() : '',
-        nivel_estres: data.nivel_estres ? data.nivel_estres.toLowerCase() : '',
-        tipo_trabajo: data.tipo_trabajo ? data.tipo_trabajo.toLowerCase() : '',
-        estilo_entrenamiento: data.estilo_entrenamiento ? data.estilo_entrenamiento.toLowerCase() : '',
-        ejercicios_favoritos: data.ejercicios_favoritos,
-        ejercicios_evitar: data.ejercicios_evitar,
-        rm_sentadilla: data.rm_sentadilla ? parseFloat(data.rm_sentadilla) : null,
-        rm_peso_muerto: data.rm_peso_muerto ? parseFloat(data.rm_peso_muerto) : null,
-        rm_press_banca: data.rm_press_banca ? parseFloat(data.rm_press_banca) : null,
-        rm_press_hombro: data.rm_press_hombro ? parseFloat(data.rm_press_hombro) : null,
-        onboarding_completo: true,
-      }
-
-      await apiPut('/api/profile/', profilePayload)
-
-      for (const loc of data.locations) {
-        if (loc.nombre.trim() && loc.tipo) {
-          await apiPost('/api/locations/', {
-            nombre: loc.nombre.trim(),
-            tipo: loc.tipo.toLowerCase(),
-            implementos: loc.implementos,
-          })
-        }
-      }
-
-      for (const lesion of data.lesiones) {
-        await apiPost('/api/injuries/', {
-          zona: lesion.zona.toLowerCase(),
-          severidad: lesion.severidad.toLowerCase(),
-          descripcion: '',
-        })
-      }
-
-      // Update stored user so index.tsx doesn't redirect to onboarding again
-      const currentUser = await getUser()
-      if (currentUser) {
-        await saveUser({ ...currentUser, onboarding_completo: true })
-      }
-
-      router.replace('/(auth)/bienvenida')
+        usa_ciclo_menstrual: data.usaCicloMenstrual,
+        dias_semana: data.frecuenciaHistorica ?? 3,
+      })
+      router.replace('/(app)/dashboard')
     } catch (e: any) {
-      setError(e.message || 'Error al guardar el perfil. Intenta de nuevo.')
+      setError(e.message || 'Error al guardar. Intenta de nuevo.')
     } finally {
       setLoading(false)
     }
   }
 
-  // ── Location handlers ────────────────────────────────────────────────────────
+  // ─── Screen: personal data ───────────────────────────────────────────────────
 
-  function updateLocation(index: number, updated: Location) {
-    const locs = [...data.locations]
-    locs[index] = updated
-    set('locations', locs)
-  }
-
-  function addLocation() {
-    set('locations', [...data.locations, { nombre: '', tipo: '', implementos: [] }])
-  }
-
-  function removeLocation(index: number) {
-    const locs = data.locations.filter((_, i) => i !== index)
-    set('locations', locs)
-  }
-
-  // ── Step renderers ───────────────────────────────────────────────────────────
-
-  function renderStep1() {
+  function renderPersonal() {
     return (
-      <View>
-        <Text style={styles.welcomeText}>Bienvenido a PyFit 👋</Text>
-        <Text style={styles.stepSubtitle}>Cuéntanos sobre ti para personalizar tu entrenamiento</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Field
-          label="NOMBRE"
-          value={data.nombre}
-          onChangeText={(v) => set('nombre', v)}
-          placeholder="¿Cómo te llamas?"
-        />
+        <Text style={styles.contextLine}>
+          Para calcular tu gasto energético real y ajustar la intensidad
+        </Text>
 
-        <Label text="OBJETIVOS (puedes elegir varios)" />
-        <View style={styles.chipsRow}>
-          {OBJETIVOS.map((obj) => (
-            <Chip
-              key={obj}
-              label={obj}
-              selected={data.objetivos.includes(obj)}
-              onPress={() => {
-                const current = data.objetivos
-                set('objetivos', current.includes(obj)
-                  ? current.filter((o) => o !== obj)
-                  : [...current, obj])
-              }}
-              multi
-            />
-          ))}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>NOMBRE</Text>
+          <TextInput style={styles.input} placeholder="Tu nombre"
+            placeholderTextColor={colors.inkMuted} value={data.nombre}
+            onChangeText={v => set('nombre', v)} autoCapitalize="words" autoCorrect={false} />
         </View>
 
-        <Label text="NIVEL DE ENTRENAMIENTO" />
-        <View style={styles.chipsRow}>
-          {NIVELES.map((n) => (
-            <Chip
-              key={n}
-              label={n}
-              selected={data.nivel === n}
-              onPress={() => set('nivel', n)}
-            />
-          ))}
-        </View>
-
-        <Field
-          label="EXPERIENCIA DEPORTIVA PREVIA"
-          value={data.experiencia_deportiva}
-          onChangeText={(v) => set('experiencia_deportiva', v)}
-          placeholder="Ej: 5 años de fútbol, 2 años de crossfit... (opcional)"
-          multiline
-        />
-
-        <InjurySelector
-          value={data.lesiones}
-          onChange={(v) => set('lesiones', v)}
-        />
-      </View>
-    )
-  }
-
-  function renderStep2() {
-    return (
-      <View>
-        <Text style={styles.stepTitle}>Datos físicos</Text>
-        <Text style={styles.stepSubtitle}>Esta información nos ayuda a calibrar tu entrenamiento</Text>
-
-        <Label text="SEXO" />
-        <View style={styles.chipsRow}>
-          {SEXOS.map((s) => (
-            <Chip
-              key={s}
-              label={s}
-              selected={data.sexo === s}
-              onPress={() => {
-                set('sexo', s)
-                if (s !== 'Femenino') set('usa_ciclo_menstrual', false)
-              }}
-            />
-          ))}
-        </View>
-
-        <View style={styles.rowFields}>
-          <View style={styles.halfField}>
-            <View style={styles.labelWithUnit}>
-              <Text style={styles.label}>PESO</Text>
-              <View style={styles.unitToggleRow}>
-                {(['kg', 'lb'] as const).map((u) => (
-                  <TouchableOpacity
-                    key={u}
-                    style={[styles.unitBtn, data.unidad_peso === u && styles.unitBtnActive]}
-                    onPress={() => set('unidad_peso', u)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.unitBtnText, data.unidad_peso === u && styles.unitBtnTextActive]}>{u}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <TextInput
-              style={styles.input}
-              value={data.peso}
-              onChangeText={(v) => set('peso', v)}
-              placeholder={data.unidad_peso === 'kg' ? '70' : '155'}
-              placeholderTextColor={colors.inkMuted}
-              keyboardType="decimal-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-          <View style={styles.halfField}>
-            <View style={styles.labelWithUnit}>
-              <Text style={styles.label}>ALTURA</Text>
-              <View style={styles.unitToggleRow}>
-                {(['cm', 'ft'] as const).map((u) => (
-                  <TouchableOpacity
-                    key={u}
-                    style={[styles.unitBtn, data.unidad_altura === u && styles.unitBtnActive]}
-                    onPress={() => set('unidad_altura', u)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.unitBtnText, data.unidad_altura === u && styles.unitBtnTextActive]}>{u}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <TextInput
-              style={styles.input}
-              value={data.altura}
-              onChangeText={(v) => set('altura', v)}
-              placeholder={data.unidad_altura === 'cm' ? '175' : '5.9'}
-              placeholderTextColor={colors.inkMuted}
-              keyboardType="decimal-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-        </View>
-
-        <DatePickerField
-          value={data.fecha_nacimiento}
-          onChange={(v) => set('fecha_nacimiento', v)}
-        />
-
-        {data.sexo === 'Femenino' && (
-          <TouchableOpacity
-            style={styles.toggleRow}
-            onPress={() => set('usa_ciclo_menstrual', !data.usa_ciclo_menstrual)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.toggleInfo}>
-              <Text style={styles.toggleLabel}>Seguimiento de ciclo menstrual</Text>
-              <Text style={styles.toggleSub}>Adapta el entrenamiento a las fases del ciclo</Text>
-            </View>
-            <View style={[styles.toggle, data.usa_ciclo_menstrual && styles.toggleOn]}>
-              <View style={[styles.toggleThumb, data.usa_ciclo_menstrual && styles.toggleThumbOn]} />
-            </View>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>FECHA DE NACIMIENTO</Text>
+          <TouchableOpacity style={[styles.input, styles.inputTouch]}
+            onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
+            <Text style={data.fechaNacimiento ? styles.inputText : styles.inputPlaceholder}>
+              {data.fechaNacimiento ? formatDate(data.fechaNacimiento) : 'DD / MM / AAAA'}
+            </Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>SEXO BIOLÓGICO</Text>
+          <View style={styles.chipsRow}>
+            {(['masculino', 'femenino', 'otro'] as const).map(s => (
+              <TouchableOpacity key={s}
+                style={[styles.chip, data.sexo === s && styles.chipOn]}
+                onPress={() => set('sexo', s)} activeOpacity={0.8}>
+                <Text style={[styles.chipText, data.sexo === s && styles.chipTextOn]}>
+                  {s === 'masculino' ? 'Hombre' : s === 'femenino' ? 'Mujer' : 'Prefiero no decir'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Text style={styles.fieldLabel}>PESO</Text>
+            <View style={styles.unitToggle}>
+              {(['kg', 'lb'] as const).map(u => (
+                <TouchableOpacity key={u} style={[styles.unitBtn, data.pesoUnit === u && styles.unitBtnOn]}
+                  onPress={() => set('pesoUnit', u)}>
+                  <Text style={[styles.unitBtnText, data.pesoUnit === u && styles.unitBtnTextOn]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <TextInput style={styles.input}
+            placeholder={data.pesoUnit === 'kg' ? 'ej. 75' : 'ej. 165'}
+            placeholderTextColor={colors.inkMuted} value={data.peso}
+            onChangeText={v => set('peso', v.replace(',', '.'))} keyboardType="decimal-pad" />
+        </View>
+
+        <View style={[styles.fieldGroup, { marginBottom: 0 }]}>
+          <View style={styles.labelRow}>
+            <Text style={styles.fieldLabel}>ALTURA</Text>
+            <View style={styles.unitToggle}>
+              {(['cm', 'ft'] as const).map(u => (
+                <TouchableOpacity key={u} style={[styles.unitBtn, data.alturaUnit === u && styles.unitBtnOn]}
+                  onPress={() => set('alturaUnit', u)}>
+                  <Text style={[styles.unitBtnText, data.alturaUnit === u && styles.unitBtnTextOn]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <TextInput style={styles.input}
+            placeholder={data.alturaUnit === 'cm' ? 'ej. 175' : 'ej. 5.9'}
+            placeholderTextColor={colors.inkMuted} value={data.altura}
+            onChangeText={v => set('altura', v.replace(',', '.'))} keyboardType="decimal-pad" />
+        </View>
+      </ScrollView>
     )
   }
 
-  function renderStep3() {
+  // ─── Screen: ciclo menstrual ─────────────────────────────────────────────────
+
+  function renderCiclo() {
     return (
-      <View>
-        <Text style={styles.stepTitle}>Estilo de vida</Text>
-        <Text style={styles.stepSubtitle}>Tu rutina diaria influye en la recuperación y el rendimiento</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
 
-        <Label text="DÍAS DE ENTRENAMIENTO POR SEMANA" />
-        <View style={styles.daysRow}>
-          {DIAS.map((d) => (
-            <TouchableOpacity
-              key={d}
-              style={[styles.dayBtn, data.dias_semana === d && styles.dayBtnActive]}
-              onPress={() => set('dias_semana', d)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.dayBtnText, data.dias_semana === d && styles.dayBtnTextActive]}>
-                {d}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Text style={styles.sectionLabel}>CICLO MENSTRUAL</Text>
+        <Text style={styles.cicloDesc}>
+          El ciclo menstrual afecta tu fuerza, energía y recuperación de formas muy concretas.
+          Si quieres, Zyfit lo integra en tu entrenamiento.
+        </Text>
 
-        <Label text="HORARIO PREFERIDO" />
-        <View style={styles.chipsRow}>
-          {HORARIOS.map((h) => (
-            <Chip
-              key={h}
-              label={h}
-              selected={data.horario_preferido === h}
-              onPress={() => set('horario_preferido', h)}
-            />
-          ))}
-        </View>
-
-        <Label text="NIVEL DE ESTRÉS HABITUAL" />
-        <View style={styles.chipsRow}>
-          {ESTRES.map((e) => (
-            <Chip
-              key={e}
-              label={e}
-              selected={data.nivel_estres === e}
-              onPress={() => set('nivel_estres', e)}
-            />
-          ))}
-        </View>
-
-        <Label text="TIPO DE TRABAJO" />
-        <View style={styles.chipsRow}>
-          {TRABAJOS.map((t) => (
-            <Chip
-              key={t}
-              label={t}
-              selected={data.tipo_trabajo === t}
-              onPress={() => set('tipo_trabajo', t)}
-            />
-          ))}
-        </View>
-      </View>
-    )
-  }
-
-  function renderStep4() {
-    return (
-      <View>
-        <Text style={styles.stepTitle}>Preferencias de entrenamiento</Text>
-        <Text style={styles.stepSubtitle}>Personaliza la selección de ejercicios a tu gusto</Text>
-
-        <Label text="ESTILO DE ENTRENAMIENTO" />
-        <View style={styles.chipsRow}>
-          {ESTILOS.map((e) => (
-            <Chip
-              key={e}
-              label={e}
-              selected={data.estilo_entrenamiento === e}
-              onPress={() => set('estilo_entrenamiento', e)}
-            />
-          ))}
-        </View>
-
-        <ExerciseSelector
-          label="EJERCICIOS FAVORITOS"
-          value={data.ejercicios_favoritos}
-          onChange={(v) => set('ejercicios_favoritos', v)}
-          placeholder="Buscar ejercicio favorito..."
-        />
-
-        <ExerciseSelector
-          label="EJERCICIOS A EVITAR"
-          value={data.ejercicios_evitar}
-          onChange={(v) => set('ejercicios_evitar', v)}
-          placeholder="Buscar ejercicio a evitar..."
-        />
-
-        <Text style={styles.rmTitle}>1RM APROXIMADO (kg)</Text>
-        <Text style={styles.rmSubtitle}>Opcional — ayuda a calcular cargas exactas. Si no lo sabes, déjalo en blanco.</Text>
-        <View style={styles.rowFields}>
-          <View style={styles.halfField}>
-            <Field
-              label="SENTADILLA"
-              value={data.rm_sentadilla}
-              onChangeText={(v) => set('rm_sentadilla', v)}
-              placeholder="100"
-              keyboardType="decimal-pad"
-            />
+        <TouchableOpacity
+          style={[styles.cicloCard, data.usaCicloMenstrual && styles.cicloCardOn]}
+          onPress={() => set('usaCicloMenstrual', !data.usaCicloMenstrual)}
+          activeOpacity={0.85}>
+          <View style={[styles.cicloBox, data.usaCicloMenstrual && styles.cicloBoxOn]}>
+            {data.usaCicloMenstrual && <Text style={styles.cicloCheck}>✓</Text>}
           </View>
-          <View style={styles.halfField}>
-            <Field
-              label="PESO MUERTO"
-              value={data.rm_peso_muerto}
-              onChangeText={(v) => set('rm_peso_muerto', v)}
-              placeholder="120"
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
-        <View style={styles.rowFields}>
-          <View style={styles.halfField}>
-            <Field
-              label="PRESS BANCA"
-              value={data.rm_press_banca}
-              onChangeText={(v) => set('rm_press_banca', v)}
-              placeholder="80"
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.halfField}>
-            <Field
-              label="PRESS HOMBRO"
-              value={data.rm_press_hombro}
-              onChangeText={(v) => set('rm_press_hombro', v)}
-              placeholder="60"
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
-      </View>
-    )
-  }
-
-  function renderStep5() {
-    return (
-      <View>
-        <Text style={styles.stepTitle}>¿Dónde entrenas?</Text>
-        <Text style={styles.stepSubtitle}>Agrega tus ubicaciones y equipamiento disponible</Text>
-
-        {data.locations.map((loc, idx) => (
-          <LocationCard
-            key={idx}
-            loc={loc}
-            index={idx}
-            onChange={(updated) => updateLocation(idx, updated)}
-            onRemove={() => removeLocation(idx)}
-          />
-        ))}
-
-        <TouchableOpacity style={styles.addLocBtn} onPress={addLocation} activeOpacity={0.7}>
-          <Text style={styles.addLocText}>+ Agregar otra ubicación</Text>
+          <Text style={styles.cicloCardText}>
+            Sí, quiero que Zyfit considere mi ciclo{' '}
+            <Text style={styles.cicloCardMuted}>— lo configuro después</Text>
+          </Text>
         </TouchableOpacity>
-      </View>
+
+        <Text style={styles.cicloNote}>
+          Puedes activarlo o desactivarlo cuando quieras desde tu perfil.
+        </Text>
+      </ScrollView>
     )
   }
 
-  const STEP_RENDERERS = [renderStep1, renderStep2, renderStep3, renderStep4, renderStep5]
+  // ─── Screen: historial ───────────────────────────────────────────────────────
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  function renderHistorial() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.historialQ}>
+          ¿Cuántas veces a la semana has entrenado en los últimos 3 meses?
+        </Text>
+
+        {FRECUENCIA_OPTIONS.map(opt => {
+          const on = data.frecuenciaHistorica === opt.value
+          return (
+            <TouchableOpacity key={opt.value}
+              style={[styles.freqCard, on && styles.freqCardOn]}
+              onPress={() => set('frecuenciaHistorica', opt.value)}
+              activeOpacity={0.8}>
+              <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
+                {on && <View style={styles.freqDot} />}
+              </View>
+              <View style={styles.freqContent}>
+                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{opt.label}</Text>
+                <Text style={styles.freqSub}>{opt.sublabel}</Text>
+              </View>
+              <View style={[styles.freqBadge, on && styles.freqBadgeOn]}>
+                <Text style={[styles.freqBadgeText, on && styles.freqBadgeTextOn]}>{opt.badge}</Text>
+              </View>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    )
+  }
+
+  function renderContent() {
+    switch (currentScreen) {
+      case 'b1_personal':  return renderPersonal()
+      case 'b1_ciclo':     return renderCiclo()
+      case 'b1_historial': return renderHistorial()
+    }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['rgba(37,99,255,0.25)', 'transparent']}
-        style={styles.gradient}
-      />
+      <LinearGradient colors={['rgba(37,99,255,0.22)', 'transparent']} style={styles.gradient} />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerLogo}>Pyfit.</Text>
-          <StepDots current={step} total={5} />
-          <Text style={styles.stepCounter}>{step + 1} / 5</Text>
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
+      </View>
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backArrow}>←</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.blockNum}>BLOQUE 1 DE 6</Text>
+          <Text style={styles.blockTitle}>Quién eres físicamente</Text>
         </View>
+      </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {STEP_RENDERERS[step]()}
+      <KeyboardAvoidingView style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
+        {renderContent()}
 
-          {/* Error */}
+        <View style={styles.footer}>
           {!!error && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
-
-          {/* Buttons */}
           <View style={styles.btnRow}>
-            {step > 0 && (
-              <TouchableOpacity style={styles.backBtn} onPress={goBack} activeOpacity={0.7}>
-                <Text style={styles.backBtnText}>← Atrás</Text>
+            {screenIndex > 0 && (
+              <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}>
+                <Text style={styles.backSecondaryText}>Atrás</Text>
               </TouchableOpacity>
             )}
-
             <TouchableOpacity
-              style={[styles.nextBtnWrap, step === 0 && styles.nextBtnFull]}
-              onPress={goNext}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[colors.accent, colors.accentDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.nextBtn}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.nextBtnText}>
-                    {step === 4 ? 'Comenzar →' : 'Siguiente →'}
-                  </Text>
-                )}
+              style={[styles.nextWrap, screenIndex === 0 && styles.nextWrapFull]}
+              onPress={goNext} disabled={loading} activeOpacity={0.88}>
+              <LinearGradient colors={[colors.accent, colors.accentDark]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+                {loading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.nextBtnText}>{isLast ? 'Guardar y continuar' : 'Continuar'}</Text>
+                }
               </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          {step === 4 && (
-            <TouchableOpacity
-              style={styles.skipBtn}
-              onPress={() => router.replace('/(auth)/bienvenida')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.skipText}>Completar más tarde</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
+
+      {/* Date picker */}
+      <Modal transparent animationType="slide" visible={showDatePicker}>
+        <View style={styles.dateOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowDatePicker(false)} />
+          <View style={styles.dateCard}>
+            <View style={styles.dateHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.dateCancel}>Cancelar</Text>
+              </TouchableOpacity>
+              <Text style={styles.dateTitle}>Fecha de nacimiento</Text>
+              <TouchableOpacity onPress={() => { set('fechaNacimiento', tempDate); setShowDatePicker(false) }}>
+                <Text style={styles.dateDone}>Listo</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker value={tempDate} mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, d) => { if (d) setTempDate(d) }}
+              maximumDate={new Date()} minimumDate={new Date(1930, 0, 1)} />
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -1098,542 +368,164 @@ export default function OnboardingScreen() {
 
 function makeStyles(c: Colors) {
   return StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: c.bg,
-    },
-    flex: {
-      flex: 1,
-    },
-    gradient: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 400,
-    },
+    root: { flex: 1, backgroundColor: c.bg },
+    gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 380 },
 
-    // Header
+    progressTrack: { height: 3, backgroundColor: c.borderDefault },
+    progressFill: { height: 3, backgroundColor: c.accent },
+
     header: {
-      paddingTop: 60,
-      paddingHorizontal: 24,
-      paddingBottom: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20,
+      flexDirection: 'row', alignItems: 'flex-start', gap: 16,
     },
-    headerLogo: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 20,
-      color: c.inkPrimary,
-      letterSpacing: -0.5,
+    backBtn: { paddingTop: 4, paddingRight: 4 },
+    backArrow: { fontSize: 22, color: c.inkSecondary },
+    blockNum: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.accent, letterSpacing: 1.5, marginBottom: 4,
     },
-    dotsRow: {
-      flexDirection: 'row',
-      gap: 6,
-      alignItems: 'center',
-    },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: c.borderBright,
-    },
-    dotActive: {
-      width: 24,
-      backgroundColor: c.accent,
-    },
-    dotDone: {
-      backgroundColor: c.accentDark,
-    },
-    stepCounter: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 12,
-      color: c.inkMuted,
-      letterSpacing: 0.5,
+    blockTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 21,
+      color: c.inkPrimary, letterSpacing: -0.4,
     },
 
-    // Scroll
-    scroll: {
-      flexGrow: 1,
-      paddingHorizontal: 24,
-      paddingBottom: 48,
+    scrollContent: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
+
+    contextLine: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.accent, fontStyle: 'italic', marginBottom: 24, lineHeight: 19,
     },
 
-    // Step titles
-    welcomeText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 26,
-      color: c.inkPrimary,
-      letterSpacing: -0.5,
-      marginBottom: 6,
-    },
-    stepTitle: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 24,
-      color: c.inkPrimary,
-      letterSpacing: -0.5,
-      marginBottom: 6,
-    },
-    stepSubtitle: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      color: c.inkMuted,
-      marginBottom: 28,
-      lineHeight: 20,
-    },
-
-    // Field
-    fieldGroup: {
-      marginBottom: 20,
-    },
-    label: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
-      letterSpacing: 1.2,
-      marginBottom: 10,
-      textTransform: 'uppercase',
+    fieldGroup: { marginBottom: 20 },
+    fieldLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 1.2, marginBottom: 8,
     },
     input: {
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 15,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 14, paddingHorizontal: 16, paddingVertical: 15,
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15,
     },
-    inputMulti: {
-      minHeight: 80,
-      textAlignVertical: 'top',
-      paddingTop: 14,
-    },
+    inputTouch: { justifyContent: 'center' },
+    inputText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary },
+    inputPlaceholder: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
 
-    // Age hint
-    ageHint: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      color: c.accentLight,
-      marginTop: 6,
-      marginLeft: 4,
-    },
-
-    // Row fields
-    rowFields: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    halfField: {
-      flex: 1,
-    },
-
-    // Toggle
-    toggleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      padding: 16,
-      marginBottom: 20,
-    },
-    toggleInfo: {
-      flex: 1,
-      marginRight: 12,
-    },
-    toggleLabel: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 14,
-      color: c.inkPrimary,
-      marginBottom: 2,
-    },
-    toggleSub: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      color: c.inkMuted,
-    },
-    toggle: {
-      width: 44,
-      height: 26,
-      borderRadius: 13,
-      backgroundColor: c.glassBg,
-      justifyContent: 'center',
-      paddingHorizontal: 3,
-    },
-    toggleOn: {
-      backgroundColor: c.accent,
-    },
-    toggleThumb: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: c.inkMuted,
-    },
-    toggleThumbOn: {
-      backgroundColor: c.white,
-      alignSelf: 'flex-end',
-    },
-
-    // Days
-    daysRow: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 24,
-      flexWrap: 'wrap',
-    },
-    dayBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dayBtnActive: {
-      backgroundColor: c.accent,
-      borderColor: c.accent,
-    },
-    dayBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      color: c.inkMuted,
-    },
-    dayBtnTextActive: {
-      color: c.white,
-    },
-
-    // Chips
-    chipsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 24,
-    },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
+      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
     },
-    chipSelected: {
-      backgroundColor: 'rgba(79,140,255,0.2)',
-      borderColor: c.accent,
+    chipOn: { backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent },
+    chipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: c.inkSecondary },
+    chipTextOn: { color: c.accent },
+
+    labelRow: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', marginBottom: 8,
     },
-    chipText: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 13,
-      color: c.inkSecondary,
+    unitToggle: { flexDirection: 'row', backgroundColor: c.glassBg, borderRadius: 8, padding: 2 },
+    unitBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6 },
+    unitBtnOn: { backgroundColor: c.accent },
+    unitBtnText: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.5,
     },
-    chipTextSelected: {
-      color: c.accent,
+    unitBtnTextOn: { color: '#ffffff' },
+
+    // Ciclo
+    sectionLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
+      color: c.accent, letterSpacing: 2, marginBottom: 20,
+    },
+    cicloDesc: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 16,
+      color: c.inkSecondary, lineHeight: 25, marginBottom: 28,
+    },
+    cicloCard: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 16,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, padding: 20, marginBottom: 16,
+    },
+    cicloCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent },
+    cicloBox: {
+      width: 24, height: 24, borderRadius: 7, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    cicloBoxOn: { backgroundColor: c.accent, borderColor: c.accent },
+    cicloCheck: { color: '#ffffff', fontSize: 14, fontFamily: 'SpaceGrotesk-Bold' },
+    cicloCardText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 15,
+      color: c.inkPrimary, lineHeight: 22, flex: 1,
+    },
+    cicloCardMuted: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular' },
+    cicloNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18,
     },
 
-    // Location card
-    locationCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
-      padding: 16,
-      marginBottom: 16,
+    // Historial
+    historialQ: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 21,
+      color: c.inkPrimary, letterSpacing: -0.3, lineHeight: 30, marginBottom: 24,
     },
-    locationHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 16,
+    freqCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, paddingVertical: 18, paddingHorizontal: 20, marginBottom: 10,
     },
-    locationTitle: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 16,
-      color: c.inkPrimary,
+    freqCardOn: { backgroundColor: 'rgba(79,140,255,0.08)', borderColor: c.accent },
+    freqRadio: {
+      width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+      borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
     },
-    removeText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      color: c.red,
+    freqRadioOn: { borderColor: c.accent },
+    freqDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.accent },
+    freqContent: { flex: 1 },
+    freqLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
+    freqLabelOn: { color: c.accent },
+    freqSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2,
     },
+    freqBadge: {
+      backgroundColor: c.glassBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
+    },
+    freqBadgeOn: { backgroundColor: 'rgba(79,140,255,0.2)' },
+    freqBadgeText: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.5,
+    },
+    freqBadgeTextOn: { color: c.accent },
 
-    // Add location
-    addLocBtn: {
-      borderWidth: 1,
-      borderColor: c.accent,
-      borderStyle: 'dashed',
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignItems: 'center',
-      marginBottom: 24,
-      backgroundColor: 'rgba(79,140,255,0.05)',
-    },
-    addLocText: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 14,
-      color: c.accent,
-    },
-
-    // Error
+    // Footer
+    footer: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8 },
     errorBox: {
-      backgroundColor: 'rgba(255,68,68,0.1)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,68,68,0.25)',
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      marginBottom: 16,
+      backgroundColor: 'rgba(255,68,68,0.1)', borderWidth: 1,
+      borderColor: 'rgba(255,68,68,0.25)', borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12,
     },
-    errorText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      color: c.red,
+    errorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.red },
+    btnRow: { flexDirection: 'row', gap: 12 },
+    backSecondary: {
+      flex: 1, paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 14,
     },
-
-    // Navigation buttons
-    btnRow: {
-      flexDirection: 'row',
-      gap: 12,
-      marginTop: 8,
-      marginBottom: 16,
-    },
-    backBtn: {
-      flex: 1,
-      paddingVertical: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      borderRadius: 14,
-    },
-    backBtnText: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      color: c.inkSecondary,
-    },
-    nextBtnWrap: {
-      flex: 1,
-      borderRadius: 14,
-      overflow: 'hidden',
-    },
-    nextBtnFull: {
-      flex: 1,
-    },
-    nextBtn: {
-      paddingVertical: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    backSecondaryText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkSecondary },
+    nextWrap: { flex: 2, borderRadius: 14, overflow: 'hidden' },
+    nextWrapFull: { flex: 1 },
+    nextBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
     nextBtnText: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      color: c.white,
-      letterSpacing: 0.2,
-    },
-
-    // Skip
-    skipBtn: {
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
-    skipText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      color: c.inkMuted,
-    },
-
-    // Exercise selector
-    exChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 20,
-      backgroundColor: 'rgba(79,140,255,0.15)',
-      borderWidth: 1,
-      borderColor: c.accent,
-    },
-    exChipText: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 13,
-      color: c.accent,
-    },
-    exChipRemove: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 14,
-      color: c.accent,
-      lineHeight: 16,
-    },
-    dropdown: {
-      position: 'absolute',
-      top: '100%',
-      left: 0,
-      right: 0,
-      zIndex: 100,
-      backgroundColor: c.sheetBg,
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      borderRadius: 14,
-      marginTop: 4,
-      overflow: 'hidden',
-    },
-    dropdownItem: {
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      borderBottomWidth: 1,
-      borderBottomColor: c.borderDefault,
-    },
-    dropdownItemText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3,
     },
 
     // Date picker
-    dateTouchable: {
-      justifyContent: 'center',
-    },
-    dateText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 15,
-      color: c.inkPrimary,
-    },
-    datePlaceholder: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 15,
-      color: c.inkMuted,
-    },
-    dateOverlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0,0,0,0.6)',
-    },
+    dateOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
     dateCard: {
-      backgroundColor: c.sheetBg,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      paddingBottom: 34,
+      backgroundColor: c.sheetBg, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      borderWidth: 1, borderColor: c.borderDefault, paddingBottom: 34,
     },
     dateHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: c.borderDefault,
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: c.borderDefault,
     },
-    dateTitle: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      color: c.inkPrimary,
-    },
-    dateCancel: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 15,
-      color: c.inkMuted,
-    },
-    dateDone: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      color: c.accent,
-    },
-
-    // Unit toggle (kg/lb, cm/ft)
-    labelWithUnit: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-    },
-    unitToggleRow: {
-      flexDirection: 'row',
-      backgroundColor: c.glassBg,
-      borderRadius: 8,
-      padding: 2,
-    },
-    unitBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 6,
-    },
-    unitBtnActive: {
-      backgroundColor: c.accent,
-    },
-    unitBtnText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
-      letterSpacing: 0.5,
-    },
-    unitBtnTextActive: {
-      color: c.white,
-    },
-
-    injuryTag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: 'rgba(255,100,100,0.1)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,100,100,0.25)',
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-    },
-    injuryTagText: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 13,
-      color: 'rgba(255,150,150,0.9)',
-    },
-    injuryRemove: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      color: 'rgba(255,100,100,0.7)',
-      paddingLeft: 8,
-    },
-    addInjuryBtn: {
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      borderStyle: 'dashed',
-      borderRadius: 10,
-      paddingVertical: 10,
-      alignItems: 'center',
-      marginTop: 4,
-      marginBottom: 8,
-    },
-    addInjuryBtnText: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize: 13,
-      color: c.inkSecondary,
-    },
-
-    // 1RM section
-    rmTitle: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
-      letterSpacing: 1.2,
-      marginBottom: 6,
-      marginTop: 8,
-      textTransform: 'uppercase',
-    },
-    rmSubtitle: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      color: c.inkMuted,
-      marginBottom: 16,
-      lineHeight: 18,
-    },
+    dateCancel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
+    dateTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
+    dateDone: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.accent },
   })
 }
