@@ -92,6 +92,8 @@ class Session(models.Model):
     volumen_relativo = models.CharField(max_length=10, choices=VOLUMEN_CHOICES, blank=True)
     prompt_usado = models.TextField(blank=True)
     respuesta_ia = models.JSONField(null=True, blank=True)
+    decisiones = models.JSONField(null=True, blank=True)  # [{"icon": "...", "text": "..."}]
+    evidencia = models.JSONField(null=True, blank=True)   # {"text": "...", "reference": "..."}
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

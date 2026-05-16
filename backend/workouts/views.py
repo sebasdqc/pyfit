@@ -51,6 +51,112 @@ def session_feedback(request, pk):
     return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_resumen(request, pk):
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Return cached if already generated
+    if session.decisiones is not None and session.evidencia is not None:
+        return Response({'decisiones': session.decisiones, 'evidencia': session.evidencia})
+
+    if not session.respuesta_ia:
+        return Response({'decisiones': [], 'evidencia': None})
+
+    respuesta = session.respuesta_ia
+    titulo = respuesta.get('titulo', 'Sesión de entrenamiento')
+    objetivo = respuesta.get('objetivo_sesion', '')
+    nota = respuesta.get('nota_del_entrenador', '')
+    rpe_target = float(session.rpe_target)
+    duracion = session.duracion_planificada
+
+    ejercicios_list = []
+    for fase in respuesta.get('fases', []):
+        for ej in fase.get('ejercicios', []):
+            nombre = ej.get('nombre', '').strip()
+            if nombre:
+                ejercicios_list.append(nombre)
+
+    try:
+        profile = request.user.profile
+        nivel = profile.nivel or ''
+        objetivo_usuario = profile.objetivo or ''
+        lesiones = profile.lesiones or ''
+    except Exception:
+        nivel = objetivo_usuario = lesiones = ''
+
+    ctx_parts = [f'Título: {titulo}']
+    if objetivo:
+        ctx_parts.append(f'Objetivo de la sesión: {objetivo}')
+    ctx_parts.append(f'RPE objetivo: {rpe_target}')
+    ctx_parts.append(f'Duración: {duracion} min')
+    if nivel:
+        ctx_parts.append(f'Nivel del atleta: {nivel}')
+    if objetivo_usuario:
+        ctx_parts.append(f'Objetivo del atleta: {objetivo_usuario}')
+    if lesiones:
+        ctx_parts.append(f'Lesiones/restricciones: {lesiones}')
+    if ejercicios_list:
+        ctx_parts.append(f'Ejercicios: {", ".join(ejercicios_list[:8])}')
+    if nota:
+        ctx_parts.append(f'Nota del entrenador: {nota}')
+
+    contexto = '\n'.join(f'- {l}' for l in ctx_parts)
+
+    prompt = f"""Eres el entrenador IA de una app de fitness. Analiza esta sesión y explica al atleta por qué fue diseñada de esta manera.
+
+Sesión:
+{contexto}
+
+Responde ÚNICAMENTE con este JSON válido (sin markdown):
+{{
+  "decisiones": [
+    {{"icon": "emoji", "text": "decisión 1 — por qué se tomó esta decisión de diseño"}},
+    {{"icon": "emoji", "text": "decisión 2 — otra decisión clave de la sesión"}}
+  ],
+  "evidencia": {{
+    "text": "cita de investigación científica relevante en español",
+    "reference": "Apellido et al., año"
+  }}
+}}
+
+Reglas:
+- decisiones: exactamente 2 o 3 items. Cada uno explica UNA decisión de diseño específica de esta sesión con datos concretos.
+- Emojis sugeridos: 🎯 objetivos, ⚡ intensidad, 💪 volumen, 😴 recuperación, 🔄 variación, 🏋️ ejercicios, ❤️ cardio, 🧘 movilidad, 📊 progresión, 🌡️ carga.
+- Cada text: máxima 1 oración directa en español. Menciona datos concretos de la sesión.
+- evidencia: cita real de la literatura (Schoenfeld, Zourdos, Helms, NSCA, ACSM, etc.) relacionada con el tipo de entrenamiento. En español."""
+
+    try:
+        import groq as _groq, json as _json
+        from django.conf import settings as _settings
+        client = _groq.Groq(api_key=_settings.GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=[{'role': 'user', 'content': prompt}],
+            max_tokens=400,
+            temperature=0.6,
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        data = _json.loads(raw.strip())
+        decisiones = data.get('decisiones', [])
+        evidencia = data.get('evidencia', None)
+        session.decisiones = decisiones
+        session.evidencia = evidencia
+        session.save(update_fields=['decisiones', 'evidencia'])
+        return Response({'decisiones': decisiones, 'evidencia': evidencia})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'session_resumen error session {pk}: {e}', exc_info=True)
+        return Response({'decisiones': [], 'evidencia': None})
+
+
 def _actualizar_racha(user):
     try:
         profile = user.profile
