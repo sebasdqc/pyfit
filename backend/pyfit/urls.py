@@ -54,6 +54,7 @@ urlpatterns = [
     path('api/stats/full/', workout_views.stats_full),
     path('api/stats/profile/', workout_views.stats_profile),
     path('api/stats/rpe-semanal/', workout_views.stats_rpe_semanal),
+    path('api/stats/consistencia-mensual/', workout_views.stats_consistencia_mensual),
 
     # Competitions
     path('api/competitions/', workout_views.competitions),

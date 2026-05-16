@@ -1,4 +1,5 @@
-from collections import Counter
+import calendar as _cal
+from collections import Counter, defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 from django.db.models import Avg, Count, Q
@@ -1210,7 +1211,6 @@ def stats_rpe_semanal(request):
         sesiones = list(sesiones)
 
     # Group RPE by week number (1-indexed from registration)
-    from collections import defaultdict
     rpe_por_semana: dict = defaultdict(list)
     for s in sesiones:
         week_num = (s.fecha - fecha_registro).days // 7 + 1
@@ -1233,4 +1233,94 @@ def stats_rpe_semanal(request):
     return Response({
         'semanas_entrenando': semanas_entrenando,
         'semanas': semanas,
+        'fecha_registro_year': fecha_registro.year,
+        'fecha_registro_month': fecha_registro.month,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_consistencia_mensual(request):
+    """
+    Day-by-day consistency heat map for a given month.
+    Query params: ?year=2025&month=5
+    """
+    user = request.user
+    today = date.today()
+    year  = int(request.GET.get('year',  today.year))
+    month = int(request.GET.get('month', today.month))
+
+    # Never allow future months
+    if (year, month) > (today.year, today.month):
+        year, month = today.year, today.month
+
+    first_day     = date(year, month, 1)
+    days_in_month = _cal.monthrange(year, month)[1]
+    last_day      = date(year, month, days_in_month)
+    fecha_registro = user.date_joined.date()
+
+    sesiones = (
+        user.sessions
+        .select_related('feedback', 'checkin')
+        .filter(fecha__gte=first_day, fecha__lte=last_day)
+    )
+
+    # Build per-day map, keeping highest intensity for a day
+    dia_map: dict = {}
+    for s in sesiones:
+        foco       = s.checkin.foco_entrenamiento if s.checkin else []
+        es_descanso = 'recuperar' in foco
+
+        if es_descanso:
+            intensidad = 0
+        else:
+            rpe = (
+                float(s.feedback.rpe_real)
+                if s.feedback and s.feedback.rpe_real is not None
+                else float(s.rpe_target)
+            )
+            dur = s.duracion_planificada or 0
+            if rpe < 5 or dur < 20:
+                intensidad = 1
+            elif rpe < 7:
+                intensidad = 2
+            elif rpe < 8.5:
+                intensidad = 3
+            else:
+                intensidad = 4
+
+        existing = dia_map.get(s.fecha)
+        if existing is None or intensidad > existing['intensidad']:
+            dia_map[s.fecha] = {'intensidad': intensidad, 'es_descanso': es_descanso}
+
+    # Full month array (all days)
+    dias = []
+    d = first_day
+    while d <= last_day:
+        info = dia_map.get(d)
+        dias.append({
+            'fecha':       d.isoformat(),
+            'intensidad':  info['intensidad']  if info else 0,
+            'es_descanso': info['es_descanso'] if info else False,
+        })
+        d += timedelta(days=1)
+
+    # Metrics
+    sesiones_completadas = sum(
+        1 for dia in dias if dia['intensidad'] > 0 or dia['es_descanso']
+    )
+    try:
+        dias_semana = user.profile.dias_semana or 3
+    except Exception:
+        dias_semana = 3
+    sesiones_planificadas = max(1, round(dias_semana * days_in_month / 7))
+
+    return Response({
+        'year':  year,
+        'month': month,
+        'dias':  dias,
+        'sesiones_completadas':  sesiones_completadas,
+        'sesiones_planificadas': sesiones_planificadas,
+        'fecha_registro_year':   fecha_registro.year,
+        'fecha_registro_month':  fecha_registro.month,
     })
