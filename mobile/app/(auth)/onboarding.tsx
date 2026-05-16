@@ -29,7 +29,7 @@ type Lesion = {
 
 type ScreenId =
   | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
-  | 'b2_lesiones'
+  | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
 
 type FormData = {
   nombre: string
@@ -44,6 +44,10 @@ type FormData = {
   deportes: string[]
   calidadSueno: string | null
   lesiones: Lesion[]
+  ejerciciosEvitar: string[]
+  motivoLimitacion: string
+  condicionesMedicas: string[]
+  notasMedicas: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -96,6 +100,52 @@ const GRAVEDAD_CONFIG: Record<LesionGravedad, { color: string; bg: string; label
   severa:   { color: '#ff4444', bg: 'rgba(255,68,68,0.15)',   label: 'Severa' },
 }
 
+const EJERCICIOS_COMUNES = [
+  // Piernas
+  'Sentadilla', 'Sentadilla frontal', 'Sentadilla búlgara', 'Peso muerto', 'Peso muerto rumano',
+  'Hip thrust', 'Zancadas / Lunges', 'Leg press', 'Extensión de cuádriceps', 'Curl de piernas',
+  'Elevación de talones', 'Step-up', 'Box jumps', 'Saltos pliométricos',
+  // Empuje
+  'Press de banca', 'Press inclinado', 'Press declinado', 'Aperturas con mancuernas', 'Fondos en paralelas',
+  'Press militar', 'Elevaciones laterales', 'Elevaciones frontales', 'Pájaros / Facepull', 'Arnold press',
+  // Tracción
+  'Dominadas', 'Jalón al pecho', 'Remo con barra', 'Remo en máquina', 'Remo con mancuerna',
+  'Pull-over', 'Curl de bíceps', 'Curl martillo',
+  // Tríceps / Core
+  'Extensión de tríceps', 'Press francés', 'Flexiones', 'Plancha', 'Abdominales / Crunches',
+  'Elevaciones de piernas', 'Russian twist', 'Rueda abdominal',
+  // Cardio / Funcional
+  'Burpees', 'Cuerda de batalla', 'Running / Carrera', 'Ciclismo', 'Natación',
+  'Remo (ergómetro)', 'Saltar la cuerda', 'Escalador (Mountain climber)',
+  // Olímpicos
+  'Clean & Jerk', 'Snatch', 'Push press', 'Thruster',
+]
+
+const CONDICIONES_MEDICAS = [
+  'Hipertensión (presión alta)',
+  'Hipotensión (presión baja)',
+  'Diabetes tipo 1',
+  'Diabetes tipo 2',
+  'Enfermedad cardíaca / Cardiopatía',
+  'Asma',
+  'EPOC',
+  'Escoliosis',
+  'Osteoporosis / Osteopenia',
+  'Artritis reumatoide',
+  'Artrosis',
+  'Hernias discales',
+  'Hipotiroidismo',
+  'Hipertiroidismo',
+  'Síndrome metabólico',
+  'Apnea del sueño',
+  'Fibromialgia',
+  'SOP (ovario poliquístico)',
+  'Anemia',
+  'Epilepsia',
+  'Celiaquía',
+  'Lupus',
+]
+
 const DEPORTES = [
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
@@ -127,6 +177,8 @@ function getBlockTitle(screen: ScreenId): string {
     case 'b1_sueno':
       return 'Quién eres físicamente'
     case 'b2_lesiones':
+    case 'b2_limitaciones':
+    case 'b2_historial_medico':
       return 'Tu cuerpo tiene historia'
   }
 }
@@ -282,6 +334,8 @@ export default function OnboardingScreen() {
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
     usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
     calidadSueno: null, lesiones: [],
+    ejerciciosEvitar: [], motivoLimitacion: '',
+    condicionesMedicas: [], notasMedicas: '',
   })
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -294,6 +348,10 @@ export default function OnboardingScreen() {
   const [tempDate, setTempDate] = useState(new Date(2000, 0, 1))
   const [deportesExpanded, setDeportesExpanded] = useState(false)
   const [deportesQuery, setDeportesQuery] = useState('')
+
+  // ── Block 2 — ejercicios evitar ───────────────────────────────────────────
+  const [ejerciciosExpanded, setEjerciciosExpanded] = useState(false)
+  const [ejerciciosQuery, setEjerciciosQuery] = useState('')
 
   // ── Block 2 — lesion modal ─────────────────────────────────────────────────
   const [editingZona, setEditingZona] = useState<string | null>(null)
@@ -310,6 +368,8 @@ export default function OnboardingScreen() {
     'b1_historial',
     'b1_sueno',
     'b2_lesiones',
+    'b2_limitaciones',
+    'b2_historial_medico',
   ], [data.sexo])
 
   const currentScreen = screens[screenIndex]
@@ -374,6 +434,10 @@ export default function OnboardingScreen() {
         experiencia_deportiva: data.deportes.join(', '),
         calidad_sueno_habitual: data.calidadSueno,
         lesiones: data.lesiones,
+        ejercicios_evitar: data.ejerciciosEvitar.join(', '),
+        condiciones_medicas: data.condicionesMedicas,
+        notas_medicas: data.notasMedicas.trim(),
+        motivo_limitacion: data.motivoLimitacion.trim(),
       })
       router.replace('/(app)/dashboard')
     } catch (e: any) {
@@ -754,13 +818,173 @@ export default function OnboardingScreen() {
     )
   }
 
+  // ── Block 2: movement limitations ─────────────────────────────────────────
+
+  function renderLimitaciones() {
+    const filtered = ejerciciosQuery.length > 1
+      ? EJERCICIOS_COMUNES.filter(e => normalize(e).includes(normalize(ejerciciosQuery)))
+      : EJERCICIOS_COMUNES
+
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.limitTitle}>
+          ¿Hay ejercicios que sabes que no puedes hacer?
+        </Text>
+        <Text style={styles.limitSub}>
+          Por lesiones, dolor, limitación de rango de movimiento o simplemente preferencia.
+          Tu rutina los evitará por completo.
+        </Text>
+
+        {/* Searchable exercise selector */}
+        <View style={styles.deportesSection}>
+          <TouchableOpacity style={styles.deportesHeader}
+            onPress={() => setEjerciciosExpanded(e => !e)} activeOpacity={0.8}>
+            <View>
+              <Text style={styles.deportesLabel}>EJERCICIOS A EVITAR</Text>
+              {data.ejerciciosEvitar.length > 0 && (
+                <Text style={styles.deportesCount}>
+                  {data.ejerciciosEvitar.length} seleccionado{data.ejerciciosEvitar.length > 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.deportesChevron, ejerciciosExpanded && styles.deportesChevronUp]}>›</Text>
+          </TouchableOpacity>
+
+          {data.ejerciciosEvitar.length > 0 && (
+            <View style={styles.selectedRow}>
+              {data.ejerciciosEvitar.map(e => (
+                <TouchableOpacity key={e} style={styles.selectedChipRed}
+                  onPress={() => set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== e))}>
+                  <Text style={styles.selectedChipRedText}>{e}</Text>
+                  <Text style={styles.selectedChipRedX}> ×</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {ejerciciosExpanded && (
+            <View style={styles.deportesDropdown}>
+              <TextInput style={styles.deportesSearch} placeholder="Buscar ejercicio..."
+                placeholderTextColor={'rgba(255,255,255,0.35)'} value={ejerciciosQuery}
+                onChangeText={setEjerciciosQuery} autoCorrect={false} />
+              <View style={styles.deportesGrid}>
+                {filtered.map(e => {
+                  const sel = data.ejerciciosEvitar.includes(e)
+                  return (
+                    <TouchableOpacity key={e}
+                      style={[styles.deporteChip, sel && styles.deporteChipRed]}
+                      onPress={() => {
+                        if (sel) set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== e))
+                        else set('ejerciciosEvitar', [...data.ejerciciosEvitar, e])
+                      }}
+                      activeOpacity={0.75}>
+                      <Text style={[styles.deporteChipText, sel && styles.deporteChipTextRed]}>
+                        {sel ? '✕ ' : ''}{e}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Reason (shown once at least one exercise is selected) */}
+        {data.ejerciciosEvitar.length > 0 && (
+          <View style={[styles.fieldGroup, { marginTop: 20 }]}>
+            <Text style={styles.fieldLabel}>¿POR QUÉ? (OPCIONAL)</Text>
+            <TextInput
+              style={[styles.input, styles.textarea]}
+              placeholder="Ej: dolor de rodilla al cargar, cirugía de hombro hace 6 meses..."
+              placeholderTextColor={'rgba(255,255,255,0.35)'}
+              value={data.motivoLimitacion}
+              onChangeText={v => set('motivoLimitacion', v)}
+              multiline
+              numberOfLines={3}
+              maxLength={300}
+              textAlignVertical="top"
+            />
+            <Text style={styles.charCount}>{data.motivoLimitacion.length}/300</Text>
+          </View>
+        )}
+
+        {data.ejerciciosEvitar.length === 0 && (
+          <Text style={styles.skipNote}>Sin limitaciones — puedes continuar.</Text>
+        )}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 2: medical history ───────────────────────────────────────────────
+
+  function renderHistorialMedico() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.sectionLabel}>HISTORIAL MÉDICO</Text>
+        <Text style={styles.medTitle}>
+          ¿Alguna condición que afecte tu entrenamiento?
+        </Text>
+        <Text style={styles.medSub}>
+          Completamente opcional. Solo queremos adaptar tu rutina para que sea segura y efectiva.
+          No compartimos esta información.
+        </Text>
+
+        {/* Conditions chip grid */}
+        <View style={styles.condGrid}>
+          {CONDICIONES_MEDICAS.map(c => {
+            const on = data.condicionesMedicas.includes(c)
+            return (
+              <TouchableOpacity key={c}
+                style={[styles.condChip, on && styles.condChipOn]}
+                onPress={() => {
+                  if (on) set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== c))
+                  else set('condicionesMedicas', [...data.condicionesMedicas, c])
+                }}
+                activeOpacity={0.8}>
+                {on && <Text style={styles.condCheckmark}>✓ </Text>}
+                <Text style={[styles.condChipText, on && styles.condChipTextOn]}>{c}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Optional notes */}
+        <View style={[styles.fieldGroup, { marginTop: 24 }]}>
+          <Text style={styles.fieldLabel}>NOTAS ADICIONALES (OPCIONAL)</Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            placeholder="Cualquier otra cosa que debamos saber. Breve."
+            placeholderTextColor={'rgba(255,255,255,0.35)'}
+            value={data.notasMedicas}
+            onChangeText={v => set('notasMedicas', v)}
+            multiline
+            numberOfLines={3}
+            maxLength={300}
+            textAlignVertical="top"
+          />
+          <Text style={styles.charCount}>{data.notasMedicas.length}/300</Text>
+        </View>
+
+        {data.condicionesMedicas.length === 0 && (
+          <Text style={styles.skipNote}>Sin condiciones relevantes — puedes continuar.</Text>
+        )}
+      </ScrollView>
+    )
+  }
+
   function renderContent() {
     switch (currentScreen) {
-      case 'b1_personal':  return renderPersonal()
-      case 'b1_ciclo':     return renderCiclo()
-      case 'b1_historial': return renderHistorial()
-      case 'b1_sueno':     return renderSueno()
-      case 'b2_lesiones':  return renderLesiones()
+      case 'b1_personal':       return renderPersonal()
+      case 'b1_ciclo':          return renderCiclo()
+      case 'b1_historial':      return renderHistorial()
+      case 'b1_sueno':          return renderSueno()
+      case 'b2_lesiones':       return renderLesiones()
+      case 'b2_limitaciones':   return renderLimitaciones()
+      case 'b2_historial_medico': return renderHistorialMedico()
     }
   }
 
@@ -1121,6 +1345,54 @@ function makeStyles(c: Colors) {
       position: 'absolute', top: 14, right: 14,
       width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent,
     },
+
+    // Block 2 — limitaciones
+    limitTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, letterSpacing: -0.4, lineHeight: 31, marginBottom: 10,
+    },
+    limitSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 21, marginBottom: 24,
+    },
+    selectedChipRed: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: 'rgba(255,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(255,68,68,0.4)',
+      borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    },
+    selectedChipRedText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: '#ff6b6b' },
+    selectedChipRedX: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: '#ff6b6b', lineHeight: 18 },
+    deporteChipRed: { backgroundColor: 'rgba(255,68,68,0.1)', borderColor: 'rgba(255,68,68,0.4)' },
+    deporteChipTextRed: { color: '#ff6b6b' },
+    textarea: { minHeight: 90, paddingTop: 14, paddingBottom: 14 },
+    charCount: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      color: c.inkFaint, textAlign: 'right', marginTop: 4,
+    },
+    skipNote: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkMuted, textAlign: 'center', marginTop: 20,
+    },
+
+    // Block 2 — historial médico
+    medTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.inkPrimary, letterSpacing: -0.4, lineHeight: 31, marginBottom: 10,
+    },
+    medSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 21, marginBottom: 24,
+    },
+    condGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+    condChip: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+    },
+    condChipOn: { backgroundColor: 'rgba(255,170,50,0.1)', borderColor: '#ffaa32' },
+    condCheckmark: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, color: '#ffaa32' },
+    condChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary },
+    condChipTextOn: { color: '#ffaa32' },
 
     // Block 2 — lesiones
     lesionesTitle: {
