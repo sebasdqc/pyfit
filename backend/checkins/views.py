@@ -11,20 +11,16 @@ from .serializers import CheckinSerializer
 @permission_classes([IsAuthenticated])
 def today_checkin(request):
     hoy = date.today()
-    try:
-        checkin = request.user.checkins.select_related('location').get(fecha=hoy)
+    checkin = request.user.checkins.select_related('location').filter(fecha=hoy).order_by('-created_at').first()
+    if checkin:
         return Response(CheckinSerializer(checkin).data)
-    except DailyCheckin.DoesNotExist:
-        return Response(None)
+    return Response(None)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_checkin(request):
     hoy = date.today()
-    if request.user.checkins.filter(fecha=hoy).exists():
-        return Response({'error': 'Ya existe un check-in para hoy'}, status=status.HTTP_400_BAD_REQUEST)
-
     data = {**request.data, 'fecha': str(hoy)}
     serializer = CheckinSerializer(data=data)
     if not serializer.is_valid():

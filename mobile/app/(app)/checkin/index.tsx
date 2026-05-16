@@ -193,18 +193,9 @@ export default function CheckinScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [checkinRes, locsRes] = await Promise.allSettled([
-        apiGet('/api/checkins/today/'),
-        apiGet('/api/locations/'),
-      ])
-      if (checkinRes.status === 'fulfilled' && checkinRes.value?.id) {
-        router.replace('/(app)/generate')
-        return
-      }
-      if (locsRes.status === 'fulfilled') {
-        const locs: Location[] = locsRes.value ?? []
-        if (locs.length > 0) setLocationId(locs[0].id)
-      }
+      const locsRes = await apiGet('/api/locations/').catch(() => null)
+      const locs: Location[] = locsRes ?? []
+      if (locs.length > 0) setLocationId(locs[0].id)
     } catch {
       // non-fatal
     } finally {
