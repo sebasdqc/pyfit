@@ -163,6 +163,7 @@ export default function AppLayout() {
         }}
       />
       {/* Screens fuera del tab bar */}
+      <Tabs.Screen name="notificaciones/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="generate/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="ejecutar/[id]" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="feedback/[id]" options={{ href: null, tabBarLabel: '' }} />

@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   RefreshControl,
   StyleProp,
@@ -499,7 +498,7 @@ export default function DashboardScreen() {
           {/* Bell — top right */}
           <TouchableOpacity
             style={styles.bellBtn}
-            onPress={() => Alert.alert('Notificaciones', 'Próximamente')}
+            onPress={() => router.push('/(app)/notificaciones')}
             activeOpacity={0.7}
           >
             <BellIcon />
