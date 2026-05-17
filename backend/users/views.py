@@ -274,40 +274,99 @@ def _maybe_generate_notifications(user):
     ahora = timezone.now()
     prefs = _get_notif_prefs(user)
 
-    # Reencuentro — last session ≥ 5 days ago, no reencuentro in last 5 days
-    if prefs is None or prefs.reencuentro:
-        ultima = user.sessions.order_by('-fecha').values('fecha').first()
-        if ultima:
-            dias = (hoy - ultima['fecha']).days
-            if dias >= 5:
+    silencio = prefs is not None and prefs.silencio
+    dentro_horario = prefs is None or prefs.within_hora_window()
+
+    # Non-critical notifications: skip if silenced or outside hora window
+    if not silencio and dentro_horario:
+        # Reencuentro — last session ≥ 5 days ago, no reencuentro in last 5 days
+        if prefs is None or prefs.reencuentro:
+            ultima = user.sessions.order_by('-fecha').values('fecha').first()
+            if ultima:
+                dias = (hoy - ultima['fecha']).days
+                if dias >= 5:
+                    ya_existe = user.notifications.filter(
+                        tipo='reencuentro',
+                        created_at__gte=ahora - timedelta(days=5),
+                    ).exists()
+                    if not ya_existe:
+                        try:
+                            nombre = user.profile.nombre or 'atleta'
+                        except Exception:
+                            nombre = 'atleta'
+                        Notification.objects.create(
+                            user=user,
+                            tipo='reencuentro',
+                            texto=(
+                                f'Han pasado {dias} días desde tu último entrenamiento, {nombre}. '
+                                'Tu cuerpo agradece la consistencia.'
+                            ),
+                        )
+
+        # Insight semanal — ≥ 2 sesiones en los últimos 7 días, no insight en los últimos 7
+        if prefs is None or prefs.insight:
+            sesiones_semana = user.sessions.filter(fecha__gte=hoy - timedelta(days=7)).count()
+            if sesiones_semana >= 2:
                 ya_existe = user.notifications.filter(
-                    tipo='reencuentro',
-                    created_at__gte=ahora - timedelta(days=5),
+                    tipo='insight',
+                    created_at__gte=ahora - timedelta(days=7),
                 ).exists()
                 if not ya_existe:
-                    try:
-                        nombre = user.profile.nombre or 'atleta'
-                    except Exception:
-                        nombre = 'atleta'
-                    Notification.objects.create(
-                        user=user,
-                        tipo='reencuentro',
-                        texto=(
-                            f'Han pasado {dias} días desde tu último entrenamiento, {nombre}. '
-                            'Tu cuerpo agradece la consistencia.'
-                        ),
-                    )
+                    _crear_insight_notification(user, sesiones_semana)
 
-    # Insight semanal — ≥ 2 sesiones en los últimos 7 días, no insight en los últimos 7
-    if prefs is None or prefs.insight:
-        sesiones_semana = user.sessions.filter(fecha__gte=hoy - timedelta(days=7)).count()
-        if sesiones_semana >= 2:
+    # Critical alerts — always shown in-app regardless of silencio, but respect hora window
+    if dentro_horario:
+        _check_alertas_criticas(user, ahora)
+
+
+def _check_alertas_criticas(user, ahora):
+    from datetime import timedelta
+    from django.db.models import Avg
+
+    # RPE > 9 for 3 consecutive sessions
+    ultimas = list(
+        user.sessions.filter(feedback__isnull=False)
+        .order_by('-fecha', '-created_at')
+        .values('feedback__rpe_real')[:3]
+    )
+    if len(ultimas) >= 3 and all(
+        s['feedback__rpe_real'] is not None and float(s['feedback__rpe_real']) > 9
+        for s in ultimas
+    ):
+        ya_existe = user.notifications.filter(
+            tipo='alerta',
+            texto__icontains='RPE',
+            created_at__gte=ahora - timedelta(days=7),
+        ).exists()
+        if not ya_existe:
+            Notification.objects.create(
+                user=user,
+                tipo='alerta',
+                texto='Tu RPE superó 9 en las últimas 3 sesiones consecutivas. Considera un día de recuperación activa antes de la próxima sesión.',
+            )
+
+    # Injury pattern — 3+ pain reports in check-ins in 7 days
+    try:
+        from checkins.models import DailyCheckin
+        pain_count = DailyCheckin.objects.filter(
+            user=user,
+            fecha__gte=(ahora - timedelta(days=7)).date(),
+            dolor_hoy__isnull=False,
+        ).exclude(dolor_hoy='').count()
+        if pain_count >= 3:
             ya_existe = user.notifications.filter(
-                tipo='insight',
+                tipo='alerta',
+                texto__icontains='dolor',
                 created_at__gte=ahora - timedelta(days=7),
             ).exists()
             if not ya_existe:
-                _crear_insight_notification(user, sesiones_semana)
+                Notification.objects.create(
+                    user=user,
+                    tipo='alerta',
+                    texto=f'Reportaste molestias en {pain_count} sesiones de los últimos 7 días. Revisa tu técnica y considera una consulta con un especialista.',
+                )
+    except Exception:
+        pass
 
 
 def _crear_insight_notification(user, sesiones_semana):
@@ -376,35 +435,59 @@ def notification_leer(request, pk):
 VALID_TIPOS = {'invitacion', 'insight', 'alerta', 'logro', 'reencuentro'}
 
 
-@api_view(['GET', 'PATCH'])
-@permission_classes([IsAuthenticated])
-def notification_prefs_view(request):
-    prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
-
-    if request.method == 'GET':
-        return Response({
-            'invitacion':  prefs.invitacion,
-            'insight':     prefs.insight,
-            'alerta':      prefs.alerta,
-            'logro':       prefs.logro,
-            'reencuentro': prefs.reencuentro,
-        })
-
-    # PATCH — update only the supplied fields
-    fields_to_save = []
-    for tipo in VALID_TIPOS:
-        if tipo in request.data:
-            valor = bool(request.data[tipo])
-            setattr(prefs, tipo, valor)
-            fields_to_save.append(tipo)
-
-    if fields_to_save:
-        prefs.save(update_fields=fields_to_save)
-
-    return Response({
+def _prefs_response(prefs):
+    return {
         'invitacion':  prefs.invitacion,
         'insight':     prefs.insight,
         'alerta':      prefs.alerta,
         'logro':       prefs.logro,
         'reencuentro': prefs.reencuentro,
-    })
+        'hora_inicio': prefs.hora_inicio.strftime('%H:%M'),
+        'hora_fin':    prefs.hora_fin.strftime('%H:%M'),
+        'silencio':    prefs.silencio,
+    }
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def notification_prefs_view(request):
+    from datetime import time as dtime
+
+    prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+
+    if request.method == 'GET':
+        return Response(_prefs_response(prefs))
+
+    fields_to_save = []
+
+    # Boolean tipo fields
+    for tipo in VALID_TIPOS:
+        if tipo in request.data:
+            setattr(prefs, tipo, bool(request.data[tipo]))
+            fields_to_save.append(tipo)
+
+    # Silencio
+    if 'silencio' in request.data:
+        prefs.silencio = bool(request.data['silencio'])
+        fields_to_save.append('silencio')
+
+    # Hora fields — accept "HH:MM:SS", "HH:MM", or integer hour
+    for field in ('hora_inicio', 'hora_fin'):
+        if field not in request.data:
+            continue
+        val = request.data[field]
+        try:
+            if isinstance(val, str):
+                hour = int(val.split(':')[0])
+            else:
+                hour = int(val)
+            hour = max(7, min(22, hour))
+            setattr(prefs, field, dtime(hour, 0))
+            fields_to_save.append(field)
+        except (ValueError, TypeError):
+            pass
+
+    if fields_to_save:
+        prefs.save(update_fields=fields_to_save)
+
+    return Response(_prefs_response(prefs))

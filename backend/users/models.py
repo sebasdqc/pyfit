@@ -172,12 +172,22 @@ class NotificationPreference(models.Model):
     alerta      = models.BooleanField(default=True)
     logro       = models.BooleanField(default=True)
     reencuentro = models.BooleanField(default=True)
+    hora_inicio = models.TimeField(default='07:00:00')
+    hora_fin    = models.TimeField(default='22:00:00')
+    silencio    = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'notification_preferences'
 
     def is_enabled(self, tipo: str) -> bool:
+        if self.silencio and tipo != 'alerta':
+            return False
         return bool(getattr(self, tipo, True))
+
+    def within_hora_window(self) -> bool:
+        from django.utils import timezone
+        now_hour = timezone.localtime(timezone.now()).hour
+        return self.hora_inicio.hour <= now_hour <= self.hora_fin.hour
 
 
 class PasswordResetCode(models.Model):
