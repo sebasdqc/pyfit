@@ -417,7 +417,7 @@ function InsightCard({
     <View style={styles.z5Wrap}>
       <Text style={styles.z5SectionLabel}>Tu entrenador</Text>
       <View style={[styles.z5Card, isEmpty && styles.z5CardEmpty]}>
-        <View style={[styles.z5Bar, isEmpty && { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
+        <View style={[styles.z5Bar, isEmpty && { backgroundColor: colors.borderBright }]} />
         <View style={styles.z5Content}>
           <View style={styles.z5TagRow}>
             <View style={[styles.z5Tag, isEmpty && styles.z5TagEmpty]}>

@@ -110,14 +110,6 @@ function trendText(arr: SemanaRPE[]): string | null {
 
 // ─── Heat map constants ───────────────────────────────────────────────────────
 
-const INTENSITY_BG = [
-  'rgba(255,255,255,0.04)',
-  'rgba(79,140,255,0.18)',
-  'rgba(79,140,255,0.40)',
-  'rgba(79,140,255,0.65)',
-  '#4f8cff',
-]
-
 const MESES_ES = [
   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
@@ -136,12 +128,15 @@ function buildCells(year: number, month: number, dias: DiaData[]): (DiaData | nu
 // ─── RPE Line Chart ───────────────────────────────────────────────────────────
 
 function RPELineChart({
-  semanas, totalWeeks, containerW, accent,
+  semanas, totalWeeks, containerW, accent, grid, label, bg,
 }: {
   semanas: SemanaRPE[]
   totalWeeks: number
   containerW: number
   accent: string
+  grid:    string  // color de las líneas de grilla
+  label:   string  // color de los labels (eje X, Y)
+  bg:      string  // color de fondo (para el centro de los puntos)
 }) {
   const dataW = containerW - PAD_L - PAD_R
   if (dataW <= 10 || semanas.length === 0) return null
@@ -165,9 +160,9 @@ function RPELineChart({
         return (
           <React.Fragment key={v}>
             <Line x1={PAD_L} y1={y} x2={containerW - PAD_R} y2={y}
-              stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+              stroke={grid} strokeWidth={1} />
             <SvgText x={PAD_L - 5} y={y + 3.5} fontSize={9}
-              fill="rgba(255,255,255,0.28)" textAnchor="end">
+              fill={label} textAnchor="end">
               {v}
             </SvgText>
           </React.Fragment>
@@ -176,7 +171,7 @@ function RPELineChart({
 
       {xLabels.map(w => (
         <SvgText key={w} x={toX(w)} y={CHART_H - 5} fontSize={8}
-          fill="rgba(255,255,255,0.28)" textAnchor="middle">
+          fill={label} textAnchor="middle">
           {`S${w}`}
         </SvgText>
       ))}
@@ -194,7 +189,7 @@ function RPELineChart({
       {mainPts.map((p, i) => (
         <React.Fragment key={i}>
           <Circle cx={p.x} cy={p.y} r={5} fill={accent} />
-          <Circle cx={p.x} cy={p.y} r={2.5} fill="#000000" />
+          <Circle cx={p.x} cy={p.y} r={2.5} fill={bg} />
         </React.Fragment>
       ))}
     </Svg>
@@ -214,11 +209,13 @@ function bcY(v: number): number {
 }
 
 function EstadoBarChart({
-  semanas, color, containerW,
+  semanas, color, containerW, grid, label,
 }: {
   semanas: SemanaEstado[]
   color: string
   containerW: number
+  grid:   string
+  label:  string
 }) {
   const [tipIdx, setTipIdx] = useState<number | null>(null)
   const dataW = containerW - BC_SIDE * 2
@@ -235,7 +232,7 @@ function EstadoBarChart({
         <Line key={v}
           x1={BC_SIDE} y1={bcY(v)}
           x2={containerW - BC_SIDE} y2={bcY(v)}
-          stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+          stroke={grid} strokeWidth={1} />
       ))}
 
       {semanas.map((s, i) => {
@@ -264,7 +261,7 @@ function EstadoBarChart({
             {i % xStep === 0 && (
               <SvgText
                 x={cx} y={BC_PAD_T + BC_DATA_H + 12}
-                fontSize={8} fill="rgba(255,255,255,0.28)" textAnchor="middle"
+                fontSize={8} fill={label} textAnchor="middle"
               >
                 {s.label}
               </SvgText>
@@ -313,10 +310,13 @@ function arcPath(cx: number, cy: number, R: number, r: number, a0: number, a1: n
 }
 
 function DonutChart({
-  counts, containerW,
+  counts, containerW, ringBg, centerBg, legendLabel,
 }: {
   counts: CuerpoData['intencion_counts']
   containerW: number
+  ringBg:      string  // anillo de fondo
+  centerBg:    string  // centro del donut
+  legendLabel: string  // color de los labels en la leyenda
 }) {
   const raw   = INTENCION_DEFS.map(d => counts[d.id] ?? 0)
   const total = raw.reduce((a, b) => a + b, 0)
@@ -335,7 +335,7 @@ function DonutChart({
     <>
       <Svg width={containerW} height={90}>
         {/* Background ring */}
-        <Circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={R - ri} />
+        <Circle cx={CX} cy={CY} r={R} fill="none" stroke={ringBg} strokeWidth={R - ri} />
 
         {INTENCION_DEFS.map((def, i) => {
           const angle = angles[i]
@@ -348,7 +348,7 @@ function DonutChart({
             return (
               <React.Fragment key={def.id}>
                 <Circle cx={CX} cy={CY} r={R}  fill={def.color} />
-                <Circle cx={CX} cy={CY} r={ri} fill="#000000" />
+                <Circle cx={CX} cy={CY} r={ri} fill={centerBg} />
               </React.Fragment>
             )
           }
@@ -361,7 +361,7 @@ function DonutChart({
         {INTENCION_DEFS.map((def, i) => (
           <View key={def.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '47%' }}>
             <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: def.color }} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 10, color: 'rgba(255,255,255,0.55)', flex: 1 }} numberOfLines={1}>
+            <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 10, color: legendLabel, flex: 1 }} numberOfLines={1}>
               {def.label}
             </Text>
             <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: def.color }}>
@@ -470,6 +470,17 @@ function HeatMapBlock({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+
+  // Escala de intensidad derivada de la paleta — el nivel 0 (sin actividad)
+  // usa el borde del tema (visible en light y dark), los demás son tonos del
+  // accent. Antes había un literal `rgba(255,255,255,*)` que se perdía en light.
+  const INTENSITY_BG = [
+    colors.borderDefault,    // 0: sin actividad
+    colors.accent + '2e',    // 1: ~18% opacidad
+    colors.accent + '66',    // 2: ~40%
+    colors.accent + 'a6',    // 3: ~65%
+    colors.accent,           // 4: máximo
+  ]
 
   const today    = new Date()
   const canPrev  = mesActual.year > regYear || (mesActual.year === regYear && mesActual.month > regMonth)
@@ -802,6 +813,9 @@ export default function EstadisticasScreen() {
                 totalWeeks={semanasEntrenando}
                 containerW={cardInnerW}
                 accent={colors.accent}
+                grid={colors.borderDefault}
+                label={colors.inkMuted}
+                bg={colors.bg}
               />
             )}
           </View>
@@ -835,6 +849,8 @@ export default function EstadisticasScreen() {
               semanas={cuerpoData.semanas_fisico}
               color={colors.green}
               containerW={cardInnerW}
+              grid={colors.borderDefault}
+              label={colors.inkMuted}
             />
           ) : (
             <View style={styles.chartCenter}>
@@ -855,6 +871,8 @@ export default function EstadisticasScreen() {
               semanas={cuerpoData.semanas_mental}
               color={colors.cyan}
               containerW={cardInnerW}
+              grid={colors.borderDefault}
+              label={colors.inkMuted}
             />
           ) : (
             <View style={styles.chartCenter}>
@@ -871,7 +889,13 @@ export default function EstadisticasScreen() {
         <View style={styles.card}>
           <Text style={styles.cardMiniTitle}>Intención de entrenamiento</Text>
           {cuerpoData && cuerpoData.total_checkins >= 5 ? (
-            <DonutChart counts={cuerpoData.intencion_counts} containerW={cardInnerW} />
+            <DonutChart
+              counts={cuerpoData.intencion_counts}
+              containerW={cardInnerW}
+              ringBg={colors.borderDefault}
+              centerBg={colors.bg}
+              legendLabel={colors.inkSecondary}
+            />
           ) : (
             <View style={[styles.chartCenter, { height: 80 }]}>
               <Text style={styles.emptyText}>

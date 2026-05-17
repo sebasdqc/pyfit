@@ -85,14 +85,19 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         }
 
         if (isCenter) {
+          // En light mode el bg es casi blanco, así que un botón blanco se pierde.
+          // Invertimos: bg oscuro con texto claro en light; bg claro con texto
+          // oscuro en dark/rosado para mantener máxima visibilidad.
+          const centerBg   = palette === 'light' ? colors.inkPrimary : COLORS.white
+          const centerText = palette === 'light' ? colors.bg          : '#000'
           return (
             <View key={route.key} style={styles.tabItem}>
               <TouchableOpacity
                 onPress={onPress}
-                style={styles.centerBtn}
+                style={[styles.centerBtn, { backgroundColor: centerBg }]}
                 activeOpacity={0.85}
               >
-                <Text style={styles.centerBtnText}>ENTRENAR</Text>
+                <Text style={[styles.centerBtnText, { color: centerText }]}>ENTRENAR</Text>
               </TouchableOpacity>
             </View>
           )

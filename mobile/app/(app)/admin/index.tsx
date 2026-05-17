@@ -107,8 +107,8 @@ export default function AdminScreen() {
             <Text style={styles.userName} numberOfLines={1}>
               {item.nombre || item.email}
             </Text>
-            {item.is_superuser && <View style={styles.badgeSuperuser}><Text style={styles.badgeText}>SU</Text></View>}
-            {item.is_staff && !item.is_superuser && <View style={styles.badgeStaff}><Text style={styles.badgeText}>STAFF</Text></View>}
+            {item.is_superuser && <View style={styles.badgeSuperuser}><Text style={styles.badgeTextSuperuser}>SU</Text></View>}
+            {item.is_staff && !item.is_superuser && <View style={styles.badgeStaff}><Text style={styles.badgeTextStaff}>STAFF</Text></View>}
           </View>
           <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
           <Text style={styles.userStats}>
@@ -283,23 +283,36 @@ function makeStyles(c: Colors) {
     userEmail: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
     userStats: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.4 },
 
+    // Badges semánticos (azul=staff, naranja=superuser). El tint hardcoded
+    // a 0.15 era invisible en light. Subir opacidad + texto del propio color
+    // garantiza contraste en cualquier paleta sin perder identidad.
     badgeStaff: {
-      backgroundColor: 'rgba(79,140,255,0.15)',
+      backgroundColor: 'rgba(79,140,255,0.22)',
+      borderWidth:     1,
+      borderColor:     'rgba(79,140,255,0.5)',
       paddingHorizontal: 6,
       paddingVertical:    2,
       borderRadius:       4,
     },
     badgeSuperuser: {
-      backgroundColor: 'rgba(255,170,50,0.15)',
+      backgroundColor: 'rgba(255,170,50,0.22)',
+      borderWidth:     1,
+      borderColor:     'rgba(255,170,50,0.5)',
       paddingHorizontal: 6,
       paddingVertical:    2,
       borderRadius:       4,
     },
-    badgeText: {
+    badgeTextStaff: {
       fontFamily: 'JetBrainsMono-Medium',
       fontSize:   8,
       letterSpacing: 1.1,
-      color:      c.inkPrimary,
+      color:      '#2563ff',
+    },
+    badgeTextSuperuser: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize:   8,
+      letterSpacing: 1.1,
+      color:      '#b45309',  // ámbar oscuro — legible sobre el tint naranja en cualquier bg
     },
 
     impersonateBtn: {

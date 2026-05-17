@@ -107,14 +107,15 @@ const HORAS_RANGE = Array.from({ length: 16 }, (_, i) => i + 7)  // 7–22
 // ─── Notification Card ────────────────────────────────────────────────────────
 
 function NotificacionCard({ notif, onPress }: { notif: Notificacion; onPress: () => void }) {
+  const { colors } = useTheme()
   const meta = TIPO_META[notif.tipo] ?? FALLBACK_META
   return (
     <TouchableOpacity
       style={[
         cSt.card,
         notif.leida
-          ? cSt.cardRead
-          : [cSt.cardUnread, { borderColor: meta.color + '33', backgroundColor: meta.color + '0d' }],
+          ? [cSt.cardRead, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]
+          : [cSt.cardUnread, { borderColor: meta.color + '55', backgroundColor: meta.color + '15' }],
       ]}
       onPress={onPress}
       activeOpacity={notif.leida ? 0.5 : 0.78}
@@ -124,8 +125,8 @@ function NotificacionCard({ notif, onPress }: { notif: Notificacion; onPress: ()
       </View>
       <View style={cSt.center}>
         <Text style={[cSt.tipo, { color: meta.color }]}>{meta.label}</Text>
-        <Text style={cSt.texto}>{notif.texto}</Text>
-        <Text style={cSt.ts}>{formatTimestamp(notif.timestamp)}</Text>
+        <Text style={[cSt.texto, { color: colors.inkPrimary }]}>{notif.texto}</Text>
+        <Text style={[cSt.ts, { color: colors.inkMuted }]}>{formatTimestamp(notif.timestamp)}</Text>
       </View>
       <View style={cSt.right}>
         {!notif.leida && <View style={[cSt.dot, { backgroundColor: meta.color }]} />}
@@ -136,14 +137,14 @@ function NotificacionCard({ notif, onPress }: { notif: Notificacion; onPress: ()
 
 const cSt = StyleSheet.create({
   card:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderRadius: 18, padding: 14 },
-  cardRead:  { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)' },
+  cardRead:  {},
   cardUnread:{},
   iconWrap:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconEmoji: { fontSize: 20 },
   center:    { flex: 1, gap: 4 },
   tipo:      { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase' },
-  texto:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 20 },
-  ts:        { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: 0.3 },
+  texto:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, lineHeight: 20 },
+  ts:        { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.3 },
   right:     { width: 14, alignItems: 'center', paddingTop: 4, flexShrink: 0 },
   dot:       { width: 8, height: 8, borderRadius: 4 },
 })
@@ -151,19 +152,25 @@ const cSt = StyleSheet.create({
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
 
 function ToggleSwitch({ value, onToggle }: { value: boolean; onToggle: () => void }) {
+  const { colors } = useTheme()
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current
 
   useEffect(() => {
     Animated.timing(anim, { toValue: value ? 1 : 0, duration: 200, useNativeDriver: false }).start()
   }, [value])
 
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.12)', '#4f8cff'] })
-  const thumbX     = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 20] })
+  // Track off → borderBright de la paleta (visible en light y dark/rosado).
+  // Track on → accent de la paleta (azul, azul, rosa según modo).
+  const trackColor = anim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [colors.borderBright, colors.accent],
+  })
+  const thumbX = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 20] })
 
   return (
     <TouchableOpacity onPress={onToggle} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
       <Animated.View style={[tgSt.track, { backgroundColor: trackColor }]}>
-        <Animated.View style={[tgSt.thumb, { transform: [{ translateX: thumbX }] }]} />
+        <Animated.View style={[tgSt.thumb, { backgroundColor: colors.white, transform: [{ translateX: thumbX }] }]} />
       </Animated.View>
     </TouchableOpacity>
   )
@@ -171,7 +178,7 @@ function ToggleSwitch({ value, onToggle }: { value: boolean; onToggle: () => voi
 
 const tgSt = StyleSheet.create({
   track: { width: 44, height: 26, borderRadius: 13, justifyContent: 'center' },
-  thumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  thumb: { width: 22, height: 22, borderRadius: 11, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
 })
 
 // ─── Preferencia Row ──────────────────────────────────────────────────────────
@@ -187,6 +194,7 @@ function PreferenciaRow({
   showSep:     boolean
   disabled?:   boolean
 }) {
+  const { colors } = useTheme()
   const meta = TIPO_META[tipo] ?? FALLBACK_META
   return (
     <>
@@ -196,13 +204,13 @@ function PreferenciaRow({
             <Text style={prSt.iconEmoji}>{meta.icon}</Text>
           </View>
           <View style={prSt.textWrap}>
-            <Text style={prSt.nombre}>{nombre}</Text>
-            <Text style={prSt.desc}>{descripcion}</Text>
+            <Text style={[prSt.nombre, { color: colors.inkPrimary }]}>{nombre}</Text>
+            <Text style={[prSt.desc,   { color: colors.inkMuted }]}>{descripcion}</Text>
           </View>
           <ToggleSwitch value={value} onToggle={onToggle} />
         </TouchableOpacity>
       </View>
-      {showSep && <View style={prSt.sep} />}
+      {showSep && <View style={[prSt.sep, { backgroundColor: colors.borderDefault }]} />}
     </>
   )
 }
@@ -212,9 +220,9 @@ const prSt = StyleSheet.create({
   iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconEmoji:{ fontSize: 18 },
   textWrap: { flex: 1, gap: 3 },
-  nombre:   { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 19 },
-  desc:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: 'rgba(255,255,255,0.38)', lineHeight: 16 },
-  sep:      { height: 1, backgroundColor: 'rgba(255,255,255,0.07)', marginHorizontal: 16 },
+  nombre:   { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, lineHeight: 19 },
+  desc:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, lineHeight: 16 },
+  sep:      { height: 1, marginHorizontal: 16 },
 })
 
 // ─── Hour Picker Modal ────────────────────────────────────────────────────────
@@ -229,6 +237,7 @@ function HourPickerModal({
   onSelect: (h: number) => void
   onClose:  () => void
 }) {
+  const { colors } = useTheme()
   const sheetY = useRef(new Animated.Value(400)).current
 
   useEffect(() => {
@@ -253,23 +262,27 @@ function HourPickerModal({
     <Modal transparent statusBarTranslucent onRequestClose={() => dismiss()}>
       <Pressable style={hpSt.backdrop} onPress={() => dismiss()}>
         <Animated.View
-          style={[hpSt.sheet, { transform: [{ translateY: sheetY }] }]}
+          style={[hpSt.sheet, { backgroundColor: colors.sheetBg, transform: [{ translateY: sheetY }] }]}
           onStartShouldSetResponder={() => true}
         >
-          <View style={hpSt.pill} />
-          <Text style={hpSt.title}>Seleccionar hora</Text>
+          <View style={[hpSt.pill, { backgroundColor: colors.borderBright }]} />
+          <Text style={[hpSt.title, { color: colors.inkMuted }]}>Seleccionar hora</Text>
           <ScrollView showsVerticalScrollIndicator={false} style={hpSt.scroll}>
             {horas.map(h => (
               <TouchableOpacity
                 key={h}
-                style={[hpSt.option, h === selected && hpSt.optionActive]}
+                style={[hpSt.option, h === selected && { backgroundColor: colors.accent + '1f' }]}
                 onPress={() => dismiss(() => onSelect(h))}
                 activeOpacity={0.7}
               >
-                <Text style={[hpSt.optionText, h === selected && hpSt.optionTextActive]}>
+                <Text style={[
+                  hpSt.optionText,
+                  { color: colors.inkSecondary },
+                  h === selected && { color: colors.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
+                ]}>
                   {formatHora(h)}
                 </Text>
-                {h === selected && <Text style={hpSt.check}>✓</Text>}
+                {h === selected && <Text style={[hpSt.check, { color: colors.accent }]}>✓</Text>}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -281,15 +294,13 @@ function HourPickerModal({
 
 const hpSt = StyleSheet.create({
   backdrop:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet:           { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32, maxHeight: 420 },
-  pill:            { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-  title:           { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3, textAlign: 'center', marginBottom: 4 },
+  sheet:           { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32, maxHeight: 420 },
+  pill:            { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  title:           { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, letterSpacing: 0.3, textAlign: 'center', marginBottom: 4 },
   scroll:          { maxHeight: 300 },
   option:          { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 24, justifyContent: 'space-between' },
-  optionActive:    { backgroundColor: 'rgba(79,140,255,0.1)' },
-  optionText:      { fontFamily: 'SpaceGrotesk-Medium', fontSize: 17, color: 'rgba(255,255,255,0.7)' },
-  optionTextActive:{ color: '#4f8cff' },
-  check:           { fontSize: 16, color: '#4f8cff' },
+  optionText:      { fontFamily: 'SpaceGrotesk-Medium', fontSize: 17 },
+  check:           { fontSize: 16 },
 })
 
 // ─── Horario Card ─────────────────────────────────────────────────────────────
@@ -302,36 +313,37 @@ function HorarioCard({
   onChangeInicio:  (h: number) => void
   onChangeFin:     (h: number) => void
 }) {
+  const { colors } = useTheme()
   const [pickerFor, setPickerFor] = useState<'inicio' | 'fin' | null>(null)
 
   return (
     <View style={hrSt.section}>
-      <Text style={hrSt.sectionLabel}>HORARIO PREFERIDO</Text>
-      <View style={hrSt.card}>
-        <Text style={hrSt.subtitle}>Recibe notificaciones solo en este rango</Text>
-        <Text style={hrSt.limit}>Nunca antes de las 7am ni después de las 10pm</Text>
+      <Text style={[hrSt.sectionLabel, { color: colors.inkMuted }]}>HORARIO PREFERIDO</Text>
+      <View style={[hrSt.card, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}>
+        <Text style={[hrSt.subtitle, { color: colors.inkSecondary }]}>Recibe notificaciones solo en este rango</Text>
+        <Text style={[hrSt.limit, { color: colors.inkMuted }]}>Nunca antes de las 7am ni después de las 10pm</Text>
 
         <View style={hrSt.row}>
-          <Text style={hrSt.fromLabel}>Desde</Text>
+          <Text style={[hrSt.fromLabel, { color: colors.inkSecondary }]}>Desde</Text>
 
           <TouchableOpacity
-            style={hrSt.picker}
+            style={[hrSt.picker, { backgroundColor: colors.glassBg, borderColor: colors.borderBright }]}
             onPress={() => setPickerFor('inicio')}
             activeOpacity={0.75}
           >
-            <Text style={hrSt.pickerText}>{formatHora(horaInicio)}</Text>
-            <Text style={hrSt.chevron}>▾</Text>
+            <Text style={[hrSt.pickerText, { color: colors.inkPrimary }]}>{formatHora(horaInicio)}</Text>
+            <Text style={[hrSt.chevron, { color: colors.inkMuted }]}>▾</Text>
           </TouchableOpacity>
 
-          <View style={hrSt.lineDivider} />
+          <View style={[hrSt.lineDivider, { backgroundColor: colors.borderDefault }]} />
 
           <TouchableOpacity
-            style={hrSt.picker}
+            style={[hrSt.picker, { backgroundColor: colors.glassBg, borderColor: colors.borderBright }]}
             onPress={() => setPickerFor('fin')}
             activeOpacity={0.75}
           >
-            <Text style={hrSt.pickerText}>{formatHora(horaFin)}</Text>
-            <Text style={hrSt.chevron}>▾</Text>
+            <Text style={[hrSt.pickerText, { color: colors.inkPrimary }]}>{formatHora(horaFin)}</Text>
+            <Text style={[hrSt.chevron, { color: colors.inkMuted }]}>▾</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -358,16 +370,16 @@ function HorarioCard({
 
 const hrSt = StyleSheet.create({
   section:      { marginHorizontal: 16, marginBottom: 20 },
-  sectionLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: 'rgba(255,255,255,0.38)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10, paddingHorizontal: 4 },
-  card:         { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16 },
-  subtitle:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 18, marginBottom: 4 },
-  limit:        { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: 0.5, lineHeight: 14, marginBottom: 18 },
+  sectionLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10, paddingHorizontal: 4 },
+  card:         { borderWidth: 1, borderRadius: 18, padding: 16 },
+  subtitle:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  limit:        { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.5, lineHeight: 14, marginBottom: 18 },
   row:          { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  fromLabel:    { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.45)' },
-  picker:       { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)', borderRadius: 12, paddingVertical: 9, paddingHorizontal: 12 },
-  pickerText:   { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.9)' },
-  chevron:      { fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
-  lineDivider:  { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+  fromLabel:    { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13 },
+  picker:       { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 12 },
+  pickerText:   { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
+  chevron:      { fontSize: 9, marginTop: 1 },
+  lineDivider:  { flex: 1, height: 1 },
 })
 
 // ─── Silencio Card ────────────────────────────────────────────────────────────
@@ -378,13 +390,14 @@ function SilencioCard({
   silencio: boolean
   onToggle: () => void
 }) {
+  const { colors } = useTheme()
   return (
     <View style={slSt.section}>
-      <View style={slSt.card}>
+      <View style={[slSt.card, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}>
         <TouchableOpacity style={slSt.row} onPress={onToggle} activeOpacity={0.7}>
           <View style={slSt.textWrap}>
-            <Text style={slSt.titulo}>Silenciar todas las notificaciones</Text>
-            <Text style={slSt.excepcion}>
+            <Text style={[slSt.titulo, { color: colors.inkPrimary }]}>Silenciar todas las notificaciones</Text>
+            <Text style={[slSt.excepcion, { color: colors.inkMuted }]}>
               Las alertas de patrón crítico igualmente se mostrarán dentro de la app.
             </Text>
           </View>
@@ -397,11 +410,11 @@ function SilencioCard({
 
 const slSt = StyleSheet.create({
   section:   { marginHorizontal: 16, marginBottom: 20 },
-  card:      { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 18 },
+  card:      { borderWidth: 1, borderRadius: 18 },
   row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, gap: 14 },
   textWrap:  { flex: 1, gap: 5 },
-  titulo:    { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 20 },
-  excepcion: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: 'rgba(255,255,255,0.28)', lineHeight: 16 },
+  titulo:    { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, lineHeight: 20 },
+  excepcion: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, lineHeight: 16 },
 })
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -729,7 +742,10 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
     },
     badge: {
-      backgroundColor: c.accent,
+      // accentDark da más contraste con texto blanco en todas las paletas
+      // (especialmente en pink, donde el accent claro #f472b6 dejaba el "1"
+      // ilegible). En el modo light el accentDark es azul navy, perfecto.
+      backgroundColor: c.accentDark,
       borderRadius:    8,
       minWidth:        16,
       height:          16,
@@ -740,7 +756,7 @@ function makeStyles(c: Colors) {
     badgeText: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize:   9,
-      color:      '#fff',
+      color:      c.white,
       lineHeight: 14,
     },
 

@@ -404,22 +404,24 @@ function makeStyles(c: Colors) {
     avatarCircle: {
       width: 80, height: 80, borderRadius: 40,
       backgroundColor: c.accentDark,
-      borderWidth: 2, borderColor: 'rgba(79,140,255,0.4)',
+      // Borde derivado del propio accent para que respete la paleta (azul en
+      // dark/light, rosa en rosado). Antes era rgba(79,140,255,*) hardcoded.
+      borderWidth: 2, borderColor: c.accentLight,
       alignItems: 'center', justifyContent: 'center', marginBottom: 2,
     },
     avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.5 },
     nombre: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, letterSpacing: -0.7 },
     nivelPill: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: 'rgba(79,140,255,0.10)',
-      borderWidth: 1, borderColor: 'rgba(79,140,255,0.22)',
+      backgroundColor: c.cardBg,
+      borderWidth: 1, borderColor: c.borderBright,
       borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
     },
     nivelPillText: {
       color: c.accent, fontFamily: 'JetBrainsMono-Regular',
       fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
     },
-    nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(79,140,255,0.5)' },
+    nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.accent },
     themeButtonWrap: {
       position: 'absolute', right: 20,
       alignItems: 'flex-end', zIndex: 100,
@@ -463,7 +465,7 @@ function makeStyles(c: Colors) {
     adnBar: { width: 3, backgroundColor: c.accent },
     adnContent: { flex: 1, padding: 18, gap: 12 },
     adnTagRow: { flexDirection: 'row' },
-    adnTag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(79,140,255,0.10)', borderWidth: 1, borderColor: 'rgba(79,140,255,0.22)' },
+    adnTag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright },
     adnTagText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
     adnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkPrimary, lineHeight: 22, letterSpacing: -0.1 },
 
@@ -482,10 +484,13 @@ function makeStyles(c: Colors) {
     groupRowSub: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 },
     groupBadge: {
       paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-      backgroundColor: 'rgba(255,170,50,0.12)',
-      borderWidth: 1, borderColor: 'rgba(255,170,50,0.3)',
+      // Badge semántico naranja (próximamente / nuevo). Subimos opacidad para
+      // que sea visible sobre bg claro. Texto en ámbar oscuro mantiene contraste
+      // sobre el tint en cualquier paleta.
+      backgroundColor: 'rgba(255,170,50,0.22)',
+      borderWidth: 1, borderColor: 'rgba(255,170,50,0.5)',
     },
-    groupBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: '#ffaa32', letterSpacing: 0.5 },
+    groupBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: '#b45309', letterSpacing: 0.5 },
 
     // Admin block
     adminCard: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 20, marginBottom: 16, overflow: 'hidden' },

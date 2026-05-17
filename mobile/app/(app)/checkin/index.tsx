@@ -100,14 +100,18 @@ interface Location { id: number; nombre: string; tipo: string }
 function CheckinBodyMap({
   selectedZones,
   onZonePress,
+  defaultFill,
+  defaultStroke,
 }: {
   selectedZones: string[]
   onZonePress: (id: string) => void
+  defaultFill:   string
+  defaultStroke: string
 }) {
   const SEL  = 'rgba(255,107,107,0.26)'
   const SSEL = '#ff6b6b'
-  const DEF  = 'rgba(255,255,255,0.07)'
-  const SDEF = 'rgba(255,255,255,0.14)'
+  const DEF  = defaultFill
+  const SDEF = defaultStroke
 
   function f(id: string) { return selectedZones.includes(id) ? SEL  : DEF  }
   function s(id: string) { return selectedZones.includes(id) ? SSEL : SDEF }
@@ -364,7 +368,12 @@ export default function CheckinScreen() {
               Toca las zonas que te molestan. El sistema las tomará en cuenta al diseñar tu rutina.
             </Text>
             <View style={styles.bodyMapWrap}>
-              <CheckinBodyMap selectedZones={zonasDolorHoy} onZonePress={toggleZona} />
+              <CheckinBodyMap
+                selectedZones={zonasDolorHoy}
+                onZonePress={toggleZona}
+                defaultFill={colors.cardBg}
+                defaultStroke={colors.borderBright}
+              />
               <TouchableOpacity
                 style={[styles.lumbarChip, zonasDolorHoy.includes('lumbar') && styles.lumbarChipOn]}
                 onPress={() => toggleZona('lumbar')} activeOpacity={0.8}>

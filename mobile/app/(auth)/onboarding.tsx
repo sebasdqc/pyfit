@@ -2150,13 +2150,15 @@ function makeStyles(c: Colors) {
       width: 30, height: 30, borderRadius: 9, borderWidth: 2,
       borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    cicloBoxOn: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.6)' },
+    cicloBoxOn: { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.85)' },
     cicloBoxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: c.borderBright },
     cicloCheck: { color: '#ffffff', fontSize: 16, fontFamily: 'SpaceGrotesk-Bold' },
     cicloCardTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, lineHeight: 21 },
     cicloCardTitleOn: { color: '#ffffff' },
     cicloCardSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
-    cicloCardSubOn: { color: 'rgba(255,255,255,0.7)' },
+    // Subtítulo dentro del gradient accent: subimos opacidad 70→92 para
+    // garantizar contraste ≥3:1 sobre el pink accent (#f472b6).
+    cicloCardSubOn: { color: 'rgba(255,255,255,0.92)' },
     cicloNote: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18 },
 
     // Historial

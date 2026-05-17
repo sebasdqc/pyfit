@@ -111,7 +111,10 @@ const styles = StyleSheet.create({
     fontFamily:    'JetBrainsMono-Medium',
     fontSize:       9,
     letterSpacing:  1.4,
-    color:          'rgba(0,0,0,0.55)',
+    // El banner siempre tiene fondo brillante (azul #2563ff o naranja #ffaa32),
+    // así que el texto se diseña para esos fondos — no depende de la paleta.
+    // 0.75 da contraste ≈6:1 en azul y ≈6.6:1 en naranja (cómodo AA).
+    color:          'rgba(0,0,0,0.78)',
     textTransform: 'uppercase',
   },
   label: {
