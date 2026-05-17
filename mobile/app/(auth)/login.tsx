@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import {
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -24,29 +25,11 @@ function PyFitLogo() {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   return (
-    <View style={styles.logoRow}>
-      <Svg width={36} height={36} viewBox="0 0 36 36" fill="none">
-        {/* Chevron shape */}
-        <Path
-          d="M8 6 L20 18 L8 30"
-          stroke={colors.accent}
-          strokeWidth={3.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        <Path
-          d="M18 6 L30 18 L18 30"
-          stroke={colors.accentLight}
-          strokeWidth={3.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          opacity={0.6}
-        />
-      </Svg>
-      <Text style={styles.logoText}>Pyfit.</Text>
-    </View>
+    <Image
+      source={require('../../Logo-Zyfit-Blanco.png')}
+      style={styles.logoImage}
+      resizeMode="contain"
+    />
   )
 }
 
@@ -314,17 +297,10 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       marginBottom: 40,
     },
-    logoRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
+    logoImage: {
+      width: 180,
+      height: 60,
       marginBottom: 8,
-    },
-    logoText: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 32,
-      color: c.inkPrimary,
-      letterSpacing: -1,
     },
     tagline: {
       fontFamily: 'SpaceGrotesk-Regular',

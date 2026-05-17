@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import {
   Animated,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -95,7 +96,11 @@ export default function IntroScreen() {
       {/* Center content */}
       <View style={styles.center}>
         <Animated.View style={{ opacity: logoOpacity, transform: [{ translateY: logoY }] }}>
-          <Text style={styles.logo}>Zyfit</Text>
+          <Image
+            source={require('../../Logo-Zyfit-Blanco.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         <Animated.View style={{ opacity: taglineOpacity, transform: [{ translateY: taglineY }] }}>
@@ -143,11 +148,8 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 32,
     },
     logo: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 64,
-      color: c.inkPrimary,
-      letterSpacing: -2,
-      textAlign: 'center',
+      width: 200,
+      height: 72,
     },
     tagline: {
       fontFamily: 'InstrumentSerif-Italic',
