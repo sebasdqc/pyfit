@@ -855,6 +855,24 @@ Reglas estrictas:
         return None, None
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def session_sustituir(request, pk):
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    sustitucion = {
+        'original': str(request.data.get('original', ''))[:200],
+        'elegido':  str(request.data.get('elegido', ''))[:200],
+        'motivo':   str(request.data.get('motivo', ''))[:100],
+        'fase':     str(request.data.get('fase', ''))[:50],
+    }
+    session.sustituciones = (session.sustituciones or []) + [sustitucion]
+    session.save(update_fields=['sustituciones'])
+    return Response({'ok': True})
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_dashboard(request):

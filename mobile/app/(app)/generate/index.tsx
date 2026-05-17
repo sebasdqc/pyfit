@@ -6,9 +6,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   Animated,
   Easing,
+  Modal,
+  Pressable,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
@@ -108,6 +109,21 @@ function buildCheckinChips(c: CheckinData): Chip[] {
 interface Decision { icon: string; text: string }
 interface Evidencia { text: string; reference: string }
 interface Resumen { decisiones: Decision[]; evidencia: Evidencia }
+
+interface AlternativaEjercicio {
+  nombre:            string
+  series:            number
+  repeticiones:      string
+  descanso_segundos?: number
+  rpe_sugerido?:     number
+  notas?:            string
+  por_que:           string
+}
+
+interface SubTarget {
+  ejercicio:   Ejercicio
+  faseNombre:  string
+}
 
 function toParrafo(decisiones: Decision[]): string {
   return decisiones.map(d => {
@@ -470,113 +486,539 @@ function StatChip({ label }: { label: string }) {
   )
 }
 
+// ─── Phase + exercise constants ───────────────────────────────────────────────
+
+const FASE_META: Record<string, { icon: string; desc: string }> = {
+  calentamiento: { icon: '🔥', desc: 'Preparación articular y activación' },
+  principal:     { icon: '⚡', desc: 'Trabajo de fuerza y potencia' },
+  enfriamiento:  { icon: '❄️', desc: 'Recuperación y vuelta a la calma' },
+}
+
+const MOTIVOS = [
+  { id: 'equipamiento', label: 'No tengo el equipamiento' },
+  { id: 'molestia',     label: 'Tengo una molestia' },
+  { id: 'variante',     label: 'Prefiero otra variante' },
+  { id: '',             label: 'Sin motivo específico' },
+]
+
 // ─── Exercise Row ─────────────────────────────────────────────────────────────
 
 function EjercicioRow({
   ejercicio,
-  faseColor,
-  onRegenerar,
+  isPrincipal,
+  isModified,
+  onSustituir,
 }: {
-  ejercicio: Ejercicio
-  faseColor: string
-  onRegenerar: (nombre: string) => void
+  ejercicio:   Ejercicio
+  isPrincipal: boolean
+  isModified:  boolean
+  onSustituir?: () => void
 }) {
-  const { colors } = useTheme()
-  const styles = React.useMemo(() => makeStyles(colors), [colors])
-  const rir = ejercicio.rpe_sugerido ? (10 - ejercicio.rpe_sugerido).toFixed(0) : '—'
-
   return (
-    <View style={styles.ejercicioRow}>
-      <View style={styles.ejercicioMain}>
-        <View style={styles.ejercicioHeader}>
-          <Text style={styles.ejercicioNombre} numberOfLines={2}>
-            {ejercicio.nombre}
-          </Text>
-          <TouchableOpacity
-            style={styles.regenerarBtn}
-            onPress={() => onRegenerar(ejercicio.nombre)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={[styles.regenerarIcon, { color: faseColor }]}>↻</Text>
-          </TouchableOpacity>
-        </View>
+    <View style={rowSt.row}>
+      {/* Left: name + modified badge */}
+      <View style={rowSt.left}>
+        <Text style={rowSt.nombre} numberOfLines={2}>{ejercicio.nombre}</Text>
+        {isModified && (
+          <View style={rowSt.modBadge}>
+            <Text style={rowSt.modText}>Modificado</Text>
+          </View>
+        )}
+      </View>
 
-        <View style={styles.ejercicioBadges}>
-          <View style={[styles.badge, { borderColor: faseColor + '60' }]}>
-            <Text style={[styles.badgeText, { color: faseColor }]}>
-              {ejercicio.series} series
-            </Text>
-          </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{ejercicio.repeticiones} reps</Text>
-          </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{ejercicio.descanso_segundos}s descanso</Text>
-          </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>RPE {ejercicio.rpe_sugerido}</Text>
-          </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>RIR {rir}</Text>
-          </View>
+      {/* Center: parameter pills */}
+      <View style={rowSt.pills}>
+        <View style={rowSt.pill}>
+          <Text style={rowSt.pillText}>{ejercicio.series}×{ejercicio.repeticiones}</Text>
         </View>
-
-        {ejercicio.notas ? (
-          <Text style={styles.ejercicioNotas}>{ejercicio.notas}</Text>
+        {isPrincipal && ejercicio.rpe_sugerido ? (
+          <View style={[rowSt.pill, rowSt.pillRpe]}>
+            <Text style={[rowSt.pillText, { color: '#7ab6ff' }]}>RPE {ejercicio.rpe_sugerido}</Text>
+          </View>
         ) : null}
       </View>
+
+      {/* Right: reload button (principal only) */}
+      {isPrincipal ? (
+        <TouchableOpacity
+          style={rowSt.reloadBtn}
+          onPress={onSustituir}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={rowSt.reloadIcon}>↻</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={{ width: 36 }} />
+      )}
     </View>
   )
 }
 
-// ─── Phase Card ───────────────────────────────────────────────────────────────
+const rowSt = StyleSheet.create({
+  row: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    paddingVertical: 12,
+    gap:             10,
+  },
+  left: {
+    flex: 1,
+    gap:   4,
+  },
+  nombre: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize:   14,
+    color:      '#e8efff',
+    lineHeight: 20,
+  },
+  modBadge: {
+    alignSelf:         'flex-start',
+    backgroundColor:   'rgba(79,140,255,0.15)',
+    borderWidth:       1,
+    borderColor:       'rgba(79,140,255,0.35)',
+    borderRadius:      6,
+    paddingVertical:   2,
+    paddingHorizontal: 7,
+  },
+  modText: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:       9,
+    color:         '#7ab6ff',
+    letterSpacing:  0.5,
+    textTransform: 'uppercase',
+  },
+  pills: {
+    flexDirection: 'row',
+    gap:           6,
+    flexShrink:    0,
+  },
+  pill: {
+    backgroundColor:   'rgba(255,255,255,0.06)',
+    borderWidth:       1,
+    borderColor:       'rgba(255,255,255,0.1)',
+    borderRadius:      8,
+    paddingVertical:   3,
+    paddingHorizontal: 8,
+  },
+  pillRpe: {
+    borderColor:     'rgba(79,140,255,0.3)',
+    backgroundColor: 'rgba(79,140,255,0.08)',
+  },
+  pillText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize:   11,
+    color:      'rgba(255,255,255,0.6)',
+  },
+  reloadBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth:     1,
+    borderColor:     'rgba(255,255,255,0.1)',
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  reloadIcon: {
+    fontFamily: 'SpaceGrotesk-Bold',
+    fontSize:   16,
+    color:      'rgba(255,255,255,0.38)',
+    lineHeight: 20,
+  },
+})
 
-function FaseCard({
-  fase,
-  onRegenerar,
+// ─── Substitution Modal ───────────────────────────────────────────────────────
+
+function SubstitutionModal({
+  visible,
+  ejercicio,
+  faseNombre,
+  sesionId,
+  onSelect,
+  onClose,
 }: {
-  fase: Fase
-  onRegenerar: (nombre: string, faseNombre: string) => void
+  visible:    boolean
+  ejercicio:  Ejercicio | null
+  faseNombre: string
+  sesionId:   string | null
+  onSelect:   (alt: AlternativaEjercicio, motivo: string) => void
+  onClose:    () => void
 }) {
-  const { colors } = useTheme()
-  const styles = React.useMemo(() => makeStyles(colors), [colors])
-  const [collapsed, setCollapsed] = useState(false)
+  const [motivo,       setMotivo]       = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [alternativas, setAlternativas] = useState<AlternativaEjercicio[] | null>(null)
+  const [fetchError,   setFetchError]   = useState<string | null>(null)
+  const sheetY = useRef(new Animated.Value(700)).current
 
-  const faseKey = fase.nombre as keyof typeof FASES
-  const faseStyle = FASES[faseKey] ?? {
-    color: colors.accent,
-    bg:    'rgba(79,140,255,0.1)',
-    label: fase.nombre.toUpperCase(),
+  useEffect(() => {
+    if (visible) {
+      setMotivo(''); setAlternativas(null); setFetchError(null); setLoading(false)
+      sheetY.setValue(700)
+      Animated.spring(sheetY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+    }
+  }, [visible])
+
+  function dismiss() {
+    Animated.timing(sheetY, { toValue: 700, duration: 240, useNativeDriver: true }).start(onClose)
   }
 
+  function selectAndClose(alt: AlternativaEjercicio) {
+    Animated.timing(sheetY, { toValue: 700, duration: 240, useNativeDriver: true }).start(() => {
+      onClose()
+      onSelect(alt, motivo)
+    })
+  }
+
+  async function buscarAlternativas() {
+    if (!ejercicio) return
+    setLoading(true); setFetchError(null); setAlternativas(null)
+    try {
+      const data = await apiPost('/api/ejercicios/regenerar/', {
+        nombre:     ejercicio.nombre,
+        fase:       faseNombre,
+        session_id: sesionId,
+        motivo,
+      })
+      setAlternativas(data.alternativas ?? [])
+    } catch (e: any) {
+      setFetchError(e.message || 'No se pudieron cargar alternativas')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!visible || !ejercicio) return null
+
   return (
-    <View style={[styles.faseCard, { borderColor: faseStyle.color + '30' }]}>
-      <TouchableOpacity
-        style={[styles.faseHeader, { backgroundColor: faseStyle.bg }]}
-        onPress={() => setCollapsed(prev => !prev)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.faseHeaderLeft}>
-          <Text style={[styles.faseLabel, { color: faseStyle.color }]}>{faseStyle.label}</Text>
-          <Text style={styles.faseDuracion}>{fase.duracion_minutos} min</Text>
+    <Modal transparent visible={visible} animationType="none" onRequestClose={dismiss}>
+      <View style={{ flex: 1 }}>
+        <Pressable style={mSt.backdrop} onPress={dismiss} />
+
+        <Animated.View style={[mSt.sheet, { transform: [{ translateY: sheetY }] }]}>
+          {/* Drag handle */}
+          <View style={mSt.handle} />
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={mSt.sheetContent}
+          >
+            {/* Title */}
+            <Text style={mSt.sheetTitle}>Sustituir</Text>
+            <Text style={mSt.sheetEjercicio}>{ejercicio.nombre}</Text>
+
+            {/* Reason selector (shown before alternatives load) */}
+            {!alternativas && !loading && (
+              <>
+                <Text style={mSt.sectionLabel}>¿Por qué quieres cambiarlo?</Text>
+                {MOTIVOS.map(m => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[mSt.motivoRow, motivo === m.id && mSt.motivoRowSel]}
+                    onPress={() => setMotivo(m.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[mSt.radio, motivo === m.id && mSt.radioSel]}>
+                      {motivo === m.id && <View style={mSt.radioDot} />}
+                    </View>
+                    <Text style={[mSt.motivoLabel, motivo === m.id && { color: '#e8efff' }]}>
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <TouchableOpacity style={mSt.buscarBtn} onPress={buscarAlternativas}>
+                  <Text style={mSt.buscarBtnText}>Buscar alternativa</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Loading */}
+            {loading && (
+              <View style={mSt.loadingWrap}>
+                <ActivityIndicator color="#4f8cff" />
+                <Text style={mSt.loadingText}>Buscando alternativas...</Text>
+              </View>
+            )}
+
+            {/* Error */}
+            {fetchError && !loading && (
+              <View style={mSt.errorWrap}>
+                <Text style={mSt.errorTxt}>{fetchError}</Text>
+                <TouchableOpacity onPress={buscarAlternativas} style={{ marginTop: 10 }}>
+                  <Text style={mSt.retryLink}>Reintentar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Alternatives */}
+            {alternativas && !loading && (
+              <>
+                <Text style={mSt.altTitle}>Elige una alternativa</Text>
+                {alternativas.map((alt, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={mSt.altCard}
+                    onPress={() => selectAndClose(alt)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={mSt.altNombre}>{alt.nombre}</Text>
+                    <Text style={mSt.altParams}>
+                      {alt.series} × {alt.repeticiones}
+                      {alt.rpe_sugerido ? ` · RPE ${alt.rpe_sugerido}` : ''}
+                    </Text>
+                    <View style={mSt.altDivider} />
+                    <Text style={mSt.altPorQue}>{alt.por_que}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+const mSt = StyleSheet.create({
+  backdrop: {
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  sheet: {
+    backgroundColor:    '#0d1526',
+    borderTopLeftRadius:  28,
+    borderTopRightRadius: 28,
+    maxHeight:           '82%',
+    borderTopWidth:       1,
+    borderColor:         'rgba(255,255,255,0.1)',
+  },
+  handle: {
+    width:           40,
+    height:           4,
+    borderRadius:     2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf:       'center',
+    marginTop:       12,
+    marginBottom:     4,
+  },
+  sheetContent: {
+    paddingHorizontal: 24,
+    paddingBottom:     40,
+    paddingTop:        16,
+  },
+  sheetTitle: {
+    fontFamily:   'JetBrainsMono-Regular',
+    fontSize:      10,
+    color:        'rgba(255,255,255,0.4)',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom:  6,
+  },
+  sheetEjercicio: {
+    fontFamily:    'SpaceGrotesk-Bold',
+    fontSize:      20,
+    color:         '#e8efff',
+    letterSpacing: -0.4,
+    lineHeight:    26,
+    marginBottom:  24,
+  },
+  sectionLabel: {
+    fontFamily:   'SpaceGrotesk-SemiBold',
+    fontSize:      13,
+    color:        'rgba(255,255,255,0.55)',
+    marginBottom:  12,
+  },
+  motivoRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius:   14,
+    marginBottom:    6,
+    borderWidth:     1,
+    borderColor:    'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  motivoRowSel: {
+    borderColor:     'rgba(79,140,255,0.4)',
+    backgroundColor: 'rgba(79,140,255,0.08)',
+  },
+  radio: {
+    width:        20,
+    height:       20,
+    borderRadius: 10,
+    borderWidth:   2,
+    borderColor:  'rgba(255,255,255,0.25)',
+    alignItems:   'center',
+    justifyContent: 'center',
+    flexShrink:   0,
+  },
+  radioSel: {
+    borderColor: '#4f8cff',
+  },
+  radioDot: {
+    width:           10,
+    height:          10,
+    borderRadius:     5,
+    backgroundColor: '#4f8cff',
+  },
+  motivoLabel: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.6)',
+    flex:        1,
+  },
+  buscarBtn: {
+    backgroundColor: '#4f8cff',
+    borderRadius:    16,
+    paddingVertical: 15,
+    alignItems:      'center',
+    marginTop:       20,
+  },
+  buscarBtnText: {
+    fontFamily:    'SpaceGrotesk-Bold',
+    fontSize:      15,
+    color:         '#fff',
+    letterSpacing: -0.2,
+  },
+  loadingWrap: {
+    alignItems:    'center',
+    gap:           12,
+    paddingVertical: 32,
+  },
+  loadingText: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.4)',
+  },
+  errorWrap: {
+    alignItems:    'center',
+    paddingVertical: 24,
+  },
+  errorTxt: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      '#ff6b6b',
+    textAlign:  'center',
+  },
+  retryLink: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize:   14,
+    color:      '#4f8cff',
+  },
+  altTitle: {
+    fontFamily:   'JetBrainsMono-Regular',
+    fontSize:      10,
+    color:        'rgba(255,255,255,0.4)',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom:  12,
+  },
+  altCard: {
+    backgroundColor:   'rgba(255,255,255,0.04)',
+    borderWidth:       1,
+    borderColor:       'rgba(255,255,255,0.1)',
+    borderRadius:      16,
+    padding:           16,
+    marginBottom:      10,
+  },
+  altNombre: {
+    fontFamily:    'SpaceGrotesk-SemiBold',
+    fontSize:      15,
+    color:         '#e8efff',
+    marginBottom:   4,
+    letterSpacing: -0.2,
+  },
+  altParams: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize:   12,
+    color:      'rgba(255,255,255,0.45)',
+    marginBottom: 10,
+  },
+  altDivider: {
+    height:          1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    marginBottom:    10,
+  },
+  altPorQue: {
+    fontFamily: 'InstrumentSerif-Italic',
+    fontSize:   13,
+    color:      'rgba(255,255,255,0.55)',
+    lineHeight: 19,
+  },
+})
+
+// ─── Phase Block ──────────────────────────────────────────────────────────────
+
+function FaseBlock({
+  fase,
+  defaultExpanded,
+  modifiedKeys,
+  onSustituir,
+}: {
+  fase:            Fase
+  defaultExpanded: boolean
+  modifiedKeys:    Set<string>
+  onSustituir:     (ejercicio: Ejercicio, faseNombre: string) => void
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  const chevronAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current
+
+  const faseKey   = fase.nombre as keyof typeof FASES
+  const faseStyle = FASES[faseKey] ?? { color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', label: fase.nombre.toUpperCase() }
+  const meta      = FASE_META[fase.nombre] ?? { icon: '●', desc: '' }
+  const isPrincipal = fase.nombre === 'principal'
+
+  function toggle() {
+    const next = !expanded
+    setExpanded(next)
+    Animated.spring(chevronAnim, { toValue: next ? 1 : 0, tension: 120, friction: 10, useNativeDriver: true }).start()
+  }
+
+  const chevronRotate = chevronAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: ['0deg', '90deg'],
+  })
+
+  return (
+    <View style={[blkSt.card, { borderColor: faseStyle.color + '28' }]}>
+      <TouchableOpacity style={blkSt.header} onPress={toggle} activeOpacity={0.75}>
+        {/* Icon square */}
+        <View style={[blkSt.iconWrap, { backgroundColor: faseStyle.bg }]}>
+          <Text style={blkSt.iconEmoji}>{meta.icon}</Text>
         </View>
-        <Text style={[styles.chevron, { color: faseStyle.color }]}>
-          {collapsed ? '▶' : '▼'}
-        </Text>
+
+        {/* Name + description */}
+        <View style={blkSt.nameWrap}>
+          <Text style={[blkSt.name, { color: faseStyle.color }]}>{faseStyle.label}</Text>
+          <Text style={blkSt.desc}>{fase.duracion_minutos} min · {meta.desc}</Text>
+        </View>
+
+        {/* Exercise count + chevron */}
+        <View style={blkSt.right}>
+          <Text style={[blkSt.count, { color: faseStyle.color }]}>
+            {fase.ejercicios.length} ej.
+          </Text>
+          <Animated.Text style={[blkSt.chevron, { color: faseStyle.color, transform: [{ rotate: chevronRotate }] }]}>
+            ›
+          </Animated.Text>
+        </View>
       </TouchableOpacity>
 
-      {!collapsed && (
-        <View style={styles.fasEjercicios}>
-          {fase.ejercicios.map((ej, idx) => (
-            <React.Fragment key={idx}>
+      {expanded && (
+        <View style={blkSt.body}>
+          {fase.ejercicios.map((ej, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <View style={blkSt.sep} />}
               <EjercicioRow
                 ejercicio={ej}
-                faseColor={faseStyle.color}
-                onRegenerar={nombre => onRegenerar(nombre, fase.nombre)}
+                isPrincipal={isPrincipal}
+                isModified={modifiedKeys.has(`${fase.nombre}:${ej.nombre}`)}
+                onSustituir={() => onSustituir(ej, fase.nombre)}
               />
-              {idx < fase.ejercicios.length - 1 && (
-                <View style={styles.ejercicioSeparator} />
-              )}
             </React.Fragment>
           ))}
         </View>
@@ -584,6 +1026,72 @@ function FaseCard({
     </View>
   )
 }
+
+const blkSt = StyleSheet.create({
+  card: {
+    borderWidth:     1,
+    borderRadius:    20,
+    overflow:        'hidden',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    padding:       16,
+    gap:           12,
+  },
+  iconWrap: {
+    width:          40,
+    height:         40,
+    borderRadius:   12,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  iconEmoji: {
+    fontSize: 18,
+  },
+  nameWrap: {
+    flex: 1,
+    gap:   3,
+  },
+  name: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:      10,
+    letterSpacing:  1,
+    textTransform: 'uppercase',
+    fontWeight:    '500',
+  },
+  desc: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   12,
+    color:      'rgba(255,255,255,0.38)',
+    lineHeight: 16,
+  },
+  right: {
+    alignItems:  'flex-end',
+    gap:          4,
+    flexShrink:   0,
+  },
+  count: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:      11,
+    letterSpacing:  0.5,
+  },
+  chevron: {
+    fontSize:   22,
+    lineHeight: 26,
+    fontFamily: 'SpaceGrotesk-Regular',
+  },
+  body: {
+    paddingHorizontal: 16,
+    paddingBottom:     8,
+  },
+  sep: {
+    height:          1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+})
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -602,7 +1110,8 @@ export default function GenerateScreen() {
   const [checkin,        setCheckin]        = useState<CheckinData | null>(null)
   const [resumen,        setResumen]        = useState<Resumen | null>(null)
   const [resumenLoading, setResumenLoading] = useState(false)
-  const [regenerating,   setRegenerating]   = useState<string | null>(null)
+  const [subTarget,      setSubTarget]      = useState<SubTarget | null>(null)
+  const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
 
   const generate = useCallback(async () => {
     setApiDone(false)
@@ -647,37 +1156,40 @@ export default function GenerateScreen() {
     Animated.timing(contentFade, { toValue: 1, duration: 480, useNativeDriver: true }).start()
   }, [contentFade])
 
-  const handleRegenerar = useCallback(async (nombre: string, faseNombre: string) => {
-    if (regenerating) return
-    setRegenerating(nombre)
-    try {
-      const data = await apiPost('/api/ejercicios/regenerar/', {
-        nombre,
-        fase:       faseNombre,
-        session_id: sesionId,
-      })
-      setSesion(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          fases: prev.fases.map(fase =>
-            fase.nombre === faseNombre
-              ? {
-                  ...fase,
-                  ejercicios: fase.ejercicios.map(ej =>
-                    ej.nombre === nombre ? { ...ej, ...data.ejercicio } : ej
-                  ),
-                }
-              : fase
-          ),
-        }
-      })
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo regenerar el ejercicio')
-    } finally {
-      setRegenerating(null)
+  const handleSelectAlternativa = useCallback((alt: AlternativaEjercicio, motivo: string) => {
+    if (!subTarget) return
+    const { ejercicio, faseNombre } = subTarget
+    setSesion(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        fases: prev.fases.map(fase =>
+          fase.nombre === faseNombre
+            ? {
+                ...fase,
+                ejercicios: fase.ejercicios.map(ej =>
+                  ej.nombre === ejercicio.nombre ? { ...ej, ...alt } : ej
+                ),
+              }
+            : fase
+        ),
+      }
+    })
+    setModifiedKeys(prev => {
+      const next = new Set(prev)
+      next.add(`${faseNombre}:${alt.nombre}`)
+      return next
+    })
+    if (sesionId) {
+      apiPost(`/api/sessions/${sesionId}/sustituir/`, {
+        original: ejercicio.nombre,
+        elegido:  alt.nombre,
+        motivo,
+        fase:     faseNombre,
+      }).catch(() => {})
     }
-  }, [regenerating, sesionId])
+    setSubTarget(null)
+  }, [subTarget, sesionId])
 
   const handleEjecutar = () => {
     if (!sesionId) return
@@ -815,18 +1327,15 @@ export default function GenerateScreen() {
             <View style={styles.fasesSection}>
               <Text style={styles.sectionLabel}>PLAN DE ENTRENAMIENTO</Text>
               {sesion.fases.map((fase, idx) => (
-                <FaseCard key={idx} fase={fase} onRegenerar={handleRegenerar} />
+                <FaseBlock
+                  key={idx}
+                  fase={fase}
+                  defaultExpanded={fase.nombre === 'principal'}
+                  modifiedKeys={modifiedKeys}
+                  onSustituir={(ej, fn) => setSubTarget({ ejercicio: ej, faseNombre: fn })}
+                />
               ))}
             </View>
-
-            {regenerating ? (
-              <View style={styles.regeneratingBanner}>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.regeneratingText}>
-                  Regenerando {regenerating}...
-                </Text>
-              </View>
-            ) : null}
 
             {/* CTA */}
             <View style={styles.ctaSection}>
@@ -840,6 +1349,15 @@ export default function GenerateScreen() {
           </ScrollView>
         ) : null}
       </Animated.View>
+
+      <SubstitutionModal
+        visible={subTarget !== null}
+        ejercicio={subTarget?.ejercicio ?? null}
+        faseNombre={subTarget?.faseNombre ?? ''}
+        sesionId={sesionId}
+        onSelect={handleSelectAlternativa}
+        onClose={() => setSubTarget(null)}
+      />
     </View>
   )
 }
@@ -1057,117 +1575,6 @@ function makeStyles(c: Colors) {
       letterSpacing: 2,
       textTransform: 'uppercase',
       marginBottom:  4,
-    },
-    faseCard: {
-      borderWidth:     1,
-      borderRadius:    20,
-      overflow:        'hidden',
-      backgroundColor: c.cardBg,
-    },
-    faseHeader: {
-      flexDirection:   'row',
-      alignItems:      'center',
-      justifyContent:  'space-between',
-      paddingHorizontal: 16,
-      paddingVertical:   14,
-    },
-    faseHeaderLeft: {
-      gap: 2,
-    },
-    faseLabel: {
-      fontFamily:    'JetBrainsMono-Regular',
-      fontSize:      11,
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-      fontWeight:    '500',
-    },
-    faseDuracion: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize:   12,
-      color:      c.inkMuted,
-    },
-    chevron: {
-      fontSize:   10,
-      fontFamily: 'SpaceGrotesk-Regular',
-    },
-    fasEjercicios: {
-      paddingHorizontal: 16,
-      paddingBottom:     12,
-    },
-    ejercicioSeparator: {
-      height:          1,
-      backgroundColor: c.borderDefault,
-      marginVertical:  12,
-    },
-
-    // Exercise
-    ejercicioRow: {
-      paddingTop: 12,
-    },
-    ejercicioMain: {
-      flex: 1,
-    },
-    ejercicioHeader: {
-      flexDirection:  'row',
-      alignItems:     'flex-start',
-      justifyContent: 'space-between',
-      marginBottom:   10,
-      gap:            8,
-    },
-    ejercicioNombre: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize:   15,
-      color:      c.inkPrimary,
-      flex:       1,
-      lineHeight: 22,
-    },
-    regenerarBtn: {
-      padding: 4,
-    },
-    regenerarIcon: {
-      fontSize:   18,
-      fontFamily: 'SpaceGrotesk-Bold',
-    },
-    ejercicioBadges: {
-      flexDirection: 'row',
-      flexWrap:      'wrap',
-      gap:           6,
-      marginBottom:  6,
-    },
-    badge: {
-      backgroundColor: c.glassBg,
-      borderWidth:     1,
-      borderColor:     c.borderDefault,
-      borderRadius:    8,
-      paddingVertical:   3,
-      paddingHorizontal: 8,
-    },
-    badgeText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize:   11,
-      color:      c.inkSecondary,
-    },
-    ejercicioNotas: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize:   12,
-      color:      c.inkMuted,
-      lineHeight: 18,
-      marginTop:  4,
-    },
-
-    // Regenerating
-    regeneratingBanner: {
-      flexDirection:  'row',
-      alignItems:     'center',
-      justifyContent: 'center',
-      gap:            10,
-      paddingVertical: 10,
-      marginBottom:   8,
-    },
-    regeneratingText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize:   13,
-      color:      c.accentLight,
     },
 
     // CTA

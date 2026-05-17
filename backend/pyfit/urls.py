@@ -46,6 +46,7 @@ urlpatterns = [
     path('api/sessions/<int:pk>/feedback/', workout_views.session_feedback),
     path('api/sessions/<int:pk>/resumen/', workout_views.session_resumen),
     path('api/sessions/<int:pk>/logro/', workout_views.session_logro),
+    path('api/sessions/<int:pk>/sustituir/', workout_views.session_sustituir),
 
     # AI extras
     path('api/ejercicio-demo/', ai_views.ejercicio_demo),

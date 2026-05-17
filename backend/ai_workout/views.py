@@ -662,24 +662,14 @@ def _persist_session_exercises(sesion, sesion_generada):
 @permission_classes([IsAuthenticated])
 @throttle_classes([RegenerarEjercicioRateThrottle])
 def regenerar_ejercicio(request):
-    # Sanitize and bound user inputs so they cannot bloat the prompt or smuggle
-    # multi-line content that derails the model.
     def _clean(value, max_len):
         if value is None:
             return ''
-        text = str(value).replace('\n', ' ').replace('\r', ' ').strip()
-        return text[:max_len]
+        return str(value).replace('\n', ' ').replace('\r', ' ').strip()[:max_len]
 
     nombre_ejercicio = _clean(request.data.get('nombre'), 120)
-    contexto_sesion = _clean(request.data.get('contexto'), 500)
-    razon = _clean(request.data.get('razon'), 200)
-
-    implementos_raw = request.data.get('implementos') or []
-    if not isinstance(implementos_raw, list):
-        implementos_raw = []
-    implementos = [
-        _clean(item, 50) for item in implementos_raw[:30] if _clean(item, 50)
-    ]
+    fase             = _clean(request.data.get('fase'), 50)
+    motivo           = _clean(request.data.get('motivo'), 200)
 
     if not nombre_ejercicio:
         return Response(
@@ -687,30 +677,69 @@ def regenerar_ejercicio(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    prompt = f"""Eres un entrenador personal de élite. Necesito que regeneres UN ejercicio alternativo.
+    # Resolve implementos from the session's location
+    implementos = []
+    session_id = request.data.get('session_id')
+    if session_id:
+        try:
+            from workouts.models import Session as WorkoutSession
+            session_obj = request.user.sessions.select_related('location').get(pk=session_id)
+            if session_obj.location and session_obj.location.implementos:
+                implementos = [_clean(i, 50) for i in session_obj.location.implementos[:30] if i]
+        except Exception:
+            pass
 
-Ejercicio a reemplazar: {nombre_ejercicio}
-Razón del reemplazo: {razon or 'el usuario quiere variedad'}
-Implementos disponibles: {', '.join(implementos) if implementos else 'solo peso corporal'}
-Contexto de la sesión: {contexto_sesion}
+    # Resolve active injuries from user profile
+    lesiones = []
+    try:
+        lesiones = list(request.user.injuries.filter(activa=True).values_list('zona', flat=True))
+    except Exception:
+        pass
 
-Genera UN ejercicio alternativo que:
-1. Sea ejecutable con los implementos disponibles
-2. Trabaje el mismo grupo muscular o patrón de movimiento
-3. Sea diferente al ejercicio original
+    motivo_texto = motivo or 'el usuario quiere una variante diferente'
+    impl_texto   = ', '.join(implementos) if implementos else 'peso corporal / sin equipamiento'
+    lesion_texto = ', '.join(lesiones) if lesiones else 'ninguna'
 
-Responde ÚNICAMENTE con JSON válido:
+    prompt = f"""Eres un entrenador personal de élite. Un usuario quiere sustituir un ejercicio de su sesión.
+
+Ejercicio a sustituir: {nombre_ejercicio}
+Fase de la sesión: {fase or 'principal'}
+Motivo de la sustitución: {motivo_texto}
+Equipamiento disponible: {impl_texto}
+Lesiones activas del usuario: {lesion_texto}
+
+Genera exactamente 2 ejercicios alternativos que:
+1. Sean ejecutables con el equipamiento disponible
+2. Trabajen el mismo grupo muscular o patrón de movimiento que el original
+3. Respeten las lesiones activas
+4. Sean distintos entre sí
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional:
 {{
-  "nombre": "nombre del ejercicio alternativo",
-  "series": 3,
-  "repeticiones": "10-12",
-  "descanso_segundos": 90,
-  "rpe_sugerido": 7,
-  "notas": "cue técnico clave"
+  "alternativas": [
+    {{
+      "nombre": "nombre del ejercicio",
+      "series": 3,
+      "repeticiones": "10-12",
+      "descanso_segundos": 90,
+      "rpe_sugerido": 7,
+      "notas": "cue técnico en 1 frase",
+      "por_que": "razón de por qué es buena sustitución para este usuario en 1 frase"
+    }},
+    {{
+      "nombre": "nombre del ejercicio",
+      "series": 3,
+      "repeticiones": "10-12",
+      "descanso_segundos": 90,
+      "rpe_sugerido": 7,
+      "notas": "cue técnico en 1 frase",
+      "por_que": "razón de por qué es buena sustitución para este usuario en 1 frase"
+    }}
+  ]
 }}"""
 
     try:
-        ejercicio = _call_groq(prompt, max_tokens=300)
+        result = _call_groq(prompt, max_tokens=700)
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON in regenerar for user %s', request.user.id)
         return Response(
@@ -720,17 +749,18 @@ Responde ÚNICAMENTE con JSON válido:
     except Exception:
         logger.exception('Regenerar ejercicio failed for user %s', request.user.id)
         return Response(
-            {'error': 'No se pudo regenerar el ejercicio. Intenta de nuevo.'},
+            {'error': 'No se pudo buscar alternativas. Intenta de nuevo.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    if not isinstance(ejercicio, dict) or 'nombre' not in ejercicio:
+    alternativas = result.get('alternativas') if isinstance(result, dict) else None
+    if not isinstance(alternativas, list) or len(alternativas) == 0:
         return Response(
             {'error': 'La IA devolvió una respuesta incompleta.'},
             status=status.HTTP_502_BAD_GATEWAY,
         )
 
-    return Response({'ejercicio': ejercicio})
+    return Response({'alternativas': alternativas})
 
 
 # ─── Ejercicio demo ───────────────────────────────────────────────────────────
