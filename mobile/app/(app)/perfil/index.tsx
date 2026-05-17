@@ -356,7 +356,14 @@ export default function PerfilScreen() {
               title="Mi suscripción"
               subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
               badge="Pro"
-              onPress={() => router.push('/(app)/perfil/suscripcion?modo=gestion' as any)}
+              onPress={() => {
+                const tipoVal  = profile.plan_tipo || ''
+                const renovVal = profile.plan_renovacion || ''
+                const sesVal   = profileStats?.sesiones_mes ?? 0
+                router.push(
+                  `/(app)/perfil/suscripcion?modo=gestion&plan_tipo=${tipoVal}&plan_renovacion=${renovVal}&sesiones_mes=${sesVal}` as any
+                )
+              }}
               styles={styles}
             />
           ) : (
@@ -364,7 +371,11 @@ export default function PerfilScreen() {
               icon="⭐"
               title="Actualizar a Pro"
               subtitle="Desbloquea tu entrenador completo"
-              onPress={() => router.push('/(app)/perfil/suscripcion?modo=upgrade' as any)}
+              onPress={() => {
+                const semanasVal = profileStats?.semanas_activas ?? 0
+                const nombreVal  = encodeURIComponent(profile.nombre || '')
+                router.push(`/(app)/perfil/suscripcion?modo=upgrade&nombre=${nombreVal}&semanas=${semanasVal}` as any)
+              }}
               styles={styles}
             />
           )}
