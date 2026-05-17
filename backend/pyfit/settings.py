@@ -24,6 +24,11 @@ _allowed = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()] or ['*']
 
 INSTALLED_APPS = [
+    # django-unfold replaces the default admin look — must be listed BEFORE
+    # `django.contrib.admin` so its templates win.
+    'unfold',
+    'unfold.contrib.filters',
+    'unfold.contrib.forms',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -159,3 +164,82 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# ─── django-unfold (Zyfit admin theme) ────────────────────────────────────────
+# Branding + navegación. La paleta de `primary` es la del producto (#4f8cff).
+# Tailwind expone los tonos como RGB triplets separados por espacios.
+UNFOLD = {
+    'SITE_TITLE':   'Zyfit Control',
+    'SITE_HEADER':  'Zyfit Control',
+    'SITE_URL':     None,           # Hide "View site" — Zyfit user app is mobile
+    'SITE_SYMBOL':  'monitoring',   # Material Symbols icon used in header
+    'SHOW_HISTORY': True,
+    'SHOW_VIEW_ON_SITE': False,
+    'THEME': 'dark',                # Force dark to match Zyfit identity
+    'DASHBOARD_CALLBACK': 'pyfit.admin_metrics.dashboard_callback',
+    'COLORS': {
+        'primary': {
+            '50':  '239 246 255',
+            '100': '219 234 254',
+            '200': '191 219 254',
+            '300': '147 197 253',
+            '400': '122 182 255',    # Zyfit accentLight (#7ab6ff)
+            '500': '79 140 255',     # Zyfit accent       (#4f8cff)
+            '600': '37 99 255',      # Zyfit accentDark   (#2563ff)
+            '700': '29 78 216',
+            '800': '30 64 175',
+            '900': '30 58 138',
+            '950': '23 37 84',
+        },
+    },
+    'SIDEBAR': {
+        'show_search': True,
+        'show_all_applications': False,
+        'navigation': [
+            {
+                'title':     'Operación',
+                'separator': True,
+                'items': [
+                    {
+                        'title': 'Dashboard',
+                        'icon':  'dashboard',
+                        'link':  'admin:index',
+                    },
+                    {
+                        'title': 'Métricas',
+                        'icon':  'monitoring',
+                        'link':  'zyfit_metrics',
+                    },
+                ],
+            },
+            {
+                'title':     'Personas',
+                'separator': True,
+                'items': [
+                    {'title': 'Usuarios',      'icon': 'group',         'link': 'admin:users_user_changelist'},
+                    {'title': 'Perfiles',      'icon': 'badge',         'link': 'admin:users_profile_changelist'},
+                    {'title': 'Ubicaciones',   'icon': 'place',         'link': 'admin:users_userlocation_changelist'},
+                    {'title': 'Lesiones',      'icon': 'medical_information', 'link': 'admin:users_userinjury_changelist'},
+                ],
+            },
+            {
+                'title':     'Entrenamiento',
+                'separator': True,
+                'items': [
+                    {'title': 'Sesiones',      'icon': 'fitness_center', 'link': 'admin:workouts_session_changelist'},
+                    {'title': 'Check-ins',     'icon': 'mood',           'link': 'admin:checkins_dailycheckin_changelist'},
+                    {'title': 'Feedback',      'icon': 'star',           'link': 'admin:workouts_sessionfeedback_changelist'},
+                    {'title': 'Competiciones', 'icon': 'emoji_events',   'link': 'admin:workouts_competition_changelist'},
+                ],
+            },
+            {
+                'title':     'Notificaciones',
+                'separator': True,
+                'items': [
+                    {'title': 'Bandeja',       'icon': 'notifications',  'link': 'admin:users_notification_changelist'},
+                    {'title': 'Preferencias',  'icon': 'tune',           'link': 'admin:users_notificationpreference_changelist'},
+                ],
+            },
+        ],
+    },
+}

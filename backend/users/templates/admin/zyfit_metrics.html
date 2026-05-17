@@ -1,0 +1,128 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .zk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+    .zk-card { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px 20px; }
+    .zk-card .label { font-size: 11px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; margin-bottom: 8px; }
+    .zk-card .value { font-size: 28px; font-weight: 600; color: rgb(248 250 252); line-height: 1.1; }
+    .zk-card .sub { font-size: 12px; color: rgb(156 163 175); margin-top: 4px; }
+    .zk-card.accent { border-color: rgb(79 140 255); }
+    .zk-card.accent .value { color: rgb(122 182 255); }
+    .zk-section-title { font-size: 13px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; margin: 32px 0 12px; }
+    .zk-table { width: 100%; border-collapse: collapse; background: rgb(31 41 55); border-radius: 12px; overflow: hidden; }
+    .zk-table th, .zk-table td { padding: 10px 14px; text-align: left; font-size: 13px; }
+    .zk-table th { background: rgb(17 24 39); color: rgb(156 163 175); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+    .zk-table tr + tr td { border-top: 1px solid rgb(55 65 81); }
+    .zk-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgb(79 140 255 / 0.15); color: rgb(122 182 255); font-size: 11px; font-weight: 500; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1>Métricas Zyfit</h1>
+  <p style="color: rgb(156 163 175); margin-bottom: 8px;">Resumen operativo del producto. Datos consultados en vivo.</p>
+
+  {% with k=zyfit_kpis %}
+    <div class="zk-section-title">Usuarios</div>
+    <div class="zk-grid">
+      <div class="zk-card accent">
+        <div class="label">Total usuarios</div>
+        <div class="value">{{ k.total_users }}</div>
+        <div class="sub">+{{ k.new_users_week }} esta semana · +{{ k.new_users_month }} este mes</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">Activos · 7 días</div>
+        <div class="value">{{ k.active_7d }}</div>
+        <div class="sub">sesión o check-in en los últimos 7 días</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">Activos · 30 días</div>
+        <div class="value">{{ k.active_30d }}</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">Retención D7</div>
+        <div class="value">
+          {% if retention_d7 is not None %}{{ retention_d7|floatformat:0 }}%{% else %}—{% endif %}
+        </div>
+        <div class="sub">
+          {% if cohort_size %}{{ retained_count }} de {{ cohort_size }} regresaron{% else %}sin cohorte aún{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="zk-section-title">Entrenamiento</div>
+    <div class="zk-grid">
+      <div class="zk-card accent">
+        <div class="label">Sesiones hoy</div>
+        <div class="value">{{ k.sessions_today }}</div>
+        <div class="sub">{{ k.sessions_this_week }} esta semana · {{ k.sessions_total }} total</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">Check-ins hoy</div>
+        <div class="value">{{ k.checkins_today }}</div>
+        <div class="sub">{{ k.checkins_this_week }} esta semana</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">RPE real · 7d</div>
+        <div class="value">
+          {% if k.rpe_real_avg %}{{ k.rpe_real_avg|floatformat:1 }}{% else %}—{% endif %}
+        </div>
+        <div class="sub">{{ k.feedback_count_week }} feedback(s)</div>
+      </div>
+      <div class="zk-card">
+        <div class="label">Cumplimiento · 7d</div>
+        <div class="value">
+          {% if k.cumplimiento_avg %}{{ k.cumplimiento_avg|floatformat:0 }}%{% else %}—{% endif %}
+        </div>
+        <div class="sub">
+          {% if k.rating_avg %}Rating {{ k.rating_avg|floatformat:1 }}/5{% endif %}
+        </div>
+      </div>
+    </div>
+  {% endwith %}
+
+  <div class="zk-section-title">Distribución de niveles</div>
+  <div class="zk-grid">
+    <div class="zk-card"><div class="label">Rookie · 0–4 sesiones</div><div class="value">{{ nivel_buckets.rookie }}</div></div>
+    <div class="zk-card"><div class="label">Atleta · 5–14</div><div class="value">{{ nivel_buckets.atleta }}</div></div>
+    <div class="zk-card"><div class="label">Élite · 15–29</div><div class="value">{{ nivel_buckets.elite }}</div></div>
+    <div class="zk-card accent"><div class="label">Leyenda · 30+</div><div class="value">{{ nivel_buckets.leyenda }}</div></div>
+  </div>
+
+  <div class="zk-section-title">Top ejercicios</div>
+  <table class="zk-table">
+    <thead><tr><th>Ejercicio</th><th>Usuarios</th><th>Veces realizado (avg)</th></tr></thead>
+    <tbody>
+      {% for row in top_exercises %}
+        <tr>
+          <td>{{ row.exercise_nombre }}</td>
+          <td>{{ row.total }}</td>
+          <td>{{ row.veces|floatformat:1 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" style="text-align:center; color: rgb(156 163 175);">Sin datos aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="zk-section-title">Sesiones recientes</div>
+  <table class="zk-table">
+    <thead><tr><th>ID</th><th>Usuario</th><th>Fecha</th><th>RPE target</th><th>Duración</th><th>Creada</th></tr></thead>
+    <tbody>
+      {% for s in recent_sessions %}
+        <tr>
+          <td>#{{ s.id }}</td>
+          <td>{{ s.user__email }}</td>
+          <td>{{ s.fecha }}</td>
+          <td><span class="zk-pill">{{ s.rpe_target }}</span></td>
+          <td>{{ s.duracion_planificada }} min</td>
+          <td>{{ s.created_at|date:"d M H:i" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="text-align:center; color: rgb(156 163 175);">Sin sesiones aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

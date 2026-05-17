@@ -1,8 +1,11 @@
+import os
+
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from users import views as user_views
+from users import admin_views as admin_api_views
 from checkins import views as checkin_views
 from workouts import views as workout_views
 from ai_workout import views as ai_views
@@ -12,9 +15,25 @@ def health(request):
     return JsonResponse({'status': 'ok'})
 
 
+# Admin lives at a configurable path so production can hide it behind an obscure
+# URL that bots won't probe. Default keeps local dev predictable but already
+# avoids the `/admin/` path that every credential-stuffer hits first.
+ADMIN_URL_PATH = os.environ.get('ADMIN_URL_PATH', 'zyfit-admin').strip('/') + '/'
+
+# Branding for the admin site — surfaces in the page header and tab title.
+admin.site.site_header = 'Zyfit Control'
+admin.site.site_title  = 'Zyfit Control'
+admin.site.index_title = 'Panel de administración'
+
+
+from pyfit.admin_metrics import zyfit_metrics_view
+
 urlpatterns = [
     path('api/health/', health),
-    path('admin/', admin.site.urls),
+    # Metrics view registered BEFORE admin.site.urls so it lives at
+    # /<ADMIN_URL_PATH>/metrics/ and renders inside the admin chrome.
+    path(ADMIN_URL_PATH + 'metrics/', zyfit_metrics_view, name='zyfit_metrics'),
+    path(ADMIN_URL_PATH, admin.site.urls),
 
     # Auth
     path('api/auth/register/', user_views.register),
@@ -71,4 +90,10 @@ urlpatterns = [
     # Competitions
     path('api/competitions/', workout_views.competitions),
     path('api/competitions/<int:pk>/', workout_views.competition_detail),
+
+    # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
+    path('api/admin/me/',                       admin_api_views.admin_me),
+    path('api/admin/users/',                    admin_api_views.admin_users_list),
+    path('api/admin/impersonate/<int:pk>/',     admin_api_views.admin_impersonate),
+    path('api/admin/stop-impersonate/',         admin_api_views.admin_stop_impersonate),
 ]

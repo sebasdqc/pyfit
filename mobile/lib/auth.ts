@@ -1,3 +1,4 @@
+import * as SecureStore from 'expo-secure-store'
 import { apiPost } from './api'
 import { saveTokens, saveUser, clearTokens, clearUser, getUser, getRefreshToken } from './storage'
 
@@ -22,6 +23,9 @@ export async function logout() {
   }
   await clearTokens()
   await clearUser()
+  // Limpiar cualquier estado de impersonación al cerrar sesión para que el
+  // próximo login (incluso si es otra cuenta) no arrastre datos previos.
+  await SecureStore.deleteItemAsync('admin_impersonating').catch(() => {})
 }
 
 export { getUser }

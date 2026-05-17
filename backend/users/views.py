@@ -57,6 +57,7 @@ def login_view(request):
             'email': user.email,
             'nombre': profile.nombre if profile else '',
             'onboarding_completo': bool(profile and profile.is_onboarding_complete),
+            'is_staff': user.is_staff,
         },
     })
 
