@@ -3,6 +3,7 @@ from datetime import timedelta
 import os
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
+from django.urls import reverse_lazy
 import dj_database_url
 
 load_dotenv()
@@ -294,58 +295,53 @@ UNFOLD = {
     'SIDEBAR': {
         'show_search': True,
         'show_all_applications': False,
+        # Los `link` deben ser URLs ya resueltas (no strings de URL names).
+        # Unfold no llama `reverse()` sobre strings — los toma como href literal,
+        # y Safari interpreta `admin:index` como protocolo (igual que `mailto:`).
         'navigation': [
             {
                 'title':     'Operación',
                 'separator': True,
                 'items': [
-                    {
-                        'title': 'Dashboard',
-                        'icon':  'dashboard',
-                        'link':  'admin:index',
-                    },
-                    {
-                        'title': 'Métricas',
-                        'icon':  'monitoring',
-                        'link':  'zyfit_metrics',
-                    },
+                    {'title': 'Dashboard', 'icon': 'dashboard',  'link': reverse_lazy('admin:index')},
+                    {'title': 'Métricas',  'icon': 'monitoring', 'link': reverse_lazy('zyfit_metrics')},
                 ],
             },
             {
                 'title':     'Personas',
                 'separator': True,
                 'items': [
-                    {'title': 'Usuarios',      'icon': 'group',         'link': 'admin:users_user_changelist'},
-                    {'title': 'Perfiles',      'icon': 'badge',         'link': 'admin:users_profile_changelist'},
-                    {'title': 'Ubicaciones',   'icon': 'place',         'link': 'admin:users_userlocation_changelist'},
-                    {'title': 'Lesiones',      'icon': 'medical_information', 'link': 'admin:users_userinjury_changelist'},
+                    {'title': 'Usuarios',    'icon': 'group',                'link': reverse_lazy('admin:users_user_changelist')},
+                    {'title': 'Perfiles',    'icon': 'badge',                'link': reverse_lazy('admin:users_profile_changelist')},
+                    {'title': 'Ubicaciones', 'icon': 'place',                'link': reverse_lazy('admin:users_userlocation_changelist')},
+                    {'title': 'Lesiones',    'icon': 'medical_information',  'link': reverse_lazy('admin:users_userinjury_changelist')},
                 ],
             },
             {
                 'title':     'Entrenamiento',
                 'separator': True,
                 'items': [
-                    {'title': 'Sesiones',      'icon': 'fitness_center', 'link': 'admin:workouts_session_changelist'},
-                    {'title': 'Check-ins',     'icon': 'mood',           'link': 'admin:checkins_dailycheckin_changelist'},
-                    {'title': 'Feedback',      'icon': 'star',           'link': 'admin:workouts_sessionfeedback_changelist'},
-                    {'title': 'Competiciones', 'icon': 'emoji_events',   'link': 'admin:workouts_competition_changelist'},
+                    {'title': 'Sesiones',      'icon': 'fitness_center', 'link': reverse_lazy('admin:workouts_session_changelist')},
+                    {'title': 'Check-ins',     'icon': 'mood',           'link': reverse_lazy('admin:checkins_dailycheckin_changelist')},
+                    {'title': 'Feedback',      'icon': 'star',           'link': reverse_lazy('admin:workouts_sessionfeedback_changelist')},
+                    {'title': 'Competiciones', 'icon': 'emoji_events',   'link': reverse_lazy('admin:workouts_competition_changelist')},
                 ],
             },
             {
                 'title':     'Notificaciones',
                 'separator': True,
                 'items': [
-                    {'title': 'Bandeja',       'icon': 'notifications',  'link': 'admin:users_notification_changelist'},
-                    {'title': 'Preferencias',  'icon': 'tune',           'link': 'admin:users_notificationpreference_changelist'},
+                    {'title': 'Bandeja',      'icon': 'notifications', 'link': reverse_lazy('admin:users_notification_changelist')},
+                    {'title': 'Preferencias', 'icon': 'tune',          'link': reverse_lazy('admin:users_notificationpreference_changelist')},
                 ],
             },
             {
                 'title':     'Seguridad',
                 'separator': True,
                 'items': [
-                    {'title': 'Audit log',     'icon': 'history',        'link': 'admin:auditlog_logentry_changelist'},
-                    {'title': 'TOTP devices',  'icon': 'phonelink_lock', 'link': 'admin:otp_totp_totpdevice_changelist'},
-                    {'title': 'Backup tokens', 'icon': 'vpn_key',        'link': 'admin:otp_static_staticdevice_changelist'},
+                    {'title': 'Audit log',     'icon': 'history',        'link': reverse_lazy('admin:auditlog_logentry_changelist')},
+                    {'title': 'TOTP devices',  'icon': 'phonelink_lock', 'link': reverse_lazy('admin:otp_totp_totpdevice_changelist')},
+                    {'title': 'Backup tokens', 'icon': 'vpn_key',        'link': reverse_lazy('admin:otp_static_staticdevice_changelist')},
                 ],
             },
         ],
