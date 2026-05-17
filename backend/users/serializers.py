@@ -6,6 +6,12 @@ User = get_user_model()
 
 
 class UserInjurySerializer(serializers.ModelSerializer):
+    # Accept zone IDs from onboarding (e.g. 'rodilla_izq', 'hombro_der') without
+    # tying the API to the legacy ZONA_CHOICES. The same applies to severidad,
+    # which may receive 'severa' alongside the historical leve/moderada/cronica.
+    zona = serializers.CharField(max_length=20)
+    severidad = serializers.CharField(max_length=20)
+
     class Meta:
         model = UserInjury
         fields = ['id', 'zona', 'severidad', 'descripcion', 'activa', 'created_at']

@@ -94,6 +94,18 @@ class Profile(models.Model):
             return 'Atleta'
         return 'Rookie'
 
+    @property
+    def is_onboarding_complete(self) -> bool:
+        if not all([self.objetivo, self.fecha_nacimiento, self.peso, self.altura, self.sexo]):
+            return False
+        if not self.dias_semana or self.dias_semana < 1:
+            return False
+        if self.user.locations.exists():
+            return True
+        if isinstance(self.lugares_entrenamiento, list) and len(self.lugares_entrenamiento) > 0:
+            return True
+        return False
+
 
 class UserLocation(models.Model):
     TIPO_CHOICES = [('gimnasio', 'Gimnasio'), ('casa', 'Casa'), ('exterior', 'Exterior')]

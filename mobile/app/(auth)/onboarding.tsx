@@ -11,6 +11,7 @@ import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { Colors } from '../../lib/colors'
 import { apiPut } from '../../lib/api'
+import { getUser, saveUser } from '../../lib/storage'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -170,6 +171,14 @@ const LUGARES = [
   { id: 'casa_sin',          icon: '🧘', label: 'Casa sin material',    desc: 'Solo mi cuerpo y espacio libre' },
   { id: 'exterior',          icon: '🌳', label: 'Al aire libre',        desc: 'Parque, pista, playa, calle' },
 ]
+
+const TIPO_BY_LUGAR_ID: Record<string, 'gimnasio' | 'casa' | 'exterior'> = {
+  gimnasio_completo: 'gimnasio',
+  gimnasio_basico:   'gimnasio',
+  casa_equipado:     'casa',
+  casa_sin:          'casa',
+  exterior:          'exterior',
+}
 
 const EQUIPAMIENTO_CATS = [
   {
@@ -592,6 +601,35 @@ export default function OnboardingScreen() {
       const pesoKg = data.pesoUnit === 'lb' ? (pesoNum * 0.453592).toFixed(1) : String(pesoNum)
       const alturaCm = data.alturaUnit === 'ft' ? Math.round(alturaNum * 30.48) : Math.round(alturaNum)
 
+      // Build structured location rows that mirror UserLocation in the backend.
+      // Gym locations don't carry the user's personal equipment (their gear comes
+      // with the venue); home / outdoor locations inherit the user's kit.
+      const lugarLabel = (id: string) => LUGARES.find(l => l.id === id)?.label ?? id
+      const lugaresEstructurados = data.lugares.map(id => {
+        const tipo = TIPO_BY_LUGAR_ID[id] ?? 'casa'
+        return {
+          nombre: lugarLabel(id),
+          tipo,
+          implementos: tipo === 'gimnasio' ? [] : data.equipamiento,
+        }
+      })
+
+      // Structured injuries — preserve zone laterality (e.g. 'rodilla_izq') so
+      // the AI can filter precisely; severidad falls back to 'leve' for resolved
+      // injuries that the user marked as superada without a gravedad value.
+      const lesionesEstructuradas = data.lesiones.map(l => {
+        const partes: string[] = []
+        if (l.tiempo)       partes.push(`hace ${TIEMPO_LABELS[l.tiempo].toLowerCase()}`)
+        if (l.especialista) partes.push('vio especialista')
+        if (l.estado === 'superada') partes.push('superada')
+        return {
+          zona:        l.zona,
+          severidad:   l.gravedad ?? 'leve',
+          descripcion: partes.join(', '),
+          activa:      l.estado === 'activa',
+        }
+      })
+
       await apiPut('/api/profile/', {
         nombre: data.nombre.trim(),
         fecha_nacimiento: data.fechaNacimiento!.toISOString().split('T')[0],
@@ -625,7 +663,18 @@ export default function OnboardingScreen() {
         razones_abandono: data.razonesAbandono,
         estilo_coaching: data.estiloCoaching ?? '',
         tipos_entrenamiento: data.tiposEntrenamiento,
+        // Structured rows synced atomically into UserLocation / UserInjury
+        lugares_estructurados:   lugaresEstructurados,
+        lesiones_estructuradas:  lesionesEstructuradas,
       })
+
+      // Reflect onboarding completion locally so the next cold start doesn't
+      // re-route the user back here.
+      try {
+        const stored = await getUser()
+        if (stored) await saveUser({ ...stored, onboarding_completo: true })
+      } catch {}
+
       setSaveComplete(true)
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Intenta de nuevo.')

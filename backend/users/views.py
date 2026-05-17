@@ -56,7 +56,7 @@ def login_view(request):
             'id': user.id,
             'email': user.email,
             'nombre': profile.nombre if profile else '',
-            'onboarding_completo': bool(profile and profile.objetivo),
+            'onboarding_completo': bool(profile and profile.is_onboarding_complete),
         },
     })
 
@@ -140,6 +140,8 @@ def logout_view(request):
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
+    from django.db import transaction
+
     try:
         prof = request.user.profile
     except Profile.DoesNotExist:
@@ -151,9 +153,66 @@ def profile_view(request):
     serializer = ProfileSerializer(prof, data=request.data, partial=True)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    serializer.save()
+
+    with transaction.atomic():
+        serializer.save()
+        _sync_user_locations(request.user, request.data)
+        _sync_user_injuries(request.user, request.data)
+
+    prof.refresh_from_db()
     _check_logros(prof)
-    return Response(serializer.data)
+    data = serializer.data
+    data['onboarding_completo'] = prof.is_onboarding_complete
+    return Response(data)
+
+
+_VALID_TIPO_LOCATION = {'gimnasio', 'casa', 'exterior'}
+_VALID_SEVERIDAD    = {'leve', 'moderada', 'severa', 'cronica'}
+
+
+def _sync_user_locations(user, payload):
+    """Replace user.locations with the structured list, if provided."""
+    lugares = payload.get('lugares_estructurados')
+    if not isinstance(lugares, list):
+        return
+    user.locations.all().delete()
+    for raw in lugares[:10]:
+        if not isinstance(raw, dict):
+            continue
+        nombre = str(raw.get('nombre') or '').strip()[:100]
+        if not nombre:
+            continue
+        tipo = str(raw.get('tipo') or 'casa').strip().lower()
+        if tipo not in _VALID_TIPO_LOCATION:
+            tipo = 'casa'
+        implementos = raw.get('implementos')
+        if not isinstance(implementos, list):
+            implementos = []
+        implementos = [str(i)[:100] for i in implementos[:50] if i]
+        UserLocation.objects.create(user=user, nombre=nombre, tipo=tipo, implementos=implementos)
+
+
+def _sync_user_injuries(user, payload):
+    """Replace user.injuries with the structured list, if provided."""
+    lesiones = payload.get('lesiones_estructuradas')
+    if not isinstance(lesiones, list):
+        return
+    user.injuries.all().delete()
+    for raw in lesiones[:30]:
+        if not isinstance(raw, dict):
+            continue
+        zona = str(raw.get('zona') or '').strip()[:20]
+        if not zona:
+            continue
+        severidad = str(raw.get('severidad') or 'leve').strip().lower()[:20]
+        if severidad not in _VALID_SEVERIDAD:
+            severidad = 'leve'
+        descripcion = str(raw.get('descripcion') or '')[:500]
+        activa = bool(raw.get('activa', True))
+        UserInjury.objects.create(
+            user=user, zona=zona, severidad=severidad,
+            descripcion=descripcion, activa=activa,
+        )
 
 
 def _check_logros(profile):
