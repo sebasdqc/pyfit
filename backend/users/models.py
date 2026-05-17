@@ -89,6 +89,15 @@ class Profile(models.Model):
     razones_abandono = models.JSONField(default=list, blank=True)
     estilo_coaching = models.CharField(max_length=20, blank=True)
     tipos_entrenamiento = models.JSONField(default=list, blank=True)
+    # Suscripción — el flujo de upgrade aún no está conectado a un cobrador,
+    # estos campos son la fuente de verdad que el cliente consume para mostrar
+    # banners de upgrade vs gestión.
+    PLAN_CHOICES = [('starter', 'Starter'), ('pro', 'Pro')]
+    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('anual', 'Anual')]
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='starter')
+    plan_tipo = models.CharField(max_length=20, choices=PLAN_TIPO_CHOICES, blank=True)
+    plan_renovacion = models.DateField(null=True, blank=True)
+
     racha_actual = models.IntegerField(default=0)
     mejor_racha = models.IntegerField(default=0)
     puntos_totales = models.IntegerField(default=0)

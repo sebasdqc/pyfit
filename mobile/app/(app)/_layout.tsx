@@ -187,6 +187,7 @@ export default function AppLayout() {
       <Tabs.Screen name="perfil/bibliografia" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/glosario" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/referidos" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/suscripcion" options={{ href: null, tabBarLabel: '' }} />
       {/* Admin (modo staff) */}
       <Tabs.Screen name="admin/index" options={{ href: null, tabBarLabel: '' }} />
       </Tabs>

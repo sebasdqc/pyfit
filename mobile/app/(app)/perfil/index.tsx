@@ -24,6 +24,10 @@ interface Profile {
   ejercicios_favoritos: string; ejercicios_evitar: string
   rm_sentadilla: string; rm_peso_muerto: string; rm_press_banca: string; rm_press_hombro: string
   nivel_estres: string; tipo_trabajo: string
+  // Suscripción — el backend emite estos campos como read-only desde el ProfileSerializer.
+  plan?: 'starter' | 'pro'
+  plan_tipo?: 'mensual' | 'anual' | ''
+  plan_renovacion?: string | null
 }
 
 interface ProfileStats {
@@ -46,6 +50,20 @@ function nivelLabel(nivel: string) {
 function capitalizeFirst(s: string) {
   if (!s) return ''
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+const MESES_ABREV = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+
+function formatRenovacion(planTipo: string | undefined, iso: string | null | undefined): string {
+  // Formato consistente para el subtítulo del entry Pro:
+  // "Mensual · Renueva el 15 jun". Si no llega fecha, omitimos esa parte.
+  const tipo = planTipo === 'anual' ? 'Anual' : 'Mensual'
+  if (!iso) return tipo
+  const [, m, d] = iso.split('-')
+  const mes = MESES_ABREV[parseInt(m, 10) - 1] ?? ''
+  const dia = parseInt(d, 10)
+  if (!mes || !dia) return tipo
+  return `${tipo} · Renueva el ${dia} ${mes}`
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -136,6 +154,7 @@ const DEFAULT: Profile = {
   fecha_nacimiento: '', peso: '', altura: '', sexo: '', nivel_estres: '',
   tipo_trabajo: '', usa_ciclo_menstrual: false, racha_actual: 0, puntos_totales: 0,
   logros: [], locations: [],
+  plan: 'starter', plan_tipo: '', plan_renovacion: null,
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -329,6 +348,27 @@ export default function PerfilScreen() {
 
         {/* ── BLOQUE ADMINISTRATIVO ── */}
         <View style={styles.adminCard}>
+          {/* Suscripción — fila con dos estados mutuamente excluyentes según el plan.
+              Starter ofrece upgrade; Pro abre la pantalla de gestión. */}
+          {profile.plan === 'pro' ? (
+            <GroupRow
+              icon="👑"
+              title="Mi suscripción"
+              subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
+              badge="Pro"
+              onPress={() => router.push('/(app)/perfil/suscripcion?modo=gestion' as any)}
+              styles={styles}
+            />
+          ) : (
+            <GroupRow
+              icon="⭐"
+              title="Actualizar a Pro"
+              subtitle="Desbloquea tu entrenador completo"
+              onPress={() => router.push('/(app)/perfil/suscripcion?modo=upgrade' as any)}
+              styles={styles}
+            />
+          )}
+          <View style={styles.divider} />
           <AdminRow title="Referidos"
             onPress={() => router.push('/(app)/perfil/referidos' as any)} styles={styles} />
           <View style={styles.divider} />
