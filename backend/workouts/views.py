@@ -826,13 +826,15 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct):
     }
 
 
-def _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom):
+def _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo=''):
     try:
         import groq, json
         from django.conf import settings
         client = groq.Groq(api_key=settings.GROQ_API_KEY)
 
         ctx_parts = [f'Nombre: {nombre}', f'Total sesiones: {total_sesiones}', f'Racha actual: {racha} días']
+        if sexo:
+            ctx_parts.append(f'Sexo: {sexo}')
         if ultima_titulo and ultima_fecha:
             ctx_parts.append(f'Última sesión: "{ultima_titulo}" el {ultima_fecha}')
         if cumplimiento_prom:
@@ -847,6 +849,7 @@ Reglas estrictas:
 - Si total_sesiones == 0: bienvenida cálida con el nombre, sin referencias a historial.
 - Si total_sesiones < 7: referencia la última sesión o el comienzo del hábito. Nada más.
 - Si total_sesiones >= 7: puede referenciar racha, patrón semanal o logro reciente.
+- Concordancia de género: si sexo == 'femenino' usa formas femeninas ("Bienvenida", "lista", "preparada"). Si sexo == 'masculino' usa masculinas ("Bienvenido", "listo", "preparado"). Si sexo == 'otro' o vacío, usa formas neutras ("Te damos la bienvenida", "¿lista para hoy?", evita adjetivos con género).
 - saludo: máximo 2 líneas, usa el nombre directamente, tono directo y personal, sin clichés ni emojis.
 - insight: máximo 1 oración sobre descanso, consistencia, sugerencia del día o advertencia de fatiga.
 - Responde ÚNICAMENTE JSON válido, sin markdown: {{"saludo": "...", "insight": "..."}}"""
@@ -922,32 +925,47 @@ def stats_dashboard(request):
         nivel = profile.nivel_label
         nombre = profile.nombre
         puntos = profile.puntos_totales
+        sexo = profile.sexo or ''
     except Exception:
         racha = 0
         nivel = 'Rookie'
         nombre = request.user.email.split('@')[0]
         puntos = 0
+        sexo = ''
 
     total_sesiones = request.user.sessions.count()
     ultima = request.user.sessions.order_by('-fecha', '-created_at').first()
     ultima_titulo = ultima.respuesta_ia.get('titulo', '') if ultima and ultima.respuesta_ia else ''
     ultima_fecha = str(ultima.fecha) if ultima else ''
 
-    saludo, insight = _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom)
+    saludo, insight = _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo)
     cta = _cta_sugerido(request.user, total_sesiones, fatiga_pct)
     semana_detalle = _semana_detalle(request.user, dias_objetivo, cta.get('titulo', ''))
     metrica = _metrica_destacada(request.user, racha, dias_objetivo, total_sesiones)
     insight_entrenador = _generar_insight_entrenador(request.user)
 
     if not saludo:
+        # Fallback determinístico cuando la IA falla. Concordancia por género:
+        # femenino → 'Bienvenida' / 'lista'; masculino → 'Bienvenido' / 'listo';
+        # otros → forma neutra ('Te damos la bienvenida' / '¿empezamos?').
+        if sexo == 'femenino':
+            bienvenida, lista_adj = 'Bienvenida', 'lista'
+        elif sexo == 'masculino':
+            bienvenida, lista_adj = 'Bienvenido', 'listo'
+        else:
+            bienvenida, lista_adj = 'Te damos la bienvenida', None
+
         if total_sesiones == 0:
-            saludo = f'Bienvenido, {nombre}. Todo empieza aquí.'
+            saludo = f'{bienvenida}, {nombre}. Todo empieza aquí.'
             insight = 'Completa tu primer entrenamiento para que la IA empiece a conocerte.'
         elif racha >= 3:
             saludo = f'Llevas {racha} días seguidos, {nombre}.'
             insight = 'La consistencia es el mejor entrenamiento.'
         else:
-            saludo = f'Hola, {nombre}. ¿Listo para hoy?'
+            if lista_adj:
+                saludo = f'Hola, {nombre}. ¿{lista_adj.capitalize()} para hoy?'
+            else:
+                saludo = f'Hola, {nombre}. ¿Empezamos?'
             insight = 'Cada sesión es un punto de datos más para la IA.'
 
     return Response({

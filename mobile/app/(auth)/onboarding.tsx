@@ -52,6 +52,7 @@ type FormData = {
   ejerciciosEvitar: string[]
   motivoLimitacion: string
   condicionesMedicas: string[]
+  condicionOtra: string
   notasMedicas: string
   lugares: string[]
   equipamiento: string[]
@@ -139,6 +140,8 @@ const EJERCICIOS_COMUNES = [
   'Clean & Jerk', 'Snatch', 'Push press', 'Thruster',
 ]
 
+const COND_OTRO = 'Otro'
+
 const CONDICIONES_MEDICAS = [
   'Hipertensión (presión alta)',
   'Hipotensión (presión baja)',
@@ -162,6 +165,7 @@ const CONDICIONES_MEDICAS = [
   'Epilepsia',
   'Celiaquía',
   'Lupus',
+  COND_OTRO,
 ]
 
 const LUGARES = [
@@ -476,7 +480,7 @@ export default function OnboardingScreen() {
     usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
     calidadSueno: null, lesiones: [],
     ejerciciosEvitar: [], motivoLimitacion: '',
-    condicionesMedicas: [], notasMedicas: '',
+    condicionesMedicas: [], condicionOtra: '', notasMedicas: '',
     lugares: [], equipamiento: [],
     tiempoNormal: null, tiempoOcupado: null,
     horarios: [], diasFijos: null,
@@ -647,7 +651,14 @@ export default function OnboardingScreen() {
           return parts.join(': ')
         }).join('; '),
         ejercicios_evitar: data.ejerciciosEvitar.join(', '),
-        condiciones_medicas: data.condicionesMedicas,
+        condiciones_medicas: data.condicionesMedicas.flatMap(c => {
+          // Si el usuario escribió texto en "Otro", lo emitimos como
+          // "Otro: <texto>". Si marcó "Otro" pero no escribió nada, se omite
+          // (para no enviar el literal "Otro" sin valor descriptivo).
+          if (c !== COND_OTRO) return [c]
+          const extra = data.condicionOtra.trim()
+          return extra ? [`Otro: ${extra}`] : []
+        }),
         notas_medicas: data.notasMedicas.trim(),
         motivo_limitacion: data.motivoLimitacion.trim(),
         horario_preferido: data.horarios.join('/'),
@@ -1227,8 +1238,12 @@ export default function OnboardingScreen() {
               <TouchableOpacity key={c}
                 style={[styles.condChip, on && styles.condChipOn]}
                 onPress={() => {
-                  if (on) set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== c))
-                  else set('condicionesMedicas', [...data.condicionesMedicas, c])
+                  if (on) {
+                    set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== c))
+                    if (c === COND_OTRO) set('condicionOtra', '')
+                  } else {
+                    set('condicionesMedicas', [...data.condicionesMedicas, c])
+                  }
                 }}
                 activeOpacity={0.8}>
                 {on && <Text style={styles.condCheckmark}>✓ </Text>}
@@ -1237,6 +1252,23 @@ export default function OnboardingScreen() {
             )
           })}
         </View>
+
+        {/* "Otro" — campo de texto libre cuando el chip está activo */}
+        {data.condicionesMedicas.includes(COND_OTRO) && (
+          <View style={[styles.fieldGroup, { marginTop: 18 }]}>
+            <Text style={styles.fieldLabel}>ESPECIFICA TU CONDICIÓN</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Describe brevemente qué condición tienes"
+              placeholderTextColor={'rgba(255,255,255,0.35)'}
+              value={data.condicionOtra}
+              onChangeText={v => set('condicionOtra', v)}
+              maxLength={120}
+              autoCapitalize="sentences"
+            />
+            <Text style={styles.charCount}>{data.condicionOtra.length}/120</Text>
+          </View>
+        )}
 
         {/* Optional notes */}
         <View style={[styles.fieldGroup, { marginTop: 24 }]}>
@@ -1490,19 +1522,29 @@ export default function OnboardingScreen() {
 
         <Text style={styles.b3Title}>¿Qué quieres lograr?</Text>
         <Text style={styles.b3Sub}>
-          Cada objetivo da forma a tu rutina. Elige todos los que reflejan lo que buscas.
+          Elige hasta 2 objetivos principales. La rutina los priorizará en cada sesión.
         </Text>
 
         <View style={styles.objetivosGrid}>
           {OBJETIVOS.map(obj => {
-            const on = data.objetivos.includes(obj.id)
+            const on   = data.objetivos.includes(obj.id)
+            const full = !on && data.objetivos.length >= 2
             return (
               <TouchableOpacity key={obj.id}
-                style={[styles.objetivoCard, on && styles.objetivoCardOn]}
+                style={[
+                  styles.objetivoCard,
+                  on && styles.objetivoCardOn,
+                  full && { opacity: 0.35 },
+                ]}
+                disabled={full}
                 onPress={() => {
                   if (on) {
                     set('objetivos', data.objetivos.filter(x => x !== obj.id))
                   } else {
+                    if (data.objetivos.length >= 2) {
+                      setError('Máximo 2 objetivos principales. Si quieres añadir más, usa el objetivo extra abajo.')
+                      return
+                    }
                     // if this was the secondary, clear it
                     const wasSecondary = data.objetivoSecundario === obj.id
                     setData(prev => ({
@@ -1525,6 +1567,10 @@ export default function OnboardingScreen() {
           })}
         </View>
 
+        <Text style={[styles.skipNote, { marginTop: 10 }]}>
+          {data.objetivos.length} de 2 seleccionados
+        </Text>
+
         {/* Secondary objective — shown once at least one primary is selected */}
         {(() => {
           const remaining = OBJETIVOS.filter(o => !data.objetivos.includes(o.id))
@@ -1533,10 +1579,10 @@ export default function OnboardingScreen() {
             <View style={styles.secundarioSection}>
               <View style={styles.secundarioDivider} />
               <Text style={styles.secundarioQ}>
-                ¿Hay algo más que quieras de tu entrenamiento, aunque no sea lo principal?
+                ¿Quieres añadir un objetivo extra?
               </Text>
               <Text style={styles.secundarioSub}>
-                A veces el segundo objetivo es el que más importa.
+                Sólo uno. Lo tendremos en cuenta sin que compita con tus principales.
               </Text>
               <View style={styles.objetivosGrid}>
                 {remaining.map(obj => {
