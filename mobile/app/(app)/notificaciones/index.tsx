@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,30 +12,214 @@ import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
+import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = 'notificaciones' | 'configuracion'
 
+interface Notificacion {
+  id:        number
+  tipo:      string
+  texto:     string
+  leida:     boolean
+  timestamp: string
+}
+
+// ─── Type metadata ────────────────────────────────────────────────────────────
+
+const TIPO_META: Record<string, { icon: string; color: string; bg: string; label: string }> = {
+  invitacion:  { icon: '⚡', color: '#4f8cff', bg: 'rgba(79,140,255,0.15)',  label: 'INVITACIÓN' },
+  insight:     { icon: '✨', color: '#32c896', bg: 'rgba(50,200,150,0.15)',  label: 'INSIGHT' },
+  alerta:      { icon: '🌙', color: '#ffaa32', bg: 'rgba(255,170,50,0.15)',  label: 'ALERTA' },
+  logro:       { icon: '🏆', color: '#ffd700', bg: 'rgba(255,215,0,0.15)',   label: 'LOGRO' },
+  reencuentro: { icon: '💙', color: '#6ce5ff', bg: 'rgba(108,229,255,0.15)', label: 'REENCUENTRO' },
+}
+const FALLBACK_META = TIPO_META.insight
+
+// ─── Timestamp helper ─────────────────────────────────────────────────────────
+
+function formatTimestamp(iso: string): string {
+  const now  = new Date()
+  const date = new Date(iso)
+  const diffMs  = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+  const diffH   = Math.floor(diffMs / 3_600_000)
+  const diffD   = Math.floor(diffMs / 86_400_000)
+  if (diffMin < 1)  return 'ahora mismo'
+  if (diffMin < 60) return `hace ${diffMin} min`
+  if (diffH < 24)   return `hace ${diffH}h`
+  if (diffD === 1)  return 'ayer'
+  if (diffD < 7)    return `hace ${diffD} días`
+  const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`
+}
+
+// ─── Notification Card ────────────────────────────────────────────────────────
+
+function NotificacionCard({
+  notif,
+  onPress,
+}: {
+  notif:    Notificacion
+  onPress:  () => void
+}) {
+  const meta = TIPO_META[notif.tipo] ?? FALLBACK_META
+
+  return (
+    <TouchableOpacity
+      style={[
+        cSt.card,
+        notif.leida
+          ? cSt.cardRead
+          : [cSt.cardUnread, { borderColor: meta.color + '33', backgroundColor: meta.color + '0d' }],
+      ]}
+      onPress={onPress}
+      activeOpacity={notif.leida ? 0.5 : 0.78}
+    >
+      {/* Left: icon square */}
+      <View style={[cSt.iconWrap, { backgroundColor: meta.bg }]}>
+        <Text style={cSt.iconEmoji}>{meta.icon}</Text>
+      </View>
+
+      {/* Center: content */}
+      <View style={cSt.center}>
+        <Text style={[cSt.tipo, { color: meta.color }]}>{meta.label}</Text>
+        <Text style={cSt.texto}>{notif.texto}</Text>
+        <Text style={cSt.ts}>{formatTimestamp(notif.timestamp)}</Text>
+      </View>
+
+      {/* Right: unread dot */}
+      <View style={cSt.right}>
+        {!notif.leida && (
+          <View style={[cSt.dot, { backgroundColor: meta.color }]} />
+        )}
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+const cSt = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           12,
+    borderWidth:   1,
+    borderRadius:  18,
+    padding:       14,
+  },
+  cardRead: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor:     'rgba(255,255,255,0.07)',
+  },
+  cardUnread: {
+    // borderColor and backgroundColor injected inline
+  },
+  iconWrap: {
+    width:          44,
+    height:         44,
+    borderRadius:   14,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  iconEmoji: {
+    fontSize: 20,
+  },
+  center: {
+    flex: 1,
+    gap:   4,
+  },
+  tipo: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:       9,
+    letterSpacing:  1.2,
+    textTransform: 'uppercase',
+  },
+  texto: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.88)',
+    lineHeight: 20,
+  },
+  ts: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize:   10,
+    color:      'rgba(255,255,255,0.3)',
+    letterSpacing: 0.3,
+  },
+  right: {
+    width:      14,
+    alignItems: 'center',
+    paddingTop:  4,
+    flexShrink:  0,
+  },
+  dot: {
+    width:        8,
+    height:       8,
+    borderRadius: 4,
+  },
+})
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({ styles }: { styles: ReturnType<typeof makeStyles> }) {
+  return (
+    <View style={styles.emptyWrap}>
+      <Text style={styles.emptyIcon}>🔔</Text>
+      <Text style={styles.emptyTitle}>Todo al día</Text>
+      <Text style={styles.emptySub}>
+        Cuando haya novedades sobre tu entrenamiento, aparecerán aquí.
+      </Text>
+    </View>
+  )
+}
+
 // ─── Notificaciones Tab ───────────────────────────────────────────────────────
 
 function NotificacionesTab({
+  notificaciones,
+  loading,
   unreadCount,
+  onMarkRead,
   styles,
 }: {
-  unreadCount: number
-  styles: ReturnType<typeof makeStyles>
+  notificaciones: Notificacion[]
+  loading:        boolean
+  unreadCount:    number
+  onMarkRead:     (id: number) => void
+  styles:         ReturnType<typeof makeStyles>
 }) {
-  const titulo = unreadCount > 0
-    ? `[${unreadCount}] mensajes nuevos`
-    : 'Sin mensajes nuevos'
+  const titulo = unreadCount > 0 ? `[${unreadCount}] mensajes nuevos` : 'Sin mensajes nuevos'
 
   return (
-    <View style={styles.tabContent}>
-      <Text style={styles.eyebrow}>MENSAJES</Text>
-      <Text style={styles.tabTitle}>{titulo}</Text>
-      <Text style={styles.tabSubtitle}>Tu actividad reciente</Text>
-    </View>
+    <>
+      {/* Header */}
+      <View style={styles.tabContent}>
+        <Text style={styles.eyebrow}>MENSAJES</Text>
+        <Text style={styles.tabTitle}>{titulo}</Text>
+        <Text style={styles.tabSubtitle}>Tu actividad reciente</Text>
+      </View>
+
+      {/* Content */}
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color="#4f8cff" />
+        </View>
+      ) : notificaciones.length === 0 ? (
+        <EmptyState styles={styles} />
+      ) : (
+        <View style={styles.list}>
+          {notificaciones.map(n => (
+            <NotificacionCard
+              key={n.id}
+              notif={n}
+              onPress={() => { if (!n.leida) onMarkRead(n.id) }}
+            />
+          ))}
+        </View>
+      )}
+    </>
   )
 }
 
@@ -56,10 +241,23 @@ export default function NotificacionesScreen() {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
-  const [activeTab, setActiveTab] = useState<Tab>('notificaciones')
+  const [activeTab,       setActiveTab]       = useState<Tab>('notificaciones')
+  const [notificaciones,  setNotificaciones]  = useState<Notificacion[]>([])
+  const [loading,         setLoading]         = useState(true)
 
-  // Will be fetched from backend in future iterations
-  const unreadCount = 0
+  useEffect(() => {
+    apiGet('/api/notificaciones/')
+      .then(setNotificaciones)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const unreadCount = notificaciones.filter(n => !n.leida).length
+
+  const handleMarkRead = useCallback((id: number) => {
+    setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
+    apiPost(`/api/notificaciones/${id}/leer/`, {}).catch(() => {})
+  }, [])
 
   return (
     <View style={styles.root}>
@@ -70,7 +268,6 @@ export default function NotificacionesScreen() {
 
       {/* ── Fixed header area ── */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top }]}>
-        {/* Back row */}
         <View style={styles.backRow}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -95,6 +292,11 @@ export default function NotificacionesScreen() {
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                   {tab === 'notificaciones' ? 'Notificaciones' : 'Configuración'}
                 </Text>
+                {tab === 'notificaciones' && unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{unreadCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             )
           })}
@@ -108,7 +310,13 @@ export default function NotificacionesScreen() {
         showsVerticalScrollIndicator={false}
       >
         {activeTab === 'notificaciones' ? (
-          <NotificacionesTab unreadCount={unreadCount} styles={styles} />
+          <NotificacionesTab
+            notificaciones={notificaciones}
+            loading={loading}
+            unreadCount={unreadCount}
+            onMarkRead={handleMarkRead}
+            styles={styles}
+          />
         ) : (
           <ConfiguracionTab styles={styles} />
         )}
@@ -158,7 +366,10 @@ function makeStyles(c: Colors) {
     },
     tab: {
       flex:              1,
+      flexDirection:     'row',
       alignItems:        'center',
+      justifyContent:    'center',
+      gap:               6,
       paddingVertical:   14,
       borderBottomWidth: 2,
       borderBottomColor: 'transparent',
@@ -176,16 +387,27 @@ function makeStyles(c: Colors) {
     tabTextActive: {
       color: c.inkPrimary,
     },
+    badge: {
+      backgroundColor: c.accent,
+      borderRadius:    8,
+      minWidth:        16,
+      height:          16,
+      alignItems:      'center',
+      justifyContent:  'center',
+      paddingHorizontal: 4,
+    },
+    badgeText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize:   9,
+      color:      '#fff',
+      lineHeight: 14,
+    },
 
     // Scroll
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: 60,
-    },
+    scroll: { flex: 1 },
+    scrollContent: { paddingBottom: 60 },
 
-    // Tab content headers
+    // Tab content header
     tabContent: {
       paddingHorizontal: 24,
       paddingTop:        32,
@@ -212,6 +434,45 @@ function makeStyles(c: Colors) {
       fontSize:   14,
       color:      c.inkMuted,
       lineHeight: 20,
+    },
+
+    // List
+    list: {
+      paddingHorizontal: 16,
+      paddingTop:        16,
+      gap:               10,
+    },
+
+    // Loading
+    loadingWrap: {
+      paddingTop: 60,
+      alignItems: 'center',
+    },
+
+    // Empty state
+    emptyWrap: {
+      alignItems:        'center',
+      paddingHorizontal: 40,
+      paddingTop:        72,
+      gap:               12,
+    },
+    emptyIcon: {
+      fontSize:     44,
+      marginBottom:  4,
+    },
+    emptyTitle: {
+      fontFamily:    'SpaceGrotesk-Bold',
+      fontSize:      20,
+      color:         c.inkPrimary,
+      letterSpacing: -0.3,
+      textAlign:     'center',
+    },
+    emptySub: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   14,
+      color:      c.inkMuted,
+      textAlign:  'center',
+      lineHeight: 22,
     },
   })
 }

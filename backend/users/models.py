@@ -142,6 +142,29 @@ class UserInjury(models.Model):
         return f'{self.user} - {self.zona} ({self.severidad})'
 
 
+class Notification(models.Model):
+    TIPO_CHOICES = [
+        ('invitacion',   'Invitación a entrenar'),
+        ('insight',      'Insight semanal'),
+        ('alerta',       'Alerta de patrón'),
+        ('logro',        'Logro desbloqueado'),
+        ('reencuentro',  'Reencuentro'),
+    ]
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    tipo       = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    texto      = models.TextField()
+    leida      = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications'
+        ordering = ['leida', '-created_at']
+        indexes  = [models.Index(fields=['user', 'leida', '-created_at'])]
+
+    def __str__(self):
+        return f'{self.user} — {self.tipo}'
+
+
 class PasswordResetCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
     code = models.CharField(max_length=6)

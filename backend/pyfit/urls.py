@@ -63,6 +63,10 @@ urlpatterns = [
     path('api/stats/cuerpo-contexto/', workout_views.stats_cuerpo_contexto),
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
 
+    # Notifications
+    path('api/notificaciones/',              user_views.notifications_list),
+    path('api/notificaciones/<int:pk>/leer/', user_views.notification_leer),
+
     # Competitions
     path('api/competitions/', workout_views.competitions),
     path('api/competitions/<int:pk>/', workout_views.competition_detail),

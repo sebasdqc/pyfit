@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle
-from .models import Profile, UserLocation, UserInjury, PasswordResetCode
+from .models import Profile, UserLocation, UserInjury, PasswordResetCode, Notification
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -179,6 +179,14 @@ def _check_logros(profile):
         if cumple:
             nuevos.append({'id': logro['id'], 'label': logro['label'], 'icon': logro['icon']})
             changed = True
+            try:
+                Notification.objects.create(
+                    user=profile.user,
+                    tipo='logro',
+                    texto=f'¡Desbloqueaste "{logro["icon"]} {logro["label"]}"! Sigue construyendo hábitos.',
+                )
+            except Exception:
+                pass
     if changed:
         profile.logros = nuevos
         profile.save(update_fields=['logros'])
@@ -245,3 +253,107 @@ def location_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
     return Response(serializer.data)
+
+
+# ─── Notification helpers ─────────────────────────────────────────────────────
+
+def _maybe_generate_notifications(user):
+    from datetime import date, timedelta
+    from django.utils import timezone
+
+    hoy     = date.today()
+    ahora   = timezone.now()
+
+    # Reencuentro — last session ≥ 5 days ago, no reencuentro in last 5 days
+    ultima = user.sessions.order_by('-fecha').values('fecha').first()
+    if ultima:
+        dias = (hoy - ultima['fecha']).days
+        if dias >= 5:
+            ya_existe = user.notifications.filter(
+                tipo='reencuentro',
+                created_at__gte=ahora - timedelta(days=5),
+            ).exists()
+            if not ya_existe:
+                try:
+                    nombre = user.profile.nombre or 'atleta'
+                except Exception:
+                    nombre = 'atleta'
+                Notification.objects.create(
+                    user=user,
+                    tipo='reencuentro',
+                    texto=(
+                        f'Han pasado {dias} días desde tu último entrenamiento, {nombre}. '
+                        'Tu cuerpo agradece la consistencia.'
+                    ),
+                )
+
+    # Insight semanal — ≥ 2 sesiones en los últimos 7 días, no insight en los últimos 7
+    sesiones_semana = user.sessions.filter(fecha__gte=hoy - timedelta(days=7)).count()
+    if sesiones_semana >= 2:
+        ya_existe = user.notifications.filter(
+            tipo='insight',
+            created_at__gte=ahora - timedelta(days=7),
+        ).exists()
+        if not ya_existe:
+            _crear_insight_notification(user, sesiones_semana)
+
+
+def _crear_insight_notification(user, sesiones_semana):
+    from datetime import date, timedelta
+    from django.db.models import Avg
+
+    hoy = date.today()
+    stats = user.sessions.filter(
+        fecha__gte=hoy - timedelta(days=7),
+        feedback__isnull=False,
+    ).aggregate(
+        rpe_avg=Avg('feedback__rpe_real'),
+        cum_avg=Avg('feedback__cumplimiento'),
+    )
+    rpe = stats['rpe_avg']
+    cum = stats['cum_avg']
+
+    if rpe and cum:
+        texto = (
+            f'Esta semana entrenaste {sesiones_semana} veces '
+            f'con un RPE promedio de {float(rpe):.1f} y {float(cum):.0f}% de cumplimiento. '
+            'Sigue así.'
+        )
+    else:
+        texto = (
+            f'Esta semana entrenaste {sesiones_semana} veces. '
+            'Registra tu feedback para obtener insights personalizados.'
+        )
+    Notification.objects.create(user=user, tipo='insight', texto=texto)
+
+
+# ─── Notification views ───────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def notifications_list(request):
+    _maybe_generate_notifications(request.user)
+    notifs = request.user.notifications.order_by('leida', '-created_at')[:50]
+    data = [
+        {
+            'id':        n.id,
+            'tipo':      n.tipo,
+            'texto':     n.texto,
+            'leida':     n.leida,
+            'timestamp': n.created_at.isoformat(),
+        }
+        for n in notifs
+    ]
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def notification_leer(request, pk):
+    try:
+        notif = request.user.notifications.get(pk=pk)
+    except Notification.DoesNotExist:
+        return Response({'error': 'No encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    notif.leida = True
+    notif.save(update_fields=['leida'])
+    return Response({'ok': True})
