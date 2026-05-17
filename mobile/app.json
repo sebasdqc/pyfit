@@ -36,7 +36,8 @@
         {
           "fonts": []
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "extra": {
       "router": {

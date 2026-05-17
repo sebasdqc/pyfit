@@ -4,6 +4,7 @@ import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from '../lib/theme'
+import { initSentry, withSentryWrap } from '../lib/sentry'
 import * as Font from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
 import {
@@ -18,6 +19,10 @@ import {
 } from '@expo-google-fonts/jetbrains-mono'
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif'
 
+// Sentry debe inicializarse antes que cualquier render para capturar
+// errores tempranos. Es seguro llamar aunque la DSN esté vacía (no-op).
+initSentry()
+
 SplashScreen.preventAutoHideAsync()
 
 function ThemedApp() {
@@ -30,7 +35,7 @@ function ThemedApp() {
   )
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -67,3 +72,7 @@ export default function RootLayout() {
     </ThemeProvider>
   )
 }
+
+// Envolver con Sentry permite que un ErrorBoundary global capture los crashes
+// del árbol y los envíe a Sentry. Es no-op si Sentry no fue inicializado.
+export default withSentryWrap(RootLayout)

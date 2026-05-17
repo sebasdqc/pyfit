@@ -195,6 +195,66 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
+# ─── Sentry (observabilidad de errores en producción) ─────────────────────────
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    import logging as _logging
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    def _sentry_before_send(event, hint):
+        """Scrub liviano. Sentry ya tiene defaults razonables, pero esto
+        elimina algunos campos sensibles que aparecen frecuente en PyFit:
+        - JWT tokens en headers de request
+        - emails (PII)
+        """
+        try:
+            req = event.get('request') or {}
+            headers = req.get('headers') or {}
+            if 'Authorization' in headers:
+                headers['Authorization'] = '[scrubbed]'
+            if 'Cookie' in headers:
+                headers['Cookie'] = '[scrubbed]'
+        except Exception:
+            pass
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(
+                transaction_style='url',
+                middleware_spans=True,
+                signals_spans=False,
+                cache_spans=False,
+            ),
+            LoggingIntegration(
+                level=_logging.INFO,         # logs INFO+ como breadcrumbs
+                event_level=_logging.ERROR,  # logs ERROR+ se envían como eventos
+            ),
+        ],
+        # Traces sample: 10% en prod, 100% en dev. Profiles desactivado para
+        # mantener el plan free de Sentry tranquilo hasta que veamos volumen real.
+        traces_sample_rate=1.0 if DEBUG else 0.1,
+        profiles_sample_rate=0.0,
+        # send_default_pii=False evita enviar IPs / emails / cookies por defecto.
+        # Los scrubeamos manualmente igual en before_send.
+        send_default_pii=False,
+        environment=os.environ.get('SENTRY_ENVIRONMENT', 'development' if DEBUG else 'production'),
+        release=os.environ.get('SENTRY_RELEASE') or None,
+        before_send=_sentry_before_send,
+        # No reportar errores generados por bots probando rutas inexistentes.
+        ignore_errors=[
+            'django.http.Http404',
+            'django.core.exceptions.SuspiciousOperation',
+            'rest_framework.exceptions.NotAuthenticated',
+            'rest_framework.exceptions.AuthenticationFailed',
+            'rest_framework.exceptions.PermissionDenied',
+            'rest_framework.exceptions.Throttled',
+        ],
+    )
+
 # ─── django-otp ───────────────────────────────────────────────────────────────
 # El nombre que aparece en Authenticator/Authy junto a la cuenta.
 OTP_TOTP_ISSUER = 'Zyfit Control'

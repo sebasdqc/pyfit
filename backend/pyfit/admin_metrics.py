@@ -8,13 +8,15 @@ Dos puntos de entrada:
    ve son los números clave del producto.
 
 2. `zyfit_metrics_view(request)` — Vista standalone (link del sidebar) que
-   reusa el mismo template con datos extendidos: top ejercicios, retención,
-   distribución de niveles.
+   reusa el mismo template con datos extendidos: embudo de onboarding,
+   retención cohort D1/D7/D30, distribución horaria, top ejercicios, etc.
 
-Todas las consultas son agregadas (sin N+1) y se cachean implícitamente vía
-las propias estadísticas. Si el dataset crece, podemos meter `cache_page` aquí.
+Todas las consultas son agregadas. Si el dataset crece >50k usuarios la
+distribución horaria puede empezar a doler — ahí cacheamos.
 """
 
+import os
+from collections import Counter
 from datetime import timedelta
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Avg, Count, Q
@@ -79,10 +81,133 @@ def _compute_kpis() -> dict:
     }
 
 
+# ─── Embudo de onboarding ────────────────────────────────────────────────────
+
+def _compute_funnel() -> list:
+    """Cinco etapas — cada una se mide como subset de la anterior (descendente).
+
+    Las "etapas válidas" son cuentas de usuarios distintos que cumplieron
+    al menos una vez la condición. Ningún `cohort cleanup` — esto refleja
+    el estado actual del negocio, no de un cohort específico.
+    """
+    total = User.objects.count()
+
+    onboarding_done = Profile.objects.exclude(objetivo='').filter(
+        fecha_nacimiento__isnull=False, peso__isnull=False, altura__isnull=False,
+    ).exclude(sexo='').count()
+
+    has_checkin = User.objects.filter(checkins__isnull=False).distinct().count()
+    has_session = User.objects.filter(sessions__isnull=False).distinct().count()
+    has_feedback = User.objects.filter(sessions__feedback__isnull=False).distinct().count()
+
+    def pct(n, base):
+        return round(n / base * 100, 1) if base else 0
+
+    return [
+        {'label': 'Registrados',         'value': total,           'pct': 100.0},
+        {'label': 'Onboarding completo', 'value': onboarding_done, 'pct': pct(onboarding_done, total)},
+        {'label': 'Hicieron check-in',   'value': has_checkin,     'pct': pct(has_checkin,    total)},
+        {'label': 'Generaron sesión',    'value': has_session,     'pct': pct(has_session,    total)},
+        {'label': 'Dieron feedback',     'value': has_feedback,    'pct': pct(has_feedback,   total)},
+    ]
+
+
+# ─── Retention cohorts ───────────────────────────────────────────────────────
+
+def _retention_cohort(window_days: int) -> dict:
+    """Calcula retención para una ventana dada.
+
+    Lógica: tomamos a los usuarios registrados hace `window_days * 2`
+    a `window_days` días (la "cohorte"). De ellos, contamos cuántos tienen
+    actividad (sesión o check-in) en los últimos `window_days` días.
+
+    Esto aproxima D1/D7/D30 sin necesitar event tracking detallado.
+    """
+    today = timezone.now().date()
+    cutoff_end   = today - timedelta(days=window_days)
+    cutoff_start = today - timedelta(days=window_days * 2)
+
+    cohort = User.objects.filter(
+        date_joined__date__gte=cutoff_start,
+        date_joined__date__lt=cutoff_end,
+    )
+    cohort_size = cohort.count()
+    if cohort_size == 0:
+        return {'window_days': window_days, 'cohort_size': 0, 'retained': 0, 'pct': None}
+
+    retained = cohort.filter(
+        Q(sessions__fecha__gte=cutoff_end) | Q(checkins__fecha__gte=cutoff_end)
+    ).distinct().count()
+
+    return {
+        'window_days': window_days,
+        'cohort_size': cohort_size,
+        'retained':    retained,
+        'pct':         round(retained / cohort_size * 100, 1),
+    }
+
+
+# ─── Distribución horaria de sesiones ────────────────────────────────────────
+
+def _compute_hourly_distribution() -> list:
+    """Histograma de cuándo se CREAN las sesiones (hora local del servidor).
+
+    Útil para ver picos de uso y, en futuro, decidir cuándo escalar workers
+    o disparar campañas de re-engagement.
+    """
+    # Cogemos los últimos 30 días para que la muestra sea suficiente sin
+    # tirar el SQL completo.
+    cutoff = timezone.now() - timedelta(days=30)
+    rows = Session.objects.filter(created_at__gte=cutoff).values_list('created_at', flat=True)
+
+    counter = Counter()
+    for dt in rows:
+        local = timezone.localtime(dt)
+        counter[local.hour] += 1
+
+    # Pasamos a una lista de 24 entradas con 0s donde no hubo nada — facilita
+    # iterar en el template y mantiene la escala constante.
+    total = max(counter.values()) if counter else 0
+    distribution = []
+    for h in range(24):
+        n = counter.get(h, 0)
+        distribution.append({
+            'hour':    h,
+            'count':   n,
+            'pct':     round(n / total * 100) if total else 0,
+        })
+    return distribution
+
+
+# ─── Health / observabilidad ─────────────────────────────────────────────────
+
+def _system_health() -> dict:
+    """Indicadores ligeros del estado del sistema sin depender de Sentry."""
+    cutoff = timezone.now() - timedelta(days=7)
+    total_sessions_week = Session.objects.filter(created_at__gte=cutoff).count()
+    sessions_with_response = Session.objects.filter(
+        created_at__gte=cutoff, respuesta_ia__isnull=False,
+    ).count()
+    sessions_with_feedback = Session.objects.filter(
+        created_at__gte=cutoff, feedback__isnull=False,
+    ).count()
+
+    def pct(n, base):
+        return round(n / base * 100, 1) if base else None
+
+    return {
+        'generate_success_rate':  pct(sessions_with_response, total_sessions_week),
+        'feedback_rate':          pct(sessions_with_feedback, total_sessions_week),
+        'sessions_week_total':    total_sessions_week,
+        'sentry_dsn_configured':  bool(os.environ.get('SENTRY_DSN', '').strip()),
+    }
+
+
+# ─── Datos secundarios ───────────────────────────────────────────────────────
+
 def _compute_extended() -> dict:
     """Datos secundarios — sólo se piden cuando alguien entra al dashboard completo."""
     today    = timezone.now().date()
-    week_ago = today - timedelta(days=7)
 
     # Top ejercicios por veces realizado
     top_exercises = list(
@@ -100,15 +225,6 @@ def _compute_extended() -> dict:
         elif n >= 5:  nivel_buckets['atleta']  += 1
         else:         nivel_buckets['rookie']  += 1
 
-    # Retención: % de usuarios que se registraron hace 7-14 días y volvieron en los últimos 7
-    two_weeks_ago = today - timedelta(days=14)
-    cohort = User.objects.filter(date_joined__date__gte=two_weeks_ago, date_joined__date__lt=week_ago)
-    cohort_size = cohort.count()
-    retained = cohort.filter(
-        Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
-    ).distinct().count()
-    retention_d7 = (retained / cohort_size * 100) if cohort_size else None
-
     # Sesiones recientes (últimas 10 a través de todos los usuarios)
     recent_sessions = list(
         Session.objects.select_related('user').order_by('-created_at')[:10]
@@ -116,12 +232,15 @@ def _compute_extended() -> dict:
     )
 
     return {
-        'top_exercises':   top_exercises,
-        'nivel_buckets':   nivel_buckets,
-        'retention_d7':    retention_d7,
-        'cohort_size':     cohort_size,
-        'retained_count':  retained,
-        'recent_sessions': recent_sessions,
+        'funnel':           _compute_funnel(),
+        'retention_d1':     _retention_cohort(1),
+        'retention_d7':     _retention_cohort(7),
+        'retention_d30':    _retention_cohort(30),
+        'hourly':           _compute_hourly_distribution(),
+        'system_health':    _system_health(),
+        'top_exercises':    top_exercises,
+        'nivel_buckets':    nivel_buckets,
+        'recent_sessions':  recent_sessions,
     }
 
 

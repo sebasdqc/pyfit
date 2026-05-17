@@ -44,10 +44,10 @@
       <div class="zk-card">
         <div class="label">Retención D7</div>
         <div class="value">
-          {% if retention_d7 is not None %}{{ retention_d7|floatformat:0 }}%{% else %}—{% endif %}
+          {% if retention_d7.pct is not None %}{{ retention_d7.pct|floatformat:0 }}%{% else %}—{% endif %}
         </div>
         <div class="sub">
-          {% if cohort_size %}{{ retained_count }} de {{ cohort_size }} regresaron{% else %}sin cohorte aún{% endif %}
+          {% if retention_d7.cohort_size %}{{ retention_d7.retained }} de {{ retention_d7.cohort_size }} regresaron{% else %}sin cohorte aún{% endif %}
         </div>
       </div>
     </div>
@@ -82,6 +82,92 @@
       </div>
     </div>
   {% endwith %}
+
+  <div class="zk-section-title">Embudo de onboarding</div>
+  <div style="background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 16px 18px;">
+    {% for stage in funnel %}
+      <div style="margin-bottom: {% if not forloop.last %}12px{% else %}0{% endif %};">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+          <span style="font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: rgb(229 231 235);">{{ stage.label }}</span>
+          <span style="font-family: ui-monospace, monospace; font-size: 12px; color: rgb(156 163 175);">
+            <strong style="color: rgb(248 250 252); font-size: 14px;">{{ stage.value }}</strong> · {{ stage.pct }}%
+          </span>
+        </div>
+        <div style="height: 6px; background: rgb(17 24 39); border-radius: 3px; overflow: hidden;">
+          <div style="height: 100%; width: {{ stage.pct }}%; background: rgb(79 140 255); border-radius: 3px; transition: width 200ms;"></div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="zk-section-title">Retención por cohorte</div>
+  <div class="zk-grid">
+    <div class="zk-card">
+      <div class="label">D1 · 1 día después</div>
+      <div class="value">{% if retention_d1.pct is not None %}{{ retention_d1.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
+      <div class="sub">
+        {% if retention_d1.cohort_size %}{{ retention_d1.retained }}/{{ retention_d1.cohort_size }}{% else %}sin cohorte{% endif %}
+      </div>
+    </div>
+    <div class="zk-card">
+      <div class="label">D7 · 7 días después</div>
+      <div class="value">{% if retention_d7.pct is not None %}{{ retention_d7.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
+      <div class="sub">
+        {% if retention_d7.cohort_size %}{{ retention_d7.retained }}/{{ retention_d7.cohort_size }}{% else %}sin cohorte{% endif %}
+      </div>
+    </div>
+    <div class="zk-card">
+      <div class="label">D30 · 30 días después</div>
+      <div class="value">{% if retention_d30.pct is not None %}{{ retention_d30.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
+      <div class="sub">
+        {% if retention_d30.cohort_size %}{{ retention_d30.retained }}/{{ retention_d30.cohort_size }}{% else %}sin cohorte{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="zk-section-title">Distribución horaria de sesiones · últimos 30 días</div>
+  <div style="background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px;">
+    <div style="display: flex; align-items: flex-end; gap: 4px; height: 140px;">
+      {% for h in hourly %}
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%;">
+          <div title="{{ h.count }} sesiones a las {{ h.hour }}:00"
+               style="width: 100%; height: {{ h.pct }}%; min-height: 2px; background: rgb(79 140 255); border-radius: 3px 3px 0 0; opacity: {% if h.count %}1{% else %}0.15{% endif %};"></div>
+        </div>
+      {% endfor %}
+    </div>
+    <div style="display: flex; gap: 4px; margin-top: 6px;">
+      {% for h in hourly %}
+        <div style="flex: 1; text-align: center; font-family: ui-monospace, monospace; font-size: 9px; color: rgb(107 114 128);">
+          {% if h.hour|divisibleby:3 %}{{ h.hour }}{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="zk-section-title">Salud del sistema</div>
+  <div class="zk-grid">
+    <div class="zk-card">
+      <div class="label">Generate success · 7d</div>
+      <div class="value">
+        {% if system_health.generate_success_rate is not None %}{{ system_health.generate_success_rate|floatformat:1 }}%{% else %}—{% endif %}
+      </div>
+      <div class="sub">{{ system_health.sessions_week_total }} sesiones intentadas</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Feedback rate · 7d</div>
+      <div class="value">
+        {% if system_health.feedback_rate is not None %}{{ system_health.feedback_rate|floatformat:1 }}%{% else %}—{% endif %}
+      </div>
+      <div class="sub">% de sesiones que recibieron rating</div>
+    </div>
+    <div class="zk-card {% if system_health.sentry_dsn_configured %}accent{% endif %}">
+      <div class="label">Sentry</div>
+      <div class="value" style="font-size: 18px;">
+        {% if system_health.sentry_dsn_configured %}✓ Activo{% else %}✗ Sin DSN{% endif %}
+      </div>
+      <div class="sub">{% if system_health.sentry_dsn_configured %}Errores capturándose en producción{% else %}Setea SENTRY_DSN en env{% endif %}</div>
+    </div>
+  </div>
 
   <div class="zk-section-title">Distribución de niveles</div>
   <div class="zk-grid">
