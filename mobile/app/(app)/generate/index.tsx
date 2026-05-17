@@ -951,6 +951,277 @@ const mSt = StyleSheet.create({
   },
 })
 
+// ─── Ajuste Modal ─────────────────────────────────────────────────────────────
+
+function AjusteModal({
+  visible,
+  sesion,
+  sesionId,
+  onResult,
+  onClose,
+}: {
+  visible:  boolean
+  sesion:   Sesion | null
+  sesionId: string | null
+  onResult: (sesion: Sesion) => void
+  onClose:  () => void
+}) {
+  const [duracionDelta, setDuracionDelta] = useState<-15 | 0 | 15>(0)
+  const [rpeDelta,      setRpeDelta]      = useState<-1 | 0 | 1>(0)
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const sheetY = useRef(new Animated.Value(700)).current
+
+  useEffect(() => {
+    if (visible) {
+      setDuracionDelta(0); setRpeDelta(0); setError(null); setLoading(false)
+      sheetY.setValue(700)
+      Animated.spring(sheetY, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }).start()
+    }
+  }, [visible])
+
+  function dismiss() {
+    if (loading) return
+    Animated.timing(sheetY, { toValue: 700, duration: 240, useNativeDriver: true }).start(onClose)
+  }
+
+  async function aplicar() {
+    if (duracionDelta === 0 && rpeDelta === 0) return
+    setLoading(true); setError(null)
+    try {
+      const data = await apiPost(`/api/sessions/${sesionId}/ajustar/`, {
+        duracion_delta: duracionDelta,
+        rpe_delta:      rpeDelta,
+      })
+      Animated.timing(sheetY, { toValue: 700, duration: 240, useNativeDriver: true }).start(() => {
+        onClose()
+        onResult(data.sesion)
+      })
+    } catch (e: any) {
+      setError(e.message || 'No se pudo regenerar la rutina')
+      setLoading(false)
+    }
+  }
+
+  if (!visible) return null
+
+  const noChanges = duracionDelta === 0 && rpeDelta === 0
+  const currentDuracion = sesion?.duracion_total ?? 0
+  const currentRpe      = sesion?.rpe_target ?? 0
+
+  return (
+    <Modal transparent visible={visible} animationType="none" onRequestClose={dismiss}>
+      <View style={{ flex: 1 }}>
+        <Pressable style={mSt.backdrop} onPress={dismiss} />
+        <Animated.View style={[ajSt.sheet, { transform: [{ translateY: sheetY }] }]}>
+          <View style={mSt.handle} />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={ajSt.content}
+          >
+            <Text style={ajSt.eyebrow}>AJUSTAR RUTINA</Text>
+            <Text style={ajSt.current}>
+              {currentDuracion} min · RPE {currentRpe}
+            </Text>
+
+            {loading ? (
+              <View style={ajSt.loadingWrap}>
+                <ActivityIndicator color="#4f8cff" size="large" />
+                <Text style={ajSt.loadingText}>Regenerando con los nuevos parámetros...</Text>
+              </View>
+            ) : (
+              <>
+                {/* Duration */}
+                <Text style={ajSt.sectionLabel}>Duración</Text>
+                <View style={ajSt.optionRow}>
+                  <TouchableOpacity
+                    style={[ajSt.optBtn, duracionDelta === -15 && ajSt.optBtnSel]}
+                    onPress={() => setDuracionDelta(d => d === -15 ? 0 : -15)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.optIcon, duracionDelta === -15 && ajSt.optIconSel]}>−</Text>
+                    <Text style={[ajSt.optLabel, duracionDelta === -15 && ajSt.optLabelSel]}>Más corta</Text>
+                    <Text style={[ajSt.optSub,   duracionDelta === -15 && ajSt.optSubSel]}>−15 min</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[ajSt.optBtn, duracionDelta === 15 && ajSt.optBtnSel]}
+                    onPress={() => setDuracionDelta(d => d === 15 ? 0 : 15)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.optIcon, duracionDelta === 15 && ajSt.optIconSel]}>+</Text>
+                    <Text style={[ajSt.optLabel, duracionDelta === 15 && ajSt.optLabelSel]}>Más larga</Text>
+                    <Text style={[ajSt.optSub,   duracionDelta === 15 && ajSt.optSubSel]}>+15 min</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Intensity */}
+                <Text style={ajSt.sectionLabel}>Intensidad</Text>
+                <View style={ajSt.optionRow}>
+                  <TouchableOpacity
+                    style={[ajSt.optBtn, rpeDelta === -1 && ajSt.optBtnSel]}
+                    onPress={() => setRpeDelta(r => r === -1 ? 0 : -1)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.optIcon, rpeDelta === -1 && ajSt.optIconSel]}>↓</Text>
+                    <Text style={[ajSt.optLabel, rpeDelta === -1 && ajSt.optLabelSel]}>Bajar nivel</Text>
+                    <Text style={[ajSt.optSub,   rpeDelta === -1 && ajSt.optSubSel]}>−1 RPE</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[ajSt.optBtn, rpeDelta === 1 && ajSt.optBtnSel]}
+                    onPress={() => setRpeDelta(r => r === 1 ? 0 : 1)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.optIcon, rpeDelta === 1 && ajSt.optIconSel]}>↑</Text>
+                    <Text style={[ajSt.optLabel, rpeDelta === 1 && ajSt.optLabelSel]}>Subir nivel</Text>
+                    <Text style={[ajSt.optSub,   rpeDelta === 1 && ajSt.optSubSel]}>+1 RPE</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {error ? (
+                  <Text style={ajSt.errorText}>{error}</Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[ajSt.aplicarBtn, noChanges && ajSt.aplicarBtnDisabled]}
+                  onPress={noChanges ? undefined : aplicar}
+                  activeOpacity={noChanges ? 1 : 0.75}
+                >
+                  <Text style={[ajSt.aplicarBtnText, noChanges && ajSt.aplicarBtnTextDisabled]}>
+                    Regenerar rutina
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+const ajSt = StyleSheet.create({
+  sheet: {
+    backgroundColor:      '#0d1526',
+    borderTopLeftRadius:  28,
+    borderTopRightRadius: 28,
+    maxHeight:            '72%',
+    borderTopWidth:       1,
+    borderColor:          'rgba(255,255,255,0.1)',
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom:     40,
+    paddingTop:        16,
+  },
+  eyebrow: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:      10,
+    color:         'rgba(255,255,255,0.4)',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom:  4,
+  },
+  current: {
+    fontFamily:    'SpaceGrotesk-Bold',
+    fontSize:      22,
+    color:         '#e8efff',
+    letterSpacing: -0.4,
+    marginBottom:  28,
+  },
+  sectionLabel: {
+    fontFamily:   'SpaceGrotesk-SemiBold',
+    fontSize:      13,
+    color:        'rgba(255,255,255,0.5)',
+    marginBottom:  10,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap:           10,
+    marginBottom:  20,
+  },
+  optBtn: {
+    flex:            1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth:     1,
+    borderColor:     'rgba(255,255,255,0.1)',
+    borderRadius:    16,
+    paddingVertical: 18,
+    alignItems:      'center',
+    gap:             5,
+  },
+  optBtnSel: {
+    backgroundColor: 'rgba(79,140,255,0.1)',
+    borderColor:     'rgba(79,140,255,0.4)',
+  },
+  optIcon: {
+    fontSize:   22,
+    color:      'rgba(255,255,255,0.35)',
+    fontFamily: 'SpaceGrotesk-Bold',
+    lineHeight: 28,
+  },
+  optIconSel: {
+    color: '#7ab6ff',
+  },
+  optLabel: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize:   13,
+    color:      'rgba(255,255,255,0.5)',
+    textAlign:  'center',
+  },
+  optLabelSel: {
+    color: '#e8efff',
+  },
+  optSub: {
+    fontFamily:    'JetBrainsMono-Regular',
+    fontSize:      10,
+    color:         'rgba(255,255,255,0.25)',
+    letterSpacing:  0.5,
+  },
+  optSubSel: {
+    color: '#7ab6ff',
+  },
+  loadingWrap: {
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            16,
+    paddingVertical: 52,
+  },
+  loadingText: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.4)',
+    textAlign:  'center',
+    lineHeight: 21,
+  },
+  errorText: {
+    fontFamily:   'SpaceGrotesk-Regular',
+    fontSize:      13,
+    color:        '#ff6b6b',
+    textAlign:    'center',
+    marginBottom:  12,
+  },
+  aplicarBtn: {
+    backgroundColor: '#4f8cff',
+    borderRadius:    16,
+    paddingVertical: 15,
+    alignItems:      'center',
+    marginTop:       4,
+  },
+  aplicarBtnDisabled: {
+    backgroundColor: 'rgba(79,140,255,0.12)',
+  },
+  aplicarBtnText: {
+    fontFamily:    'SpaceGrotesk-Bold',
+    fontSize:      15,
+    color:         '#fff',
+    letterSpacing: -0.2,
+  },
+  aplicarBtnTextDisabled: {
+    color: 'rgba(255,255,255,0.25)',
+  },
+})
+
 // ─── Phase Block ──────────────────────────────────────────────────────────────
 
 function FaseBlock({
@@ -1112,6 +1383,7 @@ export default function GenerateScreen() {
   const [resumenLoading, setResumenLoading] = useState(false)
   const [subTarget,      setSubTarget]      = useState<SubTarget | null>(null)
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
+  const [ajusteVisible,  setAjusteVisible]  = useState(false)
 
   const generate = useCallback(async () => {
     setApiDone(false)
@@ -1191,15 +1463,28 @@ export default function GenerateScreen() {
     setSubTarget(null)
   }, [subTarget, sesionId])
 
-  const handleEjecutar = () => {
+  const handleEjecutar = useCallback(() => {
     if (!sesionId) return
+    apiPost(`/api/sessions/${sesionId}/iniciar/`, {}).catch(() => {})
     router.push(`/(app)/ejecutar/${sesionId}`)
-  }
+  }, [sesionId])
 
-  const handleMarcarCompletada = () => {
+  const handleMarcarCompletada = useCallback(() => {
     if (!sesionId) return
     router.push(`/(app)/feedback/${sesionId}`)
-  }
+  }, [sesionId])
+
+  const handleAjusteResult = useCallback((nuevaSesion: Sesion) => {
+    setSesion(nuevaSesion)
+    setModifiedKeys(new Set())
+    if (!sesionId) return
+    setResumen(null)
+    setResumenLoading(true)
+    apiGet(`/api/sessions/${sesionId}/resumen/`)
+      .then(setResumen)
+      .catch(() => {})
+      .finally(() => setResumenLoading(false))
+  }, [sesionId])
 
   const rir          = sesion ? (10 - sesion.rpe_target).toFixed(0) : '—'
   const checkinChips = useMemo(() => checkin ? buildCheckinChips(checkin) : [], [checkin])
@@ -1339,11 +1624,16 @@ export default function GenerateScreen() {
 
             {/* CTA */}
             <View style={styles.ctaSection}>
-              <TouchableOpacity style={styles.ctaPrimary} onPress={handleEjecutar}>
-                <Text style={styles.ctaPrimaryText}>⚡ Ejecutar sesión</Text>
+              <TouchableOpacity style={styles.ctaPrimary} onPress={handleEjecutar} activeOpacity={0.88}>
+                <Text style={styles.ctaPrimaryText}>Empezar sesión</Text>
+                <Text style={styles.ctaArrow}>→</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.ctaSecondary} onPress={handleMarcarCompletada}>
-                <Text style={styles.ctaSecondaryText}>✓ Marcar completada</Text>
+              <TouchableOpacity style={styles.ctaSecondary} onPress={() => setAjusteVisible(true)} activeOpacity={0.75}>
+                <Text style={styles.ctaGearIcon}>⚙</Text>
+                <Text style={styles.ctaSecondaryText}>Ajustar rutina</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.ctaTerciary} onPress={handleMarcarCompletada}>
+                <Text style={styles.ctaTerciaryText}>✓ Marcar como completada</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -1357,6 +1647,14 @@ export default function GenerateScreen() {
         sesionId={sesionId}
         onSelect={handleSelectAlternativa}
         onClose={() => setSubTarget(null)}
+      />
+
+      <AjusteModal
+        visible={ajusteVisible}
+        sesion={sesion}
+        sesionId={sesionId}
+        onResult={handleAjusteResult}
+        onClose={() => setAjusteVisible(false)}
       />
     </View>
   )
@@ -1579,13 +1877,16 @@ function makeStyles(c: Colors) {
 
     // CTA
     ctaSection: {
-      gap: 12,
+      gap: 10,
     },
     ctaPrimary: {
       backgroundColor: c.white,
       borderRadius:    16,
-      paddingVertical: 16,
+      paddingVertical: 17,
+      flexDirection:   'row',
       alignItems:      'center',
+      justifyContent:  'center',
+      gap:             10,
     },
     ctaPrimaryText: {
       fontFamily:    'SpaceGrotesk-Bold',
@@ -1593,18 +1894,41 @@ function makeStyles(c: Colors) {
       color:         c.bg,
       letterSpacing: -0.2,
     },
+    ctaArrow: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize:   18,
+      color:      c.bg,
+      lineHeight: 22,
+    },
     ctaSecondary: {
       backgroundColor: c.cardBg,
       borderWidth:     1,
       borderColor:     c.borderDefault,
       borderRadius:    16,
-      paddingVertical: 16,
+      paddingVertical: 15,
+      flexDirection:   'row',
       alignItems:      'center',
+      justifyContent:  'center',
+      gap:             8,
+    },
+    ctaGearIcon: {
+      fontSize:   16,
+      color:      c.inkSecondary,
+      lineHeight: 21,
     },
     ctaSecondaryText: {
       fontFamily: 'SpaceGrotesk-SemiBold',
       fontSize:   15,
       color:      c.inkSecondary,
+    },
+    ctaTerciary: {
+      alignItems:      'center',
+      paddingVertical:  10,
+    },
+    ctaTerciaryText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   13,
+      color:      c.inkMuted,
     },
   })
 }

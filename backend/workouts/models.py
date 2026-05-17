@@ -96,6 +96,7 @@ class Session(models.Model):
     evidencia = models.JSONField(null=True, blank=True)   # {"text": "...", "reference": "..."}
     logro = models.JSONField(null=True, blank=True)       # {"icon": "...", "titulo": "...", "descripcion": "..."}
     sustituciones = models.JSONField(null=True, blank=True)  # [{original, elegido, motivo, fase}]
+    inicio_real = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

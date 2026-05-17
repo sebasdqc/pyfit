@@ -51,6 +51,19 @@ def session_feedback(request, pk):
     return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def session_iniciar(request, pk):
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    from django.utils import timezone
+    session.inicio_real = timezone.now()
+    session.save(update_fields=['inicio_real'])
+    return Response({'ok': True})
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def session_resumen(request, pk):

@@ -500,9 +500,8 @@ def generate_session(request):
     except Exception:
         return Response({'error': 'Perfil no encontrado. Completa el onboarding.'}, status=400)
 
-    try:
-        checkin = user.checkins.select_related('location').get(fecha=hoy)
-    except DailyCheckin.DoesNotExist:
+    checkin = user.checkins.select_related('location').filter(fecha=hoy).order_by('-created_at').first()
+    if not checkin:
         return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
 
     if checkin.location:
@@ -761,6 +760,151 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional:
         )
 
     return Response({'alternativas': alternativas})
+
+
+# ─── Ajustar sesión (regenerate with overrides) ──────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def session_ajustar(request, pk):
+    """Re-generate an existing session with duration and/or RPE overrides."""
+    from types import SimpleNamespace
+
+    try:
+        session = (
+            request.user.sessions
+            .select_related('checkin', 'location', 'checkin__location')
+            .get(pk=pk)
+        )
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        duracion_delta = int(request.data.get('duracion_delta', 0))
+        rpe_delta      = int(request.data.get('rpe_delta', 0))
+    except (TypeError, ValueError):
+        return Response({'error': 'Parámetros inválidos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    duracion_delta = max(-30, min(30, duracion_delta))
+    rpe_delta      = max(-2,  min(2,  rpe_delta))
+
+    user    = request.user
+    checkin = session.checkin
+
+    # Resolve location (prefer session.location, fallback to checkin.location, then first)
+    if session.location:
+        loc = session.location
+    elif checkin and checkin.location:
+        loc = checkin.location
+    else:
+        loc = user.locations.order_by('created_at').first()
+        if not loc:
+            loc = SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
+
+    duracion_base = session.duracion_planificada or (checkin.duracion_disponible if checkin else 60)
+    rpe_base      = float(session.rpe_target)
+
+    nueva_duracion = max(20, min(120, duracion_base + duracion_delta))
+    nuevo_rpe      = round(max(4.0, min(9.0, rpe_base + rpe_delta)), 1)
+
+    try:
+        perfil = user.profile
+    except Exception:
+        return Response({'error': 'Perfil no encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    dolor_hoy      = (checkin.dolor_hoy or '') if checkin else ''
+    exercise_pool, _ = _get_exercise_pool(user, loc, dolor_hoy=dolor_hoy)
+    adaptation_context = _build_adaptation_context(user)
+    estado_mesociclo   = _calcular_estado_mesociclo(user)
+
+    hoy = date.today()
+    competicion = user.competitions.filter(
+        fecha__gte=hoy,
+        fecha__lte=hoy + timedelta(days=14),
+    ).order_by('fecha').first()
+
+    sesiones_recientes = user.sessions.filter(created_at__date__gte=hoy - timedelta(days=14))
+    fatiga = calcular_fatiga(sesiones_recientes)
+
+    ctx = {
+        'nombre':               perfil.nombre,
+        'objetivo':             perfil.objetivo or 'salud general',
+        'nivel':                perfil.nivel,
+        'lesiones':             perfil.lesiones,
+        'experiencia_deportiva': perfil.experiencia_deportiva,
+        'edad':                 perfil.edad,
+        'sexo':                 perfil.sexo,
+        'peso':                 perfil.peso,
+        'altura':               perfil.altura,
+        'dias_semana':          perfil.dias_semana,
+        'horario_preferido':    perfil.horario_preferido,
+        'nivel_estres':         perfil.nivel_estres,
+        'tipo_trabajo':         perfil.tipo_trabajo,
+        'estilo_entrenamiento': perfil.estilo_entrenamiento,
+        'ejercicios_favoritos': perfil.ejercicios_favoritos,
+        'ejercicios_evitar':    perfil.ejercicios_evitar,
+        'rm_sentadilla':        perfil.rm_sentadilla,
+        'rm_peso_muerto':       perfil.rm_peso_muerto,
+        'rm_press_banca':       perfil.rm_press_banca,
+        'rm_press_hombro':      perfil.rm_press_hombro,
+        'estado_animo':         checkin.estado_animo if checkin else 3,
+        'calidad_sueno':        checkin.calidad_sueno if checkin else 7,
+        'hrv':                  checkin.hrv if checkin else None,
+        'notas':                checkin.notas if checkin else None,
+        'fatiga':               fatiga,
+        'rpe_target':           nuevo_rpe,
+        'duracion':             nueva_duracion,
+        'ubicacion_nombre':     loc.nombre,
+        'ubicacion_tipo':       loc.tipo,
+        'implementos':          loc.implementos or [],
+        'competicion_nombre':   competicion.nombre if competicion else None,
+        'competicion_fecha':    str(competicion.fecha) if competicion else None,
+        'fases_ciclo':          None,
+        'dolor_hoy':            dolor_hoy,
+        'foco_entrenamiento':   (checkin.foco_entrenamiento or []) if checkin else [],
+        'exercise_pool':        exercise_pool,
+        'adaptation_context':   adaptation_context,
+        'estado_mesociclo':     estado_mesociclo,
+    }
+
+    prompt = build_prompt(ctx)
+
+    try:
+        sesion_generada = _call_groq(prompt, max_tokens=2048)
+    except json.JSONDecodeError:
+        logger.exception('Groq invalid JSON in ajustar for user %s', user.id)
+        return Response(
+            {'error': 'La IA devolvió una respuesta inválida. Intenta de nuevo.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    except Exception:
+        logger.exception('Ajustar sesion failed for user %s', user.id)
+        return Response(
+            {'error': 'Servicio de IA no disponible. Intenta de nuevo.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    if not isinstance(sesion_generada, dict) or 'fases' not in sesion_generada:
+        return Response(
+            {'error': 'La IA devolvió una respuesta incompleta. Intenta de nuevo.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    with transaction.atomic():
+        session.respuesta_ia        = sesion_generada
+        session.duracion_planificada = nueva_duracion
+        session.rpe_target           = nuevo_rpe
+        session.sustituciones        = None
+        session.decisiones           = None
+        session.evidencia            = None
+        session.save(update_fields=[
+            'respuesta_ia', 'duracion_planificada', 'rpe_target',
+            'sustituciones', 'decisiones', 'evidencia',
+        ])
+        session.exercises.all().delete()
+        _persist_session_exercises(session, sesion_generada)
+
+    return Response({'sesion': sesion_generada})
 
 
 # ─── Ejercicio demo ───────────────────────────────────────────────────────────
