@@ -27,11 +27,14 @@ admin.site.index_title = 'Panel de administración'
 
 
 from pyfit.admin_metrics import zyfit_metrics_view
+from pyfit.admin_security import otp_verify_view
 
 urlpatterns = [
     path('api/health/', health),
-    # Metrics view registered BEFORE admin.site.urls so it lives at
-    # /<ADMIN_URL_PATH>/metrics/ and renders inside the admin chrome.
+    # Vista de verificación 2FA — debe ir ANTES de admin.site.urls para que
+    # el middleware pueda redirigir aquí sin caer en la barrera de OTP.
+    path(ADMIN_URL_PATH + 'otp-verify/', otp_verify_view, name='zyfit_otp_verify'),
+    # Métricas también van antes para vivir dentro del prefijo del admin.
     path(ADMIN_URL_PATH + 'metrics/', zyfit_metrics_view, name='zyfit_metrics'),
     path(ADMIN_URL_PATH, admin.site.urls),
 

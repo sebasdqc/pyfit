@@ -25,16 +25,24 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()] or ['*']
 
 INSTALLED_APPS = [
     # django-unfold replaces the default admin look — must be listed BEFORE
-    # `django.contrib.admin` so its templates win.
+    # the admin app so its templates win.
     'unfold',
     'unfold.contrib.filters',
     'unfold.contrib.forms',
-    'django.contrib.admin',
+    # Reemplaza el admin por defecto con nuestro ZyfitAdminSite (que exige 2FA
+    # cuando el staff tiene dispositivo TOTP confirmado).
+    'pyfit.admin_app.ZyfitAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # 2FA (django-otp): núcleo + TOTP + static tokens de respaldo.
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    # Audit log de cambios sobre modelos críticos.
+    'auditlog',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -53,6 +61,14 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Inyecta `is_verified()` en el request.user para que el admin pueda decidir.
+    # Debe ir después de AuthenticationMiddleware.
+    'django_otp.middleware.OTPMiddleware',
+    # Forza 2FA en URLs del admin cuando el usuario tiene dispositivo confirmado.
+    # Debe ir DESPUÉS de OTPMiddleware.
+    'pyfit.admin_security.OTPRequiredForAdminMiddleware',
+    # Asocia cada operación de log con el usuario y la IP del request actual.
+    'auditlog.middleware.AuditlogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -150,9 +166,23 @@ if CORS_ALLOW_ALL_ORIGINS and not DEBUG:
 # When deployed behind a TLS terminator (DigitalOcean), trust the X-Forwarded-Proto
 # header so Django generates https URLs for password-reset emails, etc.
 if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER     = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE       = True
+    CSRF_COOKIE_SECURE          = True
+    # Cualquier petición HTTP es redirigida a HTTPS (DO no lo hace por nosotros
+    # a nivel de ingress; el ALB sólo termina TLS).
+    SECURE_SSL_REDIRECT         = True
+    # HSTS — el navegador recordará que este dominio es solo-HTTPS durante 1 año.
+    # No habilitamos preload por ahora; activar tras verificar que NUNCA volvemos
+    # a servir HTTP plano en ningún subdominio del producto.
+    SECURE_HSTS_SECONDS         = 31_536_000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD         = False
+    # Hardening adicional sin coste.
+    SECURE_REFERRER_POLICY      = 'same-origin'
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER   = True
+    X_FRAME_OPTIONS             = 'DENY'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
@@ -164,6 +194,15 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# ─── django-otp ───────────────────────────────────────────────────────────────
+# El nombre que aparece en Authenticator/Authy junto a la cuenta.
+OTP_TOTP_ISSUER = 'Zyfit Control'
+
+# ─── django-auditlog ──────────────────────────────────────────────────────────
+# Capturar la IP detrás del proxy de DigitalOcean.
+AUDITLOG_CID_HEADER = 'X-Request-ID'
+AUDITLOG_DISABLE_REMOTE_ADDR = False
 
 # ─── django-unfold (Zyfit admin theme) ────────────────────────────────────────
 # Branding + navegación. La paleta de `primary` es la del producto (#4f8cff).
@@ -238,6 +277,15 @@ UNFOLD = {
                 'items': [
                     {'title': 'Bandeja',       'icon': 'notifications',  'link': 'admin:users_notification_changelist'},
                     {'title': 'Preferencias',  'icon': 'tune',           'link': 'admin:users_notificationpreference_changelist'},
+                ],
+            },
+            {
+                'title':     'Seguridad',
+                'separator': True,
+                'items': [
+                    {'title': 'Audit log',     'icon': 'history',        'link': 'admin:auditlog_logentry_changelist'},
+                    {'title': 'TOTP devices',  'icon': 'phonelink_lock', 'link': 'admin:otp_totp_totpdevice_changelist'},
+                    {'title': 'Backup tokens', 'icon': 'vpn_key',        'link': 'admin:otp_static_staticdevice_changelist'},
                 ],
             },
         ],

@@ -1,0 +1,54 @@
+{% extends 'unfold/layouts/unauthenticated.html' %}
+{% load i18n %}
+
+{% block title %}Verificación 2FA | Zyfit Control{% endblock %}
+
+{% block content %}
+  <div style="text-align: center; margin-bottom: 24px;">
+    <div style="font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 2px; color: rgb(156 163 175); text-transform: uppercase;">
+      Zyfit Control
+    </div>
+    <h1 style="font-size: 22px; margin: 8px 0 6px; color: rgb(248 250 252);">Verificación 2FA</h1>
+    <p style="color: rgb(156 163 175); font-size: 13px; margin: 0;">
+      Estás autenticado como <strong style="color: rgb(248 250 252);">{{ user_email }}</strong>.
+      Ingresa el código de tu app autenticadora para continuar.
+    </p>
+  </div>
+
+  {% if error %}
+    <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px;">
+      <span style="color: rgb(252 165 165); font-size: 13px;">{{ error }}</span>
+    </div>
+  {% endif %}
+
+  <form method="post" id="otp-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div style="margin-bottom: 16px;">
+      <label for="id_token" style="display:block; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: rgb(156 163 175); margin-bottom: 8px;">
+        Código de 6 dígitos
+      </label>
+      <input
+        type="text"
+        name="token"
+        id="id_token"
+        autocomplete="one-time-code"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        placeholder="000000"
+        autofocus
+        required
+        style="width: 100%; padding: 14px 16px; font-size: 22px; letter-spacing: 8px; text-align: center; background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; color: rgb(248 250 252); font-family: ui-monospace, monospace;"
+      >
+    </div>
+
+    <button type="submit" style="width: 100%; padding: 12px 16px; background: rgb(79 140 255); border: none; border-radius: 12px; color: white; font-size: 14px; font-weight: 600; cursor: pointer;">
+      Verificar y entrar
+    </button>
+  </form>
+
+  <p style="margin-top: 18px; font-size: 12px; color: rgb(107 114 128); text-align: center;">
+    También aceptamos códigos de respaldo (8 dígitos) si los configuraste.
+  </p>
+{% endblock %}
