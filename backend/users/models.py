@@ -3,6 +3,7 @@ import string
 from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -32,19 +33,39 @@ class Profile(models.Model):
     experiencia_deportiva = models.TextField(blank=True)
     estilo_entrenamiento = models.CharField(max_length=100, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
-    peso = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
-    altura = models.IntegerField(null=True, blank=True)
+    peso = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(30), MaxValueValidator(300)],
+    )
+    altura = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(100), MaxValueValidator(250)],
+    )
     sexo = models.CharField(max_length=20, choices=SEXO_CHOICES, blank=True)
-    dias_semana = models.IntegerField(default=3)
+    dias_semana = models.IntegerField(
+        default=3, validators=[MinValueValidator(1), MaxValueValidator(7)],
+    )
     horario_preferido = models.CharField(max_length=40, blank=True)
     nivel_estres = models.CharField(max_length=20, choices=ESTRES_CHOICES, blank=True)
     tipo_trabajo = models.CharField(max_length=20, choices=TRABAJO_CHOICES, blank=True)
     ejercicios_favoritos = models.TextField(blank=True)
     ejercicios_evitar = models.TextField(blank=True)
-    rm_sentadilla = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
-    rm_peso_muerto = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
-    rm_press_banca = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
-    rm_press_hombro = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
+    rm_sentadilla = models.DecimalField(
+        max_digits=6, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+    )
+    rm_peso_muerto = models.DecimalField(
+        max_digits=6, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+    )
+    rm_press_banca = models.DecimalField(
+        max_digits=6, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+    )
+    rm_press_hombro = models.DecimalField(
+        max_digits=6, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+    )
     usa_ciclo_menstrual = models.BooleanField(default=False)
 
     # Onboarding extended fields
@@ -54,8 +75,14 @@ class Profile(models.Model):
     motivo_limitacion = models.TextField(blank=True)
     lugares_entrenamiento = models.JSONField(default=list, blank=True)
     implementos_perfil = models.JSONField(default=list, blank=True)
-    duracion_disponible = models.IntegerField(null=True, blank=True)
-    duracion_minima = models.IntegerField(null=True, blank=True)
+    duracion_disponible = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(10), MaxValueValidator(300)],
+    )
+    duracion_minima = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(5), MaxValueValidator(120)],
+    )
     objetivo_secundario = models.CharField(max_length=200, blank=True)
     horizonte_temporal = models.CharField(max_length=50, blank=True)
     motivacion = models.TextField(blank=True)

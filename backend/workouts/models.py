@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 
 
 class Exercise(models.Model):
@@ -128,9 +129,16 @@ class SessionExercise(models.Model):
 
 class SessionFeedback(models.Model):
     session = models.OneToOneField(Session, on_delete=models.CASCADE, related_name='feedback')
-    rpe_real = models.DecimalField(max_digits=3, decimal_places=1)
-    cumplimiento = models.IntegerField()
-    rating = models.IntegerField()
+    rpe_real = models.DecimalField(
+        max_digits=3, decimal_places=1,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+    )
+    cumplimiento = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
