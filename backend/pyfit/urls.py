@@ -66,6 +66,7 @@ urlpatterns = [
     # Notifications
     path('api/notificaciones/',              user_views.notifications_list),
     path('api/notificaciones/<int:pk>/leer/', user_views.notification_leer),
+    path('api/notificaciones/preferencias/', user_views.notification_prefs_view),
 
     # Competitions
     path('api/competitions/', workout_views.competitions),

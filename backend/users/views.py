@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle
-from .models import Profile, UserLocation, UserInjury, PasswordResetCode, Notification
+from .models import Profile, UserLocation, UserInjury, PasswordResetCode, Notification, NotificationPreference
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -180,11 +180,13 @@ def _check_logros(profile):
             nuevos.append({'id': logro['id'], 'label': logro['label'], 'icon': logro['icon']})
             changed = True
             try:
-                Notification.objects.create(
-                    user=profile.user,
-                    tipo='logro',
-                    texto=f'¡Desbloqueaste "{logro["icon"]} {logro["label"]}"! Sigue construyendo hábitos.',
-                )
+                prefs = getattr(profile.user, 'notification_prefs', None)
+                if prefs is None or prefs.logro:
+                    Notification.objects.create(
+                        user=profile.user,
+                        tipo='logro',
+                        texto=f'¡Desbloqueaste "{logro["icon"]} {logro["label"]}"! Sigue construyendo hábitos.',
+                    )
             except Exception:
                 pass
     if changed:
@@ -257,45 +259,55 @@ def location_detail_view(request, pk):
 
 # ─── Notification helpers ─────────────────────────────────────────────────────
 
+def _get_notif_prefs(user):
+    try:
+        return user.notification_prefs
+    except NotificationPreference.DoesNotExist:
+        return None
+
+
 def _maybe_generate_notifications(user):
     from datetime import date, timedelta
     from django.utils import timezone
 
-    hoy     = date.today()
-    ahora   = timezone.now()
+    hoy   = date.today()
+    ahora = timezone.now()
+    prefs = _get_notif_prefs(user)
 
     # Reencuentro — last session ≥ 5 days ago, no reencuentro in last 5 days
-    ultima = user.sessions.order_by('-fecha').values('fecha').first()
-    if ultima:
-        dias = (hoy - ultima['fecha']).days
-        if dias >= 5:
-            ya_existe = user.notifications.filter(
-                tipo='reencuentro',
-                created_at__gte=ahora - timedelta(days=5),
-            ).exists()
-            if not ya_existe:
-                try:
-                    nombre = user.profile.nombre or 'atleta'
-                except Exception:
-                    nombre = 'atleta'
-                Notification.objects.create(
-                    user=user,
+    if prefs is None or prefs.reencuentro:
+        ultima = user.sessions.order_by('-fecha').values('fecha').first()
+        if ultima:
+            dias = (hoy - ultima['fecha']).days
+            if dias >= 5:
+                ya_existe = user.notifications.filter(
                     tipo='reencuentro',
-                    texto=(
-                        f'Han pasado {dias} días desde tu último entrenamiento, {nombre}. '
-                        'Tu cuerpo agradece la consistencia.'
-                    ),
-                )
+                    created_at__gte=ahora - timedelta(days=5),
+                ).exists()
+                if not ya_existe:
+                    try:
+                        nombre = user.profile.nombre or 'atleta'
+                    except Exception:
+                        nombre = 'atleta'
+                    Notification.objects.create(
+                        user=user,
+                        tipo='reencuentro',
+                        texto=(
+                            f'Han pasado {dias} días desde tu último entrenamiento, {nombre}. '
+                            'Tu cuerpo agradece la consistencia.'
+                        ),
+                    )
 
     # Insight semanal — ≥ 2 sesiones en los últimos 7 días, no insight en los últimos 7
-    sesiones_semana = user.sessions.filter(fecha__gte=hoy - timedelta(days=7)).count()
-    if sesiones_semana >= 2:
-        ya_existe = user.notifications.filter(
-            tipo='insight',
-            created_at__gte=ahora - timedelta(days=7),
-        ).exists()
-        if not ya_existe:
-            _crear_insight_notification(user, sesiones_semana)
+    if prefs is None or prefs.insight:
+        sesiones_semana = user.sessions.filter(fecha__gte=hoy - timedelta(days=7)).count()
+        if sesiones_semana >= 2:
+            ya_existe = user.notifications.filter(
+                tipo='insight',
+                created_at__gte=ahora - timedelta(days=7),
+            ).exists()
+            if not ya_existe:
+                _crear_insight_notification(user, sesiones_semana)
 
 
 def _crear_insight_notification(user, sesiones_semana):
@@ -357,3 +369,42 @@ def notification_leer(request, pk):
     notif.leida = True
     notif.save(update_fields=['leida'])
     return Response({'ok': True})
+
+
+# ─── Notification preferences ─────────────────────────────────────────────────
+
+VALID_TIPOS = {'invitacion', 'insight', 'alerta', 'logro', 'reencuentro'}
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def notification_prefs_view(request):
+    prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+
+    if request.method == 'GET':
+        return Response({
+            'invitacion':  prefs.invitacion,
+            'insight':     prefs.insight,
+            'alerta':      prefs.alerta,
+            'logro':       prefs.logro,
+            'reencuentro': prefs.reencuentro,
+        })
+
+    # PATCH — update only the supplied fields
+    fields_to_save = []
+    for tipo in VALID_TIPOS:
+        if tipo in request.data:
+            valor = bool(request.data[tipo])
+            setattr(prefs, tipo, valor)
+            fields_to_save.append(tipo)
+
+    if fields_to_save:
+        prefs.save(update_fields=fields_to_save)
+
+    return Response({
+        'invitacion':  prefs.invitacion,
+        'insight':     prefs.insight,
+        'alerta':      prefs.alerta,
+        'logro':       prefs.logro,
+        'reencuentro': prefs.reencuentro,
+    })

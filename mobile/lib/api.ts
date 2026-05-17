@@ -109,6 +109,10 @@ export function apiPut(path: string, body: unknown): Promise<any> {
   return request('PUT', path, body)
 }
 
+export function apiPatch(path: string, body: unknown): Promise<any> {
+  return request('PATCH', path, body)
+}
+
 export function apiDelete(path: string): Promise<null> {
   return request('DELETE', path)
 }

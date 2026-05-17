@@ -165,6 +165,21 @@ class Notification(models.Model):
         return f'{self.user} — {self.tipo}'
 
 
+class NotificationPreference(models.Model):
+    user        = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notification_prefs')
+    invitacion  = models.BooleanField(default=True)
+    insight     = models.BooleanField(default=True)
+    alerta      = models.BooleanField(default=True)
+    logro       = models.BooleanField(default=True)
+    reencuentro = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'notification_preferences'
+
+    def is_enabled(self, tipo: str) -> bool:
+        return bool(getattr(self, tipo, True))
+
+
 class PasswordResetCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
     code = models.CharField(max_length=6)

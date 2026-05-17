@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
   StyleSheet,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -12,7 +13,7 @@ import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
-import { apiGet, apiPost } from '../../../lib/api'
+import { apiGet, apiPost, apiPatch } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,14 @@ interface Notificacion {
   texto:     string
   leida:     boolean
   timestamp: string
+}
+
+interface NotifPrefs {
+  invitacion:  boolean
+  insight:     boolean
+  alerta:      boolean
+  logro:       boolean
+  reencuentro: boolean
 }
 
 // ─── Type metadata ────────────────────────────────────────────────────────────
@@ -161,6 +170,150 @@ const cSt = StyleSheet.create({
   },
 })
 
+// ─── Config types ─────────────────────────────────────────────────────────────
+
+const TIPOS_CONFIG: Array<{ tipo: keyof NotifPrefs; nombre: string; descripcion: string }> = [
+  { tipo: 'invitacion',  nombre: 'Invitación a entrenar',    descripcion: 'Aviso personalizado cuando es tu día de sesión' },
+  { tipo: 'insight',     nombre: 'Insight semanal',           descripcion: 'Un análisis real de tu progreso cada semana' },
+  { tipo: 'alerta',      nombre: 'Alertas de patrón',         descripcion: 'Fatiga acumulada, lesiones emergentes, descanso' },
+  { tipo: 'logro',       nombre: 'Logros desbloqueados',      descripcion: 'Hitos reales basados en tu progreso específico' },
+  { tipo: 'reencuentro', nombre: 'Mensajes de reencuentro',   descripcion: 'Cuando llevas días sin abrir la app, sin presión' },
+]
+
+// ─── Toggle Switch ────────────────────────────────────────────────────────────
+
+function ToggleSwitch({ value, onToggle }: { value: boolean; onToggle: () => void }) {
+  const anim = useRef(new Animated.Value(value ? 1 : 0)).current
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue:         value ? 1 : 0,
+      duration:        200,
+      useNativeDriver: false,
+    }).start()
+  }, [value])
+
+  const trackColor = anim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: ['rgba(255,255,255,0.12)', '#4f8cff'],
+  })
+  const thumbX = anim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [2, 20],
+  })
+
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.8}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Animated.View style={[tgSt.track, { backgroundColor: trackColor }]}>
+        <Animated.View style={[tgSt.thumb, { transform: [{ translateX: thumbX }] }]} />
+      </Animated.View>
+    </TouchableOpacity>
+  )
+}
+
+const tgSt = StyleSheet.create({
+  track: {
+    width:          44,
+    height:         26,
+    borderRadius:   13,
+    justifyContent: 'center',
+  },
+  thumb: {
+    width:        22,
+    height:       22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
+    shadowColor:  '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius:  2,
+    elevation:     2,
+  },
+})
+
+// ─── Preferencia Row ──────────────────────────────────────────────────────────
+
+function PreferenciaRow({
+  tipo,
+  nombre,
+  descripcion,
+  value,
+  onToggle,
+  showSep,
+}: {
+  tipo:        keyof NotifPrefs
+  nombre:      string
+  descripcion: string
+  value:       boolean
+  onToggle:    () => void
+  showSep:     boolean
+}) {
+  const meta = TIPO_META[tipo] ?? FALLBACK_META
+  return (
+    <>
+      <TouchableOpacity style={prSt.row} onPress={onToggle} activeOpacity={0.7}>
+        {/* Left: icon + text */}
+        <View style={[prSt.iconWrap, { backgroundColor: meta.bg }]}>
+          <Text style={prSt.iconEmoji}>{meta.icon}</Text>
+        </View>
+        <View style={prSt.textWrap}>
+          <Text style={prSt.nombre}>{nombre}</Text>
+          <Text style={prSt.desc}>{descripcion}</Text>
+        </View>
+        {/* Right: toggle */}
+        <ToggleSwitch value={value} onToggle={onToggle} />
+      </TouchableOpacity>
+      {showSep && <View style={prSt.sep} />}
+    </>
+  )
+}
+
+const prSt = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    paddingVertical:   14,
+    paddingHorizontal: 16,
+    gap:               12,
+  },
+  iconWrap: {
+    width:          40,
+    height:         40,
+    borderRadius:   12,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  iconEmoji: {
+    fontSize: 18,
+  },
+  textWrap: {
+    flex: 1,
+    gap:   3,
+  },
+  nombre: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize:   14,
+    color:      'rgba(255,255,255,0.9)',
+    lineHeight: 19,
+  },
+  desc: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize:   12,
+    color:      'rgba(255,255,255,0.38)',
+    lineHeight: 16,
+  },
+  sep: {
+    height:           1,
+    backgroundColor:  'rgba(255,255,255,0.07)',
+    marginHorizontal: 16,
+  },
+})
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ styles }: { styles: ReturnType<typeof makeStyles> }) {
@@ -225,12 +378,51 @@ function NotificacionesTab({
 
 // ─── Configuración Tab ────────────────────────────────────────────────────────
 
-function ConfiguracionTab({ styles }: { styles: ReturnType<typeof makeStyles> }) {
+function ConfiguracionTab({
+  prefs,
+  loading,
+  onToggle,
+  styles,
+}: {
+  prefs:    NotifPrefs | null
+  loading:  boolean
+  onToggle: (tipo: keyof NotifPrefs) => void
+  styles:   ReturnType<typeof makeStyles>
+}) {
+  const defaults: NotifPrefs = { invitacion: true, insight: true, alerta: true, logro: true, reencuentro: true }
+  const p = prefs ?? defaults
+
   return (
-    <View style={styles.tabContent}>
-      <Text style={styles.eyebrow}>PREFERENCIAS</Text>
-      <Text style={styles.tabTitle}>Configura tus alertas</Text>
-    </View>
+    <>
+      <View style={styles.tabContent}>
+        <Text style={styles.eyebrow}>PREFERENCIAS</Text>
+        <Text style={styles.tabTitle}>Configura tus alertas</Text>
+      </View>
+
+      {/* Types card */}
+      <View style={styles.configSection}>
+        <Text style={styles.configSectionLabel}>TIPOS DE NOTIFICACIÓN</Text>
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color="#4f8cff" />
+          </View>
+        ) : (
+          <View style={styles.configCard}>
+            {TIPOS_CONFIG.map((item, i) => (
+              <PreferenciaRow
+                key={item.tipo}
+                tipo={item.tipo}
+                nombre={item.nombre}
+                descripcion={item.descripcion}
+                value={p[item.tipo]}
+                onToggle={() => onToggle(item.tipo)}
+                showSep={i < TIPOS_CONFIG.length - 1}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    </>
   )
 }
 
@@ -244,12 +436,18 @@ export default function NotificacionesScreen() {
   const [activeTab,       setActiveTab]       = useState<Tab>('notificaciones')
   const [notificaciones,  setNotificaciones]  = useState<Notificacion[]>([])
   const [loading,         setLoading]         = useState(true)
+  const [prefs,           setPrefs]           = useState<NotifPrefs | null>(null)
+  const [prefsLoading,    setPrefsLoading]    = useState(true)
 
   useEffect(() => {
     apiGet('/api/notificaciones/')
       .then(setNotificaciones)
       .catch(() => {})
       .finally(() => setLoading(false))
+    apiGet('/api/notificaciones/preferencias/')
+      .then(setPrefs)
+      .catch(() => {})
+      .finally(() => setPrefsLoading(false))
   }, [])
 
   const unreadCount = notificaciones.filter(n => !n.leida).length
@@ -257,6 +455,15 @@ export default function NotificacionesScreen() {
   const handleMarkRead = useCallback((id: number) => {
     setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
     apiPost(`/api/notificaciones/${id}/leer/`, {}).catch(() => {})
+  }, [])
+
+  const handleTogglePref = useCallback((tipo: keyof NotifPrefs) => {
+    setPrefs(prev => {
+      const current = prev ?? { invitacion: true, insight: true, alerta: true, logro: true, reencuentro: true }
+      const next = { ...current, [tipo]: !current[tipo] }
+      apiPatch('/api/notificaciones/preferencias/', { [tipo]: next[tipo] }).catch(() => {})
+      return next
+    })
   }, [])
 
   return (
