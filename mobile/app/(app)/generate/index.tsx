@@ -82,7 +82,7 @@ function animoChip(v: number): Chip | null {
 }
 
 function tiempoChip(v: number): Chip {
-  return { icon: '⏱', label: `${v} min`, color: 'rgba(255,255,255,0.55)' }
+  return { icon: '⏱', label: `${v} min`, color: '#8899aa' }
 }
 
 function intencionChip(foco: string[]): Chip | null {
@@ -160,6 +160,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 // ─── Loading Screen ───────────────────────────────────────────────────────────
 
 function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => void }) {
+  const { colors } = useTheme()
   const [step, setStep] = useState(0)
   const stepRef    = useRef(-1)
   const apiDoneRef = useRef(apiDone)
@@ -237,9 +238,9 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
   }, [apiDone, goToStep])
 
   return (
-    <Animated.View style={[loadStyles.root, { opacity: screenOpacity }]}>
+    <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, { opacity: screenOpacity }]}>
       {/* Progress ring */}
-      <View style={loadStyles.ringWrap}>
+      <View style={{ transform: [{ rotate: '-90deg' }], marginBottom: 44 }}>
         <Svg width={RING_SIZE} height={RING_SIZE}>
           <Circle
             cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_R}
@@ -260,22 +261,28 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
       </View>
 
       {/* Step text */}
-      <Animated.View style={[loadStyles.textWrap, { opacity: textOpacity }]}>
-        <Text style={loadStyles.title}>{LOAD_STEPS[step].title}</Text>
-        <Text style={loadStyles.subtitle}>{LOAD_STEPS[step].subtitle}</Text>
+      <Animated.View style={[{ alignItems: 'center', paddingHorizontal: 40 }, { opacity: textOpacity }]}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: colors.inkPrimary, letterSpacing: -0.3, marginBottom: 8, textAlign: 'center' }}>
+          {LOAD_STEPS[step].title}
+        </Text>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkMuted, textAlign: 'center', lineHeight: 20 }}>
+          {LOAD_STEPS[step].subtitle}
+        </Text>
       </Animated.View>
 
       {/* Step indicator dots */}
-      <View style={loadStyles.dots}>
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 36, alignItems: 'center' }}>
         {LOAD_STEPS.map((_, i) => (
           <View
             key={i}
-            style={[
-              loadStyles.dot,
-              i === step ? loadStyles.dotActive
-              : i < step  ? loadStyles.dotDone
-              :               loadStyles.dotFuture,
-            ]}
+            style={{
+              height: 6,
+              borderRadius: 3,
+              width:           i === step ? 20 : 6,
+              backgroundColor: i === step ? colors.accent
+                             : i < step  ? colors.accent + '70'
+                             :               colors.borderDefault,
+            }}
           />
         ))}
       </View>
@@ -283,196 +290,53 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
   )
 }
 
-const loadStyles = StyleSheet.create({
-  root: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems:     'center',
-  },
-  ringWrap: {
-    transform:    [{ rotate: '-90deg' }],
-    marginBottom: 44,
-  },
-  textWrap: {
-    alignItems:       'center',
-    paddingHorizontal: 40,
-  },
-  title: {
-    fontFamily:   'SpaceGrotesk-Bold',
-    fontSize:     20,
-    color:        '#e8efff',
-    letterSpacing: -0.3,
-    marginBottom:  8,
-    textAlign:    'center',
-  },
-  subtitle: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      'rgba(255,255,255,0.45)',
-    textAlign:  'center',
-    lineHeight: 20,
-  },
-  dots: {
-    flexDirection: 'row',
-    gap:           6,
-    marginTop:     36,
-    alignItems:    'center',
-  },
-  dot: {
-    height:       6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    width:           20,
-    backgroundColor: '#4f8cff',
-  },
-  dotDone: {
-    width:           6,
-    backgroundColor: 'rgba(79,140,255,0.45)',
-  },
-  dotFuture: {
-    width:           6,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-})
-
 // ─── Justification Card ───────────────────────────────────────────────────────
 
 function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; loading: boolean }) {
+  const { colors } = useTheme()
   if (!loading && !resumen) return null
 
   return (
-    <View style={jStyles.card}>
-      <View style={jStyles.tag}>
-        <Text style={jStyles.tagText}>✦  POR QUÉ ESTA RUTINA</Text>
+    <View style={{ borderLeftWidth: 3, borderLeftColor: '#4f8cff', borderWidth: 1, borderColor: colors.borderDefault, backgroundColor: 'rgba(79,140,255,0.05)', borderRadius: 16, padding: 16, marginBottom: 12 }}>
+      <View style={{ marginBottom: 12 }}>
+        <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.accentLight, letterSpacing: 1.8, textTransform: 'uppercase' }}>✦  POR QUÉ ESTA RUTINA</Text>
       </View>
 
       {loading && !resumen ? (
-        <View style={jStyles.skeletons}>
-          <View style={[jStyles.skel, { width: '100%' }]} />
-          <View style={[jStyles.skel, { width: '88%' }]} />
-          <View style={[jStyles.skel, { width: '94%' }]} />
-          <View style={jStyles.divider} />
-          <View style={[jStyles.skel, { width: '80%' }]} />
-          <View style={[jStyles.skel, { width: '55%', marginTop: 4 }]} />
+        <View style={{ gap: 8 }}>
+          {(['100%', '88%', '94%'] as const).map((w, i) => (
+            <View key={i} style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: w }} />
+          ))}
+          <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
+          <View style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: '80%' }} />
+          <View style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: '55%', marginTop: 4 }} />
         </View>
       ) : resumen ? (
         <>
-          <Text style={jStyles.parrafo}>{toParrafo(resumen.decisiones)}</Text>
-          <View style={jStyles.divider} />
-          <Text style={jStyles.evidenciaText}>{resumen.evidencia.text}</Text>
-          <Text style={jStyles.evidenciaRef}>{resumen.evidencia.reference}</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkSecondary, lineHeight: 23 }}>{toParrafo(resumen.decisiones)}</Text>
+          <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
+          <Text style={{ fontFamily: 'InstrumentSerif-Italic', fontSize: 13, color: colors.inkMuted, lineHeight: 20, marginBottom: 6 }}>{resumen.evidencia.text}</Text>
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkFaint, letterSpacing: 0.5 }}>{resumen.evidencia.reference}</Text>
         </>
       ) : null}
     </View>
   )
 }
 
-const jStyles = StyleSheet.create({
-  card: {
-    borderLeftWidth:  3,
-    borderLeftColor:  '#4f8cff',
-    borderWidth:      1,
-    borderColor:      'rgba(255,255,255,0.07)',
-    backgroundColor:  'rgba(79,140,255,0.05)',
-    borderRadius:     16,
-    padding:          16,
-    marginBottom:     12,
-  },
-  tag: {
-    marginBottom: 12,
-  },
-  tagText: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:       9,
-    color:         '#7ab6ff',
-    letterSpacing:  1.8,
-    textTransform: 'uppercase',
-  },
-  parrafo: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      'rgba(255,255,255,0.78)',
-    lineHeight: 23,
-  },
-  divider: {
-    height:          1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginVertical:  14,
-  },
-  evidenciaText: {
-    fontFamily:   'InstrumentSerif-Italic',
-    fontSize:     13,
-    color:        'rgba(255,255,255,0.48)',
-    lineHeight:   20,
-    marginBottom:  6,
-  },
-  evidenciaRef: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:      10,
-    color:         'rgba(255,255,255,0.28)',
-    letterSpacing:  0.5,
-  },
-  skeletons: {
-    gap: 8,
-  },
-  skel: {
-    height:          12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius:     4,
-  },
-})
-
 // ─── Param Card ───────────────────────────────────────────────────────────────
 
 function ParamCard({ value, unit, label }: { value: string; unit: string; label: string }) {
+  const { colors } = useTheme()
   return (
-    <View style={pStyles.card}>
-      <View style={pStyles.valueRow}>
-        <Text style={pStyles.value}>{value}</Text>
-        <Text style={pStyles.unit}>{unit}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 16, padding: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: colors.inkPrimary, letterSpacing: -0.5, lineHeight: 34 }}>{value}</Text>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: colors.inkMuted, lineHeight: 18 }}>{unit}</Text>
       </View>
-      <Text style={pStyles.label}>{label}</Text>
+      <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 1.5 }}>{label}</Text>
     </View>
   )
 }
-
-const pStyles = StyleSheet.create({
-  card: {
-    flex:            1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth:     1,
-    borderColor:     'rgba(255,255,255,0.08)',
-    borderRadius:    16,
-    padding:         16,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems:    'baseline',
-    gap:           4,
-    marginBottom:  8,
-  },
-  value: {
-    fontFamily:    'SpaceGrotesk-Bold',
-    fontSize:      30,
-    color:         '#e8efff',
-    letterSpacing: -0.5,
-    lineHeight:    34,
-  },
-  unit: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   13,
-    color:      'rgba(255,255,255,0.4)',
-    lineHeight: 18,
-  },
-  label: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:       9,
-    color:         'rgba(255,255,255,0.35)',
-    textTransform: 'uppercase',
-    letterSpacing:  1.5,
-  },
-})
 
 // ─── Stats Chip ───────────────────────────────────────────────────────────────
 
@@ -514,26 +378,27 @@ function EjercicioRow({
   isModified:  boolean
   onSustituir?: () => void
 }) {
+  const { colors } = useTheme()
   return (
-    <View style={rowSt.row}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
       {/* Left: name + modified badge */}
-      <View style={rowSt.left}>
-        <Text style={rowSt.nombre} numberOfLines={2}>{ejercicio.nombre}</Text>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: colors.inkPrimary, lineHeight: 20 }} numberOfLines={2}>{ejercicio.nombre}</Text>
         {isModified && (
-          <View style={rowSt.modBadge}>
-            <Text style={rowSt.modText}>Modificado</Text>
+          <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: 'rgba(79,140,255,0.35)', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 }}>
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.accentLight, letterSpacing: 0.5, textTransform: 'uppercase' }}>Modificado</Text>
           </View>
         )}
       </View>
 
       {/* Center: parameter pills */}
-      <View style={rowSt.pills}>
-        <View style={rowSt.pill}>
-          <Text style={rowSt.pillText}>{ejercicio.series}×{ejercicio.repeticiones}</Text>
+      <View style={{ flexDirection: 'row', gap: 6, flexShrink: 0 }}>
+        <View style={{ backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: colors.inkSecondary }}>{ejercicio.series}×{ejercicio.repeticiones}</Text>
         </View>
         {isPrincipal && ejercicio.rpe_sugerido ? (
-          <View style={[rowSt.pill, rowSt.pillRpe]}>
-            <Text style={[rowSt.pillText, { color: '#7ab6ff' }]}>RPE {ejercicio.rpe_sugerido}</Text>
+          <View style={{ backgroundColor: 'rgba(79,140,255,0.08)', borderWidth: 1, borderColor: 'rgba(79,140,255,0.3)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: colors.accentLight }}>RPE {ejercicio.rpe_sugerido}</Text>
           </View>
         ) : null}
       </View>
@@ -541,11 +406,11 @@ function EjercicioRow({
       {/* Right: reload button (principal only) */}
       {isPrincipal ? (
         <TouchableOpacity
-          style={rowSt.reloadBtn}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           onPress={onSustituir}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={rowSt.reloadIcon}>↻</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: colors.inkMuted, lineHeight: 20 }}>↻</Text>
         </TouchableOpacity>
       ) : (
         <View style={{ width: 36 }} />
@@ -553,80 +418,6 @@ function EjercicioRow({
     </View>
   )
 }
-
-const rowSt = StyleSheet.create({
-  row: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    paddingVertical: 12,
-    gap:             10,
-  },
-  left: {
-    flex: 1,
-    gap:   4,
-  },
-  nombre: {
-    fontFamily: 'SpaceGrotesk-SemiBold',
-    fontSize:   14,
-    color:      '#e8efff',
-    lineHeight: 20,
-  },
-  modBadge: {
-    alignSelf:         'flex-start',
-    backgroundColor:   'rgba(79,140,255,0.15)',
-    borderWidth:       1,
-    borderColor:       'rgba(79,140,255,0.35)',
-    borderRadius:      6,
-    paddingVertical:   2,
-    paddingHorizontal: 7,
-  },
-  modText: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:       9,
-    color:         '#7ab6ff',
-    letterSpacing:  0.5,
-    textTransform: 'uppercase',
-  },
-  pills: {
-    flexDirection: 'row',
-    gap:           6,
-    flexShrink:    0,
-  },
-  pill: {
-    backgroundColor:   'rgba(255,255,255,0.06)',
-    borderWidth:       1,
-    borderColor:       'rgba(255,255,255,0.1)',
-    borderRadius:      8,
-    paddingVertical:   3,
-    paddingHorizontal: 8,
-  },
-  pillRpe: {
-    borderColor:     'rgba(79,140,255,0.3)',
-    backgroundColor: 'rgba(79,140,255,0.08)',
-  },
-  pillText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize:   11,
-    color:      'rgba(255,255,255,0.6)',
-  },
-  reloadBtn: {
-    width:           36,
-    height:          36,
-    borderRadius:    18,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth:     1,
-    borderColor:     'rgba(255,255,255,0.1)',
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
-  },
-  reloadIcon: {
-    fontFamily: 'SpaceGrotesk-Bold',
-    fontSize:   16,
-    color:      'rgba(255,255,255,0.38)',
-    lineHeight: 20,
-  },
-})
 
 // ─── Substitution Modal ───────────────────────────────────────────────────────
 
@@ -645,6 +436,8 @@ function SubstitutionModal({
   onSelect:   (alt: AlternativaEjercicio, motivo: string) => void
   onClose:    () => void
 }) {
+  const { colors } = useTheme()
+  const mSt = useMemo(() => makeMStyles(colors), [colors])
   const [motivo,       setMotivo]       = useState('')
   const [loading,      setLoading]      = useState(false)
   const [alternativas, setAlternativas] = useState<AlternativaEjercicio[] | null>(null)
@@ -781,175 +574,177 @@ function SubstitutionModal({
   )
 }
 
-const mSt = StyleSheet.create({
-  backdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  sheet: {
-    backgroundColor:    '#0d1526',
-    borderTopLeftRadius:  28,
-    borderTopRightRadius: 28,
-    maxHeight:           '82%',
-    borderTopWidth:       1,
-    borderColor:         'rgba(255,255,255,0.1)',
-  },
-  handle: {
-    width:           40,
-    height:           4,
-    borderRadius:     2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf:       'center',
-    marginTop:       12,
-    marginBottom:     4,
-  },
-  sheetContent: {
-    paddingHorizontal: 24,
-    paddingBottom:     40,
-    paddingTop:        16,
-  },
-  sheetTitle: {
-    fontFamily:   'JetBrainsMono-Regular',
-    fontSize:      10,
-    color:        'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom:  6,
-  },
-  sheetEjercicio: {
-    fontFamily:    'SpaceGrotesk-Bold',
-    fontSize:      20,
-    color:         '#e8efff',
-    letterSpacing: -0.4,
-    lineHeight:    26,
-    marginBottom:  24,
-  },
-  sectionLabel: {
-    fontFamily:   'SpaceGrotesk-SemiBold',
-    fontSize:      13,
-    color:        'rgba(255,255,255,0.55)',
-    marginBottom:  12,
-  },
-  motivoRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius:   14,
-    marginBottom:    6,
-    borderWidth:     1,
-    borderColor:    'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  motivoRowSel: {
-    borderColor:     'rgba(79,140,255,0.4)',
-    backgroundColor: 'rgba(79,140,255,0.08)',
-  },
-  radio: {
-    width:        20,
-    height:       20,
-    borderRadius: 10,
-    borderWidth:   2,
-    borderColor:  'rgba(255,255,255,0.25)',
-    alignItems:   'center',
-    justifyContent: 'center',
-    flexShrink:   0,
-  },
-  radioSel: {
-    borderColor: '#4f8cff',
-  },
-  radioDot: {
-    width:           10,
-    height:          10,
-    borderRadius:     5,
-    backgroundColor: '#4f8cff',
-  },
-  motivoLabel: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      'rgba(255,255,255,0.6)',
-    flex:        1,
-  },
-  buscarBtn: {
-    backgroundColor: '#4f8cff',
-    borderRadius:    16,
-    paddingVertical: 15,
-    alignItems:      'center',
-    marginTop:       20,
-  },
-  buscarBtnText: {
-    fontFamily:    'SpaceGrotesk-Bold',
-    fontSize:      15,
-    color:         '#fff',
-    letterSpacing: -0.2,
-  },
-  loadingWrap: {
-    alignItems:    'center',
-    gap:           12,
-    paddingVertical: 32,
-  },
-  loadingText: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      'rgba(255,255,255,0.4)',
-  },
-  errorWrap: {
-    alignItems:    'center',
-    paddingVertical: 24,
-  },
-  errorTxt: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      '#ff6b6b',
-    textAlign:  'center',
-  },
-  retryLink: {
-    fontFamily: 'SpaceGrotesk-SemiBold',
-    fontSize:   14,
-    color:      '#4f8cff',
-  },
-  altTitle: {
-    fontFamily:   'JetBrainsMono-Regular',
-    fontSize:      10,
-    color:        'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom:  12,
-  },
-  altCard: {
-    backgroundColor:   'rgba(255,255,255,0.04)',
-    borderWidth:       1,
-    borderColor:       'rgba(255,255,255,0.1)',
-    borderRadius:      16,
-    padding:           16,
-    marginBottom:      10,
-  },
-  altNombre: {
-    fontFamily:    'SpaceGrotesk-SemiBold',
-    fontSize:      15,
-    color:         '#e8efff',
-    marginBottom:   4,
-    letterSpacing: -0.2,
-  },
-  altParams: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize:   12,
-    color:      'rgba(255,255,255,0.45)',
-    marginBottom: 10,
-  },
-  altDivider: {
-    height:          1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginBottom:    10,
-  },
-  altPorQue: {
-    fontFamily: 'InstrumentSerif-Italic',
-    fontSize:   13,
-    color:      'rgba(255,255,255,0.55)',
-    lineHeight: 19,
-  },
-})
+function makeMStyles(c: Colors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex:            1,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+    },
+    sheet: {
+      backgroundColor:      c.sheetBg,
+      borderTopLeftRadius:  28,
+      borderTopRightRadius: 28,
+      maxHeight:            '82%',
+      borderTopWidth:       1,
+      borderColor:          c.borderDefault,
+    },
+    handle: {
+      width:           40,
+      height:           4,
+      borderRadius:     2,
+      backgroundColor: c.borderBright,
+      alignSelf:       'center',
+      marginTop:       12,
+      marginBottom:     4,
+    },
+    sheetContent: {
+      paddingHorizontal: 24,
+      paddingBottom:     40,
+      paddingTop:        16,
+    },
+    sheetTitle: {
+      fontFamily:   'JetBrainsMono-Regular',
+      fontSize:      10,
+      color:        c.inkMuted,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom:  6,
+    },
+    sheetEjercicio: {
+      fontFamily:    'SpaceGrotesk-Bold',
+      fontSize:      20,
+      color:         c.inkPrimary,
+      letterSpacing: -0.4,
+      lineHeight:    26,
+      marginBottom:  24,
+    },
+    sectionLabel: {
+      fontFamily:   'SpaceGrotesk-SemiBold',
+      fontSize:      13,
+      color:        c.inkSecondary,
+      marginBottom:  12,
+    },
+    motivoRow: {
+      flexDirection:     'row',
+      alignItems:        'center',
+      gap:               12,
+      paddingVertical:   12,
+      paddingHorizontal: 14,
+      borderRadius:      14,
+      marginBottom:       6,
+      borderWidth:        1,
+      borderColor:       c.borderDefault,
+      backgroundColor:   c.cardBg,
+    },
+    motivoRowSel: {
+      borderColor:     'rgba(79,140,255,0.4)',
+      backgroundColor: 'rgba(79,140,255,0.08)',
+    },
+    radio: {
+      width:          20,
+      height:         20,
+      borderRadius:   10,
+      borderWidth:     2,
+      borderColor:    c.borderBright,
+      alignItems:     'center',
+      justifyContent: 'center',
+      flexShrink:     0,
+    },
+    radioSel: {
+      borderColor: '#4f8cff',
+    },
+    radioDot: {
+      width:           10,
+      height:          10,
+      borderRadius:     5,
+      backgroundColor: '#4f8cff',
+    },
+    motivoLabel: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   14,
+      color:      c.inkSecondary,
+      flex:        1,
+    },
+    buscarBtn: {
+      backgroundColor: c.accent,
+      borderRadius:    16,
+      paddingVertical: 15,
+      alignItems:      'center',
+      marginTop:       20,
+    },
+    buscarBtnText: {
+      fontFamily:    'SpaceGrotesk-Bold',
+      fontSize:      15,
+      color:         '#fff',
+      letterSpacing: -0.2,
+    },
+    loadingWrap: {
+      alignItems:     'center',
+      gap:            12,
+      paddingVertical: 32,
+    },
+    loadingText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   14,
+      color:      c.inkMuted,
+    },
+    errorWrap: {
+      alignItems:     'center',
+      paddingVertical: 24,
+    },
+    errorTxt: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   14,
+      color:      '#ff6b6b',
+      textAlign:  'center',
+    },
+    retryLink: {
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize:   14,
+      color:      c.accent,
+    },
+    altTitle: {
+      fontFamily:   'JetBrainsMono-Regular',
+      fontSize:      10,
+      color:        c.inkMuted,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom:  12,
+    },
+    altCard: {
+      backgroundColor: c.cardBg,
+      borderWidth:     1,
+      borderColor:     c.borderDefault,
+      borderRadius:    16,
+      padding:         16,
+      marginBottom:    10,
+    },
+    altNombre: {
+      fontFamily:    'SpaceGrotesk-SemiBold',
+      fontSize:      15,
+      color:         c.inkPrimary,
+      marginBottom:   4,
+      letterSpacing: -0.2,
+    },
+    altParams: {
+      fontFamily:   'JetBrainsMono-Regular',
+      fontSize:     12,
+      color:        c.inkMuted,
+      marginBottom: 10,
+    },
+    altDivider: {
+      height:          1,
+      backgroundColor: c.borderDefault,
+      marginBottom:    10,
+    },
+    altPorQue: {
+      fontFamily: 'InstrumentSerif-Italic',
+      fontSize:   13,
+      color:      c.inkSecondary,
+      lineHeight: 19,
+    },
+  })
+}
 
 // ─── Ajuste Modal ─────────────────────────────────────────────────────────────
 
@@ -966,6 +761,8 @@ function AjusteModal({
   onResult: (sesion: Sesion) => void
   onClose:  () => void
 }) {
+  const { colors } = useTheme()
+  const ajSt = useMemo(() => makeAjStyles(colors), [colors])
   const [duracionDelta, setDuracionDelta] = useState<-15 | 0 | 15>(0)
   const [rpeDelta,      setRpeDelta]      = useState<-1 | 0 | 1>(0)
   const [loading,       setLoading]       = useState(false)
@@ -1100,127 +897,129 @@ function AjusteModal({
   )
 }
 
-const ajSt = StyleSheet.create({
-  sheet: {
-    backgroundColor:      '#0d1526',
-    borderTopLeftRadius:  28,
-    borderTopRightRadius: 28,
-    maxHeight:            '72%',
-    borderTopWidth:       1,
-    borderColor:          'rgba(255,255,255,0.1)',
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingBottom:     40,
-    paddingTop:        16,
-  },
-  eyebrow: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:      10,
-    color:         'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom:  4,
-  },
-  current: {
-    fontFamily:    'SpaceGrotesk-Bold',
-    fontSize:      22,
-    color:         '#e8efff',
-    letterSpacing: -0.4,
-    marginBottom:  28,
-  },
-  sectionLabel: {
-    fontFamily:   'SpaceGrotesk-SemiBold',
-    fontSize:      13,
-    color:        'rgba(255,255,255,0.5)',
-    marginBottom:  10,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap:           10,
-    marginBottom:  20,
-  },
-  optBtn: {
-    flex:            1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth:     1,
-    borderColor:     'rgba(255,255,255,0.1)',
-    borderRadius:    16,
-    paddingVertical: 18,
-    alignItems:      'center',
-    gap:             5,
-  },
-  optBtnSel: {
-    backgroundColor: 'rgba(79,140,255,0.1)',
-    borderColor:     'rgba(79,140,255,0.4)',
-  },
-  optIcon: {
-    fontSize:   22,
-    color:      'rgba(255,255,255,0.35)',
-    fontFamily: 'SpaceGrotesk-Bold',
-    lineHeight: 28,
-  },
-  optIconSel: {
-    color: '#7ab6ff',
-  },
-  optLabel: {
-    fontFamily: 'SpaceGrotesk-SemiBold',
-    fontSize:   13,
-    color:      'rgba(255,255,255,0.5)',
-    textAlign:  'center',
-  },
-  optLabelSel: {
-    color: '#e8efff',
-  },
-  optSub: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:      10,
-    color:         'rgba(255,255,255,0.25)',
-    letterSpacing:  0.5,
-  },
-  optSubSel: {
-    color: '#7ab6ff',
-  },
-  loadingWrap: {
-    alignItems:     'center',
-    justifyContent: 'center',
-    gap:            16,
-    paddingVertical: 52,
-  },
-  loadingText: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   14,
-    color:      'rgba(255,255,255,0.4)',
-    textAlign:  'center',
-    lineHeight: 21,
-  },
-  errorText: {
-    fontFamily:   'SpaceGrotesk-Regular',
-    fontSize:      13,
-    color:        '#ff6b6b',
-    textAlign:    'center',
-    marginBottom:  12,
-  },
-  aplicarBtn: {
-    backgroundColor: '#4f8cff',
-    borderRadius:    16,
-    paddingVertical: 15,
-    alignItems:      'center',
-    marginTop:       4,
-  },
-  aplicarBtnDisabled: {
-    backgroundColor: 'rgba(79,140,255,0.12)',
-  },
-  aplicarBtnText: {
-    fontFamily:    'SpaceGrotesk-Bold',
-    fontSize:      15,
-    color:         '#fff',
-    letterSpacing: -0.2,
-  },
-  aplicarBtnTextDisabled: {
-    color: 'rgba(255,255,255,0.25)',
-  },
-})
+function makeAjStyles(c: Colors) {
+  return StyleSheet.create({
+    sheet: {
+      backgroundColor:      c.sheetBg,
+      borderTopLeftRadius:  28,
+      borderTopRightRadius: 28,
+      maxHeight:            '72%',
+      borderTopWidth:       1,
+      borderColor:          c.borderDefault,
+    },
+    content: {
+      paddingHorizontal: 24,
+      paddingBottom:     40,
+      paddingTop:        16,
+    },
+    eyebrow: {
+      fontFamily:    'JetBrainsMono-Regular',
+      fontSize:      10,
+      color:         c.inkMuted,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom:  4,
+    },
+    current: {
+      fontFamily:    'SpaceGrotesk-Bold',
+      fontSize:      22,
+      color:         c.inkPrimary,
+      letterSpacing: -0.4,
+      marginBottom:  28,
+    },
+    sectionLabel: {
+      fontFamily:   'SpaceGrotesk-SemiBold',
+      fontSize:      13,
+      color:        c.inkSecondary,
+      marginBottom:  10,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      gap:           10,
+      marginBottom:  20,
+    },
+    optBtn: {
+      flex:            1,
+      backgroundColor: c.cardBg,
+      borderWidth:     1,
+      borderColor:     c.borderDefault,
+      borderRadius:    16,
+      paddingVertical: 18,
+      alignItems:      'center',
+      gap:             5,
+    },
+    optBtnSel: {
+      backgroundColor: 'rgba(79,140,255,0.1)',
+      borderColor:     'rgba(79,140,255,0.4)',
+    },
+    optIcon: {
+      fontSize:   22,
+      color:      c.inkMuted,
+      fontFamily: 'SpaceGrotesk-Bold',
+      lineHeight: 28,
+    },
+    optIconSel: {
+      color: c.accentLight,
+    },
+    optLabel: {
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize:   13,
+      color:      c.inkSecondary,
+      textAlign:  'center',
+    },
+    optLabelSel: {
+      color: c.inkPrimary,
+    },
+    optSub: {
+      fontFamily:    'JetBrainsMono-Regular',
+      fontSize:      10,
+      color:         c.inkFaint,
+      letterSpacing:  0.5,
+    },
+    optSubSel: {
+      color: c.accentLight,
+    },
+    loadingWrap: {
+      alignItems:     'center',
+      justifyContent: 'center',
+      gap:            16,
+      paddingVertical: 52,
+    },
+    loadingText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   14,
+      color:      c.inkMuted,
+      textAlign:  'center',
+      lineHeight: 21,
+    },
+    errorText: {
+      fontFamily:   'SpaceGrotesk-Regular',
+      fontSize:      13,
+      color:        '#ff6b6b',
+      textAlign:    'center',
+      marginBottom:  12,
+    },
+    aplicarBtn: {
+      backgroundColor: c.accent,
+      borderRadius:    16,
+      paddingVertical: 15,
+      alignItems:      'center',
+      marginTop:       4,
+    },
+    aplicarBtnDisabled: {
+      backgroundColor: c.accent + '20',
+    },
+    aplicarBtnText: {
+      fontFamily:    'SpaceGrotesk-Bold',
+      fontSize:      15,
+      color:         '#fff',
+      letterSpacing: -0.2,
+    },
+    aplicarBtnTextDisabled: {
+      color: c.inkFaint,
+    },
+  })
+}
 
 // ─── Phase Block ──────────────────────────────────────────────────────────────
 
@@ -1235,6 +1034,8 @@ function FaseBlock({
   modifiedKeys:    Set<string>
   onSustituir:     (ejercicio: Ejercicio, faseNombre: string) => void
 }) {
+  const { colors } = useTheme()
+  const blkSt = useMemo(() => makeBlkStyles(colors), [colors])
   const [expanded, setExpanded] = useState(defaultExpanded)
   const chevronAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current
 
@@ -1298,71 +1099,73 @@ function FaseBlock({
   )
 }
 
-const blkSt = StyleSheet.create({
-  card: {
-    borderWidth:     1,
-    borderRadius:    20,
-    overflow:        'hidden',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    padding:       16,
-    gap:           12,
-  },
-  iconWrap: {
-    width:          40,
-    height:         40,
-    borderRadius:   12,
-    alignItems:     'center',
-    justifyContent: 'center',
-    flexShrink:     0,
-  },
-  iconEmoji: {
-    fontSize: 18,
-  },
-  nameWrap: {
-    flex: 1,
-    gap:   3,
-  },
-  name: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:      10,
-    letterSpacing:  1,
-    textTransform: 'uppercase',
-    fontWeight:    '500',
-  },
-  desc: {
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize:   12,
-    color:      'rgba(255,255,255,0.38)',
-    lineHeight: 16,
-  },
-  right: {
-    alignItems:  'flex-end',
-    gap:          4,
-    flexShrink:   0,
-  },
-  count: {
-    fontFamily:    'JetBrainsMono-Regular',
-    fontSize:      11,
-    letterSpacing:  0.5,
-  },
-  chevron: {
-    fontSize:   22,
-    lineHeight: 26,
-    fontFamily: 'SpaceGrotesk-Regular',
-  },
-  body: {
-    paddingHorizontal: 16,
-    paddingBottom:     8,
-  },
-  sep: {
-    height:          1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-})
+function makeBlkStyles(c: Colors) {
+  return StyleSheet.create({
+    card: {
+      borderWidth:     1,
+      borderRadius:    20,
+      overflow:        'hidden',
+      backgroundColor: c.cardBg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems:    'center',
+      padding:       16,
+      gap:           12,
+    },
+    iconWrap: {
+      width:          40,
+      height:         40,
+      borderRadius:   12,
+      alignItems:     'center',
+      justifyContent: 'center',
+      flexShrink:     0,
+    },
+    iconEmoji: {
+      fontSize: 18,
+    },
+    nameWrap: {
+      flex: 1,
+      gap:   3,
+    },
+    name: {
+      fontFamily:    'JetBrainsMono-Regular',
+      fontSize:      10,
+      letterSpacing:  1,
+      textTransform: 'uppercase',
+      fontWeight:    '500',
+    },
+    desc: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   12,
+      color:      c.inkMuted,
+      lineHeight: 16,
+    },
+    right: {
+      alignItems:  'flex-end',
+      gap:          4,
+      flexShrink:   0,
+    },
+    count: {
+      fontFamily:    'JetBrainsMono-Regular',
+      fontSize:      11,
+      letterSpacing:  0.5,
+    },
+    chevron: {
+      fontSize:   22,
+      lineHeight: 26,
+      fontFamily: 'SpaceGrotesk-Regular',
+    },
+    body: {
+      paddingHorizontal: 16,
+      paddingBottom:     8,
+    },
+    sep: {
+      height:          1,
+      backgroundColor: c.borderDefault,
+    },
+  })
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
