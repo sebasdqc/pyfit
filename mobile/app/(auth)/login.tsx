@@ -298,8 +298,8 @@ function makeStyles(c: Colors) {
       marginBottom: 40,
     },
     logoImage: {
-      width: 180,
-      height: 60,
+      width: 240,
+      height: 80,
       marginBottom: 8,
     },
     tagline: {

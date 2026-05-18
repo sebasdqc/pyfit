@@ -846,12 +846,12 @@ def _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, 
 Contexto: {contexto}
 
 Reglas estrictas:
-- Si total_sesiones == 0: bienvenida cálida con el nombre, sin referencias a historial.
-- Si total_sesiones < 7: referencia la última sesión o el comienzo del hábito. Nada más.
-- Si total_sesiones >= 7: puede referenciar racha, patrón semanal o logro reciente.
-- Concordancia de género: si sexo == 'femenino' usa formas femeninas ("Bienvenida", "lista", "preparada"). Si sexo == 'masculino' usa masculinas ("Bienvenido", "listo", "preparado"). Si sexo == 'otro' o vacío, usa formas neutras ("Te damos la bienvenida", "¿lista para hoy?", evita adjetivos con género).
-- saludo: máximo 2 líneas, usa el nombre directamente, tono directo y personal, sin clichés ni emojis.
-- insight: máximo 1 oración sobre descanso, consistencia, sugerencia del día o advertencia de fatiga.
+- Si total_sesiones == 0: bienvenida con el nombre, sin referencias a historial.
+- Si total_sesiones < 7: referencia breve a la última sesión o al inicio del hábito.
+- Si total_sesiones >= 7: puede mencionar racha, patrón semanal o logro reciente.
+- Concordancia de género: si sexo == 'femenino' usa formas femeninas ("Bienvenida", "lista", "preparada"). Si sexo == 'masculino' usa masculinas ("Bienvenido", "listo", "preparado"). Si sexo == 'otro' o vacío, usa formas neutras.
+- saludo: UNA SOLA LÍNEA, máximo 10 palabras, usa el nombre directamente, tono directo y personal, sin clichés ni emojis.
+- insight: máximo 1 oración breve sobre descanso, consistencia, sugerencia del día o advertencia de fatiga.
 - Responde ÚNICAMENTE JSON válido, sin markdown: {{"saludo": "...", "insight": "..."}}"""
 
         resp = client.chat.completions.create(
@@ -956,17 +956,17 @@ def stats_dashboard(request):
             bienvenida, lista_adj = 'Te damos la bienvenida', None
 
         if total_sesiones == 0:
-            saludo = f'{bienvenida}, {nombre}. Todo empieza aquí.'
+            saludo = f'{bienvenida}, {nombre}.'
             insight = 'Completa tu primer entrenamiento para que la IA empiece a conocerte.'
         elif racha >= 3:
-            saludo = f'Llevas {racha} días seguidos, {nombre}.'
+            saludo = f'{nombre}, llevas {racha} días seguidos.'
             insight = 'La consistencia es el mejor entrenamiento.'
         else:
             if lista_adj:
-                saludo = f'Hola, {nombre}. ¿{lista_adj.capitalize()} para hoy?'
+                saludo = f'Hola, {nombre}. ¿{lista_adj.capitalize()}?'
             else:
                 saludo = f'Hola, {nombre}. ¿Empezamos?'
-            insight = 'Cada sesión es un punto de datos más para la IA.'
+            insight = 'Cada sesión la IA te conoce mejor.'
 
     return Response({
         'nombre': nombre,

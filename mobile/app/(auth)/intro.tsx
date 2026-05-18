@@ -148,8 +148,8 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 32,
     },
     logo: {
-      width: 200,
-      height: 72,
+      width: 260,
+      height: 94,
     },
     tagline: {
       fontFamily: 'InstrumentSerif-Italic',
