@@ -10,59 +10,59 @@
 -- La mayoría de ejercicios "abdominales" clásicos son antiextensión.
 -- ============================================================
 
-INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dificultad, musculos_primarios, musculos_secundarios, equipamiento, contraindicaciones, activo, technical_level, error_risk, space_required, systemic_fatigue, set_duration_seconds, rest_seconds_default, description, coaching_cues) VALUES
+INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dificultad, musculos_primarios, musculos_secundarios, equipamiento, contraindicaciones, activo, gif_url, imagen_url, technical_level, error_risk, space_required, systemic_fatigue, set_duration_seconds, rest_seconds_default, description, coaching_cues) VALUES
 
 -- 1
 ('Plancha frontal (plank)',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 2, 'minimo', 1, 45, 45,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 2, 'minimo', 1, 45, 45,
  'El ejercicio de antiextensión por excelencia. El objetivo no es aguantar el tiempo más largo posible sino mantener una posición perfecta. La activación del transverso abdominal, glúteos y cuádriceps simultáneamente es lo que hace efectivo al ejercicio — no la duración.',
  '["Cuerpo rígido de cabeza a talones: sin hundir caderas ni elevarlas", "Glúteos contraídos — si no los activas, la columna lumbar se archiva", "Escápulas activas: empujar el suelo, no hundirse entre los hombros", "Cabeza en posición neutra — no elevar ni hundir", "La calidad siempre supera la duración: termina al perder posición"]'::jsonb),
 
 -- 2
 ('Plancha frontal sobre manos (push-up position)',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 2, 'minimo', 1, 40, 45,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 2, 'minimo', 1, 40, 45,
  'Plancha en posición de push-up con brazos extendidos. Mayor demanda de estabilización de hombro que la versión sobre codos. Punto de partida para variantes dinámicas como el rollout.',
  '["Misma alineación que la plancha sobre codos", "Brazos completamente extendidos, muñecas bajo los hombros", "La tendencia es elevar las caderas: mantenerlas en línea con el torso", "Base para las variantes dinámicas de antiextensión"]'::jsonb),
 
 -- 3
 ('Rollout con rueda abdominal',
- 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 4, 'minimo', 2, 35, 90,
+ 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 4, 'minimo', 2, 35, 90,
  'Extensión desde posición de rodillas o de pie con rueda. Es el ejercicio de antiextensión con mayor rango de movimiento y demanda de fuerza. La columna lumbar debe mantenerse neutra durante todo el recorrido — la pérdida de posición es la lesión.',
  '["Comenzar desde rodillas hasta dominar el patrón", "La pelvis no debe inclinarse anteriormente en ningún punto", "El rango se aumenta de forma gradual — milímetros por semana", "Activar el transverso antes de iniciar el movimiento", "Versión de pie solo para atletas con control lumbar impecable"]'::jsonb),
 
 -- 4
 ('Dead bug',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 1, 40, 60,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 1, 40, 60,
  'Extensión alterna de brazo y pierna opuesta en decúbito supino manteniendo la columna lumbar pegada al suelo. Uno de los mejores ejercicios de activación del transverso abdominal con disociación de extremidades. Muy utilizado en rehabilitación y como base de patrones más complejos.',
  '["La zona lumbar debe estar pegada al suelo durante TODO el movimiento", "Si la lumbar se despega, el rango está siendo excedido — reducir", "Exhalar durante la extensión para facilitar el bracing", "El movimiento es lento y controlado — no hay componente explosivo", "Brazo y pierna contrarios se extienden simultáneamente"]'::jsonb),
 
 -- 5
 ('Hollow body hold',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 40, 60,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 40, 60,
  'Posición de flexión de columna con brazos y piernas extendidos. La columna lumbar plana contra el suelo es el objetivo central, no la altura de brazos y piernas. Base de la gimnasia y muchos patrones de calistenia.',
  '["Columna lumbar plana contra el suelo: la prioridad absoluta", "Reducir el rango (subir más los pies, no extender tanto los brazos) si la lumbar se despega", "Progresión: brazos junto al cuerpo → brazos arriba; piernas altas → piernas bajas", "No es una prueba de resistencia — calidad sobre duración"]'::jsonb),
 
 -- 6
 ('Crunch',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 2, 'minimo', 1, 30, 45,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 2, 'minimo', 1, 30, 45,
  'Flexión parcial de columna en decúbito supino. Activa el recto abdominal en acortamiento. Técnicamente es un ejercicio de flexión lumbar, no de antiextensión, pero se clasifica aquí por tradición y porque su función en el programa es el trabajo abdominal directo. Bajo riesgo si se ejecuta correctamente.',
  '["El movimiento es una flexión de columna, no una elevación de cabeza", "Solo el torso superior sube — la zona lumbar permanece en contacto con el suelo", "Manos detrás de la cabeza: no jalar del cuello", "El recto abdominal trabaja en su rango de acortamiento: el ROM es corto por diseño", "No reemplaza los ejercicios de antiextensión — es complementario"]'::jsonb),
 
 -- 7
 ('Elevación de piernas colgado',
- 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 2, 30, 75,
+ 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 2, 30, 75,
  'Elevación de piernas desde barra fija. La demanda de antiextensión es máxima porque la columna lumbar debe mantenerse neutra mientras las caderas flexionan con carga. Excelente para el recto abdominal y el psoas ilíaco.',
  '["La columna lumbar no debe arquearse ni en la bajada ni en la subida", "Piernas completamente extendidas: mayor demanda. Rodillas flexionadas: menor demanda", "Control total en el excéntrico — bajar de forma controlada", "Evitar el balanceo: genera impulso que elimina el trabajo abdominal", "La posición de colgado activa también el agarre y los hombros"]'::jsonb),
 
 -- 8
 ('Ab wheel rollout desde rodillas',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 3, 'minimo', 2, 30, 75,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 3, 'minimo', 2, 30, 75,
  'Versión de rodillas del rollout. El punto de entrada al patrón antes de intentar la versión de pie. El rango de movimiento es regulable y permite progresión gradual.',
  '["Comenzar con un rango corto e ir aumentando gradualmente", "La columna lumbar no debe archivarse en ningún punto del recorrido", "Activar el transverso antes de extender", "Si sientes tensión en la zona lumbar, el rango es excesivo para el nivel actual"]'::jsonb),
 
 -- 9
 ('Plancha con deslizamiento (slider plank)',
- 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 2, 35, 90,
+ 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 2, 35, 90,
  'Plancha dinámica con extensión alternada de brazos sobre superficie deslizante. Añade un componente dinámico de antiextensión a la plancha estática. Mayor demanda que la plancha estándar.',
  '["Mantener la pelvis completamente estable durante el movimiento del brazo", "El rango del deslizamiento se aumenta progresivamente", "La tendencia es rotar la pelvis — es antirotación también"]'::jsonb),
 
@@ -73,37 +73,37 @@ INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dific
 -- ============================================================
 
 ('Pallof press',
- 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 1, 'minimo', 1, 35, 75,
+ 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 1, 'minimo', 1, 35, 75,
  'Press horizontal con cable o banda desde posición perpendicular. El cuerpo resiste la rotación que genera la tensión lateral del cable. Uno de los ejercicios de antirrotación más eficientes y seguros. Excelente para todos los niveles.',
  '["De pie o arrodillado perpendicular a la polea", "El cable sale del pecho y vuelve al pecho en línea recta", "La pelvis y los hombros deben mantenerse perfectamente cuadrados", "Cuanto más lejos de la polea, mayor la demanda de antirrotación", "Versión isométrica: sostener la posición extendida"]'::jsonb),
 
 -- 11
 ('Plancha lateral',
- 'core_antirrotacion', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 1, 40, 60,
+ 'core_antirrotacion', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 1, 40, 60,
  'Plancha lateral sobre codo o mano. El cuerpo resiste la flexión lateral y la rotación. Activa el cuadrado lumbar, oblicuos y glúteo medio simultáneamente. Fundamental para la estabilidad lateral de la columna.',
  '["El cuerpo forma una línea recta de la cabeza a los talones", "La cadera no debe hundirse ni elevarse", "El hombro de apoyo debe mantenerse activo — no hundirse", "Mirada al frente o ligeramente hacia arriba", "Progresión: añadir elevación de pierna o movimiento de cadera"]'::jsonb),
 
 -- 12
 ('Plancha lateral con elevación de cadera',
- 'core_antirrotacion', FALSE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 1, 35, 75,
+ 'core_antirrotacion', FALSE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 1, 35, 75,
  'Variante dinámica de la plancha lateral con movimiento de cadera hacia el suelo y de vuelta a posición neutra. Añade rango de movimiento y mayor activación de cuadrado lumbar y oblicuos.',
  '["Bajar la cadera solo hasta casi tocar el suelo — no tocar", "Subir de vuelta con control, no con impulso", "La posición de los pies y el hombro no debe cambiar durante el movimiento"]'::jsonb),
 
 -- 13
 ('Bird dog',
- 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 1, 35, 45,
+ 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 1, 35, 45,
  'Extensión alterna de brazo y pierna opuesta desde posición cuadrúpeda. Activa el transverso abdominal y los multífidos simultáneamente. Uno de los ejercicios más recomendados en rehabilitación de columna lumbar (McGill, 2010).',
  '["La posición de la columna no debe cambiar durante el movimiento de las extremidades", "La cadera del lado de la pierna que se extiende no debe rotar ni elevarse", "El movimiento es lento y controlado — no hay componente explosivo", "Mantener la posición extendida 2–3 segundos antes de volver", "Mirada al suelo — cuello en posición neutra"]'::jsonb),
 
 -- 14
 ('Chop y lift en polea',
- 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'medio', 2, 35, 90,
+ 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'medio', 2, 35, 90,
  'Movimiento diagonal de jalón desde arriba o empuje desde abajo con cable, de pie o arrodillado. El torso resiste y controla la rotación. Excelente para actividad funcional y transferencia a deportes.',
  '["La potencia viene de la rotación controlada de caderas y torso", "Los brazos guían pero no generan la fuerza principal", "Mantener los pies firmes en el suelo durante todo el movimiento", "Variante chop: de arriba hacia abajo. Lift: de abajo hacia arriba"]'::jsonb),
 
 -- 15
 ('Remo unilateral con resistencia al suelo',
- 'core_antirrotacion', FALSE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 35, 75,
+ 'core_antirrotacion', FALSE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 35, 75,
  'Remo con cable o banda desde posición de pie o semiarrodillada. El cuerpo resiste la rotación que genera el jalón unilateral. Integra el patrón de jalón horizontal con la estabilización antirrotacional.',
  '["Los hombros no deben rotar durante el jalón", "La cadera del lado que no trabaja mantiene la posición", "Expira durante el jalón para facilitar el bracing"]'::jsonb),
 
@@ -113,19 +113,19 @@ INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dific
 -- ============================================================
 
 ('Farmer carry bilateral',
- 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'amplio', 3, 40, 90,
+ 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'amplio', 3, 40, 90,
  'Caminata con carga pesada en ambas manos. La demanda de antiflexión lateral, antirrotación y estabilización lumbar es enorme. Simple pero brutalmente efectivo. Desarrolla fuerza de agarre, trapecio y estabilización de columna simultáneamente.',
  '["Cargar pesos iguales en ambas manos para comenzar", "Hombros hacia atrás y abajo — no encorvarse", "Pasos cortos y controlados — no balancearse", "Respiración continua y controlada — no contener el aliento", "La columna no debe inclinarse lateralmente en ningún momento"]'::jsonb),
 
 -- 17
 ('Suitcase carry (carga unilateral)',
- 'core_antirrotacion', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'amplio', 3, 40, 90,
+ 'core_antirrotacion', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'amplio', 3, 40, 90,
  'Caminata con carga en una sola mano. La carga unilateral genera una demanda de antiflexión lateral y antirrotación mayor que el farmer carry bilateral. El torso debe mantenerse perfectamente vertical sin inclinarse hacia el lado cargado.',
  '["La columna no debe inclinarse hacia ningún lado — este es el objetivo", "No elevar el hombro del lado cargado como compensación", "Mirada al frente, pasos controlados", "Si el torso se inclina, la carga es demasiado pesada"]'::jsonb),
 
 -- 18
 ('Press unilateral de pie (Pallof overhead)',
- 'core_antirrotacion', FALSE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 2, 35, 75,
+ 'core_antirrotacion', FALSE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 2, 35, 75,
  'Press vertical unilateral de pie con cable o banda. Combina la estabilización antirrotacional con la demanda de empuje vertical. La asimetría de la carga activa el core en antiflexión lateral y antirrotación simultáneamente.',
  '["El torso no debe inclinarse hacia el lado que trabaja", "Core contraído antes de comenzar el press", "La cadera no debe rotar como compensación"]'::jsonb),
 
@@ -135,61 +135,61 @@ INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dific
 -- ============================================================
 
 ('Russian twist',
- 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 1, 35, 60,
+ 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 1, 35, 60,
  'Rotación del torso desde posición de V-sit con o sin carga. Activa los oblicuos en rotación. La posición de pies elevados aumenta la demanda de psoas y recto abdominal como estabilizadores. Técnicamente es un ejercicio de rotación activa.',
  '["La rotación viene del torso, no de los brazos", "Los pies pueden apoyarse en el suelo para comenzar", "No redondear la espalda — mantener la columna en extensión durante la rotación", "El rango de rotación aumenta con la práctica"]'::jsonb),
 
 -- 20
 ('Giro ruso con peso (medicine ball)',
- 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 35, 60,
+ 'core_antirrotacion', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 35, 60,
  'Russian twist con pelota medicinal o disco. La carga aumenta la demanda de los oblicuos. Mantener el control del objeto durante la rotación requiere coordinación adicional.',
  '["La pelota se mueve con el torso, no independientemente", "Mantener los codos ligeramente flexionados", "Misma mecánica que el Russian twist sin carga"]'::jsonb),
 
 -- 21
 ('Crunch en polea (cable crunch)',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 75,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 75,
  'Flexión de columna con carga desde polea alta, arrodillado. Permite progresar en carga de forma controlada para el recto abdominal. Superior al crunch convencional para hipertrofia abdominal porque permite añadir resistencia progresiva.',
  '["La carga se ancla en los hombros/cabeza, no en los brazos", "El movimiento es flexión de columna, no flexión de cadera", "Arrodillado frente a la polea, manos junto a la cara", "El objetivo es acercar el esternón al pubis, no bajar la cabeza"]'::jsonb),
 
 -- 22
 ('Abdominal en máquina',
- 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 1, 30, 60,
+ 'core_antiextension', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 1, 30, 60,
  'Flexión de columna en máquina guiada. El camino más accesible para cargar el recto abdominal con progresión. Sin demanda de coordinación ni técnica. Útil en programas de hipertrofia para complementar los ejercicios de antiextensión.',
  '["El movimiento es flexión de columna — el torso sube, no la cabeza", "Rango completo: desde extensión hasta flexión máxima", "Control en el excéntrico — no dejar que la máquina extienda sin resistencia"]'::jsonb),
 
 -- 23
 ('L-sit',
- 'core_antiextension', TRUE, FALSE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 4, 3, 'minimo', 3, 30, 90,
+ 'core_antiextension', TRUE, FALSE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 4, 3, 'minimo', 3, 30, 90,
  'Posición isométrica con caderas a 90° y piernas extendidas en paralelas, barras o suelo. Alta demanda de psoas, recto abdominal y cuádriceps simultáneamente. Un hito de calistenia que requiere semanas de trabajo preparatorio.',
  '["Comenzar con rodillas flexionadas (tuck L-sit) antes de intentar piernas extendidas", "Empujar hacia abajo con las manos activamente — no solo colgar", "Las escápulas deben estar deprimidas — hombros lejos de las orejas", "La progresión es: apoyo en suelo → paralelas → anillas"]'::jsonb),
 
 -- 24
 ('Hollow body rock',
- 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 2, 35, 75,
+ 'core_antiextension', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 2, 35, 75,
  'Posición hollow body con movimiento de balanceo hacia adelante y atrás. La tensión abdominal debe mantenerse constante durante todo el movimiento. Base del trabajo de anillas y gimnasia.',
  '["Establecer la posición hollow perfecta antes de comenzar el balanceo", "La columna lumbar no debe despegarse del suelo en ningún punto del ciclo", "El movimiento es suave y continuo — no un rebote brusco"]'::jsonb),
 
 -- 25
 ('Plancha con alcance (plank reach)',
- 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 2, 35, 90,
+ 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 2, 35, 90,
  'Plancha dinámica con extensión alternada de un brazo al frente. Combina antiextensión con antirrotación. El desafío es mantener la pelvis y el torso completamente estáticos mientras un brazo se extiende.',
  '["La pelvis no debe rotar cuando el brazo se extiende — este es el objetivo", "El alcance es controlado: llevar la mano al frente y volver", "Cuanto más se separan los pies, más fácil la estabilidad lateral"]'::jsonb),
 
 -- 26
 ('Plancha con movimiento de cadera (hip shift plank)',
- 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 2, 35, 90,
+ 'core_antirrotacion', TRUE, FALSE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 2, 35, 90,
  'Plancha sobre manos con rotación de caderas hacia los lados. Los oblicuos trabajan en movimiento. Mayor demanda dinámica que la plancha estática.',
  '["Las caderas van de lado a lado en un rango controlado", "Los hombros permanecen fijos — solo se mueven las caderas", "No es un ejercicio de velocidad — el control es lo que importa"]'::jsonb),
 
 -- 27
 ('Mountain climber',
- 'core_antiextension', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 3, 30, 60,
+ 'core_antiextension', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 3, 30, 60,
  'Plancha dinámica con alternancia de rodillas al pecho. Combina la antiextensión de la plancha con un componente cardiovascular y de coordinación. A mayor velocidad, mayor demanda cardiovascular. A menor velocidad, mayor demanda de control.',
  '["La posición de los hombros no debe cambiar durante el movimiento de las piernas", "Las caderas no suben al llevar la rodilla al pecho", "Velocidad según objetivo: lento para control, rápido para cardio", "La espalda no debe arquearse en ningún momento"]'::jsonb),
 
 -- 28
 ('Dragon flag (progresión)',
- 'core_antiextension', TRUE, FALSE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 5, 4, 'minimo', 3, 35, 120,
+ 'core_antiextension', TRUE, FALSE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 5, 4, 'minimo', 3, 35, 120,
  'Extensión excéntrica del cuerpo completo desde posición supina en banco, manteniendo el cuerpo rígido. Uno de los ejercicios de antiextensión más avanzados. Popularizado por Bruce Lee. Requiere dominio previo de hollow body, L-sit y plancha avanzada.',
  '["Solo el torso superior en contacto con el banco — todo lo demás en el aire", "El cuerpo baja como una unidad rígida — no doblar en la cadera", "La fase excéntrica (bajar) es el foco principal antes de dominar la concéntrica", "Regresión: tuck dragon flag con rodillas flexionadas", "No intentar sin dominar completamente el hollow body"]'::jsonb)
 

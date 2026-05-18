@@ -8,83 +8,83 @@
 -- EMPUJE HORIZONTAL
 -- ============================================================
 
-INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dificultad, musculos_primarios, musculos_secundarios, equipamiento, contraindicaciones, activo, technical_level, error_risk, space_required, systemic_fatigue, set_duration_seconds, rest_seconds_default, description, coaching_cues) VALUES
+INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dificultad, musculos_primarios, musculos_secundarios, equipamiento, contraindicaciones, activo, gif_url, imagen_url, technical_level, error_risk, space_required, systemic_fatigue, set_duration_seconds, rest_seconds_default, description, coaching_cues) VALUES
 
 -- 1
 ('Press de banca plano con barra',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 4, 40, 150,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 4, 40, 150,
  'El empuje horizontal con barra por excelencia. Desarrolla pectoral mayor, deltoides anterior y tríceps. Requiere banco plano y spotter o pines de seguridad para trabajo con carga máxima.',
  '["Agarre a poco más del ancho de hombros", "Escápulas retraídas y deprimidas contra el banco — arco lumbar natural, no forzado", "Pies planos en el suelo o en el banco según movilidad", "Barra baja al tercio inferior del pectoral — no al cuello", "Codos a 45–75° del torso, nunca a 90°", "Empuja la barra hacia atrás y arriba en arco, no vertical puro"]'::jsonb),
 
 -- 2
 ('Press de banca plano con mancuernas',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 4, 40, 120,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 4, 40, 120,
  'Versión con mancuernas del press de banca. Mayor rango de movimiento en el descenso, demanda adicional de estabilización y corrección de desequilibrios. Sin riesgo de quedar atrapado bajo la barra.',
  '["Mancuernas a la altura del pecho en el inicio", "Descenso controlado hasta sentir stretch pectoral — no forzar", "Codos a 45–60° del torso", "Al subir, ligera convergencia de mancuernas en el punto más alto (no chocarlas)", "Posición de escápulas idéntica a la versión con barra"]'::jsonb),
 
 -- 3
 ('Press de banca inclinado con barra',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 4, 40, 150,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 4, 40, 150,
  'Banco inclinado 30–45°. Desplaza el énfasis hacia la porción clavicular del pectoral y el deltoides anterior. Ángulos mayores a 45° transfieren trabajo progresivamente al hombro.',
  '["Banco a 30–45°, no más — mayor ángulo = menos pecho, más hombro", "Barra baja a la parte superior del pectoral", "Misma mecánica de escápulas que el press plano", "Codos ligeramente más cerrados que en press plano"]'::jsonb),
 
 -- 4
 ('Press de banca inclinado con mancuernas',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 2, 'minimo', 3, 40, 120,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 2, 'minimo', 3, 40, 120,
  'Inclinado con mancuernas. Combina el énfasis en pectoral clavicular con mayor ROM y demanda de estabilización. La variante más utilizada para hipertrofia de pectoral superior.',
  '["Mismo ángulo de banco que la versión con barra", "Mayor control requerido por la independencia de cada mancuerna", "Descenso controlado es la clave del ROM ampliado"]'::jsonb),
 
 -- 5
 ('Press de banca declinado con barra',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'minimo', 3, 40, 120,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'minimo', 3, 40, 120,
  'Banco declinado 15–30°. Énfasis en porción esternal inferior del pectoral. Menor participación del deltoides anterior que el press plano. La posición cefálica baja puede generar presión intracraneal.',
  '["Banco a –15° a –30° máximo", "Los pies deben estar asegurados", "Barra baja al tercio inferior del pectoral", "Evitar en personas con hipertensión no controlada o glaucoma"]'::jsonb),
 
 -- 6
 ('Flexión de brazos (push-up) estándar',
- 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 2, 'minimo', 2, 30, 60,
+ 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 2, 'minimo', 2, 30, 60,
  'El empuje horizontal fundamental sin equipo. Excelente relación dosis-riesgo. Desarrolla pectoral, tríceps y deltoides anterior con alta demanda de core como estabilizador. Infinitas variantes de progresión.',
  '["Manos ligeramente más anchas que los hombros", "Cuerpo rígido de cabeza a talones — no hundir las caderas", "Codos a 45° del torso, nunca en T", "Pecho toca o roza el suelo en el punto más bajo", "Escápulas se protraen al subir — no bloquear"]'::jsonb),
 
 -- 7
 ('Flexión de brazos con rodillas (push-up modificado)',
- 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 1, 25, 45,
+ 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 1, 25, 45,
  'Versión de rodillas del push-up. Reduce la carga corporal aproximadamente un 50%. El punto de entrada para personas que aún no pueden hacer push-ups estándar. Misma mecánica de codos y torso.',
  '["Rodillas en el suelo, caderas en extensión — no doblar en V", "Misma alineación de codos que el push-up estándar", "Pecho toca el suelo en el punto más bajo"]'::jsonb),
 
 -- 8
 ('Flexión de brazos inclinada (push-up elevado)',
- 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 1, 25, 45,
+ 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 1, 25, 45,
  'Push-up con manos elevadas en banco, escalón o pared. Reduce el porcentaje del peso corporal que se maneja. Ideal como regresión del push-up estándar más eficiente que la versión de rodillas porque mantiene la alineación corporal completa.',
  '["Cuanto más alto el apoyo, más fácil el ejercicio", "Misma alineación corporal que el push-up estándar", "Progresión: bajar la altura del apoyo progresivamente"]'::jsonb),
 
 -- 9
 ('Flexión de brazos declinada (push-up pies elevados)',
- 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 60,
+ 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 60,
  'Push-up con pies en banco o cajón. Desplaza énfasis hacia pectoral clavicular y deltoides anterior. Transición entre push-up estándar y press militar.',
  '["Cuanto más altos los pies, más énfasis en pectoral superior y hombro", "Mantener el cuerpo rígido — la tendencia es que las caderas suban", "Misma mecánica de codos"]'::jsonb),
 
 -- 10
 ('Fondos en paralelas (dips) — énfasis pecho',
- 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'medio', 4, 35, 120,
+ 'empuje_horizontal', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'medio', 4, 35, 120,
  'Empuje en paralelas con inclinación de torso hacia adelante para enfatizar el pectoral inferior. El ángulo del torso determina el músculo dominante: más inclinado = más pecho, más vertical = más tríceps.',
  '["Inclinación de torso 15–30° hacia adelante", "Descenso hasta 90° de flexión de codo como mínimo", "Codos no deben abrirse excesivamente — 45–60° del torso", "Subir de forma controlada sin hiperextender codos", "El hombro debe mantenerse en posición segura — no descender más allá del paralelo"]'::jsonb),
 
 -- 11
 ('Aperturas con mancuernas en banco plano (fly)',
- 'empuje_horizontal', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 3, 'minimo', 2, 35, 90,
+ 'empuje_horizontal', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 3, 'minimo', 2, 35, 90,
  'Aislamiento de pectoral en el plano horizontal. Alta tensión en el pectoral en el punto de máximo estiramiento. ROM amplio con brazo en ligera flexión fija. Técnicamente es un ejercicio de aislamiento a pesar del uso de mancuernas.',
  '["Codos en ligera flexión fija durante todo el movimiento — no es un press", "Descenso hasta sentir estiramiento del pectoral — no forzar el hombro", "El movimiento es un abrazo amplio, no una apertura de alas", "Usar cargas moderadas — el tendón del bíceps y la cápsula glenohumeral están en posición vulnerable"]'::jsonb),
 
 -- 12
 ('Crossover en polea alta (cable fly)',
- 'empuje_horizontal', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 35, 75,
+ 'empuje_horizontal', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 35, 75,
  'Aislamiento de pectoral con cable. La tensión constante del cable (vs punto de mínima tensión de las mancuernas en la posición alta) hace que sea superior para hipertrofia. Múltiples variantes de ángulo.',
  '["Inclinación suave del torso hacia adelante", "Ligera flexión de codo fija — no es un press", "Las manos se cruzan levemente en el punto de contracción máxima", "Control total del excéntrico — el cable jala de vuelta"]'::jsonb),
 
 -- 13
 ('Press en máquina de pecho',
- 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 3, 35, 90,
+ 'empuje_horizontal', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 3, 35, 90,
  'Press horizontal en máquina guiada. Sin demanda de equilibrio ni estabilización. Ideal para principiantes, fatiga avanzada o cuando los estabilizadores ya están agotados tras el press libre. Menor transferencia funcional.',
  '["Ajustar el asiento para que los agarres queden a la altura del pectoral medio", "Escápulas retraídas contra el respaldo durante todo el movimiento", "No bloquear los codos en la extensión completa"]'::jsonb),
 
@@ -93,79 +93,79 @@ INSERT INTO exercises (nombre, patron_movimiento, bilateral, es_compuesto, dific
 -- ============================================================
 
 ('Press militar con barra (overhead press)',
- 'empuje_vertical', TRUE, TRUE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 4, 4, 'medio', 4, 40, 150,
+ 'empuje_vertical', TRUE, TRUE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 4, 4, 'medio', 4, 40, 150,
  'El press vertical bilateral por excelencia. Desarrolla deltoides en sus tres porciones, tríceps y trapecio superior. Alta demanda de movilidad de hombro y estabilización espinal. La barra debe viajar en línea vertical sobre el centro de masa.',
  '["Agarre ligeramente más ancho que los hombros", "Barra en la parte superior del pecho (rack position) al inicio", "Empujar la cabeza hacia adelante al pasar la barra por la frente — bar path vertical", "Glúteos y core contraídos — no arquear la espalda", "Bloqueo completo en la cima: brazos extendidos, barra sobre la cabeza", "No inclinar el torso hacia atrás para compensar falta de movilidad"]'::jsonb),
 
 -- 15
 ('Press militar con mancuernas',
- 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'medio', 3, 40, 120,
+ 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'medio', 3, 40, 120,
  'Press vertical con mancuernas. Mayor rango de movimiento, demanda de estabilización y corrección de desequilibrios respecto a la barra. Permite rotación natural de las manos durante el recorrido.',
  '["Mancuernas a la altura de los hombros al inicio, palmas hacia adelante o neutras", "Presionar hacia arriba y ligeramente hacia adentro — convergencia natural", "No forzar la rotación de muñecas si hay incomodidad", "Misma activación de core que con barra"]'::jsonb),
 
 -- 16
 ('Press Arnold',
- 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'medio', 3, 45, 120,
+ 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'medio', 3, 45, 120,
  'Variante del press con mancuernas con rotación de antebrazo. Comienza con palmas hacia el cuerpo (posición de curl) y rota a palmas hacia afuera durante el press. Activa las tres porciones del deltoides en un solo movimiento.',
  '["Rotación fluida y controlada durante todo el recorrido", "No acelerar la rotación — mantenerla sincronizada con el press", "Mayor rango de movimiento total que el press estándar", "Carga menor que el press estándar por la complejidad del patrón"]'::jsonb),
 
 -- 17
 ('Press militar en máquina (shoulder press)',
- 'empuje_vertical', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 1, 1, 'minimo', 3, 35, 90,
+ 'empuje_vertical', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 1, 1, 'minimo', 3, 35, 90,
  'Press vertical en máquina guiada. Sin demanda de estabilización. Útil para principiantes o cuando la estabilización del hombro está comprometida temporalmente.',
  '["Ajustar asiento para que los agarres queden a la altura de los hombros", "No bloquear los codos en la extensión", "Escápulas activas contra el respaldo"]'::jsonb),
 
 -- 18
 ('Elevaciones laterales con mancuernas',
- 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 3, 'minimo', 2, 30, 75,
+ 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 3, 'minimo', 2, 30, 75,
  'Aislamiento del deltoides lateral. El ejercicio más específico para el ancho de hombros. La mecánica correcta implica ligera inclinación del torso, codo ligeramente flexionado y el meñique más alto que el pulgar en el punto más alto.',
  '["Inclinación suave del torso hacia adelante — 10-15°", "Codo ligeramente flexionado y fijo durante todo el movimiento", "Meñique más alto que el pulgar en el punto más alto (rotación interna leve)", "No subir más allá de 90° — aumenta impingement sin mayor activación", "El movimiento sale del codo, no de la muñeca", "Evitar el impulso de caderas — si ocurre, la carga es demasiado alta"]'::jsonb),
 
 -- 19
 ('Elevaciones frontales con mancuernas',
- 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 75,
+ 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 75,
  'Aislamiento del deltoides anterior. En la mayoría de programas de hipertrofia, el deltoides anterior ya recibe suficiente estímulo de los press horizontales y verticales. Usar con moderación para evitar sobreuso.',
  '["Mancuerna sube a la altura del hombro — no más", "Codo ligeramente flexionado", "Movimiento controlado — especialmente en el excéntrico", "Alternar brazos o bilateral según objetivo"]'::jsonb),
 
 -- 20
 ('Elevaciones laterales en polea baja',
- 'empuje_vertical', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 75,
+ 'empuje_vertical', FALSE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 75,
  'Aislamiento de deltoides lateral con cable. La tensión del cable en el punto más bajo (donde la mancuerna tiene mínima tensión) hace que sea superior para hipertrofia según evidencia reciente. Versión unilateral.',
  '["Cable a la altura del tobillo o más bajo", "El brazo libre se apoya en la máquina para estabilizar", "Misma mecánica que la versión con mancuerna", "La tensión constante del cable es la ventaja principal"]'::jsonb),
 
 -- 21
 ('Face pull en polea alta',
- 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 75,
+ 'empuje_vertical', TRUE, FALSE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 75,
  'Ejercicio de rotación externa de hombro y retracción escapular con cable. Técnicamente es un jalón/empuje combinado. Fundamental para la salud del hombro y el balance muscular. Contrapeso al volumen de press.',
  '["Cuerda en agarre neutral, polea a la altura de la cara o ligeramente más alta", "Jalar hacia la cara separando las manos al final del recorrido", "Codos siempre más altos que las muñecas", "Rotación externa completa al final — el objetivo es ese, no la retracción", "Incluir en todo programa con alto volumen de press"]'::jsonb),
 
 -- 22
 ('Pike push-up',
- 'empuje_vertical', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 30, 75,
+ 'empuje_vertical', TRUE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 30, 75,
  'Flexión de brazos en posición de V invertida. El ángulo del cuerpo desplaza el énfasis del pectoral al deltoides. Progresión entre el push-up estándar y el handstand push-up. Sin equipo.',
  '["Caderas altas — cuerpo en V invertida", "Cabeza baja entre los brazos durante el movimiento", "Cuanto más vertical sea el torso, más se asemeja al press militar", "Progresión: elevar los pies para aumentar la verticalidad"]'::jsonb),
 
 -- 23
 ('Handstand push-up asistido',
- 'empuje_vertical', TRUE, TRUE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 4, 4, 'medio', 3, 35, 120,
+ 'empuje_vertical', TRUE, TRUE, 'avanzado', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 4, 4, 'medio', 3, 35, 120,
  'Press vertical con peso corporal en posición invertida, asistido por la pared. El pináculo del empuje vertical sin equipo. Alta demanda de fuerza de hombro, equilibrio y coordinación.',
  '["Pies apoyados en la pared — no libre por seguridad en las primeras etapas", "Cabeza toca el suelo en el punto más bajo", "Empujar explosivamente hacia arriba", "Núcleo completamente rígido", "Precaución en personas con historial de lesión de hombro"]'::jsonb),
 
 -- 24
 ('Press de hombros unilateral con mancuerna',
- 'empuje_vertical', FALSE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 2, 2, 'minimo', 2, 35, 90,
+ 'empuje_vertical', FALSE, TRUE, 'principiante', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 2, 2, 'minimo', 2, 35, 90,
  'Press vertical unilateral. Corrige desequilibrios de fuerza entre hombros, aumenta demanda de core antirotacional. Puede realizarse sentado o de pie.',
  '["La mano libre puede apoyarse en la cadera o el banco", "Core activo — resistir la tendencia a inclinarse hacia el lado que trabaja", "De pie: mayor demanda de estabilización total", "Sentado: mayor aislamiento del hombro"]'::jsonb),
 
 -- 25
 ('Thruster con mancuernas',
- 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'medio', 5, 40, 120,
+ 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'medio', 5, 40, 120,
  'Combinación de sentadilla frontal y press militar en un movimiento continuo. Altísima demanda sistémica y cardiovascular. Muy usado en CrossFit y entrenamientos metabólicos. La extensión de piernas impulsa el press.',
  '["La energía de la sentadilla impulsa el press — no son dos movimientos separados", "Codos altos en la posición de sentadilla (rack position)", "Extensión completa de cadera, rodillas y codos al final", "El core transfiere la fuerza de la parte inferior a la superior"]'::jsonb),
 
 -- 26
 ('Push press con barra',
- 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, 3, 3, 'medio', 4, 35, 150,
+ 'empuje_vertical', TRUE, TRUE, 'intermedio', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, TRUE, '', '', 3, 3, 'medio', 4, 35, 150,
  'Press militar con impulso de piernas (dip & drive). Permite manejar más carga que el press estricto. Desarrolla potencia de la cadena de empuje completa. El impulso de piernas es parte técnica del movimiento, no trampa.',
  '["Dip: flexión rápida de rodillas ~10–15°, torso vertical", "Drive: extensión explosiva de piernas que impulsa la barra", "Press: terminar el movimiento con los brazos desde donde la inercia lo deja", "Si las piernas no ayudan es un press estricto — el timing es clave", "No inclinar el torso hacia atrás en el dip"]'::jsonb)
 
