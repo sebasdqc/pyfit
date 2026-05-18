@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from workouts.models import Exercise
 
 
@@ -1446,9 +1446,19 @@ EXERCISES = [
 
 
 class Command(BaseCommand):
-    help = 'Seeds the exercise database with ~120 exercises covering all movement patterns and equipment types'
+    help = '[DEPRECATED] Use the SQL files in backend/sql/ instead. Run zyfit_exercise_schema.sql then the 5 seed batch files.'
 
     def handle(self, *args, **options):
+        raise CommandError(
+            'This command is deprecated. The exercise catalog has been replaced by the normalized SQL schema.\n'
+            'To seed exercises, run these SQL files against your PostgreSQL database in order:\n'
+            '  1. backend/sql/zyfit_exercise_schema.sql\n'
+            '  2. backend/sql/zyfit_seed_exercises_01_bisagra_sentadilla.sql\n'
+            '  3. backend/sql/zyfit_seed_exercises_02_empuje.sql\n'
+            '  4. backend/sql/zyfit_seed_exercises_03_jalon.sql\n'
+            '  5. backend/sql/zyfit_seed_exercises_04_core.sql\n'
+            '  6. backend/sql/zyfit_seed_exercises_05_aislamiento.sql\n'
+        )
         created_count = 0
         updated_count = 0
 

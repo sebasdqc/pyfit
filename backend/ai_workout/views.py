@@ -270,27 +270,33 @@ def _calcular_estado_mesociclo(user):
 
 # Movement pattern labels — used in adaptation context and exercise pool formatting.
 PATRON_LABELS_CORTO = {
-    'empuje_horizontal': 'empuje horizontal',
-    'empuje_vertical': 'empuje vertical',
-    'jale_horizontal': 'jale horizontal',
-    'jale_vertical': 'jale vertical',
-    'sentadilla': 'sentadilla/cuádriceps',
-    'bisagra': 'bisagra/cadena posterior',
-    'core': 'core',
-    'cardio': 'cardio/metabólico',
-    'movilidad': 'movilidad/flexibilidad',
+    'empuje_horizontal':  'empuje horizontal',
+    'empuje_vertical':    'empuje vertical',
+    'jalon_horizontal':   'jalón horizontal',
+    'jalon_vertical':     'jalón vertical',
+    'sentadilla':         'sentadilla/cuádriceps',
+    'bisagra':            'bisagra/cadena posterior',
+    'core_antiextension': 'core antiextensión',
+    'core_antirrotacion': 'core antirrotación',
+    'core_antiflexion':   'core antiflexión lateral',
+    'cargada':            'cargada/olímpico',
+    'locomocion':         'locomoción/transporte de carga',
+    'aislamiento':        'aislamiento muscular',
 }
 
 PATRON_LABELS_LARGO = {
-    'empuje_horizontal': 'EMPUJE HORIZONTAL (pectoral, tríceps)',
-    'empuje_vertical': 'EMPUJE VERTICAL (deltoides, tríceps)',
-    'jale_horizontal': 'JALE HORIZONTAL (dorsal, romboides)',
-    'jale_vertical': 'JALE VERTICAL (dorsal, bíceps)',
-    'sentadilla': 'SENTADILLA / CUÁDRICEPS',
-    'bisagra': 'BISAGRA / CADENA POSTERIOR (glúteos, isquiotibiales)',
-    'core': 'CORE / ABDOMEN',
-    'cardio': 'CARDIO / METABÓLICO',
-    'movilidad': 'MOVILIDAD / FLEXIBILIDAD',
+    'empuje_horizontal':  'EMPUJE HORIZONTAL (pectoral, tríceps)',
+    'empuje_vertical':    'EMPUJE VERTICAL (deltoides, tríceps)',
+    'jalon_horizontal':   'JALÓN HORIZONTAL (dorsal, romboides)',
+    'jalon_vertical':     'JALÓN VERTICAL (dorsal, bíceps)',
+    'sentadilla':         'SENTADILLA / CUÁDRICEPS',
+    'bisagra':            'BISAGRA / CADENA POSTERIOR (glúteos, isquiotibiales)',
+    'core_antiextension': 'CORE — ANTIEXTENSIÓN (recto abdominal, transverso)',
+    'core_antirrotacion': 'CORE — ANTIRROTACIÓN (oblicuos, multífidos)',
+    'core_antiflexion':   'CORE — ANTIFLEXIÓN LATERAL (cuadrado lumbar, oblicuos)',
+    'cargada':            'CARGADA / MOVIMIENTO OLÍMPICO (cuerpo completo)',
+    'locomocion':         'LOCOMOCIÓN / TRANSPORTE DE CARGA (cuerpo completo)',
+    'aislamiento':        'AISLAMIENTO MUSCULAR',
 }
 
 

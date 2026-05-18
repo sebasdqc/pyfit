@@ -7,31 +7,57 @@ class Exercise(models.Model):
     PATRON_CHOICES = [
         ('empuje_horizontal', 'Empuje horizontal'),
         ('empuje_vertical', 'Empuje vertical'),
-        ('jale_horizontal', 'Jale horizontal'),
-        ('jale_vertical', 'Jale vertical'),
+        ('jalon_horizontal', 'Jalón horizontal'),
+        ('jalon_vertical', 'Jalón vertical'),
         ('sentadilla', 'Sentadilla/Cuádriceps'),
         ('bisagra', 'Bisagra/Cadena posterior'),
-        ('core', 'Core'),
-        ('cardio', 'Cardio/Metabólico'),
-        ('movilidad', 'Movilidad/Flexibilidad'),
+        ('core_antiextension', 'Core — antiextensión'),
+        ('core_antirrotacion', 'Core — antirrotación'),
+        ('core_antiflexion', 'Core — antiflexión lateral'),
+        ('cargada', 'Cargada/Movimiento olímpico'),
+        ('locomocion', 'Locomoción/Transporte de carga'),
+        ('aislamiento', 'Aislamiento muscular'),
     ]
     DIFICULTAD_CHOICES = [
         ('principiante', 'Principiante'),
         ('intermedio', 'Intermedio'),
         ('avanzado', 'Avanzado'),
     ]
+    SPACE_CHOICES = [
+        ('minimo', 'Mínimo (≈1 m²)'),
+        ('medio', 'Medio (2–4 m²)'),
+        ('amplio', 'Amplio (>4 m²)'),
+    ]
     nombre = models.CharField(max_length=200, unique=True)
     patron_movimiento = models.CharField(max_length=30, choices=PATRON_CHOICES)
     musculos_primarios = models.JSONField(default=list)
     musculos_secundarios = models.JSONField(default=list)
-    equipamiento = models.JSONField(default=list)  # matches mobile implementos values exactly
+    equipamiento = models.JSONField(default=list)
     dificultad = models.CharField(max_length=20, choices=DIFICULTAD_CHOICES, default='intermedio')
-    contraindicaciones = models.JSONField(default=list)  # body zone strings: 'rodilla','lumbar','hombro','cuello','cadera','tobillo','muñeca','codo'
+    contraindicaciones = models.JSONField(default=list)
     bilateral = models.BooleanField(default=True)
     es_compuesto = models.BooleanField(default=True)
     activo = models.BooleanField(default=True)
     gif_url = models.CharField(max_length=500, blank=True, default='')
     imagen_url = models.CharField(max_length=500, blank=True, default='')
+    # Enriched fields from the new normalized catalog
+    technical_level = models.SmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    error_risk = models.SmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    space_required = models.CharField(max_length=10, choices=SPACE_CHOICES, null=True, blank=True)
+    systemic_fatigue = models.SmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    set_duration_seconds = models.SmallIntegerField(null=True, blank=True)
+    rest_seconds_default = models.SmallIntegerField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    coaching_cues = models.JSONField(default=list)
 
     class Meta:
         db_table = 'exercises'
@@ -39,6 +65,132 @@ class Exercise(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+# ─── Normalized exercise catalog ──────────────────────────────────────────────
+
+class MuscleGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    anatomical_group = models.CharField(max_length=50)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'muscle_groups'
+        ordering = ['anatomical_group', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class EquipmentItem(models.Model):
+    CATEGORY_CHOICES = [
+        ('Libre', 'Libre'),
+        ('Máquina', 'Máquina'),
+        ('Cable', 'Cable'),
+        ('Accesorio', 'Accesorio'),
+        ('Ninguno', 'Ninguno'),
+    ]
+    name = models.CharField(max_length=100, unique=True)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    is_gym_only = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'equipment_items'
+        ordering = ['category', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class ContraindicationCategory(models.Model):
+    SEVERITY_CHOICES = [('leve', 'Leve'), ('grave', 'Grave')]
+    name = models.CharField(max_length=100, unique=True)
+    body_zone = models.CharField(max_length=50)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
+    description = models.TextField()
+
+    class Meta:
+        db_table = 'contraindication_categories'
+        ordering = ['body_zone', 'severity', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.severity})'
+
+
+class ExerciseMuscle(models.Model):
+    ROLE_CHOICES = [
+        ('primario', 'Primario'),
+        ('secundario', 'Secundario'),
+        ('estabilizador', 'Estabilizador'),
+    ]
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='muscles')
+    muscle = models.ForeignKey(MuscleGroup, on_delete=models.RESTRICT, related_name='exercise_links')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+    class Meta:
+        db_table = 'exercise_muscles'
+        unique_together = [['exercise', 'muscle']]
+
+    def __str__(self):
+        return f'{self.exercise.nombre} — {self.muscle.name} ({self.role})'
+
+
+class ExerciseEquipment(models.Model):
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='equipment_links')
+    equipment = models.ForeignKey(EquipmentItem, on_delete=models.RESTRICT, related_name='exercise_links')
+    is_required = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'exercise_equipment'
+        unique_together = [['exercise', 'equipment']]
+
+    def __str__(self):
+        req = 'requerido' if self.is_required else 'opcional'
+        return f'{self.exercise.nombre} — {self.equipment.name} ({req})'
+
+
+class ExerciseContraindication(models.Model):
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='contraindication_links')
+    contraindication = models.ForeignKey(ContraindicationCategory, on_delete=models.RESTRICT, related_name='exercise_links')
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'exercise_contraindications'
+        unique_together = [['exercise', 'contraindication']]
+
+    def __str__(self):
+        return f'{self.exercise.nombre} — {self.contraindication.name}'
+
+
+class ExerciseRelationship(models.Model):
+    RELATIONSHIP_CHOICES = [
+        ('harder', 'Más difícil'),
+        ('easier', 'Más fácil'),
+        ('unilateral_version', 'Versión unilateral'),
+        ('equipment_alternative', 'Alternativa de equipo'),
+        ('variant', 'Variante'),
+    ]
+    source_exercise = models.ForeignKey(
+        Exercise, on_delete=models.CASCADE, related_name='relationships_as_source',
+    )
+    target_exercise = models.ForeignKey(
+        Exercise, on_delete=models.CASCADE, related_name='relationships_as_target',
+    )
+    relationship_type = models.CharField(max_length=30, choices=RELATIONSHIP_CHOICES)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'exercise_relationships'
+        unique_together = [['source_exercise', 'target_exercise', 'relationship_type']]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(source_exercise=models.F('target_exercise')),
+                name='exercise_no_self_reference',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.source_exercise.nombre} →[{self.relationship_type}]→ {self.target_exercise.nombre}'
 
 
 class UserExerciseProfile(models.Model):
