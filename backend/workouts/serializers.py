@@ -1,5 +1,12 @@
 from rest_framework import serializers
 from .models import Session, SessionExercise, SessionFeedback, Competition
+from checkins.models import DailyCheckin
+
+
+class SessionCheckinSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DailyCheckin
+        fields = ['estado_fisico', 'estado_animo', 'dolor_hoy']
 
 
 class SessionFeedbackSerializer(serializers.ModelSerializer):
@@ -20,6 +27,7 @@ class SessionExerciseSerializer(serializers.ModelSerializer):
 
 class SessionListSerializer(serializers.ModelSerializer):
     feedback = SessionFeedbackSerializer(read_only=True)
+    checkin = SessionCheckinSerializer(read_only=True)
     titulo = serializers.SerializerMethodField()
     objetivo_sesion = serializers.SerializerMethodField()
 
@@ -27,7 +35,7 @@ class SessionListSerializer(serializers.ModelSerializer):
         model = Session
         fields = [
             'id', 'fecha', 'duracion_planificada', 'rpe_target', 'volumen_relativo',
-            'titulo', 'objetivo_sesion', 'feedback', 'created_at',
+            'titulo', 'objetivo_sesion', 'respuesta_ia', 'checkin', 'feedback', 'created_at',
         ]
 
     def get_titulo(self, obj):

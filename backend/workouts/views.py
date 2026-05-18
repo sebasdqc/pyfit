@@ -14,7 +14,7 @@ from .serializers import SessionDetailSerializer, SessionListSerializer, Session
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def session_list(request):
-    sessions = request.user.sessions.select_related('feedback').all()
+    sessions = request.user.sessions.select_related('feedback', 'checkin').all()
     return Response(SessionListSerializer(sessions, many=True).data)
 
 
