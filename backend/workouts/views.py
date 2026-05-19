@@ -394,12 +394,29 @@ def _generar_insight_entrenador(user):
 
     total_sesiones = user.sessions.count()
 
+    # Recent session titles and focos for preference detection
+    ultimas_sesiones = user.sessions.select_related('checkin').order_by('-fecha', '-created_at')[:10]
+    titulos = [
+        s.respuesta_ia.get('titulo', '') for s in ultimas_sesiones
+        if s.respuesta_ia and s.respuesta_ia.get('titulo')
+    ]
+    focos_raw: list = []
+    for s in ultimas_sesiones:
+        focos_raw.extend(s.checkin.foco_entrenamiento or [] if s.checkin else [])
+    foco_counts = Counter(focos_raw)
+    foco_top = [f for f, _ in foco_counts.most_common(2)]
+
+    FOCO_ES = {'serio': 'trabajo de fuerza', 'descargar': 'cardio/descarga', 'moverme': 'movimiento general', 'recuperar': 'recuperación activa'}
+    preferencias = ' y '.join(FOCO_ES.get(f, f) for f in foco_top) if foco_top else ''
+
     ctx_lines = [
         f'Total sesiones: {total_sesiones}',
         f'Racha actual: {racha} días',
-        f'Objetivo: {objetivo}' if objetivo else None,
+        f'Objetivo principal: {objetivo}' if objetivo else None,
         f'Días objetivo/semana: {dias_objetivo}',
         f'Sesiones últimas 4 semanas (más antigua primero): {sessions_by_week}',
+        f'Tipos de sesión recientes: {", ".join(titulos[:5])}' if titulos else None,
+        f'Preferencias de entrenamiento detectadas: {preferencias}' if preferencias else None,
         f'RPE promedio esta semana: {round(float(rpe_s), 1)}' if rpe_s is not None else None,
         f'RPE promedio semana anterior: {round(float(rpe_a), 1)}' if rpe_a is not None else None,
         f'Cumplimiento esta semana: {round(float(cum_s), 1)}%' if cum_s is not None else None,
@@ -409,7 +426,21 @@ def _generar_insight_entrenador(user):
     ]
     contexto = '. '.join(line for line in ctx_lines if line)
 
-    prompt = f"""Eres el entrenador IA de una app de fitness. Analiza los datos de este atleta y genera exactamente UN insight específico, accionable y basado en datos reales.
+    if total_sesiones < 5:
+        prompt = f"""Eres el entrenador IA de una app de fitness. El atleta tiene pocas sesiones registradas aún, estás en fase de conocerlo.
+
+Datos:
+{contexto}
+
+Escribe UN mensaje personalizado, cálido pero directo, de máximo 2 oraciones. El mensaje debe:
+- Mencionar el número exacto de sesiones que lleva.
+- Si hay preferencias detectadas, mencionarlas específicamente.
+- Terminar con una frase motivadora que invite a seguir entrenando para darte más contexto.
+- Tono: como un entrenador personal que acaba de conocer al atleta. Sin condescendencia.
+- Sin emojis. Sin mencionar "la app" ni "el sistema".
+- Responde ÚNICAMENTE con el texto del mensaje, sin comillas ni prefijos."""
+    else:
+        prompt = f"""Eres el entrenador IA de una app de fitness. Analiza los datos de este atleta y genera exactamente UN insight específico, accionable y basado en datos reales.
 
 Datos:
 {contexto}
@@ -1498,11 +1529,8 @@ def _stats_rpe_semanal(request):
     rpe_por_semana: dict = defaultdict(list)
     for s in sesiones:
         week_num = (s.fecha - fecha_registro).days // 7 + 1
-        rpe = (
-            float(s.feedback.rpe_real)
-            if s.feedback and s.feedback.rpe_real is not None
-            else float(s.rpe_target)
-        )
+        fb = getattr(s, 'feedback', None)
+        rpe = float(fb.rpe_real) if fb is not None and fb.rpe_real is not None else float(s.rpe_target)
         rpe_por_semana[week_num].append(rpe)
 
     semanas = [
@@ -1566,11 +1594,8 @@ def _stats_consistencia_mensual(request):
         if es_descanso:
             intensidad = 0
         else:
-            rpe = (
-                float(s.feedback.rpe_real)
-                if s.feedback and s.feedback.rpe_real is not None
-                else float(s.rpe_target)
-            )
+            fb = getattr(s, 'feedback', None)
+            rpe = float(fb.rpe_real) if fb is not None and fb.rpe_real is not None else float(s.rpe_target)
             dur = s.duracion_planificada or 0
             if rpe < 5 or dur < 20:
                 intensidad = 1
@@ -1705,11 +1730,8 @@ def _stats_ejercicios_top(request):
     ejercicio_apariciones: dict = defaultdict(list)
 
     for s in sesiones:
-        rpe = (
-            float(s.feedback.rpe_real)
-            if s.feedback and s.feedback.rpe_real is not None
-            else float(s.rpe_target)
-        )
+        fb = getattr(s, 'feedback', None)
+        rpe = float(fb.rpe_real) if fb is not None and fb.rpe_real is not None else float(s.rpe_target)
         foco = s.checkin.foco_entrenamiento if s.checkin else []
         categoria = foco_to_cat(foco)
         for ex in s.exercises.all():

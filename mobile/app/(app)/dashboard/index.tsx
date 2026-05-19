@@ -397,6 +397,18 @@ function CTACard({
           </View>
         )}
       </TouchableOpacity>
+
+      {cta.estado === 'B' && (
+        <TouchableOpacity
+          style={styles.ctaBtnWrapSecondary}
+          onPress={() => router.push('/(app)/checkin')}
+          activeOpacity={0.88}
+        >
+          <View style={[styles.ctaBtn, styles.ctaBtnOutlined]}>
+            <Text style={styles.ctaBtnTextSecondary}>Entrenar otra vez hoy</Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
