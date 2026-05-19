@@ -71,6 +71,7 @@ urlpatterns = [
     path('api/sessions/<int:pk>/sustituir/', workout_views.session_sustituir),
     path('api/sessions/<int:pk>/iniciar/',   workout_views.session_iniciar),
     path('api/sessions/<int:pk>/ajustar/',   ai_views.session_ajustar),
+    path('api/sessions/<int:pk>/series-log/', workout_views.save_series_log),
 
     # AI extras
     path('api/ejercicio-demo/', ai_views.ejercicio_demo),

@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -17,7 +18,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet } from '../../../lib/api'
+import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Discipline selection ─────────────────────────────────────────────────────
 
@@ -112,6 +113,7 @@ function MediaCard({
 }) {
   const { colors } = useTheme()
   const mediaStyles = React.useMemo(() => makeMediaStyles(colors), [colors])
+  const [expanded, setExpanded] = useState(false)
 
   const hasGif = !!demo?.gif_url
   const hasImage = !!demo?.imagen_url
@@ -122,38 +124,52 @@ function MediaCard({
 
   return (
     <View style={mediaStyles.card}>
-      {/* Media area */}
-      {loading ? (
-        <View style={mediaStyles.placeholder}>
-          <ActivityIndicator color={colors.inkMuted} size="small" />
-        </View>
-      ) : hasGif ? (
-        <Image
-          source={{ uri: demo!.gif_url }}
-          style={mediaStyles.media}
-          contentFit="cover"
-          autoplay
-          transition={200}
-        />
-      ) : hasImage ? (
-        <Image
-          source={{ uri: demo!.imagen_url }}
-          style={mediaStyles.media}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : (
-        <View style={mediaStyles.placeholder}>
-          <Text style={mediaStyles.emoji}>{demo?.emoji ?? '🏋️'}</Text>
-          <Text style={mediaStyles.noMediaHint}>Sin demo disponible</Text>
-        </View>
-      )}
-
-      {/* YouTube link */}
-      <TouchableOpacity style={mediaStyles.ytRow} onPress={handleYouTube}>
-        <Text style={mediaStyles.ytIcon}>▶</Text>
-        <Text style={[mediaStyles.ytText, { color: faseColor }]}>Ver técnica en YouTube →</Text>
+      {/* Toggle row — always visible */}
+      <TouchableOpacity style={mediaStyles.toggleRow} onPress={() => setExpanded(v => !v)} activeOpacity={0.75}>
+        <Text style={mediaStyles.toggleEmoji}>{demo?.emoji ?? '🏋️'}</Text>
+        <Text style={[mediaStyles.toggleLabel, { color: faseColor }]}>
+          {expanded ? 'Ocultar demo ▴' : 'Ver instrucciones ▾'}
+        </Text>
+        <TouchableOpacity onPress={handleYouTube} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={[mediaStyles.ytInline, { color: faseColor }]}>▶ YouTube</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
+
+      {/* Expandable media area */}
+      {expanded && (
+        <>
+          {loading ? (
+            <View style={mediaStyles.placeholder}>
+              <ActivityIndicator color={colors.inkMuted} size="small" />
+            </View>
+          ) : hasGif ? (
+            <Image
+              source={{ uri: demo!.gif_url }}
+              style={mediaStyles.media}
+              contentFit="cover"
+              autoplay
+              transition={200}
+            />
+          ) : hasImage ? (
+            <Image
+              source={{ uri: demo!.imagen_url }}
+              style={mediaStyles.media}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={mediaStyles.placeholder}>
+              <Text style={mediaStyles.emoji}>{demo?.emoji ?? '🏋️'}</Text>
+              <Text style={mediaStyles.noMediaHint}>Sin demo disponible</Text>
+            </View>
+          )}
+
+          <TouchableOpacity style={mediaStyles.ytRow} onPress={handleYouTube}>
+            <Text style={mediaStyles.ytIcon}>▶</Text>
+            <Text style={[mediaStyles.ytText, { color: faseColor }]}>Ver técnica en YouTube →</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   )
 }
@@ -166,6 +182,26 @@ function makeMediaStyles(c: Colors) {
       borderWidth: 1,
       borderColor: c.borderDefault,
       backgroundColor: c.cardBg,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    toggleEmoji: {
+      fontSize: 20,
+    },
+    toggleLabel: {
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 13,
+      flex: 1,
+    },
+    ytInline: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      letterSpacing: 0.5,
     },
     media: {
       width: '100%',
@@ -299,8 +335,16 @@ export default function EjecutarScreen() {
   const [timerSegundos, setTimerSegundos] = useState(0)
   const [timerTotal, setTimerTotal] = useState(0)
   const [timerActivo, setTimerActivo] = useState(false)
-  // seriesCompletadas: key = globalIndex, value = number of series completed
+  // seriesCompletadas: key = globalIndex, value = sets completed for that exercise
   const [seriesCompletadas, setSeriesCompletadas] = useState<Record<number, number>>({})
+  const seriesCompletadasRef = useRef<Record<number, number>>({})
+
+  // Per-set tracking
+  const [currentPeso, setCurrentPeso] = useState('')
+  const [currentReps, setCurrentReps] = useState('')
+  const currentPesoRef = useRef('')
+  const currentRepsRef = useRef('')
+  const seriesLogRef = useRef<Record<number, Array<{ peso: string; reps: string }>>>({})
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -347,42 +391,65 @@ export default function EjecutarScreen() {
       .finally(() => setDemoLoading(false))
   }, [currentIndex, flatList])
 
-  // ── Timer ───────────────────────────────────────────────────────────────────
+  // ── Advance from rest (timer end or skip) ──────────────────────────────────
 
-  const advanceExercise = useCallback(() => {
-    setCurrentIndex(prev => {
-      const nextIndex = prev + 1
+  const advanceFromRest = useCallback(() => {
+    const ej = flatList[currentIndex]
+    if (!ej) return
+    const done = seriesCompletadasRef.current[ej.globalIndex] ?? 0
+
+    // Persist log entry for the set just completed
+    if (currentPesoRef.current || currentRepsRef.current) {
+      if (!seriesLogRef.current[ej.globalIndex]) seriesLogRef.current[ej.globalIndex] = []
+      seriesLogRef.current[ej.globalIndex][done - 1] = {
+        peso: currentPesoRef.current,
+        reps: currentRepsRef.current,
+      }
+    }
+
+    // Reset inputs
+    currentPesoRef.current = ''
+    currentRepsRef.current = ''
+    setCurrentPeso('')
+    setCurrentReps('')
+
+    // Clear timer
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
+    setTimerActivo(false)
+
+    if (done < ej.series) {
+      // More sets to do in this exercise
+      setMode('ejercicio')
+    } else {
+      // All sets done — move to next exercise
+      const nextIndex = currentIndex + 1
       if (nextIndex >= flatList.length) {
         setCompleted(true)
-        return prev
+      } else {
+        setCurrentIndex(nextIndex)
+        setMode('ejercicio')
       }
-      return nextIndex
-    })
-    setMode('ejercicio')
-    setTimerActivo(false)
-  }, [flatList.length])
+    }
+  }, [flatList, currentIndex])
+
+  // ── Timer ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    // Re-creating the interval on every tick caused timer drift; create once
-    // per active rest period and let the functional updater drive the count.
     if (!timerActivo) return
     intervalRef.current = setInterval(() => {
       setTimerSegundos(prev => {
         if (prev <= 1) {
           setTimerActivo(false)
-          advanceExercise()
+          advanceFromRest()
           return 0
         }
         return prev - 1
       })
     }, 1000)
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
     }
-  }, [timerActivo, advanceExercise])
+  }, [timerActivo, advanceFromRest])
 
   // ── Series logic ────────────────────────────────────────────────────────────
 
@@ -390,24 +457,52 @@ export default function EjecutarScreen() {
     const ej = flatList[currentIndex]
     if (!ej) return
 
-    const done = (seriesCompletadas[ej.globalIndex] ?? 0) + 1
-    setSeriesCompletadas(prev => ({ ...prev, [ej.globalIndex]: done }))
+    const done = (seriesCompletadasRef.current[ej.globalIndex] ?? 0) + 1
+    const nextMap = { ...seriesCompletadasRef.current, [ej.globalIndex]: done }
+    seriesCompletadasRef.current = nextMap
+    setSeriesCompletadas(nextMap)
 
-    if (done >= ej.series) {
-      // All series done → rest
-      const descanso = ej.descanso_segundos || 60
-      setTimerSegundos(descanso)
-      setTimerTotal(descanso)
-      setMode('descanso')
-      setTimerActivo(true)
-    }
+    // Reset input fields for this rest period
+    currentPesoRef.current = ''
+    currentRepsRef.current = ''
+    setCurrentPeso('')
+    setCurrentReps('')
+
+    // Always enter rest after each set
+    const descanso = ej.descanso_segundos || 60
+    setTimerSegundos(descanso)
+    setTimerTotal(descanso)
+    setMode('descanso')
+    setTimerActivo(true)
   }
 
   const skipDescanso = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
     setTimerActivo(false)
-    advanceExercise()
+    advanceFromRest()
   }
+
+  // ── Save series log on completion ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!completed || !id) return
+    const log = flatList
+      .map((ej, idx) => {
+        const entries = seriesLogRef.current[ej.globalIndex] ?? []
+        const series = entries
+          .map((e, si) => ({
+            serie: si + 1,
+            peso: parseFloat(e?.peso) || null,
+            reps: parseInt(e?.reps) || null,
+          }))
+          .filter(s => s.peso !== null || s.reps !== null)
+        return { orden: idx + 1, series }
+      })
+      .filter(e => e.series.length > 0)
+    if (log.length > 0) {
+      apiPost(`/api/sessions/${id}/series-log/`, { log }).catch(() => {})
+    }
+  }, [completed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -701,7 +796,7 @@ export default function EjecutarScreen() {
                 </View>
                 <TouchableOpacity
                   style={[styles.completarBtn, { backgroundColor: faseStyle.color, marginTop: 10 }]}
-                  onPress={advanceExercise}
+                  onPress={advanceFromRest}
                 >
                   <Text style={styles.completarBtnText}>
                     {currentIndex + 1 < flatList.length ? 'Siguiente ejercicio →' : 'Finalizar sesión →'}
@@ -713,7 +808,49 @@ export default function EjecutarScreen() {
         ) : (
           // ── Rest mode ─────────────────────────────────────────────────────
           <View style={styles.descansoContainer}>
-            <Text style={styles.descansoLabel}>DESCANSO</Text>
+            {/* Serie completed label */}
+            <Text style={[styles.descansoSerieLabel, { color: faseStyle.color }]}>
+              SERIE {seriesDone} / {currentEj.series} COMPLETADA
+            </Text>
+
+            {/* Weight & reps inputs */}
+            <View style={styles.descansoInputRow}>
+              <View style={styles.descansoInputWrap}>
+                <Text style={styles.descansoInputLabel}>PESO</Text>
+                <View style={styles.descansoInputInner}>
+                  <TextInput
+                    style={styles.descansoInput}
+                    value={currentPeso}
+                    onChangeText={v => { setCurrentPeso(v); currentPesoRef.current = v }}
+                    placeholder="—"
+                    placeholderTextColor={colors.inkFaint}
+                    keyboardType="decimal-pad"
+                    maxLength={6}
+                    returnKeyType="done"
+                  />
+                  <Text style={styles.descansoInputUnit}>kg</Text>
+                </View>
+              </View>
+
+              <View style={styles.descansoInputSep} />
+
+              <View style={styles.descansoInputWrap}>
+                <Text style={styles.descansoInputLabel}>REPS</Text>
+                <View style={styles.descansoInputInner}>
+                  <TextInput
+                    style={styles.descansoInput}
+                    value={currentReps}
+                    onChangeText={v => { setCurrentReps(v); currentRepsRef.current = v }}
+                    placeholder="—"
+                    placeholderTextColor={colors.inkFaint}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    returnKeyType="done"
+                  />
+                  <Text style={styles.descansoInputUnit}>reps</Text>
+                </View>
+              </View>
+            </View>
 
             <CircularTimer
               seconds={timerSegundos}
@@ -721,7 +858,16 @@ export default function EjecutarScreen() {
               color={faseStyle.color}
             />
 
-            {nextEj ? (
+            {/* Next up card */}
+            {seriesDone < currentEj.series ? (
+              <View style={styles.nextEjCard}>
+                <Text style={styles.nextEjLabel}>A CONTINUACIÓN</Text>
+                <Text style={styles.nextEjNombre}>{currentEj.nombre}</Text>
+                <Text style={styles.nextEjDetail}>
+                  Serie {seriesDone + 1} · {currentEj.repeticiones} reps · RPE {currentEj.rpe_sugerido}
+                </Text>
+              </View>
+            ) : nextEj ? (
               <View style={styles.nextEjCard}>
                 <Text style={styles.nextEjLabel}>SIGUIENTE EJERCICIO</Text>
                 <Text style={styles.nextEjNombre}>{nextEj.nombre}</Text>
@@ -968,15 +1114,63 @@ function makeStyles(c: Colors) {
     // Rest mode
     descansoContainer: {
       alignItems: 'center',
-      gap: 28,
+      gap: 24,
       paddingTop: 20,
     },
-    descansoLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
+    descansoSerieLabel: {
+      fontFamily: 'JetBrainsMono-Medium',
       fontSize: 11,
-      color: c.inkMuted,
-      letterSpacing: 3,
+      letterSpacing: 2,
       textTransform: 'uppercase',
+    },
+    descansoInputRow: {
+      flexDirection: 'row',
+      width: '100%',
+      gap: 16,
+    },
+    descansoInputWrap: {
+      flex: 1,
+      gap: 8,
+      alignItems: 'center',
+    },
+    descansoInputLabel: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      color: c.inkMuted,
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+    },
+    descansoInputInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 6,
+      width: '100%',
+    },
+    descansoInput: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 22,
+      color: c.inkPrimary,
+      flex: 1,
+      textAlign: 'center',
+      letterSpacing: -0.5,
+      padding: 0,
+    },
+    descansoInputUnit: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      color: c.inkMuted,
+      letterSpacing: 0.5,
+    },
+    descansoInputSep: {
+      width: 1,
+      backgroundColor: c.borderDefault,
+      alignSelf: 'stretch',
     },
     nextEjCard: {
       width: '100%',

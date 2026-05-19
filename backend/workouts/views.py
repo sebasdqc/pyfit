@@ -1868,3 +1868,36 @@ def _stats_radar(request):
     ]
 
     return Response({'enough_data': True, 'metrics': metrics})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_series_log(request, pk):
+    """
+    Receives per-set weight/reps data and saves it to each SessionExercise.series_log.
+    Body: { "log": [{ "orden": 1, "series": [{"serie": 1, "peso": 40.0, "reps": 10}, ...] }] }
+    """
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada.'}, status=404)
+
+    log_entries = request.data.get('log', [])
+    if not isinstance(log_entries, list):
+        return Response({'error': 'log debe ser un array.'}, status=400)
+
+    updated = 0
+    for entry in log_entries:
+        orden = entry.get('orden')
+        series = entry.get('series')
+        if orden is None or not isinstance(series, list):
+            continue
+        try:
+            exercise = session.exercises.get(orden=orden)
+            exercise.series_log = series
+            exercise.save(update_fields=['series_log'])
+            updated += 1
+        except Exception:
+            pass
+
+    return Response({'updated': updated})

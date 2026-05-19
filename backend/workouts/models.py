@@ -273,6 +273,7 @@ class SessionExercise(models.Model):
     descanso_segundos = models.IntegerField()
     rpe_sugerido = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     notas = models.TextField(blank=True)
+    series_log = models.JSONField(null=True, blank=True)
 
     class Meta:
         db_table = 'session_exercises'
