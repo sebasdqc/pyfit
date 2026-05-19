@@ -809,9 +809,9 @@ function AjusteModal({
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={dismiss}>
       <View style={{ flex: 1 }}>
-        <Pressable style={mSt.backdrop} onPress={dismiss} />
+        <Pressable style={ajSt.backdrop} onPress={dismiss} />
         <Animated.View style={[ajSt.sheet, { transform: [{ translateY: sheetY }] }]}>
-          <View style={mSt.handle} />
+          <View style={ajSt.handle} />
           <ScrollView
             showsVerticalScrollIndicator={false}
             bounces={false}
@@ -899,6 +899,19 @@ function AjusteModal({
 
 function makeAjStyles(c: Colors) {
   return StyleSheet.create({
+    backdrop: {
+      flex:            1,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+    },
+    handle: {
+      width:           40,
+      height:           4,
+      borderRadius:     2,
+      backgroundColor: c.borderBright,
+      alignSelf:       'center',
+      marginTop:       12,
+      marginBottom:     4,
+    },
     sheet: {
       backgroundColor:      c.sheetBg,
       borderTopLeftRadius:  28,

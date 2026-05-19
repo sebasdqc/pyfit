@@ -165,6 +165,8 @@ export default function DatosPersonalesScreen() {
                 </View>
               </View>
 
+              <ReadOnlyField label="CORREO" value={fullProfile?.email ?? ''} styles={styles} />
+
               <GlassInput label="NOMBRE" value={nombre} onChangeText={setNombre}
                 placeholder="Tu nombre" styles={styles} />
 

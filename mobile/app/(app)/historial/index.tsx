@@ -1069,7 +1069,9 @@ function DayModal({
       <View style={modalStyles.overlay}>
         <View style={[modalStyles.sheet, { maxHeight: '50%' }]}>
           <View style={modalStyles.header}>
-            <Text style={modalStyles.titulo}>{formatDate(fecha)}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={modalStyles.titulo}>{formatDate(fecha)}</Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn} activeOpacity={0.7}>
               <Text style={modalStyles.closeX}>✕</Text>
             </TouchableOpacity>
