@@ -4,9 +4,8 @@ Management command: python manage.py seed_satellite
 Corre los 6 archivos SQL de tablas satélite (muscle_groups, equipment_items,
 contraindication_categories y tablas puente) en producción sin necesitar psql.
 
-Seguro de re-ejecutar el schema (ON CONFLICT DO NOTHING). Las tablas puente
-(exercise_muscles, exercise_equipment, etc.) deben estar vacías en la primera
-ejecución — si no, truncar antes de correr.
+Trunca las bridge tables antes de correr los seeds de ejercicios para que sea
+idempotente y seguro de re-ejecutar.
 """
 import os
 
@@ -17,8 +16,9 @@ SQL_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sql')
 )
 
-SQL_FILES = [
-    'zyfit_exercise_schema.sql',
+SCHEMA_FILE = 'zyfit_exercise_schema.sql'
+
+EXERCISE_SEED_FILES = [
     'zyfit_seed_exercises_01_bisagra_sentadilla.sql',
     'zyfit_seed_exercises_02_empuje.sql',
     'zyfit_seed_exercises_03_jalon.sql',
@@ -26,27 +26,49 @@ SQL_FILES = [
     'zyfit_seed_exercises_05_aislamiento.sql',
 ]
 
+BRIDGE_TABLES = [
+    'exercise_relationships',
+    'exercise_contraindications',
+    'exercise_equipment',
+    'exercise_muscles',
+]
+
 
 class Command(BaseCommand):
     help = 'Seed satellite tables from SQL files (no psql required)'
 
     def handle(self, *args, **options):
-        for filename in SQL_FILES:
-            filepath = os.path.join(SQL_DIR, filename)
-            if not os.path.exists(filepath):
-                raise CommandError(f'SQL file not found: {filepath}')
+        # Step 1: schema — idempotent (CREATE TABLE IF NOT EXISTS + ON CONFLICT DO NOTHING)
+        self._run_sql_file(SCHEMA_FILE)
 
-            self.stdout.write(f'Running {filename} ...')
-            sql = open(filepath, encoding='utf-8').read()
+        # Step 2: truncate bridge tables so the exercise seeds are safe to re-run
+        self.stdout.write('Truncating bridge tables ...')
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                for table in BRIDGE_TABLES:
+                    cursor.execute(f'TRUNCATE TABLE {table}')
+        self.stdout.write(self.style.SUCCESS('  OK'))
 
-            try:
-                with transaction.atomic():
-                    with connection.cursor() as cursor:
-                        cursor.execute(sql)
-            except Exception as exc:
-                raise CommandError(f'Failed on {filename}: {exc}') from exc
+        # Step 3: exercise seeds
+        for filename in EXERCISE_SEED_FILES:
+            self._run_sql_file(filename)
 
-            self.stdout.write(self.style.SUCCESS(f'  OK'))
+    def _run_sql_file(self, filename):
+        filepath = os.path.join(SQL_DIR, filename)
+        if not os.path.exists(filepath):
+            raise CommandError(f'SQL file not found: {filepath}')
+
+        self.stdout.write(f'Running {filename} ...')
+        sql = open(filepath, encoding='utf-8').read()
+
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(sql)
+        except Exception as exc:
+            raise CommandError(f'Failed on {filename}: {exc}') from exc
+
+        self.stdout.write(self.style.SUCCESS('  OK'))
 
         self.stdout.write(self.style.SUCCESS('\nAll satellite seeds completed.'))
 
