@@ -336,3 +336,25 @@ class Competition(models.Model):
     class Meta:
         db_table = 'competitions'
         ordering = ['fecha']
+
+
+class CalendarEvent(models.Model):
+    TIPO_CHOICES = [
+        ('competicion', 'Competición'),
+        ('descanso', 'Descanso'),
+        ('otro', 'Otro'),
+    ]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='calendar_events')
+    fecha = models.DateField()
+    titulo = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otro')
+    notas = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'calendar_events'
+        ordering = ['fecha', 'created_at']
+        indexes = [models.Index(fields=['user', 'fecha'])]
+
+    def __str__(self):
+        return f'{self.user} - {self.titulo} ({self.fecha})'

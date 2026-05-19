@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA
+from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA, CalendarEvent
 from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer
 
 
@@ -406,7 +406,11 @@ def _generar_insight_entrenador(user):
     foco_counts = Counter(focos_raw)
     foco_top = [f for f, _ in foco_counts.most_common(2)]
 
-    FOCO_ES = {'serio': 'trabajo de fuerza', 'descargar': 'cardio/descarga', 'moverme': 'movimiento general', 'recuperar': 'recuperación activa'}
+    FOCO_ES = {
+        'serio': 'trabajo de fuerza', 'descargar': 'cardio/descarga',
+        'moverme': 'movimiento general', 'recuperar': 'recuperación activa',
+        'musculacion': 'musculación y fuerza', 'running': 'running y cardio', 'libre': 'entrenamiento libre',
+    }
     preferencias = ' y '.join(FOCO_ES.get(f, f) for f in foco_top) if foco_top else ''
 
     ctx_lines = [
@@ -1570,10 +1574,6 @@ def _stats_consistencia_mensual(request):
     year  = int(request.GET.get('year',  today.year))
     month = int(request.GET.get('month', today.month))
 
-    # Never allow future months
-    if (year, month) > (today.year, today.month):
-        year, month = today.year, today.month
-
     first_day     = date(year, month, 1)
     days_in_month = _cal.monthrange(year, month)[1]
     last_day      = date(year, month, days_in_month)
@@ -1901,3 +1901,52 @@ def save_series_log(request, pk):
             pass
 
     return Response({'updated': updated})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def calendar_eventos(request):
+    if request.method == 'GET':
+        year  = int(request.GET.get('year',  date.today().year))
+        month = int(request.GET.get('month', date.today().month))
+        eventos = CalendarEvent.objects.filter(
+            user=request.user, fecha__year=year, fecha__month=month,
+        )
+        return Response([{
+            'id':     e.id,
+            'fecha':  str(e.fecha),
+            'titulo': e.titulo,
+            'tipo':   e.tipo,
+        } for e in eventos])
+
+    # POST — create event
+    titulo = (request.data.get('titulo') or '').strip()
+    if not titulo:
+        return Response({'error': 'El título es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        evento = CalendarEvent.objects.create(
+            user=request.user,
+            fecha=request.data['fecha'],
+            titulo=titulo,
+            tipo=request.data.get('tipo', 'otro'),
+            notas=request.data.get('notas', ''),
+        )
+    except Exception as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'id':     evento.id,
+        'fecha':  str(evento.fecha),
+        'titulo': evento.titulo,
+        'tipo':   evento.tipo,
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def calendar_evento_delete(request, pk):
+    try:
+        evento = CalendarEvent.objects.get(pk=pk, user=request.user)
+        evento.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except CalendarEvent.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)

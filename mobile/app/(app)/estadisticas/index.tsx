@@ -7,13 +7,19 @@ import {
   StyleSheet,
   ActivityIndicator,
   useWindowDimensions,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Line, Path, Circle, Rect, Text as SvgText } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
-import { apiGet } from '../../../lib/api'
+import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 import RadarBlock, { RadarBlockEmpty, RadarMetric } from '../../../components/RadarBlock'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,6 +43,25 @@ interface RPEData {
 }
 
 interface DiaData { fecha: string; intensidad: number; es_descanso: boolean }
+
+interface CalendarEventData {
+  id: number
+  fecha: string  // YYYY-MM-DD
+  titulo: string
+  tipo: 'competicion' | 'descanso' | 'otro'
+}
+
+const EVENT_COLORS: Record<CalendarEventData['tipo'], string> = {
+  competicion: '#ffaa32',
+  descanso:    '#a78bfa',
+  otro:        '#6ce5ff',
+}
+
+const EVENT_LABELS: Record<CalendarEventData['tipo'], string> = {
+  competicion: '🏆 Competición',
+  descanso:    '😴 Descanso',
+  otro:        '📌 Otro',
+}
 
 interface ConsistData {
   year: number
@@ -457,6 +482,8 @@ function HeatMapBlock({
   mesActual,
   onPrev,
   onNext,
+  onDayPress,
+  eventos,
   containerW,
   styles,
 }: {
@@ -467,34 +494,38 @@ function HeatMapBlock({
   mesActual: { year: number; month: number }
   onPrev: () => void
   onNext: () => void
+  onDayPress: (dateStr: string) => void
+  eventos: CalendarEventData[]
   containerW: number
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
 
-  // Escala de intensidad derivada de la paleta — el nivel 0 (sin actividad)
-  // usa el borde del tema (visible en light y dark), los demás son tonos del
-  // accent. Antes había un literal `rgba(255,255,255,*)` que se perdía en light.
   const INTENSITY_BG = [
-    colors.borderDefault,    // 0: sin actividad
-    colors.accent + '2e',    // 1: ~18% opacidad
-    colors.accent + '66',    // 2: ~40%
-    colors.accent + 'a6',    // 3: ~65%
-    colors.accent,           // 4: máximo
+    colors.borderDefault,
+    colors.accent + '2e',
+    colors.accent + '66',
+    colors.accent + 'a6',
+    colors.accent,
   ]
 
   const today    = new Date()
+  const maxFuture = new Date(today.getFullYear(), today.getMonth() + 3)  // up to 3 months ahead
   const canPrev  = mesActual.year > regYear || (mesActual.year === regYear && mesActual.month > regMonth)
-  const canNext  = mesActual.year < today.getFullYear() ||
-                   (mesActual.year === today.getFullYear() && mesActual.month < today.getMonth() + 1)
+  const canNext  = mesActual.year < maxFuture.getFullYear() ||
+                   (mesActual.year === maxFuture.getFullYear() && mesActual.month <= maxFuture.getMonth())
 
-  // Grid sizing
   const GAP      = 4
   const cellSize = Math.floor((containerW - GAP * 6) / 7)
 
+  // Build event lookup: fecha → first event tipo (for dot color)
+  const eventMap = new Map<string, CalendarEventData['tipo']>()
+  for (const ev of eventos) {
+    if (!eventMap.has(ev.fecha)) eventMap.set(ev.fecha, ev.tipo)
+  }
+
   return (
     <>
-      {/* Section label + navigator on same row */}
       <View style={styles.consistHeaderRow}>
         <Text style={styles.blockLabel}>TU CONSISTENCIA</Text>
 
@@ -549,29 +580,37 @@ function HeatMapBlock({
                   {Array.from({ length: 7 }).map((_, ci) => {
                     const cell = row[ci] ?? null
                     if (cell === null) {
-                      return <View key={ci} style={{ width: cellSize, height: cellSize }} />
+                      return <View key={ci} style={{ width: cellSize, height: cellSize + 8 }} />
                     }
-                    if (cell.es_descanso) {
-                      return (
-                        <View
-                          key={ci}
-                          style={{
-                            width: cellSize, height: cellSize, borderRadius: 3,
-                            borderWidth: 1,
-                            borderStyle: 'dashed',
-                            borderColor: 'rgba(255,170,50,0.55)',
-                          }}
-                        />
-                      )
-                    }
+                    const eventTipo = eventMap.get(cell.fecha)
+                    const eventDot  = eventTipo ? EVENT_COLORS[eventTipo] : null
+
                     return (
-                      <View
+                      <TouchableOpacity
                         key={ci}
-                        style={{
-                          width: cellSize, height: cellSize, borderRadius: 3,
-                          backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
-                        }}
-                      />
+                        onPress={() => onDayPress(cell.fecha)}
+                        activeOpacity={0.7}
+                        style={{ width: cellSize, height: cellSize + 8, alignItems: 'center' }}
+                      >
+                        {cell.es_descanso ? (
+                          <View style={{
+                            width: cellSize, height: cellSize, borderRadius: 3,
+                            borderWidth: 1, borderStyle: 'dashed',
+                            borderColor: 'rgba(255,170,50,0.55)',
+                          }} />
+                        ) : (
+                          <View style={{
+                            width: cellSize, height: cellSize, borderRadius: 3,
+                            backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
+                          }} />
+                        )}
+                        {eventDot && (
+                          <View style={{
+                            width: 4, height: 4, borderRadius: 2,
+                            backgroundColor: eventDot, marginTop: 2,
+                          }} />
+                        )}
+                      </TouchableOpacity>
                     )
                   })}
                 </View>
@@ -644,6 +683,13 @@ export default function EstadisticasScreen() {
   const [consistLoading, setConsistLoading] = useState(false)
   const [regDate, setRegDate] = useState({ year: 2000, month: 1 })
 
+  // ── Events state ───────────────────────────────────────────────────────────
+  const [eventos,        setEventos]        = useState<CalendarEventData[]>([])
+  const [selectedDay,    setSelectedDay]    = useState<string | null>(null)
+  const [newEventTitulo, setNewEventTitulo] = useState('')
+  const [newEventTipo,   setNewEventTipo]   = useState<CalendarEventData['tipo']>('otro')
+  const [savingEvent,    setSavingEvent]    = useState(false)
+
   // ── Shared ─────────────────────────────────────────────────────────────────
   const [initialLoading, setInitialLoading] = useState(true)
   const [error,          setError]          = useState<string | null>(null)
@@ -703,6 +749,15 @@ export default function EstadisticasScreen() {
     }
   }, [])
 
+  const fetchEventos = useCallback(async (year: number, month: number) => {
+    try {
+      const res: CalendarEventData[] = await apiGet(`/api/eventos/?year=${year}&month=${month}`)
+      setEventos(res)
+    } catch {
+      // non-critical
+    }
+  }, [])
+
   useEffect(() => {
     const { year, month } = mesActual
     Promise.all([
@@ -711,6 +766,7 @@ export default function EstadisticasScreen() {
       fetchConsist(year, month, true),
       fetchCuerpo(true),
       fetchEjercicios(true),
+      fetchEventos(year, month),
     ]).finally(() => setInitialLoading(false))
   }, []) // eslint-disable-line
 
@@ -721,6 +777,7 @@ export default function EstadisticasScreen() {
       : { year: mesActual.year, month: mesActual.month - 1 }
     setMesActual(m)
     fetchConsist(m.year, m.month)
+    fetchEventos(m.year, m.month)
   }
 
   function goNext() {
@@ -729,6 +786,48 @@ export default function EstadisticasScreen() {
       : { year: mesActual.year, month: mesActual.month + 1 }
     setMesActual(m)
     fetchConsist(m.year, m.month)
+    fetchEventos(m.year, m.month)
+  }
+
+  // ── Event handlers ─────────────────────────────────────────────────────────
+  function openDayModal(dateStr: string) {
+    setSelectedDay(dateStr)
+    setNewEventTitulo('')
+    setNewEventTipo('otro')
+  }
+
+  function closeDayModal() {
+    setSelectedDay(null)
+    setNewEventTitulo('')
+    setNewEventTipo('otro')
+  }
+
+  async function handleAddEvent() {
+    if (!selectedDay || !newEventTitulo.trim()) return
+    setSavingEvent(true)
+    try {
+      const ev: CalendarEventData = await apiPost('/api/eventos/', {
+        fecha:  selectedDay,
+        titulo: newEventTitulo.trim(),
+        tipo:   newEventTipo,
+      })
+      setEventos(prev => [...prev, ev])
+      setNewEventTitulo('')
+      setNewEventTipo('otro')
+    } catch {
+      // silent error — keep modal open
+    } finally {
+      setSavingEvent(false)
+    }
+  }
+
+  async function handleDeleteEvent(id: number) {
+    try {
+      await apiDelete(`/api/eventos/${id}/`)
+      setEventos(prev => prev.filter(e => e.id !== id))
+    } catch {
+      // silent
+    }
   }
 
   // ── Loading / error states ─────────────────────────────────────────────────
@@ -856,6 +955,8 @@ export default function EstadisticasScreen() {
           mesActual={mesActual}
           onPrev={goPrev}
           onNext={goNext}
+          onDayPress={openDayModal}
+          eventos={eventos}
           containerW={cardInnerW}
           styles={styles}
         />
@@ -939,8 +1040,124 @@ export default function EstadisticasScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Event Modal ── */}
+      <Modal
+        visible={selectedDay !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDayModal}
+        statusBarTranslucent
+      >
+        <TouchableWithoutFeedback onPress={closeDayModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.modalKAV}
+              >
+                <View style={styles.modalCard}>
+                  {/* Header */}
+                  <View style={styles.modalHeader}>
+                    <View>
+                      <Text style={styles.modalEyebrow}>EVENTOS DEL DÍA</Text>
+                      <Text style={styles.modalDate}>
+                        {selectedDay ? formatModalDate(selectedDay) : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={closeDayModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.modalClose}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Existing events */}
+                  {(() => {
+                    const dayEvs = eventos.filter(e => e.fecha === selectedDay)
+                    if (dayEvs.length === 0) return null
+                    return (
+                      <View style={styles.modalEventsList}>
+                        {dayEvs.map(ev => (
+                          <View key={ev.id} style={styles.modalEventRow}>
+                            <View style={[styles.modalEventDot, { backgroundColor: EVENT_COLORS[ev.tipo] }]} />
+                            <View style={styles.modalEventInfo}>
+                              <Text style={styles.modalEventTitle} numberOfLines={1}>{ev.titulo}</Text>
+                              <Text style={[styles.modalEventTipo, { color: EVENT_COLORS[ev.tipo] }]}>
+                                {EVENT_LABELS[ev.tipo]}
+                              </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => handleDeleteEvent(ev.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                              <Text style={styles.modalEventDelete}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                        <View style={styles.modalDivider} />
+                      </View>
+                    )
+                  })()}
+
+                  {/* Add new event */}
+                  <Text style={styles.modalAddLabel}>AGREGAR EVENTO</Text>
+
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Nombre del evento…"
+                    placeholderTextColor={colors.inkFaint}
+                    value={newEventTitulo}
+                    onChangeText={setNewEventTitulo}
+                    maxLength={80}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
+                  />
+
+                  {/* Type selector */}
+                  <View style={styles.modalTipoRow}>
+                    {(['competicion', 'descanso', 'otro'] as const).map(t => {
+                      const on = newEventTipo === t
+                      return (
+                        <TouchableOpacity
+                          key={t}
+                          onPress={() => setNewEventTipo(t)}
+                          style={[
+                            styles.modalTipoChip,
+                            on && { backgroundColor: EVENT_COLORS[t] + '22', borderColor: EVENT_COLORS[t] },
+                          ]}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={[styles.modalTipoText, on && { color: EVENT_COLORS[t] }]}>
+                            {EVENT_LABELS[t]}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Save button */}
+                  <TouchableOpacity
+                    onPress={handleAddEvent}
+                    disabled={!newEventTitulo.trim() || savingEvent}
+                    style={[styles.modalSaveBtn, (!newEventTitulo.trim() || savingEvent) && { opacity: 0.4 }]}
+                    activeOpacity={0.82}
+                  >
+                    {savingEvent
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.modalSaveBtnText}>Guardar evento</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   )
+}
+
+function formatModalDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const d = new Date(year, month - 1, day)
+  const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+  return `${weekdays[d.getDay()]} ${day} de ${MESES_ES[month - 1]}, ${year}`
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -1058,5 +1275,84 @@ function makeStyles(c: Colors) {
     exRpe:         { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 18, color: c.inkPrimary, letterSpacing: -0.4 },
     exVar:         { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 0.2 },
     exVarPrimeras: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkFaint, letterSpacing: 0.2 },
+
+    // Event modal
+    modalOverlay: {
+      flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+      justifyContent: 'flex-end',
+    },
+    modalKAV: { width: '100%' },
+    modalCard: {
+      backgroundColor: '#0d1117',
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      borderWidth: 1, borderColor: c.borderBright,
+      padding: 24, paddingBottom: 36,
+    },
+    modalHeader: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      alignItems: 'flex-start', marginBottom: 20,
+    },
+    modalEyebrow: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.inkMuted, letterSpacing: 2.5, textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    modalDate: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
+      color: c.inkPrimary, letterSpacing: -0.3,
+    },
+    modalClose: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 16,
+      color: c.inkMuted, paddingTop: 4,
+    },
+    modalEventsList: { marginBottom: 16 },
+    modalEventRow: {
+      flexDirection: 'row', alignItems: 'center',
+      gap: 10, paddingVertical: 8,
+    },
+    modalEventDot: { width: 8, height: 8, borderRadius: 4 },
+    modalEventInfo: { flex: 1 },
+    modalEventTitle: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
+      color: c.inkPrimary, letterSpacing: -0.2,
+    },
+    modalEventTipo: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      letterSpacing: 0.5, marginTop: 2,
+    },
+    modalEventDelete: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
+      color: c.inkFaint,
+    },
+    modalDivider: { height: 1, backgroundColor: c.borderDefault, marginTop: 8, marginBottom: 4 },
+    modalAddLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.inkMuted, letterSpacing: 2, textTransform: 'uppercase',
+      marginBottom: 10,
+    },
+    modalInput: {
+      backgroundColor: c.glassBg,
+      borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkPrimary, marginBottom: 12,
+    },
+    modalTipoRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+    modalTipoChip: {
+      flex: 1, paddingVertical: 8, alignItems: 'center',
+      borderRadius: 10, borderWidth: 1, borderColor: c.borderDefault,
+    },
+    modalTipoText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 0.1,
+    },
+    modalSaveBtn: {
+      backgroundColor: c.accent, borderRadius: 14,
+      paddingVertical: 14, alignItems: 'center',
+    },
+    modalSaveBtnText: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14,
+      color: '#ffffff', letterSpacing: -0.2,
+    },
   })
 }

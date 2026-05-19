@@ -13,9 +13,9 @@ import { apiGet, apiPut } from '../../../lib/api'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ESTILOS = [
-  { k: 'fuerza', l: 'Fuerza' }, { k: 'hipertrofia', l: 'Hipertrofia' },
-  { k: 'hiit', l: 'HIIT' }, { k: 'funcional', l: 'Funcional' },
-  { k: 'cardio', l: 'Cardio' }, { k: 'mixto', l: 'Mixto' },
+  { k: 'musculacion', l: 'Musculación' },
+  { k: 'running',     l: 'Running' },
+  { k: 'libre',       l: 'Entrenamiento Libre' },
 ]
 
 const LISTA_EJERCICIOS = [

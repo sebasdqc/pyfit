@@ -87,6 +87,10 @@ urlpatterns = [
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
     path('api/stats/radar/', workout_views.stats_radar),
 
+    # Calendar events
+    path('api/eventos/',           workout_views.calendar_eventos),
+    path('api/eventos/<int:pk>/',  workout_views.calendar_evento_delete),
+
     # Notifications
     path('api/notificaciones/',              user_views.notifications_list),
     path('api/notificaciones/<int:pk>/leer/', user_views.notification_leer),

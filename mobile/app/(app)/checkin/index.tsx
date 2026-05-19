@@ -46,14 +46,9 @@ const TIEMPO_OPTS = [
 type TiempoDispo = typeof TIEMPO_OPTS[number]['id']
 
 const DISCIPLINA_OPTS = [
-  { id: 'musculacion' as const, label: 'Musculación',      sub: 'Fuerza e hipertrofia',        foco: 'serio',     color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',   border: 'rgba(79,140,255,0.45)'   },
-  { id: 'funcional'   as const, label: 'Funcional',        sub: 'Movimientos compuestos',       foco: 'serio',     color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)',  border: 'rgba(108,229,255,0.45)'  },
-  { id: 'hiit'        as const, label: 'HIIT',             sub: 'Alta intensidad por intervalos', foco: 'descargar', color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',  border: 'rgba(255,170,50,0.45)'   },
-  { id: 'running'     as const, label: 'Running / Cardio', sub: 'Trabajo aeróbico',             foco: 'descargar', color: '#ff8c42', bg: 'rgba(255,140,66,0.1)',   border: 'rgba(255,140,66,0.45)'   },
-  { id: 'movilidad'   as const, label: 'Movilidad',        sub: 'Flexibilidad y rangos',        foco: 'recuperar', color: '#32c896', bg: 'rgba(50,200,150,0.1)',   border: 'rgba(50,200,150,0.45)'   },
-  { id: 'yoga'        as const, label: 'Yoga / Stretching', sub: 'Recuperación activa y calma', foco: 'recuperar', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.45)'  },
-  { id: 'crossfit'    as const, label: 'CrossFit',         sub: 'Potencia y resistencia mixta', foco: 'descargar', color: '#f87171', bg: 'rgba(248,113,113,0.1)',  border: 'rgba(248,113,113,0.45)'  },
-  { id: 'deporte'     as const, label: 'Deporte / Otro',   sub: 'Actividad libre o deportiva',  foco: 'moverme',   color: '#34d399', bg: 'rgba(52,211,153,0.1)',   border: 'rgba(52,211,153,0.45)'   },
+  { id: 'musculacion' as const, label: 'Musculación',        sub: 'Fuerza e hipertrofia',              foco: 'serio',    color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',  border: 'rgba(79,140,255,0.45)'  },
+  { id: 'running'     as const, label: 'Running',            sub: 'Trabajo aeróbico y resistencia',    foco: 'descargar', color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)'  },
+  { id: 'libre'       as const, label: 'Entrenamiento Libre', sub: 'Sin estructura fija, fluye contigo', foco: 'moverme', color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.45)'  },
 ]
 type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
 

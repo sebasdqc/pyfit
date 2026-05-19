@@ -67,9 +67,9 @@ interface Session {
   checkin?: Checkin | null
 }
 
-type FilterTipo = 'Todo' | 'Fuerza' | 'Cardio' | 'Movilidad' | 'HIIT' | 'Funcional'
+type FilterTipo = 'Todo' | 'Musculación' | 'Running' | 'Libre'
 
-const FILTER_TIPOS: FilterTipo[] = ['Todo', 'Fuerza', 'Cardio', 'Movilidad', 'HIIT', 'Funcional']
+const FILTER_TIPOS: FilterTipo[] = ['Todo', 'Musculación', 'Running', 'Libre']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -213,23 +213,16 @@ function getDayColor(session?: Session): string | null {
   return cumplimientoColor(c)
 }
 
-function inferTipoSesion(ia?: RespuestaIA): string {
+function inferTipoSesion(ia?: RespuestaIA): FilterTipo {
   const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
-  if (/inferior|pierna|cuádricep|femoral|glúteo|sentadilla/.test(text)) return 'Fuerza Tren Inferior'
-  if (/superior|pecho|espalda|hombro|bícep|trícep|jalón|press/.test(text)) return 'Fuerza Tren Superior'
-  if (/hiit|interval/.test(text)) return 'HIIT'
-  if (/cardio/.test(text)) return 'Cardio'
-  if (/movilidad|flexib|stretch|yoga/.test(text)) return 'Movilidad'
-  if (/funcional|crossfit/.test(text)) return 'Funcional'
-  if (/fuerza/.test(text)) return 'Fuerza'
-  return 'Entrenamiento'
+  if (/running|correr|cardio|aeróbico|aerobico|trote|kilómetro|kilómetros|ritmo|resistencia cardiovascular/.test(text)) return 'Running'
+  if (/fuerza|hipertrofia|pecho|espalda|pierna|cuádricep|femoral|glúteo|bícep|trícep|hombro|sentadilla|press|jalón|musculación|musculacion/.test(text)) return 'Musculación'
+  return 'Libre'
 }
 
 function matchesTipo(session: Session, tipo: FilterTipo): boolean {
   if (tipo === 'Todo') return true
-  const t = inferTipoSesion(session.respuesta_ia)
-  if (tipo === 'Fuerza') return t.startsWith('Fuerza')
-  return t === tipo
+  return inferTipoSesion(session.respuesta_ia) === tipo
 }
 
 function countActiveWeeks(sessions: Session[]): number {

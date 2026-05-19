@@ -270,11 +270,9 @@ const COACHING_STYLES = [
 ]
 
 const TIPOS_ENTRENAMIENTO = [
-  { id: 'fuerza',    icon: '🏋️', label: 'Fuerza',     sub: 'Levantamiento y resistencia progresiva' },
-  { id: 'cardio',    icon: '🏃', label: 'Cardio',      sub: 'Resistencia cardiovascular' },
-  { id: 'movilidad', icon: '🧘', label: 'Movilidad',   sub: 'Flexibilidad y rango de movimiento' },
-  { id: 'hiit',      icon: '🔥', label: 'HIIT',        sub: 'Alta intensidad por intervalos' },
-  { id: 'funcional', icon: '⚙️', label: 'Funcional',  sub: 'Movimientos potenciados del día a día' },
+  { id: 'musculacion', icon: '🏋️', label: 'Musculación',        sub: 'Fuerza e hipertrofia' },
+  { id: 'running',     icon: '🏃', label: 'Running',            sub: 'Trabajo aeróbico y resistencia' },
+  { id: 'libre',       icon: '⚡', label: 'Entrenamiento Libre', sub: 'Sin estructura fija' },
 ]
 
 const DEPORTES = [
