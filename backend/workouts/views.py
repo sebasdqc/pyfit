@@ -343,9 +343,8 @@ def _generar_insight_entrenador(user):
     from django.db.models import Avg
     hoy = date.today()
 
-    # Requires ≥7 days since first session
     primera = user.sessions.order_by('fecha').first()
-    if not primera or (hoy - primera.fecha).days < 7:
+    if not primera:
         return None
 
     # Return today's cached insight if it exists
@@ -1459,6 +1458,14 @@ _FOCO_MAP = {
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_rpe_semanal(request):
+    try:
+        return _stats_rpe_semanal(request)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).exception('stats_rpe_semanal')
+        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+
+
+def _stats_rpe_semanal(request):
     """
     Weekly RPE averages from registration week to current week.
     Query param: ?filtro=todo|fuerza|cardio|movilidad
@@ -1518,6 +1525,14 @@ def stats_rpe_semanal(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_consistencia_mensual(request):
+    try:
+        return _stats_consistencia_mensual(request)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).exception('stats_consistencia_mensual')
+        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+
+
+def _stats_consistencia_mensual(request):
     """
     Day-by-day consistency heat map for a given month.
     Query params: ?year=2025&month=5
@@ -1606,6 +1621,14 @@ def stats_consistencia_mensual(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_cuerpo_contexto(request):
+    try:
+        return _stats_cuerpo_contexto(request)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).exception('stats_cuerpo_contexto')
+        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+
+
+def _stats_cuerpo_contexto(request):
     """
     Weekly averages of estado_fisico and estado_animo (as 1-4 scale),
     plus the distribution of intencion de entrenamiento from foco_entrenamiento.
@@ -1650,6 +1673,14 @@ def stats_cuerpo_contexto(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_ejercicios_top(request):
+    try:
+        return _stats_ejercicios_top(request)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).exception('stats_ejercicios_top')
+        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+
+
+def _stats_ejercicios_top(request):
     """
     Top 5 exercises by frequency across all completed sessions.
     Tie-broken by RPE desc. Includes variacion = avg(last 3 RPE) - avg(first 3 RPE),

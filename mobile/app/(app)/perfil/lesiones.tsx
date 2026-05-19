@@ -13,6 +13,22 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 const ZONAS = ['Rodilla', 'Lumbar', 'Hombro', 'Cuello', 'Cadera', 'Tobillo', 'Muñeca', 'Codo']
 const SEVERIDADES = ['Leve', 'Moderada', 'Crónica']
 
+const ZONA_LABELS: Record<string, string> = {
+  rodilla: 'Rodilla', lumbar: 'Lumbar', hombro: 'Hombro',
+  cuello: 'Cuello', cadera: 'Cadera', tobillo: 'Tobillo',
+  muñeca: 'Muñeca', codo: 'Codo', thoracica: 'Dorsal',
+  // legacy values with laterality
+  rodilla_der: 'Rodilla derecha', rodilla_izq: 'Rodilla izquierda',
+  hombro_der: 'Hombro derecho', hombro_izq: 'Hombro izquierdo',
+  tobillo_der: 'Tobillo derecho', tobillo_izq: 'Tobillo izquierdo',
+  muñeca_der: 'Muñeca derecha', muñeca_izq: 'Muñeca izquierda',
+  codo_der: 'Codo derecho', codo_izq: 'Codo izquierdo',
+}
+
+function zonaLabel(zona: string): string {
+  return ZONA_LABELS[zona.toLowerCase()] ?? zona.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Injury { id?: number; zona: string; severidad: string; activa: boolean }
@@ -75,7 +91,7 @@ export default function LesionesScreen() {
   }
 
   async function remove(inj: Injury) {
-    Alert.alert('Eliminar lesión', `¿Eliminar ${inj.zona}?`, [
+    Alert.alert('Eliminar lesión', `¿Eliminar ${zonaLabel(inj.zona)}?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar', style: 'destructive',
@@ -87,11 +103,6 @@ export default function LesionesScreen() {
         },
       },
     ])
-  }
-
-  function capitalizeFirst(s: string) {
-    if (!s) return ''
-    return s.charAt(0).toUpperCase() + s.slice(1)
   }
 
   return (
@@ -124,8 +135,8 @@ export default function LesionesScreen() {
                 {injuries.map(inj => (
                   <View key={inj.id} style={styles.injuryRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.injuryZona}>{capitalizeFirst(inj.zona)}</Text>
-                      <Text style={styles.injurySev}>{capitalizeFirst(inj.severidad)}</Text>
+                      <Text style={styles.injuryZona}>{zonaLabel(inj.zona)}</Text>
+                      <Text style={styles.injurySev}>{inj.severidad.charAt(0).toUpperCase() + inj.severidad.slice(1)}</Text>
                     </View>
                     <TouchableOpacity onPress={() => toggleActiva(inj)} activeOpacity={0.7}
                       style={[styles.toggleBtn, inj.activa && styles.toggleBtnActive]}>

@@ -130,6 +130,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'EXCEPTION_HANDLER': 'pyfit.exceptions.json_exception_handler',
     'DEFAULT_THROTTLE_RATES': {
         'login': '10/minute',
         'register': '5/hour',
