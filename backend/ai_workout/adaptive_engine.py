@@ -23,14 +23,20 @@ _satellite_contraindication_populated: bool | None = None
 def _check_satellite_tables() -> tuple[bool, bool]:
     """
     Returns (has_equipment_data, has_contraindication_data).
-    Caches results in module-level flags to avoid repeated DB hits.
+    Only caches True — if tables are still empty, rechecks on every request
+    so that seeding takes effect without needing a server restart.
     """
     global _satellite_equipment_populated, _satellite_contraindication_populated
-    if _satellite_equipment_populated is None:
-        _satellite_equipment_populated = EquipmentItem.objects.exists()
-    if _satellite_contraindication_populated is None:
-        _satellite_contraindication_populated = ContraindicationCategory.objects.exists()
-    return _satellite_equipment_populated, _satellite_contraindication_populated
+    if _satellite_equipment_populated is not True:
+        if EquipmentItem.objects.exists():
+            _satellite_equipment_populated = True
+    if _satellite_contraindication_populated is not True:
+        if ContraindicationCategory.objects.exists():
+            _satellite_contraindication_populated = True
+    return (
+        _satellite_equipment_populated is True,
+        _satellite_contraindication_populated is True,
+    )
 
 # Maps UserInjury.zona (lowercase) → ContraindicationCategory.body_zone (as seeded)
 ZONA_A_BODY_ZONE: dict[str, str] = {
