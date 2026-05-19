@@ -1,5 +1,6 @@
 import json
 import logging
+import time as _time
 from datetime import date, timedelta
 from types import SimpleNamespace
 from groq import Groq
@@ -12,6 +13,7 @@ from rest_framework.response import Response
 from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle
 from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile
 from checkins.models import DailyCheckin
+from ai_workout.adaptive_engine import AdaptiveEngineService
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ logger = logging.getLogger(__name__)
 GROQ_TIMEOUT_SECONDS = 30
 
 
-def _call_groq(prompt: str, max_tokens: int) -> dict:
+def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
     """
     Call Groq and return parsed JSON. Raises ValueError on parse/empty response,
     or any underlying Groq exception. Caller is responsible for translating
@@ -28,13 +30,21 @@ def _call_groq(prompt: str, max_tokens: int) -> dict:
     if not settings.GROQ_API_KEY:
         raise RuntimeError('GROQ_API_KEY not configured')
 
+    t0 = _time.monotonic()
     groq_client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS)
     completion = groq_client.chat.completions.create(
         model='llama-3.3-70b-versatile',
         messages=[{'role': 'user', 'content': prompt}],
         max_tokens=max_tokens,
     )
+    elapsed = _time.monotonic() - t0
     text = (completion.choices[0].message.content or '').strip()
+    tokens_out = getattr(completion.usage, 'completion_tokens', 0) or 0
+    tokens_in  = getattr(completion.usage, 'prompt_tokens', 0) or 0
+    logger.info(
+        'groq_call user=%s tokens_in=%d tokens_out=%d elapsed=%.2fs',
+        user_id, tokens_in, tokens_out, elapsed,
+    )
     if not text:
         raise ValueError('Empty response from AI')
     clean = text.replace('```json', '').replace('```', '').strip()
@@ -314,16 +324,147 @@ def _format_exercise_pool(grouped):
     return '\n'.join(lines)
 
 
+def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
+    """
+    Formats the enriched exercise pool (from AdaptiveEngineService) for the LLM.
+    Groups by patron_movimiento sorted by priority; limits to 50 exercises.
+    """
+    if not pool:
+        return 'No hay ejercicios disponibles con los filtros aplicados para esta sesión.'
+
+    priorizados  = priorities.get('priorizados', [])
+    evitar_set   = set(priorities.get('evitar', []))
+
+    # Group by patron
+    by_patron: dict = {}
+    for ex in pool:
+        by_patron.setdefault(ex['patron_movimiento'], []).append(ex)
+
+    # Sort within each patron: compuestos first, then by veces_realizado desc
+    for pat in by_patron:
+        by_patron[pat].sort(key=lambda x: (not x['es_compuesto'], -x.get('veces_realizado', 0)))
+
+    # Build ordered patron list
+    patron_order: list[str] = []
+    for p in priorizados:
+        if p in by_patron and p not in evitar_set:
+            patron_order.append(p)
+    for p in by_patron:
+        if p not in patron_order and p not in evitar_set:
+            patron_order.append(p)
+    for p in evitar_set:
+        if p in by_patron:
+            patron_order.append(p)
+
+    # Collect up to 50 exercises
+    selected: list[dict] = []
+    for pat in patron_order:
+        selected.extend(by_patron.get(pat, []))
+        if len(selected) >= 50:
+            break
+    selected = selected[:50]
+
+    PROG_ICONS = {
+        'incrementar': '↑ puede progresar',
+        'mantener':    '→ mantener',
+        'reducir':     '↓ reducir carga',
+        'consolidar':  '⏸ consolidar (>7d sin hacer)',
+    }
+
+    lines: list[str] = []
+    current_patron = None
+
+    for ex in selected:
+        pat = ex['patron_movimiento']
+        if pat != current_patron:
+            current_patron = pat
+            label = PATRON_LABELS_LARGO.get(pat, pat.upper())
+            if pat in evitar_set:
+                label += ' ⚠️ [PATRÓN RECIENTE — incluir solo si no hay alternativas]'
+            lines.append(f'\n{label}')
+
+        mp = ', '.join(ex['musculos_primarios']) or '—'
+        ms = ', '.join(ex['musculos_secundarios'][:2]) if ex['musculos_secundarios'] else '—'
+        tl = f"TN:{ex['technical_level']}/5 " if ex['technical_level'] else ''
+        sf = f"CF:{ex['systemic_fatigue']}/5 " if ex['systemic_fatigue'] else ''
+        ts = ex['total_set_seconds']
+        tiempo = f"~{ts // 60}:{ts % 60:02d}min/set"
+
+        if ex['primera_vez']:
+            prog_txt = ' | 🆕 primera vez — comenzar RPE 6-7'
+        elif ex['progresion']:
+            prog_txt = f' | {PROG_ICONS.get(ex["progresion"], "")}'
+            if ex['rpe_referencia']:
+                prog_txt += f' (RPEhist:{ex["rpe_referencia"]:.1f})'
+        else:
+            prog_txt = ''
+
+        lines.append(f'  • {ex["nombre"]}')
+        lines.append(f'    Músculos: {mp} | Secund: {ms}')
+        lines.append(f'    {tl}{sf}{tiempo}{prog_txt}')
+
+        cues = ex.get('coaching_cues', [])
+        if cues:
+            lines.append(f'    Cue: {"; ".join(cues[:2])}')
+        if ex['requires_warning']:
+            lines.append(f'    ⚠️ ADVERTENCIA: {ex["warning_text"]}')
+
+    return '\n'.join(lines)
+
+
+def _pool_to_grouped(pool: list) -> dict:
+    """Converts enriched pool list to legacy grouped dict {patron: [nombres]}."""
+    grouped: dict = {}
+    for ex in pool:
+        grouped.setdefault(ex['patron_movimiento'], []).append(ex['nombre'])
+    return grouped
+
+
 def build_prompt(ctx):
-    exercise_pool_text = _format_exercise_pool(ctx.get('exercise_pool', {}))
+    # Choose pool formatting: enriched (new) vs grouped (legacy fallback)
+    enriched_pool = ctx.get('exercise_pool_enriched')
+    priorities    = ctx.get('pattern_priorities', {'priorizados': [], 'evitar': [], 'razon_evitar': {}})
+
+    if enriched_pool is not None:
+        exercise_pool_text = _format_exercise_pool_enriched(enriched_pool, priorities)
+    else:
+        exercise_pool_text = _format_exercise_pool(ctx.get('exercise_pool', {}))
+
     adaptation_text = ctx.get('adaptation_context', 'Sin historial suficiente.')
-    mesociclo = ctx.get('estado_mesociclo', {})
-    mesociclo_text = mesociclo.get('recomendacion', '')
-    deload_warning = (
+    mesociclo       = ctx.get('estado_mesociclo', {})
+    mesociclo_text  = mesociclo.get('recomendacion', '')
+    deload_warning  = (
         '\n*** ATENCIÓN: El atleta necesita DELOAD. Reduce volumen e intensidad en un 40-50%. ***'
         if mesociclo.get('necesita_deload')
         else ''
     )
+
+    # DIRECTIVAS section (Paso 6)
+    session_meta   = ctx.get('session_meta', {})
+    max_sets       = session_meta.get('max_sets_sesion', 20)
+    deload_session = session_meta.get('deload_session', False)
+    priorizados    = priorities.get('priorizados', [])
+    evitar_list    = priorities.get('evitar', [])
+    razon_evitar   = priorities.get('razon_evitar', {})
+
+    priorizados_txt = ', '.join(priorizados[:6]) if priorizados else 'libre'
+    evitar_txt = (
+        ', '.join(f'{p} ({razon_evitar.get(p, "reciente")})' for p in evitar_list)
+        if evitar_list else 'ninguno'
+    )
+    deload_directiva = (
+        '\n⚠️ DELOAD ACTIVO: Comunica al usuario que el sistema detectó que su cuerpo necesita recuperación activa. '
+        'Tono positivo — es parte inteligente del proceso, no una limitación.'
+        if deload_session else ''
+    )
+
+    directivas_block = f"""
+DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
+- Máximo de sets en el bloque principal: {max_sets} (NO superar este límite bajo ninguna circunstancia)
+- RPE objetivo: {ctx['rpe_target']}/10 → el atleta termina cada serie con {10 - int(ctx['rpe_target'])} reps en reserva (RIR)
+- Patrones priorizados hoy: {priorizados_txt}
+- Patrones a evitar si existen alternativas: {evitar_txt}{deload_directiva}
+"""
 
     return f"""
 Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
@@ -376,11 +517,11 @@ FASE DEL CICLO MENSTRUAL:
 ---
 
 BANCO DE EJERCICIOS VALIDADOS:
-Los siguientes ejercicios han sido pre-filtrados para esta sesión: cumplen con los implementos disponibles y NO tienen contraindicaciones con las lesiones activas ni el dolor reportado hoy.
+Los siguientes ejercicios han sido pre-filtrados para esta sesión: cumplen con los implementos disponibles y NO tienen contraindicaciones absolutas con las lesiones activas ni el dolor reportado hoy.
 
 {exercise_pool_text}
 
-INSTRUCCIÓN CRÍTICA: DEBES elegir ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. Si el banco no tiene suficientes ejercicios para un patrón, puedes crear uno nuevo SOLO si cumple con los implementos disponibles y no tiene contraindicaciones con el usuario.
+INSTRUCCIÓN CRÍTICA: DEBES elegir ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. Solo si el banco no tiene suficientes ejercicios para un patrón puedes crear uno nuevo, siempre que cumpla con los implementos disponibles y no tenga contraindicaciones.
 
 ---
 
@@ -391,6 +532,8 @@ HISTORIAL DE ADAPTACIÓN DEL USUARIO:
 
 ESTADO DEL MESOCICLO:
 {mesociclo_text}{deload_warning}
+
+{directivas_block}
 
 ---
 
@@ -406,7 +549,7 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
 2. INTENSIDAD Y RPE (Zourdos et al., 2016; Helms et al., 2018)
    - RPE objetivo para hoy: {ctx['rpe_target']}/10
    - Si tienes 1RM disponible, calcula las cargas usando la fórmula de Epley: Carga = 1RM × (1 - reps/30)
-   - RIR (Reps In Reserve) = 10 - RPE. Hoy el atleta debe terminar cada serie con {10 - ctx['rpe_target']} reps en reserva
+   - RIR (Reps In Reserve) = 10 - RPE. Hoy el atleta debe terminar cada serie con {10 - int(ctx['rpe_target'])} reps en reserva
    - Fatiga alta o HRV bajo → prioriza RPE 6-7, técnica sobre carga
    - Estado de ánimo bajo (≤2) → reduce intensidad, aumenta componente de movilidad
 
@@ -417,7 +560,6 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
    - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión
    - Respeta ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
    - Considera ejercicios favoritos cuando sea apropiado: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
-   - Patrones de movimiento a cubrir según objetivo: empuje, tracción, piernas, core
 
 4. ESTRUCTURA DE LA SESIÓN (NSCA Guidelines, 2022)
    - Calentamiento: activación neuromuscular progresiva, movilidad específica, 8-12 min
@@ -448,6 +590,7 @@ INSTRUCCIONES FINALES:
    - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
    - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
    - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.
+   - NO superes {max_sets} sets en el bloque principal.
 1. Genera UNA sesión completa para HOY, no un plan semanal
 2. Cada ejercicio debe ser ejecutable con los implementos disponibles — verifica esto antes de incluirlo
 3. La nota del entrenador DEBE citar al menos 2 principios científicos específicos explicando POR QUÉ la sesión está diseñada así hoy
@@ -486,7 +629,13 @@ JSON requerido:
       "ejercicios": []
     }}
   ],
-  "nota_del_entrenador": "máximo 2 oraciones explicando por qué esta sesión está diseñada así HOY específicamente, basado en el estado del usuario"
+  "nota_del_entrenador": "máximo 2 oraciones explicando por qué esta sesión está diseñada así HOY específicamente",
+  "decisions_log": [
+    {{
+      "icon": "🔬",
+      "text": "Decisión clave del sistema en 1 oración con referencia científica si aplica"
+    }}
+  ]
 }}
 """
 
@@ -526,16 +675,37 @@ def generate_session(request):
         fecha__lte=hoy + timedelta(days=14)
     ).order_by('fecha').first()
 
-    # Phase 1 & 2: Build exercise pool
-    exercise_pool, exercise_flat_list = _get_exercise_pool(
-        user, loc, dolor_hoy=checkin.dolor_hoy or ''
-    )
+    # Adaptive engine: Pasos 3, 4, 5
+    engine = AdaptiveEngineService(user, checkin, loc, perfil)
+    exercise_pool_enriched = engine.get_exercise_pool()
 
-    # Phase 3 & 4: Adaptation context
+    # Fallback to legacy pool if normalized tables return too few exercises
+    if len(exercise_pool_enriched) < 5:
+        logger.warning(
+            'adaptive_engine pool too small (%d) for user %s — falling back to legacy pool',
+            len(exercise_pool_enriched), user.id,
+        )
+        exercise_pool_enriched = None  # signal build_prompt to use legacy formatter
+
+    pattern_priorities = engine.get_pattern_priorities()
+
+    # Adaptation context (existing function, unchanged)
     adaptation_context = _build_adaptation_context(user)
 
-    # Phase 5: Periodization / mesocycle state
+    # Mesocycle / periodization state (existing function, unchanged)
     estado_mesociclo = _calcular_estado_mesociclo(user)
+
+    # Enrich with load data
+    if exercise_pool_enriched is not None:
+        exercise_pool_enriched, session_meta = engine.enrich_with_load(
+            exercise_pool_enriched,
+            deload_session=estado_mesociclo.get('necesita_deload', False),
+        )
+        exercise_pool_legacy = {}
+    else:
+        # Legacy fallback: build grouped dict and skip enrichment
+        exercise_pool_legacy, _ = _get_exercise_pool(user, loc, dolor_hoy=checkin.dolor_hoy or '')
+        session_meta = {'deload_session': False, 'max_sets_sesion': 20}
 
     ctx = {
         'nombre': perfil.nombre,
@@ -573,7 +743,10 @@ def generate_session(request):
         'fases_ciclo': None,
         'dolor_hoy': checkin.dolor_hoy,
         'foco_entrenamiento': checkin.foco_entrenamiento or [],
-        'exercise_pool': exercise_pool,
+        'exercise_pool': exercise_pool_legacy,
+        'exercise_pool_enriched': exercise_pool_enriched,
+        'pattern_priorities': pattern_priorities,
+        'session_meta': session_meta,
         'adaptation_context': adaptation_context,
         'estado_mesociclo': estado_mesociclo,
     }
@@ -581,7 +754,7 @@ def generate_session(request):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=2048)
+        sesion_generada = _call_groq(prompt, max_tokens=2048, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON for user %s', user.id)
         return Response(
@@ -621,6 +794,7 @@ def generate_session(request):
             volumen_relativo=volumen,
             prompt_usado=prompt,
             respuesta_ia=sesion_generada,
+            decisiones=sesion_generada.get('decisions_log'),
         )
         _persist_session_exercises(sesion, sesion_generada)
 
@@ -818,10 +992,7 @@ def session_ajustar(request, pk):
     except Exception:
         return Response({'error': 'Perfil no encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    dolor_hoy      = (checkin.dolor_hoy or '') if checkin else ''
-    exercise_pool, _ = _get_exercise_pool(user, loc, dolor_hoy=dolor_hoy)
-    adaptation_context = _build_adaptation_context(user)
-    estado_mesociclo   = _calcular_estado_mesociclo(user)
+    dolor_hoy = (checkin.dolor_hoy or '') if checkin else ''
 
     hoy = date.today()
     competicion = user.competitions.filter(
@@ -831,6 +1002,32 @@ def session_ajustar(request, pk):
 
     sesiones_recientes = user.sessions.filter(created_at__date__gte=hoy - timedelta(days=14))
     fatiga = calcular_fatiga(sesiones_recientes)
+
+    # Build a checkin-like object for AdaptiveEngineService when checkin is None
+    checkin_for_engine = checkin or SimpleNamespace(
+        dolor_hoy=dolor_hoy,
+        duracion_disponible=nueva_duracion,
+        estado_fisico=None,
+        estado_animo=3,
+        foco_entrenamiento=[],
+    )
+
+    engine = AdaptiveEngineService(user, checkin_for_engine, loc, perfil)
+    exercise_pool_enriched = engine.get_exercise_pool()
+    if len(exercise_pool_enriched) < 5:
+        exercise_pool_enriched = None
+    pattern_priorities = engine.get_pattern_priorities()
+    adaptation_context = _build_adaptation_context(user)
+    estado_mesociclo   = _calcular_estado_mesociclo(user)
+    if exercise_pool_enriched is not None:
+        exercise_pool_enriched, session_meta = engine.enrich_with_load(
+            exercise_pool_enriched,
+            deload_session=estado_mesociclo.get('necesita_deload', False),
+        )
+        exercise_pool_legacy = {}
+    else:
+        exercise_pool_legacy, _ = _get_exercise_pool(user, loc, dolor_hoy=dolor_hoy)
+        session_meta = {'deload_session': False, 'max_sets_sesion': 20}
 
     ctx = {
         'nombre':               perfil.nombre,
@@ -868,7 +1065,10 @@ def session_ajustar(request, pk):
         'fases_ciclo':          None,
         'dolor_hoy':            dolor_hoy,
         'foco_entrenamiento':   (checkin.foco_entrenamiento or []) if checkin else [],
-        'exercise_pool':        exercise_pool,
+        'exercise_pool':        exercise_pool_legacy,
+        'exercise_pool_enriched': exercise_pool_enriched,
+        'pattern_priorities':   pattern_priorities,
+        'session_meta':         session_meta,
         'adaptation_context':   adaptation_context,
         'estado_mesociclo':     estado_mesociclo,
     }
@@ -876,7 +1076,7 @@ def session_ajustar(request, pk):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=2048)
+        sesion_generada = _call_groq(prompt, max_tokens=2048, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq invalid JSON in ajustar for user %s', user.id)
         return Response(
@@ -897,11 +1097,11 @@ def session_ajustar(request, pk):
         )
 
     with transaction.atomic():
-        session.respuesta_ia        = sesion_generada
+        session.respuesta_ia         = sesion_generada
         session.duracion_planificada = nueva_duracion
         session.rpe_target           = nuevo_rpe
         session.sustituciones        = None
-        session.decisiones           = None
+        session.decisiones           = sesion_generada.get('decisions_log')
         session.evidencia            = None
         session.save(update_fields=[
             'respuesta_ia', 'duracion_planificada', 'rpe_target',

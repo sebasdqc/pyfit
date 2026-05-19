@@ -5,6 +5,8 @@ from unfold.contrib.filters.admin import RangeDateFilter
 from .models import (
     Competition, DailyCoachInsight, Exercise, Session, SessionExercise,
     SessionFeedback, TrainingDNA, UserAdaptationProfile, UserExerciseProfile,
+    MuscleGroup, EquipmentItem, ContraindicationCategory,
+    ExerciseMuscle, ExerciseEquipment, ExerciseContraindication, ExerciseRelationship,
 )
 
 
@@ -97,3 +99,81 @@ class CompetitionAdmin(ModelAdmin):
     list_filter    = [('fecha', RangeDateFilter)]
     search_fields  = ['nombre', 'user__email']
     date_hierarchy = 'fecha'
+
+
+# ─── Satellite catalog models ──────────────────────────────────────────────────
+
+class ExerciseMuscleInline(TabularInline):
+    model = ExerciseMuscle
+    extra = 0
+    fields = ['muscle', 'role']
+    raw_id_fields = ['muscle']
+
+
+class ExerciseEquipmentInline(TabularInline):
+    model = ExerciseEquipment
+    extra = 0
+    fields = ['equipment', 'is_required']
+
+
+class ExerciseContraindicationInline(TabularInline):
+    model = ExerciseContraindication
+    extra = 0
+    fields = ['contraindication', 'notes']
+
+
+@admin.register(MuscleGroup)
+class MuscleGroupAdmin(ModelAdmin):
+    list_display  = ['name', 'anatomical_group']
+    list_filter   = ['anatomical_group']
+    search_fields = ['name']
+
+
+@admin.register(EquipmentItem)
+class EquipmentItemAdmin(ModelAdmin):
+    list_display  = ['name', 'category', 'is_gym_only']
+    list_filter   = ['category', 'is_gym_only']
+    search_fields = ['name']
+
+
+@admin.register(ContraindicationCategory)
+class ContraindicationCategoryAdmin(ModelAdmin):
+    list_display  = ['name', 'body_zone', 'severity']
+    list_filter   = ['severity', 'body_zone']
+    search_fields = ['name', 'body_zone']
+
+
+@admin.register(ExerciseMuscle)
+class ExerciseMuscleAdmin(ModelAdmin):
+    list_display  = ['exercise', 'muscle', 'role']
+    list_filter   = ['role']
+    search_fields = ['exercise__nombre', 'muscle__name']
+    raw_id_fields = ['exercise', 'muscle']
+
+
+@admin.register(ExerciseEquipment)
+class ExerciseEquipmentAdmin(ModelAdmin):
+    list_display  = ['exercise', 'equipment', 'is_required']
+    list_filter   = ['is_required']
+    search_fields = ['exercise__nombre', 'equipment__name']
+    raw_id_fields = ['exercise', 'equipment']
+
+
+@admin.register(ExerciseContraindication)
+class ExerciseContraindicationAdmin(ModelAdmin):
+    list_display  = ['exercise', 'contraindication', 'notes_preview']
+    list_filter   = ['contraindication__severity', 'contraindication__body_zone']
+    search_fields = ['exercise__nombre', 'contraindication__name']
+    raw_id_fields = ['exercise', 'contraindication']
+
+    @admin.display(description='Notas')
+    def notes_preview(self, obj):
+        return (obj.notes or '')[:60] + ('…' if obj.notes and len(obj.notes) > 60 else '')
+
+
+@admin.register(ExerciseRelationship)
+class ExerciseRelationshipAdmin(ModelAdmin):
+    list_display  = ['source_exercise', 'relationship_type', 'target_exercise']
+    list_filter   = ['relationship_type']
+    search_fields = ['source_exercise__nombre', 'target_exercise__nombre']
+    raw_id_fields = ['source_exercise', 'target_exercise']
