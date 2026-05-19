@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
@@ -1206,6 +1206,8 @@ function makeBlkStyles(c: Colors) {
 export default function GenerateScreen() {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const { t: checkinTs } = useLocalSearchParams<{ t?: string }>()
+  const lastTsRef = useRef<string>('__init__')
 
   const [apiDone,      setApiDone]      = useState(false)
   const [contentReady, setContentReady] = useState(false)
@@ -1247,7 +1249,12 @@ export default function GenerateScreen() {
     }
   }, [contentFade])
 
-  useEffect(() => { generate() }, [generate])
+  useEffect(() => {
+    const key = checkinTs ?? ''
+    if (key === lastTsRef.current) return
+    lastTsRef.current = key
+    generate()
+  }, [checkinTs, generate])
 
   // Fetch justification lazily once session ID is known
   useEffect(() => {

@@ -87,7 +87,7 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6_procesando', 'd7_resumen'] as const
+const SCREENS = ['d4', 'd1', 'd2', 'd3', 'd5', 'd6_procesando', 'd7_resumen'] as const
 const N_INTERACTIVE = 5
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
@@ -225,10 +225,10 @@ export default function CheckinScreen() {
   const isInteractive = screenIndex < N_INTERACTIVE
   const isLastInteractive = screenIndex === N_INTERACTIVE - 1
   const canContinue = isInteractive && !submitting && (
-    screenIndex === 0 ? !!estadoFisico :
-    screenIndex === 1 ? !!estadoMental :
-    screenIndex === 2 ? !!tiempoDispo :
-    screenIndex === 3 ? !!disciplina :
+    screenIndex === 0 ? !!disciplina :
+    screenIndex === 1 ? !!estadoFisico :
+    screenIndex === 2 ? !!estadoMental :
+    screenIndex === 3 ? !!tiempoDispo :
     true  // D5 ubicación is optional
   )
 
@@ -237,10 +237,10 @@ export default function CheckinScreen() {
   }
 
   function validate(): string | null {
-    if (screenIndex === 0 && !estadoFisico) return 'Indica cómo está tu cuerpo hoy.'
-    if (screenIndex === 1 && !estadoMental) return 'Indica cómo está tu cabeza hoy.'
-    if (screenIndex === 2 && !tiempoDispo) return 'Indica cuánto tiempo tienes hoy.'
-    if (screenIndex === 3 && !disciplina) return 'Indica qué quieres entrenar hoy.'
+    if (screenIndex === 0 && !disciplina)   return 'Indica qué quieres entrenar hoy.'
+    if (screenIndex === 1 && !estadoFisico) return 'Indica cómo está tu cuerpo hoy.'
+    if (screenIndex === 2 && !estadoMental) return 'Indica cómo está tu cabeza hoy.'
+    if (screenIndex === 3 && !tiempoDispo)  return 'Indica cuánto tiempo tienes hoy.'
     return null
   }
 
@@ -621,7 +621,7 @@ export default function CheckinScreen() {
         <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
           <TouchableOpacity
             style={styles.nextWrap}
-            onPress={() => router.replace('/(app)/generate')}
+            onPress={() => router.replace(`/(app)/generate?t=${Date.now()}`)}
             activeOpacity={0.88}>
             <LinearGradient
               colors={[colors.accent, colors.accentDark]}
@@ -698,10 +698,10 @@ export default function CheckinScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        { screenIndex === 0 ? renderD1()
-        : screenIndex === 1 ? renderD2()
-        : screenIndex === 2 ? renderD3()
-        : screenIndex === 3 ? renderD4()
+        { screenIndex === 0 ? renderD4()
+        : screenIndex === 1 ? renderD1()
+        : screenIndex === 2 ? renderD2()
+        : screenIndex === 3 ? renderD3()
         : renderD5() }
         <View style={{ height: 24 }} />
       </ScrollView>
