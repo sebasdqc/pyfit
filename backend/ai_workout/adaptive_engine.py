@@ -82,6 +82,33 @@ DOLOR_KEYWORDS: dict[str, str] = {
 # Equipo que nunca es restricción (peso corporal)
 EQUIPO_LIBRE = {'ninguno (peso corporal)', 'ninguno'}
 
+# Mapeo de categorías de location.implementos (opciones de UI) → nombres específicos de
+# EquipmentItem.name (lowercase). Necesario porque la UI almacena categorías ('Barras')
+# pero las tablas normalizadas usan nombres específicos ('Barra olímpica').
+# Las bancas se incluyen bajo 'barras' y 'máquinas' porque no tienen opción propia en la UI
+# pero están disponibles en cualquier gimnasio que tenga esas categorías.
+IMPLEMENTOS_EXPANSION: dict[str, set[str]] = {
+    'barras': {
+        'barra olímpica', 'barra ez', 'barra fija (dominadas)',
+        'barra de dominadas (puerta)', 'disco olímpico',
+        'banco ajustable', 'banco plano',
+    },
+    'mancuernas': {'mancuernas'},
+    'kettlebells': {'kettlebell'},
+    'máquinas': {
+        'polea alta', 'polea baja', 'polea ajustable',
+        'máquina smith', 'máquina de cable cruzado', 'prensa de piernas',
+        'máquina de remo sentado', 'máquina de pecho', 'máquina de hombros',
+        'máquina de extensión de piernas', 'máquina de curl de piernas',
+        'máquina de aducción/abducción', 'máquina de glúteos (hip thrust)',
+        'banco ajustable', 'banco plano',
+    },
+    'trx': {'trx / suspensión'},
+    'bandas elásticas': {'banda de resistencia'},
+    'cajón pliométrico': {'caja pliométrica'},
+    'anillas': {'trx / suspensión'},
+}
+
 
 class AdaptiveEngineService:
     """
@@ -143,7 +170,16 @@ class AdaptiveEngineService:
 
         body_zones = self._get_body_zones()
         implementos_raw = self.location.implementos or []
-        implementos_disponibles = {i.lower().strip() for i in implementos_raw}
+        # Expand category names (UI labels) to specific EquipmentItem names (lowercase).
+        # 'Barras' → {'barra olímpica', ...}, 'Máquinas' → {'polea alta', ...}, etc.
+        implementos_disponibles: set[str] = set()
+        for _impl in implementos_raw:
+            _key = _impl.lower().strip()
+            _expanded = IMPLEMENTOS_EXPANSION.get(_key)
+            if _expanded:
+                implementos_disponibles.update(_expanded)
+            else:
+                implementos_disponibles.add(_key)
 
         nivel_usuario = NIVEL_MAP.get(self.perfil.nivel, 3)
         estado_fisico: int = self.checkin.estado_fisico or self.checkin.estado_animo
