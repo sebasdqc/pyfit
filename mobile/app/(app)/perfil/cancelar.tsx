@@ -121,7 +121,7 @@ export default function CancelarScreen() {
     : 'Tendrás acceso Pro hasta el final del período actual.'
 
   function handleBack() {
-    if (paso === 1) router.back()
+    if (paso === 1) router.replace('/(app)/perfil')
     else setPaso(1)
   }
 
@@ -206,7 +206,7 @@ export default function CancelarScreen() {
             {/* Botón primario — mantener */}
             <TouchableOpacity
               style={styles.ctaMantenBtn}
-              onPress={() => router.back()}
+              onPress={() => router.replace('/(app)/perfil')}
               activeOpacity={0.85}
             >
               <LinearGradient

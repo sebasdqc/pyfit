@@ -45,20 +45,17 @@ const TIEMPO_OPTS = [
 ]
 type TiempoDispo = typeof TIEMPO_OPTS[number]['id']
 
-const INTENCION_OPTS = [
-  { id: 'descargar' as const, label: 'Descargar energía',        color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',   border: 'rgba(255,170,50,0.45)'   },
-  { id: 'moverme'   as const, label: 'Moverme aunque sea poco',  color: '#32c896', bg: 'rgba(50,200,150,0.1)',   border: 'rgba(50,200,150,0.45)'   },
-  { id: 'serio'     as const, label: 'Entrenar en serio',        color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',   border: 'rgba(79,140,255,0.45)'   },
-  { id: 'recuperar' as const, label: 'Recuperarme activamente',  color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)',  border: 'rgba(108,229,255,0.45)'  },
+const DISCIPLINA_OPTS = [
+  { id: 'musculacion' as const, label: 'Musculación',      sub: 'Fuerza e hipertrofia',        foco: 'serio',     color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',   border: 'rgba(79,140,255,0.45)'   },
+  { id: 'funcional'   as const, label: 'Funcional',        sub: 'Movimientos compuestos',       foco: 'serio',     color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)',  border: 'rgba(108,229,255,0.45)'  },
+  { id: 'hiit'        as const, label: 'HIIT',             sub: 'Alta intensidad por intervalos', foco: 'descargar', color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',  border: 'rgba(255,170,50,0.45)'   },
+  { id: 'running'     as const, label: 'Running / Cardio', sub: 'Trabajo aeróbico',             foco: 'descargar', color: '#ff8c42', bg: 'rgba(255,140,66,0.1)',   border: 'rgba(255,140,66,0.45)'   },
+  { id: 'movilidad'   as const, label: 'Movilidad',        sub: 'Flexibilidad y rangos',        foco: 'recuperar', color: '#32c896', bg: 'rgba(50,200,150,0.1)',   border: 'rgba(50,200,150,0.45)'   },
+  { id: 'yoga'        as const, label: 'Yoga / Stretching', sub: 'Recuperación activa y calma', foco: 'recuperar', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.45)'  },
+  { id: 'crossfit'    as const, label: 'CrossFit',         sub: 'Potencia y resistencia mixta', foco: 'descargar', color: '#f87171', bg: 'rgba(248,113,113,0.1)',  border: 'rgba(248,113,113,0.45)'  },
+  { id: 'deporte'     as const, label: 'Deporte / Otro',   sub: 'Actividad libre o deportiva',  foco: 'moverme',   color: '#34d399', bg: 'rgba(52,211,153,0.1)',   border: 'rgba(52,211,153,0.45)'   },
 ]
-type TipoIntencion = typeof INTENCION_OPTS[number]['id']
-
-const INTENCION_NOTAS: Record<TipoIntencion, string> = {
-  descargar: 'Alta intensidad para soltar tensión acumulada',
-  moverme:   'Movimiento consciente — aparecer ya es ganar',
-  serio:     'Progresión de carga y trabajo estructurado',
-  recuperar: 'Cardio suave y movilidad para regenerar',
-}
+type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
 
 const ZONE_LABELS: Record<string, string> = {
   cabeza:      'Cabeza / Cuello',
@@ -90,10 +87,10 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d1', 'd2', 'd3', 'd4', 'd5_procesando', 'd6_resumen'] as const
-const N_INTERACTIVE = 4
+const SCREENS = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6_procesando', 'd7_resumen'] as const
+const N_INTERACTIVE = 5
 
-interface Location { id: number; nombre: string; tipo: string }
+interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
 // ─── Body Map ─────────────────────────────────────────────────────────────────
 
@@ -194,12 +191,13 @@ export default function CheckinScreen() {
   // ── Init ──────────────────────────────────────────────────────────────────
   const [initializing, setInitializing] = useState(true)
   const [locationId, setLocationId] = useState<number | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
 
   const loadData = useCallback(async () => {
     try {
       const locsRes = await apiGet('/api/locations/').catch(() => null)
       const locs: Location[] = locsRes ?? []
-      if (locs.length > 0) setLocationId(locs[0].id)
+      setLocations(locs)
     } catch {
       // non-fatal
     } finally {
@@ -214,7 +212,7 @@ export default function CheckinScreen() {
   const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
   const [estadoMental, setEstadoMental] = useState<EstadoMental | null>(null)
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
-  const [intencion, setIntencion] = useState<TipoIntencion | null>(null)
+  const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
 
   // ── Nav state ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
@@ -230,7 +228,8 @@ export default function CheckinScreen() {
     screenIndex === 0 ? !!estadoFisico :
     screenIndex === 1 ? !!estadoMental :
     screenIndex === 2 ? !!tiempoDispo :
-    !!intencion
+    screenIndex === 3 ? !!disciplina :
+    true  // D5 ubicación is optional
   )
 
   function toggleZona(id: string) {
@@ -241,7 +240,7 @@ export default function CheckinScreen() {
     if (screenIndex === 0 && !estadoFisico) return 'Indica cómo está tu cuerpo hoy.'
     if (screenIndex === 1 && !estadoMental) return 'Indica cómo está tu cabeza hoy.'
     if (screenIndex === 2 && !tiempoDispo) return 'Indica cuánto tiempo tienes hoy.'
-    if (screenIndex === 3 && !intencion) return 'Indica qué necesitas de este entrenamiento.'
+    if (screenIndex === 3 && !disciplina) return 'Indica qué quieres entrenar hoy.'
     return null
   }
 
@@ -257,9 +256,11 @@ export default function CheckinScreen() {
     try {
       const zonaLabels = zonasDolorHoy.map(z => ZONE_LABELS[z] ?? z)
       const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
-      const intencionOpt = INTENCION_OPTS.find(o => o.id === intencion)
+      const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+      const focos: string[] = []
+      if (discOpt) { focos.push(discOpt.foco); focos.push(discOpt.id) }
       await apiPost('/api/checkins/', {
-        foco_entrenamiento: intencion ? [intencion] : [],
+        foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
         estado_fisico: estadoFisico ? FISICO_TO_NUM[estadoFisico] : null,
         calidad_sueno: 7,
@@ -267,7 +268,7 @@ export default function CheckinScreen() {
         location: locationId,
         duracion_disponible: tiempoOpt?.minutos ?? 45,
         dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
-        notas: intencionOpt ? `Intención: ${intencionOpt.label}` : null,
+        notas: discOpt ? `Disciplina: ${discOpt.label}` : null,
       })
       setCheckinSaved(true)
     } catch (e: any) {
@@ -281,7 +282,7 @@ export default function CheckinScreen() {
   // ── D5 processing orchestration ───────────────────────────────────────────
 
   useEffect(() => {
-    if (currentScreen !== 'd5_procesando') return
+    if (currentScreen !== 'd6_procesando') return
     setCheckinSaved(false)
     setProcesandoTimer(false)
     handleSubmit()
@@ -290,7 +291,7 @@ export default function CheckinScreen() {
   }, [currentScreen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (currentScreen !== 'd5_procesando') return
+    if (currentScreen !== 'd6_procesando') return
     if (checkinSaved && procesandoTimer) setScreenIndex(i => i + 1)
   }, [checkinSaved, procesandoTimer, currentScreen])
 
@@ -299,9 +300,11 @@ export default function CheckinScreen() {
   function buildSummaryText(): string {
     const parts: string[] = []
     const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
-    if (tiempoOpt) parts.push(`${tiempoOpt.minutos} min disponibles`)
+    const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+    if (discOpt) parts.push(discOpt.label)
+    if (tiempoOpt) parts.push(`${tiempoOpt.minutos} min`)
     const mentalLabels: Record<EstadoMental, string> = {
-      enfocado: 'energía y foco altos', normal: 'estado normal',
+      enfocado: 'foco alto', normal: 'estado normal',
       distraido: 'estrés moderado', agotado: 'agotamiento mental',
     }
     if (estadoMental) parts.push(mentalLabels[estadoMental])
@@ -310,18 +313,15 @@ export default function CheckinScreen() {
       const extra = zonasDolorHoy.length > 2 ? ` (+${zonasDolorHoy.length - 2})` : ''
       parts.push(`molestia en ${labels.join(' y ')}${extra}`)
     }
+    const loc = locations.find(l => l.id === locationId)
+    if (loc) parts.push(loc.nombre)
     return parts.join(' · ')
   }
 
   function buildPronosticoText(): string {
-    if (!intencion) return ''
-    const base: Record<TipoIntencion, string> = {
-      descargar: 'circuito de alta intensidad para liberar tensión',
-      moverme:   'activación suave con movilidad articular',
-      serio:     'fuerza progresiva con carga controlada',
-      recuperar: 'cardio de baja intensidad y movilidad',
-    }
-    let text = base[intencion]
+    if (!disciplina) return ''
+    const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+    let text = discOpt?.sub ?? disciplina
     if (zonasDolorHoy.length > 0) {
       const labels = zonasDolorHoy.slice(0, 2).map(z =>
         (ZONE_LABELS[z] ?? z).split('/')[0].trim().toLowerCase()
@@ -466,25 +466,25 @@ export default function CheckinScreen() {
   function renderD4() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 4 — INTENCIÓN</Text>
-        <Text style={styles.question}>¿Qué necesitas de{'\n'}este entrenamiento?</Text>
-        <Text style={styles.questionSub}>La más corta. La más poderosa.</Text>
+        <Text style={styles.eyebrow}>DIMENSIÓN 4 — DISCIPLINA</Text>
+        <Text style={styles.question}>¿Qué quieres{'\n'}entrenar hoy?</Text>
+        <Text style={styles.questionSub}>Elige el tipo de entrenamiento</Text>
 
         <View style={styles.optionsWrap}>
-          {INTENCION_OPTS.map(opt => {
-            const on = intencion === opt.id
+          {DISCIPLINA_OPTS.map(opt => {
+            const on = disciplina === opt.id
             return (
               <TouchableOpacity key={opt.id}
                 style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setIntencion(opt.id); setError('') }}
+                onPress={() => { setDisciplina(opt.id); setError('') }}
                 activeOpacity={0.82}>
                 <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18 }}>
+                <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
                   <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
                     {opt.label}
                   </Text>
                   <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
-                    {INTENCION_NOTAS[opt.id]}
+                    {opt.sub}
                   </Text>
                 </View>
                 <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
@@ -498,19 +498,80 @@ export default function CheckinScreen() {
     )
   }
 
+  const TIPO_ICON: Record<string, string> = {
+    gimnasio: '🏋️', casa: '🏠', exterior: '🌳',
+  }
+
   function renderD5() {
     return (
-      <View style={styles.procesandoWrap}>
-        <ActivityIndicator color={colors.accent} size="large" />
-        <Text style={styles.procesandoTitle}>Construyendo tu{'\n'}entrenamiento de hoy...</Text>
-        <Text style={styles.procesandoSub}>Analizando tus 4 dimensiones</Text>
-      </View>
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 5 — UBICACIÓN</Text>
+        <Text style={styles.question}>¿Dónde vas a{'\n'}entrenar hoy?</Text>
+        <Text style={styles.questionSub}>Filtra el equipamiento disponible</Text>
+
+        {locations.length === 0 ? (
+          <View style={styles.locEmptyWrap}>
+            <Text style={styles.locEmptyText}>
+              No tienes ubicaciones guardadas.{'\n'}Puedes añadirlas en Perfil → Datos de entrenamiento.
+            </Text>
+            <Text style={[styles.locEmptyText, { color: colors.inkFaint, marginTop: 8, fontSize: 12 }]}>
+              La IA usará tu equipamiento predeterminado.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.optionsWrap}>
+            {locations.map(loc => {
+              const on = locationId === loc.id
+              const icon = TIPO_ICON[loc.tipo?.toLowerCase()] ?? '📍'
+              return (
+                <TouchableOpacity key={loc.id}
+                  style={[styles.estadoCard, on && { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: 'rgba(79,140,255,0.45)', borderWidth: 1.5 }]}
+                  onPress={() => { setLocationId(on ? null : loc.id); setError('') }}
+                  activeOpacity={0.82}>
+                  <View style={[styles.estadoBar, { backgroundColor: on ? colors.accent : 'transparent' }]} />
+                  <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Text style={{ fontSize: 22 }}>{icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: colors.accent }]}>
+                        {loc.nombre}
+                      </Text>
+                      {loc.implementos && loc.implementos.length > 0 && (
+                        <Text style={[styles.intencionNota, on && { color: colors.accent, opacity: 0.75 }]}>
+                          {loc.implementos.slice(0, 3).join(' · ')}{loc.implementos.length > 3 ? ` +${loc.implementos.length - 3}` : ''}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={[styles.estadoRadio, on && { borderColor: colors.accent }]}>
+                    {on && <View style={[styles.estadoRadioDot, { backgroundColor: colors.accent }]} />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        )}
+
+        <Text style={styles.tiempoNote}>
+          La selección de ubicación es opcional — puedes continuar sin elegir.
+        </Text>
+      </>
     )
   }
 
   function renderD6() {
-    const intencionOpt = INTENCION_OPTS.find(o => o.id === intencion)
+    return (
+      <View style={styles.procesandoWrap}>
+        <ActivityIndicator color={colors.accent} size="large" />
+        <Text style={styles.procesandoTitle}>Construyendo tu{'\n'}entrenamiento de hoy...</Text>
+        <Text style={styles.procesandoSub}>Analizando tus 5 dimensiones</Text>
+      </View>
+    )
+  }
+
+  function renderD7() {
+    const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
     const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
+    const loc = locations.find(l => l.id === locationId)
     return (
       <View style={[styles.resumenWrap, { paddingTop: insets.top + 24 }]}>
         <View style={styles.resumenCheckCircle}>
@@ -521,6 +582,13 @@ export default function CheckinScreen() {
 
         {/* Pills */}
         <View style={styles.resumenPills}>
+          {discOpt && (
+            <View style={[styles.resumenPill, { borderColor: discOpt.color }]}>
+              <Text style={[styles.resumenPillText, { color: discOpt.color }]}>
+                {discOpt.label}
+              </Text>
+            </View>
+          )}
           {tiempoOpt && (
             <View style={[styles.resumenPill, { borderColor: tiempoOpt.color }]}>
               <Text style={[styles.resumenPillText, { color: tiempoOpt.color }]}>
@@ -528,10 +596,10 @@ export default function CheckinScreen() {
               </Text>
             </View>
           )}
-          {intencionOpt && (
-            <View style={[styles.resumenPill, { borderColor: intencionOpt.color }]}>
-              <Text style={[styles.resumenPillText, { color: intencionOpt.color }]}>
-                {intencionOpt.label}
+          {loc && (
+            <View style={[styles.resumenPill, { borderColor: colors.borderBright }]}>
+              <Text style={[styles.resumenPillText, { color: colors.inkSecondary }]}>
+                {loc.nombre}
               </Text>
             </View>
           )}
@@ -579,24 +647,24 @@ export default function CheckinScreen() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  // D5 and D6 are full-screen overlays — no chrome
-  if (currentScreen === 'd5_procesando') {
+  // D6 and D7 are full-screen overlays — no chrome
+  if (currentScreen === 'd6_procesando') {
     return (
       <View style={[styles.root, styles.centered]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
-        {renderD5()}
+        {renderD6()}
       </View>
     )
   }
 
-  if (currentScreen === 'd6_resumen') {
+  if (currentScreen === 'd7_resumen') {
     return (
       <View style={styles.root}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}>
-          {renderD6()}
+          {renderD7()}
         </ScrollView>
       </View>
     )
@@ -633,7 +701,8 @@ export default function CheckinScreen() {
         { screenIndex === 0 ? renderD1()
         : screenIndex === 1 ? renderD2()
         : screenIndex === 2 ? renderD3()
-        : renderD4() }
+        : screenIndex === 3 ? renderD4()
+        : renderD5() }
         <View style={{ height: 24 }} />
       </ScrollView>
 
@@ -762,13 +831,23 @@ function makeStyles(c: Colors) {
       fontStyle: 'italic', textAlign: 'center',
     },
 
-    // D4 — Intención
+    // D4 — Disciplina
     intencionNota: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 12,
       color: c.inkMuted, lineHeight: 17, marginTop: 3,
     },
 
-    // D5 — Processing
+    // D5 — Ubicación
+    locEmptyWrap: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, padding: 20, marginTop: 8,
+    },
+    locEmptyText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkMuted, lineHeight: 22, textAlign: 'center',
+    },
+
+    // D6 — Processing
     procesandoWrap: { alignItems: 'center', paddingHorizontal: 40 },
     procesandoTitle: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 24,

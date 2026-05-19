@@ -397,7 +397,7 @@ export default function SuscripcionScreen() {
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.replace('/(app)/perfil')}
           style={styles.backBtn}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -514,7 +514,7 @@ export default function SuscripcionScreen() {
             {/* Link secundario */}
             <TouchableOpacity
               style={styles.starterLink}
-              onPress={() => router.back()}
+              onPress={() => router.replace('/(app)/perfil')}
               activeOpacity={0.7}
             >
               <Text style={styles.starterLinkText}>Continuar con Starter</Text>
