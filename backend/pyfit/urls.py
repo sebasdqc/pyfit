@@ -84,6 +84,7 @@ urlpatterns = [
     path('api/stats/consistencia-mensual/', workout_views.stats_consistencia_mensual),
     path('api/stats/cuerpo-contexto/', workout_views.stats_cuerpo_contexto),
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
+    path('api/stats/radar/', workout_views.stats_radar),
 
     # Notifications
     path('api/notificaciones/',              user_views.notifications_list),

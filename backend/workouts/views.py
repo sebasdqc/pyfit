@@ -1759,3 +1759,112 @@ def _stats_ejercicios_top(request):
 
     result.sort(key=lambda x: (-x['count'], -x['rpe_promedio']))
     return Response(result[:5])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_radar(request):
+    try:
+        return _stats_radar(request)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).exception('stats_radar')
+        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+
+
+def _stats_radar(request):
+    user = request.user
+    today = date.today()
+
+    hace_30 = today - timedelta(days=30)
+    hace_60 = today - timedelta(days=60)
+    hace_14 = today - timedelta(days=14)
+    hace_28 = today - timedelta(days=28)
+
+    total_sessions = user.sessions.count()
+    if total_sessions < 7:
+        return Response({'enough_data': False, 'metrics': []})
+
+    sessions_curr = list(
+        user.sessions.select_related('feedback', 'checkin').filter(fecha__gte=hace_30)
+    )
+    sessions_prev = list(
+        user.sessions.select_related('feedback', 'checkin').filter(fecha__gte=hace_60, fecha__lt=hace_30)
+    )
+    checkins_curr = list(user.checkins.filter(fecha__gte=hace_14))
+    checkins_prev = list(user.checkins.filter(fecha__gte=hace_28, fecha__lt=hace_14))
+
+    try:
+        dias_semana = user.profile.dias_semana or 3
+    except Exception:
+        dias_semana = 3
+
+    def _rpe(s):
+        fb = getattr(s, 'feedback', None)
+        return float(fb.rpe_real) if fb and fb.rpe_real is not None else float(s.rpe_target)
+
+    def calc_fuerza(sessions):
+        strength = [s for s in sessions if s.checkin and 'serio' in (s.checkin.foco_entrenamiento or [])]
+        if not strength:
+            return 50
+        avg_rpe = sum(_rpe(s) for s in strength) / len(strength)
+        return round(max(0, min(100, (10 - avg_rpe) / 5 * 100)))
+
+    def calc_cardio(sessions):
+        cardio = [s for s in sessions if s.checkin and 'descargar' in (s.checkin.foco_entrenamiento or [])]
+        if not cardio:
+            return 0
+        freq_score = min(100, len(cardio) / 8 * 100)
+        ordered = sorted(cardio, key=lambda s: s.fecha)
+        rpe_vals = [_rpe(s) for s in ordered]
+        if len(rpe_vals) >= 2:
+            rpe_trend = rpe_vals[0] - rpe_vals[-1]
+            rpe_score = max(0, min(100, 50 + rpe_trend * 10))
+        else:
+            rpe_score = 50
+        return round(freq_score * 0.6 + rpe_score * 0.4)
+
+    def calc_movilidad(sessions):
+        mobility = [
+            s for s in sessions
+            if s.checkin and any(f in (s.checkin.foco_entrenamiento or []) for f in ['moverme', 'recuperar'])
+        ]
+        objetivo_mensual = max(dias_semana * 4, 1)
+        return round(min(100, len(mobility) / objetivo_mensual * 100))
+
+    def calc_estres(checkins):
+        scores = [((c.estado_animo - 1) / 4 * 100) for c in checkins if c.estado_animo is not None]
+        return round(sum(scores) / len(scores)) if scores else 50
+
+    def calc_recuperacion(checkins):
+        if not checkins:
+            return 50
+        sleep_scores = []
+        for c in checkins:
+            if c.calidad_sueno is not None:
+                h = float(c.calidad_sueno)
+                if 7 <= h <= 9:
+                    s = 100
+                elif h > 9:
+                    s = max(60, 100 - (h - 9) * 20)
+                else:
+                    s = max(0, h / 7 * 100)
+                sleep_scores.append(s)
+        sleep_avg = sum(sleep_scores) / len(sleep_scores) if sleep_scores else 50
+        pain_count = sum(1 for c in checkins if c.dolor_hoy and c.dolor_hoy.strip())
+        pain_score = max(0, 100 - (pain_count / len(checkins)) * 100)
+        return round(sleep_avg * 0.7 + pain_score * 0.3)
+
+    def calc_consistencia(sessions):
+        planificadas = max(dias_semana * 4, 1)
+        return round(min(100, len(sessions) / planificadas * 100))
+
+    metrics = [
+        {'key': 'fuerza',       'label': 'Fuerza',       'value': calc_fuerza(sessions_curr),       'prev': calc_fuerza(sessions_prev)},
+        {'key': 'cardio',       'label': 'Cardio',        'value': calc_cardio(sessions_curr),        'prev': calc_cardio(sessions_prev)},
+        {'key': 'movilidad',    'label': 'Movilidad',     'value': calc_movilidad(sessions_curr),     'prev': calc_movilidad(sessions_prev)},
+        {'key': 'estres',       'label': 'Estrés',        'value': calc_estres(checkins_curr),        'prev': calc_estres(checkins_prev)},
+        {'key': 'recuperacion', 'label': 'Recuperación',  'value': calc_recuperacion(checkins_curr),  'prev': calc_recuperacion(checkins_prev)},
+        {'key': 'consistencia', 'label': 'Consistencia',  'value': calc_consistencia(sessions_curr),  'prev': calc_consistencia(sessions_prev)},
+    ]
+
+    return Response({'enough_data': True, 'metrics': metrics})

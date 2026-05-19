@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { apiGet } from '../../../lib/api'
+import RadarBlock, { RadarBlockEmpty, RadarMetric } from '../../../components/RadarBlock'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -621,6 +622,10 @@ export default function EstadisticasScreen() {
 
   const cardInnerW = screenW - 20 * 2 - 16 * 2  // screen pad + card pad
 
+  // ── Block 0 state (Radar) ─────────────────────────────────────────────────
+  const [radarMetrics,   setRadarMetrics]   = useState<RadarMetric[] | null>(null)
+  const [radarEnoughData, setRadarEnoughData] = useState(true)
+
   // ── Block 1 state ─────────────────────────────────────────────────────────
   const [filtro,       setFiltro]       = useState<Filtro>('todo')
   const [rpeData,      setRpeData]      = useState<RPEData | null>(null)
@@ -644,6 +649,16 @@ export default function EstadisticasScreen() {
   const [error,          setError]          = useState<string | null>(null)
 
   // ── Fetchers ───────────────────────────────────────────────────────────────
+  const fetchRadar = useCallback(async (isInitial = false) => {
+    try {
+      const res = await apiGet('/api/stats/radar/')
+      setRadarEnoughData(res.enough_data)
+      if (res.enough_data) setRadarMetrics(res.metrics)
+    } catch (e: any) {
+      if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+    }
+  }, [])
+
   const fetchRPE = useCallback(async (f: Filtro, isInitial = false) => {
     if (!isInitial) setRpeChartBusy(true)
     try {
@@ -691,6 +706,7 @@ export default function EstadisticasScreen() {
   useEffect(() => {
     const { year, month } = mesActual
     Promise.all([
+      fetchRadar(true),
       fetchRPE('todo', true),
       fetchConsist(year, month, true),
       fetchCuerpo(true),
@@ -772,6 +788,12 @@ export default function EstadisticasScreen() {
           {semanasEntrenando}{' '}
           {semanasEntrenando === 1 ? 'semana' : 'semanas'} entrenando.
         </Text>
+
+        {/* ── Bloque 0: Tu perfil atlético (Radar) ── */}
+        {radarEnoughData && radarMetrics
+          ? <RadarBlock metrics={radarMetrics} />
+          : <RadarBlockEmpty />
+        }
 
         {/* ── Bloque 1: Tu progreso en el tiempo ── */}
         <Text style={styles.blockLabel}>TU PROGRESO EN EL TIEMPO</Text>
