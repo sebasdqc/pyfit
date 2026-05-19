@@ -294,6 +294,7 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
 
 function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; loading: boolean }) {
   const { colors } = useTheme()
+  const [expanded, setExpanded] = React.useState(false)
   if (!loading && !resumen) return null
 
   return (
@@ -313,10 +314,30 @@ function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; load
         </View>
       ) : resumen ? (
         <>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkSecondary, lineHeight: 23 }}>{toParrafo(resumen.decisiones)}</Text>
-          <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
-          <Text style={{ fontFamily: 'InstrumentSerif-Italic', fontSize: 13, color: colors.inkMuted, lineHeight: 20, marginBottom: 6 }}>{resumen.evidencia.text}</Text>
-          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkFaint, letterSpacing: 0.5 }}>{resumen.evidencia.reference}</Text>
+          <Text
+            numberOfLines={expanded ? undefined : 3}
+            style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkSecondary, lineHeight: 23 }}
+          >
+            {toParrafo(resumen.decisiones)}
+          </Text>
+
+          {expanded && (
+            <>
+              <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
+              <Text style={{ fontFamily: 'InstrumentSerif-Italic', fontSize: 13, color: colors.inkMuted, lineHeight: 20, marginBottom: 6 }}>{resumen.evidencia.text}</Text>
+              <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkFaint, letterSpacing: 0.5 }}>{resumen.evidencia.reference}</Text>
+            </>
+          )}
+
+          <TouchableOpacity
+            onPress={() => setExpanded(e => !e)}
+            activeOpacity={0.7}
+            style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.accent, letterSpacing: 0.8 }}>
+              {expanded ? 'VER MENOS ↑' : 'VER MÁS ↓'}
+            </Text>
+          </TouchableOpacity>
         </>
       ) : null}
     </View>
