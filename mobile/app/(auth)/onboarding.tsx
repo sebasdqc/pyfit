@@ -278,6 +278,7 @@ const TIPOS_ENTRENAMIENTO = [
 ]
 
 const DEPORTES = [
+  'Musculación / Fuerza', 'Running / Cardio', 'Movilidad / Flexibilidad', 'HIIT / Funcional',
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
   'Running', 'Trail Running', 'Maratón', 'Ciclismo de ruta', 'Ciclismo de montaña', 'Triatlón', 'Duatlón',
   'Natación', 'Waterpolo', 'Surf', 'Remo', 'Kayak', 'Vela', 'Nado en aguas abiertas',

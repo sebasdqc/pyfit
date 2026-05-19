@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
@@ -17,6 +18,15 @@ import { COLORS, FASES } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
+
+// ─── Discipline selection ─────────────────────────────────────────────────────
+
+const TIPO_ENTRENO = [
+  { id: 'musculacion', label: 'Musculación / Fuerza',      sub: 'Hipertrofia y progresión de carga',  color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',   border: 'rgba(79,140,255,0.40)'  },
+  { id: 'cardio',      label: 'Running / Cardio',          sub: 'Trabajo aeróbico y resistencia',      color: '#ff8c42', bg: 'rgba(255,140,66,0.1)',   border: 'rgba(255,140,66,0.40)'  },
+  { id: 'movilidad',   label: 'Movilidad / Flexibilidad',  sub: 'Rangos articulares y recuperación',   color: '#32c896', bg: 'rgba(50,200,150,0.1)',   border: 'rgba(50,200,150,0.40)'  },
+  { id: 'hiit',        label: 'HIIT / Funcional',          sub: 'Alta intensidad y patrones compuestos', color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.40)'  },
+] as const
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -267,6 +277,10 @@ export default function EjecutarScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
+
+  const [phase, setPhase] = useState<'seleccion' | 'training'>('seleccion')
+  const [tipoDisciplina, setTipoDisciplina] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -432,6 +446,91 @@ export default function EjecutarScreen() {
   const nextEj = flatList[currentIndex + 1]
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── Phase 1: Discipline selection ────────────────────────────────────────────
+  if (phase === 'seleccion') {
+    return (
+      <View style={styles.root}>
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: insets.top + 24, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={{ marginBottom: 28 }}>
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 12, color: colors.inkMuted, letterSpacing: 0.5 }}>
+              ← Volver
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.accent, letterSpacing: 2, marginBottom: 12 }}>
+            ANTES DE EMPEZAR
+          </Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: colors.inkPrimary, letterSpacing: -0.8, lineHeight: 36, marginBottom: 8 }}>
+            ¿Qué vas a{'\n'}entrenar hoy?
+          </Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkMuted, lineHeight: 21, marginBottom: 32, fontStyle: 'italic' }}>
+            Esto permite adaptar métricas y seguimiento
+          </Text>
+
+          <View style={{ gap: 10 }}>
+            {TIPO_ENTRENO.map(opt => {
+              const on = tipoDisciplina === opt.id
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  activeOpacity={0.82}
+                  onPress={() => setTipoDisciplina(opt.id)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    backgroundColor: on ? opt.bg : colors.cardBg,
+                    borderWidth: on ? 1.5 : 1,
+                    borderColor: on ? opt.border : colors.borderDefault,
+                    borderRadius: 18, overflow: 'hidden', minHeight: 76,
+                  }}
+                >
+                  <View style={{ width: 4, alignSelf: 'stretch', backgroundColor: on ? opt.color : 'transparent' }} />
+                  <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: on ? opt.color : colors.inkPrimary, lineHeight: 22 }}>
+                      {opt.label}
+                    </Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: on ? opt.color : colors.inkMuted, lineHeight: 17, marginTop: 3, opacity: on ? 0.8 : 1 }}>
+                      {opt.sub}
+                    </Text>
+                  </View>
+                  <View style={{
+                    width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+                    borderColor: on ? opt.color : colors.borderBright,
+                    alignItems: 'center', justifyContent: 'center', marginRight: 20,
+                  }}>
+                    {on && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: opt.color }} />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          <View style={{ marginTop: 32 }}>
+            <TouchableOpacity
+              activeOpacity={tipoDisciplina ? 0.88 : 1}
+              disabled={!tipoDisciplina}
+              onPress={() => setPhase('training')}
+              style={{ borderRadius: 14, overflow: 'hidden', opacity: tipoDisciplina ? 1 : 0.3 }}
+            >
+              <LinearGradient
+                colors={[colors.accent, colors.accentDark]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={{ paddingVertical: 18, alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3 }}>
+                  Comenzar entrenamiento
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
 
   if (loading) {
     return (
