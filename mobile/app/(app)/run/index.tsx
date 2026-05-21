@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
@@ -7,6 +8,7 @@ import {
   View,
 } from 'react-native'
 import MapView, { Polyline, PROVIDER_DEFAULT } from 'react-native-maps'
+import * as Location from 'expo-location'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
@@ -53,6 +55,33 @@ export default function RunScreen() {
     stopRun,
   } = useRunTracking()
 
+  const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [locationReady, setLocationReady] = useState(false)
+
+  // Fetch real device location on mount so map centers correctly before run starts
+  useEffect(() => {
+    let cancelled = false
+    async function fetchLocation() {
+      try {
+        const { status: perm } = await Location.requestForegroundPermissionsAsync()
+        if (perm === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          })
+          if (!cancelled) {
+            setDeviceLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+          }
+        }
+      } catch {
+        // Permission denied or error — map will render without centering
+      } finally {
+        if (!cancelled) setLocationReady(true)
+      }
+    }
+    fetchLocation()
+    return () => { cancelled = true }
+  }, [])
+
   // Navigate to summary when run completes
   useEffect(() => {
     if (status === 'completed' && sessionId !== null) {
@@ -82,20 +111,18 @@ export default function RunScreen() {
     )
   }
 
-  // Map region centered on first coordinate or default
-  const initialRegion = coordinates.length > 0
+  // Map region: prefer live run coordinates → pre-fetched device location → null (don't render yet)
+  const activeCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
+  const centerCoord = activeCoord ?? deviceLocation
+
+  const initialRegion = centerCoord
     ? {
-        latitude: coordinates[0].latitude,
-        longitude: coordinates[0].longitude,
+        latitude: centerCoord.latitude,
+        longitude: centerCoord.longitude,
         latitudeDelta: 0.005,
         longitudeDelta: 0.005,
       }
-    : {
-        latitude: 19.4326,
-        longitude: -99.1332,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }
+    : null
 
   const polylineCoords = coordinates.map(c => ({
     latitude: c.latitude,
@@ -106,24 +133,37 @@ export default function RunScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── Full screen map ── */}
-      <MapView
-        style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={initialRegion}
-        showsUserLocation
-        followsUserLocation={status === 'active'}
-        mapType="standard"
-        customMapStyle={darkMapStyle}
-      >
-        {polylineCoords.length > 1 && (
-          <Polyline
-            coordinates={polylineCoords}
-            strokeColor="#4f8cff"
-            strokeWidth={4}
-          />
-        )}
-      </MapView>
+      {/* ── Full screen map — only render once we know the device location ── */}
+      {!locationReady && (
+        <View style={styles.mapLoading}>
+          <ActivityIndicator size="large" color="#4f8cff" />
+          <Text style={styles.mapLoadingText}>Obteniendo ubicación...</Text>
+        </View>
+      )}
+      {locationReady && initialRegion && (
+        <MapView
+          style={StyleSheet.absoluteFillObject}
+          provider={PROVIDER_DEFAULT}
+          initialRegion={initialRegion}
+          showsUserLocation
+          followsUserLocation={status !== 'completed'}
+          mapType="standard"
+          customMapStyle={darkMapStyle}
+        >
+          {polylineCoords.length > 1 && (
+            <Polyline
+              coordinates={polylineCoords}
+              strokeColor="#4f8cff"
+              strokeWidth={4}
+            />
+          )}
+        </MapView>
+      )}
+      {locationReady && !initialRegion && (
+        <View style={styles.mapLoading}>
+          <Text style={styles.mapLoadingText}>No se pudo obtener la ubicación.{'\n'}Activa el GPS e intenta de nuevo.</Text>
+        </View>
+      )}
 
       {/* ── Header overlay ── */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -228,6 +268,21 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+
+  mapLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0a0a0a',
+    gap: 12,
+  },
+  mapLoadingText: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 
   // Header

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import Svg, { Path, Circle } from 'react-native-svg'
-import { AdminBanner } from '../../components/AdminBanner'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -133,7 +132,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 export default function AppLayout() {
   return (
     <View style={{ flex: 1 }}>
-      <AdminBanner />
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
@@ -191,6 +189,9 @@ export default function AppLayout() {
       <Tabs.Screen name="perfil/historial-pagos" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cancelar" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cambiar-plan" options={{ href: null, tabBarLabel: '' }} />
+      {/* Free Run */}
+      <Tabs.Screen name="run/index" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="run/resumen/[id]" options={{ href: null, tabBarLabel: '' }} />
       {/* Admin (modo staff) */}
       <Tabs.Screen name="admin/index" options={{ href: null, tabBarLabel: '' }} />
       </Tabs>
