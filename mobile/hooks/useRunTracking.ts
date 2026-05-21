@@ -188,24 +188,23 @@ export function useRunTracking(): UseRunTrackingReturn {
 
   // ── Stop run
   const stopRun = useCallback(async () => {
-    if (!sessionIdRef.current) return
+    if (sessionIdRef.current == null) return
     clearAll()
 
-    const endedAt = new Date().toISOString()
+    // Mark completed immediately so the UI navigates without waiting for network
     const sid = sessionIdRef.current
+    const endedAt = new Date().toISOString()
+    setStatus('completed')
 
+    // Fire-and-forget: flush remaining points and complete the session on backend
     try {
-      // Flush any remaining points
       if (pendingPointsRef.current.length > 0) {
-        await sendRunPoints(sid, pendingPointsRef.current)
+        await sendRunPoints(sid, [...pendingPointsRef.current])
         pendingPointsRef.current = []
       }
       await completeRunSession(sid, endedAt)
-      setStatus('completed')
-    } catch (err: any) {
-      setError(err.message ?? 'Error al finalizar la carrera')
-      // Still mark as completed locally so UI can navigate
-      setStatus('completed')
+    } catch {
+      // Network error — session is stopped locally; ignore
     }
   }, [clearAll])
 

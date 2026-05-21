@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  View, Text, TouchableOpacity, ScrollView,
+  Alert, View, Text, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -90,7 +90,13 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d4', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
+const SCREENS = ['d4', 'd4b_running', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
+type ScreenId = typeof SCREENS[number]
+
+// Ordered interactive steps per disciplina path (drives progress bar)
+const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4b_running', 'd1', 'd2', 'd3', 'd5']
+const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo']
+const SEQ_OTHER:       ScreenId[] = ['d4', 'd1', 'd2', 'd3', 'd5']
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
@@ -216,6 +222,7 @@ export default function CheckinScreen() {
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
   const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
   const [grupoMuscular, setGrupoMuscular] = useState<GrupoMuscular | null>(null)
+  const [runningMode, setRunningMode] = useState<'libre' | 'inteligente' | null>(null)
 
   // ── Nav state ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
@@ -227,16 +234,28 @@ export default function CheckinScreen() {
   const currentScreen = SCREENS[screenIndex]
   const selectedLocation = locations.find(l => l.id === locationId)
   const isGimnasio = selectedLocation?.tipo?.toLowerCase() === 'gimnasio'
-  const nInteractive = isGimnasio ? 6 : 5
-  const isInteractive = screenIndex < nInteractive
-  const isLastInteractive = screenIndex === nInteractive - 1
-  const canContinue = isInteractive && !submitting && (
-    screenIndex === 0 ? !!disciplina :
-    screenIndex === 1 ? !!estadoFisico :
-    screenIndex === 2 ? !!estadoMental :
-    screenIndex === 3 ? !!tiempoDispo :
-    screenIndex === 5 ? !!grupoMuscular :
-    true  // D5 ubicación is optional
+  const showGrupoMuscular = disciplina === 'musculacion'
+
+  // Progress bar: pick the right sequence based on disciplina
+  const interactiveSeq: ScreenId[] = useMemo(() => {
+    if (disciplina === 'running')     return SEQ_RUNNING
+    if (disciplina === 'musculacion') return SEQ_MUSCULACION
+    return SEQ_OTHER
+  }, [disciplina])
+
+  const nInteractive = interactiveSeq.length
+  const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
+  const isInteractive = interactiveStep > 0                                       // show header/footer
+  const showFooterBtn = isInteractive && currentScreen !== 'd4b_running'         // d4b navigates inline
+  const isLastInteractive = showFooterBtn && interactiveStep === nInteractive
+
+  const canContinue = showFooterBtn && !submitting && (
+    currentScreen === 'd4'       ? !!disciplina :
+    currentScreen === 'd1'       ? !!estadoFisico :
+    currentScreen === 'd2'       ? !!estadoMental :
+    currentScreen === 'd3'       ? !!tiempoDispo :
+    currentScreen === 'd5b_grupo' ? !!grupoMuscular :
+    true  // d5 ubicación is optional
   )
 
   function toggleZona(id: string) {
@@ -244,24 +263,39 @@ export default function CheckinScreen() {
   }
 
   function validate(): string | null {
-    if (screenIndex === 0 && !disciplina)    return 'Indica qué quieres entrenar hoy.'
-    if (screenIndex === 1 && !estadoFisico)  return 'Indica cómo está tu cuerpo hoy.'
-    if (screenIndex === 2 && !estadoMental)  return 'Indica cómo está tu cabeza hoy.'
-    if (screenIndex === 3 && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
-    if (screenIndex === 5 && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
+    if (currentScreen === 'd4'        && !disciplina)    return 'Indica qué quieres entrenar hoy.'
+    if (currentScreen === 'd1'        && !estadoFisico)  return 'Indica cómo está tu cuerpo hoy.'
+    if (currentScreen === 'd2'        && !estadoMental)  return 'Indica cómo está tu cabeza hoy.'
+    if (currentScreen === 'd3'        && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
+    if (currentScreen === 'd5b_grupo' && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
     return null
+  }
+
+  function goBack() {
+    if (screenIndex === 0) { router.back(); return }
+    // From d1 (idx 2): go back to d4b_running if running, else to d4
+    if (screenIndex === 2) { setScreenIndex(disciplina === 'running' ? 1 : 0); return }
+    setScreenIndex(i => i - 1)
   }
 
   function goNext() {
     const err = validate()
     if (err) { setError(err); return }
     setError('')
-    // Saltar D5b si la ubicación no es gimnasio
-    if (screenIndex === 4 && !isGimnasio) {
-      setScreenIndex(6) // ir directo a d6_procesando
-    } else {
-      setScreenIndex(i => i + 1)
+
+    // D4 → route by disciplina
+    if (screenIndex === 0) {
+      setScreenIndex(disciplina === 'running' ? 1 : 2)
+      return
     }
+
+    // D5 (idx 5) → skip D5b unless musculacion
+    if (screenIndex === 5) {
+      setScreenIndex(showGrupoMuscular ? 6 : 7)
+      return
+    }
+
+    setScreenIndex(i => i + 1)
   }
 
   async function handleSubmit() {
@@ -273,10 +307,10 @@ export default function CheckinScreen() {
       const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
       const focos: string[] = []
       if (discOpt) { focos.push(discOpt.foco); focos.push(discOpt.id) }
-      if (grupoOpt && isGimnasio) focos.push(grupoOpt.id)
+      if (grupoOpt && showGrupoMuscular) focos.push(grupoOpt.id)
       const notasParts: string[] = []
       if (discOpt) notasParts.push(`Disciplina: ${discOpt.label}`)
-      if (grupoOpt && isGimnasio) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
+      if (grupoOpt && showGrupoMuscular) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
       await apiPost('/api/checkins/', {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
@@ -321,7 +355,7 @@ export default function CheckinScreen() {
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
     const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
     if (discOpt) parts.push(discOpt.label)
-    if (grupoOpt && isGimnasio) parts.push(grupoOpt.sub)
+    if (grupoOpt && showGrupoMuscular) parts.push(grupoOpt.sub)
     if (tiempoOpt) parts.push(`${tiempoOpt.minutos} min`)
     const mentalLabels: Record<EstadoMental, string> = {
       enfocado: 'foco alto', normal: 'estado normal',
@@ -343,7 +377,7 @@ export default function CheckinScreen() {
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
     const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
     let text = discOpt?.sub ?? disciplina
-    if (grupoOpt && isGimnasio) {
+    if (grupoOpt && showGrupoMuscular) {
       text += ` · ${grupoOpt.label}: ${grupoOpt.sub}`
     }
     if (zonasDolorHoy.length > 0) {
@@ -522,6 +556,83 @@ export default function CheckinScreen() {
     )
   }
 
+  function renderD4b() {
+    const opts = [
+      {
+        id: 'libre' as const,
+        label: 'Entrenamiento libre',
+        sub: 'Sal a correr y registra tu ruta con GPS',
+        color: '#ff8c42',
+        bg: 'rgba(255,140,66,0.1)',
+        border: 'rgba(255,140,66,0.45)',
+        tag: null,
+      },
+      {
+        id: 'inteligente' as const,
+        label: 'Entrenamiento inteligente',
+        sub: 'Plan de running adaptativo con IA',
+        color: '#4f8cff',
+        bg: 'rgba(79,140,255,0.1)',
+        border: 'rgba(79,140,255,0.45)',
+        tag: 'PRÓXIMAMENTE',
+      },
+    ]
+
+    return (
+      <>
+        <Text style={styles.eyebrow}>TIPO DE RUNNING</Text>
+        <Text style={styles.question}>¿Cómo quieres{'\n'}correr hoy?</Text>
+        <Text style={styles.questionSub}>Elige el modo de entrenamiento</Text>
+
+        <View style={styles.optionsWrap}>
+          {opts.map(opt => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.estadoCard, { minHeight: 84 }]}
+              onPress={() => {
+                if (opt.id === 'inteligente') {
+                  Alert.alert('Próximamente', 'El entrenamiento inteligente de running estará disponible muy pronto.')
+                  return
+                }
+                setRunningMode('libre')
+                setError('')
+                setScreenIndex(2) // → d1
+              }}
+              activeOpacity={0.82}
+            >
+              <View style={[styles.estadoBar, { backgroundColor: opt.color }]} />
+              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0, color: opt.color }]}>
+                    {opt.label}
+                  </Text>
+                  {opt.tag && (
+                    <View style={{
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                    }}>
+                      <Text style={{
+                        fontFamily: 'JetBrainsMono-Regular',
+                        fontSize: 8,
+                        color: 'rgba(255,255,255,0.4)',
+                        letterSpacing: 0.8,
+                      }}>{opt.tag}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.intencionNota, { color: opt.color, opacity: 0.75 }]}>
+                  {opt.sub}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </>
+    )
+  }
+
   const TIPO_ICON: Record<string, string> = {
     gimnasio: '🏋️', casa: '🏠', exterior: '🌳',
   }
@@ -661,7 +772,7 @@ export default function CheckinScreen() {
               </Text>
             </View>
           )}
-          {grupoOpt && isGimnasio && (
+          {grupoOpt && showGrupoMuscular && (
             <View style={[styles.resumenPill, { borderColor: grupoOpt.color }]}>
               <Text style={[styles.resumenPillText, { color: grupoOpt.color }]}>
                 {grupoOpt.sub}
@@ -764,12 +875,12 @@ export default function CheckinScreen() {
       <View style={{ paddingTop: insets.top }}>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, {
-            width: `${Math.round((screenIndex + 1) / nInteractive * 100)}%` as any,
+            width: `${Math.round((interactiveStep || 1) / nInteractive * 100)}%` as any,
           }]} />
         </View>
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => screenIndex === 0 ? router.back() : setScreenIndex(i => i - 1)}
+            onPress={goBack}
             style={styles.backBtn} activeOpacity={0.7}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
@@ -784,37 +895,40 @@ export default function CheckinScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        { screenIndex === 0 ? renderD4()
-        : screenIndex === 1 ? renderD1()
-        : screenIndex === 2 ? renderD2()
-        : screenIndex === 3 ? renderD3()
-        : screenIndex === 5 ? renderD5b()
+        { currentScreen === 'd4'          ? renderD4()
+        : currentScreen === 'd4b_running' ? renderD4b()
+        : currentScreen === 'd1'          ? renderD1()
+        : currentScreen === 'd2'          ? renderD2()
+        : currentScreen === 'd3'          ? renderD3()
+        : currentScreen === 'd5b_grupo'   ? renderD5b()
         : renderD5() }
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 28) }]}>
-        {!!error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-        <TouchableOpacity
-          style={[styles.nextWrap, !canContinue && styles.nextWrapDisabled]}
-          onPress={goNext}
-          disabled={!canContinue}
-          activeOpacity={0.88}>
-          <LinearGradient
-            colors={[colors.accent, colors.accentDark]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.nextBtn}>
-            <Text style={styles.nextBtnText}>
-              {isLastInteractive ? 'Construir mi entrenamiento' : 'Continuar'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      {/* Footer — hidden on d4b_running (it navigates inline) */}
+      {showFooterBtn && (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 28) }]}>
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={[styles.nextWrap, !canContinue && styles.nextWrapDisabled]}
+            onPress={goNext}
+            disabled={!canContinue}
+            activeOpacity={0.88}>
+            <LinearGradient
+              colors={[colors.accent, colors.accentDark]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.nextBtn}>
+              <Text style={styles.nextBtnText}>
+                {isLastInteractive ? 'Construir mi entrenamiento' : 'Continuar'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   )
 }

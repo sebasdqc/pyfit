@@ -84,17 +84,21 @@ export default function RunScreen() {
 
   // Navigate to summary when run completes
   useEffect(() => {
-    if (status === 'completed' && sessionId !== null) {
-      router.replace(`/(app)/run/resumen/${sessionId}`)
+    if (status === 'completed') {
+      if (sessionId !== null) {
+        router.replace(`/(app)/run/resumen/${sessionId}`)
+      } else {
+        router.replace('/(app)/dashboard')
+      }
     }
   }, [status, sessionId])
 
-  // Show errors
+  // Show GPS/start errors (not stop errors — those navigate away)
   useEffect(() => {
-    if (error) {
+    if (error && status !== 'completed') {
       Alert.alert('Error', error)
     }
-  }, [error])
+  }, [error, status])
 
   function handleStop() {
     Alert.alert(
