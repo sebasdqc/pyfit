@@ -10,7 +10,7 @@ import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { Colors } from '../../lib/colors'
-import { apiPut } from '../../lib/api'
+import { apiPut, apiPost } from '../../lib/api'
 import { getUser, saveUser } from '../../lib/storage'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -229,6 +229,18 @@ const OBJETIVOS = [
   { id: 'salud',           icon: '❤️', label: 'Quiero mejorar mi salud',        tagline: 'Prevención y calidad de vida' },
   { id: 'mantener',        icon: '🛡️', label: 'Quiero mantener lo que tengo',   tagline: 'Consistencia y conservación' },
 ]
+
+function mapObjetivoToGoal(id: string): string | null {
+  const MAP: Record<string, string> = {
+    verse_mejor:     'perdida_grasa',
+    sentirse_fuerte: 'hipertrofia',
+    rendimiento:     'potencia',
+    energia:         'salud',
+    salud:           'salud',
+    mantener:        'hipertrofia',
+  }
+  return MAP[id] ?? null
+}
 
 const HORIZONTE_OPTS = [
   { value: '4-6w',   label: '4–6 semanas',     sub: 'Quiero ver algo rápido' },
@@ -677,6 +689,13 @@ export default function OnboardingScreen() {
         lugares_estructurados:   lugaresEstructurados,
         lesiones_estructuradas:  lesionesEstructuradas,
       })
+
+      // Initialize periodization cycle based on primary objective — fire and
+      // forget so a backend hiccup never blocks onboarding completion.
+      const primaryGoal = mapObjetivoToGoal(data.objetivos[0])
+      if (primaryGoal) {
+        apiPost('/api/training-cycle/', { goal: primaryGoal }).catch(() => {})
+      }
 
       // Reflect onboarding completion locally so the next cold start doesn't
       // re-route the user back here.

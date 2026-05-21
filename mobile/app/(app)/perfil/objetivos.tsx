@@ -6,13 +6,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut } from '../../../lib/api'
+import { apiGet, apiPut, apiPost } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const OBJETIVOS_LIST = [
   'Perder grasa', 'Ganar músculo', 'Rendimiento deportivo', 'Resistencia', 'Salud general',
 ]
+
+const OBJETIVO_TO_GOAL: Record<string, string> = {
+  'Perder grasa':          'perdida_grasa',
+  'Ganar músculo':         'hipertrofia',
+  'Rendimiento deportivo': 'potencia',
+  'Resistencia':           'salud',
+  'Salud general':         'salud',
+}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +58,10 @@ export default function ObjetivosScreen() {
         objetivo: objetivos[0],
         objetivos_multiples: objetivos,
       })
+      const goal = OBJETIVO_TO_GOAL[objetivos[0]]
+      if (goal) {
+        await apiPost('/api/training-cycle/', { goal })
+      }
       router.replace('/(app)/perfil')
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar')
