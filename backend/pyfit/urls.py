@@ -1,7 +1,7 @@
 import os
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from users import views as user_views
@@ -86,6 +86,9 @@ urlpatterns = [
     path('api/stats/cuerpo-contexto/', workout_views.stats_cuerpo_contexto),
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
     path('api/stats/radar/', workout_views.stats_radar),
+
+    # Runs (Free Run + future Planned Run)
+    path('api/runs/', include('runs.urls')),
 
     # Training Cycle (periodization)
     path('api/training-cycle/', workout_views.training_cycle_view),

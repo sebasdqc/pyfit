@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'workouts',
     'checkins',
     'ai_workout',
+    'runs',
 ]
 
 MIDDLEWARE = [

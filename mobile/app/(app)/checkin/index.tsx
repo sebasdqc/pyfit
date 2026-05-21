@@ -618,11 +618,16 @@ export default function CheckinScreen() {
   }
 
   function renderD6() {
+    const isRunning = disciplina === 'running'
     return (
       <View style={styles.procesandoWrap}>
-        <ActivityIndicator color={colors.accent} size="large" />
-        <Text style={styles.procesandoTitle}>Construyendo tu{'\n'}entrenamiento de hoy...</Text>
-        <Text style={styles.procesandoSub}>Analizando tus 5 dimensiones</Text>
+        <ActivityIndicator color={isRunning ? '#ff8c42' : colors.accent} size="large" />
+        <Text style={styles.procesandoTitle}>
+          {isRunning ? 'Guardando tu\ncheck-in...' : 'Construyendo tu\nentrenamiento de hoy...'}
+        </Text>
+        <Text style={styles.procesandoSub}>
+          {isRunning ? 'Preparando tu sesión de running' : 'Analizando tus 5 dimensiones'}
+        </Text>
       </View>
     )
   }
@@ -686,17 +691,31 @@ export default function CheckinScreen() {
 
         {/* CTA */}
         <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
-          <TouchableOpacity
-            style={styles.nextWrap}
-            onPress={() => router.replace(`/(app)/generate?t=${Date.now()}`)}
-            activeOpacity={0.88}>
-            <LinearGradient
-              colors={[colors.accent, colors.accentDark]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={styles.nextBtn}>
-              <Text style={styles.nextBtnText}>Ver mi entrenamiento</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {disciplina === 'running' ? (
+            <TouchableOpacity
+              style={styles.nextWrap}
+              onPress={() => router.replace('/(app)/run')}
+              activeOpacity={0.88}>
+              <LinearGradient
+                colors={['#ff8c42', '#e06c28']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>Empezar Free Run</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.nextWrap}
+              onPress={() => router.replace(`/(app)/generate?t=${Date.now()}`)}
+              activeOpacity={0.88}>
+              <LinearGradient
+                colors={[colors.accent, colors.accentDark]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>Ver mi entrenamiento</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     )

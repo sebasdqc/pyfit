@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.pyfit.mobile"
+      "bundleIdentifier": "app.pyfit.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Zyfit necesita tu ubicación para registrar tu carrera.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +26,12 @@
         "backgroundColor": "#000000"
       },
       "package": "app.pyfit.mobile",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
