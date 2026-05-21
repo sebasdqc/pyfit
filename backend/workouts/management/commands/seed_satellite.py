@@ -24,6 +24,7 @@ EXERCISE_SEED_FILES = [
     'zyfit_seed_exercises_03_jalon.sql',
     'zyfit_seed_exercises_04_core.sql',
     'zyfit_seed_exercises_05_aislamiento.sql',
+    'zyfit_seed_exercises_06_batch.sql',
 ]
 
 BRIDGE_TABLES = [
