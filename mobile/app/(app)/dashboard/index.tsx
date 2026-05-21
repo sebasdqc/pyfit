@@ -387,10 +387,12 @@ function CTACard({
           </LinearGradient>
         ) : (
           <View style={[styles.ctaBtn, styles.ctaBtnOutlined,
-            cta.estado === 'C' && { borderColor: 'rgba(255,170,50,0.5)' }
+            cta.estado === 'C' && { borderColor: 'rgba(255,170,50,0.5)' },
+            cta.estado === 'B' && styles.ctaBtnAccentFill,
           ]}>
             <Text style={[styles.ctaBtnTextSecondary,
-              cta.estado === 'C' && { color: '#ffaa32' }
+              cta.estado === 'C' && { color: '#ffaa32' },
+              cta.estado === 'B' && styles.ctaBtnTextAccent,
             ]}>
               {btnLabel}
             </Text>
@@ -400,12 +402,12 @@ function CTACard({
 
       {cta.estado === 'B' && (
         <TouchableOpacity
-          style={styles.ctaBtnWrapSecondary}
+          style={[styles.ctaBtnWrapSecondary, { marginTop: 10 }]}
           onPress={() => router.push('/(app)/checkin')}
           activeOpacity={0.88}
         >
-          <View style={[styles.ctaBtn, styles.ctaBtnOutlined]}>
-            <Text style={styles.ctaBtnTextSecondary}>Entrenar otra vez hoy</Text>
+          <View style={[styles.ctaBtn, styles.ctaBtnGhost]}>
+            <Text style={styles.ctaBtnTextGhost}>Entrenar otra vez hoy</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -754,6 +756,26 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-SemiBold',
       fontSize: 15,
       color: c.inkSecondary,
+      letterSpacing: 0.1,
+    },
+    ctaBtnAccentFill: {
+      backgroundColor: 'rgba(79,140,255,0.14)',
+      borderColor: 'rgba(79,140,255,0.45)',
+    },
+    ctaBtnTextAccent: {
+      color: c.accentLight,
+      fontFamily: 'SpaceGrotesk-Bold',
+    },
+    ctaBtnGhost: {
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 14,
+      borderStyle: 'dashed',
+    },
+    ctaBtnTextGhost: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 14,
+      color: c.inkMuted,
       letterSpacing: 0.1,
     },
 

@@ -52,6 +52,14 @@ const DISCIPLINA_OPTS = [
 ]
 type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
 
+const GRUPO_MUSCULAR_OPTS = [
+  { id: 'empujes'      as const, label: 'Empujes',   sub: 'Pecho, Hombro y Tríceps',  color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',  border: 'rgba(79,140,255,0.45)'  },
+  { id: 'tracciones'   as const, label: 'Tracciones', sub: 'Espalda y Bíceps',         color: '#32c896', bg: 'rgba(50,200,150,0.1)',  border: 'rgba(50,200,150,0.45)'  },
+  { id: 'piernas_quad' as const, label: 'Piernas',   sub: 'Foco en Cuádriceps',        color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)'  },
+  { id: 'piernas_glut' as const, label: 'Piernas',   sub: 'Foco en Glúteos y Femoral', color: '#c084fc', bg: 'rgba(192,132,252,0.1)', border: 'rgba(192,132,252,0.45)' },
+]
+type GrupoMuscular = typeof GRUPO_MUSCULAR_OPTS[number]['id']
+
 const ZONE_LABELS: Record<string, string> = {
   cabeza:      'Cabeza / Cuello',
   hombro_izq:  'Hombro izq.',
@@ -82,8 +90,7 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d4', 'd1', 'd2', 'd3', 'd5', 'd6_procesando', 'd7_resumen'] as const
-const N_INTERACTIVE = 5
+const SCREENS = ['d4', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
@@ -208,6 +215,7 @@ export default function CheckinScreen() {
   const [estadoMental, setEstadoMental] = useState<EstadoMental | null>(null)
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
   const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
+  const [grupoMuscular, setGrupoMuscular] = useState<GrupoMuscular | null>(null)
 
   // ── Nav state ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
@@ -217,13 +225,17 @@ export default function CheckinScreen() {
   const [procesandoTimer, setProcesandoTimer] = useState(false)
 
   const currentScreen = SCREENS[screenIndex]
-  const isInteractive = screenIndex < N_INTERACTIVE
-  const isLastInteractive = screenIndex === N_INTERACTIVE - 1
+  const selectedLocation = locations.find(l => l.id === locationId)
+  const isGimnasio = selectedLocation?.tipo?.toLowerCase() === 'gimnasio'
+  const nInteractive = isGimnasio ? 6 : 5
+  const isInteractive = screenIndex < nInteractive
+  const isLastInteractive = screenIndex === nInteractive - 1
   const canContinue = isInteractive && !submitting && (
     screenIndex === 0 ? !!disciplina :
     screenIndex === 1 ? !!estadoFisico :
     screenIndex === 2 ? !!estadoMental :
     screenIndex === 3 ? !!tiempoDispo :
+    screenIndex === 5 ? !!grupoMuscular :
     true  // D5 ubicación is optional
   )
 
@@ -232,10 +244,11 @@ export default function CheckinScreen() {
   }
 
   function validate(): string | null {
-    if (screenIndex === 0 && !disciplina)   return 'Indica qué quieres entrenar hoy.'
-    if (screenIndex === 1 && !estadoFisico) return 'Indica cómo está tu cuerpo hoy.'
-    if (screenIndex === 2 && !estadoMental) return 'Indica cómo está tu cabeza hoy.'
-    if (screenIndex === 3 && !tiempoDispo)  return 'Indica cuánto tiempo tienes hoy.'
+    if (screenIndex === 0 && !disciplina)    return 'Indica qué quieres entrenar hoy.'
+    if (screenIndex === 1 && !estadoFisico)  return 'Indica cómo está tu cuerpo hoy.'
+    if (screenIndex === 2 && !estadoMental)  return 'Indica cómo está tu cabeza hoy.'
+    if (screenIndex === 3 && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
+    if (screenIndex === 5 && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
     return null
   }
 
@@ -243,7 +256,12 @@ export default function CheckinScreen() {
     const err = validate()
     if (err) { setError(err); return }
     setError('')
-    setScreenIndex(i => i + 1)
+    // Saltar D5b si la ubicación no es gimnasio
+    if (screenIndex === 4 && !isGimnasio) {
+      setScreenIndex(6) // ir directo a d6_procesando
+    } else {
+      setScreenIndex(i => i + 1)
+    }
   }
 
   async function handleSubmit() {
@@ -252,8 +270,13 @@ export default function CheckinScreen() {
       const zonaLabels = zonasDolorHoy.map(z => ZONE_LABELS[z] ?? z)
       const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
       const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+      const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
       const focos: string[] = []
       if (discOpt) { focos.push(discOpt.foco); focos.push(discOpt.id) }
+      if (grupoOpt && isGimnasio) focos.push(grupoOpt.id)
+      const notasParts: string[] = []
+      if (discOpt) notasParts.push(`Disciplina: ${discOpt.label}`)
+      if (grupoOpt && isGimnasio) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
       await apiPost('/api/checkins/', {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
@@ -263,7 +286,7 @@ export default function CheckinScreen() {
         location: locationId,
         duracion_disponible: tiempoOpt?.minutos ?? 45,
         dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
-        notas: discOpt ? `Disciplina: ${discOpt.label}` : null,
+        notas: notasParts.length > 0 ? notasParts.join('. ') : null,
       })
       setCheckinSaved(true)
     } catch (e: any) {
@@ -296,7 +319,9 @@ export default function CheckinScreen() {
     const parts: string[] = []
     const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+    const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
     if (discOpt) parts.push(discOpt.label)
+    if (grupoOpt && isGimnasio) parts.push(grupoOpt.sub)
     if (tiempoOpt) parts.push(`${tiempoOpt.minutos} min`)
     const mentalLabels: Record<EstadoMental, string> = {
       enfocado: 'foco alto', normal: 'estado normal',
@@ -316,7 +341,11 @@ export default function CheckinScreen() {
   function buildPronosticoText(): string {
     if (!disciplina) return ''
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
+    const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
     let text = discOpt?.sub ?? disciplina
+    if (grupoOpt && isGimnasio) {
+      text += ` · ${grupoOpt.label}: ${grupoOpt.sub}`
+    }
     if (zonasDolorHoy.length > 0) {
       const labels = zonasDolorHoy.slice(0, 2).map(z =>
         (ZONE_LABELS[z] ?? z).split('/')[0].trim().toLowerCase()
@@ -521,7 +550,7 @@ export default function CheckinScreen() {
               return (
                 <TouchableOpacity key={loc.id}
                   style={[styles.estadoCard, on && { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: 'rgba(79,140,255,0.45)', borderWidth: 1.5 }]}
-                  onPress={() => { setLocationId(on ? null : loc.id); setError('') }}
+                  onPress={() => { setLocationId(on ? null : loc.id); setGrupoMuscular(null); setError('') }}
                   activeOpacity={0.82}>
                   <View style={[styles.estadoBar, { backgroundColor: on ? colors.accent : 'transparent' }]} />
                   <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -553,6 +582,41 @@ export default function CheckinScreen() {
     )
   }
 
+  function renderD5b() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>DIMENSIÓN 5B — GRUPO MUSCULAR</Text>
+        <Text style={styles.question}>¿Qué quieres{'\n'}trabajar hoy?</Text>
+        <Text style={styles.questionSub}>Elige el bloque muscular de la sesión</Text>
+
+        <View style={styles.optionsWrap}>
+          {GRUPO_MUSCULAR_OPTS.map(opt => {
+            const on = grupoMuscular === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setGrupoMuscular(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
+                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
+                    {opt.sub}
+                  </Text>
+                </View>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </>
+    )
+  }
+
   function renderD6() {
     return (
       <View style={styles.procesandoWrap}>
@@ -566,6 +630,7 @@ export default function CheckinScreen() {
   function renderD7() {
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
     const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
+    const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
     const loc = locations.find(l => l.id === locationId)
     return (
       <View style={[styles.resumenWrap, { paddingTop: insets.top + 24 }]}>
@@ -588,6 +653,13 @@ export default function CheckinScreen() {
             <View style={[styles.resumenPill, { borderColor: tiempoOpt.color }]}>
               <Text style={[styles.resumenPillText, { color: tiempoOpt.color }]}>
                 {tiempoOpt.minutos} min
+              </Text>
+            </View>
+          )}
+          {grupoOpt && isGimnasio && (
+            <View style={[styles.resumenPill, { borderColor: grupoOpt.color }]}>
+              <Text style={[styles.resumenPillText, { color: grupoOpt.color }]}>
+                {grupoOpt.sub}
               </Text>
             </View>
           )}
@@ -673,7 +745,7 @@ export default function CheckinScreen() {
       <View style={{ paddingTop: insets.top }}>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, {
-            width: `${Math.round((screenIndex + 1) / N_INTERACTIVE * 100)}%` as any,
+            width: `${Math.round((screenIndex + 1) / nInteractive * 100)}%` as any,
           }]} />
         </View>
         <View style={styles.header}>
@@ -697,6 +769,7 @@ export default function CheckinScreen() {
         : screenIndex === 1 ? renderD1()
         : screenIndex === 2 ? renderD2()
         : screenIndex === 3 ? renderD3()
+        : screenIndex === 5 ? renderD5b()
         : renderD5() }
         <View style={{ height: 24 }} />
       </ScrollView>
