@@ -338,6 +338,90 @@ class Competition(models.Model):
         ordering = ['fecha']
 
 
+class TrainingCycle(models.Model):
+    GOAL_CHOICES = [
+        ('hipertrofia', 'Hipertrofia'),
+        ('fuerza', 'Fuerza'),
+        ('potencia', 'Potencia'),
+        ('salud', 'Salud'),
+        ('perdida_grasa', 'Pérdida de grasa'),
+    ]
+    BLOCK_TYPE_CHOICES = [
+        ('acumulacion_hiper',      'Acumulación (hipertrofia)'),
+        ('intensificacion_hiper',  'Intensificación (hipertrofia)'),
+        ('acumulacion_fuerza',     'Acumulación (fuerza)'),
+        ('intensificacion_fuerza', 'Intensificación (fuerza)'),
+        ('realizacion_fuerza',     'Realización (fuerza)'),
+        ('fuerza_base',            'Fuerza base (potencia)'),
+        ('potencia_especifica',    'Potencia específica'),
+        ('pico_potencia',          'Pico de potencia'),
+        ('salud_general',          'Salud general'),
+        ('densidad_alta',          'Densidad alta (pérdida de grasa)'),
+        ('preservacion_muscular',  'Preservación muscular'),
+        ('transicion',             'Transición'),
+        ('deload',                 'Deload'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='training_cycles')
+    goal = models.CharField(max_length=20, choices=GOAL_CHOICES)
+    block_type = models.CharField(max_length=25, choices=BLOCK_TYPE_CHOICES)
+    week_number = models.PositiveSmallIntegerField(default=1)
+    is_deload = models.BooleanField(default=False)
+    next_session_is_deload = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    started_at = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'training_cycles'
+        indexes = [models.Index(fields=['user', 'is_active'])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(is_active=True),
+                name='unique_active_training_cycle_per_user',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user} — {self.goal}/{self.block_type} semana {self.week_number}'
+
+
+class DeloadTrigger(models.Model):
+    TRIGGER_TYPE_CHOICES = [
+        ('programmatic_week4',     'Deload programático (semana 4)'),
+        ('rpe_elevated',           'RPE elevado'),
+        ('doms_persistent',        'DOMS persistente'),
+        ('load_drop',              'Caída de carga'),
+        ('sleep_deficit',          'Déficit de sueño'),
+        ('strength_plateau_peak',  'Plateau de fuerza en bloque pico'),
+        ('adherence_drop',         'Caída de adherencia'),
+        ('caloric_deficit_fatigue','Fatiga por déficit calórico severo'),
+    ]
+    ACTION_CHOICES = [
+        ('deload_applied',  'Deload aplicado'),
+        ('days_reduced',    'Días reducidos'),
+        ('ignored_by_user', 'Ignorado por el usuario'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='deload_triggers')
+    training_cycle = models.ForeignKey(
+        TrainingCycle, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='deload_triggers',
+    )
+    trigger_type = models.CharField(max_length=30, choices=TRIGGER_TYPE_CHOICES)
+    action_taken = models.CharField(max_length=20, choices=ACTION_CHOICES, blank=True)
+    details = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'deload_triggers'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} — {self.trigger_type}'
+
+
 class CalendarEvent(models.Model):
     TIPO_CHOICES = [
         ('competicion', 'Competición'),

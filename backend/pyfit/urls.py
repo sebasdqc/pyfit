@@ -87,6 +87,10 @@ urlpatterns = [
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
     path('api/stats/radar/', workout_views.stats_radar),
 
+    # Training Cycle (periodization)
+    path('api/training-cycle/', workout_views.training_cycle_view),
+    path('api/training-cycle/advance/', workout_views.training_cycle_advance),
+
     # Calendar events
     path('api/eventos/',           workout_views.calendar_eventos),
     path('api/eventos/<int:pk>/',  workout_views.calendar_evento_delete),

@@ -98,6 +98,17 @@ class Profile(models.Model):
     plan_tipo = models.CharField(max_length=20, choices=PLAN_TIPO_CHOICES, blank=True)
     plan_renovacion = models.DateField(null=True, blank=True)
 
+    GOAL_CHOICES = [
+        ('hipertrofia', 'Hipertrofia'),
+        ('fuerza', 'Fuerza'),
+        ('potencia', 'Potencia'),
+        ('salud', 'Salud'),
+        ('perdida_grasa', 'Pérdida de grasa'),
+    ]
+    goal = models.CharField(max_length=20, choices=GOAL_CHOICES, blank=True)
+    goal_changed_at = models.DateTimeField(null=True, blank=True)
+    previous_goal = models.CharField(max_length=20, choices=GOAL_CHOICES, blank=True)
+
     racha_actual = models.IntegerField(default=0)
     mejor_racha = models.IntegerField(default=0)
     puntos_totales = models.IntegerField(default=0)

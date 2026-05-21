@@ -155,6 +155,8 @@ def profile_view(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    old_goal = prof.goal  # capture before save
+
     with transaction.atomic():
         serializer.save()
         _sync_user_locations(request.user, request.data)
@@ -162,6 +164,23 @@ def profile_view(request):
 
     prof.refresh_from_db()
     _check_logros(prof)
+
+    # Handle goal transition when goal changes
+    new_goal = prof.goal
+    if new_goal and old_goal != new_goal:
+        from django.utils import timezone
+        prof.previous_goal = old_goal or ''
+        prof.goal_changed_at = timezone.now()
+        prof.save(update_fields=['previous_goal', 'goal_changed_at'])
+        try:
+            from workouts.training_cycle import apply_goal_transition
+            apply_goal_transition(request.user, old_goal or '', new_goal)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).error(
+                'goal_transition failed for user %s', request.user.id, exc_info=True,
+            )
+
     data = serializer.data
     data['onboarding_completo'] = prof.is_onboarding_complete
     return Response(data)

@@ -59,6 +59,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'rm_sentadilla', 'rm_peso_muerto', 'rm_press_banca', 'rm_press_hombro',
             'usa_ciclo_menstrual', 'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',
             'plan', 'plan_tipo', 'plan_renovacion',
+            'goal', 'goal_changed_at', 'previous_goal',
             'created_at', 'locations',
             # Onboarding extended fields
             'calidad_sueno_habitual', 'condiciones_medicas', 'notas_medicas', 'motivo_limitacion',
@@ -72,5 +73,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             'id', 'email', 'edad', 'nivel_label',
             'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',
             'plan', 'plan_tipo', 'plan_renovacion',
+            'goal_changed_at', 'previous_goal',
             'created_at', 'locations',
         ]

@@ -430,9 +430,10 @@ def build_prompt(ctx):
     else:
         exercise_pool_text = _format_exercise_pool(ctx.get('exercise_pool', {}))
 
-    adaptation_text = ctx.get('adaptation_context', 'Sin historial suficiente.')
-    mesociclo       = ctx.get('estado_mesociclo', {})
-    mesociclo_text  = mesociclo.get('recomendacion', '')
+    adaptation_text   = ctx.get('adaptation_context', 'Sin historial suficiente.')
+    mesociclo         = ctx.get('estado_mesociclo', {})
+    mesociclo_text    = mesociclo.get('recomendacion', '')
+    periodizacion_txt = ctx.get('periodizacion', {}).get('prompt_block', '')
     deload_warning  = (
         '\n*** ATENCIÓN: El atleta necesita DELOAD. Reduce volumen e intensidad en un 40-50%. ***'
         if mesociclo.get('necesita_deload')
@@ -532,6 +533,8 @@ HISTORIAL DE ADAPTACIÓN DEL USUARIO:
 
 ESTADO DEL MESOCICLO:
 {mesociclo_text}{deload_warning}
+
+{periodizacion_txt}
 
 {directivas_block}
 
@@ -695,11 +698,15 @@ def generate_session(request):
     # Mesocycle / periodization state (existing function, unchanged)
     estado_mesociclo = _calcular_estado_mesociclo(user)
 
+    # Step 6: periodization params from active TrainingCycle
+    periodizacion = engine.get_periodization_params()
+
     # Enrich with load data
+    is_deload_session = estado_mesociclo.get('necesita_deload', False) or periodizacion.get('is_deload', False)
     if exercise_pool_enriched is not None:
         exercise_pool_enriched, session_meta = engine.enrich_with_load(
             exercise_pool_enriched,
-            deload_session=estado_mesociclo.get('necesita_deload', False),
+            deload_session=is_deload_session,
         )
         exercise_pool_legacy = {}
     else:
@@ -749,6 +756,7 @@ def generate_session(request):
         'session_meta': session_meta,
         'adaptation_context': adaptation_context,
         'estado_mesociclo': estado_mesociclo,
+        'periodizacion': periodizacion,
     }
 
     prompt = build_prompt(ctx)
@@ -1019,10 +1027,12 @@ def session_ajustar(request, pk):
     pattern_priorities = engine.get_pattern_priorities()
     adaptation_context = _build_adaptation_context(user)
     estado_mesociclo   = _calcular_estado_mesociclo(user)
+    periodizacion      = engine.get_periodization_params()
+    is_deload_session  = estado_mesociclo.get('necesita_deload', False) or periodizacion.get('is_deload', False)
     if exercise_pool_enriched is not None:
         exercise_pool_enriched, session_meta = engine.enrich_with_load(
             exercise_pool_enriched,
-            deload_session=estado_mesociclo.get('necesita_deload', False),
+            deload_session=is_deload_session,
         )
         exercise_pool_legacy = {}
     else:
@@ -1071,6 +1081,7 @@ def session_ajustar(request, pk):
         'session_meta':         session_meta,
         'adaptation_context':   adaptation_context,
         'estado_mesociclo':     estado_mesociclo,
+        'periodizacion':        periodizacion,
     }
 
     prompt = build_prompt(ctx)

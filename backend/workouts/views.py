@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA, CalendarEvent
+from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA, CalendarEvent, TrainingCycle
 from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer
 
 
@@ -47,6 +47,7 @@ def session_feedback(request, pk):
     _actualizar_racha(request.user)
     _check_logros(request.user)
     _actualizar_adaptation_profile(request.user, session, feedback)
+    _evaluate_and_advance(request.user, session, feedback)
 
     return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
 
@@ -1950,3 +1951,117 @@ def calendar_evento_delete(request, pk):
         return Response(status=status.HTTP_204_NO_CONTENT)
     except CalendarEvent.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+# ─── Post-feedback: advance cycle + evaluate triggers ─────────────────────────
+
+def _evaluate_and_advance(user, session, feedback):
+    """
+    Called after feedback is saved. Advances the active TrainingCycle's week
+    counter if a new calendar week has elapsed, then evaluates deload triggers.
+    Wrapped in try/except so it never crashes the feedback response.
+    """
+    try:
+        cycle = TrainingCycle.objects.get(user=user, is_active=True)
+    except TrainingCycle.DoesNotExist:
+        return
+    except Exception:
+        return
+
+    try:
+        from workouts.training_cycle import advance_week_if_needed
+        user_goal = getattr(getattr(user, 'profile', None), 'goal', None) or None
+        advance_week_if_needed(cycle, user_goal=user_goal)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).error(
+            '_evaluate_and_advance week_advance failed user=%s', user.id, exc_info=True,
+        )
+
+    try:
+        from workouts.deload_triggers import evaluate_deload_triggers
+        evaluate_deload_triggers(user, session, feedback)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).error(
+            '_evaluate_and_advance trigger_eval failed user=%s', user.id, exc_info=True,
+        )
+
+
+# ─── Training Cycle API ───────────────────────────────────────────────────────
+
+def _serialize_cycle(cycle) -> dict:
+    return {
+        'id':                    cycle.id,
+        'goal':                  cycle.goal,
+        'block_type':            cycle.block_type,
+        'week_number':           cycle.week_number,
+        'is_deload':             cycle.is_deload,
+        'next_session_is_deload': cycle.next_session_is_deload,
+        'is_active':             cycle.is_active,
+        'started_at':            str(cycle.started_at),
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def training_cycle_view(request):
+    """
+    GET  /api/training-cycle/  — Returns the active cycle or null.
+    POST /api/training-cycle/  — Creates a new cycle for the given goal,
+                                  deactivating any existing one.
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        try:
+            cycle = TrainingCycle.objects.get(user=user, is_active=True)
+            return Response({'cycle': _serialize_cycle(cycle)})
+        except TrainingCycle.DoesNotExist:
+            return Response({'cycle': None})
+
+    # POST — create / replace cycle
+    from workouts.training_cycle import init_cycle, GOAL_FIRST_BLOCK
+    goal = str(request.data.get('goal', '')).strip()
+    if goal not in GOAL_FIRST_BLOCK:
+        return Response(
+            {'error': f'goal inválido. Opciones: {list(GOAL_FIRST_BLOCK)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    cycle = init_cycle(user, goal)
+
+    # Keep profile.goal in sync
+    try:
+        from django.utils import timezone
+        prof = user.profile
+        old_goal = prof.goal
+        if old_goal != goal:
+            prof.previous_goal = old_goal or ''
+            prof.goal = goal
+            prof.goal_changed_at = timezone.now()
+            prof.save(update_fields=['goal', 'previous_goal', 'goal_changed_at'])
+    except Exception:
+        pass
+
+    return Response(_serialize_cycle(cycle), status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def training_cycle_advance(request):
+    """
+    POST /api/training-cycle/advance/
+    Manually advances the active cycle by one calendar week (debug / admin use).
+    Normal advancement happens automatically post-feedback.
+    """
+    user = request.user
+    try:
+        cycle = TrainingCycle.objects.get(user=user, is_active=True)
+    except TrainingCycle.DoesNotExist:
+        return Response({'error': 'Sin ciclo activo'}, status=status.HTTP_404_NOT_FOUND)
+
+    from workouts.training_cycle import advance_week_if_needed
+    user_goal = getattr(getattr(user, 'profile', None), 'goal', None) or None
+    updated = advance_week_if_needed(cycle, user_goal=user_goal)
+    return Response(_serialize_cycle(updated))
