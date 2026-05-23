@@ -21,6 +21,7 @@ import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 import RadarBlock, { RadarBlockEmpty, RadarMetric } from '../../../components/RadarBlock'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,12 +56,6 @@ const EVENT_COLORS: Record<CalendarEventData['tipo'], string> = {
   competicion: '#ffaa32',
   descanso:    '#a78bfa',
   otro:        '#6ce5ff',
-}
-
-const EVENT_LABELS: Record<CalendarEventData['tipo'], string> = {
-  competicion: '🏆 Competición',
-  descanso:    '😴 Descanso',
-  otro:        '📌 Otro',
 }
 
 interface ConsistData {
@@ -135,11 +130,6 @@ function trendText(arr: SemanaRPE[]): string | null {
 }
 
 // ─── Heat map constants ───────────────────────────────────────────────────────
-
-const MESES_ES = [
-  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
-]
 
 const DAY_LABELS = ['L','M','X','J','V','S','D']
 
@@ -409,11 +399,13 @@ function EjercicioTopList({
   styles: ReturnType<typeof makeStyles>
   colors: Colors
 }) {
+  const { t } = useTranslation()
+
   if (ejercicios.length === 0) {
     return (
       <View style={[styles.chartCenter, { height: 80 }]}>
         <Text style={styles.emptyText}>
-          Completa sesiones para ver tus ejercicios más entrenados.
+          {t('stats_no_data_sub')}
         </Text>
       </View>
     )
@@ -450,7 +442,7 @@ function EjercicioTopList({
             <View style={styles.exCenter}>
               <Text style={styles.exNombre} numberOfLines={1}>{ej.nombre}</Text>
               <Text style={styles.exMeta}>
-                {ej.count} {ej.count === 1 ? 'vez' : 'veces'} · {ej.categoria}
+                {ej.count} {ej.count === 1 ? 'vez' : t('stats_top_ex_times')} · {ej.categoria}
               </Text>
             </View>
 
@@ -500,6 +492,10 @@ function HeatMapBlock({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+  const { t, ta } = useTranslation()
+
+  const MESES_I18N = ta('stats_months')
+  const DAY_LABELS_I18N = ['L','M','X','J','V','S','D']
 
   const INTENSITY_BG = [
     colors.borderDefault,
@@ -527,7 +523,7 @@ function HeatMapBlock({
   return (
     <>
       <View style={styles.consistHeaderRow}>
-        <Text style={styles.blockLabel}>TU CONSISTENCIA</Text>
+        <Text style={styles.blockLabel}>{t('stats_consistency_title').toUpperCase()}</Text>
 
         <View style={styles.navRow}>
           <TouchableOpacity
@@ -539,7 +535,7 @@ function HeatMapBlock({
           </TouchableOpacity>
 
           <Text style={styles.navMonth}>
-            {MESES_ES[mesActual.month - 1]} {mesActual.year}
+            {MESES_I18N[mesActual.month - 1]} {mesActual.year}
           </Text>
 
           <TouchableOpacity
@@ -561,7 +557,7 @@ function HeatMapBlock({
           <>
             {/* Day headers */}
             <View style={[styles.dayHeaderRow, { gap: GAP }]}>
-              {DAY_LABELS.map(d => (
+              {DAY_LABELS_I18N.map(d => (
                 <View key={d} style={{ width: cellSize, alignItems: 'center' }}>
                   <Text style={styles.dayHeaderText}>{d}</Text>
                 </View>
@@ -655,11 +651,19 @@ function HeatMapBlock({
 
 export default function EstadisticasScreen() {
   const { colors } = useTheme()
+  const { t, ta }  = useTranslation()
   const styles     = React.useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
   const { width: screenW } = useWindowDimensions()
 
   const cardInnerW = screenW - 20 * 2 - 16 * 2  // screen pad + card pad
+
+  // Event labels using translations
+  const EVENT_LABELS: Record<CalendarEventData['tipo'], string> = {
+    competicion: '🏆 Competición',
+    descanso:    '😴 Descanso',
+    otro:        '📌 Otro',
+  }
 
   // ── Block 0 state (Radar) ─────────────────────────────────────────────────
   const [radarMetrics,   setRadarMetrics]   = useState<RadarMetric[] | null>(null)
@@ -882,7 +886,7 @@ export default function EstadisticasScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
-        <Text style={styles.sectionLabel}>ESTADÍSTICAS</Text>
+        <Text style={styles.sectionLabel}>{t('stats_header')}</Text>
         <Text style={styles.pageTitle}>
           {semanasEntrenando}{' '}
           {semanasEntrenando === 1 ? 'semana' : 'semanas'} entrenando.
@@ -895,7 +899,7 @@ export default function EstadisticasScreen() {
         }
 
         {/* ── Bloque 1: Tu progreso en el tiempo ── */}
-        <Text style={styles.blockLabel}>TU PROGRESO EN EL TIEMPO</Text>
+        <Text style={styles.blockLabel}>{t('stats_rpe_title').toUpperCase()}</Text>
 
         <View style={styles.card}>
           {/* Filter tabs */}
@@ -924,8 +928,8 @@ export default function EstadisticasScreen() {
               <View style={styles.chartCenter}>
                 <Text style={styles.emptyText}>
                   {filtro === 'todo'
-                    ? 'Completa al menos 2 semanas de entrenamiento para ver tu progreso.'
-                    : 'No hay suficientes datos para este filtro aún.'}
+                    ? t('stats_no_data_sub')
+                    : t('stats_no_data')}
                 </Text>
               </View>
             ) : (
@@ -962,11 +966,11 @@ export default function EstadisticasScreen() {
         />
 
         {/* ── Bloque 3: Tu cuerpo en contexto ── */}
-        <Text style={styles.blockLabel}>TU CUERPO EN CONTEXTO</Text>
+        <Text style={styles.blockLabel}>{t('stats_body_title').toUpperCase()}</Text>
 
         {/* Card 1 — Estado físico */}
         <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>Estado físico promedio por semana</Text>
+          <Text style={styles.cardMiniTitle}>{t('stats_physical')}</Text>
           {cuerpoData && cuerpoData.semanas_fisico.length > 0 ? (
             <EstadoBarChart
               semanas={cuerpoData.semanas_fisico}
@@ -979,8 +983,8 @@ export default function EstadisticasScreen() {
             <View style={styles.chartCenter}>
               <Text style={styles.emptyText}>
                 {cuerpoData
-                  ? 'Completa al menos 2 semanas con check-in para ver tu estado físico.'
-                  : 'Cargando...'}
+                  ? t('stats_no_data_sub')
+                  : t('stats_loading')}
               </Text>
             </View>
           )}
@@ -988,7 +992,7 @@ export default function EstadisticasScreen() {
 
         {/* Card 2 — Estado mental */}
         <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>Estado mental promedio por semana</Text>
+          <Text style={styles.cardMiniTitle}>{t('stats_mental')}</Text>
           {cuerpoData && cuerpoData.semanas_mental.length > 0 ? (
             <EstadoBarChart
               semanas={cuerpoData.semanas_mental}
@@ -1001,8 +1005,8 @@ export default function EstadisticasScreen() {
             <View style={styles.chartCenter}>
               <Text style={styles.emptyText}>
                 {cuerpoData
-                  ? 'Completa al menos 2 semanas con check-in para ver tu estado mental.'
-                  : 'Cargando...'}
+                  ? t('stats_no_data_sub')
+                  : t('stats_loading')}
               </Text>
             </View>
           )}
@@ -1010,7 +1014,7 @@ export default function EstadisticasScreen() {
 
         {/* Card 3 — Intención de entrenamiento */}
         <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>Intención de entrenamiento</Text>
+          <Text style={styles.cardMiniTitle}>{t('stats_intention_title')}</Text>
           {cuerpoData && cuerpoData.total_checkins >= 5 ? (
             <DonutChart
               counts={cuerpoData.intencion_counts}
@@ -1022,14 +1026,14 @@ export default function EstadisticasScreen() {
           ) : (
             <View style={[styles.chartCenter, { height: 80 }]}>
               <Text style={styles.emptyText}>
-                Sigue entrenando para ver tu perfil de intención.
+                {t('stats_no_data_sub')}
               </Text>
             </View>
           )}
         </View>
 
         {/* ── Bloque 4: Tus ejercicios más entrenados ── */}
-        <Text style={styles.blockLabel}>TUS EJERCICIOS MÁS ENTRENADOS</Text>
+        <Text style={styles.blockLabel}>{t('stats_top_ex_title').toUpperCase()}</Text>
         <View style={styles.card}>
           <EjercicioTopList
             ejercicios={ejerciciosData ?? []}
@@ -1060,9 +1064,9 @@ export default function EstadisticasScreen() {
                   {/* Header */}
                   <View style={styles.modalHeader}>
                     <View>
-                      <Text style={styles.modalEyebrow}>EVENTOS DEL DÍA</Text>
+                      <Text style={styles.modalEyebrow}>{t('stats_events_title')}</Text>
                       <Text style={styles.modalDate}>
-                        {selectedDay ? formatModalDate(selectedDay) : ''}
+                        {selectedDay ? formatModalDate(selectedDay, ta('stats_months')) : ''}
                       </Text>
                     </View>
                     <TouchableOpacity onPress={closeDayModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1096,11 +1100,11 @@ export default function EstadisticasScreen() {
                   })()}
 
                   {/* Add new event */}
-                  <Text style={styles.modalAddLabel}>AGREGAR EVENTO</Text>
+                  <Text style={styles.modalAddLabel}>{t('stats_add_event')}</Text>
 
                   <TextInput
                     style={styles.modalInput}
-                    placeholder="Nombre del evento…"
+                    placeholder={t('stats_event_note_placeholder')}
                     placeholderTextColor={colors.inkFaint}
                     value={newEventTitulo}
                     onChangeText={setNewEventTitulo}
@@ -1111,20 +1115,20 @@ export default function EstadisticasScreen() {
 
                   {/* Type selector */}
                   <View style={styles.modalTipoRow}>
-                    {(['competicion', 'descanso', 'otro'] as const).map(t => {
-                      const on = newEventTipo === t
+                    {(['competicion', 'descanso', 'otro'] as const).map(tipo => {
+                      const on = newEventTipo === tipo
                       return (
                         <TouchableOpacity
-                          key={t}
-                          onPress={() => setNewEventTipo(t)}
+                          key={tipo}
+                          onPress={() => setNewEventTipo(tipo)}
                           style={[
                             styles.modalTipoChip,
-                            on && { backgroundColor: EVENT_COLORS[t] + '22', borderColor: EVENT_COLORS[t] },
+                            on && { backgroundColor: EVENT_COLORS[tipo] + '22', borderColor: EVENT_COLORS[tipo] },
                           ]}
                           activeOpacity={0.75}
                         >
-                          <Text style={[styles.modalTipoText, on && { color: EVENT_COLORS[t] }]}>
-                            {EVENT_LABELS[t]}
+                          <Text style={[styles.modalTipoText, on && { color: EVENT_COLORS[tipo] }]}>
+                            {EVENT_LABELS[tipo]}
                           </Text>
                         </TouchableOpacity>
                       )
@@ -1140,7 +1144,7 @@ export default function EstadisticasScreen() {
                   >
                     {savingEvent
                       ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.modalSaveBtnText}>Guardar evento</Text>
+                      : <Text style={styles.modalSaveBtnText}>{t('stats_event_btn_save')}</Text>
                     }
                   </TouchableOpacity>
                 </View>
@@ -1153,11 +1157,11 @@ export default function EstadisticasScreen() {
   )
 }
 
-function formatModalDate(dateStr: string): string {
+function formatModalDate(dateStr: string, monthNames: string[]): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   const d = new Date(year, month - 1, day)
   const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-  return `${weekdays[d.getDay()]} ${day} de ${MESES_ES[month - 1]}, ${year}`
+  return `${weekdays[d.getDay()]} ${day} de ${monthNames[month - 1]}, ${year}`
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

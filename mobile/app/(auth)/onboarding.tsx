@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
+import { useTranslation } from '../../lib/i18n'
 import { Colors } from '../../lib/colors'
 import { apiPut, apiPost } from '../../lib/api'
 import { getUser, saveUser } from '../../lib/storage'
@@ -481,6 +482,7 @@ function BodyMap({
 
 export default function OnboardingScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -559,7 +561,7 @@ export default function OnboardingScreen() {
   // ── Validation ─────────────────────────────────────────────────────────────
   function validate(): string | null {
     if (currentScreen === 'b1_personal') {
-      if (!data.nombre.trim()) return 'El nombre es requerido.'
+      if (!data.nombre.trim()) return t('onboarding_name_error')
       if (!data.fechaNacimiento) return 'La fecha de nacimiento es requerida.'
       if (!data.sexo) return 'Selecciona tu sexo biológico.'
       const p = Number(data.peso.replace(',', '.'))
@@ -706,7 +708,7 @@ export default function OnboardingScreen() {
 
       setSaveComplete(true)
     } catch (e: any) {
-      setError(e.message || 'Error al guardar. Intenta de nuevo.')
+      setError(e.message || t('onboarding_error_saving'))
     } finally {
       setLoading(false)
     }
@@ -809,14 +811,14 @@ export default function OnboardingScreen() {
         </Text>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>NOMBRE</Text>
-          <TextInput style={styles.input} placeholder="Tu nombre"
+          <Text style={styles.fieldLabel}>{t('onboarding_name_label')}</Text>
+          <TextInput style={styles.input} placeholder={t('onboarding_name_placeholder')}
             placeholderTextColor={colors.inkMuted} value={data.nombre}
             onChangeText={v => set('nombre', v)} autoCapitalize="words" autoCorrect={false} />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>FECHA DE NACIMIENTO</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_birth_label')}</Text>
           <TouchableOpacity style={[styles.input, styles.inputTouch]}
             onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
             <Text style={data.fechaNacimiento ? styles.inputText : styles.inputPlaceholder}>
@@ -826,14 +828,14 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>SEXO BIOLÓGICO</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_sex_label')}</Text>
           <View style={styles.chipsRow}>
             {(['masculino', 'femenino', 'otro'] as const).map(s => (
               <TouchableOpacity key={s}
                 style={[styles.chip, data.sexo === s && styles.chipOn]}
                 onPress={() => set('sexo', s)} activeOpacity={0.8}>
                 <Text style={[styles.chipText, data.sexo === s && styles.chipTextOn]}>
-                  {s === 'masculino' ? 'Hombre' : s === 'femenino' ? 'Mujer' : 'Prefiero no decir'}
+                  {s === 'masculino' ? t('onboarding_sex_male') : s === 'femenino' ? t('onboarding_sex_female') : t('onboarding_sex_other')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -842,7 +844,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.fieldGroup}>
           <View style={styles.labelRow}>
-            <Text style={styles.fieldLabel}>PESO</Text>
+            <Text style={styles.fieldLabel}>{t('onboarding_weight_label')}</Text>
             <View style={styles.unitToggle}>
               {(['kg', 'lb'] as const).map(u => (
                 <TouchableOpacity key={u} style={[styles.unitBtn, data.pesoUnit === u && styles.unitBtnOn]}
@@ -860,7 +862,7 @@ export default function OnboardingScreen() {
 
         <View style={[styles.fieldGroup, { marginBottom: 0 }]}>
           <View style={styles.labelRow}>
-            <Text style={styles.fieldLabel}>ALTURA</Text>
+            <Text style={styles.fieldLabel}>{t('onboarding_height_label')}</Text>
             <View style={styles.unitToggle}>
               {(['cm', 'ft'] as const).map(u => (
                 <TouchableOpacity key={u} style={[styles.unitBtn, data.alturaUnit === u && styles.unitBtnOn]}
@@ -904,7 +906,7 @@ export default function OnboardingScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cicloCardTitle, on && styles.cicloCardTitleOn]}>
-                  Sí, quiero que Zyfit considere mi ciclo
+                  {t('onboarding_ciclo_yes')}
                 </Text>
                 <Text style={[styles.cicloCardSub, on && styles.cicloCardSubOn]}>
                   Lo configuro después desde mi perfil
@@ -1209,7 +1211,7 @@ export default function OnboardingScreen() {
         {/* Reason (shown once at least one exercise is selected) */}
         {data.ejerciciosEvitar.length > 0 && (
           <View style={[styles.fieldGroup, { marginTop: 20 }]}>
-            <Text style={styles.fieldLabel}>¿POR QUÉ? (OPCIONAL)</Text>
+            <Text style={styles.fieldLabel}>{`${t('onboarding_why_label')} (${t('onboarding_optional')})`}</Text>
             <TextInput
               style={[styles.input, styles.textarea]}
               placeholder="Ej: dolor de rodilla al cargar, cirugía de hombro hace 6 meses..."
@@ -1756,7 +1758,7 @@ export default function OnboardingScreen() {
               colors={[colors.accent, colors.accentDark]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.betaBtn}>
-              <Text style={styles.betaBtnText}>COMENZAR MI ENTRENAMIENTO</Text>
+              <Text style={styles.betaBtnText}>{t('onboarding_welcome_btn')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -1940,7 +1942,7 @@ export default function OnboardingScreen() {
             <View style={styles.btnRow}>
               {screenIndex > 0 && (
                 <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}>
-                  <Text style={styles.backSecondaryText}>Atrás</Text>
+                  <Text style={styles.backSecondaryText}>{t('onboarding_back')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -1950,7 +1952,7 @@ export default function OnboardingScreen() {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
                   {loading
                     ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={styles.nextBtnText}>Continuar</Text>
+                    : <Text style={styles.nextBtnText}>{t('onboarding_continue')}</Text>
                   }
                 </LinearGradient>
               </TouchableOpacity>
@@ -1966,11 +1968,11 @@ export default function OnboardingScreen() {
           <View style={styles.dateCard}>
             <View style={styles.dateHeader}>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.dateCancel}>Cancelar</Text>
+                <Text style={styles.dateCancel}>{t('onboarding_cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.dateTitle}>Fecha de nacimiento</Text>
+              <Text style={styles.dateTitle}>{t('onboarding_birth_label')}</Text>
               <TouchableOpacity onPress={() => { set('fechaNacimiento', tempDate); setShowDatePicker(false) }}>
-                <Text style={styles.dateDone}>Listo</Text>
+                <Text style={styles.dateDone}>{t('onboarding_done')}</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker value={tempDate} mode="date"

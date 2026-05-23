@@ -16,6 +16,7 @@ import Svg, { Circle } from 'react-native-svg'
 import { router, useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -134,11 +135,16 @@ function toParrafo(decisiones: Decision[]): string {
 
 // ─── Date helper ──────────────────────────────────────────────────────────────
 
-function formatDateES(): string {
+function formatDateES(lang: string): string {
   const d = new Date()
-  const DAYS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-  const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-  return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
+  const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const DAYS_EN   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  const MONTHS_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  if (lang === 'en') {
+    return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
+  }
+  return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
 }
 
 // ─── Ring constants ───────────────────────────────────────────────────────────
@@ -148,12 +154,7 @@ const RING_SIZE = 144
 const RING_SW   = 6
 const RING_CIRC = 2 * Math.PI * RING_R   // ≈ 389.6
 
-const LOAD_STEPS = [
-  { title: 'Construyendo tu rutina...', subtitle: 'Analizando tu checkin de hoy' },
-  { title: 'Revisando tu historial...', subtitle: 'Últimas semanas de entrenamiento' },
-  { title: 'Calculando carga óptima...', subtitle: 'Basado en tu progresión reciente' },
-  { title: 'Listo.',                    subtitle: 'Tu entrenador preparó algo para ti' },
-]
+// LOAD_STEPS is now built inside LoadingScreen using translated strings
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
@@ -161,6 +162,13 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => void }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
+  const LOAD_STEPS = [
+    { title: t('generate_loading_1'), subtitle: t('generate_loading_2') },
+    { title: t('generate_loading_2'), subtitle: t('generate_loading_3') },
+    { title: t('generate_loading_3'), subtitle: t('generate_loading_4') },
+    { title: t('generate_loading_5'), subtitle: t('generate_loading_4') },
+  ]
   const [step, setStep] = useState(0)
   const stepRef    = useRef(-1)
   const apiDoneRef = useRef(apiDone)
@@ -458,6 +466,7 @@ function SubstitutionModal({
   onClose:    () => void
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const mSt = useMemo(() => makeMStyles(colors), [colors])
   const [motivo,       setMotivo]       = useState('')
   const [loading,      setLoading]      = useState(false)
@@ -519,13 +528,13 @@ function SubstitutionModal({
             contentContainerStyle={mSt.sheetContent}
           >
             {/* Title */}
-            <Text style={mSt.sheetTitle}>Sustituir</Text>
+            <Text style={mSt.sheetTitle}>{t('generate_sub_title')}</Text>
             <Text style={mSt.sheetEjercicio}>{ejercicio.nombre}</Text>
 
             {/* Reason selector (shown before alternatives load) */}
             {!alternativas && !loading && (
               <>
-                <Text style={mSt.sectionLabel}>¿Por qué quieres cambiarlo?</Text>
+                <Text style={mSt.sectionLabel}>{t('generate_sub_why')}</Text>
                 {MOTIVOS.map(m => (
                   <TouchableOpacity
                     key={m.id}
@@ -543,7 +552,7 @@ function SubstitutionModal({
                 ))}
 
                 <TouchableOpacity style={mSt.buscarBtn} onPress={buscarAlternativas}>
-                  <Text style={mSt.buscarBtnText}>Buscar alternativa</Text>
+                  <Text style={mSt.buscarBtnText}>{t('generate_sub_find')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -552,7 +561,7 @@ function SubstitutionModal({
             {loading && (
               <View style={mSt.loadingWrap}>
                 <ActivityIndicator color="#4f8cff" />
-                <Text style={mSt.loadingText}>Buscando alternativas...</Text>
+                <Text style={mSt.loadingText}>{t('generate_sub_loading')}</Text>
               </View>
             )}
 
@@ -561,7 +570,7 @@ function SubstitutionModal({
               <View style={mSt.errorWrap}>
                 <Text style={mSt.errorTxt}>{fetchError}</Text>
                 <TouchableOpacity onPress={buscarAlternativas} style={{ marginTop: 10 }}>
-                  <Text style={mSt.retryLink}>Reintentar</Text>
+                  <Text style={mSt.retryLink}>{t('common_retry')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -569,7 +578,7 @@ function SubstitutionModal({
             {/* Alternatives */}
             {alternativas && !loading && (
               <>
-                <Text style={mSt.altTitle}>Elige una alternativa</Text>
+                <Text style={mSt.altTitle}>{t('generate_sub_use')}</Text>
                 {alternativas.map((alt, i) => (
                   <TouchableOpacity
                     key={i}
@@ -783,6 +792,7 @@ function AjusteModal({
   onClose:  () => void
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const ajSt = useMemo(() => makeAjStyles(colors), [colors])
   const [duracionDelta, setDuracionDelta] = useState<-15 | 0 | 15>(0)
   const [rpeDelta,      setRpeDelta]      = useState<-1 | 0 | 1>(0)
@@ -838,7 +848,7 @@ function AjusteModal({
             bounces={false}
             contentContainerStyle={ajSt.content}
           >
-            <Text style={ajSt.eyebrow}>AJUSTAR RUTINA</Text>
+            <Text style={ajSt.eyebrow}>{t('generate_adj_title')}</Text>
             <Text style={ajSt.current}>
               {currentDuracion} min · RPE {currentRpe}
             </Text>
@@ -851,7 +861,7 @@ function AjusteModal({
             ) : (
               <>
                 {/* Duration */}
-                <Text style={ajSt.sectionLabel}>Duración</Text>
+                <Text style={ajSt.sectionLabel}>{t('generate_adj_duration')}</Text>
                 <View style={ajSt.optionRow}>
                   <TouchableOpacity
                     style={[ajSt.optBtn, duracionDelta === -15 && ajSt.optBtnSel]}
@@ -874,7 +884,7 @@ function AjusteModal({
                 </View>
 
                 {/* Intensity */}
-                <Text style={ajSt.sectionLabel}>Intensidad</Text>
+                <Text style={ajSt.sectionLabel}>{t('generate_adj_intensity')}</Text>
                 <View style={ajSt.optionRow}>
                   <TouchableOpacity
                     style={[ajSt.optBtn, rpeDelta === -1 && ajSt.optBtnSel]}
@@ -906,7 +916,7 @@ function AjusteModal({
                   activeOpacity={noChanges ? 1 : 0.75}
                 >
                   <Text style={[ajSt.aplicarBtnText, noChanges && ajSt.aplicarBtnTextDisabled]}>
-                    Regenerar rutina
+                    {t('generate_adj_apply')}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1205,6 +1215,7 @@ function makeBlkStyles(c: Colors) {
 
 export default function GenerateScreen() {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const { t: checkinTs } = useLocalSearchParams<{ t?: string }>()
   const lastTsRef = useRef<string>('__init__')
@@ -1363,16 +1374,16 @@ export default function GenerateScreen() {
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorTitle}>Algo salió mal</Text>
+            <Text style={styles.errorTitle}>{t('common_error')}</Text>
             <Text style={styles.errorMessage}>{error}</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={generate}>
-              <Text style={styles.retryBtnText}>Intentar de nuevo</Text>
+              <Text style={styles.retryBtnText}>{t('common_retry')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => router.replace('/(app)/dashboard')}
             >
-              <Text style={styles.backBtnText}>Volver al inicio</Text>
+              <Text style={styles.backBtnText}>{t('common_back')}</Text>
             </TouchableOpacity>
           </View>
         ) : sesion ? (
@@ -1386,7 +1397,7 @@ export default function GenerateScreen() {
               <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
               <Text style={styles.sessionTitle}>{sesion.titulo}</Text>
               <Text style={styles.sessionObjetivo}>{sesion.objetivo_sesion}</Text>
-              <Text style={styles.sessionMeta}>{formatDateES()} · {sesion.duracion_total} min</Text>
+              <Text style={styles.sessionMeta}>{formatDateES(lang)} · {sesion.duracion_total} {t('generate_mins_label')}</Text>
             </View>
 
             {/* Checkin context chips */}
@@ -1418,25 +1429,25 @@ export default function GenerateScreen() {
               <View style={styles.paramsRow}>
                 <ParamCard
                   value={String(sesion.duracion_total)}
-                  unit="min"
-                  label="Duración"
+                  unit={t('generate_mins_label')}
+                  label={t('generate_duration_label')}
                 />
                 <ParamCard
                   value={String(totalEjercicios)}
                   unit="ej."
-                  label="Ejercicios"
+                  label={t('generate_exercises_label')}
                 />
               </View>
               <View style={styles.paramsRow}>
                 <ParamCard
                   value={String(totalSeries)}
-                  unit="series"
-                  label="Trabajo"
+                  unit={t('generate_sets_label')}
+                  label={t('generate_work_label')}
                 />
                 <ParamCard
                   value={String(sesion.rpe_target)}
                   unit="/10"
-                  label="Intensidad RPE"
+                  label={t('generate_rpe_label')}
                 />
               </View>
             </View>
@@ -1446,7 +1457,7 @@ export default function GenerateScreen() {
               <View style={styles.trainerCard}>
                 <View style={styles.trainerCardHeader}>
                   <Text style={styles.trainerIcon}>🧠</Text>
-                  <Text style={styles.trainerLabel}>NOTA DEL ENTRENADOR</Text>
+                  <Text style={styles.trainerLabel}>{t('generate_coach_label')}</Text>
                 </View>
                 <Text style={styles.trainerNote}>{sesion.nota_del_entrenador}</Text>
               </View>
@@ -1469,15 +1480,15 @@ export default function GenerateScreen() {
             {/* CTA */}
             <View style={styles.ctaSection}>
               <TouchableOpacity style={styles.ctaPrimary} onPress={handleEjecutar} activeOpacity={0.88}>
-                <Text style={styles.ctaPrimaryText}>Empezar sesión</Text>
+                <Text style={styles.ctaPrimaryText}>{t('generate_btn_start')}</Text>
                 <Text style={styles.ctaArrow}>→</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.ctaSecondary} onPress={() => setAjusteVisible(true)} activeOpacity={0.75}>
                 <Text style={styles.ctaGearIcon}>⚙</Text>
-                <Text style={styles.ctaSecondaryText}>Ajustar rutina</Text>
+                <Text style={styles.ctaSecondaryText}>{t('generate_btn_adjust')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.ctaTerciary} onPress={handleMarcarCompletada}>
-                <Text style={styles.ctaTerciaryText}>✓ Marcar como completada</Text>
+                <Text style={styles.ctaTerciaryText}>{t('generate_btn_complete')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

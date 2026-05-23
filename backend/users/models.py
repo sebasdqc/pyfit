@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 from datetime import timedelta
 from django.conf import settings
@@ -264,5 +264,7 @@ class PasswordResetCode(models.Model):
     @classmethod
     def generate_for(cls, user):
         cls.objects.filter(user=user).delete()
-        code = ''.join(random.choices(string.digits, k=6))
+        # secrets.choice es CSPRNG (cryptographically secure). random.choices no lo es
+        # y podría ser predecible si el estado del PRNG se filtra via timing u otras APIs.
+        code = ''.join(secrets.choice(string.digits) for _ in range(6))
         return cls.objects.create(user=user, code=code)

@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
+import { useTranslation } from '../../lib/i18n'
 import { Colors } from '../../lib/colors'
 
 export default function OnboardingIntroScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
   return (
@@ -17,13 +19,10 @@ export default function OnboardingIntroScreen() {
       />
 
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>ANTES DE EMPEZAR</Text>
+        <Text style={styles.eyebrow}>{t('onboarding_intro_eyebrow')}</Text>
 
         <Text style={styles.message}>
-          En los próximos minutos vamos a hacerte preguntas que{' '}
-          <Text style={styles.messageAccent}>ninguna app te ha hecho.</Text>
-          {'\n\n'}
-          Son nuestra materia prima para crear lo mejor para ti.
+          {t('onboarding_intro_title')}
         </Text>
       </View>
 
@@ -39,7 +38,7 @@ export default function OnboardingIntroScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.btn}
           >
-            <Text style={styles.btnText}>EMPECEMOS</Text>
+            <Text style={styles.btnText}>{t('onboarding_intro_btn')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

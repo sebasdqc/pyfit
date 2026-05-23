@@ -17,6 +17,7 @@ import { COLORS } from '../../lib/colors'
 import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { apiPost } from '../../lib/api'
+import { useTranslation } from '../../lib/i18n'
 
 // ─── OTP input (6 boxes) ──────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ function OTPInput({
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const { t, lang } = useTranslation()
 
   const [step, setStep] = useState<'email' | 'verify'>('email')
   const [email, setEmail] = useState('')
@@ -101,11 +103,11 @@ export default function ForgotPasswordScreen() {
   async function handleSendCode() {
     const trimmed = email.trim().toLowerCase()
     if (!trimmed) {
-      setError('Ingresa tu correo electrónico.')
+      setError(t('forgot_error_required'))
       return
     }
     if (!/\S+@\S+\.\S+/.test(trimmed)) {
-      setError('El correo no tiene un formato válido.')
+      setError(lang === 'es' ? 'El correo no tiene un formato válido.' : 'Please enter a valid email address.')
       return
     }
     setError('')
@@ -123,19 +125,19 @@ export default function ForgotPasswordScreen() {
 
   async function handleConfirm() {
     if (code.length < 6) {
-      setError('Ingresa el código de 6 dígitos.')
+      setError(t('forgot_error_code_required'))
       return
     }
     if (!newPassword) {
-      setError('Ingresa la nueva contraseña.')
+      setError(t('forgot_error_pass_required'))
       return
     }
     if (newPassword.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
+      setError(t('forgot_error_pass_short'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
+      setError(t('forgot_error_pass_mismatch'))
       return
     }
     setError('')
@@ -163,8 +165,8 @@ export default function ForgotPasswordScreen() {
         />
         <View style={styles.centered}>
           <Text style={styles.successIcon}>✓</Text>
-          <Text style={styles.successTitle}>¡Contraseña actualizada!</Text>
-          <Text style={styles.successSub}>Ya puedes iniciar sesión con tu nueva contraseña.</Text>
+          <Text style={styles.successTitle}>{t('forgot_success_title')}</Text>
+          <Text style={styles.successSub}>{t('forgot_success_subtitle')}</Text>
           <TouchableOpacity
             style={styles.primaryBtnWrap}
             onPress={() => router.replace('/(auth)/login')}
@@ -176,7 +178,7 @@ export default function ForgotPasswordScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.primaryBtn}
             >
-              <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
+              <Text style={styles.primaryBtnText}>{t('forgot_btn_back')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -201,18 +203,20 @@ export default function ForgotPasswordScreen() {
         >
           {/* Back */}
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-            <Text style={styles.backText}>← Volver</Text>
+            <Text style={styles.backText}>{t('forgot_back_arrow')}</Text>
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>
-              {step === 'email' ? 'Recuperar contraseña' : 'Verifica tu código'}
+              {step === 'email' ? t('forgot_title') : t('forgot_step2_title')}
             </Text>
             <Text style={styles.subtitle}>
               {step === 'email'
-                ? 'Ingresa tu correo y te enviaremos un código de 6 dígitos.'
-                : `Revisa tu correo ${email} e ingresa el código que te enviamos.`}
+                ? t('forgot_step1_subtitle')
+                : lang === 'es'
+                  ? `Revisa tu correo ${email} e ingresa el código que te enviamos.`
+                  : `Check your email ${email} and enter the code we sent you.`}
             </Text>
           </View>
 
@@ -221,10 +225,10 @@ export default function ForgotPasswordScreen() {
             {step === 'email' ? (
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>CORREO ELECTRÓNICO</Text>
+                  <Text style={styles.inputLabel}>{t('forgot_email_label')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="tu@email.com"
+                    placeholder={t('forgot_email_placeholder')}
                     placeholderTextColor={colors.inkMuted}
                     value={email}
                     onChangeText={(t) => { setEmail(t); setError('') }}
@@ -252,7 +256,7 @@ export default function ForgotPasswordScreen() {
                     {loading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Enviar código</Text>
+                      <Text style={styles.primaryBtnText}>{t('forgot_btn_send')}</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
@@ -261,16 +265,16 @@ export default function ForgotPasswordScreen() {
               <>
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { textAlign: 'center', marginBottom: 16 }]}>
-                    CÓDIGO DE 6 DÍGITOS
+                    {t('forgot_code_label')}
                   </Text>
                   <OTPInput value={code} onChange={(v) => { setCode(v); setError('') }} colors={colors} />
                 </View>
 
                 <View style={[styles.inputGroup, { marginTop: 24 }]}>
-                  <Text style={styles.inputLabel}>NUEVA CONTRASEÑA</Text>
+                  <Text style={styles.inputLabel}>{t('forgot_newpass_label')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={lang === 'es' ? 'Mínimo 8 caracteres' : 'Minimum 8 characters'}
                     placeholderTextColor={colors.inkMuted}
                     value={newPassword}
                     onChangeText={(t) => { setNewPassword(t); setError('') }}
@@ -281,10 +285,10 @@ export default function ForgotPasswordScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>CONFIRMAR CONTRASEÑA</Text>
+                  <Text style={styles.inputLabel}>{t('forgot_confirmpass_label')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Repite la contraseña"
+                    placeholder={lang === 'es' ? 'Repite la contraseña' : 'Repeat your password'}
                     placeholderTextColor={colors.inkMuted}
                     value={confirmPassword}
                     onChangeText={(t) => { setConfirmPassword(t); setError('') }}
@@ -311,7 +315,7 @@ export default function ForgotPasswordScreen() {
                     {loading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Cambiar contraseña</Text>
+                      <Text style={styles.primaryBtnText}>{t('forgot_btn_change')}</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
@@ -321,7 +325,9 @@ export default function ForgotPasswordScreen() {
                   onPress={() => { setStep('email'); setCode(''); setError('') }}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.resendText}>¿No recibiste el código? Reenviar</Text>
+                  <Text style={styles.resendText}>
+                    {t('forgot_resend_question')} <Text style={{ color: colors.accentLight }}>{t('forgot_btn_resend')}</Text>
+                  </Text>
                 </TouchableOpacity>
               </>
             )}

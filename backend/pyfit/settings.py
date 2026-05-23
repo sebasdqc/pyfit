@@ -22,7 +22,16 @@ if not SECRET_KEY:
         )
 
 _allowed = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
-ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()] or ['*']
+_allowed_list = [h.strip() for h in _allowed.split(',') if h.strip()]
+if not _allowed_list:
+    if DEBUG:
+        _allowed_list = ['*']
+    else:
+        raise ImproperlyConfigured(
+            'ALLOWED_HOSTS must not be empty when DEBUG=False. '
+            'Falling back to ["*"] in production would allow host header injection.'
+        )
+ALLOWED_HOSTS = _allowed_list
 
 INSTALLED_APPS = [
     # django-unfold replaces the default admin look — must be listed BEFORE
@@ -136,8 +145,10 @@ REST_FRAMEWORK = {
         'login': '10/minute',
         'register': '5/hour',
         'password_reset': '5/hour',
+        'confirm_reset': '10/hour',    # brute-force guard: 6-digit PIN has 1M combos
         'generate_session': '10/hour',
         'regenerar_ejercicio': '20/hour',
+        'ajustar_sesion': '15/hour',   # cost guard: each call hits Groq API
     },
 }
 

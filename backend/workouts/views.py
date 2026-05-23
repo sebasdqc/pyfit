@@ -1498,7 +1498,7 @@ def stats_rpe_semanal(request):
         return _stats_rpe_semanal(request)
     except Exception as exc:
         import logging; logging.getLogger(__name__).exception('stats_rpe_semanal')
-        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+        return Response({'error': 'Error interno del servidor. Intenta de nuevo.'}, status=500)
 
 
 def _stats_rpe_semanal(request):
@@ -1562,7 +1562,7 @@ def stats_consistencia_mensual(request):
         return _stats_consistencia_mensual(request)
     except Exception as exc:
         import logging; logging.getLogger(__name__).exception('stats_consistencia_mensual')
-        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+        return Response({'error': 'Error interno del servidor. Intenta de nuevo.'}, status=500)
 
 
 def _stats_consistencia_mensual(request):
@@ -1651,7 +1651,7 @@ def stats_cuerpo_contexto(request):
         return _stats_cuerpo_contexto(request)
     except Exception as exc:
         import logging; logging.getLogger(__name__).exception('stats_cuerpo_contexto')
-        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+        return Response({'error': 'Error interno del servidor. Intenta de nuevo.'}, status=500)
 
 
 def _stats_cuerpo_contexto(request):
@@ -1703,7 +1703,7 @@ def stats_ejercicios_top(request):
         return _stats_ejercicios_top(request)
     except Exception as exc:
         import logging; logging.getLogger(__name__).exception('stats_ejercicios_top')
-        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+        return Response({'error': 'Error interno del servidor. Intenta de nuevo.'}, status=500)
 
 
 def _stats_ejercicios_top(request):
@@ -1769,7 +1769,7 @@ def stats_radar(request):
         return _stats_radar(request)
     except Exception as exc:
         import logging; logging.getLogger(__name__).exception('stats_radar')
-        return Response({'error': str(exc), 'type': type(exc).__name__}, status=500)
+        return Response({'error': 'Error interno del servidor. Intenta de nuevo.'}, status=500)
 
 
 def _stats_radar(request):
@@ -1932,8 +1932,10 @@ def calendar_eventos(request):
             tipo=request.data.get('tipo', 'otro'),
             notas=request.data.get('notas', ''),
         )
-    except Exception as exc:
-        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('calendar_eventos: create failed user=%s', request.user.id)
+        return Response({'error': 'No se pudo crear el evento. Verifica los datos e intenta de nuevo.'}, status=status.HTTP_400_BAD_REQUEST)
     return Response({
         'id':     evento.id,
         'fecha':  str(evento.fecha),

@@ -19,6 +19,7 @@ import { COLORS, FASES } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ function MediaCard({
   faseColor: string
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const mediaStyles = React.useMemo(() => makeMediaStyles(colors), [colors])
   const [expanded, setExpanded] = useState(false)
 
@@ -119,7 +121,7 @@ function MediaCard({
       <TouchableOpacity style={mediaStyles.toggleRow} onPress={() => setExpanded(v => !v)} activeOpacity={0.75}>
         <Text style={mediaStyles.toggleEmoji}>{demo?.emoji ?? '🏋️'}</Text>
         <Text style={[mediaStyles.toggleLabel, { color: faseColor }]}>
-          {expanded ? 'Ocultar demo ▴' : 'Ver instrucciones ▾'}
+          {expanded ? t('ejecutar_demo_hide') : t('ejecutar_demo_show')}
         </Text>
         <TouchableOpacity onPress={handleYouTube} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={[mediaStyles.ytInline, { color: faseColor }]}>▶ YouTube</Text>
@@ -151,13 +153,13 @@ function MediaCard({
           ) : (
             <View style={mediaStyles.placeholder}>
               <Text style={mediaStyles.emoji}>{demo?.emoji ?? '🏋️'}</Text>
-              <Text style={mediaStyles.noMediaHint}>Sin demo disponible</Text>
+              <Text style={mediaStyles.noMediaHint}>{t('ejecutar_no_demo')}</Text>
             </View>
           )}
 
           <TouchableOpacity style={mediaStyles.ytRow} onPress={handleYouTube}>
             <Text style={mediaStyles.ytIcon}>▶</Text>
-            <Text style={[mediaStyles.ytText, { color: faseColor }]}>Ver técnica en YouTube →</Text>
+            <Text style={[mediaStyles.ytText, { color: faseColor }]}>{t('ejecutar_youtube')}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -303,6 +305,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 export default function EjecutarScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -496,12 +499,12 @@ export default function EjecutarScreen() {
 
   const handleSalir = () => {
     Alert.alert(
-      'Salir del entrenamiento',
-      '¿Seguro que quieres salir? El progreso se perderá.',
+      t('ejecutar_exit_title'),
+      t('ejecutar_exit_msg'),
       [
-        { text: 'Continuar', style: 'cancel' },
+        { text: t('ejecutar_exit_continue'), style: 'cancel' },
         {
-          text: 'Salir',
+          text: t('ejecutar_exit_confirm'),
           style: 'destructive',
           onPress: () => {
             if (intervalRef.current) clearInterval(intervalRef.current)
@@ -532,7 +535,7 @@ export default function EjecutarScreen() {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
-        <Text style={styles.loadingText}>Cargando sesión...</Text>
+        <Text style={styles.loadingText}>{t('ejecutar_loading')}</Text>
       </View>
     )
   }
@@ -541,10 +544,10 @@ export default function EjecutarScreen() {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
-        <Text style={styles.errorTitle}>Error</Text>
+        <Text style={styles.errorTitle}>{t('ejecutar_error')}</Text>
         <Text style={styles.errorMsg}>{error}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Volver</Text>
+          <Text style={styles.backButtonText}>{t('ejecutar_back')}</Text>
         </TouchableOpacity>
       </View>
     )
@@ -556,7 +559,7 @@ export default function EjecutarScreen() {
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
         <Text style={styles.completionEmoji}>🎉</Text>
-        <Text style={styles.completionTitle}>¡Sesión completada!</Text>
+        <Text style={styles.completionTitle}>{t('ejecutar_complete_title')}</Text>
         <Text style={styles.completionSubtitle}>
           {sesion?.titulo ?? 'Gran trabajo hoy'}
         </Text>
@@ -564,7 +567,7 @@ export default function EjecutarScreen() {
           style={styles.feedbackBtn}
           onPress={() => router.replace(`/(app)/feedback/${id}`)}
         >
-          <Text style={styles.feedbackBtnText}>Dar feedback →</Text>
+          <Text style={styles.feedbackBtnText}>{t('ejecutar_feedback_btn')}</Text>
         </TouchableOpacity>
       </View>
     )
@@ -587,7 +590,7 @@ export default function EjecutarScreen() {
           disabled={currentIndex === 0}
         >
           <Text style={[styles.navBtnText, currentIndex === 0 && { color: colors.inkMuted }]}>
-            ← ANT
+            ← {t('ejecutar_nav_prev')}
           </Text>
         </TouchableOpacity>
 
@@ -601,7 +604,7 @@ export default function EjecutarScreen() {
         </View>
 
         <TouchableOpacity style={styles.navBtn} onPress={handleSalir}>
-          <Text style={[styles.navBtnText, { color: colors.red }]}>SALIR</Text>
+          <Text style={[styles.navBtnText, { color: colors.red }]}>{t('ejecutar_nav_exit')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -626,7 +629,7 @@ export default function EjecutarScreen() {
             {/* Technical note */}
             {currentEj.notas ? (
               <View style={styles.notaCard}>
-                <Text style={styles.notaLabel}>NOTA TÉCNICA</Text>
+                <Text style={styles.notaLabel}>{t('ejecutar_tech_note')}</Text>
                 <Text style={styles.notaText}>{currentEj.notas}</Text>
               </View>
             ) : null}
@@ -700,7 +703,7 @@ export default function EjecutarScreen() {
                   onPress={advanceFromRest}
                 >
                   <Text style={styles.completarBtnText}>
-                    {currentIndex + 1 < flatList.length ? 'Siguiente ejercicio →' : 'Finalizar sesión →'}
+                    {currentIndex + 1 < flatList.length ? t('ejecutar_next_btn') : t('ejecutar_finish_btn')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -723,7 +726,7 @@ export default function EjecutarScreen() {
             {/* Weight & reps inputs */}
             <View style={styles.descansoInputRow}>
               <View style={styles.descansoInputWrap}>
-                <Text style={styles.descansoInputLabel}>PESO</Text>
+                <Text style={styles.descansoInputLabel}>{t('ejecutar_weight')}</Text>
                 <View style={styles.descansoInputInner}>
                   <TextInput
                     style={styles.descansoInput}
@@ -742,7 +745,7 @@ export default function EjecutarScreen() {
               <View style={styles.descansoInputSep} />
 
               <View style={styles.descansoInputWrap}>
-                <Text style={styles.descansoInputLabel}>REPS</Text>
+                <Text style={styles.descansoInputLabel}>{t('ejecutar_reps')}</Text>
                 <View style={styles.descansoInputInner}>
                   <TextInput
                     style={styles.descansoInput}
@@ -762,7 +765,7 @@ export default function EjecutarScreen() {
             {/* Next up card */}
             {seriesDone < currentEj.series ? (
               <View style={styles.nextEjCard}>
-                <Text style={styles.nextEjLabel}>A CONTINUACIÓN</Text>
+                <Text style={styles.nextEjLabel}>{t('ejecutar_next_label')}</Text>
                 <Text style={styles.nextEjNombre}>{currentEj.nombre}</Text>
                 <Text style={styles.nextEjDetail}>
                   Serie {seriesDone + 1} · {currentEj.repeticiones} reps · RPE {currentEj.rpe_sugerido}
@@ -770,7 +773,7 @@ export default function EjecutarScreen() {
               </View>
             ) : nextEj ? (
               <View style={styles.nextEjCard}>
-                <Text style={styles.nextEjLabel}>SIGUIENTE EJERCICIO</Text>
+                <Text style={styles.nextEjLabel}>{t('ejecutar_next_exercise')}</Text>
                 <Text style={styles.nextEjNombre}>{nextEj.nombre}</Text>
                 <Text style={styles.nextEjDetail}>
                   {nextEj.series} series · {nextEj.repeticiones} reps
@@ -778,13 +781,13 @@ export default function EjecutarScreen() {
               </View>
             ) : (
               <View style={styles.nextEjCard}>
-                <Text style={styles.nextEjLabel}>DESPUÉS DEL DESCANSO</Text>
-                <Text style={styles.nextEjNombre}>¡Último ejercicio! 💪</Text>
+                <Text style={styles.nextEjLabel}>{t('ejecutar_after_rest')}</Text>
+                <Text style={styles.nextEjNombre}>{t('ejecutar_last_exercise')}</Text>
               </View>
             )}
 
             <TouchableOpacity style={styles.skipBtn} onPress={skipDescanso}>
-              <Text style={styles.skipBtnText}>Saltar descanso →</Text>
+              <Text style={styles.skipBtnText}>{t('ejecutar_skip_rest')}</Text>
             </TouchableOpacity>
           </View>
         )}

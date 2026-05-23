@@ -9,6 +9,7 @@ import Svg, { Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
@@ -181,18 +182,25 @@ function CheckinBodyMap({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(): string {
+function formatDate(lang: string): string {
   const d = new Date()
-  const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+  const DAYS_EN   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-  return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
+  const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  if (lang === 'en') {
+    return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
+  }
+  return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckinScreen() {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -396,9 +404,9 @@ export default function CheckinScreen() {
   function renderD1() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 1 — ESTADO FÍSICO</Text>
-        <Text style={styles.question}>¿Cómo está{'\n'}tu cuerpo hoy?</Text>
-        <Text style={styles.questionSub}>La pregunta más honesta primero</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim1_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim1_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim1_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {ESTADO_FISICO_OPTS.map(opt => {
@@ -421,9 +429,9 @@ export default function CheckinScreen() {
         {estadoFisico === 'molestia' && (
           <View style={styles.zonaSection}>
             <View style={styles.zonaDivider} />
-            <Text style={styles.zonaEyebrow}>¿EN QUÉ ZONA?</Text>
+            <Text style={styles.zonaEyebrow}>{t('checkin_dim1_zone_eyebrow')}</Text>
             <Text style={styles.zonaSub}>
-              Toca las zonas que te molestan. El sistema las tomará en cuenta al diseñar tu rutina.
+              {t('checkin_dim1_zone_hint')}
             </Text>
             <View style={styles.bodyMapWrap}>
               <CheckinBodyMap
@@ -450,7 +458,7 @@ export default function CheckinScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={styles.zonaHint}>Toca el mapa para indicar las zonas afectadas</Text>
+              <Text style={styles.zonaHint}>{t('checkin_dim1_zone_hint')}</Text>
             )}
           </View>
         )}
@@ -461,9 +469,9 @@ export default function CheckinScreen() {
   function renderD2() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 2 — ESTADO MENTAL</Text>
-        <Text style={styles.question}>¿Cómo está{'\n'}tu cabeza hoy?</Text>
-        <Text style={styles.questionSub}>La variable más subestimada en fitness</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim2_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim2_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim2_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {ESTADO_MENTAL_OPTS.map(opt => {
@@ -489,9 +497,9 @@ export default function CheckinScreen() {
   function renderD3() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 3 — TIEMPO DISPONIBLE</Text>
-        <Text style={styles.question}>¿Cuánto tiempo{'\n'}tienes hoy?</Text>
-        <Text style={styles.questionSub}>La variable más práctica</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim3_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim3_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim3_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {TIEMPO_OPTS.map(opt => {
@@ -504,7 +512,7 @@ export default function CheckinScreen() {
                 <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
                 <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
                 <Text style={[styles.tiempoMinutos, on && { color: opt.color }]}>
-                  {opt.minutos} min
+                  {opt.minutos} {t('checkin_min')}
                 </Text>
                 <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
                   {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
@@ -524,9 +532,9 @@ export default function CheckinScreen() {
   function renderD4() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 4 — DISCIPLINA</Text>
-        <Text style={styles.question}>¿Qué quieres{'\n'}entrenar hoy?</Text>
-        <Text style={styles.questionSub}>Elige el tipo de entrenamiento</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim4_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim4_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim4_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {DISCIPLINA_OPTS.map(opt => {
@@ -580,9 +588,9 @@ export default function CheckinScreen() {
 
     return (
       <>
-        <Text style={styles.eyebrow}>TIPO DE RUNNING</Text>
-        <Text style={styles.question}>¿Cómo quieres{'\n'}correr hoy?</Text>
-        <Text style={styles.questionSub}>Elige el modo de entrenamiento</Text>
+        <Text style={styles.eyebrow}>{t('checkin_running_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_running_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_running_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {opts.map(opt => (
@@ -640,9 +648,9 @@ export default function CheckinScreen() {
   function renderD5() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 5 — UBICACIÓN</Text>
-        <Text style={styles.question}>¿Dónde vas a{'\n'}entrenar hoy?</Text>
-        <Text style={styles.questionSub}>Filtra el equipamiento disponible</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim5_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim5_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim5_sub')}</Text>
 
         {locations.length === 0 ? (
           <View style={styles.locEmptyWrap}>
@@ -696,9 +704,9 @@ export default function CheckinScreen() {
   function renderD5b() {
     return (
       <>
-        <Text style={styles.eyebrow}>DIMENSIÓN 5B — GRUPO MUSCULAR</Text>
-        <Text style={styles.question}>¿Qué quieres{'\n'}trabajar hoy?</Text>
-        <Text style={styles.questionSub}>Elige el bloque muscular de la sesión</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim5b_eyebrow')}</Text>
+        <Text style={styles.question}>{t('checkin_dim5b_question')}</Text>
+        <Text style={styles.questionSub}>{t('checkin_dim5b_sub')}</Text>
 
         <View style={styles.optionsWrap}>
           {GRUPO_MUSCULAR_OPTS.map(opt => {
@@ -753,8 +761,8 @@ export default function CheckinScreen() {
         <View style={styles.resumenCheckCircle}>
           <Text style={styles.resumenCheckMark}>✓</Text>
         </View>
-        <Text style={styles.resumenEyebrow}>CHECKIN LISTO</Text>
-        <Text style={styles.resumenTitle}>Tu análisis de hoy</Text>
+        <Text style={styles.resumenEyebrow}>{t('checkin_summary_eyebrow')}</Text>
+        <Text style={styles.resumenTitle}>{t('checkin_summary_title')}</Text>
 
         {/* Pills */}
         <View style={styles.resumenPills}>
@@ -768,7 +776,7 @@ export default function CheckinScreen() {
           {tiempoOpt && (
             <View style={[styles.resumenPill, { borderColor: tiempoOpt.color }]}>
               <Text style={[styles.resumenPillText, { color: tiempoOpt.color }]}>
-                {tiempoOpt.minutos} min
+                {tiempoOpt.minutos} {t('checkin_min')}
               </Text>
             </View>
           )}
@@ -792,7 +800,7 @@ export default function CheckinScreen() {
         <View style={styles.resumenCard}>
           <Text style={styles.resumenDataText}>{buildSummaryText()}</Text>
           <View style={styles.resumenDivider} />
-          <Text style={styles.resumenSesionEyebrow}>TU SESIÓN DE HOY SERÁ</Text>
+          <Text style={styles.resumenSesionEyebrow}>{t('checkin_session_eyebrow')}</Text>
           <Text style={styles.resumenSesionText}>{buildPronosticoText()}</Text>
         </View>
 
@@ -811,7 +819,7 @@ export default function CheckinScreen() {
                 colors={['#ff8c42', '#e06c28']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.nextBtn}>
-                <Text style={styles.nextBtnText}>Empezar Free Run</Text>
+                <Text style={styles.nextBtnText}>{t('checkin_btn_run')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           ) : (
@@ -823,7 +831,7 @@ export default function CheckinScreen() {
                 colors={[colors.accent, colors.accentDark]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.nextBtn}>
-                <Text style={styles.nextBtnText}>Ver mi entrenamiento</Text>
+                <Text style={styles.nextBtnText}>{t('checkin_btn_workout')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -884,7 +892,7 @@ export default function CheckinScreen() {
             style={styles.backBtn} activeOpacity={0.7}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerDate}>{formatDate()}</Text>
+          <Text style={styles.headerDate}>{formatDate(lang)}</Text>
         </View>
       </View>
 

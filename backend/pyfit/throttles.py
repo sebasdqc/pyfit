@@ -16,6 +16,14 @@ class PasswordResetRateThrottle(AnonRateThrottle):
     scope = 'password_reset'
 
 
+class ConfirmResetRateThrottle(AnonRateThrottle):
+    """10 intentos por hora por IP — impide brute-force del PIN de 6 dígitos.
+    Sin este throttle, un atacante puede probar 1.000.000 combinaciones antes
+    de que el código expire en 15 minutos.
+    """
+    scope = 'confirm_reset'
+
+
 class GenerateSessionRateThrottle(UserRateThrottle):
     """10 generaciones por hora por usuario — protege el gasto en Groq API."""
     scope = 'generate_session'
@@ -24,3 +32,11 @@ class GenerateSessionRateThrottle(UserRateThrottle):
 class RegenerarEjercicioRateThrottle(UserRateThrottle):
     """20 regeneraciones por hora por usuario — protege el gasto en Groq API."""
     scope = 'regenerar_ejercicio'
+
+
+class AjustarSesionRateThrottle(UserRateThrottle):
+    """15 ajustes por hora por usuario — previene abuso de Groq via session_ajustar.
+    session_ajustar llama a la API de Groq; sin throttle el usuario puede
+    disparar costes arbitrarios.
+    """
+    scope = 'ajustar_sesion'

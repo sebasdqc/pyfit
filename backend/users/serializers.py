@@ -19,11 +19,24 @@ class UserInjurySerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
+    # min_length=8 alineado con AUTH_PASSWORD_VALIDATORS (MinimumLengthValidator).
+    # create_user() no corre los validators de Django por defecto, así que
+    # la validación explícita aquí es la única barrera de la API.
+    password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
         model = User
         fields = ['email', 'password']
+
+    def validate_password(self, value):
+        """Corre los AUTH_PASSWORD_VALIDATORS de Django sobre la contraseña."""
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(

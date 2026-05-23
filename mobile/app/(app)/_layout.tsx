@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
+import { useTranslation } from '../../lib/i18n'
 import Svg, { Path, Circle } from 'react-native-svg'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -44,10 +45,20 @@ function IconProfile({ color }: { color: string }) {
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 
+// Map route names → translation keys for tab labels
+const ROUTE_LABEL_KEY: Record<string, string> = {
+  'dashboard/index':    'nav_home',
+  'estadisticas/index': 'nav_stats',
+  'checkin/index':      'nav_train',
+  'historial/index':    'nav_history',
+  'perfil/index':       'nav_profile',
+}
+
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { colors, isDark, palette } = useTheme()
+  const { t } = useTranslation()
 
   const bottomPad = insets.bottom > 0 ? insets.bottom + 4 : 12
 
@@ -96,7 +107,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 style={[styles.centerBtn, { backgroundColor: centerBg }]}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.centerBtnText, { color: centerText }]}>ENTRENAR</Text>
+                <Text style={[styles.centerBtnText, { color: centerText }]}>{t('nav_train')}</Text>
               </TouchableOpacity>
             </View>
           )
@@ -107,7 +118,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           color: focused ? colors.accent : colors.inkMuted,
           size: 22,
         })
-        const label = options.tabBarLabel as string
+        const labelKey = ROUTE_LABEL_KEY[route.name]
+        const label = labelKey ? t(labelKey as any) : (options.tabBarLabel as string)
 
         return (
           <TouchableOpacity

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
+import { useTranslation } from '../../../lib/i18n'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -73,21 +74,22 @@ const FILTER_TIPOS: FilterTipo[] = ['Todo', 'Musculación', 'Running', 'Libre']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MONTH_NAMES_ES = [
+// Fallback static arrays (used only before i18n hook is available in non-hook contexts)
+const MONTH_NAMES_ES_FALLBACK = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-const MONTH_SHORT = [
+const MONTH_SHORT_FALLBACK = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ]
 
-const WEEKDAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const WEEKDAY_SHORT_FALLBACK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, monthShort: string[], weekdayShort: string[]): string {
   const d = new Date(iso + 'T00:00:00')
-  return `${WEEKDAY_SHORT[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`
+  return `${weekdayShort[d.getDay()]}, ${d.getDate()} ${monthShort[d.getMonth()]} ${d.getFullYear()}`
 }
 
 function toDateStr(d: Date): string {
@@ -178,18 +180,18 @@ function getWeekStartDate(dateStr: string): Date {
   return d
 }
 
-function formatWeekLabel(ws: Date): string {
+function formatWeekLabel(ws: Date, monthNames: string[]): string {
   const we = new Date(ws)
   we.setUTCDate(we.getUTCDate() + 6)
   const sd = ws.getUTCDate()
   const ed = we.getUTCDate()
-  const sm = MONTH_NAMES_ES[ws.getUTCMonth()].toLowerCase()
-  const em = MONTH_NAMES_ES[we.getUTCMonth()].toLowerCase()
+  const sm = monthNames[ws.getUTCMonth()].toLowerCase()
+  const em = monthNames[we.getUTCMonth()].toLowerCase()
   if (sm === em) return `Semana del ${sd} al ${ed} de ${sm}`
   return `Semana del ${sd} de ${sm} al ${ed} de ${em}`
 }
 
-function groupByWeek(sessions: Session[]): { key: string; label: string; sessions: Session[] }[] {
+function groupByWeek(sessions: Session[], monthNames: string[]): { key: string; label: string; sessions: Session[] }[] {
   const map = new Map<string, { ws: Date; sessions: Session[] }>()
   for (const s of sessions) {
     const ws = getWeekStartDate(s.fecha)
@@ -201,7 +203,7 @@ function groupByWeek(sessions: Session[]): { key: string; label: string; session
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([key, { ws, sessions: sArr }]) => ({
       key,
-      label: formatWeekLabel(ws),
+      label: formatWeekLabel(ws, monthNames),
       sessions: sArr.sort((a, b) => b.fecha.localeCompare(a.fecha)),
     }))
 }
@@ -298,7 +300,11 @@ function SessionModal({
   onClose: () => void
 }) {
   const { colors } = useTheme()
+  const { t, ta } = useTranslation()
   const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
+
+  const monthShort = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   if (!session) return null
   const { respuesta_ia: ia, feedback } = session
@@ -312,7 +318,7 @@ function SessionModal({
           <View style={modalStyles.header}>
             <View style={{ flex: 1 }}>
               <Text style={modalStyles.titulo} numberOfLines={2}>{titulo}</Text>
-              <Text style={modalStyles.fecha}>{formatDate(session.fecha)}</Text>
+              <Text style={modalStyles.fecha}>{formatDate(session.fecha, monthShort, weekdayShort)}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn} activeOpacity={0.7}>
               <Text style={modalStyles.closeX}>✕</Text>
@@ -329,7 +335,7 @@ function SessionModal({
                 <Text style={modalStyles.statValue}>
                   {ia?.duracion_total ?? session.duracion_planificada}
                 </Text>
-                <Text style={modalStyles.statLabel}>MIN</Text>
+                <Text style={modalStyles.statLabel}>{t('historial_min').toUpperCase()}</Text>
               </View>
               {ia?.rpe_target != null && (
                 <View style={modalStyles.statChip}>
@@ -373,7 +379,7 @@ function SessionModal({
                     </Text>
                     {fase.duracion_minutos != null && (
                       <Text style={[modalStyles.faseDur, { color: faseStyle.color }]}>
-                        {fase.duracion_minutos} min
+                        {fase.duracion_minutos} {t('historial_min')}
                       </Text>
                     )}
                   </View>
@@ -400,7 +406,7 @@ function SessionModal({
             {/* Feedback resumen */}
             {feedback && (
               <View style={modalStyles.feedbackCard}>
-                <Text style={modalStyles.feedbackTitle}>Feedback post-sesión</Text>
+                <Text style={modalStyles.feedbackTitle}>{t('historial_modal_feedback')}</Text>
                 <View style={modalStyles.feedbackRow}>
                   <Text style={modalStyles.feedbackItem}>RPE real: <Text style={{ color: colors.inkPrimary }}>{feedback.rpe_real}</Text></Text>
                   <Text style={modalStyles.feedbackItem}>Rating: <Text style={{ color: colors.inkPrimary }}>{'⭐'.repeat(feedback.rating)}</Text></Text>
@@ -638,6 +644,10 @@ function SessionCard({
   colors: Colors
 }) {
   const rotAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
+  const { t, ta } = useTranslation()
+
+  const monthShort = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   useEffect(() => {
     Animated.timing(rotAnim, {
@@ -675,7 +685,7 @@ function SessionCard({
         <View style={styles.cardCenter}>
           <Text style={styles.cardTitle} numberOfLines={isExpanded ? 2 : 1}>{titulo}</Text>
           <View style={styles.cardMeta}>
-            <Text style={styles.cardMetaDate}>{formatDate(session.fecha)}</Text>
+            <Text style={styles.cardMetaDate}>{formatDate(session.fecha, monthShort, weekdayShort)}</Text>
             <View style={styles.metaDot} />
             <Text style={styles.cardMetaDur}>⏱ {duracion}m</Text>
             {dolor ? (
@@ -725,7 +735,7 @@ function SessionCard({
             {/* Ejercicios */}
             {allEjercicios.length > 0 && (
               <View>
-                <Text style={styles.ejSectionLabel}>EJERCICIOS</Text>
+                <Text style={styles.ejSectionLabel}>{t('historial_modal_exercises').toUpperCase()}</Text>
                 {allEjercicios.map((ej, i) => (
                   <View key={i}>
                     {i > 0 && <View style={styles.ejDivider} />}
@@ -774,6 +784,7 @@ function ListView({
   onSelectSession: (s: Session) => void
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
 
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -787,15 +798,15 @@ function ListView({
       return (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyFilterIcon}>◎</Text>
-          <Text style={styles.emptyText}>No encontramos sesiones con ese filtro</Text>
-          <Text style={styles.emptySubtext}>Prueba con otro término o categoría.</Text>
+          <Text style={styles.emptyText}>{t('historial_empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('historial_empty_sub')}</Text>
         </View>
       )
     }
     return (
       <View style={styles.emptyBox}>
-        <Text style={styles.emptyText}>Aún no tienes sesiones registradas.</Text>
-        <Text style={styles.emptySubtext}>Completa tu primer entrenamiento para verlo aquí.</Text>
+        <Text style={styles.emptyText}>{t('historial_empty')}</Text>
+        <Text style={styles.emptySubtext}>{t('historial_empty_sub')}</Text>
       </View>
     )
   }
@@ -840,6 +851,7 @@ function CalendarView({
   onSelectDay: (daySessions: Session[]) => void
 }) {
   const { colors } = useTheme()
+  const { t, ta } = useTranslation()
   const calStyles = useMemo(() => makeCalStyles(colors), [colors])
 
   const sessionsByDate = new Map<string, Session[]>()
@@ -850,18 +862,24 @@ function CalendarView({
 
   const today = todayStr()
   const months = getLast6Months()
-  const DAY_COLS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+  // Use i18n arrays
+  const MONTH_NAMES_I18N = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ]
+  const DAY_COLS = ta('historial_days_abbr')
 
   return (
     <>
       {/* Legend */}
       <View style={calStyles.legend}>
         {[
-          { color: '#32c896', label: '≥90%' },
-          { color: '#90EE90', label: '70-89%' },
-          { color: colors.accent, label: 'Sin feedback' },
+          { color: '#32c896', label: t('historial_legend_high') },
+          { color: '#90EE90', label: t('historial_legend_medium') },
+          { color: colors.accent, label: t('historial_legend_rest') },
           { color: '#ffaa32', label: '<70%' },
-          { color: '#ffaa32', label: 'Hoy', isToday: true },
+          { color: '#ffaa32', label: t('historial_legend_today'), isToday: true },
         ].map((item, i) => (
           <View key={i} style={calStyles.legendItem}>
             <View style={[
@@ -883,12 +901,12 @@ function CalendarView({
         return (
           <View key={`${year}-${month}`} style={calStyles.monthBlock}>
             <Text style={calStyles.monthTitle}>
-              {MONTH_NAMES_ES[month]} {year}
+              {MONTH_NAMES_I18N[month]} {year}
             </Text>
             {/* Weekday headers */}
             <View style={calStyles.weekHeader}>
-              {DAY_COLS.map(d => (
-                <Text key={d} style={calStyles.weekHeaderCell}>{d}</Text>
+              {DAY_COLS.map((d, idx) => (
+                <Text key={idx} style={calStyles.weekHeaderCell}>{d}</Text>
               ))}
             </View>
             {/* Day grid */}
@@ -1053,8 +1071,12 @@ function DayModal({
   onSelectSession: (s: Session) => void
 }) {
   const { colors } = useTheme()
+  const { t, ta } = useTranslation()
   const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
   const styles = useMemo(() => makeStyles(colors), [colors])
+
+  const monthShort = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   const fecha = daySessions[0]?.fecha ?? ''
   return (
@@ -1063,7 +1085,7 @@ function DayModal({
         <View style={[modalStyles.sheet, { maxHeight: '50%' }]}>
           <View style={modalStyles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={modalStyles.titulo}>{formatDate(fecha)}</Text>
+              <Text style={modalStyles.titulo}>{formatDate(fecha, monthShort, weekdayShort)}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn} activeOpacity={0.7}>
               <Text style={modalStyles.closeX}>✕</Text>
@@ -1086,8 +1108,8 @@ function DayModal({
                     {s.respuesta_ia?.titulo ?? 'Sesión de entrenamiento'}
                   </Text>
                   <Text style={styles.sessionMeta}>
-                    {s.respuesta_ia?.duracion_total ?? s.duracion_planificada} min
-                    {s.feedback ? ` · RPE ${s.feedback.rpe_real} · ${s.feedback.cumplimiento}%` : ' · Sin feedback'}
+                    {s.respuesta_ia?.duracion_total ?? s.duracion_planificada} {t('historial_min')}
+                    {s.feedback ? ` · RPE ${s.feedback.rpe_real} · ${s.feedback.cumplimiento}%` : ` · ${t('historial_modal_no_data')}`}
                   </Text>
                   {!!ejercicios && (
                     <Text style={styles.sessionEjercicios} numberOfLines={1}>{ejercicios}</Text>
@@ -1111,6 +1133,7 @@ function SummaryBlock({
   styles: ReturnType<typeof makeStyles>
   colors: Colors
 }) {
+  const { t } = useTranslation()
   const totalSesiones  = sessions.length
   const semanasActivas = countActiveWeeks(sessions)
   const masFrec        = getMostFrequent(sessions)
@@ -1120,12 +1143,12 @@ function SummaryBlock({
       {/* Row 1: dos cards de igual ancho */}
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>SESIONES</Text>
+          <Text style={styles.summaryLabel}>{t('historial_stat_sessions')}</Text>
           <Text style={styles.summaryNumber}>{totalSesiones}</Text>
           <Text style={styles.summarySub}>Completadas</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>SEMANAS</Text>
+          <Text style={styles.summaryLabel}>{t('historial_stat_weeks')}</Text>
           <Text style={styles.summaryNumber}>{semanasActivas}</Text>
           <Text style={styles.summarySub}>Activas</Text>
         </View>
@@ -1134,7 +1157,7 @@ function SummaryBlock({
       {/* Row 2: card full-width horizontal */}
       <View style={[styles.summaryCard, styles.summaryCardWide]}>
         <View style={{ flex: 1, gap: 5 }}>
-          <Text style={styles.summaryLabel}>ENTRENAMIENTO MÁS FRECUENTE</Text>
+          <Text style={styles.summaryLabel}>{t('historial_stat_top')}</Text>
           <Text style={styles.summaryWideTitle} numberOfLines={1}>
             {masFrec?.tipo ?? '—'}
           </Text>
@@ -1155,6 +1178,7 @@ function SummaryBlock({
 
 export default function HistorialScreen() {
   const { colors } = useTheme()
+  const { t, ta } = useTranslation()
   const styles   = useMemo(() => makeStyles(colors), [colors])
   const insets   = useSafeAreaInsets()
 
@@ -1175,6 +1199,12 @@ export default function HistorialScreen() {
   const [sessionModalVisible, setSessionModalVisible] = useState(false)
   const [daySessions,        setDaySessions]        = useState<Session[]>([])
   const [dayModalVisible,    setDayModalVisible]    = useState(false)
+
+  // i18n month names for week label formatter
+  const monthNamesI18n = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ]
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -1220,7 +1250,7 @@ export default function HistorialScreen() {
   const hasFilters = searchQuery.trim().length > 0 || tipoFilter !== 'Todo'
 
   // ── Pagination ─────────────────────────────────────────────────────────────
-  const allWeeks = useMemo(() => groupByWeek(filteredSessions), [filteredSessions])
+  const allWeeks = useMemo(() => groupByWeek(filteredSessions, monthNamesI18n), [filteredSessions])
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
   const [isLoadingMore,    setIsLoadingMore]    = useState(false)
 
@@ -1285,10 +1315,10 @@ export default function HistorialScreen() {
         }
       >
         {/* ── Header ── */}
-        <Text style={styles.sectionLabel}>HISTORIAL</Text>
+        <Text style={styles.sectionLabel}>{t('historial_header')}</Text>
         <View style={styles.headerRow}>
           <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
-            {loading ? '...' : `${sessions.length} sesiones.`}
+            {loading ? '...' : `${sessions.length} ${t('historial_sessions_suffix')}.`}
           </Text>
           <TouchableOpacity
             onPress={toggleSearch}
@@ -1306,7 +1336,7 @@ export default function HistorialScreen() {
           <View style={styles.searchBlock}>
             <TextInput
               style={[styles.searchInput, { color: colors.inkPrimary, borderColor: colors.borderBright }]}
-              placeholder="Buscar ejercicio o tipo de sesión..."
+              placeholder={t('historial_search')}
               placeholderTextColor={colors.inkMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -1354,14 +1384,14 @@ export default function HistorialScreen() {
               onPress={() => setView('lista')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>Lista</Text>
+              <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>{t('historial_view_list')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleBtn, view === 'calendario' && styles.toggleBtnActive]}
               onPress={() => setView('calendario')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>Calendario</Text>
+              <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>{t('historial_view_calendar')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1369,7 +1399,7 @@ export default function HistorialScreen() {
         {/* ── Content ── */}
         {loading ? (
           <View style={styles.loadingBox}>
-            <Text style={styles.loadingText}>Cargando historial…</Text>
+            <Text style={styles.loadingText}>{t('historial_loading')}</Text>
           </View>
         ) : error ? (
           <View style={styles.errorBox}>

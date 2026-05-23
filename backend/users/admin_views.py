@@ -183,6 +183,11 @@ def admin_stop_impersonate(request):
     except User.DoesNotExist:
         return Response({'error': 'Usuario admin original no existe'}, status=status.HTTP_404_NOT_FOUND)
 
+    if not admin_user.is_active:
+        # La cuenta fue desactivada mientras duraba la sesión de impersonación.
+        # No emitimos tokens nuevos — el admin debe contactar a soporte.
+        return Response({'error': 'Tu cuenta ha sido desactivada'}, status=status.HTTP_403_FORBIDDEN)
+
     if not admin_user.is_staff:
         # El admin original perdió permisos durante la sesión — no le devolvemos
         # acceso. Mejor que cierre sesión y vuelva a loggearse.

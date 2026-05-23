@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet } from '../../../lib/api'
 import { logout } from '../../../lib/auth'
 
@@ -87,16 +88,19 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 
 // ─── ADN Card ─────────────────────────────────────────────────────────────────
 
-function ADNCard({ texto, styles }: { texto: string; styles: ReturnType<typeof makeStyles> }) {
+function ADNCard({ texto, styles, dnaLabel, tagLabel }: {
+  texto: string; styles: ReturnType<typeof makeStyles>
+  dnaLabel: string; tagLabel: string
+}) {
   return (
     <View style={styles.adnWrap}>
-      <Text style={styles.adnSectionLabel}>TU ADN</Text>
+      <Text style={styles.adnSectionLabel}>{dnaLabel}</Text>
       <View style={styles.adnCard}>
         <View style={styles.adnBar} />
         <View style={styles.adnContent}>
           <View style={styles.adnTagRow}>
             <View style={styles.adnTag}>
-              <Text style={styles.adnTagText}>PERFIL DE ENTRENAMIENTO</Text>
+              <Text style={styles.adnTagText}>{tagLabel}</Text>
             </View>
           </View>
           <Text style={styles.adnText}>{texto}</Text>
@@ -161,6 +165,7 @@ const DEFAULT: Profile = {
 
 export default function PerfilScreen() {
   const { colors, palette, setPalette } = useTheme()
+  const { t, lang, setLang } = useTranslation()
   const [showPalettePicker, setShowPalettePicker] = useState(false)
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
@@ -196,10 +201,10 @@ export default function PerfilScreen() {
   }, [fetchAll]))
 
   async function handleLogout() {
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('perfil_logout_title'), t('perfil_logout_msg'), [
+      { text: t('perfil_logout_cancel'), style: 'cancel' },
       {
-        text: 'Cerrar sesión', style: 'destructive',
+        text: t('perfil_logout_confirm'), style: 'destructive',
         onPress: async () => { await logout(); router.replace('/(auth)/login') },
       },
     ])
@@ -217,7 +222,9 @@ export default function PerfilScreen() {
   const subEntrenamiento = profile.nivel ? nivelLabel(profile.nivel) : undefined
   const subObjetivos = profile.objetivos_multiples?.[0] || profile.objetivo || undefined
   const subUbicaciones = profile.locations?.length > 0
-    ? `${profile.locations.length} ${profile.locations.length === 1 ? 'ubicación' : 'ubicaciones'}`
+    ? `${profile.locations.length} ${lang === 'es'
+        ? (profile.locations.length === 1 ? 'ubicación' : 'ubicaciones')
+        : (profile.locations.length === 1 ? 'location' : 'locations')}`
     : undefined
   const badgeLesiones = activeInjuries > 0
     ? `${activeInjuries} ${activeInjuries === 1 ? 'activa' : 'activas'}`
@@ -226,11 +233,12 @@ export default function PerfilScreen() {
   const subPreferencias = profile.estilo_entrenamiento ? capitalizeFirst(profile.estilo_entrenamiento) : undefined
 
   const PALETTE_OPTIONS: { id: Palette; label: string; icon: string }[] = [
-    { id: 'dark',   label: 'Dark mode', icon: '🌙' },
-    { id: 'light',  label: 'Light mode', icon: '☀️' },
-    { id: 'rosado', label: 'Rosado',    icon: '🌸' },
+    { id: 'dark',   label: t('perfil_palette_dark'),   icon: '🌙' },
+    { id: 'light',  label: t('perfil_palette_light'),  icon: '☀️' },
+    { id: 'rosado', label: t('perfil_palette_rosado'), icon: '🌸' },
   ]
   const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
+
 
   return (
     <View style={styles.root}>
@@ -253,7 +261,7 @@ export default function PerfilScreen() {
               <>
                 <View style={styles.nivelPillSep} />
                 <Text style={styles.nivelPillText}>
-                  {profileStats!.semanas_activas} semanas activas
+                  {profileStats!.semanas_activas} {t('perfil_weeks_active')}
                 </Text>
               </>
             )}
@@ -263,18 +271,18 @@ export default function PerfilScreen() {
         {/* ── MÉTRICAS ── */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>CONSISTENCIA</Text>
+            <Text style={styles.metricLabel}>{t('perfil_consistency')}</Text>
             <Text style={[styles.metricValue, { color: consistenciaColor }]}>
               {statsLoading ? '–' : `${profileStats?.consistencia_30d ?? 0}%`}
             </Text>
             <Text style={styles.metricSub}>Últimos 30 días</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>SESIONES</Text>
+            <Text style={styles.metricLabel}>{t('perfil_sessions_label')}</Text>
             <Text style={[styles.metricValue, { color: colors.accent }]}>
               {statsLoading ? '–' : (profileStats?.sesiones_mes ?? 0)}
             </Text>
-            <Text style={styles.metricSub}>Este mes</Text>
+            <Text style={styles.metricSub}>{lang === 'es' ? 'Este mes' : 'This month'}</Text>
           </View>
         </View>
 
@@ -293,56 +301,61 @@ export default function PerfilScreen() {
             </View>
           </View>
         ) : !!profileStats?.adn_entrenamiento && (
-          <ADNCard texto={profileStats.adn_entrenamiento} styles={styles} />
+          <ADNCard
+            texto={profileStats.adn_entrenamiento}
+            styles={styles}
+            dnaLabel={t('perfil_dna_label')}
+            tagLabel={t('perfil_dna_tag')}
+          />
         )}
 
         {/* ── GRUPO 1: TUS DATOS ── */}
-        <Text style={styles.groupLabel}>TUS DATOS</Text>
+        <Text style={styles.groupLabel}>{t('perfil_section_data')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="👤" title="Datos personales" subtitle={subDatosPersonales}
+          <GroupRow icon="👤" title={t('perfil_row_personal')} subtitle={subDatosPersonales}
             onPress={() => router.push('/(app)/perfil/datos-personales' as any)} styles={styles} />
           <View style={styles.divider} />
-          <GroupRow icon="🏋️" title="Datos de entrenamiento" subtitle={subEntrenamiento}
+          <GroupRow icon="🏋️" title={t('perfil_row_training')} subtitle={subEntrenamiento}
             onPress={() => router.push('/(app)/perfil/entrenamiento' as any)} styles={styles} />
           <View style={styles.divider} />
-          <GroupRow icon="🎯" title="Mis objetivos" subtitle={subObjetivos}
+          <GroupRow icon="🎯" title={t('perfil_row_objectives')} subtitle={subObjetivos}
             onPress={() => router.push('/(app)/perfil/objetivos' as any)} styles={styles} />
           <View style={styles.divider} />
-          <GroupRow icon="📍" title="Ubicaciones" subtitle={subUbicaciones}
+          <GroupRow icon="📍" title={t('perfil_row_locations')} subtitle={subUbicaciones}
             onPress={() => router.push('/(app)/perfil/ubicaciones' as any)} styles={styles} />
         </View>
 
         {/* ── GRUPO 2: TU CUERPO ── */}
-        <Text style={styles.groupLabel}>TU CUERPO</Text>
+        <Text style={styles.groupLabel}>{t('perfil_section_body')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="🩹" title="Lesiones y limitaciones" badge={badgeLesiones}
+          <GroupRow icon="🩹" title={t('perfil_row_injuries')} badge={badgeLesiones}
             onPress={() => router.push('/(app)/perfil/lesiones' as any)} styles={styles} />
           {profile.sexo === 'femenino' && (
             <>
               <View style={styles.divider} />
-              <GroupRow icon="🌙" title="Ciclo menstrual" badge={badgeCiclo}
+              <GroupRow icon="🌙" title={t('perfil_row_cycle')} badge={badgeCiclo}
                 onPress={() => router.push('/(app)/perfil/ciclo' as any)} styles={styles} />
             </>
           )}
         </View>
 
         {/* ── GRUPO 3: TU ENTRENADOR ── */}
-        <Text style={styles.groupLabel}>TU ENTRENADOR</Text>
+        <Text style={styles.groupLabel}>{t('perfil_section_coach')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="⚡" title="Preferencias de entrenamiento" subtitle={subPreferencias}
+          <GroupRow icon="⚡" title={t('perfil_row_preferences')} subtitle={subPreferencias}
             onPress={() => router.push('/(app)/perfil/preferencias' as any)} styles={styles} />
         </View>
 
         {/* ── GRUPO 4: EVIDENCIA ── */}
-        <Text style={styles.groupLabel}>EVIDENCIA</Text>
+        <Text style={styles.groupLabel}>{t('perfil_section_evidence')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="🧬" title="Cómo funciona tu entrenador"
+          <GroupRow icon="🧬" title={t('perfil_row_how_coach')}
             onPress={() => router.push('/(app)/perfil/ciencia' as any)} styles={styles} />
           <View style={styles.divider} />
-          <GroupRow icon="📚" title="Bibliografía"
+          <GroupRow icon="📚" title={t('perfil_row_bibliography')}
             onPress={() => router.push('/(app)/perfil/bibliografia' as any)} styles={styles} />
           <View style={styles.divider} />
-          <GroupRow icon="📖" title="Glosario"
+          <GroupRow icon="📖" title={t('perfil_row_glossary')}
             onPress={() => router.push('/(app)/perfil/glosario' as any)} styles={styles} />
         </View>
 
@@ -353,7 +366,7 @@ export default function PerfilScreen() {
           {profile.plan === 'pro' ? (
             <GroupRow
               icon="👑"
-              title="Mi suscripción"
+              title={t('perfil_row_subscription')}
               subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
               badge="Pro"
               onPress={() => {
@@ -369,8 +382,8 @@ export default function PerfilScreen() {
           ) : (
             <GroupRow
               icon="⭐"
-              title="Actualizar a Pro"
-              subtitle="Desbloquea tu entrenador completo"
+              title={t('perfil_row_upgrade')}
+              subtitle={lang === 'es' ? 'Desbloquea tu entrenador completo' : 'Unlock your full coach'}
               onPress={() => {
                 const semanasVal = profileStats?.semanas_activas ?? 0
                 const nombreVal  = encodeURIComponent(profile.nombre || '')
@@ -380,23 +393,23 @@ export default function PerfilScreen() {
             />
           )}
           <View style={styles.divider} />
-          <AdminRow title="Referidos"
+          <AdminRow title={t('perfil_row_referrals')}
             onPress={() => router.push('/(app)/perfil/referidos' as any)} styles={styles} />
           <View style={styles.divider} />
-          <AdminRow title="Soporte"
+          <AdminRow title={t('perfil_row_support')}
             onPress={() => Linking.openURL('mailto:hola@pyfit.app')} styles={styles} />
           <View style={styles.divider} />
-          <AdminRow title="Política de privacidad"
+          <AdminRow title={t('perfil_row_privacy')}
             onPress={() => router.push('/(auth)/privacidad' as any)} styles={styles} />
           <View style={styles.divider} />
-          <AdminRow title="Cerrar sesión" danger onPress={handleLogout} styles={styles} />
+          <AdminRow title={t('perfil_logout')} danger onPress={handleLogout} styles={styles} />
         </View>
 
-        <Text style={styles.version}>Zyfit · v1.0.0</Text>
+        <Text style={styles.version}>{t('perfil_version')}</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Dismiss overlay — before button wrap so dropdown stays on top */}
+      {/* Dismiss overlay — before button wrap so dropdowns stay on top */}
       {showPalettePicker && (
         <Pressable
           style={StyleSheet.absoluteFill}
@@ -404,38 +417,53 @@ export default function PerfilScreen() {
         />
       )}
 
-      {/* ── THEME BUTTON — outside ScrollView so dropdown renders on top ── */}
-      <View style={[styles.themeButtonWrap, { top: insets.top + 28 }]}>
+      {/* ── TOP-RIGHT CONTROLS — language + theme, outside ScrollView ── */}
+      <View style={[styles.topControls, { top: insets.top + 28 }]}>
+
+        {/* Language toggle pill */}
         <TouchableOpacity
-          onPress={() => setShowPalettePicker(v => !v)}
+          style={styles.langToggle}
+          onPress={() => setLang(lang === 'es' ? 'en' : 'es')}
           activeOpacity={0.7}
-          style={styles.themeToggle}
         >
-          <Text style={{ fontSize: 18 }}>{currentIcon}</Text>
+          <Text style={[styles.langToggleText, { color: colors.inkSecondary }]}>
+            {lang.toUpperCase()}
+          </Text>
         </TouchableOpacity>
 
-        {showPalettePicker && (
-          <View style={[styles.paletteDropdown, { backgroundColor: colors.sheetBg, borderColor: colors.borderBright }]}>
-            {PALETTE_OPTIONS.map((opt, i) => (
-              <React.Fragment key={opt.id}>
-                {i > 0 && <View style={[styles.dropdownDivider, { backgroundColor: colors.borderDefault }]} />}
-                <TouchableOpacity
-                  onPress={() => { setPalette(opt.id); setShowPalettePicker(false) }}
-                  activeOpacity={0.7}
-                  style={styles.dropdownRow}
-                >
-                  <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
-                  <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
-                    {opt.label}
-                  </Text>
-                  {palette === opt.id && (
-                    <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </View>
-        )}
+        {/* Theme toggle + dropdown */}
+        <View style={styles.themeButtonWrap}>
+          <TouchableOpacity
+            onPress={() => setShowPalettePicker(v => !v)}
+            activeOpacity={0.7}
+            style={styles.themeToggle}
+          >
+            <Text style={{ fontSize: 18 }}>{currentIcon}</Text>
+          </TouchableOpacity>
+
+          {showPalettePicker && (
+            <View style={[styles.paletteDropdown, { backgroundColor: colors.sheetBg, borderColor: colors.borderBright }]}>
+              {PALETTE_OPTIONS.map((opt, i) => (
+                <React.Fragment key={opt.id}>
+                  {i > 0 && <View style={[styles.dropdownDivider, { backgroundColor: colors.borderDefault }]} />}
+                  <TouchableOpacity
+                    onPress={() => { setPalette(opt.id); setShowPalettePicker(false) }}
+                    activeOpacity={0.7}
+                    style={styles.dropdownRow}
+                  >
+                    <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
+                    <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
+                      {opt.label}
+                    </Text>
+                    {palette === opt.id && (
+                      <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
     </View>
   )
@@ -473,9 +501,23 @@ function makeStyles(c: Colors) {
       fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
     },
     nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.accent },
-    themeButtonWrap: {
+    topControls: {
       position: 'absolute', right: 20,
-      alignItems: 'flex-end', zIndex: 100,
+      flexDirection: 'row', alignItems: 'flex-start',
+      gap: 8, zIndex: 100,
+    },
+    langToggle: {
+      height: 38, borderRadius: 19,
+      paddingHorizontal: 12,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    langToggleText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 11, letterSpacing: 1.2,
+    },
+    themeButtonWrap: {
+      alignItems: 'flex-end',
     },
     themeToggle: {
       width: 38, height: 38, borderRadius: 19,

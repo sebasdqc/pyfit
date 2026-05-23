@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle
+from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle
 from .models import Profile, UserLocation, UserInjury, PasswordResetCode, Notification, NotificationPreference
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
@@ -90,6 +90,7 @@ def reset_password(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([ConfirmResetRateThrottle])
 def confirm_reset(request):
     email = request.data.get('email', '').lower().strip()
     code = request.data.get('code', '').strip()

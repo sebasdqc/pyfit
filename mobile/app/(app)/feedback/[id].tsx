@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,33 +28,31 @@ interface Resumen      { decisiones: Decision[]; evidencia: Evidence | null }
 interface Logro        { icon: string; titulo: string; descripcion: string }
 interface ProximaSesion { tipo: string; dia: string }
 
-// ─── Step config ──────────────────────────────────────────────────────────────
-
-const STEP_CONFIG = [
-  { title: 'Carga y esfuerzo',     subtitle: 'Cuéntanos cómo estuvo el trabajo de hoy.' },
-  { title: 'Lo que dice el coach', subtitle: 'Por qué se diseñó así tu sesión de hoy.' },
-  { title: 'Tu logro de hoy',      subtitle: 'Sesión cerrada. Lo que viene después.' },
-] as const
-
 // ─── Option data ──────────────────────────────────────────────────────────────
 
 const RPE_OPTIONS = [
-  { label: 'Muy por debajo de mi límite',        rpe: 4,  icon: '🌱', color: '#32c896' },
-  { label: 'Trabajé bien, podría haber dado más', rpe: 6,  icon: '💧', color: '#4f8cff' },
-  { label: 'Di bastante, me queda poco',          rpe: 8,  icon: '🔥', color: '#ffaa32' },
-  { label: 'Lo di todo',                          rpe: 10, icon: '⚡', color: '#ff4444' },
+  { labelKey: 'feedback_rpe_1' as const, rpe: 4,  icon: '🌱', color: '#32c896' },
+  { labelKey: 'feedback_rpe_2' as const, rpe: 6,  icon: '💧', color: '#4f8cff' },
+  { labelKey: 'feedback_rpe_3' as const, rpe: 8,  icon: '🔥', color: '#ffaa32' },
+  { labelKey: 'feedback_rpe_4' as const, rpe: 10, icon: '⚡', color: '#ff4444' },
 ] as const
 
 const SENSACION_OPTIONS = [
-  { id: 'activado', label: 'Activado y bien',   icon: '✨', color: '#32c896' },
-  { id: 'cansado',  label: 'Cansado pero bien', icon: '💤', color: '#4f8cff' },
-  { id: 'cargado',  label: 'Muy cargado',       icon: '🏋️', color: '#ffaa32' },
-  { id: 'molestia', label: 'Algo me molesta',   icon: '🤕', color: '#ff4444' },
+  { id: 'activado', labelKey: 'feedback_feel_1' as const, icon: '✨', color: '#32c896' },
+  { id: 'cansado',  labelKey: 'feedback_feel_2' as const, icon: '💤', color: '#4f8cff' },
+  { id: 'cargado',  labelKey: 'feedback_feel_3' as const, icon: '🏋️', color: '#ffaa32' },
+  { id: 'molestia', labelKey: 'feedback_feel_4' as const, icon: '🤕', color: '#ff4444' },
 ] as const
 
-const ZONAS_MOLESTIA = [
-  'Cuello', 'Hombros', 'Espalda alta', 'Espalda baja',
-  'Cadera', 'Rodilla', 'Tobillo', 'Muñeca',
+const ZONAS_KEYS = [
+  { id: 'Cuello',        key: 'feedback_zone_neck' as const },
+  { id: 'Hombros',       key: 'feedback_zone_shoulders' as const },
+  { id: 'Espalda alta',  key: 'feedback_zone_upper_back' as const },
+  { id: 'Espalda baja',  key: 'feedback_zone_lower_back' as const },
+  { id: 'Cadera',        key: 'feedback_zone_hip' as const },
+  { id: 'Rodilla',       key: 'feedback_zone_knee' as const },
+  { id: 'Tobillo',       key: 'feedback_zone_ankle' as const },
+  { id: 'Muñeca',        key: 'feedback_zone_wrist' as const },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -155,11 +154,12 @@ function TrainerSummary({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
 
   if (loading) {
     return (
       <>
-        <Text style={styles.loadingLabel}>Analizando con el coach...</Text>
+        <Text style={styles.loadingLabel}>{t('feedback_analyzing')}</Text>
         <View style={styles.summaryCard}>
           <View style={styles.summaryAccentBorder} />
           <View style={styles.summaryInner}>
@@ -194,7 +194,7 @@ function TrainerSummary({
     <View style={styles.summaryCard}>
       <View style={styles.summaryAccentBorder} />
       <View style={styles.summaryInner}>
-        <Text style={styles.summaryHeaderLabel}>DECISIONES DEL ENTRENADOR</Text>
+        <Text style={styles.summaryHeaderLabel}>{t('feedback_decisions_label')}</Text>
         <View style={styles.summaryDivider} />
         {resumen.decisiones.map((d, i) => (
           <View key={i} style={styles.decisionRow}>
@@ -208,7 +208,7 @@ function TrainerSummary({
           <>
             <View style={styles.summaryDivider} />
             <View style={styles.evidenceBlock}>
-              <Text style={styles.evidenceLabel}>EVIDENCIA</Text>
+              <Text style={styles.evidenceLabel}>{t('feedback_evidence_label')}</Text>
               <Text style={styles.evidenceText}>"{resumen.evidencia.text}"</Text>
               <Text style={styles.evidenceRef}>— {resumen.evidencia.reference}</Text>
             </View>
@@ -294,6 +294,7 @@ function NextSessionCard({
   proximaSesion: ProximaSesion
   styles: ReturnType<typeof makeStyles>
 }) {
+  const { t } = useTranslation()
   const fadeAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
@@ -306,13 +307,13 @@ function NextSessionCard({
     <Animated.View style={{ opacity: fadeAnim }}>
       <View style={styles.nextSessionCard}>
         <View style={styles.nextSessionLeft}>
-          <Text style={styles.nextSessionLabel}>TU PRÓXIMA SESIÓN</Text>
+          <Text style={styles.nextSessionLabel}>{t('feedback_next_session')}</Text>
           <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
           <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
         </View>
         <TouchableOpacity
           style={styles.agendarBtn}
-          onPress={() => Alert.alert('Próximamente', 'Pronto podrás agendar sesiones directamente en tu calendario.')}
+          onPress={() => Alert.alert(t('feedback_coming_soon'), t('feedback_calendar_soon'))}
           activeOpacity={0.7}
         >
           <Text style={styles.agendarBtnText}>📅  Agendar</Text>
@@ -327,6 +328,7 @@ function NextSessionCard({
 export default function FeedbackScreen() {
   const { id }     = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
+  const { t }      = useTranslation()
   const styles     = useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
   const scrollRef  = useRef<ScrollView>(null)
@@ -350,6 +352,13 @@ export default function FeedbackScreen() {
   const [step, setStep] = useState(1)
   const step1Complete   = rpeChoice !== null && sensacion !== null
   const canAdvance      = step === 1 ? step1Complete : true
+
+  // ── Step config (derived from translations) ────────────────────────────────
+  const STEP_CONFIG = [
+    { title: t('feedback_step1_title'), subtitle: t('feedback_step1_sub') },
+    { title: t('feedback_step2_title'), subtitle: t('feedback_step2_sub') },
+    { title: t('feedback_step3_title'), subtitle: t('feedback_step3_sub') },
+  ]
 
   // ── Step transition animation ──────────────────────────────────────────────
   const contentFade  = useRef(new Animated.Value(0)).current
@@ -421,16 +430,16 @@ export default function FeedbackScreen() {
   }
 
   function handleCompartir() {
-    Alert.alert('Próximamente', 'La función de compartir sesiones estará disponible pronto.')
+    Alert.alert(t('feedback_coming_soon'), t('feedback_share_soon'))
   }
 
   function handleSkip() {
     Alert.alert(
-      'Saltar feedback',
-      'El feedback ayuda a mejorar tu próximo entrenamiento.',
+      t('feedback_skip_title'),
+      t('feedback_skip_msg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Saltar', style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },
+        { text: t('feedback_skip_cancel'), style: 'cancel' },
+        { text: t('feedback_skip_confirm'), style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },
       ]
     )
   }
@@ -475,7 +484,7 @@ export default function FeedbackScreen() {
           style={{ opacity: contentFade, transform: [{ translateY: contentSlide }] }}
         >
           {/* Step label */}
-          <Text style={styles.stepLabel}>CIERRE DE SESIÓN · PASO {step} DE 3</Text>
+          <Text style={styles.stepLabel}>{t('feedback_step_label')} {step} {t('feedback_step_of')}</Text>
 
           {/* Title */}
           <View style={styles.titleBlock}>
@@ -487,13 +496,13 @@ export default function FeedbackScreen() {
           {step === 1 && (
             <View style={styles.stepContent}>
 
-              <Text style={styles.questionLabel}>¿CÓMO FUE EL ESFUERZO DE HOY?</Text>
+              <Text style={styles.questionLabel}>{t('feedback_effort_q')}</Text>
               <View style={styles.optList}>
                 {RPE_OPTIONS.map(opt => (
                   <OptionRow
                     key={opt.rpe}
                     icon={opt.icon}
-                    label={opt.label}
+                    label={t(opt.labelKey)}
                     color={opt.color}
                     selected={rpeChoice === opt.rpe}
                     onPress={() => setRpeChoice(opt.rpe)}
@@ -502,13 +511,13 @@ export default function FeedbackScreen() {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 8 }]}>¿CÓMO ESTÁ TU CUERPO AHORA?</Text>
+              <Text style={[styles.questionLabel, { marginTop: 8 }]}>{t('feedback_body_q')}</Text>
               <View style={styles.optList}>
                 {SENSACION_OPTIONS.map(opt => (
                   <OptionRow
                     key={opt.id}
                     icon={opt.icon}
-                    label={opt.label}
+                    label={t(opt.labelKey)}
                     color={opt.color}
                     selected={sensacion === opt.id}
                     onPress={() => selectSensacion(opt.id)}
@@ -519,19 +528,19 @@ export default function FeedbackScreen() {
 
               {sensacion === 'molestia' && (
                 <View style={styles.zonasCard}>
-                  <Text style={styles.zonasTitle}>ZONAS DE MOLESTIA</Text>
+                  <Text style={styles.zonasTitle}>{t('feedback_pain_zones')}</Text>
                   <View style={styles.zonasGrid}>
-                    {ZONAS_MOLESTIA.map(zona => {
-                      const on = zonasMolestia.includes(zona)
+                    {ZONAS_KEYS.map(({ id: zonaId, key }) => {
+                      const on = zonasMolestia.includes(zonaId)
                       return (
                         <TouchableOpacity
-                          key={zona}
+                          key={zonaId}
                           style={[styles.zonaChip, on && styles.zonaChipOn]}
-                          onPress={() => toggleZona(zona)}
+                          onPress={() => toggleZona(zonaId)}
                           activeOpacity={0.75}
                         >
                           <Text style={[styles.zonaChipText, on && styles.zonaChipTextOn]}>
-                            {zona}
+                            {t(key)}
                           </Text>
                         </TouchableOpacity>
                       )
@@ -540,14 +549,14 @@ export default function FeedbackScreen() {
                 </View>
               )}
 
-              <Text style={[styles.questionLabel, { marginTop: 8 }]}>NOTA DE SESIÓN (OPCIONAL)</Text>
+              <Text style={[styles.questionLabel, { marginTop: 8 }]}>{t('feedback_notes_q')}</Text>
               <View style={styles.notaCard}>
                 <TextInput
                   style={[styles.notaInput, { color: colors.inkPrimary }]}
-                  placeholder="¿Algo que quieras recordar de esta sesión?"
+                  placeholder={t('feedback_notes_placeholder')}
                   placeholderTextColor={colors.inkMuted}
                   value={notas}
-                  onChangeText={t => setNotas(t.slice(0, 140))}
+                  onChangeText={txt => setNotas(txt.slice(0, 140))}
                   multiline
                   textAlignVertical="top"
                   maxLength={140}
@@ -570,7 +579,7 @@ export default function FeedbackScreen() {
             <View style={styles.stepContent}>
               {logroLoading ? (
                 <>
-                  <Text style={styles.loadingLabel}>Generando tu logro de hoy...</Text>
+                  <Text style={styles.loadingLabel}>{t('feedback_generating_logro')}</Text>
                   <View style={styles.achievementCard}>
                     <View style={styles.skeletonCircle} />
                     <SkeletonLine width="55%" height={22} styles={styles} />
@@ -605,7 +614,7 @@ export default function FeedbackScreen() {
                 style={StyleSheet.absoluteFill}
               />
               <Text style={[styles.primaryBtnText, !canAdvance && { color: colors.inkMuted }]}>
-                Continuar
+                {t('feedback_btn_continue')}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -621,7 +630,7 @@ export default function FeedbackScreen() {
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFill}
                 />
-                <Text style={styles.listoBtnText}>✓  Listo</Text>
+                <Text style={styles.listoBtnText}>{t('feedback_done_btn')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -629,7 +638,7 @@ export default function FeedbackScreen() {
                 onPress={handleCompartir}
                 activeOpacity={0.75}
               >
-                <Text style={styles.compartirBtnText}>↗  Compartir mi sesión</Text>
+                <Text style={styles.compartirBtnText}>{t('feedback_share_btn')}</Text>
               </TouchableOpacity>
             </>
           )}

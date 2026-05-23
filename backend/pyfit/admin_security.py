@@ -133,10 +133,31 @@ def _verify_against_user_devices(user, token: str):
     return None
 
 
+def _safe_next(raw: str | None, fallback: str) -> str:
+    """Valida que next_url sea una URL relativa del admin — previene open redirect.
+
+    Solo se acepta si comienza con el prefijo del admin (relativo, sin host).
+    Cualquier otro valor (incluyendo URLs absolutas con esquema http/https o
+    doble barra //) cae al fallback para evitar redirigir fuera del dominio.
+    """
+    if not raw:
+        return fallback
+    admin_prefix = _admin_url_prefix()
+    # Rechazar URLs absolutas o con doble-slash (open redirect via //)
+    if raw.startswith('http://') or raw.startswith('https://') or raw.startswith('//'):
+        return fallback
+    # Exigir que el destino sea interno al admin
+    if not raw.startswith(admin_prefix):
+        return fallback
+    return raw
+
+
 @login_required
 def otp_verify_view(request):
     """Pantalla que pide el código TOTP para esta sesión."""
-    next_url = request.GET.get('next') or request.POST.get('next') or _admin_url_prefix()
+    _fallback = _admin_url_prefix()
+    raw_next = request.GET.get('next') or request.POST.get('next')
+    next_url = _safe_next(raw_next, _fallback)
 
     # Si ya está verificado, pasamos directo.
     if request.user.is_verified():

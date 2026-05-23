@@ -4,6 +4,7 @@ import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from '../lib/theme'
+import { I18nProvider } from '../lib/i18n'
 import { initSentry, withSentryWrap } from '../lib/sentry'
 import * as Font from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
@@ -65,11 +66,13 @@ function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <ThemedApp />
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <I18nProvider>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <ThemedApp />
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </I18nProvider>
   )
 }
 

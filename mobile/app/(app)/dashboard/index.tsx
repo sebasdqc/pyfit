@@ -15,6 +15,7 @@ import Svg, { Circle, Path } from 'react-native-svg'
 import { router } from 'expo-router'
 import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -83,20 +84,30 @@ function getInitials(nombre: string): string {
     .join('')
 }
 
-const MONTH_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-
-function formatSessionDate(iso: string): string {
+function formatSessionDate(iso: string, lang: string): string {
   const d = new Date(iso + 'T00:00:00')
-  const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  return `${weekdays[d.getDay()]}, ${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`
+  const DAYS_ES   = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const DAYS_EN   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  if (lang === 'en') {
+    return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
+  }
+  return `${DAYS_ES[d.getDay()]}, ${d.getDate()} ${MONTHS_ES[d.getMonth()]}`
 }
 
-function formatHeaderDate(): string {
+function formatHeaderDate(lang: string): string {
   const d = new Date()
-  const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+  const DAYS_EN   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-  return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
+  const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  if (lang === 'en') {
+    return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
+  }
+  return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
 }
 
 // ─── Bell Icon ────────────────────────────────────────────────────────────────
@@ -129,10 +140,12 @@ function RPECard({
   metrica,
   colors,
   styles,
+  t,
 }: {
   metrica: MetricaData | undefined
   colors: Colors
   styles: ReturnType<typeof makeStyles>
+  t: (key: any) => string
 }) {
   const rpeDisplay = metrica?.valor_display ?? '—'
   const progreso = metrica?.progreso_pct ?? 0
@@ -140,8 +153,8 @@ function RPECard({
 
   return (
     <View style={styles.rpeCard}>
-      <Text style={styles.rpeSectionLabel}>TU MOMENTO</Text>
-      <Text style={styles.rpeSubLabel}>RPE PROMEDIO · ESTA SEMANA</Text>
+      <Text style={styles.rpeSectionLabel}>{t('dashboard_your_moment')}</Text>
+      <Text style={styles.rpeSubLabel}>{t('dashboard_rpe_week')}</Text>
 
       <View style={styles.rpeBody}>
         {/* Big number — left */}
@@ -243,11 +256,13 @@ function WeeklyView({
   racha,
   colors,
   styles,
+  t,
 }: {
   semana: SemanaDay[]
   racha: number
   colors: Colors
   styles: ReturnType<typeof makeStyles>
+  t: (key: any) => string
 }) {
   const TIPO_COLOR: Record<SemanaDay['estado'], string> = {
     entrenado:   '#32c896',
@@ -259,7 +274,7 @@ function WeeklyView({
 
   return (
     <View style={styles.z3Wrap}>
-      <Text style={styles.z3Label}>TU SEMANA</Text>
+      <Text style={styles.z3Label}>{t('dashboard_your_week')}</Text>
 
       <View style={styles.z3Row}>
         {semana.map(day => (
@@ -285,7 +300,7 @@ function WeeklyView({
               </Text>
             ) : day.estado === 'descanso' ? (
               <Text style={[styles.z3DayTipo, { color: 'rgba(255,170,50,0.5)' }]}>
-                Desc.
+                {t('dashboard_rest')}
               </Text>
             ) : (
               <Text style={styles.z3DayTipo}> </Text>
@@ -313,10 +328,12 @@ function CTACard({
   cta,
   colors,
   styles,
+  t,
 }: {
   cta: CTAData
   colors: Colors
   styles: ReturnType<typeof makeStyles>
+  t: (key: any) => string
 }) {
   const PILL: Record<CTAData['pill_color'], { color: string; bg: string; border: string }> = {
     green:   { color: '#32c896', bg: 'rgba(50,200,150,0.12)',  border: 'rgba(50,200,150,0.30)'  },
@@ -407,7 +424,7 @@ function CTACard({
           activeOpacity={0.88}
         >
           <View style={[styles.ctaBtn, styles.ctaBtnGhost]}>
-            <Text style={styles.ctaBtnTextGhost}>Entrenar otra vez hoy</Text>
+            <Text style={styles.ctaBtnTextGhost}>{t('dashboard_train_again')}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -421,15 +438,17 @@ function InsightCard({
   texto,
   colors,
   styles,
+  t,
 }: {
   texto: string | null
   colors: Colors
   styles: ReturnType<typeof makeStyles>
+  t: (key: any) => string
 }) {
   const isEmpty = !texto
   return (
     <View style={styles.z5Wrap}>
-      <Text style={styles.z5SectionLabel}>Tu entrenador</Text>
+      <Text style={styles.z5SectionLabel}>{t('dashboard_coach_label')}</Text>
       <View style={[styles.z5Card, isEmpty && styles.z5CardEmpty]}>
         <View style={[styles.z5Bar, isEmpty && { backgroundColor: colors.borderBright }]} />
         <View style={styles.z5Content}>
@@ -455,6 +474,7 @@ function InsightCard({
 
 export default function DashboardScreen() {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -519,7 +539,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           {/* Date */}
-          <Text style={styles.z1Date}>{formatHeaderDate()}</Text>
+          <Text style={styles.z1Date}>{formatHeaderDate(lang)}</Text>
 
           {/* Greeting */}
           {loading ? (
@@ -548,7 +568,7 @@ export default function DashboardScreen() {
             <Skeleton width="100%" height={52} borderRadius={14} style={{ marginTop: 20 }} />
           </View>
         ) : !!data?.cta && (
-          <CTACard cta={data.cta} colors={colors} styles={styles} />
+          <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
         )}
 
         {/* ── ZONA 3 — Vista semanal ── */}
@@ -571,6 +591,7 @@ export default function DashboardScreen() {
             racha={data.racha_actual}
             colors={colors}
             styles={styles}
+            t={t}
           />
         )}
 
@@ -588,7 +609,7 @@ export default function DashboardScreen() {
             <Skeleton width="100%" height={4} borderRadius={2} style={{ marginTop: 18, marginBottom: 6 }} />
           </View>
         ) : (
-          <RPECard metrica={data?.metrica} colors={colors} styles={styles} />
+          <RPECard metrica={data?.metrica} colors={colors} styles={styles} t={t} />
         )}
 
         {/* ── ZONA 5 — Insight del entrenador ── */}
@@ -597,6 +618,7 @@ export default function DashboardScreen() {
             texto={data?.insight_entrenador ?? null}
             colors={colors}
             styles={styles}
+            t={t}
           />
         )}
 

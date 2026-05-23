@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle
+from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle, AjustarSesionRateThrottle
 from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile
 from checkins.models import DailyCheckin
 from ai_workout.adaptive_engine import AdaptiveEngineService
@@ -954,6 +954,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional:
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AjustarSesionRateThrottle])
 def session_ajustar(request, pk):
     """Re-generate an existing session with duration and/or RPE overrides."""
     from types import SimpleNamespace

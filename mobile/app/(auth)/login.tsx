@@ -13,10 +13,11 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import Svg, { Path, Rect } from 'react-native-svg'
-import { COLORS } from '../../lib/colors'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
+import { useTranslation } from '../../lib/i18n'
 import { login, register } from '../../lib/auth'
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
@@ -81,7 +82,9 @@ function AppleIcon() {
 
 export default function LoginScreen() {
   const { colors } = useTheme()
+  const { t, lang, toggleLang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
 
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -91,7 +94,7 @@ export default function LoginScreen() {
 
   async function handleSubmit() {
     if (!email.trim() || !password.trim()) {
-      setError('Por favor completa todos los campos.')
+      setError(t('login_error_fields'))
       return
     }
     setError('')
@@ -109,7 +112,7 @@ export default function LoginScreen() {
         router.replace('/(auth)/onboarding-intro' as any)
       }
     } catch (e: any) {
-      setError(e.message || 'Ocurrió un error. Intenta de nuevo.')
+      setError(e.message || t('login_error_generic'))
     } finally {
       setLoading(false)
     }
@@ -121,6 +124,15 @@ export default function LoginScreen() {
         colors={[colors.gradientTop, 'transparent']}
         style={styles.gradient}
       />
+
+      {/* Language toggle — top-right, outside scroll */}
+      <TouchableOpacity
+        style={[styles.langBtn, { top: insets.top + 16 }]}
+        onPress={toggleLang}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
+      </TouchableOpacity>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -135,7 +147,7 @@ export default function LoginScreen() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <PyFitLogo />
-            <Text style={styles.tagline}>Entrenamiento adaptativo con IA</Text>
+            <Text style={styles.tagline}>{t('login_tagline')}</Text>
           </View>
 
           {/* Card */}
@@ -148,7 +160,7 @@ export default function LoginScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>
-                  Iniciar sesión
+                  {t('login_tab_signin')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -157,17 +169,17 @@ export default function LoginScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabText, tab === 'register' && styles.tabTextActive]}>
-                  Registrarse
+                  {t('login_tab_signup')}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Inputs */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>CORREO ELECTRÓNICO</Text>
+              <Text style={styles.inputLabel}>{t('login_email_label')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="tu@email.com"
+                placeholder={t('login_email_placeholder')}
                 placeholderTextColor={colors.inkMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -178,7 +190,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>CONTRASEÑA</Text>
+              <Text style={styles.inputLabel}>{t('login_password_label')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
@@ -197,7 +209,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
                 onPress={() => router.push('/(auth)/forgot-password' as any)}
               >
-                <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                <Text style={styles.forgotText}>{t('login_forgot_password')}</Text>
               </TouchableOpacity>
             )}
 
@@ -225,7 +237,7 @@ export default function LoginScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
-                    {tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                    {tab === 'login' ? t('login_btn_signin') : t('login_btn_signup')}
                   </Text>
                 )}
               </LinearGradient>
@@ -234,7 +246,7 @@ export default function LoginScreen() {
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o continúa con</Text>
+              <Text style={styles.dividerText}>{t('login_divider')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -245,19 +257,19 @@ export default function LoginScreen() {
             </View>
 
             <Text style={styles.disclaimer}>
-              Al continuar, aceptas los{' '}
+              {t('login_terms_prefix')}{' '}
               <Text
                 style={styles.disclaimerLink}
                 onPress={() => router.push('/(auth)/terminos' as any)}
               >
-                Términos de servicio
+                {t('login_terms_link')}
               </Text>
-              {' '}y la{' '}
+              {' '}{t('login_terms_and')}{' '}
               <Text
                 style={styles.disclaimerLink}
                 onPress={() => router.push('/(auth)/privacidad' as any)}
               >
-                Política de privacidad
+                {t('login_privacy_link')}
               </Text>
             </Text>
           </View>
@@ -290,6 +302,25 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 24,
       paddingTop: 80,
       paddingBottom: 40,
+    },
+
+    // Language button
+    langBtn: {
+      position: 'absolute',
+      right: 20,
+      zIndex: 50,
+      paddingHorizontal: 11,
+      paddingVertical: 6,
+      borderRadius: 20,
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+    },
+    langBtnText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 11,
+      color: c.inkSecondary,
+      letterSpacing: 1.2,
     },
 
     // Logo
