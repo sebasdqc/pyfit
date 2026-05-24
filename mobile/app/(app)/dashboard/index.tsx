@@ -152,6 +152,39 @@ function BellIcon() {
 
 // ─── RPE Card ─────────────────────────────────────────────────────────────────
 
+// [1] Color semántico según tipo + tendencia
+function getMetricaColor(tipo: MetricaData['tipo'] | undefined, tendencia: MetricaData['tendencia'] | undefined): string {
+  if (!tipo || !tendencia) return '#4f8cff'
+  if (tipo === 'rpe' || tipo === 'progreso') {
+    if (tendencia === 'up')   return '#ffaa32' // más carga = naranja
+    if (tendencia === 'down') return '#32c896' // mejor recuperación = verde
+    return '#4f8cff'
+  }
+  // consistencia y racha: subir es siempre bueno
+  if (tendencia === 'up')   return '#32c896'
+  if (tendencia === 'down') return '#ffaa32'
+  return '#4f8cff'
+}
+
+// [4] Flecha de tendencia
+function TrendArrow({ tendencia, color }: { tendencia: MetricaData['tendencia'] | undefined; color: string }) {
+  if (!tendencia || tendencia === 'neutral') {
+    return <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color, lineHeight: 20 }}>→</Text>
+  }
+  return (
+    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color, lineHeight: 20 }}>
+      {tendencia === 'up' ? '↑' : '↓'}
+    </Text>
+  )
+}
+
+// [5] Escala dinámica de la barra
+function getBarScale(tipo: MetricaData['tipo'] | undefined): [string, string] {
+  if (tipo === 'consistencia') return ['0%', '100%']
+  if (tipo === 'racha')        return ['0', '30 días']
+  return ['0', '10']
+}
+
 function RPECard({
   metrica,
   colors,
@@ -163,34 +196,55 @@ function RPECard({
   styles: ReturnType<typeof makeStyles>
   t: (key: any) => string
 }) {
-  const rpeDisplay = metrica?.valor_display ?? '—'
-  const progreso = metrica?.progreso_pct ?? 0
+  const rpeDisplay  = metrica?.valor_display ?? '—'
+  const progreso    = metrica?.progreso_pct ?? 0
   const descripcion = metrica?.descripcion ?? 'Entrena de forma consistente para ver tu RPE promedio.'
+
+  // [1] Color semántico
+  const metricaColor = getMetricaColor(metrica?.tipo, metrica?.tendencia)
+
+  // [2] Unidad dinámica
+  const unidad = metrica?.unidad ?? ''
+
+  // [3] Sub-label dinámico — usa metrica.label del backend
+  const subLabel = metrica?.label ?? 'RPE PROMEDIO'
+
+  // [5] Escala dinámica
+  const [scaleLeft, scaleRight] = getBarScale(metrica?.tipo)
 
   return (
     <View style={styles.rpeCard}>
+      {/* Label fijo + sub-label dinámico [3] */}
       <Text style={styles.rpeSectionLabel}>{t('dashboard_your_moment')}</Text>
-      <Text style={styles.rpeSubLabel}>{t('dashboard_rpe_week')}</Text>
+      <Text style={styles.rpeSubLabel}>{subLabel}</Text>
 
       <View style={styles.rpeBody}>
-        {/* Big number — left */}
-        <Text style={styles.rpeBigNumber}>{rpeDisplay}</Text>
+        {/* Número grande + unidad + flecha [2][4] */}
+        <View style={styles.rpeNumberWrap}>
+          <Text style={[styles.rpeBigNumber, { color: metricaColor }]}>{rpeDisplay}</Text>
+          <View style={styles.rpeNumberMeta}>
+            {!!unidad && (
+              <Text style={[styles.rpeUnidad, { color: metricaColor }]}>{unidad}</Text>
+            )}
+            <TrendArrow tendencia={metrica?.tendencia} color={metricaColor} />
+          </View>
+        </View>
 
-        {/* Insight text — right */}
+        {/* Texto insight — derecha */}
         <View style={styles.rpeTextWrap}>
           <Text style={styles.rpeDesc}>{descripcion}</Text>
         </View>
       </View>
 
-      {/* Progress bar */}
+      {/* Barra con color semántico [1] */}
       <View style={styles.rpeBarBg}>
-        <View style={[styles.rpeBarFill, { width: `${progreso}%` as any }]} />
+        <View style={[styles.rpeBarFill, { width: `${progreso}%` as any, backgroundColor: metricaColor }]} />
       </View>
 
-      {/* Scale labels */}
+      {/* Escala dinámica [5] */}
       <View style={styles.rpeBarScaleRow}>
-        <Text style={styles.rpeBarScaleLabel}>0</Text>
-        <Text style={styles.rpeBarScaleLabel}>10</Text>
+        <Text style={styles.rpeBarScaleLabel}>{scaleLeft}</Text>
+        <Text style={styles.rpeBarScaleLabel}>{scaleRight}</Text>
       </View>
     </View>
   )
@@ -933,13 +987,29 @@ function makeStyles(c: Colors) {
       gap: 16,
       marginBottom: 18,
     },
+    // Columna izquierda: número + unidad + flecha
+    rpeNumberWrap: {
+      alignItems: 'flex-start',
+      minWidth: 80,
+    },
     rpeBigNumber: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 56,
-      color: c.accent,
+      // color se aplica inline (dinámico)
       letterSpacing: -2,
       lineHeight: 60,
-      minWidth: 80,
+    },
+    rpeNumberMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
+    },
+    rpeUnidad: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 11,
+      letterSpacing: 0.5,
+      opacity: 0.8,
     },
     rpeTextWrap: {
       flex: 1,
@@ -960,7 +1030,7 @@ function makeStyles(c: Colors) {
     rpeBarFill: {
       height: 4,
       borderRadius: 2,
-      backgroundColor: c.accent,
+      // backgroundColor se aplica inline (dinámico)
     },
     rpeBarScaleRow: {
       flexDirection: 'row',
