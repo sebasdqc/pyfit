@@ -56,11 +56,27 @@ interface MetricaData {
   tendencia: 'up' | 'down' | 'neutral'
 }
 
+interface RachaContextoAlerta {
+  tipo: 'descanso_manana' | 'descansando' | 'retomar' | 'continuar'
+  mensaje: string
+  color: 'orange' | 'blue' | 'green'
+}
+
+interface RachaContexto {
+  racha_actual: number
+  dias_desde_ultima: number | null
+  entrenado_hoy: boolean
+  dias_entrenados_semana: number
+  dias_descanso_semana: number
+  alerta: RachaContextoAlerta | null
+}
+
 interface DashboardData {
   nombre: string
   nivel: string
   puntos_totales: number
   racha_actual: number
+  racha_contexto?: RachaContexto
   fatiga_porcentaje: number
   volumen_porcentaje: number
   dias_entrenados: string[]
@@ -251,15 +267,22 @@ function WeekDayIcon({ estado, colors }: { estado: SemanaDay['estado']; colors: 
   )
 }
 
+// Colores semánticos por tipo de alerta
+const ALERTA_COLORS: Record<RachaContextoAlerta['color'], { dot: string; text: string; border: string }> = {
+  orange: { dot: '#ffaa32', text: '#ffaa32', border: 'rgba(255,170,50,0.18)' },
+  blue:   { dot: '#4f8cff', text: '#7ab6ff', border: 'rgba(79,140,255,0.18)' },
+  green:  { dot: '#32c896', text: '#32c896', border: 'rgba(50,200,150,0.18)' },
+}
+
 function WeeklyView({
   semana,
-  racha,
+  rachaContexto,
   colors,
   styles,
   t,
 }: {
   semana: SemanaDay[]
-  racha: number
+  rachaContexto?: RachaContexto
   colors: Colors
   styles: ReturnType<typeof makeStyles>
   t: (key: any) => string
@@ -271,6 +294,9 @@ function WeeklyView({
     descanso:    '#ffaa32',
     vacio:       'transparent',
   }
+
+  const alerta = rachaContexto?.alerta ?? null
+  const alertaColors = alerta ? ALERTA_COLORS[alerta.color] : null
 
   return (
     <View style={styles.z3Wrap}>
@@ -309,12 +335,12 @@ function WeeklyView({
         ))}
       </View>
 
-      {/* Conditional alert */}
-      {racha >= 4 && (
-        <View style={styles.z3Alert}>
-          <View style={styles.z3AlertDot} />
-          <Text style={styles.z3AlertText}>
-            {racha} días seguidos · Mañana te sugerimos descanso activo.
+      {/* Alerta contextual — solo se muestra si el backend envía una */}
+      {alerta && alertaColors && (
+        <View style={[styles.z3Alert, { borderTopColor: alertaColors.border }]}>
+          <View style={[styles.z3AlertDot, { backgroundColor: alertaColors.dot }]} />
+          <Text style={[styles.z3AlertText, { color: alertaColors.text }]}>
+            {alerta.mensaje}
           </Text>
         </View>
       )}
@@ -588,7 +614,7 @@ export default function DashboardScreen() {
         ) : !!data?.semana_detalle?.length && (
           <WeeklyView
             semana={data.semana_detalle}
-            racha={data.racha_actual}
+            rachaContexto={data.racha_contexto}
             colors={colors}
             styles={styles}
             t={t}

@@ -171,12 +171,13 @@ Reglas:
         return Response({'decisiones': [], 'evidencia': None})
 
 
-def _actualizar_racha(user):
-    try:
-        profile = user.profile
-    except Exception:
-        return
-
+def _calcular_racha_realtime(user):
+    """
+    Calcula la racha de días consecutivos en tiempo real (sin leer del perfil).
+    Si hoy no tiene sesión con feedback, retrocede un día.
+    Si ayer tampoco tiene, la racha es 0.
+    Retorna el entero de días consecutivos.
+    """
     hoy = date.today()
     racha = 0
     dia = hoy
@@ -194,6 +195,98 @@ def _actualizar_racha(user):
         racha += 1
         dia -= timedelta(days=1)
 
+    return racha
+
+
+def _calcular_racha_contexto(user):
+    """
+    Calcula la racha en tiempo real y devuelve un objeto de contexto
+    con la alerta/recomendación adecuada según el estado actual del usuario.
+
+    Lógica:
+    - racha >= 4 + entrenó hoy       → sugerir descanso mañana
+    - racha >= 4 + entrenó ayer      → hoy ya está descansando, reforzar
+    - racha >= 4 + hace 2+ días      → racha interrumpida, motivar retomar
+    - racha 2-3 + entrenó hoy        → motivar continuar
+    - resto                          → sin alerta
+    """
+    hoy = date.today()
+    racha = _calcular_racha_realtime(user)
+
+    ultima = user.sessions.filter(
+        feedback__isnull=False
+    ).order_by('-fecha', '-created_at').first()
+    dias_desde_ultima = (hoy - ultima.fecha).days if ultima else None
+
+    entrenado_hoy = user.sessions.filter(
+        fecha=hoy, feedback__isnull=False
+    ).exists()
+
+    # Días entrenados / descansados en la semana actual (lunes → hoy)
+    lunes = hoy - timedelta(days=hoy.weekday())
+    sesiones_semana_fechas = set(
+        user.sessions.filter(
+            fecha__gte=lunes, fecha__lte=hoy, feedback__isnull=False
+        ).values_list('fecha', flat=True)
+    )
+    dias_entrenados_semana = len(sesiones_semana_fechas)
+    dias_descanso_semana = (hoy.weekday() + 1) - dias_entrenados_semana
+
+    # ── Determinar alerta ─────────────────────────────────────────────────────
+    alerta = None
+
+    if racha >= 4:
+        if dias_desde_ultima == 0:
+            # Entrenó hoy y lleva 4+ días seguidos
+            alerta = {
+                'tipo': 'descanso_manana',
+                'mensaje': f'{racha} días seguidos · Programa descanso activo mañana',
+                'color': 'orange',
+            }
+        elif dias_desde_ultima == 1:
+            # Última sesión fue ayer, hoy ya está descansando
+            alerta = {
+                'tipo': 'descansando',
+                'mensaje': f'Llevas {racha} días de racha · Hoy es un buen día de recuperación',
+                'color': 'blue',
+            }
+        elif dias_desde_ultima is not None and dias_desde_ultima >= 2:
+            # Ya descansó 2+ días desde la racha — motivar a retomar
+            alerta = {
+                'tipo': 'retomar',
+                'mensaje': f'Tuviste {racha} días de racha · Hora de retomar el ritmo',
+                'color': 'green',
+            }
+    elif racha >= 2 and entrenado_hoy:
+        # Racha moderada activa hoy — motivar a continuar
+        alerta = {
+            'tipo': 'continuar',
+            'mensaje': f'{racha} días seguidos · Vas construyendo el hábito',
+            'color': 'blue',
+        }
+
+    return {
+        'racha_actual': racha,
+        'dias_desde_ultima': dias_desde_ultima,
+        'entrenado_hoy': entrenado_hoy,
+        'dias_entrenados_semana': dias_entrenados_semana,
+        'dias_descanso_semana': dias_descanso_semana,
+        'alerta': alerta,
+    }
+
+
+def _actualizar_racha(user):
+    """
+    Persiste la racha en profile.racha_actual para gamificación y logros.
+    Se llama solo después de guardar un feedback.
+    El dashboard NO debe leer de aquí — usa _calcular_racha_contexto() en tiempo real.
+    """
+    try:
+        profile = user.profile
+    except Exception:
+        return
+
+    racha = _calcular_racha_realtime(user)
     profile.racha_actual = racha
     if racha > profile.mejor_racha:
         profile.mejor_racha = racha
@@ -956,17 +1049,19 @@ def stats_dashboard(request):
 
     try:
         profile = request.user.profile
-        racha = profile.racha_actual
         nivel = profile.nivel_label
         nombre = profile.nombre
         puntos = profile.puntos_totales
         sexo = profile.sexo or ''
     except Exception:
-        racha = 0
         nivel = 'Rookie'
         nombre = request.user.email.split('@')[0]
         puntos = 0
         sexo = ''
+
+    # ── Racha calculada en tiempo real (no leer del perfil para evitar datos stale)
+    racha_contexto = _calcular_racha_contexto(request.user)
+    racha = racha_contexto['racha_actual']
 
     total_sesiones = request.user.sessions.count()
     ultima = request.user.sessions.order_by('-fecha', '-created_at').first()
@@ -1012,6 +1107,7 @@ def stats_dashboard(request):
         'volumen_porcentaje': volumen_pct,
         'dias_entrenados': dias_entrenados,
         'racha_actual': racha,
+        'racha_contexto': racha_contexto,
         'nivel': nivel,
         'puntos_totales': puntos,
         'total_sesiones': total_sesiones,
