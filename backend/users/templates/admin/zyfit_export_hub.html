@@ -1,5 +1,14 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" style="margin-bottom: 20px;">
+  <ol style="display: flex; align-items: center; gap: 8px; list-style: none; padding: 0; margin: 0; font-size: 13px;">
+    <li><a href="{% url 'admin:index' %}" style="color: rgb(79 140 255); text-decoration: none;">Dashboard</a></li>
+    <li style="color: rgb(107 114 128);">/</li>
+    <li style="color: rgb(156 163 175);">Exportar datos</li>
+  </ol>
+</nav>
+{% endblock %}
 <h1>Exportar datos</h1>
 <p style="color: rgb(156 163 175); margin-bottom: 24px;">Descarga CSV de las tablas principales. Los archivos incluyen BOM UTF-8 para compatibilidad con Excel.</p>
 

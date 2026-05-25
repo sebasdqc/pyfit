@@ -1,5 +1,14 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" style="margin-bottom: 20px;">
+  <ol style="display: flex; align-items: center; gap: 8px; list-style: none; padding: 0; margin: 0; font-size: 13px;">
+    <li><a href="{% url 'admin:index' %}" style="color: rgb(79 140 255); text-decoration: none;">Dashboard</a></li>
+    <li style="color: rgb(107 114 128);">/</li>
+    <li style="color: rgb(156 163 175);">Broadcast</li>
+  </ol>
+</nav>
+{% endblock %}
 <h1>Broadcast · Notificaciones masivas</h1>
 <p style="color: rgb(156 163 175); margin-bottom: 24px;">Envía una notificación in-app a un segmento de usuarios. Las notificaciones aparecen en la campana de la app.</p>
 

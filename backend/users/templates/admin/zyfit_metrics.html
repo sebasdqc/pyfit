@@ -41,6 +41,15 @@
 {% endblock %}
 
 {% block content %}
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" style="margin-bottom: 20px;">
+  <ol style="display: flex; align-items: center; gap: 8px; list-style: none; padding: 0; margin: 0; font-size: 13px;">
+    <li><a href="{% url 'admin:index' %}" style="color: rgb(79 140 255); text-decoration: none;">Dashboard</a></li>
+    <li style="color: rgb(107 114 128);">/</li>
+    <li style="color: rgb(156 163 175);">Métricas</li>
+  </ol>
+</nav>
+{% endblock %}
   <h1 style="margin-bottom: 6px;">Métricas Zyfit</h1>
   <p style="color: rgb(156 163 175); margin-bottom: 20px; font-size: 13px;">Datos consultados en vivo · actualiza la página para refrescar</p>
 

@@ -1,0 +1,242 @@
+{% extends 'unfold/index.html' %}
+{% load i18n %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+{% with k=zyfit_kpis t=trends d=dashboard_today %}
+
+<style>
+  /* ── Reset spacing ─────────────────────────────────── */
+  .zd-header { margin-bottom: 28px; }
+  .zd-header h1 { font-size: 22px; font-weight: 700; color: rgb(248 250 252); margin: 0 0 4px; letter-spacing: -0.02em; }
+  .zd-header p  { font-size: 13px; color: rgb(107 114 128); margin: 0; }
+
+  /* ── Alert bar ─────────────────────────────────────── */
+  .zd-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+  .zd-alert  { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+  .zd-alert.ok    { background: rgb(6 78 59 / 0.4);   border: 1px solid rgb(4 120 87);   color: rgb(110 231 183); }
+  .zd-alert.warn  { background: rgb(120 53 15 / 0.4); border: 1px solid rgb(180 83 9);   color: rgb(252 211 77);  }
+  .zd-alert.error { background: rgb(127 29 29 / 0.4); border: 1px solid rgb(185 28 28);  color: rgb(252 165 165); }
+
+  /* ── Pulse (hoy) ────────────────────────────────────── */
+  .zd-pulse { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .zd-pulse-card { background: rgb(17 24 39); border: 1px solid rgb(55 65 81); border-radius: 10px; padding: 14px 16px; }
+  .zd-pulse-card .num  { font-size: 32px; font-weight: 700; color: rgb(248 250 252); line-height: 1; }
+  .zd-pulse-card .lbl  { font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; margin-top: 6px; }
+  .zd-pulse-card .diff { font-size: 12px; margin-top: 4px; font-family: ui-monospace, monospace; }
+  .zd-pulse-card.highlight { border-color: rgb(79 140 255); background: rgb(79 140 255 / 0.07); }
+  .zd-pulse-card.highlight .num { color: rgb(122 182 255); }
+
+  /* ── Two-column layout ──────────────────────────────── */
+  .zd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .zd-cols { grid-template-columns: 1fr; } .zd-pulse { grid-template-columns: 2fr 2fr; } }
+
+  /* ── Panel box ──────────────────────────────────────── */
+  .zd-box { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; overflow: hidden; }
+  .zd-box-header { padding: 12px 16px; background: rgb(17 24 39); border-bottom: 1px solid rgb(55 65 81); font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+  .zd-box-header a { font-size: 12px; color: rgb(79 140 255); text-decoration: none; text-transform: none; letter-spacing: 0; }
+  .zd-box-header a:hover { text-decoration: underline; }
+
+  /* ── Table inside box ───────────────────────────────── */
+  .zd-mini-table { width: 100%; border-collapse: collapse; }
+  .zd-mini-table td { padding: 9px 16px; font-size: 13px; border-bottom: 1px solid rgb(55 65 81); }
+  .zd-mini-table tr:last-child td { border-bottom: none; }
+  .zd-mini-table .muted { color: rgb(107 114 128); font-size: 12px; }
+  .zd-mini-table .mono  { font-family: ui-monospace, monospace; font-size: 12px; color: rgb(156 163 175); }
+
+  /* ── KPI row ────────────────────────────────────────── */
+  .zd-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .zd-kpi { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 10px; padding: 14px 16px; position: relative; }
+  .zd-kpi .num  { font-size: 24px; font-weight: 700; color: rgb(248 250 252); }
+  .zd-kpi .lbl  { font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; margin-top: 4px; }
+  .zd-kpi .trend { position: absolute; top: 12px; right: 14px; font-size: 12px; font-weight: 600; font-family: ui-monospace, monospace; }
+  .trend-up   { color: rgb(52 211 153); }
+  .trend-down { color: rgb(248 113 113); }
+
+  /* ── Quick actions ──────────────────────────────────── */
+  .zd-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+  .zd-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid; transition: opacity 0.15s; }
+  .zd-btn:hover { opacity: 0.8; }
+  .zd-btn.primary   { background: rgb(79 140 255);        color: white;              border-color: rgb(79 140 255); }
+  .zd-btn.secondary { background: transparent;            color: rgb(122 182 255);   border-color: rgb(79 140 255 / 0.4); }
+  .zd-btn.ghost     { background: rgb(31 41 55);          color: rgb(156 163 175);   border-color: rgb(55 65 81); }
+
+  /* ── Pill ───────────────────────────────────────────── */
+  .zd-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .zd-pill.blue   { background: rgb(79 140 255 / 0.15); color: rgb(122 182 255); }
+  .zd-pill.green  { background: rgb(52 211 153 / 0.15); color: rgb(52 211 153); }
+  .zd-pill.yellow { background: rgb(251 191 36 / 0.15); color: rgb(251 191 36); }
+  .zd-pill.red    { background: rgb(248 113 113 / 0.15); color: rgb(248 113 113); }
+</style>
+
+{# ── HEADER ─────────────────────────────────────────────────────────────────── #}
+<div class="zd-header">
+  <h1>Dashboard Zyfit</h1>
+  <p>{% now "l, j N Y · H:i" %} UTC · datos en vivo</p>
+</div>
+
+{# ── ALERTAS ─────────────────────────────────────────────────────────────────── #}
+{% if d.alerts %}
+<div class="zd-alerts">
+  {% for alert in d.alerts %}
+    <div class="zd-alert {{ alert.level }}">
+      <span>{{ alert.icon }}</span>
+      <span>{{ alert.msg }}</span>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── ACCIONES RÁPIDAS ────────────────────────────────────────────────────────── #}
+<div class="zd-actions">
+  <a href="{% url 'zyfit_broadcast' %}" class="zd-btn primary">📣 Broadcast</a>
+  <a href="{% url 'zyfit_metrics' %}"   class="zd-btn secondary">📊 Ver métricas completas</a>
+  <a href="{% url 'zyfit_export_hub' %}" class="zd-btn ghost">⬇ Exportar CSV</a>
+  <a href="{% url 'admin:users_user_changelist' %}" class="zd-btn ghost">👥 Usuarios</a>
+</div>
+
+{# ── PULSO DE HOY ────────────────────────────────────────────────────────────── #}
+<div class="zd-pulse">
+  <div class="zd-pulse-card highlight">
+    <div class="num">{{ d.sessions_today }}</div>
+    <div class="lbl">Sesiones hoy</div>
+    <div class="diff">
+      {% if d.sessions_yesterday > 0 %}
+        {% if d.sessions_today >= d.sessions_yesterday %}
+          <span class="trend-up">▲</span>
+        {% else %}
+          <span class="trend-down">▼</span>
+        {% endif %}
+        vs {{ d.sessions_yesterday }} ayer
+      {% else %}
+        <span class="muted">{{ d.sessions_yesterday }} ayer</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="zd-pulse-card">
+    <div class="num">{{ d.checkins_today }}</div>
+    <div class="lbl">Check-ins hoy</div>
+    <div class="diff" style="color: rgb(107 114 128);">en curso</div>
+  </div>
+  <div class="zd-pulse-card">
+    <div class="num">{{ d.feedback_today }}</div>
+    <div class="lbl">Feedback hoy</div>
+    <div class="diff" style="color: rgb(107 114 128);">post-sesión</div>
+  </div>
+  <div class="zd-pulse-card {% if d.new_users_today > 0 %}highlight{% endif %}">
+    <div class="num">{{ d.new_users_today }}</div>
+    <div class="lbl">Nuevos hoy</div>
+    <div class="diff" style="color: rgb(107 114 128);">registros</div>
+  </div>
+</div>
+
+{# ── KPI SEMANA ──────────────────────────────────────────────────────────────── #}
+<div class="zd-kpi-row">
+  <div class="zd-kpi">
+    <div class="num">{{ k.active_7d }}</div>
+    <div class="lbl">Activos · 7 días</div>
+    {% if t.active_delta is not None %}
+      <span class="trend {% if t.active_delta >= 0 %}trend-up{% else %}trend-down{% endif %}">
+        {% if t.active_delta >= 0 %}▲{% else %}▼{% endif %}{{ t.active_delta|floatformat:0 }}%
+      </span>
+    {% endif %}
+  </div>
+  <div class="zd-kpi">
+    <div class="num">{{ k.sessions_this_week }}</div>
+    <div class="lbl">Sesiones · semana</div>
+    {% if t.sessions_delta is not None %}
+      <span class="trend {% if t.sessions_delta >= 0 %}trend-up{% else %}trend-down{% endif %}">
+        {% if t.sessions_delta >= 0 %}▲{% else %}▼{% endif %}{{ t.sessions_delta|floatformat:0 }}%
+      </span>
+    {% endif %}
+  </div>
+  <div class="zd-kpi">
+    <div class="num">{{ k.total_users }}</div>
+    <div class="lbl">Usuarios totales</div>
+    {% if t.users_delta is not None %}
+      <span class="trend {% if t.users_delta >= 0 %}trend-up{% else %}trend-down{% endif %}">
+        {% if t.users_delta >= 0 %}▲{% else %}▼{% endif %}{{ t.users_delta|floatformat:0 }}%
+      </span>
+    {% endif %}
+  </div>
+</div>
+
+{# ── DOS COLUMNAS: últimas sesiones + top usuarios ──────────────────────────── #}
+<div class="zd-cols">
+
+  {# Últimas sesiones #}
+  <div class="zd-box">
+    <div class="zd-box-header">
+      Últimas sesiones
+      <a href="{% url 'admin:workouts_session_changelist' %}">Ver todas →</a>
+    </div>
+    <table class="zd-mini-table">
+      {% for s in d.recent_sessions %}
+        <tr>
+          <td>
+            <div style="font-size: 13px; color: rgb(229 231 235);">{{ s.user__email }}</div>
+            <div class="muted">{{ s.fecha }} · {{ s.duracion_planificada }} min</div>
+          </td>
+          <td style="text-align: right;">
+            <span class="zd-pill blue">RPE {{ s.rpe_target }}</span>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2" style="color: rgb(107 114 128); text-align: center; padding: 20px;">Sin sesiones aún</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {# Top usuarios semana #}
+  <div class="zd-box">
+    <div class="zd-box-header">
+      Más activos · 7 días
+      <a href="{% url 'admin:users_user_changelist' %}">Ver usuarios →</a>
+    </div>
+    <table class="zd-mini-table">
+      {% for u in d.top_users_week %}
+        <tr>
+          <td style="color: rgb(229 231 235);">{{ u.user__email }}</td>
+          <td style="text-align: right;">
+            <span class="zd-pill green">{{ u.n }} sesión{{ u.n|pluralize:"es" }}</span>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2" style="color: rgb(107 114 128); text-align: center; padding: 20px;">Sin actividad esta semana</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+</div>
+
+{# ── MÉTRICAS DE CALIDAD ─────────────────────────────────────────────────────── #}
+<div class="zd-box" style="margin-bottom: 32px;">
+  <div class="zd-box-header">
+    Calidad del sistema · últimos 7 días
+    <a href="{% url 'zyfit_metrics' %}">Métricas completas →</a>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;">
+    <div style="padding: 16px 20px; border-right: 1px solid rgb(55 65 81);">
+      <div style="font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; margin-bottom: 8px;">Generate success</div>
+      <div style="font-size: 26px; font-weight: 700; color: {% if d.success_rate is None %}rgb(156 163 175){% elif d.success_rate >= 95 %}rgb(52 211 153){% elif d.success_rate >= 80 %}rgb(251 191 36){% else %}rgb(248 113 113){% endif %};">
+        {% if d.success_rate is not None %}{{ d.success_rate|floatformat:0 }}%{% else %}—{% endif %}
+      </div>
+    </div>
+    <div style="padding: 16px 20px; border-right: 1px solid rgb(55 65 81);">
+      <div style="font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; margin-bottom: 8px;">Feedback rate</div>
+      <div style="font-size: 26px; font-weight: 700; color: {% if d.fb_rate is None %}rgb(156 163 175){% elif d.fb_rate >= 50 %}rgb(52 211 153){% elif d.fb_rate >= 30 %}rgb(251 191 36){% else %}rgb(248 113 113){% endif %};">
+        {% if d.fb_rate is not None %}{{ d.fb_rate|floatformat:0 }}%{% else %}—{% endif %}
+      </div>
+    </div>
+    <div style="padding: 16px 20px;">
+      <div style="font-size: 11px; letter-spacing: 1.5px; color: rgb(107 114 128); text-transform: uppercase; margin-bottom: 8px;">Churn risk</div>
+      <div style="font-size: 26px; font-weight: 700; color: {% if d.n_churn == 0 %}rgb(52 211 153){% elif d.n_churn < 5 %}rgb(251 191 36){% else %}rgb(248 113 113){% endif %};">
+        {{ d.n_churn }} usuario{{ d.n_churn|pluralize:"s" }}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endwith %}
+{% endblock %}

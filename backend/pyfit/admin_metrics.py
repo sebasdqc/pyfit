@@ -400,12 +400,115 @@ def _compute_extended() -> dict:
     }
 
 
+# ─── Dashboard de hoy ─────────────────────────────────────────────────────────
+
+def _compute_dashboard_today() -> dict:
+    """Datos de hoy para el dashboard principal del admin.
+
+    Diseñado para respuesta rápida — solo consultas simples y acotadas.
+    """
+    from datetime import date, timedelta as _td
+
+    now       = timezone.now()
+    today     = now.date()
+    yesterday = today - timedelta(days=1)
+    week_ago  = today - timedelta(days=7)
+
+    # Hoy
+    sessions_today   = Session.objects.filter(fecha=today).count()
+    checkins_today   = DailyCheckin.objects.filter(fecha=today).count()
+    new_users_today  = User.objects.filter(date_joined__date=today).count()
+    feedback_today   = SessionFeedback.objects.filter(created_at__date=today).count()
+
+    # Ayer (para comparar)
+    sessions_yesterday = Session.objects.filter(fecha=yesterday).count()
+
+    # Alertas automáticas
+    alerts = []
+
+    # Alerta: tasa de éxito generate baja
+    week_sessions = Session.objects.filter(created_at__date__gte=week_ago).count()
+    week_with_ai  = Session.objects.filter(created_at__date__gte=week_ago, respuesta_ia__isnull=False).count()
+    success_rate  = round(week_with_ai / week_sessions * 100, 1) if week_sessions else None
+    if success_rate is not None and success_rate < 90:
+        alerts.append({
+            'level': 'error',
+            'icon':  '🔴',
+            'msg':   f'Generate success rate baja: {success_rate}% esta semana ({week_sessions} intentos)',
+        })
+
+    # Alerta: feedback rate baja
+    week_with_feedback = Session.objects.filter(created_at__date__gte=week_ago, feedback__isnull=False).count()
+    fb_rate = round(week_with_feedback / week_sessions * 100, 1) if week_sessions else None
+    if fb_rate is not None and fb_rate < 30:
+        alerts.append({
+            'level': 'warn',
+            'icon':  '🟡',
+            'msg':   f'Feedback rate baja: {fb_rate}% — considera enviar un broadcast de recordatorio',
+        })
+
+    # Alerta: usuarios en churn risk
+    churn_count = _churn_risk_users()
+    n_churn = len(churn_count)
+    if n_churn >= 3:
+        alerts.append({
+            'level': 'warn',
+            'icon':  '🟡',
+            'msg':   f'{n_churn} usuarios en riesgo de churn (activos 30d, silenciosos 7+d)',
+        })
+
+    # Alerta: ninguna sesión hoy (si ya son las 18:00+)
+    if sessions_today == 0 and now.hour >= 18:
+        alerts.append({
+            'level': 'warn',
+            'icon':  '🟡',
+            'msg':   'Sin sesiones generadas hoy — ¿hay algún problema con la API de Groq?',
+        })
+
+    if not alerts:
+        alerts.append({
+            'level': 'ok',
+            'icon':  '🟢',
+            'msg':   'Todo bien — sin alertas activas',
+        })
+
+    # Últimas 5 sesiones con usuario
+    recent = list(
+        Session.objects.select_related('user', 'feedback')
+        .order_by('-created_at')[:5]
+        .values('id', 'user__email', 'fecha', 'duracion_planificada', 'rpe_target', 'created_at')
+    )
+
+    # Usuarios más activos esta semana (top 5)
+    top_users = list(
+        Session.objects.filter(fecha__gte=week_ago)
+        .values('user__email')
+        .annotate(n=Count('id'))
+        .order_by('-n')[:5]
+    )
+
+    return {
+        'sessions_today':     sessions_today,
+        'sessions_yesterday': sessions_yesterday,
+        'checkins_today':     checkins_today,
+        'new_users_today':    new_users_today,
+        'feedback_today':     feedback_today,
+        'alerts':             alerts,
+        'recent_sessions':    recent,
+        'top_users_week':     top_users,
+        'success_rate':       success_rate,
+        'fb_rate':            fb_rate,
+        'n_churn':            n_churn,
+    }
+
+
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
 def dashboard_callback(request, context):
     """Pasado a UNFOLD.DASHBOARD_CALLBACK — popula la home del admin con KPIs."""
-    context['zyfit_kpis'] = _compute_kpis()
-    context['trends'] = _compute_trends()
+    context['zyfit_kpis']      = _compute_kpis()
+    context['trends']          = _compute_trends()
+    context['dashboard_today'] = _compute_dashboard_today()
     return context
 
 
