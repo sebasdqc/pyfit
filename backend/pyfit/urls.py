@@ -28,14 +28,21 @@ admin.site.index_title = 'Panel de administración'
 
 from pyfit.admin_metrics import zyfit_metrics_view
 from pyfit.admin_security import otp_verify_view
+from pyfit.admin_export import export_hub_view, export_users_csv, export_sessions_csv, export_feedback_csv
+from pyfit.admin_broadcast import broadcast_view
 
 urlpatterns = [
     path('api/health/', health),
     # Vista de verificación 2FA — debe ir ANTES de admin.site.urls para que
     # el middleware pueda redirigir aquí sin caer en la barrera de OTP.
     path(ADMIN_URL_PATH + 'otp-verify/', otp_verify_view, name='zyfit_otp_verify'),
-    # Métricas también van antes para vivir dentro del prefijo del admin.
-    path(ADMIN_URL_PATH + 'metrics/', zyfit_metrics_view, name='zyfit_metrics'),
+    # Métricas, exportación y broadcast van antes para vivir dentro del prefijo.
+    path(ADMIN_URL_PATH + 'metrics/',           zyfit_metrics_view, name='zyfit_metrics'),
+    path(ADMIN_URL_PATH + 'export/',            export_hub_view,    name='zyfit_export_hub'),
+    path(ADMIN_URL_PATH + 'export/users/',      export_users_csv,   name='zyfit_export_users'),
+    path(ADMIN_URL_PATH + 'export/sessions/',   export_sessions_csv, name='zyfit_export_sessions'),
+    path(ADMIN_URL_PATH + 'export/feedback/',   export_feedback_csv, name='zyfit_export_feedback'),
+    path(ADMIN_URL_PATH + 'broadcast/',         broadcast_view,     name='zyfit_broadcast'),
     path(ADMIN_URL_PATH, admin.site.urls),
 
     # Auth

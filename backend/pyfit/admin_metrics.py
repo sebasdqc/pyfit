@@ -203,6 +203,159 @@ def _system_health() -> dict:
     }
 
 
+# ─── Tendencias semana a semana ──────────────────────────────────────────────
+
+def _compute_trends() -> dict:
+    """Deltas semana actual vs semana anterior para detectar tendencias."""
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    two_weeks_ago = today - timedelta(days=14)
+
+    # Sessions
+    sessions_this_week = Session.objects.filter(fecha__gte=week_ago).count()
+    sessions_prev_week = Session.objects.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
+
+    # New users
+    users_this_week = User.objects.filter(date_joined__date__gte=week_ago).count()
+    users_prev_week = User.objects.filter(date_joined__date__gte=two_weeks_ago, date_joined__date__lt=week_ago).count()
+
+    # Active users
+    active_this = User.objects.filter(
+        Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
+    ).distinct().count()
+    active_prev = User.objects.filter(
+        Q(sessions__fecha__gte=two_weeks_ago, sessions__fecha__lt=week_ago) |
+        Q(checkins__fecha__gte=two_weeks_ago, checkins__fecha__lt=week_ago)
+    ).distinct().count()
+
+    # Checkins
+    checkins_this = DailyCheckin.objects.filter(fecha__gte=week_ago).count()
+    checkins_prev = DailyCheckin.objects.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
+
+    def delta(curr, prev):
+        if prev == 0:
+            return None
+        return round((curr - prev) / prev * 100, 1)
+
+    return {
+        'sessions_delta':  delta(sessions_this_week, sessions_prev_week),
+        'users_delta':     delta(users_this_week, users_prev_week),
+        'active_delta':    delta(active_this, active_prev),
+        'checkins_delta':  delta(checkins_this, checkins_prev),
+        'sessions_curr':   sessions_this_week,
+        'sessions_prev':   sessions_prev_week,
+        'users_curr':      users_this_week,
+        'users_prev':      users_prev_week,
+        'active_curr':     active_this,
+        'active_prev':     active_prev,
+        'checkins_curr':   checkins_this,
+        'checkins_prev':   checkins_prev,
+    }
+
+
+# ─── Churn risk ───────────────────────────────────────────────────────────────
+
+def _churn_risk_users() -> list:
+    """Usuarios que estaban activos (14-30d atrás) pero llevan 7+ días sin actividad.
+
+    Devuelve hasta 20 usuarios en riesgo, ordenados por última actividad (más antiguos primero).
+    """
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+
+    # Previously active: had activity in the 30-day window
+    previously_active = User.objects.filter(
+        Q(sessions__fecha__gte=month_ago) | Q(checkins__fecha__gte=month_ago)
+    ).distinct()
+
+    # Currently silent: no activity in last 7 days
+    recently_active_ids = User.objects.filter(
+        Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
+    ).distinct().values_list('id', flat=True)
+
+    at_risk = previously_active.exclude(id__in=recently_active_ids)
+
+    results = []
+    for user in at_risk.select_related('profile')[:20]:
+        last_session = Session.objects.filter(user=user).order_by('-fecha').first()
+        last_checkin = DailyCheckin.objects.filter(user=user).order_by('-fecha').first()
+
+        last_activity = None
+        if last_session:
+            last_activity = last_session.fecha
+        if last_checkin and (last_activity is None or last_checkin.fecha > last_activity):
+            last_activity = last_checkin.fecha
+
+        days_silent = (today - last_activity).days if last_activity else None
+        nombre = getattr(user, 'profile', None)
+        nombre = nombre.nombre if nombre else user.email.split('@')[0]
+
+        results.append({
+            'email':          user.email,
+            'nombre':         nombre,
+            'last_activity':  last_activity,
+            'days_silent':    days_silent,
+            'total_sessions': Session.objects.filter(user=user).count(),
+        })
+
+    results.sort(key=lambda x: x['days_silent'] or 999, reverse=True)
+    return results
+
+
+# ─── Calidad IA ───────────────────────────────────────────────────────────────
+
+def _ai_quality_metrics() -> dict:
+    """Calidad de las sesiones generadas por IA — últimos 30 días.
+
+    Compara RPE target vs real, distribución de cumplimiento, y rating por objetivo.
+    """
+    cutoff = timezone.now().date() - timedelta(days=30)
+
+    feedbacks = SessionFeedback.objects.filter(
+        created_at__date__gte=cutoff
+    ).select_related('session')
+
+    rpe_diffs = []
+    cumplimientos = []
+    ratings = []
+
+    for fb in feedbacks:
+        if fb.rpe_real is not None and fb.session.rpe_target is not None:
+            rpe_diffs.append(float(fb.rpe_real) - float(fb.session.rpe_target))
+        if fb.cumplimiento is not None:
+            cumplimientos.append(float(fb.cumplimiento))
+        if fb.rating is not None:
+            ratings.append(int(fb.rating))
+
+    def avg(lst):
+        return round(sum(lst) / len(lst), 2) if lst else None
+
+    # Distribution of cumplimiento buckets
+    cum_buckets = {'perfect': 0, 'good': 0, 'partial': 0, 'poor': 0}
+    for c in cumplimientos:
+        if c >= 90:   cum_buckets['perfect'] += 1
+        elif c >= 70: cum_buckets['good']    += 1
+        elif c >= 50: cum_buckets['partial'] += 1
+        else:         cum_buckets['poor']    += 1
+
+    # Rating distribution
+    rating_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for r in ratings:
+        if r in rating_dist:
+            rating_dist[r] += 1
+
+    return {
+        'rpe_bias':          avg(rpe_diffs),   # positive = sessions feel harder than target
+        'cumplimiento_avg':  avg(cumplimientos),
+        'rating_avg':        avg(ratings),
+        'total_feedback':    len(ratings),
+        'cum_buckets':       cum_buckets,
+        'rating_dist':       rating_dist,
+        'rpe_diff_samples':  len(rpe_diffs),
+    }
+
+
 # ─── Datos secundarios ───────────────────────────────────────────────────────
 
 def _compute_extended() -> dict:
@@ -241,6 +394,9 @@ def _compute_extended() -> dict:
         'top_exercises':    top_exercises,
         'nivel_buckets':    nivel_buckets,
         'recent_sessions':  recent_sessions,
+        'trends':           _compute_trends(),
+        'churn_risk':       _churn_risk_users(),
+        'ai_quality':       _ai_quality_metrics(),
     }
 
 
@@ -249,6 +405,7 @@ def _compute_extended() -> dict:
 def dashboard_callback(request, context):
     """Pasado a UNFOLD.DASHBOARD_CALLBACK — popula la home del admin con KPIs."""
     context['zyfit_kpis'] = _compute_kpis()
+    context['trends'] = _compute_trends()
     return context
 
 

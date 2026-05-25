@@ -1,0 +1,70 @@
+{% extends 'admin/base_site.html' %}
+{% block content %}
+<h1>Exportar datos</h1>
+<p style="color: rgb(156 163 175); margin-bottom: 24px;">Descarga CSV de las tablas principales. Los archivos incluyen BOM UTF-8 para compatibilidad con Excel.</p>
+
+<style>
+  .ex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .ex-card { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 20px; }
+  .ex-card h3 { margin: 0 0 8px; font-size: 15px; color: rgb(248 250 252); }
+  .ex-card p { font-size: 12px; color: rgb(156 163 175); margin: 0 0 14px; }
+  .ex-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .ex-form label { font-size: 11px; color: rgb(156 163 175); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .ex-form input[type=date] { background: rgb(17 24 39); border: 1px solid rgb(55 65 81); color: rgb(248 250 252); padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+  .ex-btn { background: rgb(79 140 255); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .ex-btn:hover { background: rgb(99 160 255); }
+</style>
+
+<div class="ex-grid">
+  <!-- Usuarios -->
+  <div class="ex-card">
+    <h3>👥 Usuarios</h3>
+    <p>Incluye perfil completo: objetivo, nivel, racha, puntos, total de sesiones y check-ins.</p>
+    <form class="ex-form" action="{% url 'zyfit_export_users' %}" method="get">
+      <div>
+        <label>Desde</label>
+        <input type="date" name="from" value="{{ default_from }}">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" name="to" value="{{ today }}">
+      </div>
+      <button type="submit" class="ex-btn">⬇ Descargar CSV</button>
+    </form>
+  </div>
+
+  <!-- Sesiones -->
+  <div class="ex-card">
+    <h3>🏋️ Sesiones</h3>
+    <p>Sesiones generadas con RPE target/real, duración, volumen y si recibieron feedback.</p>
+    <form class="ex-form" action="{% url 'zyfit_export_sessions' %}" method="get">
+      <div>
+        <label>Desde</label>
+        <input type="date" name="from" value="{{ default_from }}">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" name="to" value="{{ today }}">
+      </div>
+      <button type="submit" class="ex-btn">⬇ Descargar CSV</button>
+    </form>
+  </div>
+
+  <!-- Feedback -->
+  <div class="ex-card">
+    <h3>📊 Feedback</h3>
+    <p>Feedback post-sesión con diferencial RPE target vs real, cumplimiento y rating.</p>
+    <form class="ex-form" action="{% url 'zyfit_export_feedback' %}" method="get">
+      <div>
+        <label>Desde</label>
+        <input type="date" name="from" value="{{ default_from }}">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" name="to" value="{{ today }}">
+      </div>
+      <button type="submit" class="ex-btn">⬇ Descargar CSV</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

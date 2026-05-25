@@ -4,207 +4,353 @@
 {% block extrastyle %}
   {{ block.super }}
   <style>
-    .zk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
-    .zk-card { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px 20px; }
+    .zk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 16px 0; }
+    .zk-card { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px 20px; position: relative; }
     .zk-card .label { font-size: 11px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; margin-bottom: 8px; }
     .zk-card .value { font-size: 28px; font-weight: 600; color: rgb(248 250 252); line-height: 1.1; }
     .zk-card .sub { font-size: 12px; color: rgb(156 163 175); margin-top: 4px; }
     .zk-card.accent { border-color: rgb(79 140 255); }
     .zk-card.accent .value { color: rgb(122 182 255); }
-    .zk-section-title { font-size: 13px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; margin: 32px 0 12px; }
+    .zk-card.health-good { border-color: rgb(52 211 153); }
+    .zk-card.health-good .value { color: rgb(52 211 153); }
+    .zk-card.health-warn { border-color: rgb(251 191 36); }
+    .zk-card.health-warn .value { color: rgb(251 191 36); }
+    .zk-card.health-bad { border-color: rgb(248 113 113); }
+    .zk-card.health-bad .value { color: rgb(248 113 113); }
+    .zk-trend { position: absolute; top: 14px; right: 16px; font-size: 12px; font-weight: 600; font-family: ui-monospace, monospace; }
+    .zk-trend.up { color: rgb(52 211 153); }
+    .zk-trend.down { color: rgb(248 113 113); }
+    .zk-trend.neutral { color: rgb(156 163 175); }
+    .zk-section-title { font-size: 11px; letter-spacing: 2px; color: rgb(107 114 128); text-transform: uppercase; margin: 32px 0 10px; display: flex; align-items: center; justify-content: space-between; }
+    .zk-section-title a { font-size: 12px; letter-spacing: 0; color: rgb(79 140 255); text-decoration: none; text-transform: none; }
+    .zk-section-title a:hover { text-decoration: underline; }
     .zk-table { width: 100%; border-collapse: collapse; background: rgb(31 41 55); border-radius: 12px; overflow: hidden; }
     .zk-table th, .zk-table td { padding: 10px 14px; text-align: left; font-size: 13px; }
     .zk-table th { background: rgb(17 24 39); color: rgb(156 163 175); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
     .zk-table tr + tr td { border-top: 1px solid rgb(55 65 81); }
-    .zk-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgb(79 140 255 / 0.15); color: rgb(122 182 255); font-size: 11px; font-weight: 500; }
+    .zk-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(79, 140, 255, 0.15); color: rgb(122 182 255); font-size: 11px; font-weight: 500; }
+    .zk-pill.warn { background: rgba(251, 191, 36, 0.15); color: rgb(251 191 36); }
+    .zk-pill.bad { background: rgba(248, 113, 113, 0.15); color: rgb(248 113 113); }
+    .zk-pill.good { background: rgba(52, 211, 153, 0.15); color: rgb(52 211 153); }
+    .zk-action-bar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .zk-action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid; }
+    .zk-action-btn.primary { background: rgb(79 140 255); color: white; border-color: rgb(79 140 255); }
+    .zk-action-btn.secondary { background: transparent; color: rgb(122 182 255); border-color: rgba(79, 140, 255, 0.4); }
+    .zk-action-btn:hover { opacity: 0.85; }
   </style>
 {% endblock %}
 
 {% block content %}
-  <h1>Métricas Zyfit</h1>
-  <p style="color: rgb(156 163 175); margin-bottom: 8px;">Resumen operativo del producto. Datos consultados en vivo.</p>
+  <h1 style="margin-bottom: 6px;">Métricas Zyfit</h1>
+  <p style="color: rgb(156 163 175); margin-bottom: 20px; font-size: 13px;">Datos consultados en vivo · actualiza la página para refrescar</p>
 
-  {% with k=zyfit_kpis %}
-    <div class="zk-section-title">Usuarios</div>
-    <div class="zk-grid">
-      <div class="zk-card accent">
-        <div class="label">Total usuarios</div>
-        <div class="value">{{ k.total_users }}</div>
-        <div class="sub">+{{ k.new_users_week }} esta semana · +{{ k.new_users_month }} este mes</div>
+  <div class="zk-action-bar">
+    <a href="{% url 'zyfit_export_hub' %}" class="zk-action-btn primary">⬇ Exportar CSV</a>
+    <a href="{% url 'zyfit_broadcast' %}" class="zk-action-btn secondary">📣 Broadcast</a>
+  </div>
+
+  {# ── USUARIOS ───────────────────────────────────────────────────────────── #}
+  {% with k=zyfit_kpis t=trends %}
+  <div class="zk-section-title">Usuarios</div>
+  <div class="zk-grid">
+    <div class="zk-card accent">
+      <div class="label">Total usuarios</div>
+      <div class="value">{{ k.total_users }}</div>
+      <div class="sub">+{{ k.new_users_month }} este mes</div>
+      {% if t.users_delta is not None %}
+        <span class="zk-trend {% if t.users_delta >= 0 %}up{% else %}down{% endif %}">
+          {% if t.users_delta >= 0 %}▲{% else %}▼{% endif %} {{ t.users_delta|floatformat:0 }}% vs sem. ant.
+        </span>
+      {% endif %}
+    </div>
+    <div class="zk-card">
+      <div class="label">Activos · 7 días</div>
+      <div class="value">{{ k.active_7d }}</div>
+      <div class="sub">sesión o check-in</div>
+      {% if t.active_delta is not None %}
+        <span class="zk-trend {% if t.active_delta >= 0 %}up{% else %}down{% endif %}">
+          {% if t.active_delta >= 0 %}▲{% else %}▼{% endif %} {{ t.active_delta|floatformat:0 }}%
+        </span>
+      {% endif %}
+    </div>
+    <div class="zk-card">
+      <div class="label">Activos · 30 días</div>
+      <div class="value">{{ k.active_30d }}</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Retención D7</div>
+      <div class="value">
+        {% if retention_d7.pct is not None %}{{ retention_d7.pct|floatformat:0 }}%{% else %}—{% endif %}
       </div>
-      <div class="zk-card">
-        <div class="label">Activos · 7 días</div>
-        <div class="value">{{ k.active_7d }}</div>
-        <div class="sub">sesión o check-in en los últimos 7 días</div>
-      </div>
-      <div class="zk-card">
-        <div class="label">Activos · 30 días</div>
-        <div class="value">{{ k.active_30d }}</div>
-      </div>
-      <div class="zk-card">
-        <div class="label">Retención D7</div>
-        <div class="value">
-          {% if retention_d7.pct is not None %}{{ retention_d7.pct|floatformat:0 }}%{% else %}—{% endif %}
-        </div>
-        <div class="sub">
-          {% if retention_d7.cohort_size %}{{ retention_d7.retained }} de {{ retention_d7.cohort_size }} regresaron{% else %}sin cohorte aún{% endif %}
-        </div>
+      <div class="sub">
+        {% if retention_d7.cohort_size %}{{ retention_d7.retained }}/{{ retention_d7.cohort_size }}{% else %}sin cohorte aún{% endif %}
       </div>
     </div>
+  </div>
 
-    <div class="zk-section-title">Entrenamiento</div>
-    <div class="zk-grid">
-      <div class="zk-card accent">
-        <div class="label">Sesiones hoy</div>
-        <div class="value">{{ k.sessions_today }}</div>
-        <div class="sub">{{ k.sessions_this_week }} esta semana · {{ k.sessions_total }} total</div>
+  {# ── ENTRENAMIENTO ────────────────────────────────────────────────────────── #}
+  <div class="zk-section-title">Entrenamiento</div>
+  <div class="zk-grid">
+    <div class="zk-card accent">
+      <div class="label">Sesiones hoy</div>
+      <div class="value">{{ k.sessions_today }}</div>
+      <div class="sub">{{ k.sessions_total }} total histórico</div>
+      {% if t.sessions_delta is not None %}
+        <span class="zk-trend {% if t.sessions_delta >= 0 %}up{% else %}down{% endif %}">
+          {% if t.sessions_delta >= 0 %}▲{% else %}▼{% endif %} {{ t.sessions_delta|floatformat:0 }}% esta semana
+        </span>
+      {% endif %}
+    </div>
+    <div class="zk-card">
+      <div class="label">Check-ins hoy</div>
+      <div class="value">{{ k.checkins_today }}</div>
+      <div class="sub">{{ k.checkins_this_week }} esta semana</div>
+      {% if t.checkins_delta is not None %}
+        <span class="zk-trend {% if t.checkins_delta >= 0 %}up{% else %}down{% endif %}">
+          {% if t.checkins_delta >= 0 %}▲{% else %}▼{% endif %} {{ t.checkins_delta|floatformat:0 }}%
+        </span>
+      {% endif %}
+    </div>
+    <div class="zk-card">
+      <div class="label">RPE real · 7d</div>
+      <div class="value">
+        {% if k.rpe_real_avg %}{{ k.rpe_real_avg|floatformat:1 }}{% else %}—{% endif %}
       </div>
-      <div class="zk-card">
-        <div class="label">Check-ins hoy</div>
-        <div class="value">{{ k.checkins_today }}</div>
-        <div class="sub">{{ k.checkins_this_week }} esta semana</div>
+      <div class="sub">{{ k.feedback_count_week }} feedback(s)</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Cumplimiento · 7d</div>
+      <div class="value">
+        {% if k.cumplimiento_avg %}{{ k.cumplimiento_avg|floatformat:0 }}%{% else %}—{% endif %}
       </div>
-      <div class="zk-card">
-        <div class="label">RPE real · 7d</div>
-        <div class="value">
-          {% if k.rpe_real_avg %}{{ k.rpe_real_avg|floatformat:1 }}{% else %}—{% endif %}
-        </div>
-        <div class="sub">{{ k.feedback_count_week }} feedback(s)</div>
-      </div>
-      <div class="zk-card">
-        <div class="label">Cumplimiento · 7d</div>
-        <div class="value">
-          {% if k.cumplimiento_avg %}{{ k.cumplimiento_avg|floatformat:0 }}%{% else %}—{% endif %}
-        </div>
-        <div class="sub">
-          {% if k.rating_avg %}Rating {{ k.rating_avg|floatformat:1 }}/5{% endif %}
-        </div>
+      <div class="sub">
+        {% if k.rating_avg %}Rating {{ k.rating_avg|floatformat:1 }}/5{% endif %}
       </div>
     </div>
+  </div>
   {% endwith %}
 
+  {# ── SALUD DEL SISTEMA ────────────────────────────────────────────────────── #}
+  <div class="zk-section-title">Salud del sistema</div>
+  <div class="zk-grid">
+    {% with h=system_health %}
+    <div class="zk-card {% if h.generate_success_rate >= 95 %}health-good{% elif h.generate_success_rate >= 80 %}health-warn{% else %}health-bad{% endif %}">
+      <div class="label">Generate success · 7d</div>
+      <div class="value">
+        {% if h.generate_success_rate is not None %}{{ h.generate_success_rate|floatformat:1 }}%{% else %}—{% endif %}
+      </div>
+      <div class="sub">{{ h.sessions_week_total }} sesiones intentadas</div>
+    </div>
+    <div class="zk-card {% if h.feedback_rate >= 50 %}health-good{% elif h.feedback_rate >= 30 %}health-warn{% else %}health-bad{% endif %}">
+      <div class="label">Feedback rate · 7d</div>
+      <div class="value">
+        {% if h.feedback_rate is not None %}{{ h.feedback_rate|floatformat:1 }}%{% else %}—{% endif %}
+      </div>
+      <div class="sub">% sesiones que recibieron rating</div>
+    </div>
+    <div class="zk-card {% if h.sentry_dsn_configured %}accent{% else %}health-bad{% endif %}">
+      <div class="label">Sentry</div>
+      <div class="value" style="font-size: 18px;">
+        {% if h.sentry_dsn_configured %}✓ Activo{% else %}✗ Sin DSN{% endif %}
+      </div>
+      <div class="sub">{% if not h.sentry_dsn_configured %}Setea SENTRY_DSN en env{% endif %}</div>
+    </div>
+    {% endwith %}
+  </div>
+
+  {# ── CALIDAD IA ────────────────────────────────────────────────────────────── #}
+  {% if ai_quality %}
+  <div class="zk-section-title">Calidad de IA · últimos 30 días</div>
+  <div class="zk-grid">
+    <div class="zk-card {% if ai_quality.rpe_bias is not None %}{% if ai_quality.rpe_bias == 0.0 %}health-good{% else %}health-warn{% endif %}{% endif %}">
+      <div class="label">RPE Bias</div>
+      <div class="value">
+        {% if ai_quality.rpe_bias is not None %}
+          {% if ai_quality.rpe_bias > 0 %}+{% endif %}{{ ai_quality.rpe_bias|floatformat:1 }}
+        {% else %}—{% endif %}
+      </div>
+      <div class="sub">real vs target (0 = perfecto) · {{ ai_quality.rpe_diff_samples }} muestras</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Cumplimiento promedio</div>
+      <div class="value">
+        {% if ai_quality.cumplimiento_avg %}{{ ai_quality.cumplimiento_avg|floatformat:0 }}%{% else %}—{% endif %}
+      </div>
+      <div class="sub">{{ ai_quality.total_feedback }} sesiones con feedback</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Rating promedio</div>
+      <div class="value">
+        {% if ai_quality.rating_avg %}{{ ai_quality.rating_avg|floatformat:1 }}/5{% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if ai_quality.cum_buckets %}
+  <div style="background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px 20px; margin-top: 0;">
+    <div style="font-size: 11px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; margin-bottom: 14px;">Distribución de cumplimiento</div>
+    {% with b=ai_quality.cum_buckets %}
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+      <div>
+        <div style="font-size: 12px; color: rgb(52 211 153); margin-bottom: 4px;">≥90% · Perfecto</div>
+        <div style="font-size: 20px; font-weight: 600; color: rgb(248 250 252);">{{ b.perfect }}</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: rgb(122 182 255); margin-bottom: 4px;">70–89% · Bueno</div>
+        <div style="font-size: 20px; font-weight: 600; color: rgb(248 250 252);">{{ b.good }}</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: rgb(251 191 36); margin-bottom: 4px;">50–69% · Parcial</div>
+        <div style="font-size: 20px; font-weight: 600; color: rgb(248 250 252);">{{ b.partial }}</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: rgb(248 113 113); margin-bottom: 4px;">&lt;50% · Bajo</div>
+        <div style="font-size: 20px; font-weight: 600; color: rgb(248 250 252);">{{ b.poor }}</div>
+      </div>
+    </div>
+    {% endwith %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {# ── CHURN RISK ────────────────────────────────────────────────────────────── #}
+  {% if churn_risk %}
+  <div class="zk-section-title">
+    Usuarios en riesgo de churn
+    <span style="font-size: 12px; color: rgb(248 113 113); text-transform: none;">Activos 30d, silencio 7+d</span>
+  </div>
+  <table class="zk-table">
+    <thead>
+      <tr>
+        <th>Usuario</th>
+        <th>Nombre</th>
+        <th>Días sin actividad</th>
+        <th>Sesiones totales</th>
+        <th>Última actividad</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in churn_risk %}
+        <tr>
+          <td style="font-family: ui-monospace, monospace; font-size: 12px;">{{ u.email }}</td>
+          <td>{{ u.nombre }}</td>
+          <td>
+            <span class="zk-pill {% if u.days_silent >= 14 %}bad{% elif u.days_silent >= 10 %}warn{% endif %}">
+              {{ u.days_silent }}d
+            </span>
+          </td>
+          <td>{{ u.total_sessions }}</td>
+          <td style="font-family: ui-monospace, monospace; font-size: 12px; color: rgb(156 163 175);">{{ u.last_activity }}</td>
+          <td>
+            <a href="{% url 'zyfit_broadcast' %}" class="zk-pill" style="text-decoration: none;">📣 notificar</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="text-align:center; color: rgb(156 163 175);">¡Sin usuarios en riesgo! 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {# ── EMBUDO ONBOARDING ──────────────────────────────────────────────────── #}
   <div class="zk-section-title">Embudo de onboarding</div>
   <div style="background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 16px 18px;">
     {% for stage in funnel %}
       <div style="margin-bottom: {% if not forloop.last %}12px{% else %}0{% endif %};">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-          <span style="font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: rgb(229 231 235);">{{ stage.label }}</span>
+          <span style="font-size: 13px; color: rgb(229 231 235);">{{ stage.label }}</span>
           <span style="font-family: ui-monospace, monospace; font-size: 12px; color: rgb(156 163 175);">
             <strong style="color: rgb(248 250 252); font-size: 14px;">{{ stage.value }}</strong> · {{ stage.pct }}%
           </span>
         </div>
         <div style="height: 6px; background: rgb(17 24 39); border-radius: 3px; overflow: hidden;">
-          <div style="height: 100%; width: {{ stage.pct }}%; background: rgb(79 140 255); border-radius: 3px; transition: width 200ms;"></div>
+          <div style="height: 100%; width: {{ stage.pct }}%; background: rgb(79 140 255); border-radius: 3px;"></div>
         </div>
       </div>
     {% endfor %}
   </div>
 
+  {# ── RETENCIÓN ──────────────────────────────────────────────────────────── #}
   <div class="zk-section-title">Retención por cohorte</div>
   <div class="zk-grid">
     <div class="zk-card">
-      <div class="label">D1 · 1 día después</div>
+      <div class="label">D1</div>
       <div class="value">{% if retention_d1.pct is not None %}{{ retention_d1.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
-      <div class="sub">
-        {% if retention_d1.cohort_size %}{{ retention_d1.retained }}/{{ retention_d1.cohort_size }}{% else %}sin cohorte{% endif %}
-      </div>
+      <div class="sub">{% if retention_d1.cohort_size %}{{ retention_d1.retained }}/{{ retention_d1.cohort_size }}{% else %}sin cohorte{% endif %}</div>
     </div>
     <div class="zk-card">
-      <div class="label">D7 · 7 días después</div>
+      <div class="label">D7</div>
       <div class="value">{% if retention_d7.pct is not None %}{{ retention_d7.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
-      <div class="sub">
-        {% if retention_d7.cohort_size %}{{ retention_d7.retained }}/{{ retention_d7.cohort_size }}{% else %}sin cohorte{% endif %}
-      </div>
+      <div class="sub">{% if retention_d7.cohort_size %}{{ retention_d7.retained }}/{{ retention_d7.cohort_size }}{% else %}sin cohorte{% endif %}</div>
     </div>
     <div class="zk-card">
-      <div class="label">D30 · 30 días después</div>
+      <div class="label">D30</div>
       <div class="value">{% if retention_d30.pct is not None %}{{ retention_d30.pct|floatformat:0 }}%{% else %}—{% endif %}</div>
-      <div class="sub">
-        {% if retention_d30.cohort_size %}{{ retention_d30.retained }}/{{ retention_d30.cohort_size }}{% else %}sin cohorte{% endif %}
-      </div>
+      <div class="sub">{% if retention_d30.cohort_size %}{{ retention_d30.retained }}/{{ retention_d30.cohort_size }}{% else %}sin cohorte{% endif %}</div>
     </div>
   </div>
 
-  <div class="zk-section-title">Distribución horaria de sesiones · últimos 30 días</div>
+  {# ── DISTRIBUCIÓN HORARIA ──────────────────────────────────────────────── #}
+  <div class="zk-section-title">Sesiones por hora · últimos 30 días</div>
   <div style="background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 18px;">
-    <div style="display: flex; align-items: flex-end; gap: 4px; height: 140px;">
+    <div style="display: flex; align-items: flex-end; gap: 3px; height: 120px;">
       {% for h in hourly %}
         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%;">
           <div title="{{ h.count }} sesiones a las {{ h.hour }}:00"
-               style="width: 100%; height: {{ h.pct }}%; min-height: 2px; background: rgb(79 140 255); border-radius: 3px 3px 0 0; opacity: {% if h.count %}1{% else %}0.15{% endif %};"></div>
+               style="width: 100%; height: {{ h.pct }}%; min-height: {% if h.count %}3{% else %}2{% endif %}px; background: {% if h.pct >= 70 %}rgb(122 182 255){% elif h.pct >= 30 %}rgb(79 140 255){% else %}rgb(37 99 235){% endif %}; border-radius: 3px 3px 0 0; opacity: {% if h.count %}1{% else %}0.15{% endif %};"></div>
         </div>
       {% endfor %}
     </div>
-    <div style="display: flex; gap: 4px; margin-top: 6px;">
+    <div style="display: flex; gap: 3px; margin-top: 6px;">
       {% for h in hourly %}
         <div style="flex: 1; text-align: center; font-family: ui-monospace, monospace; font-size: 9px; color: rgb(107 114 128);">
-          {% if h.hour|divisibleby:3 %}{{ h.hour }}{% endif %}
+          {% if h.hour|divisibleby:4 %}{{ h.hour }}{% endif %}
         </div>
       {% endfor %}
     </div>
   </div>
 
-  <div class="zk-section-title">Salud del sistema</div>
-  <div class="zk-grid">
-    <div class="zk-card">
-      <div class="label">Generate success · 7d</div>
-      <div class="value">
-        {% if system_health.generate_success_rate is not None %}{{ system_health.generate_success_rate|floatformat:1 }}%{% else %}—{% endif %}
-      </div>
-      <div class="sub">{{ system_health.sessions_week_total }} sesiones intentadas</div>
-    </div>
-    <div class="zk-card">
-      <div class="label">Feedback rate · 7d</div>
-      <div class="value">
-        {% if system_health.feedback_rate is not None %}{{ system_health.feedback_rate|floatformat:1 }}%{% else %}—{% endif %}
-      </div>
-      <div class="sub">% de sesiones que recibieron rating</div>
-    </div>
-    <div class="zk-card {% if system_health.sentry_dsn_configured %}accent{% endif %}">
-      <div class="label">Sentry</div>
-      <div class="value" style="font-size: 18px;">
-        {% if system_health.sentry_dsn_configured %}✓ Activo{% else %}✗ Sin DSN{% endif %}
-      </div>
-      <div class="sub">{% if system_health.sentry_dsn_configured %}Errores capturándose en producción{% else %}Setea SENTRY_DSN en env{% endif %}</div>
-    </div>
-  </div>
-
+  {# ── NIVELES ────────────────────────────────────────────────────────────── #}
   <div class="zk-section-title">Distribución de niveles</div>
   <div class="zk-grid">
-    <div class="zk-card"><div class="label">Rookie · 0–4 sesiones</div><div class="value">{{ nivel_buckets.rookie }}</div></div>
+    <div class="zk-card"><div class="label">Rookie · 0–4</div><div class="value">{{ nivel_buckets.rookie }}</div></div>
     <div class="zk-card"><div class="label">Atleta · 5–14</div><div class="value">{{ nivel_buckets.atleta }}</div></div>
     <div class="zk-card"><div class="label">Élite · 15–29</div><div class="value">{{ nivel_buckets.elite }}</div></div>
     <div class="zk-card accent"><div class="label">Leyenda · 30+</div><div class="value">{{ nivel_buckets.leyenda }}</div></div>
   </div>
 
+  {# ── TOP EJERCICIOS ─────────────────────────────────────────────────────── #}
   <div class="zk-section-title">Top ejercicios</div>
   <table class="zk-table">
-    <thead><tr><th>Ejercicio</th><th>Usuarios</th><th>Veces realizado (avg)</th></tr></thead>
+    <thead><tr><th>#</th><th>Ejercicio</th><th>Usuarios</th><th>Veces (avg)</th></tr></thead>
     <tbody>
       {% for row in top_exercises %}
         <tr>
+          <td style="color: rgb(107 114 128); font-family: ui-monospace, monospace; font-size: 12px;">{{ forloop.counter }}</td>
           <td>{{ row.exercise_nombre }}</td>
-          <td>{{ row.total }}</td>
-          <td>{{ row.veces|floatformat:1 }}</td>
+          <td><span class="zk-pill">{{ row.total }}</span></td>
+          <td style="font-family: ui-monospace, monospace; font-size: 12px; color: rgb(156 163 175);">{{ row.veces|floatformat:1 }}×</td>
         </tr>
       {% empty %}
-        <tr><td colspan="3" style="text-align:center; color: rgb(156 163 175);">Sin datos aún.</td></tr>
+        <tr><td colspan="4" style="text-align:center; color: rgb(156 163 175);">Sin datos aún.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
+  {# ── SESIONES RECIENTES ─────────────────────────────────────────────────── #}
   <div class="zk-section-title">Sesiones recientes</div>
-  <table class="zk-table">
+  <table class="zk-table" style="margin-bottom: 40px;">
     <thead><tr><th>ID</th><th>Usuario</th><th>Fecha</th><th>RPE target</th><th>Duración</th><th>Creada</th></tr></thead>
     <tbody>
       {% for s in recent_sessions %}
         <tr>
-          <td>#{{ s.id }}</td>
-          <td>{{ s.user__email }}</td>
+          <td style="font-family: ui-monospace, monospace; color: rgb(107 114 128);">#{{ s.id }}</td>
+          <td style="font-size: 12px;">{{ s.user__email }}</td>
           <td>{{ s.fecha }}</td>
           <td><span class="zk-pill">{{ s.rpe_target }}</span></td>
-          <td>{{ s.duracion_planificada }} min</td>
-          <td>{{ s.created_at|date:"d M H:i" }}</td>
+          <td style="color: rgb(156 163 175);">{{ s.duracion_planificada }} min</td>
+          <td style="font-family: ui-monospace, monospace; font-size: 11px; color: rgb(107 114 128);">{{ s.created_at|date:"d M H:i" }}</td>
         </tr>
       {% empty %}
         <tr><td colspan="6" style="text-align:center; color: rgb(156 163 175);">Sin sesiones aún.</td></tr>

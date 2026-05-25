@@ -1,0 +1,73 @@
+{% extends 'admin/base_site.html' %}
+{% block content %}
+<h1>Broadcast · Notificaciones masivas</h1>
+<p style="color: rgb(156 163 175); margin-bottom: 24px;">Envía una notificación in-app a un segmento de usuarios. Las notificaciones aparecen en la campana de la app.</p>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div style="background: {% if msg.tags == 'error' %}rgb(127 29 29){% else %}rgb(6 78 59){% endif %}; border: 1px solid {% if msg.tags == 'error' %}rgb(185 28 28){% else %}rgb(4 120 87){% endif %}; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: rgb(248 250 252); font-size: 14px;">
+      {{ msg }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<style>
+  .bc-form { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 12px; padding: 24px; max-width: 640px; }
+  .bc-label { font-size: 11px; letter-spacing: 1.5px; color: rgb(156 163 175); text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .bc-field { margin-bottom: 20px; }
+  .bc-select, .bc-textarea { width: 100%; background: rgb(17 24 39); border: 1px solid rgb(55 65 81); color: rgb(248 250 252); padding: 10px 12px; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+  .bc-select:focus, .bc-textarea:focus { outline: none; border-color: rgb(79 140 255); }
+  .bc-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+  .bc-segment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .bc-segment-option { background: rgb(17 24 39); border: 1px solid rgb(55 65 81); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+  .bc-segment-option input { display: none; }
+  .bc-segment-option:has(input:checked) { border-color: rgb(79 140 255); background: rgba(79, 140, 255, 0.1); }
+  .bc-segment-label { font-size: 13px; color: rgb(229 231 235); display: block; }
+  .bc-segment-count { font-size: 11px; color: rgb(156 163 175); font-family: ui-monospace, monospace; }
+  .bc-btn { background: rgb(79 140 255); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .bc-btn:hover { background: rgb(99 160 255); }
+  .bc-type-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bc-type-opt { background: rgb(17 24 39); border: 1px solid rgb(55 65 81); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  .bc-type-opt input { display: none; }
+  .bc-type-opt:has(input:checked) { border-color: rgb(79 140 255); background: rgba(79, 140, 255, 0.1); color: rgb(122 182 255); }
+</style>
+
+<form class="bc-form" method="post">
+  {% csrf_token %}
+
+  <div class="bc-field">
+    <label class="bc-label">Segmento de usuarios</label>
+    <div class="bc-segment-grid">
+      {% for key, label in segments.items %}
+        <label class="bc-segment-option">
+          <input type="radio" name="segment" value="{{ key }}" {% if key == 'active_7d' %}checked{% endif %}>
+          <span class="bc-segment-label">{{ label }}</span>
+          <span class="bc-segment-count">
+            {% for k, v in segment_counts.items %}{% if k == key %}{{ v }} usuarios{% endif %}{% endfor %}
+          </span>
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="bc-field">
+    <label class="bc-label">Tipo de notificación</label>
+    <div class="bc-type-grid">
+      {% for value, display in notification_types %}
+        <label class="bc-type-opt">
+          <input type="radio" name="tipo" value="{{ value }}" {% if value == 'insight' %}checked{% endif %}>
+          {{ display }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="bc-field">
+    <label class="bc-label">Mensaje</label>
+    <textarea name="texto" class="bc-textarea" placeholder="Ej: ¡Lleva 3 días sin entrenar! Hoy es un buen día para retomar la racha 💪" maxlength="280" required></textarea>
+    <div style="font-size: 11px; color: rgb(107 114 128); margin-top: 4px;">Máximo 280 caracteres · aparece en la campana de la app</div>
+  </div>
+
+  <button type="submit" class="bc-btn" onclick="return confirm('¿Enviar esta notificación?')">📣 Enviar notificación</button>
+</form>
+{% endblock %}

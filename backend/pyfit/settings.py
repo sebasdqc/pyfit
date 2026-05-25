@@ -316,8 +316,10 @@ UNFOLD = {
                 'title':     'Operación',
                 'separator': True,
                 'items': [
-                    {'title': 'Dashboard', 'icon': 'dashboard',  'link': reverse_lazy('admin:index')},
-                    {'title': 'Métricas',  'icon': 'monitoring', 'link': reverse_lazy('zyfit_metrics')},
+                    {'title': 'Dashboard',   'icon': 'dashboard',      'link': reverse_lazy('admin:index')},
+                    {'title': 'Métricas',    'icon': 'monitoring',     'link': reverse_lazy('zyfit_metrics')},
+                    {'title': 'Exportar',    'icon': 'download',       'link': reverse_lazy('zyfit_export_hub')},
+                    {'title': 'Broadcast',   'icon': 'campaign',       'link': reverse_lazy('zyfit_broadcast')},
                 ],
             },
             {

@@ -1,4 +1,8 @@
-from django.contrib import admin
+import csv
+
+from django.contrib import admin, messages
+from django.http import HttpResponse
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import RangeDateFilter
 
@@ -9,6 +13,45 @@ from .models import (
     ExerciseMuscle, ExerciseEquipment, ExerciseContraindication, ExerciseRelationship,
 )
 
+
+# ─── Bulk action helpers ──────────────────────────────────────────────────────
+
+def export_sessions_csv_action(modeladmin, request, queryset):
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="sesiones_seleccion.csv"'
+    response.write('﻿')  # UTF-8 BOM for Excel
+    writer = csv.writer(response)
+    writer.writerow(['id', 'usuario', 'fecha', 'duracion_planificada', 'rpe_target', 'volumen_relativo', 'tiene_feedback', 'created_at'])
+    for s in queryset.select_related('user'):
+        writer.writerow([
+            s.id, s.user.email, s.fecha,
+            s.duracion_planificada, s.rpe_target, s.volumen_relativo,
+            hasattr(s, 'feedback'),
+            s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
+        ])
+    return response
+export_sessions_csv_action.short_description = '⬇ Exportar selección como CSV'
+
+
+def export_feedback_csv_action(modeladmin, request, queryset):
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="feedback_seleccion.csv"'
+    response.write('﻿')  # UTF-8 BOM for Excel
+    writer = csv.writer(response)
+    writer.writerow(['feedback_id', 'session_id', 'usuario', 'fecha_sesion', 'rpe_target', 'rpe_real', 'rpe_diff', 'cumplimiento', 'rating'])
+    for fb in queryset.select_related('session', 'session__user'):
+        s = fb.session
+        rpe_diff = round(float(fb.rpe_real) - float(s.rpe_target), 1) if fb.rpe_real and s.rpe_target else ''
+        writer.writerow([
+            fb.id, s.id, s.user.email, s.fecha,
+            s.rpe_target, fb.rpe_real, rpe_diff,
+            fb.cumplimiento, fb.rating,
+        ])
+    return response
+export_feedback_csv_action.short_description = '⬇ Exportar feedback como CSV'
+
+
+# ─── Inlines ──────────────────────────────────────────────────────────────────
 
 class SessionExerciseInline(TabularInline):
     model = SessionExercise
@@ -21,9 +64,11 @@ class SessionFeedbackInline(StackedInline):
     extra = 0
 
 
+# ─── Admin classes ────────────────────────────────────────────────────────────
+
 @admin.register(Session)
 class SessionAdmin(ModelAdmin):
-    list_display   = ['user', 'fecha', 'duracion_planificada', 'rpe_target',
+    list_display   = ['user', 'fecha', 'duracion_planificada', 'rpe_display',
                       'volumen_relativo', 'has_feedback', 'inicio_real', 'created_at']
     list_filter    = ['volumen_relativo', ('fecha', RangeDateFilter), ('created_at', RangeDateFilter)]
     search_fields  = ['user__email']
@@ -31,23 +76,45 @@ class SessionAdmin(ModelAdmin):
                        'decisiones', 'evidencia', 'logro', 'sustituciones']
     inlines        = [SessionFeedbackInline, SessionExerciseInline]
     date_hierarchy = 'fecha'
+    actions        = [export_sessions_csv_action]
 
     @admin.display(boolean=True, description='Feedback')
     def has_feedback(self, obj):
         return hasattr(obj, 'feedback')
 
+    @admin.display(description='RPE target', ordering='rpe_target')
+    def rpe_display(self, obj):
+        if obj.rpe_target is None:
+            return format_html('<span style="color:#6b7280;">—</span>')
+        val = float(obj.rpe_target)
+        color = '#34d399' if val <= 6 else '#fbbf24' if val <= 8 else '#f87171'
+        return format_html('<span style="color:{};font-family:ui-monospace,monospace;font-weight:600;">{}</span>', color, obj.rpe_target)
+
 
 @admin.register(SessionFeedback)
 class SessionFeedbackAdmin(ModelAdmin):
-    list_display   = ['session', 'session_user', 'rpe_real', 'cumplimiento', 'rating', 'created_at']
+    list_display   = ['session', 'session_user', 'rpe_real', 'rpe_diff', 'cumplimiento', 'rating', 'created_at']
     list_filter    = ['rating', ('created_at', RangeDateFilter)]
     search_fields  = ['session__user__email']
     readonly_fields = ['created_at']
     date_hierarchy = 'created_at'
+    actions        = [export_feedback_csv_action]
 
     @admin.display(description='Usuario', ordering='session__user__email')
     def session_user(self, obj):
         return obj.session.user.email if obj.session and obj.session.user_id else ''
+
+    @admin.display(description='RPE diff', ordering='rpe_real')
+    def rpe_diff(self, obj):
+        if obj.rpe_real is None or obj.session.rpe_target is None:
+            return '—'
+        diff = float(obj.rpe_real) - float(obj.session.rpe_target)
+        color = '#34d399' if abs(diff) <= 1 else '#fbbf24' if abs(diff) <= 2 else '#f87171'
+        sign = '+' if diff > 0 else ''
+        return format_html(
+            '<span style="color:{};font-family:ui-monospace,monospace;font-weight:600;">{}{}</span>',
+            color, sign, round(diff, 1)
+        )
 
 
 @admin.register(Exercise)
