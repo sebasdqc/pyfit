@@ -6,10 +6,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
   StyleProp,
   ViewStyle,
 } from 'react-native'
+
+// Habilitar LayoutAnimation en Android
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true)
+}
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
@@ -555,7 +562,7 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
   )
 }
 
-// ─── Tu Semana Card (Zone 3 → moves to Zone 1.5) ──────────────────────────────
+// ─── Tu Semana Card (Zone 1.5) ────────────────────────────────────────────────
 
 function TuSemanaCard({
   semanaDetalle,
@@ -566,13 +573,8 @@ function TuSemanaCard({
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
-  const [weekOffset, setWeekOffset]   = useState(0)
-  const [sessions,   setSessions]     = useState<FullSession[]>([])
+  const [sessions,     setSessions]     = useState<FullSession[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [isOpen,     setIsOpen]       = useState(false)
-
-  const panelAnim    = useRef(new Animated.Value(0)).current
-  const panelOpacity = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     apiGet('/api/sessions/')
@@ -580,10 +582,9 @@ function TuSemanaCard({
       .catch(() => {})
   }, [])
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
-  const monday    = useMemo(() => getWeekMonday(weekOffset), [weekOffset])
-  const weekDates = useMemo(() => getWeekDates(monday),   [monday])
-  const weekRange = useMemo(() => formatWeekRange(monday), [monday])
+  const today     = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const monday    = useMemo(() => getWeekMonday(0), [])
+  const weekDates = useMemo(() => getWeekDates(monday), [monday])
 
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, FullSession[]>()
@@ -594,88 +595,24 @@ function TuSemanaCard({
     return map
   }, [sessions])
 
-  const panelMaxHeight = useMemo(
-    () => panelAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 360] }),
-    [panelAnim],
-  )
-
-  function openPanel(date: string) {
-    setSelectedDate(date)
-    setIsOpen(true)
-    Animated.parallel([
-      Animated.timing(panelAnim,    { toValue: 1, duration: 240, useNativeDriver: false }),
-      Animated.timing(panelOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start()
-  }
-
-  function closePanel() {
-    setIsOpen(false)
-    Animated.parallel([
-      Animated.timing(panelAnim,    { toValue: 0, duration: 180, useNativeDriver: false }),
-      Animated.timing(panelOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
-    ]).start(() => setSelectedDate(null))
-  }
-
   function handleDayPress(iso: string, state: DayState) {
     if (state !== 'past-done') return
-    if (iso === selectedDate) {
-      closePanel()
-    } else if (isOpen) {
-      setSelectedDate(iso) // switch day — panel stays open
-    } else {
-      openPanel(iso)
-    }
-  }
-
-  function handleWeekNav(dir: -1 | 1) {
-    const next = weekOffset + dir
-    if (next > 0 || next < -8) return
-    setWeekOffset(next)
-    if (isOpen) {
-      setIsOpen(false)
-      panelAnim.setValue(0)
-      panelOpacity.setValue(0)
-      setSelectedDate(null)
-    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    setSelectedDate(prev => (prev === iso ? null : iso))
   }
 
   const detailSessions = selectedDate ? (sessionsByDate.get(selectedDate) ?? []) : []
 
   return (
     <View style={styles.semCard}>
-      {/* ── Encabezado ── */}
-      <View style={styles.semHeaderRow}>
-        <Text style={styles.semLabel}>TU SEMANA</Text>
-        <View style={styles.semNavRow}>
-          {/* ← */}
-          <TouchableOpacity
-            style={[styles.semNavBtn, weekOffset <= -8 && styles.semNavBtnDisabled]}
-            onPress={() => handleWeekNav(-1)}
-            disabled={weekOffset <= -8}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.semNavArrow, weekOffset <= -8 && { opacity: 0.3 }]}>‹</Text>
-          </TouchableOpacity>
+      {/* Label */}
+      <Text style={styles.semLabel}>TU SEMANA</Text>
 
-          <Text style={styles.semNavRange}>{weekRange}</Text>
-
-          {/* → */}
-          <TouchableOpacity
-            style={[styles.semNavBtn, weekOffset >= 0 && styles.semNavBtnDisabled]}
-            onPress={() => handleWeekNav(1)}
-            disabled={weekOffset >= 0}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.semNavArrow, weekOffset >= 0 && { opacity: 0.3 }]}>›</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── Grid de días ── */}
-      <View style={styles.semDaysRow}>
+      {/* Grid de días */}
+      <View style={[styles.semDaysRow, { marginTop: 14 }]}>
         {weekDates.map((iso, idx) => {
-          const state    = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
-          const count    = sessionsByDate.get(iso)?.length ?? 0
+          const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, 0)
+          const count      = sessionsByDate.get(iso)?.length ?? 0
           const isSelected = selectedDate === iso
 
           return (
@@ -686,12 +623,10 @@ function TuSemanaCard({
               disabled={state !== 'past-done'}
               activeOpacity={0.75}
             >
-              {/* Letra día */}
               <Text style={[styles.semDayLetter, iso === today && { color: colors.accent }]}>
                 {DAY_LETTERS[idx]}
               </Text>
 
-              {/* Círculo + badge */}
               <View style={{ position: 'relative' }}>
                 <DayCircle state={state} isSelected={isSelected} colors={colors} />
                 {state === 'past-done' && count >= 2 && (
@@ -701,7 +636,6 @@ function TuSemanaCard({
                 )}
               </View>
 
-              {/* Etiqueta inferior */}
               <Text style={[styles.semDayLabel, iso === today && { color: colors.inkSecondary }]}>
                 {iso === today ? 'Hoy' : ' '}
               </Text>
@@ -710,18 +644,18 @@ function TuSemanaCard({
         })}
       </View>
 
-      {/* ── Panel de detalle (animado) ── */}
-      <Animated.View style={[styles.semDetailWrap, { maxHeight: panelMaxHeight, opacity: panelOpacity }]}>
-        <View style={styles.semDivider} />
-        {selectedDate && (
+      {/* Panel de detalle — visible solo cuando hay un día seleccionado */}
+      {selectedDate !== null && (
+        <View style={styles.semDetailWrap}>
+          <View style={styles.semDivider} />
           <View style={styles.semDetailContent}>
             <Text style={styles.semDetailDate}>{formatDetailDate(selectedDate)}</Text>
             {detailSessions.map(s => (
               <SessionRow key={s.id} session={s} colors={colors} />
             ))}
           </View>
-        )}
-      </Animated.View>
+        </View>
+      )}
     </View>
   )
 }
@@ -966,15 +900,8 @@ export default function DashboardScreen() {
         {/* ── ZONA 1.5 — Tu Semana ── */}
         {loading ? (
           <View style={[styles.semCard, { opacity: 0.5 }]}>
-            <View style={styles.semHeaderRow}>
-              <Skeleton width={70} height={9} borderRadius={4} />
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                <Skeleton width={26} height={26} borderRadius={6} />
-                <Skeleton width={70} height={10} borderRadius={4} />
-                <Skeleton width={26} height={26} borderRadius={6} />
-              </View>
-            </View>
-            <View style={styles.semDaysRow}>
+            <Skeleton width={70} height={9} borderRadius={4} />
+            <View style={[styles.semDaysRow, { marginTop: 14 }]}>
               {[0,1,2,3,4,5,6].map(i => (
                 <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
                   <Skeleton width={12} height={9} borderRadius={3} />
@@ -1225,50 +1152,12 @@ function makeStyles(c: Colors) {
       marginBottom: 20,
       overflow: 'hidden',
     },
-    semHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
-    },
     semLabel: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 2,
       textTransform: 'uppercase',
-    },
-    semNavRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    semNavBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    semNavBtnDisabled: {
-      opacity: 0.38,
-    },
-    semNavArrow: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
-      color: c.inkSecondary,
-      lineHeight: 20,
-    },
-    semNavRange: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkSecondary,
-      letterSpacing: 0.2,
-      minWidth: 80,
-      textAlign: 'center',
     },
     semDaysRow: {
       flexDirection: 'row',
