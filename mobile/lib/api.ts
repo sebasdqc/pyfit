@@ -15,22 +15,32 @@ async function getHeaders(includeAuth = true): Promise<Record<string, string>> {
   return headers
 }
 
+// Singleton promise: si varias requests reciben 401 simultáneamente, todas
+// esperan el MISMO refresh en lugar de intentar cada una el suyo (race condition).
+let _refreshPromise: Promise<boolean> | null = null
+
 async function tryRefresh(): Promise<boolean> {
-  const refresh = await getRefreshToken()
-  if (!refresh) return false
-  try {
-    const res = await fetch(`${BASE_URL}/api/auth/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh }),
-    })
-    if (!res.ok) return false
-    const data = await res.json()
-    await saveTokens(data.access, data.refresh || refresh)
-    return true
-  } catch {
-    return false
-  }
+  if (_refreshPromise) return _refreshPromise
+  _refreshPromise = (async () => {
+    const refresh = await getRefreshToken()
+    if (!refresh) return false
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      })
+      if (!res.ok) return false
+      const data = await res.json()
+      await saveTokens(data.access, data.refresh || refresh)
+      return true
+    } catch {
+      return false
+    } finally {
+      _refreshPromise = null
+    }
+  })()
+  return _refreshPromise
 }
 
 // Per-request timeout (ms). Generation can take ~10s on Groq slow days; keep

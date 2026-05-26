@@ -25,10 +25,9 @@ export function initSentry() {
   }
   Sentry.init({
     dsn,
-    debug:                  __DEV__,
-    enableInExpoDevelopment: true,
-    environment:            process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT
-                            || (__DEV__ ? 'development' : 'production'),
+    debug:       __DEV__,
+    environment: process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT
+                 || (__DEV__ ? 'development' : 'production'),
     release:                process.env.EXPO_PUBLIC_SENTRY_RELEASE || undefined,
     // 100% en dev (para iterar), 10% en prod para no agotar el plan free.
     tracesSampleRate:       __DEV__ ? 1.0 : 0.1,
@@ -48,8 +47,10 @@ export function initSentry() {
 }
 
 /** Wrapper opcional para el componente raíz — añade un ErrorBoundary global. */
-export function withSentryWrap<P>(Component: React.ComponentType<P>): React.ComponentType<P> {
-  return Sentry.wrap(Component) as React.ComponentType<P>
+export function withSentryWrap<P extends Record<string, unknown>>(
+  Component: React.ComponentType<P>,
+): React.ComponentType<P> {
+  return Sentry.wrap(Component)
 }
 
 /** Helpers expuestos por si algún hook quiere capturar manualmente. */

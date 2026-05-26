@@ -38,6 +38,16 @@ const FISICO_TO_NUM: Record<EstadoFisico, number> = {
   fresco: 4, bien: 3, pesado: 2, molestia: 1,
 }
 
+// Calidad de sueño inferida del estado físico reportado (escala 1-10).
+// "Pesado / dormí mal" → valor bajo; "Fresco" → valor alto.
+// Mejor inferencia que un valor fijo mientras no haya slider dedicado.
+const FISICO_TO_SUENO: Record<EstadoFisico, number> = {
+  fresco:   8.5,  // Descansado, claramente durmió bien
+  bien:     7.0,  // Energía normal, sueño aceptable
+  molestia: 6.0,  // Molestia física, sueño posiblemente interrumpido
+  pesado:   4.5,  // Explícitamente "dormí mal o vengo de mucho"
+}
+
 const TIEMPO_OPTS = [
   { id: 'menos20'  as const, label: 'Menos de 20 min', minutos: 15,  color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',  border: 'rgba(255,170,50,0.45)'  },
   { id: 'treinta'  as const, label: '30–40 min',        minutos: 35,  color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)'  },
@@ -323,7 +333,7 @@ export default function CheckinScreen() {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
         estado_fisico: estadoFisico ? FISICO_TO_NUM[estadoFisico] : null,
-        calidad_sueno: 7,
+        calidad_sueno: estadoFisico ? FISICO_TO_SUENO[estadoFisico] : 7,
         hrv: null,
         location: locationId,
         duracion_disponible: tiempoOpt?.minutos ?? 45,
