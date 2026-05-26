@@ -426,225 +426,274 @@ ON CONFLICT (nombre) DO UPDATE SET
 -- Extensión de cuádriceps en máquina
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND eq.name = 'Máquina de extensión de piernas';
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND eq.name = 'Máquina de extensión de piernas'
+ON CONFLICT DO NOTHING;
 
 -- Curl de isquiotibiales tumbado
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND eq.name = 'Máquina de curl de piernas';
+WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND eq.name = 'Máquina de curl de piernas'
+ON CONFLICT DO NOTHING;
 
 -- Curl de isquiotibiales sentado
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND eq.name = 'Máquina de curl de piernas';
+WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND eq.name = 'Máquina de curl de piernas'
+ON CONFLICT DO NOTHING;
 
 -- Zancada lateral
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND eq.name = 'Ninguno (peso corporal)';
+WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND eq.name = 'Ninguno (peso corporal)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Cossack
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Sentadilla Cossack' AND eq.name = 'Ninguno (peso corporal)';
+WHERE e.nombre = 'Sentadilla Cossack' AND eq.name = 'Ninguno (peso corporal)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Sentadilla Cossack' AND eq.name = 'Kettlebell';
+WHERE e.nombre = 'Sentadilla Cossack' AND eq.name = 'Kettlebell'
+ON CONFLICT DO NOTHING;
 
 -- Abducción de cadera con banda
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND eq.name = 'Banda de resistencia';
+WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND eq.name = 'Banda de resistencia'
+ON CONFLICT DO NOTHING;
 
 -- Abducción de cadera en máquina
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Abducción de cadera en máquina' AND eq.name = 'Máquina de aducción/abducción';
+WHERE e.nombre = 'Abducción de cadera en máquina' AND eq.name = 'Máquina de aducción/abducción'
+ON CONFLICT DO NOTHING;
 
 -- Hack squat en máquina
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Hack squat en máquina' AND eq.name = 'Máquina Smith';
+WHERE e.nombre = 'Hack squat en máquina' AND eq.name = 'Máquina Smith'
+ON CONFLICT DO NOTHING;
 
 -- Prensa unilateral
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Prensa unilateral (single leg press)' AND eq.name = 'Prensa de piernas';
+WHERE e.nombre = 'Prensa unilateral (single leg press)' AND eq.name = 'Prensa de piernas'
+ON CONFLICT DO NOTHING;
 
 -- Good morning con barra
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Good morning con barra' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Good morning con barra' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Reverse Nordic curl
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Reverse Nordic curl' AND eq.name = 'Ninguno (peso corporal)';
+WHERE e.nombre = 'Reverse Nordic curl' AND eq.name = 'Ninguno (peso corporal)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Reverse Nordic curl' AND eq.name = 'Banda de resistencia';
+WHERE e.nombre = 'Reverse Nordic curl' AND eq.name = 'Banda de resistencia'
+ON CONFLICT DO NOTHING;
 
 -- B-stance RDL
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Elevación de talones sentado (sóleo)
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Zercher
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Sentadilla Zercher' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Sentadilla Zercher' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla con pausa
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Jefferson curl
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Jefferson curl' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Jefferson curl' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Jefferson curl' AND eq.name = 'Barra EZ';
+WHERE e.nombre = 'Jefferson curl' AND eq.name = 'Barra EZ'
+ON CONFLICT DO NOTHING;
 
 -- Pull-through en polea baja
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Pull-through en polea baja' AND eq.name = 'Polea baja';
+WHERE e.nombre = 'Pull-through en polea baja' AND eq.name = 'Polea baja'
+ON CONFLICT DO NOTHING;
 
 -- Dominada agarre neutro
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Dominada agarre neutro' AND eq.name = 'Barra fija (dominadas)';
+WHERE e.nombre = 'Dominada agarre neutro' AND eq.name = 'Barra fija (dominadas)'
+ON CONFLICT DO NOTHING;
 
 -- Jalón agarre neutro
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Jalón agarre neutro en polea' AND eq.name = 'Polea alta';
+WHERE e.nombre = 'Jalón agarre neutro en polea' AND eq.name = 'Polea alta'
+ON CONFLICT DO NOTHING;
 
 -- Straight arm pulldown
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND eq.name = 'Polea alta';
+WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND eq.name = 'Polea alta'
+ON CONFLICT DO NOTHING;
 
 -- Remo en máquina sentado
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Remo en máquina sentado' AND eq.name = 'Máquina de remo sentado';
+WHERE e.nombre = 'Remo en máquina sentado' AND eq.name = 'Máquina de remo sentado'
+ON CONFLICT DO NOTHING;
 
 -- Dominadas asistidas con banda
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Dominadas asistidas con banda' AND eq.name = 'Barra fija (dominadas)';
+WHERE e.nombre = 'Dominadas asistidas con banda' AND eq.name = 'Barra fija (dominadas)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Dominadas asistidas con banda' AND eq.name = 'Banda de resistencia';
+WHERE e.nombre = 'Dominadas asistidas con banda' AND eq.name = 'Banda de resistencia'
+ON CONFLICT DO NOTHING;
 
 -- Rack pull
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Déficit deadlift
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND eq.name = 'Step / Escalón';
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND eq.name = 'Step / Escalón'
+ON CONFLICT DO NOTHING;
 
 -- Meadows row
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Meadows row' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Meadows row' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Seal row
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Seal row' AND eq.name = 'Banco ajustable';
+WHERE e.nombre = 'Seal row' AND eq.name = 'Banco ajustable'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Seal row' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Seal row' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Dominadas lastradas
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Dominadas lastradas' AND eq.name = 'Barra fija (dominadas)';
+WHERE e.nombre = 'Dominadas lastradas' AND eq.name = 'Barra fija (dominadas)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Dominadas lastradas' AND eq.name = 'Disco olímpico';
+WHERE e.nombre = 'Dominadas lastradas' AND eq.name = 'Disco olímpico'
+ON CONFLICT DO NOTHING;
 
 -- Remo en máquina Smith
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Remo en máquina Smith' AND eq.name = 'Máquina Smith';
+WHERE e.nombre = 'Remo en máquina Smith' AND eq.name = 'Máquina Smith'
+ON CONFLICT DO NOTHING;
 
 -- Snatch grip deadlift
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Snatch grip deadlift' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Snatch grip deadlift' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Press banca declinado barra
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Press de banca declinado con barra' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Press de banca declinado con barra' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Press de banca declinado con barra' AND eq.name = 'Banco ajustable';
+WHERE e.nombre = 'Press de banca declinado con barra' AND eq.name = 'Banco ajustable'
+ON CONFLICT DO NOTHING;
 
 -- Press banca declinado mancuernas
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND eq.name = 'Banco ajustable';
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND eq.name = 'Banco ajustable'
+ON CONFLICT DO NOTHING;
 
 -- Push press
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Push press con barra' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Push press con barra' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Press Arnold
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Press Arnold con mancuernas' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Press Arnold con mancuernas' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Thruster
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Thruster con mancuernas' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Thruster con mancuernas' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 -- Landmine press
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 
 -- Rotación externa con banda
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Rotación externa con banda' AND eq.name = 'Banda de resistencia';
+WHERE e.nombre = 'Rotación externa con banda' AND eq.name = 'Banda de resistencia'
+ON CONFLICT DO NOTHING;
 
 -- Fondos en paralelas énfasis tríceps
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND eq.name = 'Paralelas (dips)';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND eq.name = 'Paralelas (dips)'
+ON CONFLICT DO NOTHING;
 
 -- Z press
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, TRUE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND eq.name = 'Barra olímpica';
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND eq.name = 'Barra olímpica'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_equipment (exercise_id, equipment_id, is_required)
 SELECT e.id, eq.id, FALSE FROM exercises e, equipment_items eq
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND eq.name = 'Mancuernas';
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND eq.name = 'Mancuernas'
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -654,354 +703,446 @@ WHERE e.nombre = 'Z press (press sentado en suelo)' AND eq.name = 'Mancuernas';
 -- Extensión de cuádriceps en máquina
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND m.name IN ('Cuádriceps');
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND m.name IN ('Cuádriceps')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND m.name IN ('Psoas ilíaco');
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND m.name IN ('Psoas ilíaco')
+ON CONFLICT DO NOTHING;
 
 -- Curl isquios tumbado
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND m.name IN ('Isquiotibiales');
+WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND m.name IN ('Isquiotibiales')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND m.name IN ('Pantorrilla (gastrocnemio)');
+WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND m.name IN ('Pantorrilla (gastrocnemio)')
+ON CONFLICT DO NOTHING;
 
 -- Curl isquios sentado
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND m.name IN ('Isquiotibiales');
+WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND m.name IN ('Isquiotibiales')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND m.name IN ('Pantorrilla (gastrocnemio)');
+WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND m.name IN ('Pantorrilla (gastrocnemio)')
+ON CONFLICT DO NOTHING;
 
 -- Zancada lateral
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND m.name IN ('Cuádriceps', 'Aductores', 'Glúteo mayor');
+WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND m.name IN ('Cuádriceps', 'Aductores', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND m.name IN ('Glúteo medio', 'Isquiotibiales');
+WHERE e.nombre = 'Zancada lateral (lateral lunge)' AND m.name IN ('Glúteo medio', 'Isquiotibiales')
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Cossack
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla Cossack' AND m.name IN ('Cuádriceps', 'Aductores', 'Glúteo mayor');
+WHERE e.nombre = 'Sentadilla Cossack' AND m.name IN ('Cuádriceps', 'Aductores', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla Cossack' AND m.name IN ('Glúteo medio', 'Isquiotibiales', 'Sóleo');
+WHERE e.nombre = 'Sentadilla Cossack' AND m.name IN ('Glúteo medio', 'Isquiotibiales', 'Sóleo')
+ON CONFLICT DO NOTHING;
 
 -- Abducción banda de pie
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND m.name IN ('Glúteo medio', 'Glúteo menor');
+WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND m.name IN ('Glúteo medio', 'Glúteo menor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND m.name IN ('Tensor de la fascia lata');
+WHERE e.nombre = 'Abducción de cadera con banda (de pie)' AND m.name IN ('Tensor de la fascia lata')
+ON CONFLICT DO NOTHING;
 
 -- Abducción máquina
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Abducción de cadera en máquina' AND m.name IN ('Glúteo medio', 'Glúteo menor');
+WHERE e.nombre = 'Abducción de cadera en máquina' AND m.name IN ('Glúteo medio', 'Glúteo menor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Abducción de cadera en máquina' AND m.name IN ('Tensor de la fascia lata', 'Abductores');
+WHERE e.nombre = 'Abducción de cadera en máquina' AND m.name IN ('Tensor de la fascia lata', 'Abductores')
+ON CONFLICT DO NOTHING;
 
 -- Hack squat
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Hack squat en máquina' AND m.name IN ('Cuádriceps');
+WHERE e.nombre = 'Hack squat en máquina' AND m.name IN ('Cuádriceps')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Hack squat en máquina' AND m.name IN ('Glúteo mayor', 'Glúteo medio', 'Isquiotibiales');
+WHERE e.nombre = 'Hack squat en máquina' AND m.name IN ('Glúteo mayor', 'Glúteo medio', 'Isquiotibiales')
+ON CONFLICT DO NOTHING;
 
 -- Prensa unilateral
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Prensa unilateral (single leg press)' AND m.name IN ('Cuádriceps', 'Glúteo mayor');
+WHERE e.nombre = 'Prensa unilateral (single leg press)' AND m.name IN ('Cuádriceps', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Prensa unilateral (single leg press)' AND m.name IN ('Isquiotibiales', 'Glúteo medio');
+WHERE e.nombre = 'Prensa unilateral (single leg press)' AND m.name IN ('Isquiotibiales', 'Glúteo medio')
+ON CONFLICT DO NOTHING;
 
 -- Good morning con barra
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Isquiotibiales', 'Erector espinal');
+WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Isquiotibiales', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Glúteo mayor', 'Multífidos');
+WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Glúteo mayor', 'Multífidos')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Transverso abdominal');
+WHERE e.nombre = 'Good morning con barra' AND m.name IN ('Transverso abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Reverse Nordic curl
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Reverse Nordic curl' AND m.name IN ('Cuádriceps');
+WHERE e.nombre = 'Reverse Nordic curl' AND m.name IN ('Cuádriceps')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Reverse Nordic curl' AND m.name IN ('Psoas ilíaco', 'Glúteo mayor');
+WHERE e.nombre = 'Reverse Nordic curl' AND m.name IN ('Psoas ilíaco', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 
 -- B-stance RDL
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Isquiotibiales', 'Glúteo mayor');
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Isquiotibiales', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Glúteo medio', 'Erector espinal');
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Glúteo medio', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Transverso abdominal', 'Oblicuo externo');
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND m.name IN ('Transverso abdominal', 'Oblicuo externo')
+ON CONFLICT DO NOTHING;
 
 -- Elevación de talones sentado (sóleo)
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND m.name IN ('Sóleo');
+WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND m.name IN ('Sóleo')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND m.name IN ('Pantorrilla (gastrocnemio)');
+WHERE e.nombre = 'Elevación de talones sentado (sóleo)' AND m.name IN ('Pantorrilla (gastrocnemio)')
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Zercher
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Cuádriceps', 'Glúteo mayor');
+WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Cuádriceps', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Isquiotibiales', 'Erector espinal', 'Bíceps braquial');
+WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Isquiotibiales', 'Erector espinal', 'Bíceps braquial')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Transverso abdominal', 'Recto abdominal');
+WHERE e.nombre = 'Sentadilla Zercher' AND m.name IN ('Transverso abdominal', 'Recto abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla con pausa
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Cuádriceps', 'Glúteo mayor');
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Cuádriceps', 'Glúteo mayor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Isquiotibiales', 'Glúteo medio', 'Erector espinal');
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Isquiotibiales', 'Glúteo medio', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Transverso abdominal', 'Multífidos');
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND m.name IN ('Transverso abdominal', 'Multífidos')
+ON CONFLICT DO NOTHING;
 
 -- Jefferson curl
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Jefferson curl' AND m.name IN ('Erector espinal', 'Isquiotibiales');
+WHERE e.nombre = 'Jefferson curl' AND m.name IN ('Erector espinal', 'Isquiotibiales')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Jefferson curl' AND m.name IN ('Glúteo mayor', 'Multífidos');
+WHERE e.nombre = 'Jefferson curl' AND m.name IN ('Glúteo mayor', 'Multífidos')
+ON CONFLICT DO NOTHING;
 
 -- Pull-through
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Glúteo mayor', 'Isquiotibiales');
+WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Glúteo mayor', 'Isquiotibiales')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Erector espinal', 'Glúteo medio');
+WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Erector espinal', 'Glúteo medio')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Transverso abdominal');
+WHERE e.nombre = 'Pull-through en polea baja' AND m.name IN ('Transverso abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Dominada agarre neutro
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominada agarre neutro' AND m.name IN ('Dorsal ancho', 'Bíceps braquial');
+WHERE e.nombre = 'Dominada agarre neutro' AND m.name IN ('Dorsal ancho', 'Bíceps braquial')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominada agarre neutro' AND m.name IN ('Braquial', 'Trapecio inferior', 'Romboides', 'Trapecio medio');
+WHERE e.nombre = 'Dominada agarre neutro' AND m.name IN ('Braquial', 'Trapecio inferior', 'Romboides', 'Trapecio medio')
+ON CONFLICT DO NOTHING;
 
 -- Jalón agarre neutro
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Jalón agarre neutro en polea' AND m.name IN ('Dorsal ancho', 'Trapecio inferior');
+WHERE e.nombre = 'Jalón agarre neutro en polea' AND m.name IN ('Dorsal ancho', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Jalón agarre neutro en polea' AND m.name IN ('Bíceps braquial', 'Braquial', 'Romboides', 'Trapecio medio');
+WHERE e.nombre = 'Jalón agarre neutro en polea' AND m.name IN ('Bíceps braquial', 'Braquial', 'Romboides', 'Trapecio medio')
+ON CONFLICT DO NOTHING;
 
 -- Straight arm pulldown
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND m.name IN ('Dorsal ancho');
+WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND m.name IN ('Dorsal ancho')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND m.name IN ('Pectoral mayor (porción esternal)', 'Trapecio inferior', 'Serrato anterior');
+WHERE e.nombre = 'Straight arm pulldown (jalón con brazos extendidos)' AND m.name IN ('Pectoral mayor (porción esternal)', 'Trapecio inferior', 'Serrato anterior')
+ON CONFLICT DO NOTHING;
 
 -- Remo en máquina sentado
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Remo en máquina sentado' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides');
+WHERE e.nombre = 'Remo en máquina sentado' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Remo en máquina sentado' AND m.name IN ('Bíceps braquial', 'Deltoides posterior', 'Trapecio inferior');
+WHERE e.nombre = 'Remo en máquina sentado' AND m.name IN ('Bíceps braquial', 'Deltoides posterior', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 
 -- Dominadas asistidas
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominadas asistidas con banda' AND m.name IN ('Dorsal ancho', 'Trapecio inferior');
+WHERE e.nombre = 'Dominadas asistidas con banda' AND m.name IN ('Dorsal ancho', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominadas asistidas con banda' AND m.name IN ('Bíceps braquial', 'Romboides', 'Trapecio medio');
+WHERE e.nombre = 'Dominadas asistidas con banda' AND m.name IN ('Bíceps braquial', 'Romboides', 'Trapecio medio')
+ON CONFLICT DO NOTHING;
 
 -- Rack pull
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Erector espinal', 'Glúteo mayor', 'Isquiotibiales');
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Erector espinal', 'Glúteo mayor', 'Isquiotibiales')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Trapecio superior', 'Trapecio medio', 'Flexores del antebrazo');
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Trapecio superior', 'Trapecio medio', 'Flexores del antebrazo')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Transverso abdominal', 'Multífidos');
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND m.name IN ('Transverso abdominal', 'Multífidos')
+ON CONFLICT DO NOTHING;
 
 -- Déficit deadlift
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Isquiotibiales', 'Glúteo mayor', 'Erector espinal');
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Isquiotibiales', 'Glúteo mayor', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Cuádriceps', 'Trapecio medio', 'Glúteo medio');
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Cuádriceps', 'Trapecio medio', 'Glúteo medio')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Transverso abdominal', 'Multífidos');
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND m.name IN ('Transverso abdominal', 'Multífidos')
+ON CONFLICT DO NOTHING;
 
 -- Meadows row
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Meadows row' AND m.name IN ('Dorsal ancho', 'Trapecio medio');
+WHERE e.nombre = 'Meadows row' AND m.name IN ('Dorsal ancho', 'Trapecio medio')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Meadows row' AND m.name IN ('Bíceps braquial', 'Romboides', 'Deltoides posterior', 'Trapecio inferior');
+WHERE e.nombre = 'Meadows row' AND m.name IN ('Bíceps braquial', 'Romboides', 'Deltoides posterior', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Meadows row' AND m.name IN ('Erector espinal', 'Transverso abdominal');
+WHERE e.nombre = 'Meadows row' AND m.name IN ('Erector espinal', 'Transverso abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Seal row
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Seal row' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides');
+WHERE e.nombre = 'Seal row' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Seal row' AND m.name IN ('Bíceps braquial', 'Deltoides posterior', 'Trapecio inferior');
+WHERE e.nombre = 'Seal row' AND m.name IN ('Bíceps braquial', 'Deltoides posterior', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 
 -- Dominadas lastradas
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominadas lastradas' AND m.name IN ('Dorsal ancho', 'Trapecio inferior');
+WHERE e.nombre = 'Dominadas lastradas' AND m.name IN ('Dorsal ancho', 'Trapecio inferior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Dominadas lastradas' AND m.name IN ('Bíceps braquial', 'Braquial', 'Romboides', 'Trapecio medio');
+WHERE e.nombre = 'Dominadas lastradas' AND m.name IN ('Bíceps braquial', 'Braquial', 'Romboides', 'Trapecio medio')
+ON CONFLICT DO NOTHING;
 
 -- Remo en máquina Smith
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides');
+WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Dorsal ancho', 'Trapecio medio', 'Romboides')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Bíceps braquial', 'Deltoides posterior');
+WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Bíceps braquial', 'Deltoides posterior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Erector espinal', 'Transverso abdominal');
+WHERE e.nombre = 'Remo en máquina Smith' AND m.name IN ('Erector espinal', 'Transverso abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Snatch grip deadlift
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Isquiotibiales', 'Glúteo mayor', 'Erector espinal');
+WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Isquiotibiales', 'Glúteo mayor', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Cuádriceps', 'Dorsal ancho', 'Trapecio superior');
+WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Cuádriceps', 'Dorsal ancho', 'Trapecio superior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Transverso abdominal', 'Multífidos');
+WHERE e.nombre = 'Snatch grip deadlift' AND m.name IN ('Transverso abdominal', 'Multífidos')
+ON CONFLICT DO NOTHING;
 
 -- Press declinado barra
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Pectoral mayor (porción esternal)');
+WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Pectoral mayor (porción esternal)')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Tríceps braquial', 'Pectoral mayor (porción clavicular)');
+WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Tríceps braquial', 'Pectoral mayor (porción clavicular)')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Serrato anterior');
+WHERE e.nombre = 'Press de banca declinado con barra' AND m.name IN ('Serrato anterior')
+ON CONFLICT DO NOTHING;
 
 -- Press declinado mancuernas
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Pectoral mayor (porción esternal)');
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Pectoral mayor (porción esternal)')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Tríceps braquial', 'Pectoral mayor (porción clavicular)');
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Tríceps braquial', 'Pectoral mayor (porción clavicular)')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Serrato anterior', 'Bíceps braquial');
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND m.name IN ('Serrato anterior', 'Bíceps braquial')
+ON CONFLICT DO NOTHING;
 
 -- Push press
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Push press con barra' AND m.name IN ('Deltoides anterior', 'Deltoides lateral', 'Cuádriceps');
+WHERE e.nombre = 'Push press con barra' AND m.name IN ('Deltoides anterior', 'Deltoides lateral', 'Cuádriceps')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Push press con barra' AND m.name IN ('Tríceps braquial', 'Glúteo mayor', 'Trapecio superior');
+WHERE e.nombre = 'Push press con barra' AND m.name IN ('Tríceps braquial', 'Glúteo mayor', 'Trapecio superior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Push press con barra' AND m.name IN ('Transverso abdominal', 'Erector espinal');
+WHERE e.nombre = 'Push press con barra' AND m.name IN ('Transverso abdominal', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 
 -- Press Arnold
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press Arnold con mancuernas' AND m.name IN ('Deltoides anterior', 'Deltoides lateral', 'Deltoides posterior');
+WHERE e.nombre = 'Press Arnold con mancuernas' AND m.name IN ('Deltoides anterior', 'Deltoides lateral', 'Deltoides posterior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Press Arnold con mancuernas' AND m.name IN ('Tríceps braquial', 'Trapecio superior');
+WHERE e.nombre = 'Press Arnold con mancuernas' AND m.name IN ('Tríceps braquial', 'Trapecio superior')
+ON CONFLICT DO NOTHING;
 
 -- Thruster
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Cuádriceps', 'Glúteo mayor', 'Deltoides anterior');
+WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Cuádriceps', 'Glúteo mayor', 'Deltoides anterior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Tríceps braquial', 'Isquiotibiales', 'Trapecio superior');
+WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Tríceps braquial', 'Isquiotibiales', 'Trapecio superior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Transverso abdominal', 'Erector espinal');
+WHERE e.nombre = 'Thruster con mancuernas' AND m.name IN ('Transverso abdominal', 'Erector espinal')
+ON CONFLICT DO NOTHING;
 
 -- Landmine press
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Pectoral mayor (porción clavicular)', 'Deltoides anterior');
+WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Pectoral mayor (porción clavicular)', 'Deltoides anterior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Tríceps braquial', 'Serrato anterior');
+WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Tríceps braquial', 'Serrato anterior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Oblicuo externo', 'Transverso abdominal');
+WHERE e.nombre = 'Landmine press (press con barra en esquina)' AND m.name IN ('Oblicuo externo', 'Transverso abdominal')
+ON CONFLICT DO NOTHING;
 
 -- Rotación externa con banda
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Rotación externa con banda' AND m.name IN ('Infraespinoso', 'Redondo menor');
+WHERE e.nombre = 'Rotación externa con banda' AND m.name IN ('Infraespinoso', 'Redondo menor')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Rotación externa con banda' AND m.name IN ('Deltoides posterior');
+WHERE e.nombre = 'Rotación externa con banda' AND m.name IN ('Deltoides posterior')
+ON CONFLICT DO NOTHING;
 
 -- Fondos énfasis tríceps
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND m.name IN ('Tríceps braquial');
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND m.name IN ('Tríceps braquial')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND m.name IN ('Deltoides anterior', 'Pectoral mayor (porción esternal)');
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND m.name IN ('Deltoides anterior', 'Pectoral mayor (porción esternal)')
+ON CONFLICT DO NOTHING;
 
 -- Z press
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'primario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Deltoides anterior', 'Deltoides lateral');
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Deltoides anterior', 'Deltoides lateral')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'secundario' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Tríceps braquial', 'Trapecio superior');
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Tríceps braquial', 'Trapecio superior')
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_muscles (exercise_id, muscle_id, role)
 SELECT e.id, m.id, 'estabilizador' FROM exercises e, muscle_groups m
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Transverso abdominal', 'Erector espinal', 'Psoas ilíaco');
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND m.name IN ('Transverso abdominal', 'Erector espinal', 'Psoas ilíaco')
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
