@@ -17,7 +17,8 @@
       "bundleIdentifier": "app.pyfit.mobile",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Zyfit necesita tu ubicación para registrar tu carrera.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada.",
+        "UIBackgroundModes": ["location", "fetch"]
       }
     },
     "android": {
@@ -44,6 +45,16 @@
         "expo-font",
         {
           "fonts": []
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada.",
+          "locationAlwaysPermission": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada.",
+          "locationWhenInUsePermission": "Zyfit necesita tu ubicación para registrar tu carrera.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "@sentry/react-native/expo"

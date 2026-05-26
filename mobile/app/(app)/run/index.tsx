@@ -50,6 +50,7 @@ export default function RunScreen() {
     totalDistance,
     currentPace,
     elapsedSeconds,
+    backgroundActive,
     error,
     startRun,
     stopRun,
@@ -179,7 +180,13 @@ export default function RunScreen() {
           <BackArrow />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>FREE RUN</Text>
-        <View style={styles.headerRight} />
+        {/* Indicador de background GPS activo */}
+        {status === 'active' && (
+          <View style={[styles.bgBadge, backgroundActive ? styles.bgBadgeOn : styles.bgBadgeOff]}>
+            <Text style={styles.bgBadgeText}>{backgroundActive ? '📡 BG' : '📍 FG'}</Text>
+          </View>
+        )}
+        {status !== 'active' && <View style={styles.headerRight} />}
       </View>
 
       {/* ── Bottom metrics panel ── */}
@@ -400,5 +407,27 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
+  },
+
+  // Background GPS indicator badge
+  bgBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  bgBadgeOn: {
+    backgroundColor: 'rgba(50,200,150,0.15)',
+    borderColor: 'rgba(50,200,150,0.4)',
+  },
+  bgBadgeOff: {
+    backgroundColor: 'rgba(255,170,50,0.15)',
+    borderColor: 'rgba(255,170,50,0.4)',
+  },
+  bgBadgeText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 10,
+    color: '#ffffff',
+    letterSpacing: 1,
   },
 })

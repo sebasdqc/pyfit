@@ -6,6 +6,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { I18nProvider } from '../lib/i18n'
 import { initSentry, withSentryWrap } from '../lib/sentry'
+// El task de background GPS DEBE importarse aquí (nivel de módulo del entry point)
+// para que TaskManager.defineTask() quede registrado antes de cualquier render,
+// incluso si el usuario nunca abre la pantalla de Run.
+import '../lib/backgroundGps'
 import * as Font from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
 import {
