@@ -18,6 +18,73 @@ import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet } from '../../../lib/api'
 
+// ─── Daily motivational phrases ───────────────────────────────────────────────
+
+const FRASES_DIARIAS = [
+  'Hoy construyes lo que mañana agradeces.',
+  'Tu esfuerzo de hoy tiene memoria.',
+  'Cada sesión te hace más difícil de ignorar.',
+  'Otra sesión, otra versión de ti.',
+  'No se necesita perfecto. Se necesita presente.',
+  'Aparecer ya es ganar la mitad.',
+  'Tu cuerpo se adapta mientras descansas.',
+  'La consistencia hace lo que la motivación no.',
+  'Cada día que apareces, ganas algo.',
+  'La disciplina es motivación con memoria.',
+  'Lo que repites, lo que eres.',
+  'Tus hábitos están escribiendo tu historia.',
+  'Constante gana a perfecto, siempre.',
+  'Más fuerte de lo que crees. En serio.',
+  'Tu progreso no siempre se ve. Siempre existe.',
+  'Tu cuerpo aprende. Tú también.',
+  'Cada sesión deja una huella que no se borra.',
+  'El esfuerzo de ayer ya está en tu cuerpo.',
+  'Ya eres distinto a quien empezó aquí.',
+  'No tienes que dar el cien. Solo aparecer.',
+  'Entrenar con estrés es adaptabilidad real.',
+  'Tu mente necesita esto más que tu cuerpo.',
+  'El movimiento cambia el estado. Siempre.',
+  'Días difíciles, sesiones que más importan.',
+  'No pasa nada si hoy das menos. Da algo.',
+  'Empezaste. Eso ya te pone delante de muchos.',
+  'Esto ya no es motivación. Es identidad.',
+  'Ya no eres el mismo que empezó aquí.',
+  'Tu consistencia está construyendo algo permanente.',
+  'Muévete. Tu versión futura te lo agradece.',
+  'Sin prisa. Sin pausa. Hacia adelante.',
+  'Hoy también cuenta.',
+  'No necesitas más razones. Ya las tienes.',
+  'Hoy también eres capaz. Lo sabes.',
+  'Sigue. Siempre hay una razón para seguir.',
+  'Lo que lograste esta semana no se borra.',
+  'Lo que empezaste merece que lo termines.',
+  'Nadie te puede quitar lo que ya entrenaste.',
+  'El que persiste, transforma.',
+  'Tu único competidor eres tú de ayer.',
+  'Duele ahora. Orgullece después.',
+  'No pares cuando estés cansado. Para cuando acabes.',
+  'El cuerpo logra lo que la mente permite.',
+  'Hoy defines quién eres mañana.',
+  'Cada gota de sudor tiene un propósito.',
+  'Lo ordinario hecho consistentemente se vuelve extraordinario.',
+  'No busques la motivación. Conviértete en ella.',
+  'Tu esfuerzo de hoy es tu ventaja de mañana.',
+  'Ganar empieza por no rendirse hoy.',
+  'Un día a la vez. Un rep a la vez.',
+  'La versión que quieres ser ya existe — entrénala.',
+  'Nadie recuerda los días que descansaron de más.',
+  'Haz hoy lo que otros no harán.',
+  'El dolor de hoy es la fuerza de mañana.',
+  'Confía en el proceso aunque no veas los resultados.',
+  'Cada entrenamiento es una promesa cumplida contigo mismo.',
+]
+
+/** Devuelve la frase correspondiente al día actual (misma frase todo el día, rota cada 24h) */
+function getFraseDiaria(): string {
+  const dayIndex = Math.floor(Date.now() / 86_400_000)
+  return FRASES_DIARIAS[dayIndex % FRASES_DIARIAS.length]
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Session {
@@ -631,11 +698,11 @@ export default function DashboardScreen() {
             <Text style={styles.z1Saludo}>{data?.saludo ?? ''}</Text>
           )}
 
-          {/* Insight */}
+          {/* Frase motivacional diaria */}
           {loading ? (
             <Skeleton width="65%" height={14} borderRadius={4} style={{ marginTop: 14 }} />
-          ) : !!data?.insight && (
-            <Text style={styles.z1Insight}>{data.insight}</Text>
+          ) : (
+            <Text style={styles.z1Insight}>{getFraseDiaria()}</Text>
           )}
         </View>
 
