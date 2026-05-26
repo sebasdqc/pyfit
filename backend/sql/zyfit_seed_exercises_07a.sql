@@ -1153,247 +1153,309 @@ ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'Alta tensión sobre el tendón patelar en los últimos grados de extensión. Evaluar rango libre de dolor antes de prescribir.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Dolor anterior de rodilla';
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Dolor anterior de rodilla'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Rotura de ligamento (LCA/LCP)';
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Rotura de ligamento (LCA/LCP)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Meniscopatía aguda';
+WHERE e.nombre = 'Extensión de cuádriceps en máquina' AND c.name = 'Meniscopatía aguda'
+ON CONFLICT DO NOTHING;
 
 -- Curl isquios tumbado
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La compresión de la rodilla en flexión completa puede agravar el menisco — limitar ROM a la zona libre de dolor.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND c.name = 'Meniscopatía aguda';
+WHERE e.nombre = 'Curl de isquiotibiales tumbado en máquina' AND c.name = 'Meniscopatía aguda'
+ON CONFLICT DO NOTHING;
 
 -- Curl isquios sentado
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND c.name = 'Meniscopatía aguda';
+WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND c.name = 'Meniscopatía aguda'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La flexión de cadera en esta variante puede agravar el impingement femoroacetabular — evaluar individualmente.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND c.name = 'Impingement femoroacetabular';
+WHERE e.nombre = 'Curl de isquiotibiales sentado en máquina' AND c.name = 'Impingement femoroacetabular'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Cossack
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La flexión profunda unilateral de rodilla puede agravar el dolor patelofemoral o meniscal.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Dolor anterior de rodilla';
+WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Dolor anterior de rodilla'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Meniscopatía aguda';
+WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Meniscopatía aguda'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La rotación forzada de cadera puede reproducir el dolor de impingement femoroacetabular.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Impingement femoroacetabular';
+WHERE e.nombre = 'Sentadilla Cossack' AND c.name = 'Impingement femoroacetabular'
+ON CONFLICT DO NOTHING;
 
 -- Hack squat
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La flexión profunda de rodilla bajo carga puede agravar el dolor patelofemoral — limitar ROM si es necesario.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Dolor anterior de rodilla';
+WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Dolor anterior de rodilla'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Rotura de ligamento (LCA/LCP)';
+WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Rotura de ligamento (LCA/LCP)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Meniscopatía aguda';
+WHERE e.nombre = 'Hack squat en máquina' AND c.name = 'Meniscopatía aguda'
+ON CONFLICT DO NOTHING;
 
 -- Good morning con barra
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Good morning con barra' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Good morning con barra' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Good morning con barra' AND c.name = 'Hernia discal lumbar activa';
+WHERE e.nombre = 'Good morning con barra' AND c.name = 'Hernia discal lumbar activa'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La bisagra profunda con carga axial y alta palanca sobre L4-L5 es incompatible con dolor lumbar crónico activo.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Good morning con barra' AND c.name = 'Dolor lumbar crónico';
+WHERE e.nombre = 'Good morning con barra' AND c.name = 'Dolor lumbar crónico'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Good morning con barra' AND c.name = 'Osteoporosis severa';
+WHERE e.nombre = 'Good morning con barra' AND c.name = 'Osteoporosis severa'
+ON CONFLICT DO NOTHING;
 
 -- Reverse Nordic curl
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'Alta tensión sobre el tendón patelar y el recto femoral proximal. Contraindicado en fase aguda.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Reverse Nordic curl' AND c.name = 'Dolor anterior de rodilla';
+WHERE e.nombre = 'Reverse Nordic curl' AND c.name = 'Dolor anterior de rodilla'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Reverse Nordic curl' AND c.name = 'Rotura de ligamento (LCA/LCP)';
+WHERE e.nombre = 'Reverse Nordic curl' AND c.name = 'Rotura de ligamento (LCA/LCP)'
+ON CONFLICT DO NOTHING;
 
 -- B-stance RDL
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La bisagra unilateral con carga es incompatible con dolor lumbar agudo.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La carga asimétrica puede agravar la escoliosis si genera compensación lateral.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND c.name = 'Escoliosis severa';
+WHERE e.nombre = 'B-stance RDL (RDL en media postura)' AND c.name = 'Escoliosis severa'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla Zercher
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La posición de la barra en el pliegue del codo genera alta presión local — contraindicado con dolor de codo activo.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla Zercher' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Sentadilla Zercher' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla Zercher' AND c.name = 'Rotura de ligamento (LCA/LCP)';
+WHERE e.nombre = 'Sentadilla Zercher' AND c.name = 'Rotura de ligamento (LCA/LCP)'
+ON CONFLICT DO NOTHING;
 
 -- Sentadilla con pausa
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La pausa en el punto más bajo aumenta el estrés articular — contraindicada en cualquier patología de rodilla activa.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND c.name = 'Dolor anterior de rodilla';
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND c.name = 'Dolor anterior de rodilla'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Sentadilla con pausa (pause squat)' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 
 -- Jefferson curl
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Jefferson curl' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Jefferson curl' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Jefferson curl' AND c.name = 'Hernia discal lumbar activa';
+WHERE e.nombre = 'Jefferson curl' AND c.name = 'Hernia discal lumbar activa'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Jefferson curl' AND c.name = 'Dolor lumbar crónico';
+WHERE e.nombre = 'Jefferson curl' AND c.name = 'Dolor lumbar crónico'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Jefferson curl' AND c.name = 'Osteoporosis severa';
+WHERE e.nombre = 'Jefferson curl' AND c.name = 'Osteoporosis severa'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Jefferson curl' AND c.name = 'Cirugía de columna reciente';
+WHERE e.nombre = 'Jefferson curl' AND c.name = 'Cirugía de columna reciente'
+ON CONFLICT DO NOTHING;
 
 -- Rack pull
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'Las cargas muy elevadas del rack pull son incompatibles con cualquier patología lumbar activa.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND c.name = 'Hernia discal lumbar activa';
+WHERE e.nombre = 'Rack pull (peso muerto parcial)' AND c.name = 'Hernia discal lumbar activa'
+ON CONFLICT DO NOTHING;
 
 -- Déficit deadlift
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Hernia discal lumbar activa';
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Hernia discal lumbar activa'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Osteoporosis severa';
+WHERE e.nombre = 'Déficit deadlift (peso muerto desde déficit)' AND c.name = 'Osteoporosis severa'
+ON CONFLICT DO NOTHING;
 
 -- Snatch grip deadlift
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Hernia discal lumbar activa';
+WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Hernia discal lumbar activa'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'El agarre amplio genera mayor demanda de movilidad de hombro — contraindicado con patología activa.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Snatch grip deadlift' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 
 -- Press declinado barra
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La posición declinada eleva la presión intracraneal. Contraindicación absoluta.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Hipertensión no controlada';
+WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Hipertensión no controlada'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Press de banca declinado con barra' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 
 -- Press declinado mancuernas
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Hipertensión no controlada';
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Hipertensión no controlada'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Press de banca declinado con mancuernas' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 
 -- Push press
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Push press con barra' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Push press con barra' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Push press con barra' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Push press con barra' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'El dip rápido puede comprometer la posición lumbar — contraindicado en dolor lumbar agudo.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Push press con barra' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Push press con barra' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Push press con barra' AND c.name = 'Síndrome de impingement';
+WHERE e.nombre = 'Push press con barra' AND c.name = 'Síndrome de impingement'
+ON CONFLICT DO NOTHING;
 
 -- Press Arnold
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La rotación en abducción puede reproducir el arco de impingement subacromial.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Síndrome de impingement';
+WHERE e.nombre = 'Press Arnold con mancuernas' AND c.name = 'Síndrome de impingement'
+ON CONFLICT DO NOTHING;
 
 -- Thruster
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Dolor lumbar agudo';
+WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Dolor lumbar agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Rotura de ligamento (LCA/LCP)';
+WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Rotura de ligamento (LCA/LCP)'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Síndrome de impingement';
+WHERE e.nombre = 'Thruster con mancuernas' AND c.name = 'Síndrome de impingement'
+ON CONFLICT DO NOTHING;
 
 -- Fondos énfasis tríceps
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Manguito rotador lesionado';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Manguito rotador lesionado'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'El descenso profundo en paralelas coloca el hombro en posición de máxima vulnerabilidad capsular.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Inestabilidad glenohumeral';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Inestabilidad glenohumeral'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Cirugía de hombro reciente';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Cirugía de hombro reciente'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'El dolor de muñeca en extensión bajo carga completa del cuerpo es una contraindicación relativa.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Dolor de muñeca agudo';
+WHERE e.nombre = 'Fondos en paralelas énfasis tríceps' AND c.name = 'Dolor de muñeca agudo'
+ON CONFLICT DO NOTHING;
 
 -- Z press
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Dolor de hombro agudo';
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Dolor de hombro agudo'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, NULL FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Síndrome de impingement';
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Síndrome de impingement'
+ON CONFLICT DO NOTHING;
 INSERT INTO exercise_contraindications (exercise_id, contraindication_id, notes)
 SELECT e.id, c.id, 'La posición sentada en suelo con piernas extendidas puede agravar el impingement femoroacetabular.'
 FROM exercises e, contraindication_categories c
-WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Impingement femoroacetabular';
+WHERE e.nombre = 'Z press (press sentado en suelo)' AND c.name = 'Impingement femoroacetabular'
+ON CONFLICT DO NOTHING;
 
