@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
@@ -1182,6 +1183,10 @@ export default function HistorialScreen() {
   const styles   = useMemo(() => makeStyles(colors), [colors])
   const insets   = useSafeAreaInsets()
 
+  // ── Deep-link param from dashboard "Ver rutina" ────────────────────────────
+  const { fecha: paramFecha } = useLocalSearchParams<{ fecha?: string }>()
+  const deepLinkHandled = useRef(false)
+
   // ── View & data ────────────────────────────────────────────────────────────
   const [view,       setView]       = useState<'lista' | 'calendario'>('lista')
   const [sessions,   setSessions]   = useState<Session[]>([])
@@ -1225,6 +1230,20 @@ export default function HistorialScreen() {
   }, [fetchSessions])
 
   useEffect(() => { fetchSessions() }, [fetchSessions])
+
+  // ── Auto-open modal when navigated from dashboard with a fecha param ───────
+  useEffect(() => {
+    if (!paramFecha || loading || deepLinkHandled.current) return
+    deepLinkHandled.current = true
+    const ds = sessions.filter(s => s.fecha === paramFecha)
+    if (ds.length === 1) {
+      setSelectedSession(ds[0])
+      setSessionModalVisible(true)
+    } else if (ds.length > 1) {
+      setDaySessions(ds)
+      setDayModalVisible(true)
+    }
+  }, [paramFecha, loading, sessions])
 
   const filteredSessions = useMemo(() => {
     let result = sessions

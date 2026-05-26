@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Animated,
   StyleProp,
   ViewStyle,
 } from 'react-native'
@@ -94,6 +95,17 @@ interface Session {
   duracion_planificada: number
   feedback?: { cumplimiento: number }
 }
+
+/** Sesión completa usada por TuSemanaCard (viene de /api/sessions/) */
+interface FullSession {
+  id: number
+  fecha: string
+  respuesta_ia: { titulo?: string; duracion_total?: number; rpe_target?: number }
+  duracion_planificada: number
+  feedback?: { cumplimiento?: number; rpe_real?: number }
+}
+
+type DayState = 'past-done' | 'today' | 'future' | 'rest' | 'past-skip'
 
 interface SemanaDay {
   fecha: string
@@ -191,6 +203,78 @@ function formatHeaderDate(lang: string): string {
     return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
   }
   return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
+}
+
+// ─── Week helpers ─────────────────────────────────────────────────────────────
+
+const DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+const MONTHS_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+const MONTHS_LONG  = ['enero','febrero','marzo','abril','mayo','junio',
+                      'julio','agosto','septiembre','octubre','noviembre','diciembre']
+const DAYS_LONG    = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado']
+
+/** Lunes de la semana que contiene hoy, desplazada por weekOffset semanas */
+function getWeekMonday(weekOffset: number): Date {
+  const today = new Date()
+  const dow = today.getDay() // 0=Sun…6=Sat
+  const diffToMon = dow === 0 ? -6 : 1 - dow
+  const mon = new Date(today)
+  mon.setDate(today.getDate() + diffToMon + weekOffset * 7)
+  mon.setHours(0, 0, 0, 0)
+  return mon
+}
+
+/** Array de 7 fechas ISO (lun→dom) */
+function getWeekDates(monday: Date): string[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d.toISOString().slice(0, 10)
+  })
+}
+
+/** "19–25 may" | "28 abr – 4 may" */
+function formatWeekRange(monday: Date): string {
+  const sun = new Date(monday)
+  sun.setDate(monday.getDate() + 6)
+  const d1 = monday.getDate(), m1 = MONTHS_SHORT[monday.getMonth()]
+  const d2 = sun.getDate(),    m2 = MONTHS_SHORT[sun.getMonth()]
+  return m1 === m2 ? `${d1}–${d2} ${m1}` : `${d1} ${m1} – ${d2} ${m2}`
+}
+
+/** "martes 19 de mayo" */
+function formatDetailDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  return `${DAYS_LONG[d.getDay()]} ${d.getDate()} de ${MONTHS_LONG[d.getMonth()]}`
+}
+
+function getDayState(
+  iso: string,
+  today: string,
+  sessionsByDate: Map<string, FullSession[]>,
+  semanaDetalle: SemanaDay[],
+  weekOffset: number,
+): DayState {
+  if (iso === today) return 'today'
+  if (iso > today)   return 'future'
+  if ((sessionsByDate.get(iso)?.length ?? 0) > 0) return 'past-done'
+  if (weekOffset === 0) {
+    const d = semanaDetalle.find(x => x.fecha === iso)
+    if (d?.estado === 'descanso') return 'rest'
+  }
+  return 'past-skip'
+}
+
+function getDisciplineIcon(titulo?: string): string {
+  if (!titulo) return '🏋️'
+  const t = titulo.toLowerCase()
+  if (/corr|run|cardio|aerob/.test(t))           return '🏃'
+  if (/movil|flex|yoga|stretc|estira/.test(t))   return '🧘'
+  if (/natac|swim|piscin/.test(t))               return '🏊'
+  if (/cicl|bici|cycl/.test(t))                  return '🚴'
+  if (/funcional|hiit|circuito/.test(t))         return '⚡'
+  return '🏋️'
 }
 
 // ─── Bell Icon ────────────────────────────────────────────────────────────────
@@ -341,130 +425,303 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
   )
 }
 
-// ─── Weekly View (Zone 3) ─────────────────────────────────────────────────────
+// ─── Tu Semana — sub-components ───────────────────────────────────────────────
 
-function WeekDayIcon({ estado, colors }: { estado: SemanaDay['estado']; colors: Colors }) {
-  const SIZE = 26
-
-  if (estado === 'entrenado') {
+function DayCircle({ state, isSelected, colors }: {
+  state: DayState
+  isSelected: boolean
+  colors: Colors
+}) {
+  const S = 32
+  if (state === 'past-done') {
     return (
-      <View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-        backgroundColor: '#32c896', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>✓</Text>
+      <View style={{
+        width: S, height: S, borderRadius: S / 2,
+        backgroundColor: 'rgba(79,140,255,0.15)',
+        borderWidth: isSelected ? 2 : 1.5,
+        borderColor: isSelected ? colors.accent : 'rgba(79,140,255,0.45)',
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: isSelected ? colors.accent : 'transparent',
+        shadowOpacity: isSelected ? 0.55 : 0,
+        shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+        elevation: isSelected ? 4 : 0,
+      }}>
+        <Text style={{ color: colors.accent, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>✓</Text>
       </View>
     )
   }
-  if (estado === 'hoy') {
+  if (state === 'today') {
     return (
-      <View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-        backgroundColor: 'rgba(79,140,255,0.18)', borderWidth: 2, borderColor: colors.accent,
-        alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{
+        width: S, height: S, borderRadius: S / 2,
+        backgroundColor: 'rgba(79,140,255,0.08)',
+        borderWidth: 2, borderColor: colors.accent,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: colors.accent, shadowOpacity: 0.30,
+        shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+        elevation: 3,
+      }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
       </View>
     )
   }
-  if (estado === 'planificado') {
+  if (state === 'future') {
     return (
-      <Svg width={SIZE} height={SIZE}>
-        <Circle cx={13} cy={13} r={10} fill="none"
-          stroke="rgba(255,255,255,0.28)" strokeWidth={1.5} strokeDasharray="3 2" />
+      <Svg width={S} height={S}>
+        <Circle cx={S/2} cy={S/2} r={S/2 - 2}
+          fill="none" stroke="rgba(255,255,255,0.18)"
+          strokeWidth={1.5} strokeDasharray="3 2.5" />
       </Svg>
     )
   }
-  if (estado === 'descanso') {
+  if (state === 'rest') {
     return (
-      <View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-        borderWidth: 1, borderColor: 'rgba(255,170,50,0.45)',
-        alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#ffaa32', fontSize: 13, lineHeight: 16, marginTop: -1 }}>–</Text>
+      <View style={{
+        width: S, height: S, borderRadius: S / 2,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ fontSize: 14, lineHeight: 18 }}>🌙</Text>
       </View>
     )
   }
-  // vacio
+  // past-skip
   return (
-    <Svg width={SIZE} height={SIZE}>
-      <Circle cx={13} cy={13} r={10} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-    </Svg>
+    <View style={{
+      width: S, height: S, borderRadius: S / 2,
+      backgroundColor: 'rgba(255,255,255,0.03)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    }} />
   )
 }
 
-// Colores semánticos por tipo de alerta
-const ALERTA_COLORS: Record<RachaContextoAlerta['color'], { dot: string; text: string; border: string }> = {
-  orange: { dot: '#ffaa32', text: '#ffaa32', border: 'rgba(255,170,50,0.18)' },
-  blue:   { dot: '#4f8cff', text: '#7ab6ff', border: 'rgba(79,140,255,0.18)' },
-  green:  { dot: '#32c896', text: '#32c896', border: 'rgba(50,200,150,0.18)' },
-}
-
-function WeeklyView({
-  semana,
-  rachaContexto,
-  colors,
-  styles,
-  t,
-}: {
-  semana: SemanaDay[]
-  rachaContexto?: RachaContexto
-  colors: Colors
-  styles: ReturnType<typeof makeStyles>
-  t: (key: any) => string
-}) {
-  const TIPO_COLOR: Record<SemanaDay['estado'], string> = {
-    entrenado:   '#32c896',
-    hoy:         colors.accent,
-    planificado: 'rgba(255,255,255,0.3)',
-    descanso:    '#ffaa32',
-    vacio:       'transparent',
-  }
-
-  const alerta = rachaContexto?.alerta ?? null
-  const alertaColors = alerta ? ALERTA_COLORS[alerta.color] : null
+function SessionRow({ session, colors }: { session: FullSession; colors: Colors }) {
+  const titulo   = session.respuesta_ia?.titulo ?? 'Sesión'
+  const duracion = session.respuesta_ia?.duracion_total ?? session.duracion_planificada ?? 0
+  const rpe      = session.feedback?.rpe_real ?? session.respuesta_ia?.rpe_target ?? null
+  const icon     = getDisciplineIcon(titulo)
+  const meta     = [
+    duracion > 0 ? `${duracion} min` : null,
+    rpe != null  ? `RPE ${rpe}`      : null,
+  ].filter(Boolean).join('  ·  ')
 
   return (
-    <View style={styles.z3Wrap}>
-      <Text style={styles.z3Label}>{t('dashboard_your_week')}</Text>
-
-      <View style={styles.z3Row}>
-        {semana.map(day => (
-          <View
-            key={day.fecha}
-            style={[styles.z3DayCol, day.is_today && styles.z3DayColHoy]}
-          >
-            {/* Day letter */}
-            <Text style={[styles.z3DayAbbr, day.is_today && { color: colors.accent }]}>
-              {day.dia_abbr}
-            </Text>
-
-            {/* State icon */}
-            <WeekDayIcon estado={day.estado} colors={colors} />
-
-            {/* Session type label */}
-            {day.tipo_sesion ? (
-              <Text
-                style={[styles.z3DayTipo, { color: TIPO_COLOR[day.estado] }]}
-                numberOfLines={1}
-              >
-                {day.tipo_sesion}
-              </Text>
-            ) : day.estado === 'descanso' ? (
-              <Text style={[styles.z3DayTipo, { color: 'rgba(255,170,50,0.5)' }]}>
-                {t('dashboard_rest')}
-              </Text>
-            ) : (
-              <Text style={styles.z3DayTipo}> </Text>
-            )}
-          </View>
-        ))}
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      backgroundColor: 'rgba(255,255,255,0.04)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+      borderRadius: 12, padding: 10, marginBottom: 8,
+    }}>
+      {/* Ícono disciplina */}
+      <View style={{
+        width: 36, height: 36, borderRadius: 10,
+        backgroundColor: 'rgba(79,140,255,0.12)',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ fontSize: 18, lineHeight: 22 }}>{icon}</Text>
       </View>
 
-      {/* Alerta contextual — solo se muestra si el backend envía una */}
-      {alerta && alertaColors && (
-        <View style={[styles.z3Alert, { borderTopColor: alertaColors.border }]}>
-          <View style={[styles.z3AlertDot, { backgroundColor: alertaColors.dot }]} />
-          <Text style={[styles.z3AlertText, { color: alertaColors.text }]}>
-            {alerta.mensaje}
-          </Text>
+      {/* Info */}
+      <View style={{ flex: 1 }}>
+        <Text style={{
+          fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13,
+          color: colors.inkPrimary, lineHeight: 18,
+        }} numberOfLines={1}>{titulo}</Text>
+        {!!meta && (
+          <Text style={{
+            fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+            color: colors.inkMuted, letterSpacing: 0.3, marginTop: 2,
+          }}>{meta}</Text>
+        )}
+      </View>
+
+      {/* Ver rutina */}
+      <TouchableOpacity
+        style={{
+          paddingHorizontal: 10, paddingVertical: 6,
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+          borderRadius: 8,
+        }}
+        onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha } } as any)}
+        activeOpacity={0.7}
+      >
+        <Text style={{
+          fontFamily: 'SpaceGrotesk-Medium', fontSize: 11,
+          color: colors.inkSecondary,
+        }}>Ver rutina →</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ─── Tu Semana Card (Zone 3 → moves to Zone 1.5) ──────────────────────────────
+
+function TuSemanaCard({
+  semanaDetalle,
+  colors,
+  styles,
+}: {
+  semanaDetalle: SemanaDay[]
+  colors: Colors
+  styles: ReturnType<typeof makeStyles>
+}) {
+  const [weekOffset, setWeekOffset]   = useState(0)
+  const [sessions,   setSessions]     = useState<FullSession[]>([])
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [isOpen,     setIsOpen]       = useState(false)
+
+  const panelAnim    = useRef(new Animated.Value(0)).current
+  const panelOpacity = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    apiGet('/api/sessions/')
+      .then((d: any) => setSessions(Array.isArray(d) ? d : (d.results ?? [])))
+      .catch(() => {})
+  }, [])
+
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const monday    = useMemo(() => getWeekMonday(weekOffset), [weekOffset])
+  const weekDates = useMemo(() => getWeekDates(monday),   [monday])
+  const weekRange = useMemo(() => formatWeekRange(monday), [monday])
+
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, FullSession[]>()
+    sessions.forEach(s => {
+      if (!map.has(s.fecha)) map.set(s.fecha, [])
+      map.get(s.fecha)!.push(s)
+    })
+    return map
+  }, [sessions])
+
+  const panelMaxHeight = useMemo(
+    () => panelAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 360] }),
+    [panelAnim],
+  )
+
+  function openPanel(date: string) {
+    setSelectedDate(date)
+    setIsOpen(true)
+    Animated.parallel([
+      Animated.timing(panelAnim,    { toValue: 1, duration: 240, useNativeDriver: false }),
+      Animated.timing(panelOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start()
+  }
+
+  function closePanel() {
+    setIsOpen(false)
+    Animated.parallel([
+      Animated.timing(panelAnim,    { toValue: 0, duration: 180, useNativeDriver: false }),
+      Animated.timing(panelOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
+    ]).start(() => setSelectedDate(null))
+  }
+
+  function handleDayPress(iso: string, state: DayState) {
+    if (state !== 'past-done') return
+    if (iso === selectedDate) {
+      closePanel()
+    } else if (isOpen) {
+      setSelectedDate(iso) // switch day — panel stays open
+    } else {
+      openPanel(iso)
+    }
+  }
+
+  function handleWeekNav(dir: -1 | 1) {
+    const next = weekOffset + dir
+    if (next > 0 || next < -8) return
+    setWeekOffset(next)
+    if (isOpen) {
+      setIsOpen(false)
+      panelAnim.setValue(0)
+      panelOpacity.setValue(0)
+      setSelectedDate(null)
+    }
+  }
+
+  const detailSessions = selectedDate ? (sessionsByDate.get(selectedDate) ?? []) : []
+
+  return (
+    <View style={styles.semCard}>
+      {/* ── Encabezado ── */}
+      <View style={styles.semHeaderRow}>
+        <Text style={styles.semLabel}>TU SEMANA</Text>
+        <View style={styles.semNavRow}>
+          {/* ← */}
+          <TouchableOpacity
+            style={[styles.semNavBtn, weekOffset <= -8 && styles.semNavBtnDisabled]}
+            onPress={() => handleWeekNav(-1)}
+            disabled={weekOffset <= -8}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.semNavArrow, weekOffset <= -8 && { opacity: 0.3 }]}>‹</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.semNavRange}>{weekRange}</Text>
+
+          {/* → */}
+          <TouchableOpacity
+            style={[styles.semNavBtn, weekOffset >= 0 && styles.semNavBtnDisabled]}
+            onPress={() => handleWeekNav(1)}
+            disabled={weekOffset >= 0}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.semNavArrow, weekOffset >= 0 && { opacity: 0.3 }]}>›</Text>
+          </TouchableOpacity>
         </View>
-      )}
+      </View>
+
+      {/* ── Grid de días ── */}
+      <View style={styles.semDaysRow}>
+        {weekDates.map((iso, idx) => {
+          const state    = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
+          const count    = sessionsByDate.get(iso)?.length ?? 0
+          const isSelected = selectedDate === iso
+
+          return (
+            <TouchableOpacity
+              key={iso}
+              style={styles.semDayCol}
+              onPress={() => handleDayPress(iso, state)}
+              disabled={state !== 'past-done'}
+              activeOpacity={0.75}
+            >
+              {/* Letra día */}
+              <Text style={[styles.semDayLetter, iso === today && { color: colors.accent }]}>
+                {DAY_LETTERS[idx]}
+              </Text>
+
+              {/* Círculo + badge */}
+              <View style={{ position: 'relative' }}>
+                <DayCircle state={state} isSelected={isSelected} colors={colors} />
+                {state === 'past-done' && count >= 2 && (
+                  <View style={styles.semBadge}>
+                    <Text style={styles.semBadgeText}>{count}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Etiqueta inferior */}
+              <Text style={[styles.semDayLabel, iso === today && { color: colors.inkSecondary }]}>
+                {iso === today ? 'Hoy' : ' '}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
+      {/* ── Panel de detalle (animado) ── */}
+      <Animated.View style={[styles.semDetailWrap, { maxHeight: panelMaxHeight, opacity: panelOpacity }]}>
+        <View style={styles.semDivider} />
+        {selectedDate && (
+          <View style={styles.semDetailContent}>
+            <Text style={styles.semDetailDate}>{formatDetailDate(selectedDate)}</Text>
+            {detailSessions.map(s => (
+              <SessionRow key={s.id} session={s} colors={colors} />
+            ))}
+          </View>
+        )}
+      </Animated.View>
     </View>
   )
 }
@@ -706,6 +963,35 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* ── ZONA 1.5 — Tu Semana ── */}
+        {loading ? (
+          <View style={[styles.semCard, { opacity: 0.5 }]}>
+            <View style={styles.semHeaderRow}>
+              <Skeleton width={70} height={9} borderRadius={4} />
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <Skeleton width={26} height={26} borderRadius={6} />
+                <Skeleton width={70} height={10} borderRadius={4} />
+                <Skeleton width={26} height={26} borderRadius={6} />
+              </View>
+            </View>
+            <View style={styles.semDaysRow}>
+              {[0,1,2,3,4,5,6].map(i => (
+                <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
+                  <Skeleton width={12} height={9} borderRadius={3} />
+                  <Skeleton width={32} height={32} borderRadius={16} />
+                  <Skeleton width={20} height={8} borderRadius={3} />
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <TuSemanaCard
+            semanaDetalle={data?.semana_detalle ?? []}
+            colors={colors}
+            styles={styles}
+          />
+        )}
+
         {/* ── ZONA 2 — Card CTA principal ── */}
         {loading ? (
           <View style={styles.ctaCardSkeleton}>
@@ -716,30 +1002,6 @@ export default function DashboardScreen() {
           </View>
         ) : !!data?.cta && (
           <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
-        )}
-
-        {/* ── ZONA 3 — Vista semanal ── */}
-        {loading ? (
-          <View style={[styles.z3Wrap, { opacity: 0.5 }]}>
-            <Skeleton width={70} height={10} borderRadius={4} style={{ marginBottom: 14 }} />
-            <View style={styles.z3Row}>
-              {[0,1,2,3,4,5,6].map(i => (
-                <View key={i} style={styles.z3DayCol}>
-                  <Skeleton width={14} height={10} borderRadius={3} />
-                  <Skeleton width={26} height={26} borderRadius={13} style={{ marginVertical: 4 }} />
-                  <Skeleton width={28} height={8} borderRadius={3} />
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : !!data?.semana_detalle?.length && (
-          <WeeklyView
-            semana={data.semana_detalle}
-            rachaContexto={data.racha_contexto}
-            colors={colors}
-            styles={styles}
-            t={t}
-          />
         )}
 
         {/* ── RPE Promedio ── */}
@@ -953,74 +1215,122 @@ function makeStyles(c: Colors) {
       marginBottom: 20,
     },
 
-    // ── Zone 3 — Vista semanal
-    z3Wrap: {
+    // ── Tu Semana Card (Zone 1.5)
+    semCard: {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 20,
-      padding: 18,
+      padding: 16,
       marginBottom: 20,
+      overflow: 'hidden',
     },
-    z3Label: {
+    semHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    semLabel: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 2,
-      marginBottom: 14,
+      textTransform: 'uppercase',
     },
-    z3Row: {
+    semNavRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    semNavBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    semNavBtnDisabled: {
+      opacity: 0.38,
+    },
+    semNavArrow: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 16,
+      color: c.inkSecondary,
+      lineHeight: 20,
+    },
+    semNavRange: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      color: c.inkSecondary,
+      letterSpacing: 0.2,
+      minWidth: 80,
+      textAlign: 'center',
+    },
+    semDaysRow: {
       flexDirection: 'row',
     },
-    z3DayCol: {
+    semDayCol: {
       flex: 1,
       alignItems: 'center',
-      paddingVertical: 6,
+      paddingVertical: 4,
       paddingHorizontal: 1,
-      borderRadius: 10,
-      gap: 4,
+      gap: 5,
     },
-    z3DayColHoy: {
-      backgroundColor: 'rgba(79,140,255,0.09)',
-      borderWidth: 1,
-      borderColor: 'rgba(79,140,255,0.22)',
-    },
-    z3DayAbbr: {
+    semDayLetter: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 0.3,
       textTransform: 'uppercase',
     },
-    z3DayTipo: {
+    semDayLabel: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 7,
-      letterSpacing: 0.2,
+      fontSize: 8,
       color: 'transparent',
-      textAlign: 'center',
+      letterSpacing: 0.2,
     },
-    z3Alert: {
-      flexDirection: 'row',
+    semBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: c.accent,
+      borderWidth: 1.5,
+      borderColor: c.cardBg,
       alignItems: 'center',
-      gap: 8,
+      justifyContent: 'center',
+    },
+    semBadgeText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      color: '#fff',
+      lineHeight: 11,
+    },
+    semDivider: {
+      height: 1,
+      backgroundColor: c.borderDefault,
       marginTop: 14,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: c.borderDefault,
+      marginBottom: 14,
     },
-    z3AlertDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: '#ffaa32',
-      flexShrink: 0,
+    semDetailWrap: {
+      overflow: 'hidden',
     },
-    z3AlertText: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-      color: '#ffaa32',
-      lineHeight: 17,
-      flex: 1,
+    semDetailContent: {
+      paddingBottom: 4,
+    },
+    semDetailDate: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      color: c.inkMuted,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom: 10,
     },
 
     // ── RPE Card
