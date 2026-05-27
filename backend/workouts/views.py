@@ -8,6 +8,24 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA, CalendarEvent, TrainingCycle
+
+
+def _get_local_date(request) -> date:
+    """
+    Devuelve la fecha local del dispositivo cliente (header X-Local-Date).
+    Fallback a date.today() (UTC) si el header no está presente o es inválido.
+
+    Necesario porque date.today() en el servidor usa UTC, lo que puede
+    diferir del día local del usuario en zonas horarias UTC- cuando entrena
+    en la noche (ej: 10 PM martes local = 3 AM miércoles UTC).
+    """
+    header = request.headers.get('X-Local-Date', '').strip()
+    if header:
+        try:
+            return date.fromisoformat(header)
+        except ValueError:
+            pass
+    return date.today()
 from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer
 
 
@@ -963,9 +981,10 @@ def _tipo_corto(titulo):
     return 'Sesión'
 
 
-def _semana_detalle(user, dias_semana_objetivo, cta_titulo):
+def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = None):
     from datetime import date, timedelta
-    hoy = date.today()
+    if hoy is None:
+        hoy = date.today()  # fallback UTC si no se pasa la fecha local
     lunes = hoy - timedelta(days=hoy.weekday())  # Monday of current week
     domingo = lunes + timedelta(days=6)
 
@@ -1299,7 +1318,7 @@ def session_sustituir(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_dashboard(request):
-    hoy = date.today()
+    hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     hace_7 = hoy - timedelta(days=7)
     hace_14 = hoy - timedelta(days=14)
 
@@ -1349,7 +1368,7 @@ def stats_dashboard(request):
 
     saludo, insight = _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo)
     cta = _cta_sugerido(request.user, total_sesiones, fatiga_pct)
-    semana_detalle = _semana_detalle(request.user, dias_objetivo, cta.get('titulo', ''))
+    semana_detalle = _semana_detalle(request.user, dias_objetivo, cta.get('titulo', ''), hoy=hoy)
     metrica = _metrica_destacada(request.user, racha, dias_objetivo, total_sesiones)
     insight_entrenador = _generar_insight_entrenador(request.user)
     zyfit_score_valor, zyfit_score_desc = _calcular_zyfit_score(
@@ -1411,7 +1430,7 @@ def stats_dashboard(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_full(request):
-    hoy = date.today()
+    hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     hace_4_semanas = hoy - timedelta(weeks=4)
     hace_7 = hoy - timedelta(days=7)
     hace_14 = hoy - timedelta(days=14)

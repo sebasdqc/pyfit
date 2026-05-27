@@ -34,7 +34,7 @@ import { router } from 'expo-router'
 import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
-import { apiGet } from '../../../lib/api'
+import { apiGet, localDateStr } from '../../../lib/api'
 
 // ─── Daily motivational phrases ───────────────────────────────────────────────
 
@@ -249,12 +249,12 @@ function getWeekMonday(weekOffset: number): Date {
   return mon
 }
 
-/** Array de 7 fechas ISO (lun→dom) */
+/** Array de 7 fechas ISO (lun→dom) usando fecha LOCAL, no UTC */
 function getWeekDates(monday: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)  // local date components, never toISOString()
   })
 }
 
@@ -624,7 +624,7 @@ function TuSemanaCard({
       .catch(() => {})
   }, [])
 
-  const today     = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const today     = useMemo(() => localDateStr(), [])  // fecha LOCAL, no UTC
   const monday    = useMemo(() => getWeekMonday(0), [])
   const weekDates = useMemo(() => getWeekDates(monday), [monday])
 

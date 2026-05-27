@@ -13,6 +13,23 @@ from rest_framework.response import Response
 from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle, AjustarSesionRateThrottle
 from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile
 from checkins.models import DailyCheckin
+
+
+def _get_local_date(request) -> date:
+    """
+    Devuelve la fecha local del dispositivo (header X-Local-Date).
+    Fallback a date.today() (UTC) si el header no está disponible o es inválido.
+
+    Necesario para que las sesiones se guarden en la fecha que el usuario
+    percibe, no en la fecha UTC del servidor (que puede diferir en zonas UTC-).
+    """
+    header = request.headers.get('X-Local-Date', '').strip()
+    if header:
+        try:
+            return date.fromisoformat(header)
+        except ValueError:
+            pass
+    return date.today()
 from ai_workout.adaptive_engine import AdaptiveEngineService
 
 logger = logging.getLogger(__name__)
@@ -650,7 +667,7 @@ JSON requerido:
 @throttle_classes([GenerateSessionRateThrottle])
 def generate_session(request):
     user = request.user
-    hoy = date.today()
+    hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     hace_14_dias = hoy - timedelta(days=14)
 
     try:
@@ -1003,7 +1020,7 @@ def session_ajustar(request, pk):
 
     dolor_hoy = (checkin.dolor_hoy or '') if checkin else ''
 
-    hoy = date.today()
+    hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     competicion = user.competitions.filter(
         fecha__gte=hoy,
         fecha__lte=hoy + timedelta(days=14),

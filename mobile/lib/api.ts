@@ -6,8 +6,25 @@ if (__DEV__) {
   console.log('[API] BASE_URL:', BASE_URL)
 }
 
+/**
+ * Devuelve la fecha local del dispositivo en formato YYYY-MM-DD.
+ * Usa los componentes locales (getFullYear/Month/Date), NO toISOString()
+ * que convertiría a UTC y podría devolver el día incorrecto para zonas UTC-.
+ */
+export function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 async function getHeaders(includeAuth = true): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    // Enviamos la fecha local del dispositivo en cada request para que el
+    // backend pueda usar la fecha correcta (no UTC) al crear sesiones/checkins.
+    'X-Local-Date': localDateStr(),
+  }
   if (includeAuth) {
     const token = await getAccessToken()
     if (token) headers['Authorization'] = `Bearer ${token}`
