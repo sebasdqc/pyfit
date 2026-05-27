@@ -31,7 +31,7 @@ const RING_STROKE = 9
 const RING_CIRC   = 2 * Math.PI * RING_R
 const RING_CX     = RING_SIZE / 2
 const RING_CY     = RING_SIZE / 2
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
@@ -691,21 +691,16 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
 
 function TuSemanaCard({
   semanaDetalle,
+  sessions,
   colors,
   styles,
 }: {
   semanaDetalle: SemanaDay[]
+  sessions: FullSession[]
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
-  const [sessions,     setSessions]     = useState<FullSession[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-
-  useEffect(() => {
-    apiGet('/api/sessions/')
-      .then((d: any) => setSessions(Array.isArray(d) ? d : (d.results ?? [])))
-      .catch(() => {})
-  }, [])
 
   const today     = useMemo(() => localDateStr(), [])  // fecha LOCAL, no UTC
   const monday    = useMemo(() => getWeekMonday(0), [])
@@ -977,6 +972,16 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<FullSession[]>([])
+
+  const fetchSessions = useCallback(async () => {
+    try {
+      const d = await apiGet('/api/sessions/')
+      setSessions(Array.isArray(d) ? d : (d.results ?? []))
+    } catch {
+      // silently ignore — sessions are non-critical for dashboard render
+    }
+  }, [])
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -992,13 +997,18 @@ export default function DashboardScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await fetchDashboard()
+    await Promise.all([fetchDashboard(), fetchSessions()])
     setRefreshing(false)
-  }, [fetchDashboard])
+  }, [fetchDashboard, fetchSessions])
 
-  useEffect(() => {
-    fetchDashboard()
-  }, [fetchDashboard])
+  // Fetch on initial mount AND every time the screen comes back into focus
+  // (e.g. after returning from the checkin → generate flow or "Entrenar otra vez hoy")
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboard()
+      fetchSessions()
+    }, [fetchDashboard, fetchSessions])
+  )
 
 
   return (
@@ -1071,6 +1081,7 @@ export default function DashboardScreen() {
         ) : (
           <TuSemanaCard
             semanaDetalle={data?.semana_detalle ?? []}
+            sessions={sessions}
             colors={colors}
             styles={styles}
           />

@@ -883,11 +883,13 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
     lunes = hoy - timedelta(days=hoy.weekday())  # Monday of current week
     domingo = lunes + timedelta(days=6)
 
-    sesiones_map = {
-        str(s.fecha): s
-        for s in user.sessions.filter(fecha__gte=lunes, fecha__lte=domingo)
-    }
+    # Build a dict of {date_str: [sessions]} to support multiple sessions per day
+    sesiones_map: dict[str, list] = {}
+    for s in user.sessions.filter(fecha__gte=lunes, fecha__lte=domingo).order_by('created_at'):
+        key = str(s.fecha)
+        sesiones_map.setdefault(key, []).append(s)
 
+    # Count unique days trained up to and including today (not total sessions)
     sesiones_hasta_hoy = sum(
         1 for i in range(hoy.weekday() + 1)
         if str(lunes + timedelta(days=i)) in sesiones_map
@@ -906,7 +908,8 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
 
         if dia < hoy:
             if fecha_str in sesiones_map:
-                s = sesiones_map[fecha_str]
+                # Use the last session of the day for display type
+                s = sesiones_map[fecha_str][-1]
                 tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
                 detalle.append({'fecha': fecha_str, 'dia_abbr': abbr, 'estado': 'entrenado', 'tipo_sesion': tipo, 'is_today': False})
             else:
@@ -914,7 +917,7 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
 
         elif is_today:
             if fecha_str in sesiones_map:
-                s = sesiones_map[fecha_str]
+                s = sesiones_map[fecha_str][-1]
                 tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
                 detalle.append({'fecha': fecha_str, 'dia_abbr': abbr, 'estado': 'entrenado', 'tipo_sesion': tipo, 'is_today': True})
             else:
