@@ -805,7 +805,8 @@ function TuSemanaCard({
           ) : sesionesEstaSemana === 1 ? (
             <>
               <Text style={styles.semFooterCount}>1</Text>
-              <Text> sesión esta semana</Text>
+              <Text> sesión esta semana  ·  </Text>
+              <Text style={{ color: colors.accent }}>¡Vamos!</Text>
             </>
           ) : (
             <>
