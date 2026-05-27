@@ -747,11 +747,8 @@ function TuSemanaCard({
 
   return (
     <View style={styles.semCard}>
-      {/* Label */}
-      <Text style={styles.semLabel}>TU SEMANA</Text>
-
       {/* Grid de días */}
-      <View style={[styles.semDaysRow, { marginTop: 14 }]}>
+      <View style={styles.semDaysRow}>
         {weekDates.map((iso, idx) => {
           const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, 0)
           const count      = sessionsByDate.get(iso)?.length ?? 0
@@ -1094,8 +1091,7 @@ export default function DashboardScreen() {
         {/* ── ZONA 1.5 — Tu Semana ── */}
         {loading ? (
           <View style={[styles.semCard, { opacity: 0.5 }]}>
-            <Skeleton width={70} height={9} borderRadius={4} />
-            <View style={[styles.semDaysRow, { marginTop: 14 }]}>
+            <View style={styles.semDaysRow}>
               {[0,1,2,3,4,5,6].map(i => (
                 <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
                   <Skeleton width={12} height={9} borderRadius={3} />
@@ -1179,7 +1175,7 @@ function makeStyles(c: Colors) {
 
     // ── Zone 1 — Saludo inteligente
     z1: {
-      marginBottom: 32,
+      marginBottom: 10,
       paddingTop: 4,
     },
     bellBtn: {
@@ -1331,8 +1327,10 @@ function makeStyles(c: Colors) {
       backgroundColor: 'transparent',
       borderWidth: 0,
       borderRadius: 20,
-      padding: 16,
-      marginBottom: 20,
+      paddingTop: 0,
+      paddingHorizontal: 4,
+      paddingBottom: 16,
+      marginBottom: 12,
       overflow: 'hidden',
     },
     semLabel: {
