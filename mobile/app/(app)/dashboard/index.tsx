@@ -670,6 +670,12 @@ function TuSemanaCard({
 
   const detailSessions = selectedDate ? (sessionsByDate.get(selectedDate) ?? []) : []
 
+  // Total de sesiones en los 7 días de esta semana
+  const sesionesEstaSemana = useMemo(() =>
+    weekDates.reduce((total, iso) => total + (sessionsByDate.get(iso)?.length ?? 0), 0),
+    [weekDates, sessionsByDate]
+  )
+
   return (
     <View style={styles.semCard}>
       {/* Label */}
@@ -716,6 +722,29 @@ function TuSemanaCard({
             </TouchableOpacity>
           )
         })}
+      </View>
+
+      {/* Footer — contador de sesiones de la semana */}
+      <View style={styles.semFooter}>
+        <Text style={styles.semFooterText}>
+          {sesionesEstaSemana === 0 ? (
+            <>
+              <Text style={styles.semFooterCount}>0</Text>
+              <Text> sesiones esta semana  ·  </Text>
+              <Text style={{ color: colors.accent }}>¡Vamos!</Text>
+            </>
+          ) : sesionesEstaSemana === 1 ? (
+            <>
+              <Text style={styles.semFooterCount}>1</Text>
+              <Text> sesión esta semana</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
+              <Text> sesiones esta semana</Text>
+            </>
+          )}
+        </Text>
       </View>
 
       {/* Panel de detalle — visible solo cuando hay un día seleccionado */}
@@ -1258,6 +1287,23 @@ function makeStyles(c: Colors) {
       fontSize: 8,
       color: '#fff',
       lineHeight: 11,
+    },
+    semFooter: {
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: c.borderDefault,
+    },
+    semFooterText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 12,
+      color: c.inkMuted,
+      textAlign: 'center',
+    },
+    semFooterCount: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 12,
+      color: c.inkSecondary,
     },
     semDivider: {
       height: 1,
