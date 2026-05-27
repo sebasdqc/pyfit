@@ -476,72 +476,97 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 
 // ─── Tu Semana — sub-components ───────────────────────────────────────────────
 
-function DayCircle({ state, isSelected, colors }: {
+function DayCircle({ state, isSelected, dayNumber, colors }: {
   state: DayState
   isSelected: boolean
+  dayNumber: number
   colors: Colors
 }) {
-  const S = 32
-  if (state === 'past-done') {
+  const S = 34
+
+  if (state === 'today') {
+    // Relleno azul brillante + número blanco
     return (
       <View style={{
         width: S, height: S, borderRadius: S / 2,
-        backgroundColor: 'rgba(79,140,255,0.15)',
+        backgroundColor: colors.accent,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: colors.accent, shadowOpacity: 0.55,
+        shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+        elevation: 5,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>
+          {dayNumber}
+        </Text>
+      </View>
+    )
+  }
+
+  if (state === 'past-done') {
+    // Borde azul + tinte + número en azul
+    return (
+      <View style={{
+        width: S, height: S, borderRadius: S / 2,
+        backgroundColor: 'rgba(79,140,255,0.12)',
         borderWidth: isSelected ? 2 : 1.5,
         borderColor: isSelected ? colors.accent : 'rgba(79,140,255,0.45)',
         alignItems: 'center', justifyContent: 'center',
         shadowColor: isSelected ? colors.accent : 'transparent',
-        shadowOpacity: isSelected ? 0.55 : 0,
+        shadowOpacity: isSelected ? 0.5 : 0,
         shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
         elevation: isSelected ? 4 : 0,
       }}>
-        <Text style={{ color: colors.accent, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>✓</Text>
+        <Text style={{ color: colors.accent, fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>
+          {dayNumber}
+        </Text>
       </View>
     )
   }
-  if (state === 'today') {
-    return (
-      <View style={{
-        width: S, height: S, borderRadius: S / 2,
-        backgroundColor: 'rgba(79,140,255,0.08)',
-        borderWidth: 2, borderColor: colors.accent,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: colors.accent, shadowOpacity: 0.30,
-        shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
-        elevation: 3,
-      }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
-      </View>
-    )
-  }
+
   if (state === 'future') {
+    // Borde punteado + número muy tenue
     return (
-      <Svg width={S} height={S}>
-        <Circle cx={S/2} cy={S/2} r={S/2 - 2}
-          fill="none" stroke="rgba(255,255,255,0.18)"
-          strokeWidth={1.5} strokeDasharray="3 2.5" />
-      </Svg>
-    )
-  }
-  if (state === 'rest') {
-    return (
-      <View style={{
-        width: S, height: S, borderRadius: S / 2,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-        alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Text style={{ fontSize: 14, lineHeight: 18 }}>🌙</Text>
+      <View style={{ width: S, height: S, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={S} height={S} style={{ position: 'absolute' }}>
+          <Circle cx={S / 2} cy={S / 2} r={S / 2 - 2}
+            fill="none" stroke="rgba(255,255,255,0.15)"
+            strokeWidth={1.5} strokeDasharray="3 2.5" />
+        </Svg>
+        <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
+          {dayNumber}
+        </Text>
       </View>
     )
   }
+
+  if (state === 'rest') {
+    // Borde sutil + número muy tenue
+    return (
+      <View style={{
+        width: S, height: S, borderRadius: S / 2,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
+          {dayNumber}
+        </Text>
+      </View>
+    )
+  }
+
   // past-skip
   return (
     <View style={{
       width: S, height: S, borderRadius: S / 2,
-      backgroundColor: 'rgba(255,255,255,0.03)',
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-    }} />
+      backgroundColor: 'rgba(255,255,255,0.02)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Text style={{ color: 'rgba(255,255,255,0.18)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
+        {dayNumber}
+      </Text>
+    </View>
   )
 }
 
@@ -657,6 +682,8 @@ function TuSemanaCard({
           const count      = sessionsByDate.get(iso)?.length ?? 0
           const isSelected = selectedDate === iso
 
+          const dayNumber = parseInt(iso.slice(8, 10), 10)
+
           return (
             <TouchableOpacity
               key={iso}
@@ -665,12 +692,14 @@ function TuSemanaCard({
               disabled={state !== 'past-done'}
               activeOpacity={0.75}
             >
+              {/* Letra del día */}
               <Text style={[styles.semDayLetter, iso === today && { color: colors.accent }]}>
                 {DAY_LETTERS[idx]}
               </Text>
 
+              {/* Círculo con número del día */}
               <View style={{ position: 'relative' }}>
-                <DayCircle state={state} isSelected={isSelected} colors={colors} />
+                <DayCircle state={state} isSelected={isSelected} dayNumber={dayNumber} colors={colors} />
                 {state === 'past-done' && count >= 2 && (
                   <View style={styles.semBadge}>
                     <Text style={styles.semBadgeText}>{count}</Text>
@@ -678,9 +707,12 @@ function TuSemanaCard({
                 )}
               </View>
 
-              <Text style={[styles.semDayLabel, iso === today && { color: colors.inkSecondary }]}>
-                {iso === today ? 'Hoy' : ' '}
-              </Text>
+              {/* Check debajo del círculo — solo para días entrenados pasados */}
+              <View style={styles.semCheckArea}>
+                {state === 'past-done' && (
+                  <Text style={styles.semCheckMark}>✓</Text>
+                )}
+              </View>
             </TouchableOpacity>
           )
         })}
@@ -1210,11 +1242,16 @@ function makeStyles(c: Colors) {
       letterSpacing: 0.3,
       textTransform: 'uppercase',
     },
-    semDayLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 8,
-      color: 'transparent',
-      letterSpacing: 0.2,
+    semCheckArea: {
+      height: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    semCheckMark: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 10,
+      color: c.accent,
+      lineHeight: 14,
     },
     semBadge: {
       position: 'absolute',
