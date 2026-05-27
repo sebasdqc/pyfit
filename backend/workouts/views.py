@@ -449,183 +449,131 @@ def _actualizar_adaptation_profile(user, session, feedback):
         logger.error(f'_actualizar_adaptation_profile error for user {user.id}: {e}', exc_info=True)
 
 
-def _generar_mensaje_entrenador(user):
+def _generar_mensaje_entrenador(user) -> dict:
     """
-    Mensaje diario del entrenador. Cacheado en DailyCoachInsight.
-    - Días 1-6  : mensaje de bienvenida basado en perfil (sin historial).
-    - Días 7-20 : mensaje basado en el historial inicial disponible.
-    - Días 21+  : mensaje completo con patrones de días, disciplina y racha.
-    - No usa datos del día actual — solo historial.
-    - Devuelve string con **fragmento** para highlight, o None.
+    Devuelve {modo, mensaje, fragmento} — nunca None, siempre hay un payload.
+
+    Modos según sesiones completadas:
+      empty    — 0 sesiones: estático, sin LLM
+      first    — 1 sesión:   estático, sin LLM
+      building — 2-6 ses.:  plantilla con datos reales, sin LLM
+      full     — 7+ ses.:   LLM con fallback a plantilla building
+    Cacheado en DailyCoachInsight (por usuario × día).
     """
     from datetime import date, timedelta
     from collections import Counter
 
-    hoy       = date.today()
-    dia_semana = hoy.weekday()  # 0=lun … 6=dom
-    DIA_NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
-    dia_nombre  = DIA_NOMBRES[dia_semana]
+    hoy = date.today()
 
-    # ── Días de historial disponible
-    primera = user.sessions.order_by('fecha').first()
-    dias_historial = (hoy - primera.fecha).days if primera else 0
-
-    # ── Cache diario
+    # ── Cache diario — si ya existe entry con modo, retornar
     try:
-        return DailyCoachInsight.objects.get(user=user, fecha=hoy).texto
+        entry = DailyCoachInsight.objects.get(user=user, fecha=hoy)
+        if entry.modo:
+            return entry.to_payload()
+        # Entry legada (solo texto sin modo) → tratar como full
+        return {'modo': 'full', 'mensaje': entry.texto, 'fragmento': ''}
     except DailyCoachInsight.DoesNotExist:
         pass
 
-    # ── Etapa 1: Sin historial o muy poco (< 7 días) → mensaje de bienvenida por perfil
-    if dias_historial < 7:
-        try:
-            profile = user.profile
-            nivel      = getattr(profile, 'nivel', 'intermedio') or 'intermedio'
-            objetivo   = getattr(profile, 'objetivo', None)
-            objetivos  = getattr(profile, 'objetivos_multiples', None) or []
-            nombre     = getattr(profile, 'nombre', None) or ''
-            dias_obj   = getattr(profile, 'dias_semana', 3) or 3
-            total_sess = user.sessions.count()
-        except Exception:
-            nivel, objetivo, objetivos, nombre, dias_obj, total_sess = 'intermedio', None, [], '', 3, 0
+    total_sesiones = user.sessions.count()
 
-        obj_texto = objetivo or (objetivos[0] if objetivos else 'mejorar tu condición física')
-
-        if total_sess == 0:
-            instruccion = (
-                f'El atleta acaba de registrarse. Nivel: {nivel}. '
-                f'Objetivo principal: {obj_texto}. '
-                f'Plan: entrenar {dias_obj} días por semana. '
-                'Primera oración: bienvenida directa que menciona su objetivo con **el objetivo en negrita**. '
-                'Segunda oración: motivación breve sobre empezar el proceso.'
-            )
-        else:
-            instruccion = (
-                f'El atleta tiene {total_sess} sesión{"es" if total_sess > 1 else ""} registrada{"s" if total_sess > 1 else ""}. '
-                f'Nivel: {nivel}. Objetivo: {obj_texto}. '
-                'Primera oración: reconoce que ya comenzó, menciona **el objetivo** en negrita. '
-                'Segunda oración: impulso para continuar construyendo el hábito.'
-            )
-
-        prompt_early = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día.
-
-CONTEXTO:
-{instruccion}
-
-REGLAS ESTRICTAS:
-1. Exactamente 2 oraciones en un solo párrafo.
-2. Encierra el fragmento más relevante con **fragmento** — solo UN fragmento.
-3. Sin signos de exclamación. Sin lenguaje genérico de app. Tono: entrenador directo, cercano.
-4. Sin consejos de carga, intensidad ni nutrición.
-5. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
-
-        try:
-            import groq
-            from django.conf import settings as dj_settings
-            client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
-            resp = client.chat.completions.create(
-                model='llama-3.3-70b-versatile',
-                messages=[{'role': 'user', 'content': prompt_early}],
-                max_tokens=120,
-                temperature=0.65,
-            )
-            texto = resp.choices[0].message.content.strip().strip('"').strip("'")
-            if texto:
-                DailyCoachInsight.objects.update_or_create(
-                    user=user, fecha=hoy, defaults={'texto': texto}
-                )
-                return texto
-        except Exception:
-            pass
-        return None
-
-    # ── Etapa 2: Historial inicial (7-20 días) → usa sesiones disponibles sin exigir patrón de día
-    if dias_historial < 21:
-        try:
-            racha        = user.profile.racha_actual or 0
-            dias_objetivo = user.profile.dias_semana or 3
-        except Exception:
-            racha, dias_objetivo = 0, 3
-
-        total_sess   = user.sessions.count()
-        sesiones_sem = user.sessions.filter(fecha__gte=hoy - timedelta(days=hoy.weekday())).count()
-        hace_2s      = hoy - timedelta(weeks=2)
-        sesiones_2s  = user.sessions.filter(fecha__gte=hace_2s).count()
-
-        try:
-            objetivo = user.profile.objetivo or 'mejorar tu condición física'
-        except Exception:
-            objetivo = 'mejorar tu condición física'
-
-        ctx_early = (
-            f'Hoy: {dia_nombre}\n'
-            f'Días desde la primera sesión: {dias_historial}\n'
-            f'Total de sesiones: {total_sess}\n'
-            f'Sesiones esta semana: {sesiones_sem} de {dias_objetivo} planificadas\n'
-            f'Sesiones en los últimos 14 días: {sesiones_2s}\n'
-            f'Racha actual: {racha} días\n'
-            f'Objetivo: {objetivo}'
+    # ────────────────────────────────────────────────────────────────
+    # MODO EMPTY — 0 sesiones, mensaje estático
+    # ────────────────────────────────────────────────────────────────
+    if total_sesiones == 0:
+        return _cache_insight(user, hoy,
+            modo='empty',
+            mensaje='Realiza tu primer entrenamiento para obtener más datos.',
+            fragmento='primer entrenamiento',
         )
 
-        if racha >= 5:
-            instruccion_cierre = f'La segunda oración DEBE mencionar la racha de {racha} días con el número exacto.'
-        elif sesiones_sem >= dias_objetivo:
-            instruccion_cierre = 'Segunda oración: refuerza positivamente haber cumplido la semana.'
-        else:
-            instruccion_cierre = 'Segunda oración: impulsa a continuar con el plan de esta semana.'
+    # ────────────────────────────────────────────────────────────────
+    # MODO FIRST — exactamente 1 sesión, mensaje estático
+    # ────────────────────────────────────────────────────────────────
+    if total_sesiones == 1:
+        return _cache_insight(user, hoy,
+            modo='first',
+            mensaje='Acabas de completar tu primera sesión. Tu entrenador empieza a conocerte desde hoy.',
+            fragmento='primera sesión',
+        )
 
-        prompt_mid = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día.
+    # ────────────────────────────────────────────────────────────────
+    # MODO BUILDING — 2-6 sesiones, plantilla con datos reales (sin LLM)
+    # ────────────────────────────────────────────────────────────────
+    if total_sesiones <= 6:
+        return _generar_building(user, hoy, total_sesiones)
 
-DATOS DEL ATLETA (primeras semanas de entrenamiento):
-{ctx_early}
+    # ────────────────────────────────────────────────────────────────
+    # MODO FULL — 7+ sesiones, LLM con fallback a building
+    # ────────────────────────────────────────────────────────────────
+    return _generar_full(user, hoy, total_sesiones)
 
-REGLAS ESTRICTAS:
-1. Exactamente 2 oraciones en un solo párrafo.
-2. Primera oración: habla del progreso concreto de estas primeras semanas usando los datos disponibles.
-3. {instruccion_cierre}
-4. Encierra el fragmento más relevante (racha, sesiones, objetivo) con **fragmento** — solo UN fragmento.
-5. Sin signos de exclamación. Sin lenguaje genérico de app. Sin consejos de carga ni nutrición.
-6. Tono: entrenador que conoce al atleta, directo, sin condescendencia.
-7. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
 
-        try:
-            import groq
-            from django.conf import settings as dj_settings
-            client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
-            resp = client.chat.completions.create(
-                model='llama-3.3-70b-versatile',
-                messages=[{'role': 'user', 'content': prompt_mid}],
-                max_tokens=120,
-                temperature=0.65,
-            )
-            texto = resp.choices[0].message.content.strip().strip('"').strip("'")
-            if texto:
-                DailyCoachInsight.objects.update_or_create(
-                    user=user, fecha=hoy, defaults={'texto': texto}
-                )
-                return texto
-        except Exception:
-            pass
-        return None
+def _cache_insight(user, hoy, *, modo: str, mensaje: str, fragmento: str) -> dict:
+    """Guarda en DailyCoachInsight y devuelve el payload dict."""
+    DailyCoachInsight.objects.update_or_create(
+        user=user, fecha=hoy,
+        defaults={'texto': mensaje, 'modo': modo, 'fragmento': fragmento},
+    )
+    return {'modo': modo, 'mensaje': mensaje, 'fragmento': fragmento}
+
+
+def _generar_building(user, hoy, total_sesiones: int) -> dict:
+    """Plantilla con datos reales, sin LLM (modo building: 2-6 sesiones)."""
+    from datetime import timedelta
+
+    ultima = (
+        user.sessions
+        .select_related('feedback')
+        .order_by('-fecha', '-created_at')
+        .first()
+    )
+
+    # Preferir dato de RPE si existe
+    if ultima and ultima.feedback and ultima.feedback.rpe_real is not None:
+        rpe = float(ultima.feedback.rpe_real)
+        rpe_str = str(int(rpe)) if rpe == int(rpe) else str(round(rpe, 1))
+        mensaje = (
+            f'Tu sesión {total_sesiones} tuvo un RPE de {rpe_str}. '
+            'Tu entrenador ya tiene tu punto de partida.'
+        )
+        fragmento = f'RPE de {rpe_str}'
+    else:
+        mensaje = (
+            f'Llevas {total_sesiones} sesiones en Zyfit. '
+            'Con cada una, tu entrenador te conoce mejor.'
+        )
+        fragmento = f'{total_sesiones} sesiones'
+
+    return _cache_insight(user, hoy, modo='building', mensaje=mensaje, fragmento=fragmento)
+
+
+def _generar_full(user, hoy, total_sesiones: int) -> dict:
+    """LLM con contexto completo (modo full: 7+ sesiones). Fallback a building."""
+    from datetime import timedelta
+    from collections import Counter
+
+    dia_semana = hoy.weekday()
+    DIA_NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+    dia_nombre  = DIA_NOMBRES[dia_semana]
 
     hace_6_semanas = hoy - timedelta(weeks=6)
     hace_3_semanas = hoy - timedelta(weeks=3)
 
-    # ── Sesiones recientes (6 semanas)
     sesiones_recientes = list(
         user.sessions.filter(fecha__gte=hace_6_semanas)
         .select_related('checkin', 'feedback')
         .order_by('-fecha')
     )
 
-    # ── Patrón del día: últimas 6 ocurrencias del mismo día de semana
+    # ── Patrón del día de la semana
     sesiones_mismo_dia = [s for s in sesiones_recientes if s.fecha.weekday() == dia_semana][:6]
 
-    def _detectar_disciplina(titulo):
+    def _disciplina(titulo):
         if not titulo:
             return None
         t = titulo.lower()
-        if any(w in t for w in ['pierna', 'glúteo', 'sentadilla', 'squat', 'femoral', 'cuádricep', 'quads']):
+        if any(w in t for w in ['pierna', 'glúteo', 'sentadilla', 'squat', 'femoral', 'cuádricep']):
             return 'piernas'
         if any(w in t for w in ['pecho', 'press banca', 'pectoral', 'push', 'trícep']):
             return 'pecho y tríceps'
@@ -641,135 +589,82 @@ REGLAS ESTRICTAS:
             return 'movilidad'
         return None
 
-    disciplinas = []
-    for s in sesiones_mismo_dia:
-        titulo = s.respuesta_ia.get('titulo', '') if s.respuesta_ia else ''
-        d = _detectar_disciplina(titulo)
-        if d:
-            disciplinas.append(d)
-
-    patron_dia   = None
-    patron_texto = 'sin patrón claro aún'
-    if disciplinas:
-        conteo = Counter(disciplinas)
-        mas_comun, freq = conteo.most_common(1)[0]
-        if freq >= 3:  # ≥3 de 6 ocurrencias (relajamos de 4 a 3 para más cobertura)
-            patron_dia   = mas_comun
-            patron_texto = f'{freq} de las últimas {len(sesiones_mismo_dia)} veces: {mas_comun}'
-
-    # ── Horario habitual en este día de semana (hora de created_at)
-    horas = [s.created_at.hour for s in sesiones_mismo_dia if s.created_at]
-    horario_habitual = None
-    if horas:
-        avg_hora = sum(horas) / len(horas)
-        if avg_hora < 12:
-            horario_habitual = 'mañana'
-        elif avg_hora < 18:
-            horario_habitual = 'tarde'
-        else:
-            horario_habitual = 'noche'
-
-    # ── Estado de ánimo promedio en este día de semana (checkins históricos)
-    checkins_dia = [
-        s.checkin for s in sesiones_recientes
-        if s.fecha.weekday() == dia_semana and s.checkin
+    disciplinas = [
+        _disciplina(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
+        for s in sesiones_mismo_dia
     ]
-    animo_promedio = None
-    if checkins_dia:
-        valores = [c.estado_animo for c in checkins_dia if c.estado_animo]
-        if valores:
-            animo_promedio = round(sum(valores) / len(valores), 1)
+    disciplinas = [d for d in disciplinas if d]
+
+    patron_desc = 'sin patrón claro aún'
+    if disciplinas:
+        mas_comun, freq = Counter(disciplinas).most_common(1)[0]
+        if freq >= 3:
+            patron_desc = f'{freq}/{len(sesiones_mismo_dia)} veces: {mas_comun}'
 
     # ── Consistencia
     try:
-        racha          = user.profile.racha_actual or 0
-        dias_objetivo  = user.profile.dias_semana or 3
+        racha         = user.profile.racha_actual or 0
+        dias_objetivo = user.profile.dias_semana or 3
     except Exception:
         racha, dias_objetivo = 0, 3
 
-    sesiones_semana = user.sessions.filter(
-        fecha__gte=hoy - timedelta(days=hoy.weekday())
-    ).count()
+    sesiones_sem = user.sessions.filter(fecha__gte=hoy - timedelta(days=hoy.weekday())).count()
+    sesiones_3s  = user.sessions.filter(fecha__gte=hace_3_semanas).count()
 
-    sesiones_3s = user.sessions.filter(fecha__gte=hace_3_semanas).count()
-    hay_actividad_reciente = len(sesiones_mismo_dia) > 0
+    semanas_activas = len({
+        s.fecha - timedelta(days=s.fecha.weekday())
+        for s in sesiones_recientes
+    })
 
-    # ── Semanas activas (semanas con al menos 1 sesión en las últimas 6)
-    semanas_con_sesion = set()
-    for s in sesiones_recientes:
-        lunes = s.fecha - timedelta(days=s.fecha.weekday())
-        semanas_con_sesion.add(lunes)
-    semanas_activas = len(semanas_con_sesion)
-
-    # ── Construir contexto para el LLM
-    ctx_lines = [
+    ctx = '\n'.join(filter(None, [
         f'Hoy: {dia_nombre}',
-        f'Patrón de {dia_nombre}s ({patron_texto})',
+        f'Total sesiones: {total_sesiones}',
+        f'Patrón de {dia_nombre}s: {patron_desc}',
         f'Racha actual: {racha} días',
-        f'Sesiones esta semana: {sesiones_semana}',
-        f'Semanas activas (últimas 6): {semanas_activas} de 6',
-        f'Sesiones en las últimas 3 semanas: {sesiones_3s}',
-        f'Horario habitual en {dia_nombre}s: {horario_habitual}' if horario_habitual else None,
-        f'Estado de ánimo promedio en {dia_nombre}s: {animo_promedio}/5' if animo_promedio else None,
-        f'¿Historial de {dia_nombre}s disponible?: {"sí" if hay_actividad_reciente else "no — usa momentum general"}',
-    ]
-    contexto = '\n'.join(line for line in ctx_lines if line)
+        f'Sesiones esta semana: {sesiones_sem} de {dias_objetivo} planificadas',
+        f'Semanas activas (últimas 6): {semanas_activas}/6',
+        f'Sesiones últimas 3 semanas: {sesiones_3s}',
+    ]))
 
-    if hay_actividad_reciente:
-        instruccion_patron = (
-            f'Primera oración: describe el patrón concreto del atleta en sus {dia_nombre}s '
-            f'(usa el dato de disciplina si existe, o el horario, o el estado de ánimo).'
-        )
-    else:
-        instruccion_patron = (
-            f'Primera oración: habla del momentum general de las últimas semanas '
-            f'(consistencia, sesiones, racha) sin mencionar el día específico.'
-        )
+    prompt = f"""Eres el entrenador IA de PyFit. Genera un mensaje personalizado de exactamente DOS oraciones para este atleta.
 
-    if dia_semana == 0:  # lunes
-        instruccion_cierre = (
-            'Si tiene sesiones la semana pasada, menciona brevemente cómo cerró esa semana. '
-            'De lo contrario, habla del comienzo de semana.'
-        )
-    elif racha >= 14:
-        instruccion_cierre = f'La segunda oración DEBE mencionar la racha de {racha} días con el número exacto.'
-    else:
-        instruccion_cierre = 'Segunda oración: cierre motivacional breve que conecta el patrón con la oportunidad de hoy.'
+DATOS:
+{ctx}
 
-    prompt = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día para este atleta.
-
-DATOS DEL ATLETA:
-{contexto}
-
-REGLAS ESTRICTAS:
-1. Exactamente 2 oraciones en un solo párrafo.
-2. {instruccion_patron}
-3. {instruccion_cierre}
-4. Encierra el fragmento más relevante (la disciplina detectada, O el dato de racha/consistencia) con **fragmento** — solo UN fragmento.
-5. Sin signos de exclamación. Sin lenguaje genérico de app. Sin consejos de carga, intensidad ni nutrición.
-6. Tono: entrenador que conoce al atleta, directo, sin condescendencia.
-7. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
+INSTRUCCIONES ESTRICTAS:
+1. DOS oraciones únicamente. La primera describe un patrón concreto con datos numéricos. La segunda conecta ese patrón con hoy o la oportunidad actual.
+2. Al menos un dato numérico concreto en el mensaje.
+3. Sin lenguaje motivacional genérico. Sin consejos de carga ni nutrición. Sin signos de exclamación.
+4. Tono: entrenador que conoce al atleta, directo.
+5. Devuelve SOLO un objeto JSON con exactamente estos dos campos, sin texto extra:
+{{"mensaje": "...", "fragmento": "..."}}
+El campo "fragmento" es la frase más relevante del mensaje (3-6 palabras) que se destacará visualmente."""
 
     try:
-        import groq
+        import groq, json as _json
         from django.conf import settings as dj_settings
         client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
         resp = client.chat.completions.create(
             model='llama-3.3-70b-versatile',
             messages=[{'role': 'user', 'content': prompt}],
-            max_tokens=120,
+            max_tokens=180,
             temperature=0.65,
         )
-        texto = resp.choices[0].message.content.strip().strip('"').strip("'")
-        if texto:
-            DailyCoachInsight.objects.update_or_create(
-                user=user, fecha=hoy, defaults={'texto': texto}
-            )
-            return texto
+        raw = resp.choices[0].message.content.strip()
+        # Extraer JSON del response (puede venir con backticks)
+        raw = raw.strip('`').strip()
+        if raw.startswith('json'):
+            raw = raw[4:].strip()
+        parsed = _json.loads(raw)
+        mensaje   = parsed.get('mensaje', '').strip()
+        fragmento = parsed.get('fragmento', '').strip()
+        if mensaje:
+            return _cache_insight(user, hoy, modo='full', mensaje=mensaje, fragmento=fragmento)
     except Exception:
         pass
 
-    return None
+    # Fallback: plantilla building
+    return _generar_building(user, hoy, total_sesiones)
 
 
 # ── Alias para compatibilidad con la llamada en stats_dashboard ───────────────

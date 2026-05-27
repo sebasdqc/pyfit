@@ -191,7 +191,13 @@ interface DashboardData {
   semana_detalle: SemanaDay[]
   metrica?: MetricaData
   zyfit_score?: ZyfitScoreData
-  insight_entrenador?: string | null
+  insight_entrenador?: InsightPayload | null
+}
+
+interface InsightPayload {
+  modo: 'empty' | 'first' | 'building' | 'full'
+  mensaje: string
+  fragmento: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -320,6 +326,41 @@ function SparklesIcon({ color, size = 18 }: { color: string; size?: number }) {
         stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
       />
     </Svg>
+  )
+}
+
+function ZapIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M13 2L4.5 13.5H12L11 22L19.5 10.5H12L13 2Z"
+        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+/**
+ * Renderiza un mensaje destacando el fragmento recibido del backend.
+ * Si el fragmento no se encuentra en el mensaje, devuelve el mensaje en secundario.
+ */
+function renderMensajeConFragmento(
+  mensaje: string,
+  fragmento: string,
+  baseStyle: object,
+  hiStyle: object,
+): React.ReactNode {
+  if (!fragmento) return <Text style={baseStyle}>{mensaje}</Text>
+  const idx = mensaje.indexOf(fragmento)
+  if (idx === -1) return <Text style={baseStyle}>{mensaje}</Text>
+  return (
+    <>
+      {idx > 0 && <Text style={baseStyle}>{mensaje.slice(0, idx)}</Text>}
+      <Text style={hiStyle}>{fragmento}</Text>
+      {idx + fragmento.length < mensaje.length && (
+        <Text style={baseStyle}>{mensaje.slice(idx + fragmento.length)}</Text>
+      )}
+    </>
   )
 }
 
@@ -888,31 +929,37 @@ function CTACard({
 // ─── Coach Message Card (Zone 5) ─────────────────────────────────────────────
 
 function InsightCard({
-  texto,
+  payload,
   colors,
   styles,
 }: {
-  texto: string | null
+  payload: InsightPayload | null | undefined
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
-  // Si no hay texto (< 3 semanas de historial) no se muestra el card
-  if (!texto) return null
+  // Siempre visible — en modo empty muestra el punto de partida
+  const modo      = payload?.modo ?? 'empty'
+  const mensaje   = payload?.mensaje ?? 'Realiza tu primer entrenamiento para obtener más datos.'
+  const fragmento = payload?.fragmento ?? 'primer entrenamiento'
 
-  const baseStyle    = styles.z5Text
-  const hiStyle      = styles.z5TextHighlight
+  // empty usa ícono de rayo (inicio), resto usa sparkles
+  const Icon = modo === 'empty'
+    ? <ZapIcon color={colors.inkMuted} size={14} />
+    : <SparklesIcon color={colors.accent} size={14} />
+
+  const labelColor = modo === 'empty' ? colors.inkMuted : colors.accent
 
   return (
     <View style={styles.z5Card}>
-      {/* Header row: ícono + label */}
+      {/* Tag: ícono + "TU ENTRENADOR" */}
       <View style={styles.z5Header}>
-        <SparklesIcon color={colors.accent} size={16} />
-        <Text style={styles.z5Label}>TU ENTRENADOR</Text>
+        {Icon}
+        <Text style={[styles.z5Label, { color: labelColor }]}>TU ENTRENADOR</Text>
       </View>
 
       {/* Mensaje con fragmento destacado */}
-      <Text style={baseStyle}>
-        {parseHighlight(texto, baseStyle, hiStyle)}
+      <Text style={styles.z5Text}>
+        {renderMensajeConFragmento(mensaje, fragmento, styles.z5Text, styles.z5TextHighlight)}
       </Text>
     </View>
   )
@@ -1058,7 +1105,7 @@ export default function DashboardScreen() {
         {/* ── ZONA 5 — Tu Entrenador ── */}
         {!loading && (
           <InsightCard
-            texto={data?.insight_entrenador ?? null}
+            payload={data?.insight_entrenador ?? null}
             colors={colors}
             styles={styles}
           />
@@ -1345,14 +1392,14 @@ function makeStyles(c: Colors) {
     // ── Zyfit Score Card
     zsCard: {
       alignItems: 'center',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: 'rgba(79,140,255,0.22)',
+      // Sin fondo — usa el fondo del dashboard directamente
+      backgroundColor: 'transparent',
+      borderWidth: 0,
       borderRadius: 22,
-      paddingVertical: 24,
+      paddingVertical: 20,
       paddingHorizontal: 20,
       gap: 6,
-      marginBottom: 20,
+      marginBottom: 8,
       overflow: 'hidden',
     },
     zsRingWrap: {
@@ -1428,23 +1475,28 @@ function makeStyles(c: Colors) {
 
     // ── Zone 5 — Tu Entrenador
     z5Card: {
-      backgroundColor: c.cardBg,
+      backgroundColor: c.cardBg,           // fondo secundario del card
       borderWidth: 0.5,
       borderColor: c.borderDefault,
-      borderRadius: 20,
-      padding: 18,
+      borderLeftWidth: 1.5,                 // borde izquierdo accent
+      borderLeftColor: c.accent,
+      borderRadius: 14,
+      borderTopLeftRadius: 6,              // radio menor en lado del borde accent
+      borderBottomLeftRadius: 6,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
       marginBottom: 28,
-      gap: 10,
+      gap: 8,
     },
     z5Header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
+      gap: 6,
     },
     z5Label: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
-      color: c.inkMuted,
+      color: c.accent,
       letterSpacing: 2,
       textTransform: 'uppercase',
     },
@@ -1456,7 +1508,7 @@ function makeStyles(c: Colors) {
       letterSpacing: -0.1,
     },
     z5TextHighlight: {
-      fontFamily: 'SpaceGrotesk-Medium',
+      fontFamily: 'SpaceGrotesk-SemiBold',
       fontSize: 13,
       color: c.inkPrimary,
       lineHeight: 21,

@@ -300,9 +300,18 @@ class SessionFeedback(models.Model):
 
 
 class DailyCoachInsight(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_insights')
-    fecha = models.DateField()
-    texto = models.TextField()
+    MODO_CHOICES = [
+        ('empty',    'Sin sesiones'),
+        ('first',    'Primera sesión'),
+        ('building', 'Construcción (2-6 sesiones)'),
+        ('full',     'Completo (7+ sesiones)'),
+    ]
+
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_insights')
+    fecha      = models.DateField()
+    texto      = models.TextField()                                          # mensaje
+    modo       = models.CharField(max_length=20, choices=MODO_CHOICES, default='full')
+    fragmento  = models.TextField(blank=True, default='')                   # palabra/frase a destacar
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -310,7 +319,10 @@ class DailyCoachInsight(models.Model):
         unique_together = [['user', 'fecha']]
 
     def __str__(self):
-        return f'{self.user} - {self.fecha}'
+        return f'{self.user} - {self.fecha} [{self.modo}]'
+
+    def to_payload(self) -> dict:
+        return {'modo': self.modo, 'mensaje': self.texto, 'fragmento': self.fragmento}
 
 
 class TrainingDNA(models.Model):
