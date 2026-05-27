@@ -671,6 +671,100 @@ def _metrica_destacada(user, racha, dias_semana_objetivo, total_sesiones=0):
     }
 
 
+def _calcular_zyfit_score(user, total_sesiones, racha, dias_objetivo):
+    """
+    Zyfit Score 0-100. Requiere al menos 7 sesiones totales.
+    Componentes:
+      - Consistencia semanal  35 pts  (días entrenados esta semana / objetivo)
+      - Cumplimiento reciente 30 pts  (avg feedback.cumplimiento últimas 5 sesiones)
+      - Adherencia RPE        20 pts  (qué tan cerca estuvo rpe_real de rpe_target)
+      - Racha                 15 pts  (min(racha, 14) / 14)
+    """
+    if total_sesiones < 7:
+        return None, None
+
+    hoy    = date.today()
+    hace_7 = hoy - timedelta(days=7)
+
+    # 1 — Consistencia
+    dias_sem = (user.sessions
+                .filter(fecha__gte=hace_7)
+                .values('fecha').distinct().count())
+    consistencia = min(1.0, dias_sem / max(dias_objetivo, 1)) * 35
+
+    # 2 — Cumplimiento
+    last_fb = list(
+        user.sessions
+        .filter(feedback__isnull=False)
+        .select_related('feedback')
+        .order_by('-fecha', '-created_at')[:5]
+    )
+    if last_fb:
+        avg_c    = sum(float(s.feedback.cumplimiento) for s in last_fb) / len(last_fb)
+        comp_pts = avg_c / 100.0 * 30
+    else:
+        comp_pts = 15  # neutro
+
+    # 3 — Adherencia RPE
+    last_rpe = list(
+        user.sessions
+        .filter(feedback__isnull=False,
+                feedback__rpe_real__isnull=False,
+                rpe_target__isnull=False)
+        .select_related('feedback')
+        .order_by('-fecha', '-created_at')[:5]
+    )
+    if last_rpe:
+        diffs    = [abs(float(s.feedback.rpe_real) - float(s.rpe_target)) for s in last_rpe]
+        avg_diff = sum(diffs) / len(diffs)
+        rpe_pts  = max(0.0, 1.0 - avg_diff / 3.0) * 20
+    else:
+        rpe_pts = 10  # neutro
+
+    # 4 — Racha
+    racha_pts = min(racha, 14) / 14.0 * 15
+
+    score       = min(100, max(0, round(consistencia + comp_pts + rpe_pts + racha_pts)))
+    descripcion = _descripcion_zyfit_score(score, dias_sem, last_fb, racha, dias_objetivo)
+    return score, descripcion
+
+
+def _descripcion_zyfit_score(score, dias_sem_actual, sesiones_con_fb, racha, dias_objetivo):
+    """Descripción en lenguaje natural del Zyfit Score."""
+    partes = []
+
+    # Parte A — tendencia general
+    if score >= 91:
+        partes.append('Rendimiento de élite esta semana')
+    elif score >= 76:
+        partes.append('Semana de alto rendimiento')
+    elif score >= 56:
+        partes.append('Entrenando con buena consistencia')
+    elif score >= 31:
+        partes.append('En ritmo, construyendo el hábito')
+    else:
+        partes.append('Semana de bajo volumen')
+
+    # Parte B — dato más relevante
+    if sesiones_con_fb:
+        avg_c = sum(float(s.feedback.cumplimiento) for s in sesiones_con_fb) / len(sesiones_con_fb)
+        if avg_c >= 90:
+            partes.append(f'cumplimiento del {int(avg_c)}% en tus últimas sesiones')
+        elif racha >= 5:
+            partes.append(f'racha activa de {racha} días')
+        elif dias_sem_actual >= dias_objetivo:
+            partes.append(f'completaste las {dias_sem_actual} sesiones de la semana')
+        else:
+            ses = 'sesión' if dias_sem_actual == 1 else 'sesiones'
+            partes.append(f'{dias_sem_actual} {ses} esta semana')
+    elif racha >= 3:
+        partes.append(f'llevas {racha} días consecutivos')
+    else:
+        partes.append('sigue entrenando para ver tu progreso')
+
+    return ' — '.join(partes)
+
+
 def _tipo_corto(titulo):
     if not titulo:
         return 'Sesión'
@@ -1073,6 +1167,9 @@ def stats_dashboard(request):
     semana_detalle = _semana_detalle(request.user, dias_objetivo, cta.get('titulo', ''))
     metrica = _metrica_destacada(request.user, racha, dias_objetivo, total_sesiones)
     insight_entrenador = _generar_insight_entrenador(request.user)
+    zyfit_score_valor, zyfit_score_desc = _calcular_zyfit_score(
+        request.user, total_sesiones, racha, dias_objetivo
+    )
 
     if not saludo:
         # Fallback determinístico cuando la IA falla. Concordancia por género:
@@ -1118,6 +1215,11 @@ def stats_dashboard(request):
         'semana_detalle': semana_detalle,
         'metrica': metrica,
         'insight_entrenador': insight_entrenador,
+        'zyfit_score': {
+            'valor': zyfit_score_valor,
+            'descripcion': zyfit_score_desc,
+            'has_data': zyfit_score_valor is not None,
+        },
     })
 
 

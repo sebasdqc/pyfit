@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Animated,
+  Easing,
   LayoutAnimation,
   Platform,
   UIManager,
@@ -20,6 +22,14 @@ if (Platform.OS === 'android') {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
+
+// ─── Zyfit Score ring constants ────────────────────────────────────────────────
+const RING_SIZE   = 64
+const RING_R      = 26
+const RING_CIRC   = 2 * Math.PI * RING_R
+const RING_CX     = RING_SIZE / 2
+const RING_CY     = RING_SIZE / 2
 import { router } from 'expo-router'
 import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
@@ -142,6 +152,12 @@ interface MetricaData {
   tendencia: 'up' | 'down' | 'neutral'
 }
 
+interface ZyfitScoreData {
+  valor: number | null
+  descripcion: string | null
+  has_data: boolean
+}
+
 interface RachaContextoAlerta {
   tipo: 'descanso_manana' | 'descansando' | 'retomar' | 'continuar'
   mensaje: string
@@ -173,6 +189,7 @@ interface DashboardData {
   cta: CTAData
   semana_detalle: SemanaDay[]
   metrica?: MetricaData
+  zyfit_score?: ZyfitScoreData
   insight_entrenador?: string | null
 }
 
@@ -308,101 +325,88 @@ function BellIcon() {
   )
 }
 
-// ─── RPE Card ─────────────────────────────────────────────────────────────────
+// ─── Zyfit Score Card ─────────────────────────────────────────────────────────
 
-// [1] Color semántico según tipo + tendencia
-function getMetricaColor(tipo: MetricaData['tipo'] | undefined, tendencia: MetricaData['tendencia'] | undefined): string {
-  if (!tipo || !tendencia) return '#4f8cff'
-  if (tipo === 'rpe' || tipo === 'progreso') {
-    if (tendencia === 'up')   return '#ffaa32' // más carga = naranja
-    if (tendencia === 'down') return '#32c896' // mejor recuperación = verde
-    return '#4f8cff'
-  }
-  // consistencia y racha: subir es siempre bueno
-  if (tendencia === 'up')   return '#32c896'
-  if (tendencia === 'down') return '#ffaa32'
-  return '#4f8cff'
+function getZyfitRango(score: number): string {
+  if (score >= 91) return 'Élite adaptativo'
+  if (score >= 76) return 'Alto rendimiento'
+  if (score >= 56) return 'Entrenando bien'
+  if (score >= 31) return 'En ritmo'
+  return 'Construyendo base'
 }
 
-// [4] Flecha de tendencia
-function TrendArrow({ tendencia, color }: { tendencia: MetricaData['tendencia'] | undefined; color: string }) {
-  if (!tendencia || tendencia === 'neutral') {
-    return <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color, lineHeight: 20 }}>→</Text>
-  }
-  return (
-    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color, lineHeight: 20 }}>
-      {tendencia === 'up' ? '↑' : '↓'}
-    </Text>
-  )
-}
-
-// [5] Escala dinámica de la barra
-function getBarScale(tipo: MetricaData['tipo'] | undefined): [string, string] {
-  if (tipo === 'consistencia') return ['0%', '100%']
-  if (tipo === 'racha')        return ['0', '30 días']
-  return ['0', '10']
-}
-
-function RPECard({
-  metrica,
+function ZyfitScoreCard({
+  scoreData,
   colors,
   styles,
-  t,
 }: {
-  metrica: MetricaData | undefined
+  scoreData: ZyfitScoreData | undefined
   colors: Colors
   styles: ReturnType<typeof makeStyles>
-  t: (key: any) => string
 }) {
-  const rpeDisplay  = metrica?.valor_display ?? '—'
-  const progreso    = metrica?.progreso_pct ?? 0
-  const descripcion = metrica?.descripcion ?? 'Entrena de forma consistente para ver tu RPE promedio.'
+  const valor    = scoreData?.valor    ?? null
+  const hasData  = scoreData?.has_data ?? false
+  const desc     = scoreData?.descripcion ?? null
 
-  // [1] Color semántico
-  const metricaColor = getMetricaColor(metrica?.tipo, metrica?.tendencia)
+  // Animated offset: arranca en RING_CIRC (anillo vacío) → valor real
+  const animOffset = useRef(new Animated.Value(RING_CIRC)).current
 
-  // [2] Unidad dinámica
-  const unidad = metrica?.unidad ?? ''
-
-  // [3] Sub-label dinámico — usa metrica.label del backend
-  const subLabel = metrica?.label ?? 'RPE PROMEDIO'
-
-  // [5] Escala dinámica
-  const [scaleLeft, scaleRight] = getBarScale(metrica?.tipo)
+  useEffect(() => {
+    const target = hasData && valor != null
+      ? RING_CIRC * (1 - valor / 100)
+      : RING_CIRC
+    Animated.timing(animOffset, {
+      toValue: target,
+      duration: 1000,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,   // SVG no soporta native driver
+    }).start()
+  }, [valor, hasData])
 
   return (
-    <View style={styles.rpeCard}>
-      {/* Label fijo + sub-label dinámico [3] */}
-      <Text style={styles.rpeSectionLabel}>{t('dashboard_your_moment')}</Text>
-      <Text style={styles.rpeSubLabel}>{subLabel}</Text>
+    <View style={styles.zsCard}>
+      {/* ── Anillo de progreso ── */}
+      <View style={styles.zsRingWrap}>
+        <Svg width={RING_SIZE} height={RING_SIZE}>
+          {/* Track fondo */}
+          <Circle
+            cx={RING_CX} cy={RING_CY} r={RING_R}
+            fill="none"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth={5}
+          />
+          {/* Arco progreso */}
+          <AnimatedCircle
+            cx={RING_CX} cy={RING_CY} r={RING_R}
+            fill="none"
+            stroke={hasData ? colors.accent : 'rgba(79,140,255,0.18)'}
+            strokeWidth={5}
+            strokeLinecap="round"
+            strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
+            strokeDashoffset={animOffset}
+            transform={`rotate(-90, ${RING_CX}, ${RING_CY})`}
+          />
+        </Svg>
 
-      <View style={styles.rpeBody}>
-        {/* Número grande + unidad + flecha [2][4] */}
-        <View style={styles.rpeNumberWrap}>
-          <Text style={[styles.rpeBigNumber, { color: metricaColor }]}>{rpeDisplay}</Text>
-          <View style={styles.rpeNumberMeta}>
-            {!!unidad && (
-              <Text style={[styles.rpeUnidad, { color: metricaColor }]}>{unidad}</Text>
-            )}
-            <TrendArrow tendencia={metrica?.tendencia} color={metricaColor} />
+        {/* Número centrado */}
+        {hasData && valor != null && (
+          <View style={styles.zsRingCenter}>
+            <Text style={styles.zsScore}>{valor}</Text>
           </View>
-        </View>
-
-        {/* Texto insight — derecha */}
-        <View style={styles.rpeTextWrap}>
-          <Text style={styles.rpeDesc}>{descripcion}</Text>
-        </View>
+        )}
       </View>
 
-      {/* Barra con color semántico [1] */}
-      <View style={styles.rpeBarBg}>
-        <View style={[styles.rpeBarFill, { width: `${progreso}%` as any, backgroundColor: metricaColor }]} />
-      </View>
-
-      {/* Escala dinámica [5] */}
-      <View style={styles.rpeBarScaleRow}>
-        <Text style={styles.rpeBarScaleLabel}>{scaleLeft}</Text>
-        <Text style={styles.rpeBarScaleLabel}>{scaleRight}</Text>
+      {/* ── Contenido textual ── */}
+      <View style={styles.zsContent}>
+        <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
+        <Text style={styles.zsRango}>
+          {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo tu score'}
+        </Text>
+        <Text style={styles.zsDesc}>
+          {hasData && desc
+            ? desc
+            : 'Completa 7 sesiones para ver tu Zyfit Score.'}
+        </Text>
       </View>
     </View>
   )
@@ -931,21 +935,19 @@ export default function DashboardScreen() {
           <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
         )}
 
-        {/* ── RPE Promedio ── */}
+        {/* ── Zyfit Score ── */}
         {loading ? (
-          <View style={[styles.rpeCard, { opacity: 0.5 }]}>
-            <Skeleton width={140} height={10} borderRadius={4} style={{ marginBottom: 16 }} />
-            <View style={styles.rpeBody}>
-              <Skeleton width={80} height={60} borderRadius={6} />
-              <View style={styles.rpeTextWrap}>
-                <Skeleton width="90%" height={13} borderRadius={4} />
-                <Skeleton width="70%" height={13} borderRadius={4} style={{ marginTop: 6 }} />
-              </View>
+          <View style={[styles.zsCard, { opacity: 0.5 }]}>
+            <View style={{ width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
+              backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+            <View style={[styles.zsContent, { gap: 8 }]}>
+              <Skeleton width={80} height={9} borderRadius={4} />
+              <Skeleton width="70%" height={16} borderRadius={5} />
+              <Skeleton width="90%" height={12} borderRadius={4} />
             </View>
-            <Skeleton width="100%" height={4} borderRadius={2} style={{ marginTop: 18, marginBottom: 6 }} />
           </View>
         ) : (
-          <RPECard metrica={data?.metrica} colors={colors} styles={styles} t={t} />
+          <ZyfitScoreCard scoreData={data?.zyfit_score} colors={colors} styles={styles} />
         )}
 
         {/* ── ZONA 5 — Insight del entrenador ── */}
@@ -1222,91 +1224,61 @@ function makeStyles(c: Colors) {
       marginBottom: 10,
     },
 
-    // ── RPE Card
-    rpeCard: {
+    // ── Zyfit Score Card
+    zsCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: c.cardBg,
-      borderWidth: 1,
+      borderWidth: 0.5,
       borderColor: c.borderDefault,
       borderRadius: 20,
       padding: 20,
+      gap: 18,
       marginBottom: 20,
     },
-    rpeSectionLabel: {
+    zsRingWrap: {
+      width: RING_SIZE,
+      height: RING_SIZE,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    zsRingCenter: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    zsScore: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 17,
+      color: c.inkPrimary,
+      letterSpacing: -0.5,
+      lineHeight: 21,
+    },
+    zsContent: {
+      flex: 1,
+      gap: 3,
+    },
+    zsLabel: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 2,
-      marginBottom: 4,
       textTransform: 'uppercase',
+      marginBottom: 1,
     },
-    rpeSubLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 8,
-      color: c.inkFaint,
-      letterSpacing: 1.5,
-      marginBottom: 16,
-      textTransform: 'uppercase',
-    },
-    rpeBody: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: 18,
-    },
-    // Columna izquierda: número + unidad + flecha
-    rpeNumberWrap: {
-      alignItems: 'flex-start',
-      minWidth: 80,
-    },
-    rpeBigNumber: {
+    zsRango: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 56,
-      // color se aplica inline (dinámico)
-      letterSpacing: -2,
-      lineHeight: 60,
+      fontSize: 16,
+      color: c.inkPrimary,
+      letterSpacing: -0.4,
+      lineHeight: 22,
     },
-    rpeNumberMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 2,
-    },
-    rpeUnidad: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 11,
-      letterSpacing: 0.5,
-      opacity: 0.8,
-    },
-    rpeTextWrap: {
-      flex: 1,
-    },
-    rpeDesc: {
+    zsDesc: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
+      fontSize: 12,
       color: c.inkSecondary,
-      lineHeight: 20,
-    },
-    rpeBarBg: {
-      height: 4,
-      backgroundColor: c.borderDefault,
-      borderRadius: 2,
-      marginBottom: 6,
-      overflow: 'hidden',
-    },
-    rpeBarFill: {
-      height: 4,
-      borderRadius: 2,
-      // backgroundColor se aplica inline (dinámico)
-    },
-    rpeBarScaleRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    rpeBarScaleLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      color: c.inkFaint,
-      letterSpacing: 0.3,
+      lineHeight: 18,
+      marginTop: 2,
     },
 
     // ── Zone 5 — Insight del entrenador
