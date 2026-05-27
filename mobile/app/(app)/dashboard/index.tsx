@@ -12,6 +12,8 @@ import {
   Platform,
   UIManager,
   Image,
+  Modal,
+  Pressable,
   StyleProp,
   ViewStyle,
 } from 'react-native'
@@ -426,9 +428,11 @@ function ZyfitScoreCard({
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
-  const valor    = scoreData?.valor    ?? null
-  const hasData  = scoreData?.has_data ?? false
-  const desc     = scoreData?.descripcion ?? null
+  const valor   = scoreData?.valor    ?? null
+  const hasData = scoreData?.has_data ?? false
+  const desc    = scoreData?.descripcion ?? null
+
+  const [modalVisible, setModalVisible] = useState(false)
 
   // Animated offset: arranca en RING_CIRC (anillo vacío) → valor real
   const animOffset = useRef(new Animated.Value(RING_CIRC)).current
@@ -441,13 +445,12 @@ function ZyfitScoreCard({
       toValue: target,
       duration: 1000,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: false,   // SVG no soporta native driver
+      useNativeDriver: false,
     }).start()
   }, [valor, hasData])
 
   return (
     <View style={styles.zsCard}>
-      {/* Gradiente de fondo sutil */}
       <LinearGradient
         colors={['rgba(79,140,255,0.10)', 'transparent']}
         style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
@@ -456,56 +459,80 @@ function ZyfitScoreCard({
       {/* Label superior */}
       <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
 
-      {/* ── Anillo de progreso — centrado y grande ── */}
-      <View style={styles.zsRingWrap}>
-        {/* Glow exterior cuando hay datos */}
-        {hasData && (
-          <View style={styles.zsRingGlow} />
-        )}
+      {/* ── Fila: anillo izquierda + texto derecha ── */}
+      <View style={styles.zsRow}>
+        {/* Anillo */}
+        <View style={styles.zsRingWrap}>
+          {hasData && <View style={styles.zsRingGlow} />}
+          <Svg width={RING_SIZE} height={RING_SIZE}>
+            <Circle
+              cx={RING_CX} cy={RING_CY} r={RING_R}
+              fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={RING_STROKE}
+            />
+            <AnimatedCircle
+              cx={RING_CX} cy={RING_CY} r={RING_R}
+              fill="none"
+              stroke={hasData ? colors.accent : 'rgba(79,140,255,0.20)'}
+              strokeWidth={RING_STROKE} strokeLinecap="round"
+              strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
+              strokeDashoffset={animOffset}
+              transform={`rotate(-90, ${RING_CX}, ${RING_CY})`}
+            />
+          </Svg>
+          <View style={styles.zsRingCenter}>
+            {hasData && valor != null ? (
+              <>
+                <Text style={styles.zsScore}>{valor}</Text>
+                <Text style={styles.zsScoreSub}>/ 100</Text>
+              </>
+            ) : (
+              <Text style={styles.zsScorePlaceholder}>—</Text>
+            )}
+          </View>
+        </View>
 
-        <Svg width={RING_SIZE} height={RING_SIZE}>
-          {/* Track de fondo */}
-          <Circle
-            cx={RING_CX} cy={RING_CY} r={RING_R}
-            fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth={RING_STROKE}
-          />
-          {/* Arco de progreso */}
-          <AnimatedCircle
-            cx={RING_CX} cy={RING_CY} r={RING_R}
-            fill="none"
-            stroke={hasData ? colors.accent : 'rgba(79,140,255,0.20)'}
-            strokeWidth={RING_STROKE}
-            strokeLinecap="round"
-            strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
-            strokeDashoffset={animOffset}
-            transform={`rotate(-90, ${RING_CX}, ${RING_CY})`}
-          />
-        </Svg>
-
-        {/* Número centrado dentro del anillo */}
-        <View style={styles.zsRingCenter}>
-          {hasData && valor != null ? (
-            <>
-              <Text style={styles.zsScore}>{valor}</Text>
-              <Text style={styles.zsScoreSub}>/ 100</Text>
-            </>
-          ) : (
-            <Text style={styles.zsScorePlaceholder}>—</Text>
-          )}
+        {/* Texto derecho */}
+        <View style={styles.zsTextCol}>
+          <Text style={styles.zsRango}>
+            {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo\ntu score'}
+          </Text>
+          <Text style={styles.zsDesc}>
+            {hasData && desc ? desc : 'Completa 7 sesiones para ver tu Zyfit Score.'}
+          </Text>
         </View>
       </View>
 
-      {/* ── Rango y descripción ── */}
-      <Text style={styles.zsRango}>
-        {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo tu score'}
-      </Text>
-      <Text style={styles.zsDesc}>
-        {hasData && desc
-          ? desc
-          : 'Completa 7 sesiones para ver tu Zyfit Score.'}
-      </Text>
+      {/* ── Enlace explicación ── */}
+      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.zsHowBtn}>
+        <Text style={styles.zsHowText}>¿Cómo se calcula el Score? →</Text>
+      </TouchableOpacity>
+
+      {/* ── Modal explicación ── */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.zsModalOverlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.zsModalCard} onPress={e => e.stopPropagation()}>
+            <Text style={styles.zsModalTitle}>¿Cómo se calcula el Zyfit Score?</Text>
+            <Text style={styles.zsModalBody}>
+              El <Text style={styles.zsModalAccent}>Zyfit Score</Text> es una puntuación del 0 al 100 que refleja tu consistencia y calidad de entrenamiento reciente.{'\n\n'}
+              <Text style={styles.zsModalBold}>📊 Consistencia (40%)</Text>{'\n'}
+              Porcentaje de días entrenados vs. tu objetivo semanal en las últimas 4 semanas.{'\n\n'}
+              <Text style={styles.zsModalBold}>💪 Calidad (35%)</Text>{'\n'}
+              Promedio de cumplimiento y rating de tus sesiones recientes.{'\n\n'}
+              <Text style={styles.zsModalBold}>🔥 Racha (25%)</Text>{'\n'}
+              Tu racha actual penaliza si llevas días sin entrenar y premia la continuidad.{'\n\n'}
+              El score se actualiza después de cada sesión completada.
+            </Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.zsModalCloseBtn}>
+              <Text style={styles.zsModalCloseText}>Entendido</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -1489,23 +1516,26 @@ function makeStyles(c: Colors) {
 
     // ── Zyfit Score Card
     zsCard: {
-      alignItems: 'center',
-      // Sin fondo — usa el fondo del dashboard directamente
       backgroundColor: 'transparent',
       borderWidth: 0,
       borderRadius: 22,
-      paddingVertical: 20,
+      paddingVertical: 16,
       paddingHorizontal: 20,
-      gap: 6,
+      gap: 12,
       marginBottom: 8,
       overflow: 'hidden',
+    },
+    zsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
     },
     zsRingWrap: {
       width: RING_SIZE,
       height: RING_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
-      marginVertical: 10,
+      flexShrink: 0,
     },
     zsRingGlow: {
       position: 'absolute',
@@ -1523,6 +1553,10 @@ function makeStyles(c: Colors) {
       position: 'absolute',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    zsTextCol: {
+      flex: 1,
+      gap: 6,
     },
     zsScore: {
       fontFamily: 'SpaceGrotesk-Bold',
@@ -1558,17 +1592,74 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
       letterSpacing: -0.5,
       lineHeight: 26,
-      textAlign: 'center',
-      marginTop: 4,
     },
     zsDesc: {
       fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 12,
+      color: c.inkSecondary,
+      lineHeight: 18,
+    },
+    zsHowBtn: {
+      alignSelf: 'flex-start',
+      paddingVertical: 2,
+      marginLeft: RING_SIZE + 16,
+    },
+    zsHowText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 11,
+      color: c.accent,
+      letterSpacing: 0.1,
+    },
+    // Modal
+    zsModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.75)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    zsModalCard: {
+      backgroundColor: '#0d1117',
+      borderWidth: 1,
+      borderColor: 'rgba(79,140,255,0.30)',
+      borderRadius: 24,
+      padding: 24,
+      width: '100%',
+      gap: 14,
+    },
+    zsModalTitle: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 18,
+      color: c.inkPrimary,
+      letterSpacing: -0.4,
+      lineHeight: 24,
+    },
+    zsModalBody: {
+      fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 13,
       color: c.inkSecondary,
-      lineHeight: 19,
-      textAlign: 'center',
-      paddingHorizontal: 8,
-      marginTop: 2,
+      lineHeight: 21,
+    },
+    zsModalAccent: {
+      color: c.accent,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+    },
+    zsModalBold: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+    },
+    zsModalCloseBtn: {
+      backgroundColor: c.accent,
+      borderRadius: 14,
+      paddingVertical: 13,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    zsModalCloseText: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 15,
+      color: '#ffffff',
+      letterSpacing: 0.2,
     },
 
     // ── Zone 5 — Tu Entrenador
