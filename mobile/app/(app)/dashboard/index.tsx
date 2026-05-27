@@ -747,7 +747,8 @@ function TuSemanaCard({
 
   return (
     <View style={styles.semCard}>
-      {/* Grid de días */}
+      {/* Grid de días — dentro de un sub-card con fondo */}
+      <View style={styles.semDaysCard}>
       <View style={styles.semDaysRow}>
         {weekDates.map((iso, idx) => {
           const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, 0)
@@ -788,6 +789,7 @@ function TuSemanaCard({
             </TouchableOpacity>
           )
         })}
+      </View>
       </View>
 
       {/* Footer — contador de sesiones de la semana */}
@@ -1097,14 +1099,16 @@ export default function DashboardScreen() {
         {/* ── ZONA 1.5 — Tu Semana ── */}
         {loading ? (
           <View style={[styles.semCard, { opacity: 0.5 }]}>
-            <View style={styles.semDaysRow}>
-              {[0,1,2,3,4,5,6].map(i => (
-                <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
-                  <Skeleton width={12} height={9} borderRadius={3} />
-                  <Skeleton width={32} height={32} borderRadius={16} />
-                  <Skeleton width={20} height={8} borderRadius={3} />
-                </View>
-              ))}
+            <View style={styles.semDaysCard}>
+              <View style={styles.semDaysRow}>
+                {[0,1,2,3,4,5,6].map(i => (
+                  <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
+                    <Skeleton width={12} height={9} borderRadius={3} />
+                    <Skeleton width={32} height={32} borderRadius={16} />
+                    <Skeleton width={20} height={8} borderRadius={3} />
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         ) : (
@@ -1242,7 +1246,7 @@ function makeStyles(c: Colors) {
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 22,
-      padding: 16,
+      padding: 20,
       marginBottom: 20,
       overflow: 'hidden',
     },
@@ -1251,11 +1255,11 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       alignSelf: 'flex-start',
       paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingVertical: 5,
       borderRadius: 20,
       borderWidth: 1,
       gap: 5,
-      marginBottom: 10,
+      marginBottom: 12,
     },
     ctaPillDot: {
       width: 5,
@@ -1273,7 +1277,7 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
       letterSpacing: -0.5,
       lineHeight: 24,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     ctaDesc: {
       // eliminado — ya no se muestra
@@ -1287,7 +1291,7 @@ function makeStyles(c: Colors) {
       overflow: 'visible',
     },
     ctaBtn: {
-      paddingVertical: 13,
+      paddingVertical: 15,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1331,10 +1335,19 @@ function makeStyles(c: Colors) {
       borderWidth: 0,
       borderRadius: 20,
       paddingTop: 0,
-      paddingHorizontal: 4,
-      paddingBottom: 16,
+      paddingHorizontal: 0,
+      paddingBottom: 8,
       marginBottom: 12,
       overflow: 'hidden',
+    },
+    semDaysCard: {
+      // Sub-card con fondo para el grid de días
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 18,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
     },
     semLabel: {
       fontFamily: 'JetBrainsMono-Regular',
@@ -1391,10 +1404,9 @@ function makeStyles(c: Colors) {
       lineHeight: 11,
     },
     semFooter: {
-      marginTop: 14,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: c.borderDefault,
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: 0,
     },
     semFooterText: {
       fontFamily: 'SpaceGrotesk-Regular',
