@@ -25,8 +25,9 @@ import Svg, { Circle, Path } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 // ─── Zyfit Score ring constants ────────────────────────────────────────────────
-const RING_SIZE   = 64
-const RING_R      = 26
+const RING_SIZE   = 120
+const RING_R      = 50
+const RING_STROKE = 9
 const RING_CIRC   = 2 * Math.PI * RING_R
 const RING_CX     = RING_SIZE / 2
 const RING_CY     = RING_SIZE / 2
@@ -403,22 +404,36 @@ function ZyfitScoreCard({
 
   return (
     <View style={styles.zsCard}>
-      {/* ── Anillo de progreso ── */}
+      {/* Gradiente de fondo sutil */}
+      <LinearGradient
+        colors={['rgba(79,140,255,0.10)', 'transparent']}
+        style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
+      />
+
+      {/* Label superior */}
+      <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
+
+      {/* ── Anillo de progreso — centrado y grande ── */}
       <View style={styles.zsRingWrap}>
+        {/* Glow exterior cuando hay datos */}
+        {hasData && (
+          <View style={styles.zsRingGlow} />
+        )}
+
         <Svg width={RING_SIZE} height={RING_SIZE}>
-          {/* Track fondo */}
+          {/* Track de fondo */}
           <Circle
             cx={RING_CX} cy={RING_CY} r={RING_R}
             fill="none"
-            stroke="rgba(255,255,255,0.07)"
-            strokeWidth={5}
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth={RING_STROKE}
           />
-          {/* Arco progreso */}
+          {/* Arco de progreso */}
           <AnimatedCircle
             cx={RING_CX} cy={RING_CY} r={RING_R}
             fill="none"
-            stroke={hasData ? colors.accent : 'rgba(79,140,255,0.18)'}
-            strokeWidth={5}
+            stroke={hasData ? colors.accent : 'rgba(79,140,255,0.20)'}
+            strokeWidth={RING_STROKE}
             strokeLinecap="round"
             strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
             strokeDashoffset={animOffset}
@@ -426,26 +441,28 @@ function ZyfitScoreCard({
           />
         </Svg>
 
-        {/* Número centrado */}
-        {hasData && valor != null && (
-          <View style={styles.zsRingCenter}>
-            <Text style={styles.zsScore}>{valor}</Text>
-          </View>
-        )}
+        {/* Número centrado dentro del anillo */}
+        <View style={styles.zsRingCenter}>
+          {hasData && valor != null ? (
+            <>
+              <Text style={styles.zsScore}>{valor}</Text>
+              <Text style={styles.zsScoreSub}>/ 100</Text>
+            </>
+          ) : (
+            <Text style={styles.zsScorePlaceholder}>—</Text>
+          )}
+        </View>
       </View>
 
-      {/* ── Contenido textual ── */}
-      <View style={styles.zsContent}>
-        <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
-        <Text style={styles.zsRango}>
-          {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo tu score'}
-        </Text>
-        <Text style={styles.zsDesc}>
-          {hasData && desc
-            ? desc
-            : 'Completa 7 sesiones para ver tu Zyfit Score.'}
-        </Text>
-      </View>
+      {/* ── Rango y descripción ── */}
+      <Text style={styles.zsRango}>
+        {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo tu score'}
+      </Text>
+      <Text style={styles.zsDesc}>
+        {hasData && desc
+          ? desc
+          : 'Completa 7 sesiones para ver tu Zyfit Score.'}
+      </Text>
     </View>
   )
 }
@@ -1027,13 +1044,12 @@ export default function DashboardScreen() {
         {/* ── Zyfit Score ── */}
         {loading ? (
           <View style={[styles.zsCard, { opacity: 0.5 }]}>
+            <Skeleton width={90} height={9} borderRadius={4} style={{ alignSelf: 'center' }} />
             <View style={{ width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
-              backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
-            <View style={[styles.zsContent, { gap: 8 }]}>
-              <Skeleton width={80} height={9} borderRadius={4} />
-              <Skeleton width="70%" height={16} borderRadius={5} />
-              <Skeleton width="90%" height={12} borderRadius={4} />
-            </View>
+              backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.08)', alignSelf: 'center', marginVertical: 8 }} />
+            <Skeleton width={120} height={18} borderRadius={5} style={{ alignSelf: 'center' }} />
+            <Skeleton width="85%" height={12} borderRadius={4} style={{ alignSelf: 'center', marginTop: 6 }} />
           </View>
         ) : (
           <ZyfitScoreCard scoreData={data?.zyfit_score} colors={colors} styles={styles} />
@@ -1328,21 +1344,35 @@ function makeStyles(c: Colors) {
 
     // ── Zyfit Score Card
     zsCard: {
-      flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: c.cardBg,
-      borderWidth: 0.5,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
-      padding: 20,
-      gap: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(79,140,255,0.22)',
+      borderRadius: 22,
+      paddingVertical: 24,
+      paddingHorizontal: 20,
+      gap: 6,
       marginBottom: 20,
+      overflow: 'hidden',
     },
     zsRingWrap: {
       width: RING_SIZE,
       height: RING_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
+      marginVertical: 10,
+    },
+    zsRingGlow: {
+      position: 'absolute',
+      width: RING_SIZE + 20,
+      height: RING_SIZE + 20,
+      borderRadius: (RING_SIZE + 20) / 2,
+      backgroundColor: 'transparent',
+      shadowColor: '#4f8cff',
+      shadowOpacity: 0.30,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
     },
     zsRingCenter: {
       position: 'absolute',
@@ -1351,35 +1381,48 @@ function makeStyles(c: Colors) {
     },
     zsScore: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 17,
+      fontSize: 34,
       color: c.inkPrimary,
-      letterSpacing: -0.5,
-      lineHeight: 21,
+      letterSpacing: -1,
+      lineHeight: 38,
     },
-    zsContent: {
-      flex: 1,
-      gap: 3,
+    zsScoreSub: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 11,
+      color: c.inkMuted,
+      letterSpacing: 0.5,
+      textAlign: 'center',
+      marginTop: -2,
+    },
+    zsScorePlaceholder: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 28,
+      color: 'rgba(255,255,255,0.15)',
+      lineHeight: 34,
     },
     zsLabel: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
-      letterSpacing: 2,
+      letterSpacing: 2.5,
       textTransform: 'uppercase',
-      marginBottom: 1,
     },
     zsRango: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 16,
+      fontSize: 20,
       color: c.inkPrimary,
-      letterSpacing: -0.4,
-      lineHeight: 22,
+      letterSpacing: -0.5,
+      lineHeight: 26,
+      textAlign: 'center',
+      marginTop: 4,
     },
     zsDesc: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
+      fontSize: 13,
       color: c.inkSecondary,
-      lineHeight: 18,
+      lineHeight: 19,
+      textAlign: 'center',
+      paddingHorizontal: 8,
       marginTop: 2,
     },
 
