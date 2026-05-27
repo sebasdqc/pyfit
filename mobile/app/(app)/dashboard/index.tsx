@@ -729,6 +729,22 @@ function TuSemanaCard({
     [weekDates, sessionsByDate]
   )
 
+  // Días de descanso = días pasados (hasta hoy) sin ninguna sesión
+  const diasDescansoSemana = useMemo(() => {
+    return weekDates.filter(iso => iso <= today && (sessionsByDate.get(iso)?.length ?? 0) === 0).length
+  }, [weekDates, today, sessionsByDate])
+
+  // Frase motivacional basada en sesiones y descanso
+  const motivacional = useMemo(() => {
+    if (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5) {
+      return sesionesEstaSemana % 2 === 0 ? '¡Vas muy bien!' : '¡Sigue así!'
+    }
+    if (sesionesEstaSemana === 2 || diasDescansoSemana >= 2) {
+      return diasDescansoSemana % 2 === 0 ? '¡No desistas!' : '¡Aprieta!'
+    }
+    return null
+  }, [sesionesEstaSemana, diasDescansoSemana])
+
   return (
     <View style={styles.semCard}>
       {/* Label */}
@@ -794,7 +810,17 @@ function TuSemanaCard({
           ) : (
             <>
               <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
-              <Text> sesiones esta semana</Text>
+              <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'} esta semana</Text>
+              {motivacional ? (
+                <>
+                  <Text>  ·  </Text>
+                  <Text style={{
+                    color: (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5)
+                      ? colors.green
+                      : colors.orange,
+                  }}>{motivacional}</Text>
+                </>
+              ) : null}
             </>
           )}
         </Text>
@@ -1300,9 +1326,9 @@ function makeStyles(c: Colors) {
 
     // ── Tu Semana Card (Zone 1.5)
     semCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
+      // Sin fondo — usa el fondo del dashboard directamente
+      backgroundColor: 'transparent',
+      borderWidth: 0,
       borderRadius: 20,
       padding: 16,
       marginBottom: 20,
