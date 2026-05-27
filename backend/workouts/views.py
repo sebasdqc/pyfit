@@ -434,7 +434,9 @@ def _actualizar_adaptation_profile(user, session, feedback):
 def _generar_mensaje_entrenador(user):
     """
     Mensaje diario del entrenador. Cacheado en DailyCoachInsight.
-    - Requiere mínimo 21 días de historial (3 semanas).
+    - Días 1-6  : mensaje de bienvenida basado en perfil (sin historial).
+    - Días 7-20 : mensaje basado en el historial inicial disponible.
+    - Días 21+  : mensaje completo con patrones de días, disciplina y racha.
     - No usa datos del día actual — solo historial.
     - Devuelve string con **fragmento** para highlight, o None.
     """
@@ -446,16 +448,147 @@ def _generar_mensaje_entrenador(user):
     DIA_NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
     dia_nombre  = DIA_NOMBRES[dia_semana]
 
-    # ── Mínimo 3 semanas
+    # ── Días de historial disponible
     primera = user.sessions.order_by('fecha').first()
-    if not primera or (hoy - primera.fecha).days < 21:
-        return None
+    dias_historial = (hoy - primera.fecha).days if primera else 0
 
     # ── Cache diario
     try:
         return DailyCoachInsight.objects.get(user=user, fecha=hoy).texto
     except DailyCoachInsight.DoesNotExist:
         pass
+
+    # ── Etapa 1: Sin historial o muy poco (< 7 días) → mensaje de bienvenida por perfil
+    if dias_historial < 7:
+        try:
+            profile = user.profile
+            nivel      = getattr(profile, 'nivel', 'intermedio') or 'intermedio'
+            objetivo   = getattr(profile, 'objetivo', None)
+            objetivos  = getattr(profile, 'objetivos_multiples', None) or []
+            nombre     = getattr(profile, 'nombre', None) or ''
+            dias_obj   = getattr(profile, 'dias_semana', 3) or 3
+            total_sess = user.sessions.count()
+        except Exception:
+            nivel, objetivo, objetivos, nombre, dias_obj, total_sess = 'intermedio', None, [], '', 3, 0
+
+        obj_texto = objetivo or (objetivos[0] if objetivos else 'mejorar tu condición física')
+
+        if total_sess == 0:
+            instruccion = (
+                f'El atleta acaba de registrarse. Nivel: {nivel}. '
+                f'Objetivo principal: {obj_texto}. '
+                f'Plan: entrenar {dias_obj} días por semana. '
+                'Primera oración: bienvenida directa que menciona su objetivo con **el objetivo en negrita**. '
+                'Segunda oración: motivación breve sobre empezar el proceso.'
+            )
+        else:
+            instruccion = (
+                f'El atleta tiene {total_sess} sesión{"es" if total_sess > 1 else ""} registrada{"s" if total_sess > 1 else ""}. '
+                f'Nivel: {nivel}. Objetivo: {obj_texto}. '
+                'Primera oración: reconoce que ya comenzó, menciona **el objetivo** en negrita. '
+                'Segunda oración: impulso para continuar construyendo el hábito.'
+            )
+
+        prompt_early = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día.
+
+CONTEXTO:
+{instruccion}
+
+REGLAS ESTRICTAS:
+1. Exactamente 2 oraciones en un solo párrafo.
+2. Encierra el fragmento más relevante con **fragmento** — solo UN fragmento.
+3. Sin signos de exclamación. Sin lenguaje genérico de app. Tono: entrenador directo, cercano.
+4. Sin consejos de carga, intensidad ni nutrición.
+5. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
+
+        try:
+            import groq
+            from django.conf import settings as dj_settings
+            client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
+            resp = client.chat.completions.create(
+                model='llama-3.3-70b-versatile',
+                messages=[{'role': 'user', 'content': prompt_early}],
+                max_tokens=120,
+                temperature=0.65,
+            )
+            texto = resp.choices[0].message.content.strip().strip('"').strip("'")
+            if texto:
+                DailyCoachInsight.objects.update_or_create(
+                    user=user, fecha=hoy, defaults={'texto': texto}
+                )
+                return texto
+        except Exception:
+            pass
+        return None
+
+    # ── Etapa 2: Historial inicial (7-20 días) → usa sesiones disponibles sin exigir patrón de día
+    if dias_historial < 21:
+        try:
+            racha        = user.profile.racha_actual or 0
+            dias_objetivo = user.profile.dias_semana or 3
+        except Exception:
+            racha, dias_objetivo = 0, 3
+
+        total_sess   = user.sessions.count()
+        sesiones_sem = user.sessions.filter(fecha__gte=hoy - timedelta(days=hoy.weekday())).count()
+        hace_2s      = hoy - timedelta(weeks=2)
+        sesiones_2s  = user.sessions.filter(fecha__gte=hace_2s).count()
+
+        try:
+            objetivo = user.profile.objetivo or 'mejorar tu condición física'
+        except Exception:
+            objetivo = 'mejorar tu condición física'
+
+        ctx_early = (
+            f'Hoy: {dia_nombre}\n'
+            f'Días desde la primera sesión: {dias_historial}\n'
+            f'Total de sesiones: {total_sess}\n'
+            f'Sesiones esta semana: {sesiones_sem} de {dias_objetivo} planificadas\n'
+            f'Sesiones en los últimos 14 días: {sesiones_2s}\n'
+            f'Racha actual: {racha} días\n'
+            f'Objetivo: {objetivo}'
+        )
+
+        if racha >= 5:
+            instruccion_cierre = f'La segunda oración DEBE mencionar la racha de {racha} días con el número exacto.'
+        elif sesiones_sem >= dias_objetivo:
+            instruccion_cierre = 'Segunda oración: refuerza positivamente haber cumplido la semana.'
+        else:
+            instruccion_cierre = 'Segunda oración: impulsa a continuar con el plan de esta semana.'
+
+        prompt_mid = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día.
+
+DATOS DEL ATLETA (primeras semanas de entrenamiento):
+{ctx_early}
+
+REGLAS ESTRICTAS:
+1. Exactamente 2 oraciones en un solo párrafo.
+2. Primera oración: habla del progreso concreto de estas primeras semanas usando los datos disponibles.
+3. {instruccion_cierre}
+4. Encierra el fragmento más relevante (racha, sesiones, objetivo) con **fragmento** — solo UN fragmento.
+5. Sin signos de exclamación. Sin lenguaje genérico de app. Sin consejos de carga ni nutrición.
+6. Tono: entrenador que conoce al atleta, directo, sin condescendencia.
+7. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
+
+        try:
+            import groq
+            from django.conf import settings as dj_settings
+            client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
+            resp = client.chat.completions.create(
+                model='llama-3.3-70b-versatile',
+                messages=[{'role': 'user', 'content': prompt_mid}],
+                max_tokens=120,
+                temperature=0.65,
+            )
+            texto = resp.choices[0].message.content.strip().strip('"').strip("'")
+            if texto:
+                DailyCoachInsight.objects.update_or_create(
+                    user=user, fecha=hoy, defaults={'texto': texto}
+                )
+                return texto
+        except Exception:
+            pass
+        return None
 
     hace_6_semanas = hoy - timedelta(weeks=6)
     hace_3_semanas = hoy - timedelta(weeks=3)
