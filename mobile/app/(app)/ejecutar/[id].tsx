@@ -167,6 +167,101 @@ function MediaCard({
   )
 }
 
+// ─── Serie Rating Picker ──────────────────────────────────────────────────────
+
+const DIFICULTAD_OPTS = [
+  { value: 1, emoji: '😴', label: 'Muy fácil',   color: '#32c896' },
+  { value: 2, emoji: '😊', label: 'Fácil',        color: '#7be07b' },
+  { value: 3, emoji: '😤', label: 'Normal',        color: '#ffdd57' },
+  { value: 4, emoji: '😓', label: 'Difícil',       color: '#ffaa32' },
+  { value: 5, emoji: '🥵', label: 'Muy difícil',  color: '#ff4444' },
+]
+
+function SerieRatingPicker({
+  value,
+  onChange,
+  colors,
+}: {
+  value: number | null
+  onChange: (v: number) => void
+  colors: Colors
+}) {
+  return (
+    <View style={ratingStyles.wrap}>
+      <Text style={[ratingStyles.question, { color: colors.inkMuted }]}>¿CÓMO ESTUVO LA SERIE?</Text>
+      <View style={ratingStyles.row}>
+        {DIFICULTAD_OPTS.map(opt => {
+          const selected = value === opt.value
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              activeOpacity={0.75}
+              style={[
+                ratingStyles.btn,
+                selected && { backgroundColor: opt.color + '22', borderColor: opt.color },
+              ]}
+            >
+              <Text style={ratingStyles.emoji}>{opt.emoji}</Text>
+              <Text style={[
+                ratingStyles.label,
+                { color: selected ? opt.color : colors.inkFaint },
+              ]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+const ratingStyles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    gap: 12,
+  },
+  question: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 9,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  btn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  emoji: {
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  label: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 7,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+})
+
 function makeMediaStyles(c: Colors) {
   return StyleSheet.create({
     card: {
@@ -335,7 +430,11 @@ export default function EjecutarScreen() {
   const [currentReps, setCurrentReps] = useState('')
   const currentPesoRef = useRef('')
   const currentRepsRef = useRef('')
-  const seriesLogRef = useRef<Record<number, Array<{ peso: string; reps: string }>>>({})
+  const seriesLogRef = useRef<Record<number, Array<{ peso: string; reps: string; dificultad?: number }>>>({})
+
+  // Percepción de dificultad por serie (se resetea al entrar al modo descanso)
+  const [serieRating, setSerieRating] = useState<number | null>(null)
+  const serieRatingRef = useRef<number | null>(null)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -398,11 +497,25 @@ export default function EjecutarScreen() {
       }
     }
 
+    // Persist rating for the set just completed
+    if (!seriesLogRef.current[ej.globalIndex]) seriesLogRef.current[ej.globalIndex] = []
+    const setIdx = done - 1
+    if (!seriesLogRef.current[ej.globalIndex][setIdx]) {
+      seriesLogRef.current[ej.globalIndex][setIdx] = { peso: currentPesoRef.current, reps: currentRepsRef.current }
+    }
+    if (serieRatingRef.current !== null) {
+      seriesLogRef.current[ej.globalIndex][setIdx].dificultad = serieRatingRef.current
+    }
+
     // Reset inputs
     currentPesoRef.current = ''
     currentRepsRef.current = ''
     setCurrentPeso('')
     setCurrentReps('')
+
+    // Reset rating for the next set
+    serieRatingRef.current = null
+    setSerieRating(null)
 
     // Clear timer
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
@@ -453,11 +566,13 @@ export default function EjecutarScreen() {
     seriesCompletadasRef.current = nextMap
     setSeriesCompletadas(nextMap)
 
-    // Reset input fields for this rest period
+    // Reset input fields and rating for this rest period
     currentPesoRef.current = ''
     currentRepsRef.current = ''
     setCurrentPeso('')
     setCurrentReps('')
+    serieRatingRef.current = null
+    setSerieRating(null)
 
     // Always enter rest after each set
     const descanso = ej.descanso_segundos || 60
@@ -761,6 +876,13 @@ export default function EjecutarScreen() {
                 </View>
               </View>
             </View>
+
+            {/* ¿Cómo estuvo la serie? — escala de dificultad */}
+            <SerieRatingPicker
+              value={serieRating}
+              onChange={v => { serieRatingRef.current = v; setSerieRating(v) }}
+              colors={colors}
+            />
 
             {/* Next up card */}
             {seriesDone < currentEj.series ? (

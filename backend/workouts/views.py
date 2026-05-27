@@ -2208,7 +2208,55 @@ def save_series_log(request, pk):
         except Exception:
             pass
 
+    # Recalcular rpe_bias con las valoraciones de dificultad de esta sesión
+    _actualizar_rpe_bias_desde_log(request.user, session, log_entries)
+
     return Response({'updated': updated})
+
+
+def _actualizar_rpe_bias_desde_log(user, session, log_entries: list):
+    """
+    Calcula el sesgo de RPE percibido a partir de las valoraciones de dificultad
+    de esta sesión y actualiza UserAdaptationProfile.rpe_bias.
+
+    Escala de dificultad → RPE percibido equivalente:
+      1 (Muy fácil)  → rpe_target - 2
+      2 (Fácil)      → rpe_target - 1
+      3 (Normal)     → rpe_target
+      4 (Difícil)    → rpe_target + 1
+      5 (Muy difícil)→ rpe_target + 2
+    """
+    try:
+        rpe_target = float(session.rpe_target)
+
+        # Recoger todas las valoraciones de dificultad del log
+        dificultades = []
+        for entry in log_entries:
+            for s in entry.get('series', []):
+                d = s.get('dificultad')
+                if d is not None:
+                    try:
+                        dificultades.append(int(d))
+                    except (ValueError, TypeError):
+                        pass
+
+        if not dificultades:
+            return
+
+        # Convertir escala 1-5 a delta RPE (-2 a +2)
+        rpe_percibido_avg = rpe_target + (sum(dificultades) / len(dificultades) - 3)
+        delta = rpe_percibido_avg - rpe_target  # sesgo esta sesión
+
+        # Actualizar rpe_bias con media exponencial (α=0.3 → ≈ últimas 3-4 sesiones)
+        profile, _ = UserAdaptationProfile.objects.get_or_create(user=user)
+        alpha = 0.30
+        current_bias = float(profile.rpe_bias) if profile.rpe_bias is not None else 0.0
+        new_bias = round(alpha * delta + (1 - alpha) * current_bias, 2)
+        profile.rpe_bias = new_bias
+        profile.save(update_fields=['rpe_bias', 'updated_at'])
+
+    except Exception:
+        pass  # No crítico — no interrumpir el flujo
 
 
 @api_view(['GET', 'POST'])
