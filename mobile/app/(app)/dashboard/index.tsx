@@ -1068,9 +1068,9 @@ export default function DashboardScreen() {
       >
         {/* ── ZONA 1 — Header / Saludo inteligente ── */}
         <View style={styles.z1}>
-          {/* Fila superior: avatar + fecha + campana */}
+          {/* Fila: [avatar] [saludo + frase] [campana] */}
           <View style={styles.z1TopRow}>
-            {/* Mini avatar — foto o iniciales */}
+            {/* Avatar */}
             <TouchableOpacity
               onPress={() => router.push('/(app)/perfil')}
               activeOpacity={0.8}
@@ -1087,8 +1087,20 @@ export default function DashboardScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Fecha — centrada */}
-            <Text style={styles.z1Date}>{formatHeaderDate(lang)}</Text>
+            {/* Saludo + frase en columna */}
+            <View style={styles.z1TextCol}>
+              {loading ? (
+                <>
+                  <Skeleton width={140} height={22} borderRadius={5} />
+                  <Skeleton width={100} height={13} borderRadius={4} style={{ marginTop: 5 }} />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.z1Saludo} numberOfLines={2}>{data?.saludo ?? ''}</Text>
+                  <Text style={styles.z1Insight} numberOfLines={2}>{getFraseDiaria()}</Text>
+                </>
+              )}
+            </View>
 
             {/* Bell */}
             <TouchableOpacity
@@ -1099,23 +1111,6 @@ export default function DashboardScreen() {
               <BellIcon />
             </TouchableOpacity>
           </View>
-
-          {/* Greeting */}
-          {loading ? (
-            <View style={styles.z1SkeletonWrap}>
-              <Skeleton width="80%" height={28} borderRadius={6} />
-              <Skeleton width="55%" height={28} borderRadius={6} style={{ marginTop: 6 }} />
-            </View>
-          ) : (
-            <Text style={styles.z1Saludo}>{data?.saludo ?? ''}</Text>
-          )}
-
-          {/* Frase motivacional diaria */}
-          {loading ? (
-            <Skeleton width="65%" height={13} borderRadius={4} style={{ marginTop: 10 }} />
-          ) : (
-            <Text style={styles.z1Insight}>{getFraseDiaria()}</Text>
-          )}
         </View>
 
         {/* ── ZONA 1.5 — Tu Semana ── */}
@@ -1213,24 +1208,24 @@ function makeStyles(c: Colors) {
     z1TopRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 14,
+      gap: 12,
     },
     z1AvatarBtn: {
-      width: 38,
-      height: 38,
+      width: 44,
+      height: 44,
+      flexShrink: 0,
     },
     z1AvatarImg: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       borderWidth: 1.5,
       borderColor: c.accentLight,
     },
     z1AvatarCircle: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: c.accentDark,
       borderWidth: 1.5,
       borderColor: c.accentLight,
@@ -1240,8 +1235,12 @@ function makeStyles(c: Colors) {
     z1AvatarText: {
       color: c.white,
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 13,
+      fontSize: 14,
       letterSpacing: -0.3,
+    },
+    z1TextCol: {
+      flex: 1,
+      gap: 3,
     },
     bellBtn: {
       width: 38,
@@ -1252,32 +1251,27 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
+      flexShrink: 0,
     },
     z1Date: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase',
-      textAlign: 'center',
-      flex: 1,
+      // eliminado — ya no se muestra la fecha en el header
+      display: 'none',
     },
     z1SkeletonWrap: {
       gap: 0,
     },
     z1Saludo: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 26,
+      fontSize: 18,
       color: c.inkPrimary,
-      letterSpacing: -0.8,
-      lineHeight: 34,
-      marginBottom: 8,
+      letterSpacing: -0.5,
+      lineHeight: 24,
     },
     z1Insight: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
+      fontSize: 12,
       color: c.inkSecondary,
-      lineHeight: 19,
+      lineHeight: 17,
       fontStyle: 'italic',
     },
 
