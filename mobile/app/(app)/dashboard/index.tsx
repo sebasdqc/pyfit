@@ -869,6 +869,15 @@ function CTACard({
   const pill = PILL[cta.pill_color]
   const isActive = cta.estado === 'A' || cta.estado === 'D'
 
+  // Título simplificado a 3 tipos de sesión
+  const tipoSesion = useMemo(() => {
+    const hay = (s: string) =>
+      (cta.titulo + ' ' + cta.descripcion).toLowerCase().includes(s)
+    if (hay('running') || hay('correr') || hay('cardio') || hay('carrera')) return 'Sesión de Running'
+    if (hay('movilidad') || hay('flexibilidad') || hay('stretching') || hay('recuper')) return 'Sesión de Movilidad'
+    return 'Sesión de Fuerza'
+  }, [cta.titulo, cta.descripcion])
+
   function handlePress() {
     if (cta.estado === 'B') {
       router.push('/(app)/historial')
@@ -900,11 +909,8 @@ function CTACard({
         </Text>
       </View>
 
-      {/* Title */}
-      <Text style={styles.ctaTitle}>{cta.titulo}</Text>
-
-      {/* Description */}
-      <Text style={styles.ctaDesc}>{cta.descripcion}</Text>
+      {/* Tipo de sesión — una sola línea */}
+      <Text style={styles.ctaTitle} numberOfLines={1}>{tipoSesion}</Text>
 
       {/* Botón principal — siempre sólido con letras blancas */}
       <TouchableOpacity
@@ -1236,7 +1242,7 @@ function makeStyles(c: Colors) {
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 22,
-      padding: 22,
+      padding: 16,
       marginBottom: 20,
       overflow: 'hidden',
     },
@@ -1244,37 +1250,34 @@ function makeStyles(c: Colors) {
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       borderRadius: 20,
       borderWidth: 1,
-      gap: 6,
-      marginBottom: 16,
+      gap: 5,
+      marginBottom: 10,
     },
     ctaPillDot: {
-      width: 6,
-      height: 6,
+      width: 5,
+      height: 5,
       borderRadius: 3,
     },
     ctaPillText: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
+      fontSize: 9,
       letterSpacing: 1.5,
     },
     ctaTitle: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 22,
+      fontSize: 20,
       color: c.inkPrimary,
-      letterSpacing: -0.6,
-      lineHeight: 28,
-      marginBottom: 8,
+      letterSpacing: -0.5,
+      lineHeight: 24,
+      marginBottom: 12,
     },
     ctaDesc: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 13,
-      color: c.inkMuted,
-      lineHeight: 19,
-      marginBottom: 20,
+      // eliminado — ya no se muestra
+      display: 'none',
     },
     ctaBtnWrap: {
       borderRadius: 14,
@@ -1284,7 +1287,7 @@ function makeStyles(c: Colors) {
       overflow: 'visible',
     },
     ctaBtn: {
-      paddingVertical: 16,
+      paddingVertical: 13,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1301,7 +1304,7 @@ function makeStyles(c: Colors) {
     },
     // Botón secundario "Entrenar otra vez hoy" — borde visible + texto subrayado
     ctaBtnTrainAgain: {
-      paddingVertical: 13,
+      paddingVertical: 11,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
