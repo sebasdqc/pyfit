@@ -74,6 +74,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'plan', 'plan_tipo', 'plan_renovacion',
             'goal', 'goal_changed_at', 'previous_goal',
             'created_at', 'locations',
+            'avatar',
             # Onboarding extended fields
             'calidad_sueno_habitual', 'condiciones_medicas', 'notas_medicas', 'motivo_limitacion',
             'lugares_entrenamiento', 'implementos_perfil', 'duracion_disponible', 'duracion_minima',

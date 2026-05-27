@@ -11,6 +11,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Image,
   StyleProp,
   ViewStyle,
 } from 'react-native'
@@ -187,6 +188,7 @@ interface DashboardData {
   total_sesiones: number
   saludo: string
   insight: string
+  avatar?: string
   cta: CTAData
   semana_detalle: SemanaDay[]
   metrica?: MetricaData
@@ -1066,23 +1068,43 @@ export default function DashboardScreen() {
       >
         {/* ── ZONA 1 — Header / Saludo inteligente ── */}
         <View style={styles.z1}>
-          {/* Bell — top right */}
-          <TouchableOpacity
-            style={styles.bellBtn}
-            onPress={() => router.push('/(app)/notificaciones')}
-            activeOpacity={0.7}
-          >
-            <BellIcon />
-          </TouchableOpacity>
+          {/* Fila superior: avatar + fecha + campana */}
+          <View style={styles.z1TopRow}>
+            {/* Mini avatar — foto o iniciales */}
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/perfil')}
+              activeOpacity={0.8}
+              style={styles.z1AvatarBtn}
+            >
+              {data?.avatar ? (
+                <Image source={{ uri: data.avatar }} style={styles.z1AvatarImg} />
+              ) : (
+                <View style={styles.z1AvatarCircle}>
+                  <Text style={styles.z1AvatarText}>
+                    {(data?.nombre ?? '?').split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? '').join('')}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          {/* Date */}
-          <Text style={styles.z1Date}>{formatHeaderDate(lang)}</Text>
+            {/* Fecha — centrada */}
+            <Text style={styles.z1Date}>{formatHeaderDate(lang)}</Text>
+
+            {/* Bell */}
+            <TouchableOpacity
+              style={styles.bellBtn}
+              onPress={() => router.push('/(app)/notificaciones')}
+              activeOpacity={0.7}
+            >
+              <BellIcon />
+            </TouchableOpacity>
+          </View>
 
           {/* Greeting */}
           {loading ? (
             <View style={styles.z1SkeletonWrap}>
-              <Skeleton width="80%" height={30} borderRadius={6} />
-              <Skeleton width="55%" height={30} borderRadius={6} style={{ marginTop: 8 }} />
+              <Skeleton width="80%" height={28} borderRadius={6} />
+              <Skeleton width="55%" height={28} borderRadius={6} style={{ marginTop: 6 }} />
             </View>
           ) : (
             <Text style={styles.z1Saludo}>{data?.saludo ?? ''}</Text>
@@ -1090,7 +1112,7 @@ export default function DashboardScreen() {
 
           {/* Frase motivacional diaria */}
           {loading ? (
-            <Skeleton width="65%" height={14} borderRadius={4} style={{ marginTop: 14 }} />
+            <Skeleton width="65%" height={13} borderRadius={4} style={{ marginTop: 10 }} />
           ) : (
             <Text style={styles.z1Insight}>{getFraseDiaria()}</Text>
           )}
@@ -1188,45 +1210,74 @@ function makeStyles(c: Colors) {
       marginBottom: 10,
       paddingTop: 4,
     },
-    bellBtn: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      width: 40,
-      height: 40,
+    z1TopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    z1AvatarBtn: {
+      width: 38,
+      height: 38,
+    },
+    z1AvatarImg: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      borderWidth: 1.5,
+      borderColor: c.accentLight,
+    },
+    z1AvatarCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: c.accentDark,
+      borderWidth: 1.5,
+      borderColor: c.accentLight,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 20,
+    },
+    z1AvatarText: {
+      color: c.white,
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 13,
+      letterSpacing: -0.3,
+    },
+    bellBtn: {
+      width: 38,
+      height: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 19,
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
-      zIndex: 1,
     },
     z1Date: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 11,
+      fontSize: 10,
       color: c.inkMuted,
       letterSpacing: 0.4,
-      marginBottom: 14,
       textTransform: 'uppercase',
+      textAlign: 'center',
+      flex: 1,
     },
     z1SkeletonWrap: {
       gap: 0,
     },
     z1Saludo: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 28,
+      fontSize: 26,
       color: c.inkPrimary,
       letterSpacing: -0.8,
-      lineHeight: 36,
-      marginBottom: 10,
-      paddingRight: 48,
+      lineHeight: 34,
+      marginBottom: 8,
     },
     z1Insight: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
+      fontSize: 13,
       color: c.inkSecondary,
-      lineHeight: 20,
+      lineHeight: 19,
       fontStyle: 'italic',
     },
 

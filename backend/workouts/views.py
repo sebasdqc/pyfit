@@ -1301,8 +1301,11 @@ def stats_dashboard(request):
                 saludo = f'Hola, {nombre}. ¿Empezamos?'
             insight = 'Cada sesión la IA te conoce mejor.'
 
+    avatar = getattr(getattr(request.user, 'profile', None), 'avatar', '') or ''
+
     return Response({
         'nombre': nombre,
+        'avatar': avatar,
         'semana_actual': total_semana,
         'semana_anterior': total_ant,
         'cumplimiento_promedio': round(cumplimiento_prom, 1),

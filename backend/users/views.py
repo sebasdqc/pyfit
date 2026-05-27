@@ -187,6 +187,28 @@ def profile_view(request):
     return Response(data)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_avatar(request):
+    """POST /api/profile/avatar/ — recibe base64 dataURI y lo guarda en el perfil."""
+    avatar_data = request.data.get('avatar', '')
+    if not avatar_data:
+        return Response({'error': 'No se recibió imagen'}, status=400)
+    # Validar que sea un dataURI de imagen (seguridad básica)
+    if not avatar_data.startswith('data:image/'):
+        return Response({'error': 'Formato inválido'}, status=400)
+    # Limitar tamaño (max ~500KB en base64)
+    if len(avatar_data) > 700_000:
+        return Response({'error': 'Imagen demasiado grande. Máximo 500KB.'}, status=400)
+    try:
+        prof = request.user.profile
+    except Exception:
+        return Response({'error': 'Perfil no encontrado'}, status=404)
+    prof.avatar = avatar_data
+    prof.save(update_fields=['avatar'])
+    return Response({'ok': True, 'avatar': avatar_data})
+
+
 _VALID_TIPO_LOCATION = {'gimnasio', 'casa', 'exterior'}
 _VALID_SEVERIDAD    = {'leve', 'moderada', 'severa', 'cronica'}
 

@@ -114,6 +114,7 @@ class Profile(models.Model):
     puntos_totales = models.IntegerField(default=0)
     logros = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil
 
     class Meta:
         db_table = 'profiles'

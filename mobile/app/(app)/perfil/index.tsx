@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Linking, Modal, Pressable } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Linking, Modal, Pressable, Image } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -29,6 +31,7 @@ interface Profile {
   plan?: 'starter' | 'pro'
   plan_tipo?: 'mensual' | 'anual' | ''
   plan_renovacion?: string | null
+  avatar?: string  // base64 dataURI
 }
 
 interface ProfileStats {
@@ -159,6 +162,7 @@ const DEFAULT: Profile = {
   tipo_trabajo: '', usa_ciclo_menstrual: false, racha_actual: 0, puntos_totales: 0,
   logros: [], locations: [],
   plan: 'starter', plan_tipo: '', plan_renovacion: null,
+  avatar: '',
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -175,6 +179,7 @@ export default function PerfilScreen() {
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [activeInjuries, setActiveInjuries] = useState(0)
+  const [uploading, setUploading] = useState(false)
 
   const fetchAll = useCallback(async () => {
     try {
@@ -208,6 +213,39 @@ export default function PerfilScreen() {
         onPress: async () => { await logout(); router.replace('/(auth)/login') },
       },
     ])
+  }
+
+  async function handlePickAvatar() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+    if (result.canceled || !result.assets?.[0]) return
+    try {
+      setUploading(true)
+      // Redimensionar y comprimir a 300x300
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 300, height: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      )
+      const base64 = `data:image/jpeg;base64,${manipulated.base64}`
+      // Upload al backend
+      const { apiPost } = require('../../../lib/api')
+      await apiPost('/api/profile/avatar/', { avatar: base64 })
+      setProfile(prev => ({ ...prev, avatar: base64 }))
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   const initials = getInitials(profile.nombre || 'U')
@@ -251,9 +289,23 @@ export default function PerfilScreen() {
       >
         {/* ── HEADER ── */}
         <View style={styles.header}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.85} disabled={uploading}>
+            <View style={styles.avatarWrapper}>
+              {profile.avatar ? (
+                <Image
+                  source={{ uri: profile.avatar }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Text style={styles.avatarEditIcon}>{uploading ? '⏳' : '📷'}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.nombre}>{loading ? '...' : (profile.nombre || 'Usuario')}</Text>
           <View style={styles.nivelPill}>
             <Text style={styles.nivelPillText}>{nivel}</Text>
@@ -480,15 +532,30 @@ function makeStyles(c: Colors) {
 
     // Header
     header: { alignItems: 'center', marginBottom: 28, gap: 10 },
+    avatarWrapper: {
+      position: 'relative',
+      marginBottom: 2,
+    },
+    avatarImage: {
+      width: 80, height: 80, borderRadius: 40,
+      borderWidth: 2, borderColor: c.accentLight,
+    },
     avatarCircle: {
       width: 80, height: 80, borderRadius: 40,
       backgroundColor: c.accentDark,
-      // Borde derivado del propio accent para que respete la paleta (azul en
-      // dark/light, rosa en rosado). Antes era rgba(79,140,255,*) hardcoded.
       borderWidth: 2, borderColor: c.accentLight,
-      alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+      alignItems: 'center', justifyContent: 'center',
     },
     avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.5 },
+    avatarEditBadge: {
+      position: 'absolute',
+      bottom: 0, right: 0,
+      width: 26, height: 26, borderRadius: 13,
+      backgroundColor: c.accentDark,
+      borderWidth: 2, borderColor: c.bg,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarEditIcon: { fontSize: 12, lineHeight: 16 },
     nombre: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, letterSpacing: -0.7 },
     nivelPill: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
