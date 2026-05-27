@@ -790,40 +790,40 @@ function TuSemanaCard({
           )
         })}
       </View>
-      </View>
 
-      {/* Footer — contador de sesiones de la semana */}
-      <View style={styles.semFooter}>
-        <Text style={styles.semFooterText}>
-          {sesionesEstaSemana === 0 ? (
-            <>
-              <Text style={styles.semFooterCount}>0</Text>
-              <Text> sesiones esta semana  ·  </Text>
-              <Text style={{ color: colors.accent }}>¡Vamos!</Text>
-            </>
-          ) : sesionesEstaSemana === 1 ? (
-            <>
-              <Text style={styles.semFooterCount}>1</Text>
-              <Text> sesión esta semana  ·  </Text>
-              <Text style={{ color: colors.accent }}>¡Vamos!</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
-              <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'} esta semana</Text>
-              {motivacional ? (
-                <>
-                  <Text>  ·  </Text>
-                  <Text style={{
-                    color: (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5)
-                      ? colors.green
-                      : colors.orange,
-                  }}>{motivacional}</Text>
-                </>
-              ) : null}
-            </>
-          )}
-        </Text>
+        {/* Footer — contador de sesiones, dentro del card */}
+        <View style={styles.semFooter}>
+          <Text style={styles.semFooterText}>
+            {sesionesEstaSemana === 0 ? (
+              <>
+                <Text style={styles.semFooterCount}>0</Text>
+                <Text> sesiones esta semana  ·  </Text>
+                <Text style={{ color: colors.accent }}>¡Vamos!</Text>
+              </>
+            ) : sesionesEstaSemana === 1 ? (
+              <>
+                <Text style={styles.semFooterCount}>1</Text>
+                <Text> sesión esta semana  ·  </Text>
+                <Text style={{ color: colors.accent }}>¡Vamos!</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
+                <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'} esta semana</Text>
+                {motivacional ? (
+                  <>
+                    <Text>  ·  </Text>
+                    <Text style={{
+                      color: (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5)
+                        ? colors.green
+                        : colors.orange,
+                    }}>{motivacional}</Text>
+                  </>
+                ) : null}
+              </>
+            )}
+          </Text>
+        </View>
       </View>
 
       {/* Panel de detalle — visible solo cuando hay un día seleccionado */}
@@ -1404,9 +1404,11 @@ function makeStyles(c: Colors) {
       lineHeight: 11,
     },
     semFooter: {
-      marginTop: 8,
+      marginTop: 6,
       paddingTop: 8,
-      borderTopWidth: 0,
+      paddingBottom: 4,
+      borderTopWidth: 1,
+      borderTopColor: c.borderDefault,
     },
     semFooterText: {
       fontFamily: 'SpaceGrotesk-Regular',

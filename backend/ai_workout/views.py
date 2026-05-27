@@ -823,6 +823,11 @@ def generate_session(request):
         )
         _persist_session_exercises(sesion, sesion_generada)
 
+    # Invalidar caché del insight del entrenador para regenerarlo con la nueva sesión
+    from workouts.models import DailyCoachInsight
+    from datetime import date as _date
+    DailyCoachInsight.objects.filter(user=user, fecha=_date.today()).delete()
+
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
 
 

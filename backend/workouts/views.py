@@ -67,6 +67,10 @@ def session_feedback(request, pk):
     _actualizar_adaptation_profile(request.user, session, feedback)
     _evaluate_and_advance(request.user, session, feedback)
 
+    # Invalidar caché del insight del entrenador para que se regenere con los nuevos datos
+    from datetime import date as _date
+    DailyCoachInsight.objects.filter(user=request.user, fecha=_date.today()).delete()
+
     return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
 
 
@@ -2367,3 +2371,16 @@ def training_cycle_advance(request):
     user_goal = getattr(getattr(user, 'profile', None), 'goal', None) or None
     updated = advance_week_if_needed(cycle, user_goal=user_goal)
     return Response(_serialize_cycle(updated))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reset_insight_cache(request):
+    """
+    POST /api/stats/reset-insight/
+    Borra el caché del insight del entrenador de hoy para que se regenere
+    en el próximo load del dashboard.
+    """
+    from datetime import date as _date
+    deleted, _ = DailyCoachInsight.objects.filter(user=request.user, fecha=_date.today()).delete()
+    return Response({'ok': True, 'deleted': deleted})

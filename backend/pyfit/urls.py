@@ -85,6 +85,7 @@ urlpatterns = [
     path('api/ejercicios/regenerar/', ai_views.regenerar_ejercicio),
 
     # Stats
+    path('api/stats/reset-insight/', workout_views.reset_insight_cache),
     path('api/stats/dashboard/', workout_views.stats_dashboard),
     path('api/stats/full/', workout_views.stats_full),
     path('api/stats/profile/', workout_views.stats_profile),
