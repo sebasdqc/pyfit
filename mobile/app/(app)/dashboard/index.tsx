@@ -301,6 +301,44 @@ function getDisciplineIcon(titulo?: string): string {
   return '🏋️'
 }
 
+// ─── Sparkles Icon ────────────────────────────────────────────────────────────
+
+function SparklesIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3Z"
+        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+      />
+      <Path
+        d="M19 3L19.8 5.2L22 6L19.8 6.8L19 9L18.2 6.8L16 6L18.2 5.2L19 3Z"
+        stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+      />
+      <Path
+        d="M5 15L5.6 16.4L7 17L5.6 17.6L5 19L4.4 17.6L3 17L4.4 16.4L5 15Z"
+        stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+/**
+ * Parsea texto con **highlight** y devuelve un array de elementos Text.
+ * Las partes entre ** se renderizan en inkPrimary, el resto en inkSecondary.
+ */
+function parseHighlight(
+  texto: string,
+  baseStyle: object,
+  highlightStyle: object,
+): React.ReactNode[] {
+  const parts = texto.split(/\*\*(.+?)\*\*/g)
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <Text key={i} style={highlightStyle}>{part}</Text>
+      : <Text key={i} style={baseStyle}>{part}</Text>
+  )
+}
+
 // ─── Bell Icon ────────────────────────────────────────────────────────────────
 
 function BellIcon() {
@@ -774,40 +812,35 @@ function CTACard({
   )
 }
 
-// ─── Insight Card (Zone 5) ────────────────────────────────────────────────────
+// ─── Coach Message Card (Zone 5) ─────────────────────────────────────────────
 
 function InsightCard({
   texto,
   colors,
   styles,
-  t,
 }: {
   texto: string | null
   colors: Colors
   styles: ReturnType<typeof makeStyles>
-  t: (key: any) => string
 }) {
-  const isEmpty = !texto
+  // Si no hay texto (< 3 semanas de historial) no se muestra el card
+  if (!texto) return null
+
+  const baseStyle    = styles.z5Text
+  const hiStyle      = styles.z5TextHighlight
+
   return (
-    <View style={styles.z5Wrap}>
-      <Text style={styles.z5SectionLabel}>{t('dashboard_coach_label')}</Text>
-      <View style={[styles.z5Card, isEmpty && styles.z5CardEmpty]}>
-        <View style={[styles.z5Bar, isEmpty && { backgroundColor: colors.borderBright }]} />
-        <View style={styles.z5Content}>
-          <View style={styles.z5TagRow}>
-            <View style={[styles.z5Tag, isEmpty && styles.z5TagEmpty]}>
-              <Text style={[styles.z5TagText, isEmpty && { color: colors.inkMuted }]}>
-                {isEmpty ? 'SIN DATOS AÚN' : 'INSIGHT DE LA SEMANA'}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.z5Text, isEmpty && styles.z5TextEmpty]}>
-            {isEmpty
-              ? 'Realiza tu primer entrenamiento para ver el análisis de tu entrenador aquí.'
-              : texto}
-          </Text>
-        </View>
+    <View style={styles.z5Card}>
+      {/* Header row: ícono + label */}
+      <View style={styles.z5Header}>
+        <SparklesIcon color={colors.accent} size={16} />
+        <Text style={styles.z5Label}>TU ENTRENADOR</Text>
       </View>
+
+      {/* Mensaje con fragmento destacado */}
+      <Text style={baseStyle}>
+        {parseHighlight(texto, baseStyle, hiStyle)}
+      </Text>
     </View>
   )
 }
@@ -950,13 +983,12 @@ export default function DashboardScreen() {
           <ZyfitScoreCard scoreData={data?.zyfit_score} colors={colors} styles={styles} />
         )}
 
-        {/* ── ZONA 5 — Insight del entrenador ── */}
+        {/* ── ZONA 5 — Tu Entrenador ── */}
         {!loading && (
           <InsightCard
             texto={data?.insight_entrenador ?? null}
             colors={colors}
             styles={styles}
-            t={t}
           />
         )}
 
@@ -1281,70 +1313,41 @@ function makeStyles(c: Colors) {
       marginTop: 2,
     },
 
-    // ── Zone 5 — Insight del entrenador
-    z5Wrap: {
-      marginBottom: 24,
+    // ── Zone 5 — Tu Entrenador
+    z5Card: {
+      backgroundColor: c.cardBg,
+      borderWidth: 0.5,
+      borderColor: c.borderDefault,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 28,
+      gap: 10,
     },
-    z5SectionLabel: {
+    z5Header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+    },
+    z5Label: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: c.inkMuted,
       letterSpacing: 2,
       textTransform: 'uppercase',
-      marginBottom: 10,
-    },
-    z5Card: {
-      flexDirection: 'row',
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 18,
-      overflow: 'hidden',
-    },
-    z5Bar: {
-      width: 3,
-      backgroundColor: '#6ce5ff',
-    },
-    z5Content: {
-      flex: 1,
-      padding: 18,
-      gap: 12,
-    },
-    z5TagRow: {
-      flexDirection: 'row',
-    },
-    z5Tag: {
-      paddingHorizontal: 9,
-      paddingVertical: 4,
-      borderRadius: 6,
-      backgroundColor: 'rgba(108,229,255,0.10)',
-      borderWidth: 1,
-      borderColor: 'rgba(108,229,255,0.25)',
-    },
-    z5TagText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 8,
-      color: '#6ce5ff',
-      letterSpacing: 1.6,
-      textTransform: 'uppercase',
     },
     z5Text: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      color: c.inkPrimary,
-      lineHeight: 22,
+      fontSize: 13,
+      color: c.inkSecondary,
+      lineHeight: 21,
       letterSpacing: -0.1,
     },
-    z5CardEmpty: {
-      borderColor: 'rgba(255,255,255,0.05)',
-    },
-    z5TagEmpty: {
-      backgroundColor: 'rgba(255,255,255,0.04)',
-      borderColor: 'rgba(255,255,255,0.10)',
-    },
-    z5TextEmpty: {
-      color: c.inkMuted,
-      fontStyle: 'italic',
+    z5TextHighlight: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 13,
+      color: c.inkPrimary,
+      lineHeight: 21,
+      letterSpacing: -0.1,
     },
 
     // Error / empty states

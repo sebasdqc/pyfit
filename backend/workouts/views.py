@@ -431,135 +431,183 @@ def _actualizar_adaptation_profile(user, session, feedback):
         logger.error(f'_actualizar_adaptation_profile error for user {user.id}: {e}', exc_info=True)
 
 
-def _generar_insight_entrenador(user):
+def _generar_mensaje_entrenador(user):
+    """
+    Mensaje diario del entrenador. Cacheado en DailyCoachInsight.
+    - Requiere mínimo 21 días de historial (3 semanas).
+    - No usa datos del día actual — solo historial.
+    - Devuelve string con **fragmento** para highlight, o None.
+    """
     from datetime import date, timedelta
-    from collections import defaultdict
-    from django.db.models import Avg
-    hoy = date.today()
+    from collections import Counter
 
+    hoy       = date.today()
+    dia_semana = hoy.weekday()  # 0=lun … 6=dom
+    DIA_NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+    dia_nombre  = DIA_NOMBRES[dia_semana]
+
+    # ── Mínimo 3 semanas
     primera = user.sessions.order_by('fecha').first()
-    if not primera:
+    if not primera or (hoy - primera.fecha).days < 21:
         return None
 
-    # Return today's cached insight if it exists
+    # ── Cache diario
     try:
-        cached = DailyCoachInsight.objects.get(user=user, fecha=hoy)
-        return cached.texto
+        return DailyCoachInsight.objects.get(user=user, fecha=hoy).texto
     except DailyCoachInsight.DoesNotExist:
         pass
 
-    hace_7  = hoy - timedelta(days=7)
-    hace_14 = hoy - timedelta(days=14)
-    hace_30 = hoy - timedelta(days=30)
+    hace_6_semanas = hoy - timedelta(weeks=6)
+    hace_3_semanas = hoy - timedelta(weeks=3)
 
-    sesiones_fb = user.sessions.filter(feedback__isnull=False).select_related('feedback')
+    # ── Sesiones recientes (6 semanas)
+    sesiones_recientes = list(
+        user.sessions.filter(fecha__gte=hace_6_semanas)
+        .select_related('checkin', 'feedback')
+        .order_by('-fecha')
+    )
 
-    rpe_s   = sesiones_fb.filter(fecha__gte=hace_7).aggregate(avg=Avg('feedback__rpe_real'))['avg']
-    rpe_a   = sesiones_fb.filter(fecha__gte=hace_14, fecha__lt=hace_7).aggregate(avg=Avg('feedback__rpe_real'))['avg']
-    cum_s   = sesiones_fb.filter(fecha__gte=hace_7).aggregate(avg=Avg('feedback__cumplimiento'))['avg']
-    cum_a   = sesiones_fb.filter(fecha__gte=hace_14, fecha__lt=hace_7).aggregate(avg=Avg('feedback__cumplimiento'))['avg']
+    # ── Patrón del día: últimas 6 ocurrencias del mismo día de semana
+    sesiones_mismo_dia = [s for s in sesiones_recientes if s.fecha.weekday() == dia_semana][:6]
 
-    # Day-of-week RPE pattern (last 30 days)
-    day_rpe: dict = defaultdict(list)
-    for s in sesiones_fb.filter(fecha__gte=hace_30):
-        day_rpe[s.fecha.weekday()].append(float(s.feedback.rpe_real))
-    day_names = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
-    day_analysis = {
-        day_names[d]: round(sum(v) / len(v), 1)
-        for d, v in day_rpe.items() if len(v) >= 2
-    }
+    def _detectar_disciplina(titulo):
+        if not titulo:
+            return None
+        t = titulo.lower()
+        if any(w in t for w in ['pierna', 'glúteo', 'sentadilla', 'squat', 'femoral', 'cuádricep', 'quads']):
+            return 'piernas'
+        if any(w in t for w in ['pecho', 'press banca', 'pectoral', 'push', 'trícep']):
+            return 'pecho y tríceps'
+        if any(w in t for w in ['espalda', 'jalón', 'remo', 'bícep', 'pull', 'dorsal']):
+            return 'espalda y bíceps'
+        if any(w in t for w in ['hombro', 'deltoid', 'press hombro', 'shoulder', 'militar']):
+            return 'hombros'
+        if any(w in t for w in ['full body', 'cuerpo completo', 'funcional', 'hiit', 'circuito']):
+            return 'full body'
+        if any(w in t for w in ['corr', 'run', 'cardio', 'aerob']):
+            return 'cardio'
+        if any(w in t for w in ['movil', 'flex', 'yoga', 'stretching', 'movilidad']):
+            return 'movilidad'
+        return None
 
-    # Weekly volume (last 4 weeks, oldest first)
-    sessions_by_week = []
-    for i in range(4, 0, -1):
-        inicio = hoy - timedelta(weeks=i)
-        fin    = hoy - timedelta(weeks=i - 1)
-        sessions_by_week.append(user.sessions.filter(fecha__gte=inicio, fecha__lt=fin).count())
+    disciplinas = []
+    for s in sesiones_mismo_dia:
+        titulo = s.respuesta_ia.get('titulo', '') if s.respuesta_ia else ''
+        d = _detectar_disciplina(titulo)
+        if d:
+            disciplinas.append(d)
 
-    ultimas_72 = user.sessions.filter(fecha__gte=hoy - timedelta(days=3)).count()
+    patron_dia   = None
+    patron_texto = 'sin patrón claro aún'
+    if disciplinas:
+        conteo = Counter(disciplinas)
+        mas_comun, freq = conteo.most_common(1)[0]
+        if freq >= 3:  # ≥3 de 6 ocurrencias (relajamos de 4 a 3 para más cobertura)
+            patron_dia   = mas_comun
+            patron_texto = f'{freq} de las últimas {len(sesiones_mismo_dia)} veces: {mas_comun}'
 
+    # ── Horario habitual en este día de semana (hora de created_at)
+    horas = [s.created_at.hour for s in sesiones_mismo_dia if s.created_at]
+    horario_habitual = None
+    if horas:
+        avg_hora = sum(horas) / len(horas)
+        if avg_hora < 12:
+            horario_habitual = 'mañana'
+        elif avg_hora < 18:
+            horario_habitual = 'tarde'
+        else:
+            horario_habitual = 'noche'
+
+    # ── Estado de ánimo promedio en este día de semana (checkins históricos)
+    checkins_dia = [
+        s.checkin for s in sesiones_recientes
+        if s.fecha.weekday() == dia_semana and s.checkin
+    ]
+    animo_promedio = None
+    if checkins_dia:
+        valores = [c.estado_animo for c in checkins_dia if c.estado_animo]
+        if valores:
+            animo_promedio = round(sum(valores) / len(valores), 1)
+
+    # ── Consistencia
     try:
-        profile = user.profile
-        racha = profile.racha_actual
-        objetivo = profile.objetivo or ''
-        dias_objetivo = profile.dias_semana or 3
+        racha          = user.profile.racha_actual or 0
+        dias_objetivo  = user.profile.dias_semana or 3
     except Exception:
-        racha, objetivo, dias_objetivo = 0, '', 3
+        racha, dias_objetivo = 0, 3
 
-    total_sesiones = user.sessions.count()
+    sesiones_semana = user.sessions.filter(
+        fecha__gte=hoy - timedelta(days=hoy.weekday())
+    ).count()
 
-    # Recent session titles and focos for preference detection
-    ultimas_sesiones = user.sessions.select_related('checkin').order_by('-fecha', '-created_at')[:10]
-    titulos = [
-        s.respuesta_ia.get('titulo', '') for s in ultimas_sesiones
-        if s.respuesta_ia and s.respuesta_ia.get('titulo')
-    ]
-    focos_raw: list = []
-    for s in ultimas_sesiones:
-        focos_raw.extend(s.checkin.foco_entrenamiento or [] if s.checkin else [])
-    foco_counts = Counter(focos_raw)
-    foco_top = [f for f, _ in foco_counts.most_common(2)]
+    sesiones_3s = user.sessions.filter(fecha__gte=hace_3_semanas).count()
+    hay_actividad_reciente = len(sesiones_mismo_dia) > 0
 
-    FOCO_ES = {
-        'serio': 'trabajo de fuerza', 'descargar': 'cardio/descarga',
-        'moverme': 'movimiento general', 'recuperar': 'recuperación activa',
-        'musculacion': 'musculación y fuerza', 'running': 'running y cardio', 'libre': 'entrenamiento libre',
-    }
-    preferencias = ' y '.join(FOCO_ES.get(f, f) for f in foco_top) if foco_top else ''
+    # ── Semanas activas (semanas con al menos 1 sesión en las últimas 6)
+    semanas_con_sesion = set()
+    for s in sesiones_recientes:
+        lunes = s.fecha - timedelta(days=s.fecha.weekday())
+        semanas_con_sesion.add(lunes)
+    semanas_activas = len(semanas_con_sesion)
 
+    # ── Construir contexto para el LLM
     ctx_lines = [
-        f'Total sesiones: {total_sesiones}',
+        f'Hoy: {dia_nombre}',
+        f'Patrón de {dia_nombre}s ({patron_texto})',
         f'Racha actual: {racha} días',
-        f'Objetivo principal: {objetivo}' if objetivo else None,
-        f'Días objetivo/semana: {dias_objetivo}',
-        f'Sesiones últimas 4 semanas (más antigua primero): {sessions_by_week}',
-        f'Tipos de sesión recientes: {", ".join(titulos[:5])}' if titulos else None,
-        f'Preferencias de entrenamiento detectadas: {preferencias}' if preferencias else None,
-        f'RPE promedio esta semana: {round(float(rpe_s), 1)}' if rpe_s is not None else None,
-        f'RPE promedio semana anterior: {round(float(rpe_a), 1)}' if rpe_a is not None else None,
-        f'Cumplimiento esta semana: {round(float(cum_s), 1)}%' if cum_s is not None else None,
-        f'Cumplimiento semana anterior: {round(float(cum_a), 1)}%' if cum_a is not None else None,
-        f'Sesiones en últimas 72h: {ultimas_72}',
-        f'RPE promedio por día (últimos 30 días, solo días con ≥2 sesiones): {day_analysis}' if day_analysis else None,
+        f'Sesiones esta semana: {sesiones_semana}',
+        f'Semanas activas (últimas 6): {semanas_activas} de 6',
+        f'Sesiones en las últimas 3 semanas: {sesiones_3s}',
+        f'Horario habitual en {dia_nombre}s: {horario_habitual}' if horario_habitual else None,
+        f'Estado de ánimo promedio en {dia_nombre}s: {animo_promedio}/5' if animo_promedio else None,
+        f'¿Historial de {dia_nombre}s disponible?: {"sí" if hay_actividad_reciente else "no — usa momentum general"}',
     ]
-    contexto = '. '.join(line for line in ctx_lines if line)
+    contexto = '\n'.join(line for line in ctx_lines if line)
 
-    if total_sesiones < 5:
-        prompt = f"""Eres el entrenador IA de una app de fitness. El atleta tiene pocas sesiones registradas aún, estás en fase de conocerlo.
-
-Datos:
-{contexto}
-
-Escribe UN mensaje personalizado, cálido pero directo, de máximo 2 oraciones. El mensaje debe:
-- Mencionar el número exacto de sesiones que lleva.
-- Si hay preferencias detectadas, mencionarlas específicamente.
-- Terminar con una frase motivadora que invite a seguir entrenando para darte más contexto.
-- Tono: como un entrenador personal que acaba de conocer al atleta. Sin condescendencia.
-- Sin emojis. Sin mencionar "la app" ni "el sistema".
-- Responde ÚNICAMENTE con el texto del mensaje, sin comillas ni prefijos."""
+    if hay_actividad_reciente:
+        instruccion_patron = (
+            f'Primera oración: describe el patrón concreto del atleta en sus {dia_nombre}s '
+            f'(usa el dato de disciplina si existe, o el horario, o el estado de ánimo).'
+        )
     else:
-        prompt = f"""Eres el entrenador IA de una app de fitness. Analiza los datos de este atleta y genera exactamente UN insight específico, accionable y basado en datos reales.
+        instruccion_patron = (
+            f'Primera oración: habla del momentum general de las últimas semanas '
+            f'(consistencia, sesiones, racha) sin mencionar el día específico.'
+        )
 
-Datos:
+    if dia_semana == 0:  # lunes
+        instruccion_cierre = (
+            'Si tiene sesiones la semana pasada, menciona brevemente cómo cerró esa semana. '
+            'De lo contrario, habla del comienzo de semana.'
+        )
+    elif racha >= 14:
+        instruccion_cierre = f'La segunda oración DEBE mencionar la racha de {racha} días con el número exacto.'
+    else:
+        instruccion_cierre = 'Segunda oración: cierre motivacional breve que conecta el patrón con la oportunidad de hoy.'
+
+    prompt = f"""Eres el entrenador IA de PyFit. Genera exactamente DOS oraciones como mensaje personalizado del día para este atleta.
+
+DATOS DEL ATLETA:
 {contexto}
 
-Reglas:
-- Referencia números concretos del contexto — nunca seas genérico.
-- Máximo 2 oraciones. Directo. Sin rodeos.
-- Detecta uno de estos patrones si existe: tendencia de RPE, fatiga acumulada, día de bajo rendimiento, mejora de consistencia, riesgo de sobreentrenamiento, racha positiva, volumen decreciente.
-- Tono: directo, técnico, alentador sin ser condescendiente.
-- Sin emojis. Sin mencionar "la app" ni "el sistema".
-- Responde ÚNICAMENTE con el texto del insight, sin comillas ni prefijos."""
+REGLAS ESTRICTAS:
+1. Exactamente 2 oraciones en un solo párrafo.
+2. {instruccion_patron}
+3. {instruccion_cierre}
+4. Encierra el fragmento más relevante (la disciplina detectada, O el dato de racha/consistencia) con **fragmento** — solo UN fragmento.
+5. Sin signos de exclamación. Sin lenguaje genérico de app. Sin consejos de carga, intensidad ni nutrición.
+6. Tono: entrenador que conoce al atleta, directo, sin condescendencia.
+7. Responde ÚNICAMENTE con las 2 oraciones, sin comillas ni prefijos."""
 
     try:
         import groq
-        from django.conf import settings
-        client = groq.Groq(api_key=settings.GROQ_API_KEY)
+        from django.conf import settings as dj_settings
+        client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
         resp = client.chat.completions.create(
             model='llama-3.3-70b-versatile',
             messages=[{'role': 'user', 'content': prompt}],
-            max_tokens=100,
-            temperature=0.6,
+            max_tokens=120,
+            temperature=0.65,
         )
         texto = resp.choices[0].message.content.strip().strip('"').strip("'")
         if texto:
@@ -571,6 +619,10 @@ Reglas:
         pass
 
     return None
+
+
+# ── Alias para compatibilidad con la llamada en stats_dashboard ───────────────
+_generar_insight_entrenador = _generar_mensaje_entrenador
 
 
 def _metrica_destacada(user, racha, dias_semana_objetivo, total_sesiones=0):
