@@ -754,10 +754,10 @@ function CTACard({
   }
 
   const CARD_BORDER: Record<CTAData['estado'], string> = {
-    A: 'rgba(79,140,255,0.28)',
-    B: colors.borderDefault,
-    C: 'rgba(255,170,50,0.28)',
-    D: 'rgba(79,140,255,0.28)',
+    A: 'rgba(79,140,255,0.35)',
+    B: 'rgba(255,255,255,0.14)',
+    C: 'rgba(255,170,50,0.35)',
+    D: 'rgba(79,140,255,0.35)',
   }
 
   const pill = PILL[cta.pill_color]
@@ -781,7 +781,7 @@ function CTACard({
     <View style={[styles.ctaCard, { borderColor: CARD_BORDER[cta.estado] }]}>
       {isActive && (
         <LinearGradient
-          colors={['rgba(79,140,255,0.10)', 'transparent']}
+          colors={['rgba(79,140,255,0.13)', 'transparent']}
           style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
         />
       )}
@@ -800,43 +800,38 @@ function CTACard({
       {/* Description */}
       <Text style={styles.ctaDesc}>{cta.descripcion}</Text>
 
-      {/* Button */}
+      {/* Botón principal — siempre sólido con letras blancas */}
       <TouchableOpacity
-        style={[styles.ctaBtnWrap, !isActive && styles.ctaBtnWrapSecondary]}
+        style={styles.ctaBtnWrap}
         onPress={handlePress}
         activeOpacity={0.88}
       >
-        {isActive ? (
+        {cta.estado === 'C' ? (
+          // Recuperación activa → naranja sólido
+          <View style={[styles.ctaBtn, styles.ctaBtnSolidOrange]}>
+            <Text style={styles.ctaBtnText}>{btnLabel}</Text>
+          </View>
+        ) : (
+          // ENTRENAR / VER RESUMEN / PRIMER ENTRENO → gradient azul
           <LinearGradient
             colors={[colors.accent, colors.accentDark]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.ctaBtn}
+            style={[styles.ctaBtn, { borderRadius: 14 }]}
           >
             <Text style={styles.ctaBtnText}>{btnLabel}</Text>
           </LinearGradient>
-        ) : (
-          <View style={[styles.ctaBtn, styles.ctaBtnOutlined,
-            cta.estado === 'C' && { borderColor: 'rgba(255,170,50,0.5)' },
-            cta.estado === 'B' && styles.ctaBtnAccentFill,
-          ]}>
-            <Text style={[styles.ctaBtnTextSecondary,
-              cta.estado === 'C' && { color: '#ffaa32' },
-              cta.estado === 'B' && styles.ctaBtnTextAccent,
-            ]}>
-              {btnLabel}
-            </Text>
-          </View>
         )}
       </TouchableOpacity>
 
+      {/* Botón secundario "Entrenar otra vez hoy" — solo en estado B */}
       {cta.estado === 'B' && (
         <TouchableOpacity
-          style={[styles.ctaBtnWrapSecondary, { marginTop: 10 }]}
+          style={[styles.ctaBtnWrap, { marginTop: 10 }]}
           onPress={() => router.push('/(app)/checkin')}
-          activeOpacity={0.88}
+          activeOpacity={0.75}
         >
-          <View style={[styles.ctaBtn, styles.ctaBtnGhost]}>
-            <Text style={styles.ctaBtnTextGhost}>{t('dashboard_train_again')}</Text>
+          <View style={styles.ctaBtnTrainAgain}>
+            <Text style={styles.ctaBtnTextTrainAgain}>{t('dashboard_train_again')}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -1101,15 +1096,17 @@ function makeStyles(c: Colors) {
 
     // ── Zone 2 — CTA Card
     ctaCardSkeleton: {
-      backgroundColor: c.cardBg,
+      // Fondo ligeramente más claro que el dashboard (#000) para distinguirse
+      backgroundColor: 'rgba(255,255,255,0.10)',
       borderWidth: 1,
-      borderColor: c.borderDefault,
+      borderColor: 'rgba(255,255,255,0.14)',
       borderRadius: 22,
       padding: 22,
       marginBottom: 20,
     },
     ctaCard: {
-      backgroundColor: c.cardBg,
+      // Fondo ligeramente más claro que el dashboard (#000) para distinguirse
+      backgroundColor: 'rgba(255,255,255,0.10)',
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 22,
@@ -1165,9 +1162,9 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    ctaBtnOutlined: {
-      borderWidth: 1,
-      borderColor: c.borderBright,
+    // Botón sólido naranja (estado C — recuperación activa)
+    ctaBtnSolidOrange: {
+      backgroundColor: '#ffaa32',
       borderRadius: 14,
     },
     ctaBtnText: {
@@ -1176,31 +1173,21 @@ function makeStyles(c: Colors) {
       color: '#ffffff',
       letterSpacing: 0.2,
     },
-    ctaBtnTextSecondary: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      color: c.inkSecondary,
-      letterSpacing: 0.1,
-    },
-    ctaBtnAccentFill: {
-      backgroundColor: 'rgba(79,140,255,0.14)',
-      borderColor: 'rgba(79,140,255,0.45)',
-    },
-    ctaBtnTextAccent: {
-      color: c.accentLight,
-      fontFamily: 'SpaceGrotesk-Bold',
-    },
-    ctaBtnGhost: {
+    // Botón secundario "Entrenar otra vez hoy" — borde visible + texto subrayado
+    ctaBtnTrainAgain: {
+      paddingVertical: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 1,
-      borderColor: c.borderDefault,
+      borderColor: 'rgba(255,255,255,0.20)',
       borderRadius: 14,
-      borderStyle: 'dashed',
     },
-    ctaBtnTextGhost: {
+    ctaBtnTextTrainAgain: {
       fontFamily: 'SpaceGrotesk-Medium',
       fontSize: 14,
-      color: c.inkMuted,
+      color: c.inkSecondary,
       letterSpacing: 0.1,
+      textDecorationLine: 'underline',
     },
 
     // Section container (shared)
