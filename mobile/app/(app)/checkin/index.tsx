@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Alert, View, Text, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator,
@@ -246,6 +246,7 @@ export default function CheckinScreen() {
   const [screenIndex, setScreenIndex] = useState(0)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const [checkinSaved, setCheckinSaved] = useState(false)
   const [procesandoTimer, setProcesandoTimer] = useState(false)
 
@@ -316,7 +317,9 @@ export default function CheckinScreen() {
     setScreenIndex(i => i + 1)
   }
 
-  async function handleSubmit() {
+  const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
       const zonaLabels = zonasDolorHoy.map(z => ZONE_LABELS[z] ?? z)
@@ -345,9 +348,10 @@ export default function CheckinScreen() {
       setScreenIndex(3)
       setError(e.message ?? 'No se pudo guardar. Inténtalo de nuevo.')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
-  }
+  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, locationId])
 
   // ── D5 processing orchestration ───────────────────────────────────────────
 

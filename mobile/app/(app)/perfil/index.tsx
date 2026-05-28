@@ -9,7 +9,7 @@ import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
-import { apiGet } from '../../../lib/api'
+import { apiGet, apiPost } from '../../../lib/api'
 import { logout } from '../../../lib/auth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -238,7 +238,6 @@ export default function PerfilScreen() {
       )
       const base64 = `data:image/jpeg;base64,${manipulated.base64}`
       // Upload al backend
-      const { apiPost } = require('../../../lib/api')
       await apiPost('/api/profile/avatar/', { avatar: base64 })
       setProfile(prev => ({ ...prev, avatar: base64 }))
     } catch (e) {

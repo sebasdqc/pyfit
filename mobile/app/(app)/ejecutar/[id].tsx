@@ -384,12 +384,12 @@ function CircularTimer({ seconds, total, color }: { seconds: number; total: numb
 
 // ─── Progress Bar ─────────────────────────────────────────────────────────────
 
-function ProgressBar({ current, total }: { current: number; total: number }) {
+function ProgressBar({ current, total, topOffset = 0 }: { current: number; total: number; topOffset?: number }) {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const pct = total > 0 ? Math.min((current / total) * 100, 100) : 0
   return (
-    <View style={styles.progressTrack}>
+    <View style={[styles.progressTrack, { marginTop: topOffset }]}>
       <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
     </View>
   )
@@ -437,6 +437,8 @@ export default function EjecutarScreen() {
   const serieRatingRef = useRef<number | null>(null)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   // ── Fetch session ───────────────────────────────────────────────────────────
 
@@ -484,6 +486,7 @@ export default function EjecutarScreen() {
   // ── Advance from rest (timer end or skip) ──────────────────────────────────
 
   const advanceFromRest = useCallback(() => {
+    if (!mountedRef.current) return
     const ej = flatList[currentIndex]
     if (!ej) return
     const done = seriesCompletadasRef.current[ej.globalIndex] ?? 0
@@ -600,6 +603,7 @@ export default function EjecutarScreen() {
             serie: si + 1,
             peso: parseFloat(e?.peso) || null,
             reps: parseInt(e?.reps) || null,
+            dificultad: e?.dificultad ?? null,
           }))
           .filter(s => s.peso !== null || s.reps !== null)
         return { orden: idx + 1, series }
@@ -694,8 +698,8 @@ export default function EjecutarScreen() {
     <View style={styles.root}>
       <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
-      {/* Progress bar */}
-      <ProgressBar current={currentIndex} total={flatList.length} />
+      {/* Progress bar — topOffset respects safe area (status bar) */}
+      <ProgressBar current={currentIndex} total={flatList.length} topOffset={insets.top} />
 
       {/* Nav bar */}
       <View style={styles.navBar}>
@@ -969,7 +973,7 @@ function makeStyles(c: Colors) {
     progressTrack: {
       height: 3,
       backgroundColor: c.borderDefault,
-      marginTop: 48, // below status bar
+      marginTop: 0,
     },
     progressFill: {
       height: 3,
