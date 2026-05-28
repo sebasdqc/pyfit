@@ -183,10 +183,14 @@ const translations = {
 
   // ─── Generate ────────────────────────────────────────────────────────────────
   generate_loading_1:         { es: 'Analizando tu perfil...',           en: 'Analyzing your profile...' },
+  generate_loading_1_sub:     { es: 'Leemos tus datos y objetivos',      en: 'Reading your data and goals' },
   generate_loading_2:         { es: 'Revisando historial y fatiga...',   en: 'Reviewing history and fatigue...' },
+  generate_loading_2_sub:     { es: 'Calculando tu estado actual',       en: 'Calculating your current state' },
   generate_loading_3:         { es: 'Calibrando carga óptima...',        en: 'Calibrating optimal load...' },
+  generate_loading_3_sub:     { es: 'Aplicando principios de ciencia del ejercicio', en: 'Applying exercise science principles' },
   generate_loading_4:         { es: 'Construyendo tu sesión...',         en: 'Building your session...' },
   generate_loading_5:         { es: 'Casi listo...',                     en: 'Almost ready...' },
+  generate_loading_5_sub:     { es: 'Preparando tu entrenamiento',       en: 'Preparing your workout' },
   generate_duration_label:    { es: 'Duración',                          en: 'Duration' },
   generate_exercises_label:   { es: 'Ejercicios',                        en: 'Exercises' },
   generate_work_label:        { es: 'Trabajo',                           en: 'Work' },

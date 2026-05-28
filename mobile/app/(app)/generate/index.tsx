@@ -164,10 +164,10 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
   const { colors } = useTheme()
   const { t } = useTranslation()
   const LOAD_STEPS = [
-    { title: t('generate_loading_1'), subtitle: t('generate_loading_2') },
-    { title: t('generate_loading_2'), subtitle: t('generate_loading_3') },
-    { title: t('generate_loading_3'), subtitle: t('generate_loading_4') },
-    { title: t('generate_loading_5'), subtitle: t('generate_loading_4') },
+    { title: t('generate_loading_1'), subtitle: t('generate_loading_1_sub') },
+    { title: t('generate_loading_2'), subtitle: t('generate_loading_2_sub') },
+    { title: t('generate_loading_3'), subtitle: t('generate_loading_3_sub') },
+    { title: t('generate_loading_5'), subtitle: t('generate_loading_5_sub') },
   ]
   const [step, setStep] = useState(0)
   const stepRef    = useRef(-1)

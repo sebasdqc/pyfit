@@ -1044,30 +1044,35 @@ export default function DashboardScreen() {
     }
   }, [])
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (cancelled?: { current: boolean }) => {
     try {
       setError(null)
       const res = await apiGet('/api/stats/dashboard/')
+      if (cancelled?.current) return
       setData(res)
     } catch (e: any) {
+      if (cancelled?.current) return
       setError(e.message ?? 'Error al cargar el dashboard')
     } finally {
-      setLoading(false)
+      if (!cancelled?.current) setLoading(false)
     }
   }, [])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await Promise.all([fetchDashboard(), fetchSessions()])
+    await Promise.all([fetchDashboard(undefined), fetchSessions()])
     setRefreshing(false)
   }, [fetchDashboard, fetchSessions])
 
   // Fetch on initial mount AND every time the screen comes back into focus
   // (e.g. after returning from the checkin → generate flow or "Entrenar otra vez hoy")
+  // cancelled ref prevents stale state writes if the screen loses focus before fetch completes
   useFocusEffect(
     useCallback(() => {
-      fetchDashboard()
+      const cancelled = { current: false }
+      fetchDashboard(cancelled)
       fetchSessions()
+      return () => { cancelled.current = true }
     }, [fetchDashboard, fetchSessions])
   )
 
@@ -1093,6 +1098,16 @@ export default function DashboardScreen() {
           />
         }
       >
+        {/* ── Error state ── */}
+        {!!error && !loading && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={handleRefresh} style={styles.retryBtn}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── ZONA 1 — Header / Saludo inteligente ── */}
         <View style={styles.z1}>
           {/* Fila: [avatar] [saludo + frase] [campana] */}

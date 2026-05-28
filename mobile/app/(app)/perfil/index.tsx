@@ -183,14 +183,21 @@ export default function PerfilScreen() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [profileData, statsData, injuriesData] = await Promise.all([
+      const [profileRes, statsRes, injuriesRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
         apiGet('/api/stats/profile/'),
         apiGet('/api/injuries/'),
       ])
-      setProfile({ ...DEFAULT, ...profileData, locations: profileData.locations ?? [] })
-      setProfileStats(statsData)
-      setActiveInjuries((injuriesData as any[]).filter((i: any) => i.activa).length)
+      if (profileRes.status === 'fulfilled') {
+        const d = profileRes.value
+        setProfile({ ...DEFAULT, ...d, locations: d.locations ?? [] })
+      }
+      if (statsRes.status === 'fulfilled') {
+        setProfileStats(statsRes.value)
+      }
+      if (injuriesRes.status === 'fulfilled') {
+        setActiveInjuries((injuriesRes.value as any[]).filter((i: any) => i.activa).length)
+      }
     } catch {
       // fail silently
     } finally {

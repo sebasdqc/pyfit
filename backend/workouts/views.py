@@ -2,6 +2,7 @@ import calendar as _cal
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
+from django.db import transaction
 from django.db.models import Avg, Count, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -62,10 +63,15 @@ def session_feedback(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     feedback = serializer.save(session=session)
 
-    _actualizar_racha(request.user)
-    _check_logros(request.user)
-    _actualizar_adaptation_profile(request.user, session, feedback)
-    _evaluate_and_advance(request.user, session, feedback)
+    try:
+        with transaction.atomic():
+            _actualizar_racha(request.user)
+            _check_logros(request.user)
+            _actualizar_adaptation_profile(request.user, session, feedback)
+            _evaluate_and_advance(request.user, session, feedback)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f'[feedback] post-processing error (non-fatal): {e}')
 
     # Invalidar caché del insight del entrenador para que se regenere con los nuevos datos
     from datetime import date as _date
@@ -193,30 +199,33 @@ Reglas:
         return Response({'decisiones': [], 'evidencia': None})
 
 
-def _calcular_racha_realtime(user):
+def _calcular_racha_realtime(user, hoy=None):
     """
     Calcula la racha de días consecutivos en tiempo real (sin leer del perfil).
     Si hoy no tiene sesión con feedback, retrocede un día.
     Si ayer tampoco tiene, la racha es 0.
     Retorna el entero de días consecutivos.
     """
-    hoy = date.today()
+    if hoy is None:
+        hoy = date.today()
+    # Single query: fetch all session dates in the last 365 days that have feedback
+    fecha_min = hoy - timedelta(days=365)
+    dates_with_session = set(
+        Session.objects.filter(
+            user=user,
+            fecha__gte=fecha_min,
+            fecha__lte=hoy,
+            feedback__isnull=False,
+        ).values_list('fecha', flat=True)
+    )
+    if not dates_with_session:
+        return 0
+    # Start from today; if today has no session, start from yesterday
+    dia = hoy if hoy in dates_with_session else hoy - timedelta(days=1)
     racha = 0
-    dia = hoy
-
-    for _ in range(365):
-        tiene = user.sessions.filter(fecha=dia, feedback__isnull=False).exists()
-        if not tiene:
-            if dia == hoy:
-                dia -= timedelta(days=1)
-                tiene = user.sessions.filter(fecha=dia, feedback__isnull=False).exists()
-                if not tiene:
-                    break
-            else:
-                break
+    while dia in dates_with_session:
         racha += 1
         dia -= timedelta(days=1)
-
     return racha
 
 
@@ -2194,6 +2203,9 @@ def save_series_log(request, pk):
     if not isinstance(log_entries, list):
         return Response({'error': 'log debe ser un array.'}, status=400)
 
+    # Pre-fetch all exercises to avoid N+1
+    exercises_map = {ex.orden: ex for ex in session.exercises.all()}
+
     updated = 0
     for entry in log_entries:
         orden = entry.get('orden')
@@ -2201,7 +2213,9 @@ def save_series_log(request, pk):
         if orden is None or not isinstance(series, list):
             continue
         try:
-            exercise = session.exercises.get(orden=orden)
+            exercise = exercises_map.get(orden)
+            if exercise is None:
+                continue
             exercise.series_log = series
             exercise.save(update_fields=['series_log'])
             updated += 1

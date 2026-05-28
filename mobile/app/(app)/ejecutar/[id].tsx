@@ -118,15 +118,17 @@ function MediaCard({
   return (
     <View style={mediaStyles.card}>
       {/* Toggle row — always visible */}
-      <TouchableOpacity style={mediaStyles.toggleRow} onPress={() => setExpanded(v => !v)} activeOpacity={0.75}>
-        <Text style={mediaStyles.toggleEmoji}>{demo?.emoji ?? '🏋️'}</Text>
-        <Text style={[mediaStyles.toggleLabel, { color: faseColor }]}>
-          {expanded ? t('ejecutar_demo_hide') : t('ejecutar_demo_show')}
-        </Text>
+      <View style={mediaStyles.toggleRow}>
+        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }} onPress={() => setExpanded(v => !v)} activeOpacity={0.75}>
+          <Text style={mediaStyles.toggleEmoji}>{demo?.emoji ?? '🏋️'}</Text>
+          <Text style={[mediaStyles.toggleLabel, { color: faseColor }]}>
+            {expanded ? t('ejecutar_demo_hide') : t('ejecutar_demo_show')}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={handleYouTube} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={[mediaStyles.ytInline, { color: faseColor }]}>▶ YouTube</Text>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
 
       {/* Expandable media area */}
       {expanded && (
@@ -414,6 +416,7 @@ export default function EjecutarScreen() {
   const [currentDemo, setCurrentDemo] = useState<DemoMedia | null>(null)
   const [demoLoading, setDemoLoading] = useState(false)
   const demoCacheRef = useRef<Record<string, DemoMedia>>({})
+  const demoReqIdRef = useRef(0)
 
   // Execution state
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -470,17 +473,23 @@ export default function EjecutarScreen() {
       return
     }
 
+    const reqId = ++demoReqIdRef.current
     setDemoLoading(true)
     setCurrentDemo(null)
     apiGet(`/api/ejercicio-demo/?nombre=${encodeURIComponent(ej.nombre)}`)
       .then((data: DemoMedia) => {
+        if (reqId !== demoReqIdRef.current) return
         demoCacheRef.current[ej.nombre] = data
         setCurrentDemo(data)
       })
       .catch(() => {
+        if (reqId !== demoReqIdRef.current) return
         setCurrentDemo({ emoji: '🏋️', gif_url: '', imagen_url: '', youtube_url: '' })
       })
-      .finally(() => setDemoLoading(false))
+      .finally(() => {
+        if (reqId !== demoReqIdRef.current) return
+        setDemoLoading(false)
+      })
   }, [currentIndex, flatList])
 
   // ── Advance from rest (timer end or skip) ──────────────────────────────────
@@ -491,23 +500,15 @@ export default function EjecutarScreen() {
     if (!ej) return
     const done = seriesCompletadasRef.current[ej.globalIndex] ?? 0
 
-    // Persist log entry for the set just completed
-    if (currentPesoRef.current || currentRepsRef.current) {
+    // Persist log entry (peso, reps, dificultad) for the set just completed
+    const setIdx = done - 1
+    if (setIdx >= 0) {
       if (!seriesLogRef.current[ej.globalIndex]) seriesLogRef.current[ej.globalIndex] = []
-      seriesLogRef.current[ej.globalIndex][done - 1] = {
+      seriesLogRef.current[ej.globalIndex][setIdx] = {
         peso: currentPesoRef.current,
         reps: currentRepsRef.current,
+        ...(serieRatingRef.current !== null ? { dificultad: serieRatingRef.current } : {}),
       }
-    }
-
-    // Persist rating for the set just completed
-    if (!seriesLogRef.current[ej.globalIndex]) seriesLogRef.current[ej.globalIndex] = []
-    const setIdx = done - 1
-    if (!seriesLogRef.current[ej.globalIndex][setIdx]) {
-      seriesLogRef.current[ej.globalIndex][setIdx] = { peso: currentPesoRef.current, reps: currentRepsRef.current }
-    }
-    if (serieRatingRef.current !== null) {
-      seriesLogRef.current[ej.globalIndex][setIdx].dificultad = serieRatingRef.current
     }
 
     // Reset inputs
@@ -644,7 +645,15 @@ export default function EjecutarScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current)
     setTimerActivo(false)
     setMode('ejercicio')
-    setCurrentIndex(prev => prev - 1)
+    const prevIndex = currentIndex - 1
+    const prevEj = flatList[prevIndex]
+    if (prevEj) {
+      const next = { ...seriesCompletadasRef.current }
+      delete next[prevEj.globalIndex]
+      seriesCompletadasRef.current = next
+      setSeriesCompletadas(next)
+    }
+    setCurrentIndex(prevIndex)
   }
 
   // ── Derived current exercise ────────────────────────────────────────────────
@@ -693,6 +702,21 @@ export default function EjecutarScreen() {
         >
           <Text style={styles.feedbackBtnText}>{t('ejecutar_feedback_btn')}</Text>
         </TouchableOpacity>
+      </View>
+    )
+  }
+
+  if (!loading && !error && flatList.length === 0 && sesion) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={styles.errorTitle}>{t('ejecutar_error')}</Text>
+          <Text style={styles.errorMsg}>Esta sesión no tiene ejercicios.</Text>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
   }

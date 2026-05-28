@@ -328,6 +328,11 @@ function NextSessionCard({
 export default function FeedbackScreen() {
   const { id }     = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
+
+  if (!id) {
+    router.replace('/(app)/dashboard')
+    return null
+  }
   const { t }      = useTranslation()
   const styles     = useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
@@ -381,7 +386,7 @@ export default function FeedbackScreen() {
       .then((data: Resumen) => setResumen(data))
       .catch(() => setResumen({ decisiones: [], evidencia: null }))
       .finally(() => setResumenLoading(false))
-  }, [step])
+  }, [step, id])
 
   // ── Fetch logro on step 3 ──────────────────────────────────────────────────
   useEffect(() => {
@@ -397,7 +402,7 @@ export default function FeedbackScreen() {
         setProximaSesion(null)
       })
       .finally(() => setLogroLoading(false))
-  }, [step])
+  }, [step, id])
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -419,14 +424,19 @@ export default function FeedbackScreen() {
     setStep(s => s + 1)
   }
 
-  function handleListo() {
+  async function handleListo() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-    router.replace('/(app)/dashboard')
     const { rating, cumplimiento } = sensacionToMetrics(sensacion)
-    apiPost(`/api/sessions/${id}/feedback/`, {
-      rpe_real: rpeChoice ?? 7, cumplimiento, rating,
-      notas: notas.trim() || null,
-    }).catch(() => {})
+    try {
+      await apiPost(`/api/sessions/${id}/feedback/`, {
+        rpe_real: rpeChoice ?? 7, cumplimiento, rating,
+        notas: notas.trim() || null,
+      })
+    } catch {
+      // Non-blocking: navigate anyway but log the error
+      console.warn('[feedback] POST failed — feedback not saved')
+    }
+    router.replace('/(app)/dashboard')
   }
 
   function handleCompartir() {

@@ -292,8 +292,11 @@ export default function CheckinScreen() {
 
   function goBack() {
     if (screenIndex === 0) { router.back(); return }
-    // From d1 (idx 2): go back to d4b_running if running, else to d4
-    if (screenIndex === 2) { setScreenIndex(disciplina === 'running' ? 1 : 0); return }
+    // From d1: go back to d4b_running if running, else to d4
+    if (currentScreen === 'd1') {
+      setScreenIndex(disciplina === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d4'))
+      return
+    }
     setScreenIndex(i => i - 1)
   }
 
@@ -303,14 +306,14 @@ export default function CheckinScreen() {
     setError('')
 
     // D4 → route by disciplina
-    if (screenIndex === 0) {
-      setScreenIndex(disciplina === 'running' ? 1 : 2)
+    if (currentScreen === 'd4') {
+      setScreenIndex(disciplina === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d1'))
       return
     }
 
-    // D5 (idx 5) → skip D5b unless musculacion
-    if (screenIndex === 5) {
-      setScreenIndex(showGrupoMuscular ? 6 : 7)
+    // D5 → skip D5b unless musculacion
+    if (currentScreen === 'd5') {
+      setScreenIndex(showGrupoMuscular ? SCREENS.indexOf('d5b_grupo') : SCREENS.indexOf('d6_procesando'))
       return
     }
 
@@ -345,7 +348,7 @@ export default function CheckinScreen() {
       })
       setCheckinSaved(true)
     } catch (e: any) {
-      setScreenIndex(3)
+      // Stay on d6_procesando — the screen renders the error inline
       setError(e.message ?? 'No se pudo guardar. Inténtalo de nuevo.')
     } finally {
       submittingRef.current = false
@@ -355,14 +358,17 @@ export default function CheckinScreen() {
 
   // ── D5 processing orchestration ───────────────────────────────────────────
 
+  const handleSubmitRef = useRef(handleSubmit)
+  useEffect(() => { handleSubmitRef.current = handleSubmit }, [handleSubmit])
+
   useEffect(() => {
     if (currentScreen !== 'd6_procesando') return
     setCheckinSaved(false)
     setProcesandoTimer(false)
-    handleSubmit()
+    handleSubmitRef.current()
     const t = setTimeout(() => setProcesandoTimer(true), 2500)
     return () => clearTimeout(t)
-  }, [currentScreen]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentScreen])
 
   useEffect(() => {
     if (currentScreen !== 'd6_procesando') return
@@ -618,7 +624,7 @@ export default function CheckinScreen() {
                 }
                 setRunningMode('libre')
                 setError('')
-                setScreenIndex(2) // → d1
+                setScreenIndex(SCREENS.indexOf('d1'))
               }}
               activeOpacity={0.82}
             >
