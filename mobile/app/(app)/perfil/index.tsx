@@ -397,7 +397,19 @@ export default function PerfilScreen() {
           )}
         </View>
 
-        {/* ── GRUPO 3: TU ENTRENADOR ── */}
+        {/* ── GRUPO 3: DISPOSITIVOS ── */}
+        <Text style={styles.groupLabel}>{t('perfil_section_devices')}</Text>
+        <View style={styles.card}>
+          <GroupRow
+            icon="⌚"
+            title={t('perfil_row_devices')}
+            subtitle={t('perfil_row_devices_sub')}
+            onPress={() => Alert.alert(t('perfil_devices_soon_title'), t('perfil_devices_soon_msg'))}
+            styles={styles}
+          />
+        </View>
+
+        {/* ── GRUPO 4: TU ENTRENADOR ── */}
         <Text style={styles.groupLabel}>{t('perfil_section_coach')}</Text>
         <View style={styles.card}>
           <GroupRow icon="⚡" title={t('perfil_row_preferences')} subtitle={subPreferencias}
