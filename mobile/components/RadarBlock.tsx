@@ -104,8 +104,21 @@ export default function RadarBlock({ metrics }: { metrics: RadarMetric[] }) {
     <View>
       <Text style={styles.blockLabel}>TU PERFIL ATLÉTICO</Text>
       <View style={styles.card}>
-        <Text style={styles.title}>Forma de entrenamiento</Text>
-        <Text style={styles.subtitle}>6 dimensiones · Últimas 4 semanas</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.title}>Forma de entrenamiento</Text>
+            <Text style={styles.subtitle}>6 dimensiones · Últimas 4 semanas</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.prevBtn, showPrev && styles.prevBtnActive]}
+            onPress={() => setShowPrev(v => !v)}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.prevBtnText, showPrev && { color: colors.accent }]}>
+              {showPrev ? 'Ocultar anterior' : 'Ver anterior'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* SVG Radar */}
         <Svg width={svgW} height={svgH}>
@@ -242,16 +255,6 @@ export default function RadarBlock({ metrics }: { metrics: RadarMetric[] }) {
           })}
         </View>
 
-        {/* Toggle button */}
-        <TouchableOpacity
-          style={[styles.prevBtn, showPrev && styles.prevBtnActive]}
-          onPress={() => setShowPrev(v => !v)}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.prevBtnText, showPrev && { color: colors.accent }]}>
-            {showPrev ? 'Ocultar anterior' : 'Ver período anterior'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   )

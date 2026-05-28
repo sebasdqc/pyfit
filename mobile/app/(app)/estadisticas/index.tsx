@@ -390,6 +390,113 @@ function DonutChart({
   )
 }
 
+// ─── Mini bar chart for estado mini-cards (48px) ─────────────────────────────
+
+const MB_SVG_H  = 48
+const MB_PAD_T  = 4
+const MB_PAD_B  = 10
+const MB_DATA_H = MB_SVG_H - MB_PAD_T - MB_PAD_B
+const MB_SIDE   = 3
+
+function mbY(v: number): number {
+  return MB_PAD_T + MB_DATA_H * (1 - (Math.min(Math.max(v, 1), 4) - 1) / 3)
+}
+
+function EstadoMiniBarChart({ semanas, color, containerW, label }: {
+  semanas: SemanaEstado[]
+  color: string
+  containerW: number
+  label: string
+}) {
+  const dataW = containerW - MB_SIDE * 2
+  const n = semanas.length
+  if (n === 0 || dataW <= 0) return null
+
+  const barW  = Math.min(10, Math.floor((dataW / n) * 0.55))
+  const xStep = n <= 1 ? 0 : dataW / (n - 1)
+
+  return (
+    <Svg width={containerW} height={MB_SVG_H}>
+      {semanas.map((s, i) => {
+        const cx   = MB_SIDE + (n === 1 ? dataW / 2 : i * xStep)
+        const top  = mbY(s.promedio)
+        const barH = Math.max((MB_PAD_T + MB_DATA_H) - top, 3)
+        const barY = (MB_PAD_T + MB_DATA_H) - barH
+        const isLast = i === n - 1
+        return (
+          <React.Fragment key={i}>
+            <Rect
+              x={cx - barW / 2} y={barY}
+              width={barW} height={barH} rx={2}
+              fill={isLast ? color : `${color}55`}
+            />
+            {(i === 0 || isLast) && (
+              <SvgText x={cx} y={MB_SVG_H - 1} fontSize={7} fill={label} textAnchor="middle">
+                {s.label}
+              </SvgText>
+            )}
+          </React.Fragment>
+        )
+      })}
+    </Svg>
+  )
+}
+
+// ─── Mini estado card (2-column layout for Bloque 3) ─────────────────────────
+
+function EstadoMiniCard({ title, semanas, color, containerW, grid, label }: {
+  title: string
+  semanas: SemanaEstado[]
+  color: string
+  containerW: number
+  grid: string
+  label: string
+}) {
+  const { colors } = useTheme()
+  const currentVal = semanas.length > 0 ? semanas[semanas.length - 1].promedio : null
+  const prevVal    = semanas.length > 1 ? semanas[semanas.length - 2].promedio : null
+  const delta      = currentVal !== null && prevVal !== null ? currentVal - prevVal : null
+
+  return (
+    <View style={{
+      flex: 1,
+      backgroundColor: colors.glassBg,
+      borderWidth: 1,
+      borderColor: colors.borderDefault,
+      borderRadius: 14,
+      padding: 10,
+    }}>
+      <Text style={{
+        fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: colors.inkMuted,
+        letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6,
+      }}>
+        {title}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: colors.inkPrimary, letterSpacing: -0.5 }}>
+          {currentVal !== null ? currentVal.toFixed(1) : '—'}
+        </Text>
+        {delta !== null && (
+          <Text style={{
+            fontFamily: 'JetBrainsMono-Medium', fontSize: 10,
+            color: delta >= 0 ? colors.green : colors.orange,
+          }}>
+            {delta >= 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(1)}
+          </Text>
+        )}
+      </View>
+      {semanas.length > 0 && (
+        <EstadoMiniBarChart
+          semanas={semanas}
+          color={color}
+          containerW={containerW - 20}
+          label={label}
+        />
+      )}
+    </View>
+  )
+}
+
 // ─── Top exercises list ───────────────────────────────────────────────────────
 
 function EjercicioTopList({
@@ -880,18 +987,20 @@ export default function EstadisticasScreen() {
     <View style={styles.root}>
       <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Header ── */}
+      {/* ── Sticky Header ── */}
+      <View style={[styles.stickyHeader, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.sectionLabel}>{t('stats_header')}</Text>
         <Text style={styles.pageTitle}>
           {semanasEntrenando}{' '}
           {semanasEntrenando === 1 ? 'semana' : 'semanas'} entrenando.
         </Text>
+      </View>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── Bloque 0: Tu perfil atlético (Radar) ── */}
         {radarEnoughData && radarMetrics
           ? <RadarBlock metrics={radarMetrics} />
@@ -965,70 +1074,50 @@ export default function EstadisticasScreen() {
           styles={styles}
         />
 
-        {/* ── Bloque 3: Tu cuerpo en contexto ── */}
+        {/* ── Bloque 3: Cuerpo y contexto ── */}
         <Text style={styles.blockLabel}>{t('stats_body_title').toUpperCase()}</Text>
-
-        {/* Card 1 — Estado físico */}
         <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>{t('stats_physical')}</Text>
-          {cuerpoData && cuerpoData.semanas_fisico.length > 0 ? (
-            <EstadoBarChart
-              semanas={cuerpoData.semanas_fisico}
-              color={colors.green}
-              containerW={cardInnerW}
-              grid={colors.borderDefault}
-              label={colors.inkMuted}
-            />
-          ) : (
-            <View style={styles.chartCenter}>
-              <Text style={styles.emptyText}>
-                {cuerpoData
-                  ? t('stats_no_data_sub')
-                  : t('stats_loading')}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Card 2 — Estado mental */}
-        <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>{t('stats_mental')}</Text>
-          {cuerpoData && cuerpoData.semanas_mental.length > 0 ? (
-            <EstadoBarChart
-              semanas={cuerpoData.semanas_mental}
-              color={colors.cyan}
-              containerW={cardInnerW}
-              grid={colors.borderDefault}
-              label={colors.inkMuted}
-            />
-          ) : (
-            <View style={styles.chartCenter}>
-              <Text style={styles.emptyText}>
-                {cuerpoData
-                  ? t('stats_no_data_sub')
-                  : t('stats_loading')}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Card 3 — Intención de entrenamiento */}
-        <View style={styles.card}>
-          <Text style={styles.cardMiniTitle}>{t('stats_intention_title')}</Text>
-          {cuerpoData && cuerpoData.total_checkins >= 5 ? (
-            <DonutChart
-              counts={cuerpoData.intencion_counts}
-              containerW={cardInnerW}
-              ringBg={colors.borderDefault}
-              centerBg={colors.bg}
-              legendLabel={colors.inkSecondary}
-            />
-          ) : (
+          {!cuerpoData ? (
             <View style={[styles.chartCenter, { height: 80 }]}>
-              <Text style={styles.emptyText}>
-                {t('stats_no_data_sub')}
-              </Text>
+              <Text style={styles.emptyText}>{t('stats_loading')}</Text>
             </View>
+          ) : (
+            <>
+              {/* Sección A: Estado físico + mental en grid 2 columnas */}
+              <View style={styles.estadoGrid}>
+                <EstadoMiniCard
+                  title={t('stats_physical')}
+                  semanas={cuerpoData.semanas_fisico}
+                  color={colors.green}
+                  containerW={(cardInnerW - 8) / 2}
+                  grid={colors.borderDefault}
+                  label={colors.inkMuted}
+                />
+                <EstadoMiniCard
+                  title={t('stats_mental')}
+                  semanas={cuerpoData.semanas_mental}
+                  color={colors.cyan}
+                  containerW={(cardInnerW - 8) / 2}
+                  grid={colors.borderDefault}
+                  label={colors.inkMuted}
+                />
+              </View>
+
+              {/* Sección B: Intención de entrenamiento (solo si >= 5 checkins) */}
+              {cuerpoData.total_checkins >= 5 && (
+                <>
+                  <View style={styles.sectionDivider} />
+                  <Text style={styles.cardMiniTitle}>{t('stats_intention_title')}</Text>
+                  <DonutChart
+                    counts={cuerpoData.intencion_counts}
+                    containerW={cardInnerW}
+                    ringBg={colors.borderDefault}
+                    centerBg={colors.bg}
+                    legendLabel={colors.inkSecondary}
+                  />
+                </>
+              )}
+            </>
           )}
         </View>
 
@@ -1171,7 +1260,7 @@ function makeStyles(c: Colors) {
     root:     { flex: 1, backgroundColor: c.bg },
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
     scroll:   { flex: 1 },
-    content:  { paddingHorizontal: 20 },
+    content:  { paddingHorizontal: 20, paddingTop: 16 },
 
     centerWrap: {
       flex: 1, alignItems: 'center', justifyContent: 'center',
@@ -1186,6 +1275,13 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12,
     },
     retryText: { color: c.red, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13 },
+
+    // Sticky header
+    stickyHeader: {
+      paddingHorizontal: 20,
+      paddingBottom: 4,
+      zIndex: 10,
+    },
 
     // Header
     sectionLabel: {
@@ -1208,6 +1304,17 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1,
       borderColor: c.borderDefault, borderRadius: 20,
       padding: 16, marginBottom: 20,
+    },
+
+    // Bloque 3 layout
+    estadoGrid: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    sectionDivider: {
+      height: 1,
+      backgroundColor: c.borderDefault,
+      marginVertical: 16,
     },
 
     // Card mini title
