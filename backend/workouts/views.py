@@ -242,24 +242,33 @@ def _calcular_racha_contexto(user):
     - resto                          → sin alerta
     """
     hoy = date.today()
-    racha = _calcular_racha_realtime(user)
 
-    ultima = user.sessions.filter(
-        feedback__isnull=False
-    ).order_by('-fecha', '-created_at').first()
-    dias_desde_ultima = (hoy - ultima.fecha).days if ultima else None
-
-    entrenado_hoy = user.sessions.filter(
-        fecha=hoy, feedback__isnull=False
-    ).exists()
-
-    # Días entrenados / descansados en la semana actual (lunes → hoy)
+    # Single bulk query shared by all derived metrics — avoids 3 extra queries
+    fecha_min = hoy - timedelta(days=365)
     lunes = hoy - timedelta(days=hoy.weekday())
-    sesiones_semana_fechas = set(
-        user.sessions.filter(
-            fecha__gte=lunes, fecha__lte=hoy, feedback__isnull=False
+    dates_with_session = set(
+        Session.objects.filter(
+            user=user,
+            fecha__gte=fecha_min,
+            fecha__lte=hoy,
+            feedback__isnull=False,
         ).values_list('fecha', flat=True)
     )
+
+    # Racha (derived from set — no extra query)
+    dia = hoy if hoy in dates_with_session else hoy - timedelta(days=1)
+    racha = 0
+    while dia in dates_with_session:
+        racha += 1
+        dia -= timedelta(days=1)
+
+    # Derived metrics — all from the set, no DB hits
+    entrenado_hoy = hoy in dates_with_session
+    fechas_ordenadas = sorted(dates_with_session, reverse=True)
+    ultima_fecha = fechas_ordenadas[0] if fechas_ordenadas else None
+    dias_desde_ultima = (hoy - ultima_fecha).days if ultima_fecha else None
+
+    sesiones_semana_fechas = {f for f in dates_with_session if f >= lunes}
     dias_entrenados_semana = len(sesiones_semana_fechas)
     dias_descanso_semana = (hoy.weekday() + 1) - dias_entrenados_semana
 
@@ -351,40 +360,80 @@ def _actualizar_adaptation_profile(user, session, feedback):
                     ejercicios_sesion.append(nombre)
 
         # ── 2. Update UserExerciseProfile for each exercise ─────────────────
-        for nombre in ejercicios_sesion:
-            # Try to find the exercise in the DB to get its patron_movimiento
-            patron = ''
-            try:
-                db_exercise = Exercise.objects.filter(
-                    nombre__icontains=nombre, activo=True
-                ).first()
-                if db_exercise:
-                    patron = db_exercise.patron_movimiento
-            except Exception:
-                pass
-
-            ep, _ = UserExerciseProfile.objects.get_or_create(
-                user=user,
-                exercise_nombre=nombre,
-                defaults={'patron_movimiento': patron},
+        # Pre-fetch all DB exercises and existing profiles in bulk (avoids N+1)
+        db_exercises_map = {
+            ex.nombre.lower(): ex
+            for ex in Exercise.objects.filter(activo=True)
+        }
+        existing_eps = {
+            ep.exercise_nombre: ep
+            for ep in UserExerciseProfile.objects.filter(
+                user=user, exercise_nombre__in=ejercicios_sesion
             )
+        }
 
-            n = ep.veces_realizado
-            # Running average formula: new_avg = old_avg + (new_val - old_avg) / (n + 1)
-            def running_avg(old_val, new_val, count):
-                if old_val is None:
-                    return Decimal(str(new_val))
-                return old_val + (Decimal(str(new_val)) - old_val) / (count + 1)
+        def running_avg(old_val, new_val, count):
+            if old_val is None:
+                return Decimal(str(new_val))
+            return old_val + (Decimal(str(new_val)) - old_val) / (count + 1)
 
-            ep.rpe_promedio_real = running_avg(ep.rpe_promedio_real, float(feedback.rpe_real), n)
-            ep.rpe_promedio_target = running_avg(ep.rpe_promedio_target, float(session.rpe_target), n)
-            ep.cumplimiento_promedio = running_avg(ep.cumplimiento_promedio, float(feedback.cumplimiento), n)
-            ep.rating_promedio = running_avg(ep.rating_promedio, float(feedback.rating), n)
-            ep.veces_realizado = n + 1
-            ep.ultima_vez = session.fecha
-            if not ep.patron_movimiento and patron:
-                ep.patron_movimiento = patron
-            ep.save()
+        eps_to_update = []
+        eps_to_create = []
+
+        for nombre in ejercicios_sesion:
+            # Match exercise by lowercase name prefix (tolerant match)
+            patron = ''
+            db_ex = db_exercises_map.get(nombre.lower())
+            if db_ex is None:
+                # Fallback: check if any key starts-with or contains the name
+                for key, ex in db_exercises_map.items():
+                    if nombre.lower() in key or key in nombre.lower():
+                        db_ex = ex
+                        break
+            if db_ex:
+                patron = db_ex.patron_movimiento
+
+            ep = existing_eps.get(nombre)
+            if ep is None:
+                ep = UserExerciseProfile(
+                    user=user,
+                    exercise_nombre=nombre,
+                    patron_movimiento=patron,
+                )
+                eps_to_create.append(ep)
+            else:
+                n = ep.veces_realizado
+                ep.rpe_promedio_real = running_avg(ep.rpe_promedio_real, float(feedback.rpe_real), n)
+                ep.rpe_promedio_target = running_avg(ep.rpe_promedio_target, float(session.rpe_target), n)
+                ep.cumplimiento_promedio = running_avg(ep.cumplimiento_promedio, float(feedback.cumplimiento), n)
+                ep.rating_promedio = running_avg(ep.rating_promedio, float(feedback.rating), n)
+                ep.veces_realizado = n + 1
+                ep.ultima_vez = session.fecha
+                if not ep.patron_movimiento and patron:
+                    ep.patron_movimiento = patron
+                eps_to_update.append(ep)
+
+        if eps_to_create:
+            UserExerciseProfile.objects.bulk_create(eps_to_create, ignore_conflicts=True)
+            # Set initial stats for newly created profiles (bulk_create skips save signals)
+            for ep in eps_to_create:
+                ep.rpe_promedio_real = Decimal(str(float(feedback.rpe_real)))
+                ep.rpe_promedio_target = Decimal(str(float(session.rpe_target)))
+                ep.cumplimiento_promedio = Decimal(str(float(feedback.cumplimiento)))
+                ep.rating_promedio = Decimal(str(float(feedback.rating)))
+                ep.veces_realizado = 1
+                ep.ultima_vez = session.fecha
+            UserExerciseProfile.objects.bulk_update(
+                eps_to_create,
+                ['rpe_promedio_real', 'rpe_promedio_target', 'cumplimiento_promedio',
+                 'rating_promedio', 'veces_realizado', 'ultima_vez'],
+            )
+        if eps_to_update:
+            UserExerciseProfile.objects.bulk_update(
+                eps_to_update,
+                ['rpe_promedio_real', 'rpe_promedio_target', 'cumplimiento_promedio',
+                 'rating_promedio', 'veces_realizado', 'ultima_vez', 'patron_movimiento'],
+            )
 
         # ── 3. Recalculate UserAdaptationProfile ────────────────────────────
         sessions_with_feedback = Session.objects.filter(
@@ -422,14 +471,18 @@ def _actualizar_adaptation_profile(user, session, feedback):
                 if volumen_tolerado is None or count_week > volumen_tolerado:
                     volumen_tolerado = count_week
 
-        # patron_preferido: most frequent patron in UserExerciseProfile (by veces_realizado)
-        patron_preferido = ''
-        patron_counts = {}
-        for ep in UserExerciseProfile.objects.filter(user=user).exclude(patron_movimiento=''):
-            p = ep.patron_movimiento
-            patron_counts[p] = patron_counts.get(p, 0) + ep.veces_realizado
-        if patron_counts:
-            patron_preferido = max(patron_counts, key=patron_counts.get)
+        # patron_preferido: DB aggregate (no Python-side full scan)
+        from django.db.models import Sum
+        patron_row = (
+            UserExerciseProfile.objects
+            .filter(user=user)
+            .exclude(patron_movimiento='')
+            .values('patron_movimiento')
+            .annotate(total=Sum('veces_realizado'))
+            .order_by('-total')
+            .first()
+        )
+        patron_preferido = patron_row['patron_movimiento'] if patron_row else ''
 
         # semanas_carga_consecutivas: consecutive weeks going back from current
         # where user had >= 2 sessions with feedback

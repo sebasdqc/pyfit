@@ -616,7 +616,9 @@ export default function EjecutarScreen() {
       })
       .filter(e => e.series.length > 0)
     if (log.length > 0) {
-      apiPost(`/api/sessions/${id}/series-log/`, { log }).catch(() => {})
+      apiPost(`/api/sessions/${id}/series-log/`, { log }).catch((err) => {
+        console.warn('[series-log] POST failed — training data not saved remotely:', err?.message)
+      })
     }
   }, [completed]) // eslint-disable-line react-hooks/exhaustive-deps
 
