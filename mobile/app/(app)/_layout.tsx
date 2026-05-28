@@ -200,6 +200,7 @@ export default function AppLayout() {
       <Tabs.Screen name="perfil/suscripcion" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/historial-pagos" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cancelar" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/dispositivos" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cambiar-plan" options={{ href: null, tabBarLabel: '' }} />
       {/* Free Run */}
       <Tabs.Screen name="run/index" options={{ href: null, tabBarLabel: '' }} />

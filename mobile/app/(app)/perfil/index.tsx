@@ -319,7 +319,7 @@ export default function PerfilScreen() {
               <>
                 <View style={styles.nivelPillSep} />
                 <Text style={styles.nivelPillText}>
-                  {profileStats!.semanas_activas} {t('perfil_weeks_active')}
+                  {profileStats!.semanas_activas} {profileStats!.semanas_activas === 1 ? 'semana activa' : 'semanas activas'}
                 </Text>
               </>
             )}
@@ -404,7 +404,7 @@ export default function PerfilScreen() {
             icon="⌚"
             title={t('perfil_row_devices')}
             subtitle={t('perfil_row_devices_sub')}
-            onPress={() => Alert.alert(t('perfil_devices_soon_title'), t('perfil_devices_soon_msg'))}
+            onPress={() => router.push('/(app)/perfil/dispositivos' as any)}
             styles={styles}
           />
         </View>

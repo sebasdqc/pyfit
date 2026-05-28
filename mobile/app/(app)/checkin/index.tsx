@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Alert, View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator,
+  StyleSheet, ActivityIndicator, TextInput,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -111,6 +111,9 @@ const SEQ_OTHER:       ScreenId[] = ['d4', 'd1', 'd2', 'd3', 'd5']
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
+const IMPLEMENTOS_LIST = ['Barras', 'Mancuernas', 'Máquinas', 'TRX', 'Kettlebells', 'Bandas elásticas', 'Cajón pliométrico', 'Anillas']
+const TIPOS_LUGAR = ['Gimnasio', 'Casa', 'Exterior']
+
 // ─── Body Map ─────────────────────────────────────────────────────────────────
 
 function CheckinBodyMap({
@@ -218,6 +221,11 @@ export default function CheckinScreen() {
   const [initializing, setInitializing] = useState(true)
   const [locationId, setLocationId] = useState<number | null>(null)
   const [locations, setLocations] = useState<Location[]>([])
+  const [addingLoc, setAddingLoc] = useState(false)
+  const [newLocNombre, setNewLocNombre] = useState('')
+  const [newLocTipo, setNewLocTipo] = useState('')
+  const [newLocImplementos, setNewLocImplementos] = useState<string[]>([])
+  const [savingLoc, setSavingLoc] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -232,6 +240,31 @@ export default function CheckinScreen() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function saveNewLoc() {
+    if (!newLocNombre.trim() || !newLocTipo) {
+      setError('Completa el nombre y el tipo de ubicación.')
+      return
+    }
+    setSavingLoc(true)
+    try {
+      const saved = await apiPost('/api/locations/', {
+        nombre: newLocNombre.trim(),
+        tipo: newLocTipo.toLowerCase(),
+        implementos: newLocImplementos,
+      })
+      setNewLocNombre('')
+      setNewLocTipo('')
+      setNewLocImplementos([])
+      setAddingLoc(false)
+      await loadData()
+      if (saved?.id) setLocationId(saved.id)
+    } catch (e: any) {
+      setError(e.message ?? 'No se pudo guardar la ubicación.')
+    } finally {
+      setSavingLoc(false)
+    }
+  }
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [estadoFisico, setEstadoFisico] = useState<EstadoFisico | null>(null)
@@ -672,23 +705,8 @@ export default function CheckinScreen() {
         <Text style={styles.question}>{t('checkin_dim5_question')}</Text>
         <Text style={styles.questionSub}>{t('checkin_dim5_sub')}</Text>
 
-        {locations.length === 0 ? (
-          <View style={styles.locEmptyWrap}>
-            <Text style={styles.locEmptyText}>
-              No tienes ubicaciones guardadas.{'\n'}Puedes añadirlas en Perfil → Datos de entrenamiento.
-            </Text>
-            <Text style={[styles.locEmptyText, { color: colors.inkFaint, marginTop: 8, fontSize: 12 }]}>
-              La IA usará tu equipamiento predeterminado.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(app)/perfil')}
-              style={{ marginTop: 12, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: colors.accent }}
-            >
-              <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: colors.accent }}>Ir a Perfil →</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.optionsWrap}>
+        {locations.length > 0 && (
+          <View style={[styles.optionsWrap, { marginBottom: 12 }]}>
             {locations.map(loc => {
               const on = locationId === loc.id
               const icon = TIPO_ICON[loc.tipo?.toLowerCase()] ?? '📍'
@@ -718,6 +736,75 @@ export default function CheckinScreen() {
               )
             })}
           </View>
+        )}
+
+        {addingLoc ? (
+          <View style={styles.addLocForm}>
+            <Text style={styles.addLocLabel}>NOMBRE</Text>
+            <TextInput
+              value={newLocNombre}
+              onChangeText={setNewLocNombre}
+              placeholder="Ej: Mi gimnasio"
+              placeholderTextColor={colors.inkMuted}
+              style={styles.addLocInput}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+
+            <Text style={[styles.addLocLabel, { marginTop: 14 }]}>TIPO</Text>
+            <View style={styles.addLocChipsRow}>
+              {TIPOS_LUGAR.map(tipo => (
+                <TouchableOpacity
+                  key={tipo}
+                  style={[styles.addLocChip, newLocTipo === tipo && styles.addLocChipActive]}
+                  onPress={() => setNewLocTipo(tipo)}
+                  activeOpacity={0.7}>
+                  <Text style={[styles.addLocChipText, newLocTipo === tipo && styles.addLocChipTextActive]}>{tipo}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.addLocLabel, { marginTop: 14 }]}>IMPLEMENTOS (opcional)</Text>
+            <View style={styles.addLocChipsRow}>
+              {IMPLEMENTOS_LIST.map(imp => {
+                const on = newLocImplementos.includes(imp)
+                return (
+                  <TouchableOpacity
+                    key={imp}
+                    style={[styles.addLocChip, on && styles.addLocChipActive]}
+                    onPress={() => setNewLocImplementos(prev =>
+                      on ? prev.filter(i => i !== imp) : [...prev, imp]
+                    )}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.addLocChipText, on && styles.addLocChipTextActive]}>{imp}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.addLocSaveBtn, { flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault }]}
+                onPress={() => { setAddingLoc(false); setNewLocNombre(''); setNewLocTipo(''); setNewLocImplementos([]) }}
+                activeOpacity={0.7}>
+                <Text style={[styles.addLocSaveBtnText, { color: colors.inkSecondary }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.addLocSaveBtn, { flex: 1 }, savingLoc && { opacity: 0.5 }]}
+                onPress={saveNewLoc}
+                disabled={savingLoc}
+                activeOpacity={0.85}>
+                <Text style={styles.addLocSaveBtnText}>{savingLoc ? 'Guardando...' : 'Guardar'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.addLocBtn}
+            onPress={() => setAddingLoc(true)}
+            activeOpacity={0.7}>
+            <Text style={styles.addLocBtnText}>+ Agregar lugar de entrenamiento</Text>
+          </TouchableOpacity>
         )}
 
         <Text style={styles.tiempoNote}>
@@ -1081,6 +1168,35 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
       color: c.inkMuted, lineHeight: 22, textAlign: 'center',
     },
+    addLocBtn: {
+      borderWidth: 1, borderColor: c.accent, borderStyle: 'dashed',
+      borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+      backgroundColor: 'rgba(79,140,255,0.05)',
+    },
+    addLocBtnText: { color: c.accent, fontFamily: 'SpaceGrotesk-Medium', fontSize: 14 },
+    addLocForm: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, padding: 16,
+    },
+    addLocLabel: {
+      color: c.inkMuted, fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
+    },
+    addLocInput: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+    },
+    addLocChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    addLocChip: {
+      paddingHorizontal: 13, paddingVertical: 7, borderRadius: 20,
+      borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg,
+    },
+    addLocChipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    addLocChipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
+    addLocChipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
+    addLocSaveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
+    addLocSaveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
 
     // D6 — Processing
     procesandoWrap: { alignItems: 'center', paddingHorizontal: 40 },
