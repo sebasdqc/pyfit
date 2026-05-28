@@ -339,6 +339,7 @@ function makeMediaStyles(c: Colors) {
 
 function CircularTimer({ seconds, total, color }: { seconds: number; total: number; color: string }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const size = 180
   const strokeWidth = 10
   const radius = (size - strokeWidth) / 2
@@ -377,7 +378,7 @@ function CircularTimer({ seconds, total, color }: { seconds: number; total: numb
           {formatTime(seconds)}
         </Text>
         <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkMuted, letterSpacing: 2, textTransform: 'uppercase' }}>
-          descanso
+          {t('ejecutar_rest_label')}
         </Text>
       </View>
     </View>
@@ -840,13 +841,13 @@ export default function EjecutarScreen() {
                 onPress={completarSerie}
               >
                 <Text style={styles.completarBtnText}>
-                  Completar serie {seriesDone + 1}/{currentEj.series}
+                  {t('ejecutar_complete_serie')} {seriesDone + 1}/{currentEj.series}
                 </Text>
               </TouchableOpacity>
             ) : (
               <View>
                 <View style={styles.allSeriesDoneCard}>
-                  <Text style={styles.allSeriesDoneText}>✓ Todas las series completadas</Text>
+                  <Text style={styles.allSeriesDoneText}>✓ {t('ejecutar_all_done')}</Text>
                 </View>
                 <TouchableOpacity
                   style={[styles.completarBtn, { backgroundColor: faseStyle.color, marginTop: 10 }]}

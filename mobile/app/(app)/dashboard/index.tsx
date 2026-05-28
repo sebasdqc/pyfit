@@ -436,8 +436,11 @@ function ZyfitScoreCard({
 
   // Animated offset: arranca en RING_CIRC (anillo vacío) → valor real
   const animOffset = useRef(new Animated.Value(RING_CIRC)).current
+  const prevValorRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
+    if (prevValorRef.current === valor) return
+    prevValorRef.current = valor
     const target = hasData && valor != null
       ? RING_CIRC * (1 - valor / 100)
       : RING_CIRC
@@ -765,6 +768,7 @@ function TuSemanaCard({
 
   // Frase motivacional basada en sesiones y descanso
   const motivacional = useMemo(() => {
+    if (sesionesEstaSemana <= 1) return null
     if (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5) {
       return sesionesEstaSemana % 2 === 0 ? '¡Vas muy bien!' : '¡Sigue así!'
     }

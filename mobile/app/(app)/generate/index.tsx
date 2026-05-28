@@ -912,7 +912,8 @@ function AjusteModal({
 
                 <TouchableOpacity
                   style={[ajSt.aplicarBtn, noChanges && ajSt.aplicarBtnDisabled]}
-                  onPress={noChanges ? undefined : aplicar}
+                  onPress={aplicar}
+                  disabled={noChanges}
                   activeOpacity={noChanges ? 1 : 0.75}
                 >
                   <Text style={[ajSt.aplicarBtnText, noChanges && ajSt.aplicarBtnTextDisabled]}>
@@ -1304,7 +1305,7 @@ export default function GenerateScreen() {
     })
     setModifiedKeys(prev => {
       const next = new Set(prev)
-      next.add(`${faseNombre}:${alt.nombre}`)
+      next.add(`${faseNombre}:${ejercicio.nombre}`)
       return next
     })
     if (sesionId) {
@@ -1320,6 +1321,8 @@ export default function GenerateScreen() {
 
   const handleEjecutar = useCallback(() => {
     if (!sesionId) return
+    // Fire-and-forget: marks session as started for analytics.
+    // Navigation does not depend on this completing.
     apiPost(`/api/sessions/${sesionId}/iniciar/`, {}).catch(() => {})
     router.push(`/(app)/ejecutar/${sesionId}`)
   }, [sesionId])

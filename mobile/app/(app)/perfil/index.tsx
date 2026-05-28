@@ -244,7 +244,7 @@ export default function PerfilScreen() {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       )
       const base64 = `data:image/jpeg;base64,${manipulated.base64}`
-      // Upload al backend
+      // Upload al backend — update local state only after the POST confirms.
       await apiPost('/api/profile/avatar/', { avatar: base64 })
       setProfile(prev => ({ ...prev, avatar: base64 }))
     } catch (e) {
@@ -470,7 +470,7 @@ export default function PerfilScreen() {
       {/* Dismiss overlay — before button wrap so dropdowns stay on top */}
       {showPalettePicker && (
         <Pressable
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { zIndex: 99 }]}
           onPress={() => setShowPalettePicker(false)}
         />
       )}

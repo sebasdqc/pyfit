@@ -250,6 +250,9 @@ const translations = {
   ejecutar_finish_btn:        { es: 'Finalizar sesión →',                en: 'Finish session →' },
   ejecutar_complete_title:    { es: '¡Sesión completada!',               en: 'Session complete!' },
   ejecutar_feedback_btn:      { es: 'Dar feedback →',                    en: 'Give feedback →' },
+  ejecutar_rest_label:        { es: 'descanso',                          en: 'rest' },
+  ejecutar_complete_serie:    { es: 'Completar serie',                   en: 'Complete set' },
+  ejecutar_all_done:          { es: 'Todas las series completadas',      en: 'All sets completed' },
 
   // ─── Feedback ────────────────────────────────────────────────────────────────
   feedback_step_label:        { es: 'CIERRE DE SESIÓN · PASO',           en: 'SESSION CLOSURE · STEP' },

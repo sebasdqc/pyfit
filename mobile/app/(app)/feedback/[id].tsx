@@ -234,6 +234,7 @@ function AchievementCard({
   const cardSlide   = useRef(new Animated.Value(24)).current
   const iconScale   = useRef(new Animated.Value(0.4)).current
   const iconPulse   = useRef(new Animated.Value(1)).current
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null)
 
   useEffect(() => {
     // Haptic on achievement reveal
@@ -252,15 +253,19 @@ function AchievementCard({
 
     // Gentle continuous pulse after entrance
     const pulseTimer = setTimeout(() => {
-      Animated.loop(
+      pulseLoopRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(iconPulse, { toValue: 1.07, duration: 1400, useNativeDriver: true }),
           Animated.timing(iconPulse, { toValue: 1.0,  duration: 1400, useNativeDriver: true }),
         ])
-      ).start()
+      )
+      pulseLoopRef.current.start()
     }, 900)
 
-    return () => clearTimeout(pulseTimer)
+    return () => {
+      clearTimeout(pulseTimer)
+      pulseLoopRef.current?.stop()
+    }
   }, [])
 
   return (

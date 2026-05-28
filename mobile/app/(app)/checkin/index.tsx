@@ -680,6 +680,12 @@ export default function CheckinScreen() {
             <Text style={[styles.locEmptyText, { color: colors.inkFaint, marginTop: 8, fontSize: 12 }]}>
               La IA usará tu equipamiento predeterminado.
             </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/perfil')}
+              style={{ marginTop: 12, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: colors.accent }}
+            >
+              <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: colors.accent }}>Ir a Perfil →</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.optionsWrap}>
