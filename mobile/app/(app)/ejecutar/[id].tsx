@@ -255,7 +255,7 @@ const ratingStyles = StyleSheet.create({
   },
   label: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 7,
+    fontSize: 9,
     letterSpacing: 0.3,
     textAlign: 'center',
     textTransform: 'uppercase',
@@ -540,6 +540,11 @@ export default function EjecutarScreen() {
   }, [flatList, currentIndex])
 
   // ── Timer ───────────────────────────────────────────────────────────────────
+  // Keep a stable ref to advanceFromRest so the timer effect only depends on
+  // timerActivo — not on flatList/currentIndex — preventing the interval from
+  // restarting (and losing elapsed time) every time the exercise changes.
+  const advanceFromRestRef = useRef(advanceFromRest)
+  useEffect(() => { advanceFromRestRef.current = advanceFromRest }, [advanceFromRest])
 
   useEffect(() => {
     if (!timerActivo) return
@@ -547,7 +552,7 @@ export default function EjecutarScreen() {
       setTimerSegundos(prev => {
         if (prev <= 1) {
           setTimerActivo(false)
-          advanceFromRest()
+          advanceFromRestRef.current()
           return 0
         }
         return prev - 1
@@ -556,7 +561,7 @@ export default function EjecutarScreen() {
     return () => {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
     }
-  }, [timerActivo, advanceFromRest])
+  }, [timerActivo])
 
   // ── Series logic ────────────────────────────────────────────────────────────
 

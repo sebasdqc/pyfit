@@ -191,19 +191,42 @@ def profile_view(request):
 @permission_classes([IsAuthenticated])
 def upload_avatar(request):
     """POST /api/profile/avatar/ — recibe base64 dataURI y lo guarda en el perfil."""
+    import base64, imghdr
+
     avatar_data = request.data.get('avatar', '')
     if not avatar_data:
         return Response({'error': 'No se recibió imagen'}, status=400)
-    # Validar que sea un dataURI de imagen (seguridad básica)
+
+    # 1. Validar prefijo dataURI
     if not avatar_data.startswith('data:image/'):
         return Response({'error': 'Formato inválido'}, status=400)
-    # Limitar tamaño (max ~500KB en base64)
+
+    # 2. Limitar tamaño (~500 KB tras decodificar → ~680 KB en base64)
     if len(avatar_data) > 700_000:
-        return Response({'error': 'Imagen demasiado grande. Máximo 500KB.'}, status=400)
+        return Response({'error': 'Imagen demasiado grande. Máximo 500 KB.'}, status=400)
+
+    # 3. Decodificar y validar bytes reales (bloquea SVG/XML aunque declaren image/*)
+    try:
+        _, b64part = avatar_data.split(',', 1)
+        raw_bytes = base64.b64decode(b64part)
+    except Exception:
+        return Response({'error': 'Base64 inválido'}, status=400)
+
+    # Rechazar SVG/XML — los primeros 1 KB son suficientes para detectarlos
+    snippet = raw_bytes[:1024].lower()
+    if b'<svg' in snippet or b'<?xml' in snippet or b'<!doctype' in snippet:
+        return Response({'error': 'Tipo de imagen no permitido'}, status=400)
+
+    # imghdr detecta el tipo real a partir de los magic bytes
+    fmt = imghdr.what(None, h=raw_bytes)
+    if fmt not in ('jpeg', 'png', 'gif', 'webp'):
+        return Response({'error': 'Solo se admiten JPEG, PNG, GIF o WebP'}, status=400)
+
     try:
         prof = request.user.profile
     except Exception:
         return Response({'error': 'Perfil no encontrado'}, status=404)
+
     prof.avatar = avatar_data
     prof.save(update_fields=['avatar'])
     return Response({'ok': True, 'avatar': avatar_data})
