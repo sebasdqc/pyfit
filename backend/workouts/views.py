@@ -2025,43 +2025,50 @@ def stats_cuerpo_contexto(request):
 
 def _stats_cuerpo_contexto(request):
     """
-    Weekly averages of estado_fisico and estado_animo (as 1-4 scale),
-    plus the distribution of intencion de entrenamiento from foco_entrenamiento.
-    Only weeks with >= 2 checkins are included in the bar chart data.
+    Daily values of estado_fisico and estado_animo (1-4 scale) for the last
+    28 calendar days, plus intencion distribution from all-time checkins.
+    Each bar in the frontend represents one training day.
     """
     user = request.user
-    fecha_registro = user.date_joined.date()
+    today = date.today()
+    hace_28 = today - timedelta(days=27)
 
-    checkins = user.checkins.filter(fecha__gte=fecha_registro).order_by('fecha')
+    # Abbreviations match the calendar DAY_LABELS convention (Mon=0)
+    DIAS_LABEL = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
-    fisico_por_semana: dict = defaultdict(list)
-    mental_por_semana: dict = defaultdict(list)
-    intencion_counts = {'serio': 0, 'descargar': 0, 'moverme': 0, 'recuperar': 0}
+    # Daily data: last 28 calendar days, one entry per checkin with data
+    checkins_28 = user.checkins.filter(fecha__gte=hace_28).order_by('fecha')
 
-    for ci in checkins:
-        week_num = (ci.fecha - fecha_registro).days // 7 + 1
+    dias_fisico = []
+    dias_mental = []
+    for ci in checkins_28:
+        label = DIAS_LABEL[ci.fecha.weekday()]
         if ci.estado_fisico is not None:
-            fisico_por_semana[week_num].append(ci.estado_fisico)
+            dias_fisico.append({
+                'fecha': ci.fecha.isoformat(),
+                'label': label,
+                'valor': ci.estado_fisico,
+            })
         if ci.estado_animo is not None:
-            mental_por_semana[week_num].append(min(ci.estado_animo, 4))
+            dias_mental.append({
+                'fecha': ci.fecha.isoformat(),
+                'label': label,
+                'valor': min(ci.estado_animo, 4),
+            })
+
+    # Intencion counts from all-time checkins for a stable donut distribution
+    todos = user.checkins.all()
+    intencion_counts = {'serio': 0, 'descargar': 0, 'moverme': 0, 'recuperar': 0}
+    for ci in todos:
         for foco in (ci.foco_entrenamiento or []):
             if foco in intencion_counts:
                 intencion_counts[foco] += 1
 
-    semanas_fisico = [
-        {'semana_num': w, 'label': f'S{w}', 'promedio': round(sum(v) / len(v), 1)}
-        for w, v in sorted(fisico_por_semana.items()) if len(v) >= 2
-    ]
-    semanas_mental = [
-        {'semana_num': w, 'label': f'S{w}', 'promedio': round(sum(v) / len(v), 1)}
-        for w, v in sorted(mental_por_semana.items()) if len(v) >= 2
-    ]
-
     return Response({
-        'semanas_fisico': semanas_fisico,
-        'semanas_mental': semanas_mental,
+        'dias_fisico': dias_fisico,
+        'dias_mental': dias_mental,
         'intencion_counts': intencion_counts,
-        'total_checkins': checkins.count(),
+        'total_checkins': todos.count(),
     })
 
 

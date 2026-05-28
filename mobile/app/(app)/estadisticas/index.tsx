@@ -70,6 +70,8 @@ interface ConsistData {
 
 interface SemanaEstado { semana_num: number; label: string; promedio: number }
 
+interface DiaEstado { fecha: string; label: string; valor: number }
+
 interface EjercicioTop {
   nombre: string
   count: number
@@ -79,8 +81,8 @@ interface EjercicioTop {
 }
 
 interface CuerpoData {
-  semanas_fisico: SemanaEstado[]
-  semanas_mental: SemanaEstado[]
+  dias_fisico: DiaEstado[]
+  dias_mental: DiaEstado[]
   intencion_counts: { serio: number; descargar: number; moverme: number; recuperar: number }
   total_checkins: number
 }
@@ -402,37 +404,41 @@ function mbY(v: number): number {
   return MB_PAD_T + MB_DATA_H * (1 - (Math.min(Math.max(v, 1), 4) - 1) / 3)
 }
 
-function EstadoMiniBarChart({ semanas, color, containerW, label }: {
-  semanas: SemanaEstado[]
+function EstadoMiniBarChart({ dias, color, containerW, label }: {
+  dias: DiaEstado[]
   color: string
   containerW: number
   label: string
 }) {
   const dataW = containerW - MB_SIDE * 2
-  const n = semanas.length
+  const n = dias.length
   if (n === 0 || dataW <= 0) return null
 
-  const barW  = Math.min(10, Math.floor((dataW / n) * 0.55))
+  // Width per slot: leave a small gap between bars (barW ≈ 60% of slot)
+  const slotW = dataW / n
+  const barW  = Math.max(2, Math.min(10, Math.floor(slotW * 0.65)))
   const xStep = n <= 1 ? 0 : dataW / (n - 1)
 
   return (
     <Svg width={containerW} height={MB_SVG_H}>
-      {semanas.map((s, i) => {
+      {dias.map((d, i) => {
         const cx   = MB_SIDE + (n === 1 ? dataW / 2 : i * xStep)
-        const top  = mbY(s.promedio)
+        const top  = mbY(d.valor)
         const barH = Math.max((MB_PAD_T + MB_DATA_H) - top, 3)
         const barY = (MB_PAD_T + MB_DATA_H) - barH
         const isLast = i === n - 1
+        // Show label at week boundaries (every 7 data points) and on the last bar
+        const showLabel = i % 7 === 0 || isLast
         return (
           <React.Fragment key={i}>
             <Rect
               x={cx - barW / 2} y={barY}
               width={barW} height={barH} rx={2}
-              fill={isLast ? color : `${color}55`}
+              fill={isLast ? color : `${color}66`}
             />
-            {(i === 0 || isLast) && (
+            {showLabel && (
               <SvgText x={cx} y={MB_SVG_H - 1} fontSize={7} fill={label} textAnchor="middle">
-                {s.label}
+                {d.label}
               </SvgText>
             )}
           </React.Fragment>
@@ -444,17 +450,16 @@ function EstadoMiniBarChart({ semanas, color, containerW, label }: {
 
 // ─── Mini estado card (2-column layout for Bloque 3) ─────────────────────────
 
-function EstadoMiniCard({ title, semanas, color, containerW, grid, label }: {
+function EstadoMiniCard({ title, dias, color, containerW, label }: {
   title: string
-  semanas: SemanaEstado[]
+  dias: DiaEstado[]
   color: string
   containerW: number
-  grid: string
   label: string
 }) {
   const { colors } = useTheme()
-  const currentVal = semanas.length > 0 ? semanas[semanas.length - 1].promedio : null
-  const prevVal    = semanas.length > 1 ? semanas[semanas.length - 2].promedio : null
+  const currentVal = dias.length > 0 ? dias[dias.length - 1].valor : null
+  const prevVal    = dias.length > 1 ? dias[dias.length - 2].valor : null
   const delta      = currentVal !== null && prevVal !== null ? currentVal - prevVal : null
 
   return (
@@ -485,9 +490,9 @@ function EstadoMiniCard({ title, semanas, color, containerW, grid, label }: {
           </Text>
         )}
       </View>
-      {semanas.length > 0 && (
+      {dias.length > 0 && (
         <EstadoMiniBarChart
-          semanas={semanas}
+          dias={dias}
           color={color}
           containerW={containerW - 20}
           label={label}
@@ -688,6 +693,12 @@ function HeatMapBlock({
                     const eventTipo = eventMap.get(cell.fecha)
                     const eventDot  = eventTipo ? EVENT_COLORS[eventTipo] : null
 
+                    const dayNum = Number(cell.fecha.split('-')[2])
+                    const numColor = cell.es_descanso
+                      ? colors.inkFaint
+                      : cell.intensidad >= 3
+                        ? '#ffffff'
+                        : colors.inkMuted
                     return (
                       <TouchableOpacity
                         key={ci}
@@ -700,12 +711,30 @@ function HeatMapBlock({
                             width: cellSize, height: cellSize, borderRadius: 3,
                             borderWidth: 1, borderStyle: 'dashed',
                             borderColor: 'rgba(255,170,50,0.55)',
-                          }} />
+                            alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Text style={{
+                              fontFamily: 'JetBrainsMono-Regular',
+                              fontSize: Math.max(7, Math.floor(cellSize * 0.38)),
+                              color: numColor, lineHeight: cellSize,
+                            }}>
+                              {dayNum}
+                            </Text>
+                          </View>
                         ) : (
                           <View style={{
                             width: cellSize, height: cellSize, borderRadius: 3,
                             backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
-                          }} />
+                            alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Text style={{
+                              fontFamily: 'JetBrainsMono-Regular',
+                              fontSize: Math.max(7, Math.floor(cellSize * 0.38)),
+                              color: numColor, lineHeight: cellSize,
+                            }}>
+                              {dayNum}
+                            </Text>
+                          </View>
                         )}
                         {eventDot && (
                           <View style={{
@@ -1087,18 +1116,16 @@ export default function EstadisticasScreen() {
               <View style={styles.estadoGrid}>
                 <EstadoMiniCard
                   title={t('stats_physical')}
-                  semanas={cuerpoData.semanas_fisico}
+                  dias={cuerpoData.dias_fisico}
                   color={colors.green}
                   containerW={(cardInnerW - 8) / 2}
-                  grid={colors.borderDefault}
                   label={colors.inkMuted}
                 />
                 <EstadoMiniCard
                   title={t('stats_mental')}
-                  semanas={cuerpoData.semanas_mental}
+                  dias={cuerpoData.dias_mental}
                   color={colors.cyan}
                   containerW={(cardInnerW - 8) / 2}
-                  grid={colors.borderDefault}
                   label={colors.inkMuted}
                 />
               </View>
