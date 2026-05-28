@@ -332,9 +332,9 @@ const translations = {
 
   // ─── Estadísticas ────────────────────────────────────────────────────────────
   stats_header:               { es: 'ESTADÍSTICAS',                      en: 'STATISTICS' },
-  stats_rpe_title:            { es: 'Progresión de RPE',                  en: 'RPE Progression' },
-  stats_rpe_subtitle:         { es: 'Evolución semanal de intensidad',    en: 'Weekly intensity evolution' },
-  stats_rpe_axis:             { es: 'semana',                             en: 'week' },
+  stats_rpe_title:            { es: 'Progreso del rendimiento',           en: 'Performance Progress' },
+  stats_rpe_subtitle:         { es: 'Escala 1–10 · Más alto es mejor',    en: 'Scale 1–10 · Higher is better' },
+  stats_rpe_axis:             { es: 'día',                                en: 'day' },
   stats_consistency_title:    { es: 'Consistencia mensual',               en: 'Monthly consistency' },
   stats_body_title:           { es: 'Cuerpo y contexto',                  en: 'Body and context' },
   stats_physical:             { es: 'Estado Físico',                      en: 'Physical State' },

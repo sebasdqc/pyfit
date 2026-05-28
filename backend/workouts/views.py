@@ -1872,7 +1872,8 @@ def stats_rpe_semanal(request):
 
 def _stats_rpe_semanal(request):
     """
-    Weekly RPE averages from registration week to current week.
+    Daily performance score (rendimiento = 11 - rpe) per session, last 28 days.
+    Higher value = lower perceived effort = better adaptation. Scale 1–10.
     Query param: ?filtro=todo|fuerza|cardio|movilidad
     Uses feedback.rpe_real when available, falls back to session.rpe_target.
     """
@@ -1881,11 +1882,14 @@ def _stats_rpe_semanal(request):
     hoy = date.today()
     fecha_registro = user.date_joined.date()
     semanas_entrenando = max(1, (hoy - fecha_registro).days // 7 + 1)
+    hace_28 = hoy - timedelta(days=27)
+
+    DIAS_LABEL = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
     sesiones = (
         user.sessions
         .select_related('feedback', 'checkin')
-        .filter(fecha__gte=fecha_registro)
+        .filter(fecha__gte=hace_28)
         .order_by('fecha')
     )
 
@@ -1899,26 +1903,19 @@ def _stats_rpe_semanal(request):
     else:
         sesiones = list(sesiones)
 
-    # Group RPE by week number (1-indexed from registration)
-    rpe_por_semana: dict = defaultdict(list)
+    dias = []
     for s in sesiones:
-        week_num = (s.fecha - fecha_registro).days // 7 + 1
         fb = getattr(s, 'feedback', None)
         rpe = float(fb.rpe_real) if fb is not None and fb.rpe_real is not None else float(s.rpe_target)
-        rpe_por_semana[week_num].append(rpe)
-
-    semanas = [
-        {
-            'semana_num': w,
-            'label': f'Sem {w}',
-            'rpe': round(sum(rpas) / len(rpas), 1),
-        }
-        for w, rpas in sorted(rpe_por_semana.items())
-    ]
+        dias.append({
+            'fecha': s.fecha.isoformat(),
+            'label': DIAS_LABEL[s.fecha.weekday()],
+            'rendimiento': round(11 - rpe, 1),
+        })
 
     return Response({
         'semanas_entrenando': semanas_entrenando,
-        'semanas': semanas,
+        'dias': dias,
         'fecha_registro_year': fecha_registro.year,
         'fecha_registro_month': fecha_registro.month,
     })

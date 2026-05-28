@@ -34,11 +34,11 @@ const FILTROS: { id: Filtro; label: string }[] = [
   { id: 'movilidad', label: 'Movilidad' },
 ]
 
-interface SemanaRPE { semana_num: number; label: string; rpe: number }
+interface DiaRendimiento { fecha: string; label: string; rendimiento: number }
 
 interface RPEData {
   semanas_entrenando: number
-  semanas: SemanaRPE[]
+  dias: DiaRendimiento[]
   fecha_registro_year: number
   fecha_registro_month: number
 }
@@ -95,19 +95,14 @@ const PAD_B   = 26
 const PAD_L   = 30
 const PAD_R   = 10
 const DATA_H  = CHART_H - PAD_T - PAD_B
-const Y_MIN   = 5
+const Y_MIN   = 1
 const Y_MAX   = 10
-const Y_RANGE = Y_MAX - Y_MIN
+const Y_RANGE = Y_MAX - Y_MIN  // 9
 
-function rpeToY(rpe: number): number {
-  const c = Math.min(Math.max(rpe, Y_MIN), Y_MAX)
+// Rendimiento 1-10 donde 10 = tope → arriba del gráfico
+function rpeToY(r: number): number {
+  const c = Math.min(Math.max(r, Y_MIN), Y_MAX)
   return PAD_T + DATA_H * (1 - (c - Y_MIN) / Y_RANGE)
-}
-
-function weekToX(w: number, minW: number, maxW: number, dataW: number): number {
-  const span = maxW - minW
-  if (span === 0) return PAD_L + dataW / 2
-  return PAD_L + ((w - minW) / span) * dataW
 }
 
 function pathD(pts: { x: number; y: number }[]): string {
@@ -116,18 +111,18 @@ function pathD(pts: { x: number; y: number }[]): string {
     .join(' ')
 }
 
-function movingAvg2(arr: SemanaRPE[]): SemanaRPE[] {
-  return arr.map((s, i) =>
-    i === 0 ? s : { ...s, rpe: (arr[i - 1].rpe + s.rpe) / 2 },
+function movingAvg2(arr: DiaRendimiento[]): DiaRendimiento[] {
+  return arr.map((d, i) =>
+    i === 0 ? d : { ...d, rendimiento: (arr[i - 1].rendimiento + d.rendimiento) / 2 },
   )
 }
 
-function trendText(arr: SemanaRPE[]): string | null {
+function trendText(arr: DiaRendimiento[]): string | null {
   if (arr.length < 3) return null
   const last3 = arr.slice(-3)
-  const diff = last3[2].rpe - last3[0].rpe
-  if (diff < -0.3) return 'Tu esfuerzo percibido está bajando — te estás adaptando.'
-  if (diff > 0.3)  return 'Estás empujando más fuerte estas semanas.'
+  const diff = last3[2].rendimiento - last3[0].rendimiento
+  if (diff > 0.3)  return 'Tu rendimiento está mejorando — el esfuerzo percibido disminuye.'
+  if (diff < -0.3) return 'El esfuerzo percibido ha aumentado — considera una semana de descarga.'
   return 'Tu rendimiento se ha estabilizado en este rango.'
 }
 
@@ -146,34 +141,33 @@ function buildCells(year: number, month: number, dias: DiaData[]): (DiaData | nu
 // ─── RPE Line Chart ───────────────────────────────────────────────────────────
 
 function RPELineChart({
-  semanas, totalWeeks, containerW, accent, grid, label, bg,
+  dias, containerW, accent, grid, label, bg,
 }: {
-  semanas: SemanaRPE[]
-  totalWeeks: number
+  dias: DiaRendimiento[]
   containerW: number
   accent: string
-  grid:    string  // color de las líneas de grilla
-  label:   string  // color de los labels (eje X, Y)
-  bg:      string  // color de fondo (para el centro de los puntos)
+  grid:   string
+  label:  string
+  bg:     string
 }) {
   const dataW = containerW - PAD_L - PAD_R
-  if (dataW <= 10 || semanas.length === 0) return null
+  const n = dias.length
+  if (dataW <= 10 || n === 0) return null
 
-  const minW = 1
-  const maxW = Math.max(totalWeeks, semanas[semanas.length - 1]?.semana_num ?? 1)
-  const toX  = (w: number) => weekToX(w, minW, maxW, dataW)
+  const toX = (i: number) => PAD_L + (n <= 1 ? dataW / 2 : (i / (n - 1)) * dataW)
 
-  const mainPts = semanas.map(s => ({ x: toX(s.semana_num), y: rpeToY(s.rpe) }))
-  const maPts   = movingAvg2(semanas).map(s => ({ x: toX(s.semana_num), y: rpeToY(s.rpe) }))
+  const mainPts = dias.map((d, i) => ({ x: toX(i), y: rpeToY(d.rendimiento) }))
+  const maPts   = movingAvg2(dias).map((d, i) => ({ x: toX(i), y: rpeToY(d.rendimiento) }))
 
-  const step = maxW <= 8 ? 1 : maxW <= 16 ? 2 : 4
-  const xLabels: number[] = []
-  for (let w = 1; w <= maxW; w += step) xLabels.push(w)
-  if (xLabels[xLabels.length - 1] !== maxW) xLabels.push(maxW)
+  // X labels at week boundaries (every 7 data points) + last
+  const xLabelSet = new Set<number>()
+  for (let i = 0; i < n; i += 7) xLabelSet.add(i)
+  xLabelSet.add(n - 1)
 
   return (
     <Svg width={containerW} height={CHART_H}>
-      {[5,6,7,8,9,10].map(v => {
+      {/* Y grid — show even numbers 2,4,6,8,10 */}
+      {[2, 4, 6, 8, 10].map(v => {
         const y = rpeToY(v)
         return (
           <React.Fragment key={v}>
@@ -187,23 +181,29 @@ function RPELineChart({
         )
       })}
 
-      {xLabels.map(w => (
-        <SvgText key={w} x={toX(w)} y={CHART_H - 5} fontSize={8}
-          fill={label} textAnchor="middle">
-          {`S${w}`}
-        </SvgText>
-      ))}
+      {/* X labels at week boundaries */}
+      {dias.map((d, i) =>
+        xLabelSet.has(i) ? (
+          <SvgText key={i} x={toX(i)} y={CHART_H - 5} fontSize={8}
+            fill={label} textAnchor="middle">
+            {d.label}
+          </SvgText>
+        ) : null
+      )}
 
+      {/* Moving average (dashed) */}
       {maPts.length >= 2 && (
         <Path d={pathD(maPts)} stroke={`${accent}55`} strokeWidth={1.5}
           fill="none" strokeDasharray="5 4" />
       )}
 
+      {/* Main line */}
       {mainPts.length >= 2 && (
         <Path d={pathD(mainPts)} stroke={accent} strokeWidth={2.5}
           fill="none" strokeLinecap="round" strokeLinejoin="round" />
       )}
 
+      {/* Data points */}
       {mainPts.map((p, i) => (
         <React.Fragment key={i}>
           <Circle cx={p.x} cy={p.y} r={5} fill={accent} />
@@ -1007,10 +1007,10 @@ export default function EstadisticasScreen() {
     )
   }
 
-  const semanas           = rpeData?.semanas ?? []
+  const dias              = rpeData?.dias ?? []
   const semanasEntrenando = rpeData?.semanas_entrenando ?? 0
-  const hasEnoughData     = semanas.length >= 2
-  const trend             = trendText(semanas)
+  const hasEnoughData     = dias.length >= 2
+  const trend             = trendText(dias)
 
   return (
     <View style={styles.root}>
@@ -1036,10 +1036,12 @@ export default function EstadisticasScreen() {
           : <RadarBlockEmpty />
         }
 
-        {/* ── Bloque 1: Tu progreso en el tiempo ── */}
+        {/* ── Bloque 1: Progreso del rendimiento ── */}
         <Text style={styles.blockLabel}>{t('stats_rpe_title').toUpperCase()}</Text>
 
         <View style={styles.card}>
+          {/* Subtítulo de escala */}
+          <Text style={[styles.cardMiniTitle, { marginBottom: 4 }]}>{t('stats_rpe_subtitle')}</Text>
           {/* Filter tabs */}
           <View style={styles.filterRow}>
             {FILTROS.map(f => (
@@ -1072,8 +1074,7 @@ export default function EstadisticasScreen() {
               </View>
             ) : (
               <RPELineChart
-                semanas={semanas}
-                totalWeeks={semanasEntrenando}
+                dias={dias}
                 containerW={cardInnerW}
                 accent={colors.accent}
                 grid={colors.borderDefault}
