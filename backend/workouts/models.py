@@ -325,6 +325,24 @@ class DailyCoachInsight(models.Model):
         return {'modo': self.modo, 'mensaje': self.texto, 'fragmento': self.fragmento}
 
 
+class DailySaludo(models.Model):
+    """Saludo del dashboard generado por IA, cacheado por usuario × día.
+    Evita una llamada Groq síncrona en cada carga/refoco del dashboard.
+    Se invalida al generar una sesión o registrar feedback (cambia racha/última sesión)."""
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_saludos')
+    fecha      = models.DateField()
+    saludo     = models.TextField()
+    insight    = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'daily_saludos'
+        unique_together = [['user', 'fecha']]
+
+    def __str__(self):
+        return f'{self.user} - {self.fecha}'
+
+
 class TrainingDNA(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='training_dna')
     texto = models.TextField()

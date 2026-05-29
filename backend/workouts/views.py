@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, TrainingDNA, CalendarEvent, TrainingCycle
+from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle
 
 
 def _get_local_date(request) -> date:
@@ -34,6 +34,14 @@ from .serializers import SessionDetailSerializer, SessionListSerializer, Session
 @permission_classes([IsAuthenticated])
 def session_list(request):
     sessions = request.user.sessions.select_related('feedback', 'checkin').all()
+    # Filtro opcional por fecha: el dashboard solo necesita una ventana reciente
+    # para el calendario (acota el payload). El historial los pide todos sin param.
+    desde = request.query_params.get('desde')
+    if desde:
+        try:
+            sessions = sessions.filter(fecha__gte=date.fromisoformat(desde))
+        except ValueError:
+            pass
     return Response(SessionListSerializer(sessions, many=True).data)
 
 
@@ -73,9 +81,10 @@ def session_feedback(request, pk):
         import logging
         logging.getLogger(__name__).warning(f'[feedback] post-processing error (non-fatal): {e}')
 
-    # Invalidar caché del insight del entrenador para que se regenere con los nuevos datos
-    from datetime import date as _date
-    DailyCoachInsight.objects.filter(user=request.user, fecha=_date.today()).delete()
+    # Invalidar caché del insight y del saludo para regenerarlos con los nuevos datos
+    _hoy = _get_local_date(request)
+    DailyCoachInsight.objects.filter(user=request.user, fecha=_hoy).delete()
+    DailySaludo.objects.filter(user=request.user, fecha=_hoy).delete()
 
     return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
 
@@ -202,20 +211,19 @@ Reglas:
 def _calcular_racha_realtime(user, hoy=None):
     """
     Calcula la racha de días consecutivos en tiempo real (sin leer del perfil).
-    Si hoy no tiene sesión con feedback, retrocede un día.
-    Si ayer tampoco tiene, la racha es 0.
+    Un día cuenta como entrenado si tiene cualquier sesión (misma definición que
+    el calendario / volumen / Zyfit Score). Si hoy no tiene sesión, retrocede un día.
     Retorna el entero de días consecutivos.
     """
     if hoy is None:
         hoy = date.today()
-    # Single query: fetch all session dates in the last 365 days that have feedback
+    # Días con cualquier sesión en los últimos 365 días
     fecha_min = hoy - timedelta(days=365)
     dates_with_session = set(
         Session.objects.filter(
             user=user,
             fecha__gte=fecha_min,
             fecha__lte=hoy,
-            feedback__isnull=False,
         ).values_list('fecha', flat=True)
     )
     if not dates_with_session:
@@ -229,7 +237,7 @@ def _calcular_racha_realtime(user, hoy=None):
     return racha
 
 
-def _calcular_racha_contexto(user):
+def _calcular_racha_contexto(user, hoy=None):
     """
     Calcula la racha en tiempo real y devuelve un objeto de contexto
     con la alerta/recomendación adecuada según el estado actual del usuario.
@@ -241,9 +249,11 @@ def _calcular_racha_contexto(user):
     - racha 2-3 + entrenó hoy        → motivar continuar
     - resto                          → sin alerta
     """
-    hoy = date.today()
+    if hoy is None:
+        hoy = date.today()
 
-    # Single bulk query shared by all derived metrics — avoids 3 extra queries
+    # Single bulk query shared by all derived metrics — avoids 3 extra queries.
+    # Un día entrenado = cualquier sesión (consistente con el calendario / Zyfit Score).
     fecha_min = hoy - timedelta(days=365)
     lunes = hoy - timedelta(days=hoy.weekday())
     dates_with_session = set(
@@ -251,7 +261,6 @@ def _calcular_racha_contexto(user):
             user=user,
             fecha__gte=fecha_min,
             fecha__lte=hoy,
-            feedback__isnull=False,
         ).values_list('fecha', flat=True)
     )
 
@@ -737,105 +746,7 @@ El campo "fragmento" es la frase más relevante del mensaje (3-6 palabras) que s
 _generar_insight_entrenador = _generar_mensaje_entrenador
 
 
-def _metrica_destacada(user, racha, dias_semana_objetivo, total_sesiones=0):
-    from datetime import date, timedelta
-    from django.db.models import Avg
-    if total_sesiones < 3:
-        return None
-    hoy = date.today()
-    hace_7  = hoy - timedelta(days=7)
-    hace_14 = hoy - timedelta(days=14)
-    hace_30 = hoy - timedelta(days=30)
-
-    # ── Prioridad 1: RPE trend (requiere ≥2 semanas con feedback) ────────────
-    rpe_s = (user.sessions
-             .filter(fecha__gte=hace_7, feedback__isnull=False)
-             .aggregate(avg=Avg('feedback__rpe_real'))['avg'])
-    rpe_a = (user.sessions
-             .filter(fecha__gte=hace_14, fecha__lt=hace_7, feedback__isnull=False)
-             .aggregate(avg=Avg('feedback__rpe_real'))['avg'])
-
-    if rpe_s is not None and rpe_a is not None:
-        rs = round(float(rpe_s), 1)
-        ra = round(float(rpe_a), 1)
-        diff = round(rs - ra, 1)
-        if diff > 0.3:
-            desc = f'↑ {abs(diff)} vs semana anterior · Carga en aumento'
-            tendencia = 'up'
-        elif diff < -0.3:
-            desc = f'↓ {abs(diff)} vs semana anterior · Buena recuperación'
-            tendencia = 'down'
-        else:
-            desc = 'Estable · Carga consistente semana a semana'
-            tendencia = 'neutral'
-        return {
-            'tipo': 'rpe', 'label': 'RPE PROMEDIO',
-            'valor': rs, 'valor_display': str(rs), 'unidad': '/ 10',
-            'descripcion': desc, 'progreso_pct': min(100, int(rs / 10 * 100)),
-            'tendencia': tendencia,
-        }
-
-    # ── Prioridad 2: Consistencia mensual (requiere ≥14 días activos) ────────
-    primera = user.sessions.order_by('fecha').first()
-    if primera and (hoy - primera.fecha).days >= 14:
-        sesiones_mes = user.sessions.filter(fecha__gte=hace_30).count()
-        planificadas = max(1, round(30 / 7 * dias_semana_objetivo))
-        pct = min(100, int(sesiones_mes / planificadas * 100))
-        if pct >= 90:
-            desc = f'{sesiones_mes} de {planificadas} sesiones · Excelente adherencia'
-        elif pct >= 70:
-            desc = f'{sesiones_mes} de {planificadas} sesiones · Buen ritmo'
-        else:
-            desc = f'{sesiones_mes} de {planificadas} sesiones · Hay margen para mejorar'
-        tendencia = 'up' if pct >= 80 else ('down' if pct < 60 else 'neutral')
-        return {
-            'tipo': 'consistencia', 'label': 'CONSISTENCIA MENSUAL',
-            'valor': pct, 'valor_display': f'{pct}', 'unidad': '%',
-            'descripcion': desc, 'progreso_pct': pct, 'tendencia': tendencia,
-        }
-
-    # ── Prioridad 3: Progreso de carga (requiere ≥10 sesiones con feedback) ──
-    total = user.sessions.count()
-    if total >= 10:
-        rpes = list(user.sessions
-                    .filter(feedback__isnull=False)
-                    .order_by('-fecha', '-created_at')
-                    .values_list('feedback__rpe_real', flat=True)[:10])
-        if len(rpes) >= 10:
-            rec = sum(float(r) for r in rpes[:5]) / 5
-            prev = sum(float(r) for r in rpes[5:]) / 5
-            pct = min(100, max(0, int((rec - 5) / 5 * 100)))
-            tendencia = 'up' if rec > prev + 0.3 else ('down' if rec < prev - 0.3 else 'neutral')
-            return {
-                'tipo': 'progreso', 'label': 'PROGRESO DE CARGA',
-                'valor': round(rec, 1), 'valor_display': str(round(rec, 1)), 'unidad': 'RPE',
-                'descripcion': f'Promedio últimas 5 sesiones · {total} sesiones totales',
-                'progreso_pct': pct, 'tendencia': tendencia,
-            }
-
-    # ── Prioridad 4: Racha actual (fallback siempre disponible) ──────────────
-    pct = min(100, int(racha / 30 * 100))
-    if racha == 0:
-        desc = 'Empieza hoy para iniciar tu racha'
-    elif racha < 3:
-        desc = f'{racha} día{"s" if racha > 1 else ""} · El hábito se construye de a uno'
-    elif racha < 7:
-        desc = f'Llevas {racha} días · Sigue hasta completar una semana'
-    elif racha < 14:
-        desc = f'{racha} días consecutivos · Una semana completa superada'
-    elif racha < 30:
-        desc = f'{racha} días · Ya es un hábito real'
-    else:
-        desc = f'{racha} días consecutivos · Nivel élite de consistencia'
-    return {
-        'tipo': 'racha', 'label': 'RACHA ACTUAL',
-        'valor': racha, 'valor_display': str(racha), 'unidad': 'días',
-        'descripcion': desc, 'progreso_pct': pct,
-        'tendencia': 'up' if racha > 0 else 'neutral',
-    }
-
-
-def _calcular_zyfit_score(user, total_sesiones, racha, dias_objetivo):
+def _calcular_zyfit_score(user, total_sesiones, racha, dias_objetivo, hoy=None):
     """
     Zyfit Score 0-100. Requiere al menos 7 sesiones totales.
     Componentes:
@@ -847,7 +758,8 @@ def _calcular_zyfit_score(user, total_sesiones, racha, dias_objetivo):
     if total_sesiones < 7:
         return None, None
 
-    hoy    = date.today()
+    if hoy is None:
+        hoy = date.today()
     hace_7 = hoy - timedelta(days=7)
 
     # 1 — Consistencia
@@ -1140,9 +1052,10 @@ Reglas: titulo máximo 7 palabras. Sin signos de exclamación. En español. Sin 
     return Response({'logro': logro_data, 'proxima_sesion': proxima})
 
 
-def _cta_sugerido(user, total_sesiones, fatiga_pct):
+def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
     from datetime import date
-    hoy = date.today()
+    if hoy is None:
+        hoy = date.today()
 
     # Estado D — primera semana (< 3 sesiones totales)
     if total_sesiones < 3:
@@ -1216,6 +1129,28 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct):
     }
 
 
+def _saludo_cacheado(user, hoy, *, nombre, total_sesiones, racha, ultima_titulo,
+                     ultima_fecha, cumplimiento_prom, sexo):
+    """Devuelve (saludo, insight) desde caché diario; genera con IA solo una vez
+    por usuario × día. No cachea fallos de IA (None) para permitir reintento y
+    que el fallback determinístico de stats_dashboard tome el control."""
+    try:
+        entry = DailySaludo.objects.get(user=user, fecha=hoy)
+        return entry.saludo, entry.insight
+    except DailySaludo.DoesNotExist:
+        pass
+
+    saludo, insight = _generar_saludo(
+        nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo,
+    )
+    if saludo:
+        DailySaludo.objects.update_or_create(
+            user=user, fecha=hoy,
+            defaults={'saludo': saludo, 'insight': insight or ''},
+        )
+    return saludo, insight
+
+
 def _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo=''):
     try:
         import groq, json
@@ -1284,65 +1219,54 @@ def session_sustituir(request, pk):
 def stats_dashboard(request):
     hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     hace_7 = hoy - timedelta(days=7)
-    hace_14 = hoy - timedelta(days=14)
+    hace_72h = hoy - timedelta(days=3)
 
-    sesiones_semana = request.user.sessions.filter(fecha__gte=hace_7)
-    sesiones_semana_ant = request.user.sessions.filter(fecha__gte=hace_14, fecha__lt=hace_7)
-
-    total_semana = sesiones_semana.count()
-    total_ant = sesiones_semana_ant.count()
-
-    con_feedback = sesiones_semana.filter(feedback__isnull=False)
+    # Cumplimiento promedio semanal — alimenta el saludo de IA
+    con_feedback = request.user.sessions.filter(fecha__gte=hace_7, feedback__isnull=False)
     cumplimiento_prom = con_feedback.aggregate(avg=Avg('feedback__cumplimiento'))['avg'] or 0
 
-    hace_72h = hoy - timedelta(days=3)
+    # Fatiga acumulada — la consume el CTA
     ultimas_72 = request.user.sessions.filter(fecha__gte=hace_72h).count()
     fatiga_pct = min(100, ultimas_72 * 33)
 
-    dias_entrenados_qs = sesiones_semana.values_list('fecha', flat=True).distinct()
-    dias_entrenados = [str(d) for d in dias_entrenados_qs]
-    try:
-        dias_objetivo = request.user.profile.dias_semana or 3
-    except Exception:
-        dias_objetivo = 3
-    volumen_pct = min(100, int(len(dias_entrenados) / dias_objetivo * 100))
-
-    ultimas_3 = request.user.sessions.select_related('feedback').order_by('-fecha', '-created_at')[:3]
-
     try:
         profile = request.user.profile
-        nivel = profile.nivel_label
         nombre = profile.nombre
-        puntos = profile.puntos_totales
         sexo = profile.sexo or ''
+        dias_objetivo = profile.dias_semana or 3
+        avatar = profile.avatar or ''
     except Exception:
-        nivel = 'Rookie'
         nombre = request.user.email.split('@')[0]
-        puntos = 0
         sexo = ''
+        dias_objetivo = 3
+        avatar = ''
 
-    # ── Racha calculada en tiempo real (no leer del perfil para evitar datos stale)
-    racha_contexto = _calcular_racha_contexto(request.user)
-    racha = racha_contexto['racha_actual']
+    # Racha en tiempo real, con fecha LOCAL (evita desfase de un día cerca de medianoche)
+    racha = _calcular_racha_contexto(request.user, hoy=hoy)['racha_actual']
 
     total_sesiones = request.user.sessions.count()
     ultima = request.user.sessions.order_by('-fecha', '-created_at').first()
     ultima_titulo = ultima.respuesta_ia.get('titulo', '') if ultima and ultima.respuesta_ia else ''
     ultima_fecha = str(ultima.fecha) if ultima else ''
 
-    saludo, insight = _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo)
-    cta = _cta_sugerido(request.user, total_sesiones, fatiga_pct)
+    # Saludo cacheado por usuario × día — evita una llamada Groq síncrona por carga/refoco
+    saludo, _insight = _saludo_cacheado(
+        request.user, hoy,
+        nombre=nombre, total_sesiones=total_sesiones, racha=racha,
+        ultima_titulo=ultima_titulo, ultima_fecha=ultima_fecha,
+        cumplimiento_prom=cumplimiento_prom, sexo=sexo,
+    )
+    cta = _cta_sugerido(request.user, total_sesiones, fatiga_pct, hoy=hoy)
     semana_detalle = _semana_detalle(request.user, dias_objetivo, cta.get('titulo', ''), hoy=hoy)
-    metrica = _metrica_destacada(request.user, racha, dias_objetivo, total_sesiones)
     insight_entrenador = _generar_insight_entrenador(request.user)
     zyfit_score_valor, zyfit_score_desc = _calcular_zyfit_score(
-        request.user, total_sesiones, racha, dias_objetivo
+        request.user, total_sesiones, racha, dias_objetivo, hoy=hoy,
     )
 
     if not saludo:
         # Fallback determinístico cuando la IA falla. Concordancia por género:
         # femenino → 'Bienvenida' / 'lista'; masculino → 'Bienvenido' / 'listo';
-        # otros → forma neutra ('Te damos la bienvenida' / '¿empezamos?').
+        # otros → forma neutra.
         if sexo == 'femenino':
             bienvenida, lista_adj = 'Bienvenida', 'lista'
         elif sexo == 'masculino':
@@ -1352,39 +1276,19 @@ def stats_dashboard(request):
 
         if total_sesiones == 0:
             saludo = f'{bienvenida}, {nombre}.'
-            insight = 'Completa tu primer entrenamiento para que la IA empiece a conocerte.'
         elif racha >= 3:
             saludo = f'{nombre}, llevas {racha} días seguidos.'
-            insight = 'La consistencia es el mejor entrenamiento.'
+        elif lista_adj:
+            saludo = f'Hola, {nombre}. ¿{lista_adj.capitalize()}?'
         else:
-            if lista_adj:
-                saludo = f'Hola, {nombre}. ¿{lista_adj.capitalize()}?'
-            else:
-                saludo = f'Hola, {nombre}. ¿Empezamos?'
-            insight = 'Cada sesión la IA te conoce mejor.'
-
-    avatar = getattr(getattr(request.user, 'profile', None), 'avatar', '') or ''
+            saludo = f'Hola, {nombre}. ¿Empezamos?'
 
     return Response({
         'nombre': nombre,
         'avatar': avatar,
-        'semana_actual': total_semana,
-        'semana_anterior': total_ant,
-        'cumplimiento_promedio': round(cumplimiento_prom, 1),
-        'fatiga_porcentaje': fatiga_pct,
-        'volumen_porcentaje': volumen_pct,
-        'dias_entrenados': dias_entrenados,
-        'racha_actual': racha,
-        'racha_contexto': racha_contexto,
-        'nivel': nivel,
-        'puntos_totales': puntos,
-        'total_sesiones': total_sesiones,
-        'ultimas_sesiones': SessionListSerializer(ultimas_3, many=True).data,
         'saludo': saludo,
-        'insight': insight,
         'cta': cta,
         'semana_detalle': semana_detalle,
-        'metrica': metrica,
         'insight_entrenador': insight_entrenador,
         'zyfit_score': {
             'valor': zyfit_score_valor,
@@ -2501,6 +2405,7 @@ def reset_insight_cache(request):
     Borra el caché del insight del entrenador de hoy para que se regenere
     en el próximo load del dashboard.
     """
-    from datetime import date as _date
-    deleted, _ = DailyCoachInsight.objects.filter(user=request.user, fecha=_date.today()).delete()
+    _hoy = _get_local_date(request)
+    deleted, _ = DailyCoachInsight.objects.filter(user=request.user, fecha=_hoy).delete()
+    DailySaludo.objects.filter(user=request.user, fecha=_hoy).delete()
     return Response({'ok': True, 'deleted': deleted})

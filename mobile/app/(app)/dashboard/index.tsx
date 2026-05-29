@@ -185,21 +185,10 @@ interface RachaContexto {
 
 interface DashboardData {
   nombre: string
-  nivel: string
-  puntos_totales: number
-  racha_actual: number
-  racha_contexto?: RachaContexto
-  fatiga_porcentaje: number
-  volumen_porcentaje: number
-  dias_entrenados: string[]
-  ultimas_sesiones: Session[]
-  total_sesiones: number
   saludo: string
-  insight: string
   avatar?: string
   cta: CTAData
   semana_detalle: SemanaDay[]
-  metrica?: MetricaData
   zyfit_score?: ZyfitScoreData
   insight_entrenador?: InsightPayload | null
 }
@@ -442,7 +431,7 @@ function ZyfitScoreCard({
 
   // Animated offset: arranca en RING_CIRC (anillo vacío) → valor real
   const animOffset = useRef(new Animated.Value(RING_CIRC)).current
-  const prevValorRef = useRef<number | undefined>(undefined)
+  const prevValorRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (prevValorRef.current === valor) return
@@ -1014,7 +1003,8 @@ function CTACard({
 
   function handlePress() {
     if (cta.estado === 'B') {
-      router.push('/(app)/historial')
+      // Abrir la sesión de hoy en el historial (estado B = ya entrenó hoy)
+      router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr() } } as any)
     } else {
       router.push('/(app)/checkin')
     }
@@ -1045,6 +1035,22 @@ function CTACard({
 
       {/* Tipo de sesión — una sola línea */}
       <Text style={styles.ctaTitle} numberOfLines={1}>{tipoSesion}</Text>
+
+      {/* Descripción del backend: carga sugerida, días desde la última, cumplimiento… */}
+      {!!cta.descripcion && (
+        <Text
+          style={{
+            fontFamily: 'SpaceGrotesk-Regular',
+            fontSize: 12.5,
+            color: colors.inkSecondary,
+            lineHeight: 17,
+            marginTop: 6,
+          }}
+          numberOfLines={2}
+        >
+          {cta.descripcion}
+        </Text>
+      )}
 
       {/* Botón principal — siempre sólido con letras blancas */}
       <TouchableOpacity
@@ -1140,7 +1146,11 @@ export default function DashboardScreen() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const d = await apiGet('/api/sessions/')
+      // El calendario deslizable cubre ±26 semanas y no hay sesiones futuras:
+      // basta una ventana de ~200 días hacia atrás. Acota el payload vs traer todo.
+      const desde = new Date()
+      desde.setDate(desde.getDate() - 200)
+      const d = await apiGet(`/api/sessions/?desde=${localDateStr(desde)}`)
       setSessions(Array.isArray(d) ? d : (d.results ?? []))
     } catch {
       // silently ignore — sessions are non-critical for dashboard render

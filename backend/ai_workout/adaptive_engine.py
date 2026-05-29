@@ -356,7 +356,9 @@ class AdaptiveEngineService:
             else:
                 implementos_disponibles.add(_key)
 
-        nivel_usuario = NIVEL_MAP.get(self.perfil.nivel, 3)
+        # nivel_experiencia (1–5) acota el techo técnico; si es null se deriva
+        # del nivel categórico (compatibilidad con usuarios previos al cambio).
+        nivel_usuario = self.perfil.nivel_experiencia or NIVEL_MAP.get(self.perfil.nivel, 3)
         estado_fisico: int = self.checkin.estado_fisico or self.checkin.estado_animo
         espacio_restringido = self.location.tipo in ('casa', 'exterior')
 
@@ -485,7 +487,9 @@ class AdaptiveEngineService:
         """
         injury_zones = self._get_injury_zones()
         implementos_disponibles = set(self.location.implementos or [])
-        nivel_usuario = NIVEL_MAP.get(self.perfil.nivel, 3)
+        # nivel_experiencia (1–5) acota el techo técnico; si es null se deriva
+        # del nivel categórico (compatibilidad con usuarios previos al cambio).
+        nivel_usuario = self.perfil.nivel_experiencia or NIVEL_MAP.get(self.perfil.nivel, 3)
         estado_fisico: int = self.checkin.estado_fisico or self.checkin.estado_animo
         espacio_restringido = self.location.tipo in ('casa', 'exterior')
 

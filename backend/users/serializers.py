@@ -64,10 +64,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'id', 'email', 'nombre', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label',
+            'id', 'email', 'nombre', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label', 'nivel_experiencia',
             'lesiones', 'experiencia_deportiva', 'estilo_entrenamiento',
             'fecha_nacimiento', 'edad', 'peso', 'altura', 'sexo',
-            'dias_semana', 'horario_preferido', 'nivel_estres', 'tipo_trabajo',
+            'dias_semana', 'dias_fijos', 'horario_preferido', 'nivel_estres', 'tipo_trabajo',
             'ejercicios_favoritos', 'ejercicios_evitar',
             'rm_sentadilla', 'rm_peso_muerto', 'rm_press_banca', 'rm_press_hombro',
             'usa_ciclo_menstrual', 'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',

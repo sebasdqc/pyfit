@@ -235,6 +235,34 @@ def upload_avatar(request):
 _VALID_TIPO_LOCATION = {'gimnasio', 'casa', 'exterior'}
 _VALID_SEVERIDAD    = {'leve', 'moderada', 'severa', 'cronica'}
 
+# Normaliza las zonas lateralizadas / extra que envía el onboarding
+# ('rodilla_izq', 'brazo_der', 'cabeza'...) a las zonas canónicas que entiende
+# el motor adaptativo (ZONA_A_BODY_ZONE en ai_workout.adaptive_engine). Sin esto
+# el filtro determinista de contraindicaciones por lesión queda desactivado:
+# 'rodilla_izq' nunca coincide con la contraindicación 'rodilla'.
+_INJURY_ZONA_CANONICAL = {
+    'rodilla': 'rodilla', 'rodilla_izq': 'rodilla', 'rodilla_der': 'rodilla',
+    'hombro': 'hombro',   'hombro_izq': 'hombro',   'hombro_der': 'hombro',
+    'tobillo': 'tobillo', 'tobillo_izq': 'tobillo', 'tobillo_der': 'tobillo',
+    'muñeca': 'muñeca',   'muneca': 'muñeca',
+    'muneca_izq': 'muñeca', 'muneca_der': 'muñeca',
+    'muñeca_izq': 'muñeca', 'muñeca_der': 'muñeca',
+    'codo': 'codo',
+    'brazo_izq': 'codo',  'brazo_der': 'codo',     # etiqueta UI "Brazo / Codo"
+    'muslo_izq': 'cadera', 'muslo_der': 'cadera',
+    'cadera': 'cadera',
+    'lumbar': 'lumbar',
+    'cuello': 'cuello',   'cabeza': 'cuello',       # etiqueta UI "Cabeza / Cuello"
+    'pecho': 'hombro',                              # empuje/press → contraindicación de hombro
+    'abdomen': 'lumbar',                            # core → carga espinal
+    'thoracica': 'thoracica',
+}
+
+
+def _canonical_injury_zona(raw) -> str:
+    z = str(raw or '').strip().lower()
+    return _INJURY_ZONA_CANONICAL.get(z, z)
+
 
 def _sync_user_locations(user, payload):
     """Replace user.locations with the structured list, if provided."""
@@ -267,7 +295,7 @@ def _sync_user_injuries(user, payload):
     for raw in lesiones[:30]:
         if not isinstance(raw, dict):
             continue
-        zona = str(raw.get('zona') or '').strip()[:20]
+        zona = _canonical_injury_zona(raw.get('zona'))[:20]
         if not zona:
             continue
         severidad = str(raw.get('severidad') or 'leve').strip().lower()[:20]

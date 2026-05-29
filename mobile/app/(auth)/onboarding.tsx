@@ -11,7 +11,7 @@ import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import { Colors } from '../../lib/colors'
-import { apiPut, apiPost } from '../../lib/api'
+import { apiPut, apiPost, localDateStr } from '../../lib/api'
 import { getUser, saveUser } from '../../lib/storage'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ type Lesion = {
 }
 
 type ScreenId =
-  | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno'
+  | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno' | 'b1_contexto'
   | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
   | 'b3_lugar' | 'b3_equipamiento' | 'b3_tiempo_horario'
   | 'b4_objetivo' | 'b4_horizonte'
@@ -46,9 +46,12 @@ type FormData = {
   altura: string
   alturaUnit: 'cm' | 'ft'
   usaCicloMenstrual: boolean
+  experienciaEntrenando: number | null
   frecuenciaHistorica: number | null
   deportes: string[]
   calidadSueno: string | null
+  nivelEstres: 'bajo' | 'moderado' | 'alto' | null
+  tipoTrabajo: 'sedentario' | 'mixto' | 'activo' | null
   lesiones: Lesion[]
   ejerciciosEvitar: string[]
   motivoLimitacion: string
@@ -78,6 +81,17 @@ const FRECUENCIA_OPTIONS = [
   { label: '3–4 veces por semana', sublabel: 'La frecuencia más común', value: 3, badge: '3–4' },
   { label: '5–6 veces por semana', sublabel: 'Alta dedicación',          value: 5, badge: '5–6' },
   { label: 'Todos los días',       sublabel: '7 días por semana',        value: 7, badge: '7'   },
+]
+
+// Tiempo entrenando de forma constante → nivel_experiencia (1–5). Es el insumo
+// principal del nivel técnico; el motor lo usa para acotar la complejidad de los
+// ejercicios y el prompt para calibrar el volumen.
+const EXPERIENCIA_OPTIONS = [
+  { value: 1, label: 'Menos de 6 meses', sublabel: 'Estoy empezando',            badge: '<6m'   },
+  { value: 2, label: '6 meses – 1 año',  sublabel: 'Tengo algo de base',         badge: '6-12m' },
+  { value: 3, label: '1 – 2 años',       sublabel: 'Entreno con constancia',     badge: '1-2a'  },
+  { value: 4, label: '2 – 5 años',       sublabel: 'Experiencia sólida',         badge: '2-5a'  },
+  { value: 5, label: 'Más de 5 años',    sublabel: 'Mucho recorrido entrenando', badge: '+5a'   },
 ]
 
 const SUENO_OPTIONS = [
@@ -200,6 +214,39 @@ const EQUIPAMIENTO_CATS = [
   },
 ]
 
+// Mapea las etiquetas específicas de equipamiento del onboarding a las
+// CATEGORÍAS que el backend usa para filtrar ejercicios (Exercise.equipamiento).
+// Sin esto, 'Mancuernas ajustables' no coincide con la categoría 'Mancuernas'
+// y el usuario nunca recibe ejercicios de ese implemento.
+const EQUIP_LABEL_TO_CATEGORY: Record<string, string> = {
+  'Mancuernas ajustables':            'Mancuernas',
+  'Mancuernas fijas':                 'Mancuernas',
+  'Barra olímpica + discos':          'Barras',
+  'Barra corta (EZ)':                 'Barras',
+  'Barra de dominadas':               'Barras',
+  'Kettlebell(s)':                    'Kettlebells',
+  'Banco de pesas':                   'Máquinas',
+  'Máquina de poleas / Multifuerza':  'Máquinas',
+  'Paralelas':                        'Máquinas',
+  'TRX / Suspensión':                 'TRX',
+  'Bandas elásticas':                 'Bandas elásticas',
+  'Step / Cajón pliométrico':         'Cajón pliométrico',
+}
+
+// El gimnasio trae su propio equipo — el kit personal del usuario no aplica.
+// Enviar [] hacía que el motor lo tratara como "solo peso corporal".
+const GYM_COMPLETO = ['Mancuernas', 'Barras', 'Máquinas', 'Kettlebells', 'TRX', 'Bandas elásticas', 'Anillas', 'Cajón pliométrico']
+const GYM_BASICO   = ['Mancuernas', 'Barras', 'Kettlebells', 'Bandas elásticas']
+
+function mapEquipamientoToCategorias(labels: string[]): string[] {
+  const out = new Set<string>()
+  for (const l of labels) {
+    if (l === 'ninguno') continue
+    out.add(EQUIP_LABEL_TO_CATEGORY[l] ?? l)
+  }
+  return [...out]
+}
+
 const TIEMPO_NORMAL_OPTS = [
   { value: '20-30', label: '20–30 min', sub: 'Sesión corta pero efectiva' },
   { value: '30-45', label: '30–45 min', sub: 'Lo mínimo recomendado' },
@@ -241,6 +288,17 @@ function mapObjetivoToGoal(id: string): string | null {
     mantener:        'hipertrofia',
   }
   return MAP[id] ?? null
+}
+
+// El nivel categórico se deriva del tiempo entrenando (nivel_experiencia 1–5).
+// `nivel` alimenta el lenguaje de volumen del prompt; `nivel_experiencia` (el
+// valor numérico) acota el techo de dificultad técnica en el motor: a menor
+// nivel, ejercicios mecánicamente más simples.
+function nivelFromExperiencia(exp: number | null): 'principiante' | 'intermedio' | 'avanzado' {
+  const e = exp ?? 1
+  if (e >= 4) return 'avanzado'
+  if (e === 3) return 'intermedio'
+  return 'principiante'
 }
 
 const HORIZONTE_OPTS = [
@@ -318,6 +376,7 @@ function getBlockTitle(screen: ScreenId): string {
     case 'b1_ciclo':
     case 'b1_historial':
     case 'b1_sueno':
+    case 'b1_contexto':
       return 'Quién eres físicamente'
     case 'b2_lesiones':
     case 'b2_limitaciones':
@@ -490,8 +549,8 @@ export default function OnboardingScreen() {
   const [data, setData] = useState<FormData>({
     nombre: '', fechaNacimiento: null, sexo: '',
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
-    usaCicloMenstrual: false, frecuenciaHistorica: null, deportes: [],
-    calidadSueno: null, lesiones: [],
+    usaCicloMenstrual: false, experienciaEntrenando: null, frecuenciaHistorica: null, deportes: [],
+    calidadSueno: null, nivelEstres: null, tipoTrabajo: null, lesiones: [],
     ejerciciosEvitar: [], motivoLimitacion: '',
     condicionesMedicas: [], condicionOtra: '', notasMedicas: '',
     lugares: [], equipamiento: [],
@@ -534,6 +593,7 @@ export default function OnboardingScreen() {
     ...(data.sexo === 'femenino' ? ['b1_ciclo' as ScreenId] : []),
     'b1_historial',
     'b1_sueno',
+    'b1_contexto',
     'b2_lesiones',
     'b2_limitaciones',
     'b2_historial_medico',
@@ -566,14 +626,23 @@ export default function OnboardingScreen() {
       if (!data.sexo) return 'Selecciona tu sexo biológico.'
       const p = Number(data.peso.replace(',', '.'))
       if (!data.peso || isNaN(p) || p <= 0) return 'Ingresa un peso válido.'
+      const pesoKgVal = data.pesoUnit === 'lb' ? p * 0.453592 : p
+      if (pesoKgVal < 30 || pesoKgVal > 300) return 'El peso debe estar entre 30 y 300 kg.'
       const a = Number(data.altura.replace(',', '.'))
       if (!data.altura || isNaN(a) || a <= 0) return 'Ingresa una altura válida.'
+      const alturaCmVal = data.alturaUnit === 'ft' ? a * 30.48 : a
+      if (alturaCmVal < 100 || alturaCmVal > 250) return 'La altura debe estar entre 100 y 250 cm.'
     }
     if (currentScreen === 'b1_historial') {
+      if (data.experienciaEntrenando === null) return 'Indica cuánto tiempo llevas entrenando.'
       if (data.frecuenciaHistorica === null) return 'Selecciona tu frecuencia de entrenamiento.'
     }
     if (currentScreen === 'b1_sueno') {
       if (!data.calidadSueno) return 'Selecciona tu calidad de sueño habitual.'
+    }
+    if (currentScreen === 'b1_contexto') {
+      if (!data.nivelEstres) return 'Selecciona tu nivel de estrés habitual.'
+      if (!data.tipoTrabajo) return 'Indica tu tipo de trabajo o actividad diaria.'
     }
     if (currentScreen === 'b3_lugar') {
       if (data.lugares.length === 0) return 'Selecciona al menos un lugar de entrenamiento.'
@@ -622,13 +691,17 @@ export default function OnboardingScreen() {
       // Gym locations don't carry the user's personal equipment (their gear comes
       // with the venue); home / outdoor locations inherit the user's kit.
       const lugarLabel = (id: string) => LUGARES.find(l => l.id === id)?.label ?? id
+      const equipMapeado = mapEquipamientoToCategorias(data.equipamiento)
       const lugaresEstructurados = data.lugares.map(id => {
         const tipo = TIPO_BY_LUGAR_ID[id] ?? 'casa'
-        return {
-          nombre: lugarLabel(id),
-          tipo,
-          implementos: tipo === 'gimnasio' ? [] : data.equipamiento,
-        }
+        // El gimnasio aporta el catálogo completo de su tipo; "casa sin material"
+        // es solo peso corporal; el resto hereda el kit (mapeado a categorías).
+        let implementos: string[]
+        if (id === 'gimnasio_completo')    implementos = GYM_COMPLETO
+        else if (id === 'gimnasio_basico') implementos = GYM_BASICO
+        else if (id === 'casa_sin')        implementos = []
+        else                               implementos = equipMapeado
+        return { nombre: lugarLabel(id), tipo, implementos }
       })
 
       // Structured injuries — preserve zone laterality (e.g. 'rodilla_izq') so
@@ -649,12 +722,17 @@ export default function OnboardingScreen() {
 
       await apiPut('/api/profile/', {
         nombre: data.nombre.trim(),
-        fecha_nacimiento: data.fechaNacimiento!.toISOString().split('T')[0],
+        fecha_nacimiento: localDateStr(data.fechaNacimiento!),
         sexo: data.sexo,
         peso: pesoKg,
         altura: alturaCm,
         usa_ciclo_menstrual: data.usaCicloMenstrual,
         dias_semana: data.frecuenciaHistorica ?? 3,
+        dias_fijos: data.diasFijos,
+        nivel: nivelFromExperiencia(data.experienciaEntrenando),
+        nivel_experiencia: data.experienciaEntrenando,
+        nivel_estres: data.nivelEstres ?? '',
+        tipo_trabajo: data.tipoTrabajo ?? '',
         experiencia_deportiva: data.deportes.join(', '),
         calidad_sueno_habitual: data.calidadSueno ?? '',
         lesiones: data.lesiones.map(l => {
@@ -676,7 +754,7 @@ export default function OnboardingScreen() {
         motivo_limitacion: data.motivoLimitacion.trim(),
         horario_preferido: data.horarios.join('/'),
         lugares_entrenamiento: data.lugares,
-        implementos_perfil: data.equipamiento,
+        implementos_perfil: equipMapeado,
         duracion_disponible: data.tiempoNormal ? parseInt(data.tiempoNormal) : null,
         duracion_minima: data.tiempoOcupado ? parseInt(data.tiempoOcupado) : null,
         objetivos_multiples: data.objetivos,
@@ -719,9 +797,12 @@ export default function OnboardingScreen() {
   function countVariables(): number {
     let n = 5 // nombre, fecha, sexo, peso, altura
     if (data.usaCicloMenstrual) n++
+    if (data.experienciaEntrenando !== null) n++
     if (data.frecuenciaHistorica !== null) n++
     n += data.deportes.length
     if (data.calidadSueno) n++
+    if (data.nivelEstres) n++
+    if (data.tipoTrabajo) n++
     n += data.lesiones.length
     n += data.ejerciciosEvitar.length
     if (data.motivoLimitacion.trim()) n++
@@ -935,6 +1016,31 @@ export default function OnboardingScreen() {
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         <Text style={styles.historialQ}>
+          ¿Cuánto tiempo llevas entrenando de forma constante?
+        </Text>
+
+        {EXPERIENCIA_OPTIONS.map(opt => {
+          const on = data.experienciaEntrenando === opt.value
+          return (
+            <TouchableOpacity key={opt.value}
+              style={[styles.freqCard, on && styles.freqCardOn]}
+              onPress={() => set('experienciaEntrenando', opt.value)}
+              activeOpacity={0.8}>
+              <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
+                {on && <View style={styles.freqDot} />}
+              </View>
+              <View style={styles.freqContent}>
+                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{opt.label}</Text>
+                <Text style={styles.freqSub}>{opt.sublabel}</Text>
+              </View>
+              <View style={[styles.freqBadge, on && styles.freqBadgeOn]}>
+                <Text style={[styles.freqBadgeText, on && styles.freqBadgeTextOn]}>{opt.badge}</Text>
+              </View>
+            </TouchableOpacity>
+          )
+        })}
+
+        <Text style={[styles.historialQ, { marginTop: 28 }]}>
           ¿Cuántas veces a la semana has entrenado en los últimos 3 meses?
         </Text>
 
@@ -1041,6 +1147,70 @@ export default function OnboardingScreen() {
                 <Text style={[styles.suenoLabel, on && styles.suenoLabelOn]}>{opt.label}</Text>
                 <Text style={styles.suenoSublabel}>{opt.sublabel}</Text>
                 {on && <View style={styles.suenoActiveDot} />}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </ScrollView>
+    )
+  }
+
+  // ── Block 1: contexto de vida (estrés + trabajo) ───────────────────────────
+
+  function renderContexto() {
+    const ESTRES_OPTS = [
+      { v: 'bajo' as const,     label: 'Bajo',     sub: 'Vida tranquila, descanso suficiente' },
+      { v: 'moderado' as const, label: 'Moderado', sub: 'Altibajos normales del día a día' },
+      { v: 'alto' as const,     label: 'Alto',     sub: 'Cargado, poco margen para recuperar' },
+    ]
+    const TRABAJO_OPTS = [
+      { v: 'sedentario' as const, label: 'Sedentario', sub: 'Mayormente sentado (oficina, estudio)' },
+      { v: 'mixto' as const,      label: 'Mixto',      sub: 'Alterno entre estar de pie y sentado' },
+      { v: 'activo' as const,     label: 'Activo',     sub: 'Mucho movimiento o esfuerzo físico' },
+    ]
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.contextLine}>
+          Tu vida fuera del gimnasio define cuánta recuperación tienes disponible
+        </Text>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>NIVEL DE ESTRÉS HABITUAL</Text>
+          {ESTRES_OPTS.map(o => {
+            const on = data.nivelEstres === o.v
+            return (
+              <TouchableOpacity key={o.v}
+                style={[styles.freqCard, on && styles.freqCardOn]}
+                onPress={() => set('nivelEstres', o.v)} activeOpacity={0.8}>
+                <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
+                  {on && <View style={styles.freqDot} />}
+                </View>
+                <View style={styles.freqContent}>
+                  <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{o.label}</Text>
+                  <Text style={styles.freqSub}>{o.sub}</Text>
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <View style={[styles.fieldGroup, { marginBottom: 0 }]}>
+          <Text style={styles.fieldLabel}>TIPO DE TRABAJO / ACTIVIDAD DIARIA</Text>
+          {TRABAJO_OPTS.map(o => {
+            const on = data.tipoTrabajo === o.v
+            return (
+              <TouchableOpacity key={o.v}
+                style={[styles.freqCard, on && styles.freqCardOn]}
+                onPress={() => set('tipoTrabajo', o.v)} activeOpacity={0.8}>
+                <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
+                  {on && <View style={styles.freqDot} />}
+                </View>
+                <View style={styles.freqContent}>
+                  <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{o.label}</Text>
+                  <Text style={styles.freqSub}>{o.sub}</Text>
+                </View>
               </TouchableOpacity>
             )
           })}
@@ -1889,6 +2059,7 @@ export default function OnboardingScreen() {
       case 'b1_ciclo':             return renderCiclo()
       case 'b1_historial':         return renderHistorial()
       case 'b1_sueno':             return renderSueno()
+      case 'b1_contexto':          return renderContexto()
       case 'b2_lesiones':          return renderLesiones()
       case 'b2_limitaciones':      return renderLimitaciones()
       case 'b2_historial_medico':  return renderHistorialMedico()

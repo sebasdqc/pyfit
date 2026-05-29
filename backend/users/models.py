@@ -29,6 +29,13 @@ class Profile(models.Model):
     objetivo = models.CharField(max_length=200, blank=True)
     objetivos_multiples = models.JSONField(default=list, blank=True)
     nivel = models.CharField(max_length=20, choices=NIVEL_CHOICES, default='principiante')
+    # Nivel técnico 1–5 derivado del tiempo que lleva entrenando (onboarding).
+    # Acota el techo de technical_level de los ejercicios en el motor adaptativo
+    # (niveles bajos → ejercicios mecánicamente más simples). null = usar `nivel`.
+    nivel_experiencia = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     lesiones = models.TextField(blank=True)
     experiencia_deportiva = models.TextField(blank=True)
     estilo_entrenamiento = models.CharField(max_length=100, blank=True)
@@ -45,6 +52,7 @@ class Profile(models.Model):
     dias_semana = models.IntegerField(
         default=3, validators=[MinValueValidator(1), MaxValueValidator(7)],
     )
+    dias_fijos = models.BooleanField(null=True, blank=True)
     horario_preferido = models.CharField(max_length=40, blank=True)
     nivel_estres = models.CharField(max_length=20, choices=ESTRES_CHOICES, blank=True)
     tipo_trabajo = models.CharField(max_length=20, choices=TRABAJO_CHOICES, blank=True)
