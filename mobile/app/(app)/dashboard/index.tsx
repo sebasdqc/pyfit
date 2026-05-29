@@ -24,7 +24,7 @@ if (Platform.OS === 'android') {
 }
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, Path } from 'react-native-svg'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 // ─── Zyfit Score ring constants ────────────────────────────────────────────────
@@ -454,11 +454,6 @@ function ZyfitScoreCard({
 
   return (
     <View style={styles.zsCard}>
-      <LinearGradient
-        colors={['rgba(79,140,255,0.10)', 'transparent']}
-        style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
-      />
-
       {/* Label superior */}
       <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
 
@@ -566,81 +561,72 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 
 // ─── Tu Semana — sub-components ───────────────────────────────────────────────
 
-function DayCircle({ state, isSelected, dayNumber, colors }: {
+function DayPill({ state, isSelected, dayNumber, dayLetter, colors }: {
   state: DayState
   isSelected: boolean
   dayNumber: number
+  dayLetter: string
   colors: Colors
 }) {
-  const S = 34
+  const W = 34, H = 50, R = 14
 
   if (state === 'today') {
-    // Relleno azul brillante + número blanco
     return (
       <View style={{
-        width: S, height: S, borderRadius: S / 2,
+        width: W, height: H, borderRadius: R,
         backgroundColor: colors.accent,
-        alignItems: 'center', justifyContent: 'center',
+        alignItems: 'center', justifyContent: 'center', gap: 2,
         shadowColor: colors.accent, shadowOpacity: 0.55,
-        shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
-        elevation: 5,
+        shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 5,
       }}>
-        <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>
-          {dayNumber}
-        </Text>
+        <Text style={{ color: '#fff', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: '#fff', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
 
   if (state === 'past-done') {
-    // Borde azul + tinte + número en azul
     return (
       <View style={{
-        width: S, height: S, borderRadius: S / 2,
+        width: W, height: H, borderRadius: R,
         backgroundColor: 'rgba(79,140,255,0.12)',
         borderWidth: isSelected ? 2 : 1.5,
         borderColor: isSelected ? colors.accent : 'rgba(79,140,255,0.45)',
-        alignItems: 'center', justifyContent: 'center',
+        alignItems: 'center', justifyContent: 'center', gap: 2,
         shadowColor: isSelected ? colors.accent : 'transparent',
         shadowOpacity: isSelected ? 0.5 : 0,
-        shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
-        elevation: isSelected ? 4 : 0,
+        shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: isSelected ? 4 : 0,
       }}>
-        <Text style={{ color: colors.accent, fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 16 }}>
-          {dayNumber}
-        </Text>
+        <Text style={{ color: colors.accent, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: colors.accent, fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
 
   if (state === 'future') {
-    // Borde punteado + número muy tenue
     return (
-      <View style={{ width: S, height: S, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={S} height={S} style={{ position: 'absolute' }}>
-          <Circle cx={S / 2} cy={S / 2} r={S / 2 - 2}
+      <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <Svg width={W} height={H} style={{ position: 'absolute' }}>
+          <Rect x={2} y={2} width={W - 4} height={H - 4} rx={R - 1} ry={R - 1}
             fill="none" stroke="rgba(255,255,255,0.15)"
             strokeWidth={1.5} strokeDasharray="3 2.5" />
         </Svg>
-        <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
-          {dayNumber}
-        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
 
   if (state === 'rest') {
-    // Borde sutil + número muy tenue
     return (
       <View style={{
-        width: S, height: S, borderRadius: S / 2,
+        width: W, height: H, borderRadius: R,
         backgroundColor: 'rgba(255,255,255,0.03)',
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
-        alignItems: 'center', justifyContent: 'center',
+        alignItems: 'center', justifyContent: 'center', gap: 2,
       }}>
-        <Text style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
-          {dayNumber}
-        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.28)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.28)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
@@ -648,14 +634,13 @@ function DayCircle({ state, isSelected, dayNumber, colors }: {
   // past-skip
   return (
     <View style={{
-      width: S, height: S, borderRadius: S / 2,
+      width: W, height: H, borderRadius: R,
       backgroundColor: 'rgba(255,255,255,0.02)',
       borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-      alignItems: 'center', justifyContent: 'center',
+      alignItems: 'center', justifyContent: 'center', gap: 2,
     }}>
-      <Text style={{ color: 'rgba(255,255,255,0.18)', fontSize: 12, fontFamily: 'SpaceGrotesk-Medium', lineHeight: 16 }}>
-        {dayNumber}
-      </Text>
+      <Text style={{ color: 'rgba(255,255,255,0.18)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+      <Text style={{ color: 'rgba(255,255,255,0.18)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
     </View>
   )
 }
@@ -798,14 +783,9 @@ function TuSemanaCard({
               disabled={state !== 'past-done'}
               activeOpacity={0.75}
             >
-              {/* Letra del día */}
-              <Text style={[styles.semDayLetter, iso === today && { color: colors.accent }]}>
-                {DAY_LETTERS[idx]}
-              </Text>
-
-              {/* Círculo con número del día */}
+              {/* Cápsula: letra + número del día */}
               <View style={{ position: 'relative' }}>
-                <DayCircle state={state} isSelected={isSelected} dayNumber={dayNumber} colors={colors} />
+                <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} />
                 {state === 'past-done' && count >= 2 && (
                   <View style={styles.semBadge}>
                     <Text style={styles.semBadgeText}>{count}</Text>
@@ -1166,8 +1146,7 @@ export default function DashboardScreen() {
               <View style={styles.semDaysRow}>
                 {[0,1,2,3,4,5,6].map(i => (
                   <View key={i} style={[styles.semDayCol, { gap: 4 }]}>
-                    <Skeleton width={12} height={9} borderRadius={3} />
-                    <Skeleton width={32} height={32} borderRadius={16} />
+                    <Skeleton width={32} height={48} borderRadius={14} />
                     <Skeleton width={20} height={8} borderRadius={3} />
                   </View>
                 ))}
@@ -1432,10 +1411,8 @@ function makeStyles(c: Colors) {
       overflow: 'hidden',
     },
     semDaysCard: {
-      // Sub-card con fondo para el grid de días
       backgroundColor: 'rgba(255,255,255,0.07)',
-      borderWidth: 1,
-      borderColor: c.borderDefault,
+      borderWidth: 0,
       borderRadius: 18,
       paddingVertical: 10,
       paddingHorizontal: 4,

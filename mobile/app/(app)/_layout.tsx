@@ -73,7 +73,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       {
         width,
         paddingBottom: bottomPad,
-        backgroundColor: palette === 'light' ? 'rgba(242,244,249,0.97)' : palette === 'rosado' ? 'rgba(13,0,9,0.97)' : 'rgba(0,0,0,0.97)',
+        backgroundColor: palette === 'light' ? 'rgba(245,242,236,0.97)' : palette === 'rosado' ? 'rgba(13,0,9,0.97)' : 'rgba(13,13,13,0.97)',
         borderTopColor: colors.borderDefault,
       },
     ]}>
@@ -201,6 +201,7 @@ export default function AppLayout() {
       <Tabs.Screen name="perfil/historial-pagos" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cancelar" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/dispositivos" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/buscar-dispositivo" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/cambiar-plan" options={{ href: null, tabBarLabel: '' }} />
       {/* Free Run */}
       <Tabs.Screen name="run/index" options={{ href: null, tabBarLabel: '' }} />
