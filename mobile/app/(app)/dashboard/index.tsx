@@ -129,6 +129,10 @@ interface FullSession {
 }
 
 type DayState = 'past-done' | 'today' | 'future' | 'rest' | 'past-skip'
+type EventTipo = 'competicion' | 'descanso' | 'otro'
+interface WeekEvent { fecha: string; tipo: EventTipo }
+const WEEK_EVENT_BG:   Record<EventTipo, string> = { competicion: '#ffaa32', descanso: '#a78bfa', otro: '#6ce5ff' }
+const WEEK_EVENT_TEXT: Record<EventTipo, string> = { competicion: '#000',    descanso: '#fff',    otro: '#000' }
 
 interface SemanaDay {
   fecha: string
@@ -563,14 +567,51 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 
 // ─── Tu Semana — sub-components ───────────────────────────────────────────────
 
-function DayPill({ state, isSelected, dayNumber, dayLetter, colors }: {
+function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }: {
   state: DayState
   isSelected: boolean
   dayNumber: number
   dayLetter: string
   colors: Colors
+  eventTipo?: EventTipo
 }) {
   const W = 34, H = 50, R = 14
+
+  // Animación de brillo para competiciones (menos intensa que el calendario mensual)
+  const glowAnim = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (eventTipo !== 'competicion') { glowAnim.setValue(0); return }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [eventTipo])
+
+  // Evento sobreescribe el estado visual
+  if (eventTipo) {
+    const bg   = WEEK_EVENT_BG[eventTipo]
+    const text = WEEK_EVENT_TEXT[eventTipo]
+    return (
+      <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}>
+        {eventTipo === 'competicion' && (
+          <Animated.View style={{
+            position: 'absolute', width: W, height: H, borderRadius: R,
+            backgroundColor: bg,
+            opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.3] }),
+            transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] }) }],
+          }} />
+        )}
+        <View style={{ width: W, height: H, borderRadius: R, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <Text style={{ color: text, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+          <Text style={{ color: text, fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+        </View>
+      </View>
+    )
+  }
 
   if (state === 'today') {
     return (
@@ -751,6 +792,22 @@ function TuSemanaCard({
   // Footer — se actualiza cuando onMomentumScrollEnd confirma la página nueva
   const currMonday = useMemo(() => getWeekMonday(currentOffset), [currentOffset])
   const currDates  = useMemo(() => getWeekDates(currMonday),     [currMonday])
+
+  // Eventos del mes visible — se recarga cuando cambia de mes
+  const [eventos, setEventos] = useState<WeekEvent[]>([])
+  const evYear  = currMonday.getFullYear()
+  const evMonth = currMonday.getMonth() + 1
+  useEffect(() => {
+    apiGet(`/api/eventos/?year=${evYear}&month=${evMonth}`)
+      .then((res: any) => setEventos(Array.isArray(res) ? res : []))
+      .catch(() => {})
+  }, [evYear, evMonth])
+
+  const eventMap = useMemo(() => {
+    const m = new Map<string, EventTipo>()
+    for (const ev of eventos) { if (!m.has(ev.fecha)) m.set(ev.fecha, ev.tipo) }
+    return m
+  }, [eventos])
   const sesionesEstaSemana = useMemo(() =>
     currDates.reduce((t, iso) => t + (sessionsByDate.get(iso)?.length ?? 0), 0),
     [currDates, sessionsByDate],
@@ -785,13 +842,14 @@ function TuSemanaCard({
       const monday = getWeekMonday(weekOffset)
       const dates  = getWeekDates(monday)
       return (
-        <View style={{ width: cardW }}>
+        <View style={{ width: cardW, paddingHorizontal: 4 }}>
           <View style={styles.semDaysRow}>
             {dates.map((iso, idx) => {
               const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
               const count      = sessionsByDate.get(iso)?.length ?? 0
               const isSelected = selectedDate === iso
               const dayNumber  = parseInt(iso.slice(8, 10), 10)
+              const eventTipo  = eventMap.get(iso)
               return (
                 <TouchableOpacity
                   key={iso}
@@ -801,7 +859,7 @@ function TuSemanaCard({
                   activeOpacity={0.75}
                 >
                   <View style={{ position: 'relative' }}>
-                    <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} />
+                    <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} eventTipo={eventTipo} />
                     {state === 'past-done' && count >= 2 && (
                       <View style={styles.semBadge}>
                         <Text style={styles.semBadgeText}>{count}</Text>
@@ -818,7 +876,7 @@ function TuSemanaCard({
         </View>
       )
     },
-    [cardW, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress],
+    [cardW, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress, eventMap],
   )
 
   return (
@@ -1459,7 +1517,7 @@ function makeStyles(c: Colors) {
       borderWidth: 0,
       borderRadius: 18,
       paddingVertical: 10,
-      paddingHorizontal: 4,
+      paddingHorizontal: 0,   // gestionado por cada panel del FlatList
     },
     semLabel: {
       fontFamily: 'JetBrainsMono-Regular',
