@@ -9,6 +9,7 @@ from users import admin_views as admin_api_views
 from checkins import views as checkin_views
 from workouts import views as workout_views
 from ai_workout import views as ai_views
+from devices.urls import garmin_urlpatterns, apple_health_urlpatterns
 
 
 def health(request):
@@ -115,6 +116,10 @@ urlpatterns = [
     # Competitions
     path('api/competitions/', workout_views.competitions),
     path('api/competitions/<int:pk>/', workout_views.competition_detail),
+
+    # Integraciones de dispositivos
+    path('api/integrations/garmin/',       include(garmin_urlpatterns)),
+    path('api/integrations/apple-health/', include(apple_health_urlpatterns)),
 
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),

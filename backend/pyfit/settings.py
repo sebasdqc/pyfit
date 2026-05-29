@@ -62,6 +62,9 @@ INSTALLED_APPS = [
     'checkins',
     'ai_workout',
     'runs',
+    'devices',
+    # Celery beat schedule almacenado en Django DB
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -209,6 +212,41 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
+# ─── Garmin Connect OAuth 2.0 ─────────────────────────────────────────────────
+GARMIN_CLIENT_ID     = os.environ.get('GARMIN_CLIENT_ID', '')
+GARMIN_CLIENT_SECRET = os.environ.get('GARMIN_CLIENT_SECRET', '')
+GARMIN_OAUTH_BASE_URL = os.environ.get(
+    'GARMIN_OAUTH_BASE_URL',
+    'https://connect.garmin.com',
+)
+GARMIN_API_BASE_URL  = os.environ.get(
+    'GARMIN_API_BASE_URL',
+    'https://apis.garmin.com',
+)
+GARMIN_REDIRECT_URI  = os.environ.get('GARMIN_REDIRECT_URI', 'zyfit://garmin/callback')
+
+# ─── django-cryptography — clave de encriptación de campos ───────────────────
+# Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
+if not FIELD_ENCRYPTION_KEY and not DEBUG:
+    raise ImproperlyConfigured(
+        'FIELD_ENCRYPTION_KEY is required in production to encrypt Garmin tokens. '
+        'Generate one with: python -c "from cryptography.fernet import Fernet; '
+        'print(Fernet.generate_key().decode())"'
+    )
+
+# ─── Celery (broker: Redis) ───────────────────────────────────────────────────
+CELERY_BROKER_URL        = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND    = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT    = ['json']
+CELERY_TASK_SERIALIZER   = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE          = 'UTC'
+# No almacenar resultados de tasks que no los necesitan (reduce Redis memory)
+CELERY_TASK_IGNORE_RESULT = True
+# En desarrollo sin Redis, usar always_eager para ejecutar tasks inline
+CELERY_TASK_ALWAYS_EAGER = DEBUG and not os.environ.get('REDIS_URL')
+
 # ─── Sentry (observabilidad de errores en producción) ─────────────────────────
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
 if SENTRY_DSN:
@@ -340,6 +378,13 @@ UNFOLD = {
                     {'title': 'Check-ins',     'icon': 'mood',           'link': reverse_lazy('admin:checkins_dailycheckin_changelist')},
                     {'title': 'Feedback',      'icon': 'star',           'link': reverse_lazy('admin:workouts_sessionfeedback_changelist')},
                     {'title': 'Competiciones', 'icon': 'emoji_events',   'link': reverse_lazy('admin:workouts_competition_changelist')},
+                ],
+            },
+            {
+                'title':     'Dispositivos',
+                'separator': True,
+                'items': [
+                    {'title': 'Integraciones', 'icon': 'watch', 'link': reverse_lazy('admin:devices_deviceintegration_changelist')},
                 ],
             },
             {

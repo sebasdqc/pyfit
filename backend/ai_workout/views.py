@@ -101,6 +101,143 @@ def calcular_rpe_target(fatiga, estado_animo, hrv):
     return max(4, min(9, rpe))
 
 
+# ─── Device data integration (Garmin + Apple Health) ─────────────────────────
+
+def _sleep_score_to_zyfit(sleep_score: float) -> int:
+    """
+    Mapea un sleep score de dispositivo (0–100) a la escala interna de Zyfit (1–4).
+    Compatible con Garmin y Apple Health (que usa la misma escala 0–100).
+      0–40 → 1  |  41–60 → 2  |  61–80 → 3  |  81–100 → 4
+    """
+    if sleep_score <= 40:
+        return 1
+    if sleep_score <= 60:
+        return 2
+    if sleep_score <= 80:
+        return 3
+    return 4
+
+
+def _best_value(devices: list, field: str):
+    """
+    Devuelve el primer valor no-None del campo `field` de la lista de dispositivos,
+    que ya viene ordenada por last_synced_at desc (el más reciente primero).
+    """
+    for device in devices:
+        val = getattr(device, field, None)
+        if val is not None:
+            return val
+    return None
+
+
+def process_device_data(user, checkin) -> tuple:
+    """
+    Consulta todos los dispositivos conectados (Garmin, Apple Health) con sync
+    en las últimas 24h y devuelve los mejores valores disponibles por métrica.
+
+    Para cada campo toma el valor más reciente entre todos los dispositivos
+    conectados — Garmin y Apple Health pueden coexistir (ej: Apple Watch para
+    HRV/sueño y Garmin para entrenamiento).
+
+    Retorna: (hrv_efectivo, calidad_sueno_efectiva, device_context_str)
+    """
+    from datetime import datetime, timedelta, timezone as dt_timezone
+    try:
+        from devices.models import DeviceIntegration
+        from django.db.models import Avg
+
+        cutoff = datetime.now(dt_timezone.utc) - timedelta(hours=24)
+        devices = list(
+            DeviceIntegration.objects.filter(
+                user=user,
+                device__in=['garmin', 'apple_health'],
+                status='connected',
+                last_synced_at__gte=cutoff,
+            ).order_by('-last_synced_at')   # más reciente primero → prioridad natural
+        )
+
+        if not devices:
+            return checkin.hrv, checkin.calidad_sueno, None
+
+        # Mejor valor disponible por campo (primer no-None de la lista ordenada)
+        hrv          = _best_value(devices, 'hrv')
+        sleep_score  = _best_value(devices, 'sleep_score')
+        resting_hr   = _best_value(devices, 'resting_hr')
+        stress_level = _best_value(devices, 'stress_level')
+        body_battery = _best_value(devices, 'body_battery')
+
+        hrv_efectivo           = hrv if hrv is not None else checkin.hrv
+        calidad_sueno_efectiva = (
+            _sleep_score_to_zyfit(sleep_score)
+            if sleep_score is not None
+            else checkin.calidad_sueno
+        )
+
+        # Etiquetas para el bloque de contexto del LLM
+        device_labels = {
+            'garmin':       'Garmin',
+            'apple_health': 'Apple Health',
+        }
+        sources = ', '.join({device_labels.get(d.device, d.device) for d in devices})
+        context_lines = [f'📡 Datos de dispositivo ({sources} — sync últimas 24h):']
+
+        if sleep_score is not None:
+            context_lines.append(
+                f'  • Sleep Score: {sleep_score:.0f}/100 '
+                f'→ calidad sueño ajustada a {calidad_sueno_efectiva}/4'
+            )
+
+        if hrv is not None:
+            context_lines.append(f'  • HRV nocturno: {hrv:.0f} ms')
+
+        if stress_level is not None:
+            checkin_stress   = float(checkin.nivel_estres or 5) if hasattr(checkin, 'nivel_estres') else 5.0
+            stress_combinado = (stress_level * 0.6) + (checkin_stress * 0.4)
+            context_lines.append(
+                f'  • Estrés fisiológico: {stress_level:.0f}/100 (60%) '
+                f'+ percibido {checkin_stress:.0f} (40%) = combinado {stress_combinado:.0f}'
+            )
+
+        if body_battery is not None:
+            context_lines.append(
+                f'  • Body Battery: {body_battery:.0f}/100 '
+                + ('— carga baja, priorizar recuperación activa' if body_battery < 30
+                   else '— energía suficiente para sesión normal' if body_battery < 60
+                   else '— alta energía disponible')
+            )
+
+        if resting_hr is not None:
+            # Comparar contra promedio 30 días de cualquier dispositivo conectado
+            try:
+                cutoff_30d = datetime.now(dt_timezone.utc) - timedelta(days=30)
+                avg_rhr = DeviceIntegration.objects.filter(
+                    user=user,
+                    device__in=['garmin', 'apple_health'],
+                    resting_hr__isnull=False,
+                    last_synced_at__gte=cutoff_30d,
+                ).aggregate(avg=Avg('resting_hr'))['avg']
+
+                if avg_rhr and resting_hr > avg_rhr + 5:
+                    context_lines.append(
+                        f'  • FC reposo: {resting_hr:.0f} bpm '
+                        f'(+{resting_hr - avg_rhr:.0f} sobre promedio 30d de {avg_rhr:.0f}) '
+                        f'— señal de fatiga sistémica: reducir intensidad'
+                    )
+                else:
+                    context_lines.append(
+                        f'  • FC reposo: {resting_hr:.0f} bpm (dentro del rango habitual)'
+                    )
+            except Exception:
+                context_lines.append(f'  • FC reposo: {resting_hr:.0f} bpm')
+
+        device_context = '\n'.join(context_lines) if len(context_lines) > 1 else None
+        return hrv_efectivo, calidad_sueno_efectiva, device_context
+
+    except Exception as exc:
+        logger.warning('process_device_data failed for user %s: %s', user.id, exc)
+        return checkin.hrv, checkin.calidad_sueno, None
+
+
 # ─── Phase 1 & 2: Exercise pool ───────────────────────────────────────────────
 
 def _get_exercise_pool(user, location, dolor_hoy=''):
@@ -484,6 +621,24 @@ DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
 - Patrones a evitar si existen alternativas: {evitar_txt}{deload_directiva}
 """
 
+    # Consideraciones médicas declaradas en el onboarding — restricción de seguridad.
+    condiciones = ctx.get('condiciones_medicas') or []
+    notas_med   = (ctx.get('notas_medicas') or '').strip()
+    condiciones_txt = ', '.join(condiciones) if condiciones else 'ninguna declarada'
+    if condiciones or notas_med:
+        restriccion_medica = (
+            '\n   - CONDICIONES MÉDICAS DECLARADAS ('
+            + condiciones_txt
+            + (f'; notas: {notas_med}' if notas_med else '')
+            + '): Adapta la intensidad y la selección de ejercicios a estas condiciones. '
+            'Ante hipertensión o cardiopatía evita maniobras de Valsalva, isométricos máximos y RPE ≥ 9; '
+            'ante asma o EPOC modera la densidad y los descansos demasiado cortos; '
+            'ante osteoporosis o hernias discales evita la carga axial máxima y la flexión espinal cargada. '
+            'Prioriza la seguridad sobre la intensidad cuando una condición lo exija.'
+        )
+    else:
+        restriccion_medica = ''
+
     return f"""
 Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
 
@@ -494,9 +649,11 @@ PERFIL COMPLETO DEL ATLETA:
 - Peso: {f"{ctx['peso']} kg" if ctx['peso'] else 'no especificado'}
 - Altura: {f"{ctx['altura']} cm" if ctx['altura'] else 'no especificada'}
 - Objetivo principal: {ctx['objetivo']}
-- Nivel de experiencia: {ctx['nivel']}
+- Nivel de experiencia: {ctx['nivel']}{f" (nivel técnico {ctx['nivel_experiencia']}/5)" if ctx.get('nivel_experiencia') else ''}
 - Experiencia deportiva previa: {ctx['experiencia_deportiva'] or 'ninguna especificada'}
 - Lesiones o limitaciones: {ctx['lesiones'] or 'ninguna'}
+- Condiciones médicas declaradas: {', '.join(ctx['condiciones_medicas']) if ctx.get('condiciones_medicas') else 'ninguna'}
+- Notas médicas adicionales: {ctx.get('notas_medicas') or 'ninguna'}
 - Estilo de entrenamiento preferido: {ctx['estilo_entrenamiento'] or 'no especificado'}
 - Ejercicios favoritos: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
 - Ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
@@ -513,13 +670,14 @@ MARCADORES DE RENDIMIENTO (1RM):
 
 ESTADO HOY:
 - Estado de ánimo: {ctx['estado_animo']}/5
-- Horas de sueño: {ctx['calidad_sueno']}h
+- Calidad de sueño: {ctx['calidad_sueno']}{'h' if isinstance(ctx['calidad_sueno'], (int, float)) and ctx['calidad_sueno'] > 4 else '/4'}
 - HRV: {ctx['hrv'] or 'no disponible'}
 - Notas del usuario: {ctx['notas'] or 'ninguna'}
 - Dolor o molestia HOY: {ctx['dolor_hoy'] or 'ninguno reportado'}
 - Foco de entrenamiento solicitado: {', '.join(ctx['foco_entrenamiento']) if ctx['foco_entrenamiento'] else 'libre — decide tú según el contexto'}
 - Fatiga acumulada últimas 72h: {ctx['fatiga']}
 - RPE objetivo calculado: {ctx['rpe_target']}/10
+{(chr(10) + ctx['garmin_context']) if ctx.get('garmin_context') else ''}
 
 SESIÓN DE HOY:
 - Ubicación: {ctx['ubicacion_nombre']} ({ctx['ubicacion_tipo']})
@@ -577,6 +735,7 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
    - USA EXCLUSIVAMENTE los implementos disponibles: {', '.join(ctx['implementos']) if ctx['implementos'] else 'peso corporal'}
    - NUNCA incluyas ejercicios que requieran implementos no disponibles
    - Prioriza ejercicios multiarticulares (mayor estímulo hormonal y neuromuscular)
+   - Ajusta la complejidad técnica al nivel del atleta: a menor nivel de experiencia, patrones más simples y estables; a mayor nivel, mayor demanda técnica y coordinativa permitida
    - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión
    - Respeta ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
    - Considera ejercicios favoritos cuando sea apropiado: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
@@ -610,7 +769,7 @@ INSTRUCCIONES FINALES:
    - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
    - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
    - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.
-   - NO superes {max_sets} sets en el bloque principal.
+   - NO superes {max_sets} sets en el bloque principal.{restriccion_medica}
 1. Genera UNA sesión completa para HOY, no un plan semanal
 2. Cada ejercicio debe ser ejecutable con los implementos disponibles — verifica esto antes de incluirlo
 3. La nota del entrenador DEBE citar al menos 2 principios científicos específicos explicando POR QUÉ la sesión está diseñada así hoy
@@ -688,7 +847,11 @@ def generate_session(request):
 
     sesiones_recientes = user.sessions.filter(created_at__date__gte=hace_14_dias)
     fatiga = calcular_fatiga(sesiones_recientes)
-    rpe_target = calcular_rpe_target(fatiga, checkin.estado_animo, checkin.hrv)
+
+    # ── Datos de dispositivo (Garmin / Apple Health) ──────────────────────────
+    checkin_hrv, calidad_sueno_efectiva, device_context = process_device_data(user, checkin)
+
+    rpe_target = calcular_rpe_target(fatiga, checkin.estado_animo, checkin_hrv)
 
     competicion = user.competitions.filter(
         fecha__gte=hoy,
@@ -735,7 +898,10 @@ def generate_session(request):
         'nombre': perfil.nombre,
         'objetivo': perfil.objetivo or 'salud general',
         'nivel': perfil.nivel,
+        'nivel_experiencia': perfil.nivel_experiencia,
         'lesiones': perfil.lesiones,
+        'condiciones_medicas': perfil.condiciones_medicas or [],
+        'notas_medicas': perfil.notas_medicas or '',
         'experiencia_deportiva': perfil.experiencia_deportiva,
         'edad': perfil.edad,
         'sexo': perfil.sexo,
@@ -753,9 +919,10 @@ def generate_session(request):
         'rm_press_banca': perfil.rm_press_banca,
         'rm_press_hombro': perfil.rm_press_hombro,
         'estado_animo': checkin.estado_animo,
-        'calidad_sueno': checkin.calidad_sueno,
-        'hrv': checkin.hrv,
+        'calidad_sueno': calidad_sueno_efectiva,
+        'hrv': checkin_hrv,
         'notas': checkin.notas,
+        'garmin_context': device_context,
         'fatiga': fatiga,
         'rpe_target': rpe_target,
         'duracion': checkin.duracion_disponible,
@@ -823,10 +990,10 @@ def generate_session(request):
         )
         _persist_session_exercises(sesion, sesion_generada)
 
-    # Invalidar caché del insight del entrenador para regenerarlo con la nueva sesión
-    from workouts.models import DailyCoachInsight
-    from datetime import date as _date
-    DailyCoachInsight.objects.filter(user=user, fecha=_date.today()).delete()
+    # Invalidar caché del insight y del saludo para regenerarlos con la nueva sesión
+    from workouts.models import DailyCoachInsight, DailySaludo
+    DailyCoachInsight.objects.filter(user=user, fecha=hoy).delete()
+    DailySaludo.objects.filter(user=user, fecha=hoy).delete()
 
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
 
@@ -1066,7 +1233,10 @@ def session_ajustar(request, pk):
         'nombre':               perfil.nombre,
         'objetivo':             perfil.objetivo or 'salud general',
         'nivel':                perfil.nivel,
+        'nivel_experiencia':    perfil.nivel_experiencia,
         'lesiones':             perfil.lesiones,
+        'condiciones_medicas':  perfil.condiciones_medicas or [],
+        'notas_medicas':        perfil.notas_medicas or '',
         'experiencia_deportiva': perfil.experiencia_deportiva,
         'edad':                 perfil.edad,
         'sexo':                 perfil.sexo,
