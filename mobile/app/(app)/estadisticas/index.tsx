@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Animated,
+  Easing,
   useWindowDimensions,
   Modal,
   TextInput,
@@ -576,6 +578,64 @@ function EjercicioTopList({
   )
 }
 
+// ─── Competition Cell — celda con brillo en loop ─────────────────────────────
+
+function CompetitionCell({
+  cellSize,
+  dayNum,
+  onPress,
+}: {
+  cellSize: number
+  dayNum: number
+  onPress: () => void
+}) {
+  const glowAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [])
+
+  const fontSize = Math.max(7, Math.floor(cellSize * 0.38))
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{ width: cellSize, height: cellSize + 8, alignItems: 'center' }}
+    >
+      <View style={{ width: cellSize, height: cellSize, alignItems: 'center', justifyContent: 'center' }}>
+        {/* Halo pulsante */}
+        <Animated.View style={{
+          position: 'absolute',
+          width: cellSize,
+          height: cellSize,
+          borderRadius: 6,
+          backgroundColor: '#ffaa32',
+          opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] }),
+          transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) }],
+        }} />
+        {/* Celda principal */}
+        <View style={{
+          width: cellSize, height: cellSize, borderRadius: 4,
+          backgroundColor: '#ffaa32',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize, color: '#000', lineHeight: cellSize }}>
+            {dayNum}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 // ─── Heat Map Block ───────────────────────────────────────────────────────────
 
 function HeatMapBlock({
@@ -720,6 +780,18 @@ function HeatMapBlock({
                             backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
                             alignItems: 'center', justifyContent: 'center',
                           }
+
+                    // Competición: celda con brillo en loop
+                    if (eventTipo === 'competicion') {
+                      return (
+                        <CompetitionCell
+                          key={ci}
+                          cellSize={cellSize}
+                          dayNum={dayNum}
+                          onPress={() => onDayPress(cell.fecha)}
+                        />
+                      )
+                    }
 
                     return (
                       <TouchableOpacity
