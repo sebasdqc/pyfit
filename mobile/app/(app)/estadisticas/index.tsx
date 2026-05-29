@@ -1323,8 +1323,8 @@ function makeStyles(c: Colors) {
 
     // Block labels
     blockLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted,
-      letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: c.inkPrimary,
+      letterSpacing: -0.4, textTransform: 'uppercase', marginBottom: 12,
     },
 
     // Card

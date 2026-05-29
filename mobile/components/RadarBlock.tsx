@@ -164,18 +164,16 @@ export default function RadarBlock({ metrics }: { metrics: RadarMetric[] }) {
               strokeWidth={1.5}
             />
 
-            {/* Data points */}
+            {/* Data points con brillo */}
             {currPoints.map((pt, i) => (
-              <Circle
-                key={i}
-                cx={pt.x}
-                cy={pt.y}
-                r={hovered === i ? 6 : 4}
-                fill={hovered === i ? colors.accent : colors.bg}
-                stroke={colors.accent}
-                strokeWidth={1.5}
-                onPress={() => setHovered(hovered === i ? null : i)}
-              />
+              <G key={i} onPress={() => setHovered(hovered === i ? null : i)}>
+                {/* Halo exterior */}
+                <Circle cx={pt.x} cy={pt.y} r={hovered === i ? 16 : 12} fill={`${colors.accent}14`} />
+                {/* Halo medio */}
+                <Circle cx={pt.x} cy={pt.y} r={hovered === i ? 10 : 7}  fill={`${colors.accent}2e`} />
+                {/* Punto sólido */}
+                <Circle cx={pt.x} cy={pt.y} r={hovered === i ? 5.5 : 4} fill={colors.accent} />
+              </G>
             ))}
 
             {/* Value tooltip on hover */}
@@ -282,10 +280,10 @@ export function RadarBlockEmpty() {
 function makeStyles(c: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
     blockLabel: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      color: c.inkMuted,
-      letterSpacing: 2,
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 20,
+      color: c.inkPrimary,
+      letterSpacing: -0.4,
       textTransform: 'uppercase',
       marginBottom: 12,
     },
