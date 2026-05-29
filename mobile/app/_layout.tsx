@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { Platform, View } from 'react-native'
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { I18nProvider } from '../lib/i18n'
 import { initSentry, withSentryWrap } from '../lib/sentry'
+import AppleHealthService from '../lib/appleHealth'
+import { getAccessToken } from '../lib/storage'
 // El task de background GPS DEBE importarse aquí (nivel de módulo del entry point)
 // para que TaskManager.defineTask() quede registrado antes de cualquier render,
 // incluso si el usuario nunca abre la pantalla de Run.
@@ -28,6 +30,30 @@ import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument
 // errores tempranos. Es seguro llamar aunque la DSN esté vacía (no-op).
 initSentry()
 
+// ── Apple Health: sync al abrir la app si es un día nuevo ───────────────────
+// Corre en background (fire-and-forget) para no bloquear el arranque.
+// Compara la fecha del último sync almacenada en AsyncStorage con la fecha
+// actual — si son distintas, sincroniza una vez y actualiza el registro.
+async function maybeBackgroundSyncAppleHealth() {
+  if (Platform.OS !== 'ios') return
+  try {
+    const token = await getAccessToken()
+    if (!token) return                              // usuario no logueado
+    const available = await AppleHealthService.isAvailable()
+    if (!available) return
+    // Leer última fecha de sync del backend para no sincronizar varias veces
+    const { apiGet } = await import('../lib/api')
+    const state = await apiGet('/api/integrations/apple-health/status/')
+    if (state.status !== 'connected') return
+    const lastSync = state.last_synced_at ? new Date(state.last_synced_at) : null
+    const today    = new Date().toDateString()
+    if (lastSync && lastSync.toDateString() === today) return  // ya sincronizó hoy
+    await AppleHealthService.syncData()
+  } catch {
+    // Falla en silencio — el sync es best-effort y no debe crashear el arranque
+  }
+}
+
 SplashScreen.preventAutoHideAsync()
 
 function ThemedApp() {
@@ -42,6 +68,11 @@ function ThemedApp() {
 
 function RootLayout() {
   const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    // Sync Apple Health en background al arrancar — no bloquea UI
+    maybeBackgroundSyncAppleHealth()
+  }, [])
 
   useEffect(() => {
     async function prepare() {
