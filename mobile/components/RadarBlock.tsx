@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
   StyleSheet,
 } from 'react-native'
-import Svg, { G, Polygon, Line, Circle, Text as SvgText } from 'react-native-svg'
+import Svg, { G, Polygon, Line, Circle, Rect, Text as SvgText } from 'react-native-svg'
 import { scaleLinear } from '@visx/scale'
 import { useTheme } from '../lib/theme'
 
@@ -196,24 +196,49 @@ export default function RadarBlock({ metrics }: { metrics: RadarMetric[] }) {
               )
             })()}
 
-            {/* Axis labels */}
+            {/* Axis labels — tapeables, subrayado sutil */}
             {labelPoints.map((pt, i) => {
               const isHovered = hovered === i
-              const anchor =
-                Math.abs(pt.x) < 10 ? 'middle' : pt.x > 0 ? 'start' : 'end'
+              const anchor = Math.abs(pt.x) < 10 ? 'middle' : pt.x > 0 ? 'start' : 'end'
+              const label  = metrics[i].label.toUpperCase()
+              // Ancho aproximado del texto (JetBrains Mono 9px ≈ 5.4px/char)
+              const approxW = label.length * 5.4
+              const ulX1 = anchor === 'middle' ? pt.x - approxW / 2
+                         : anchor === 'start'  ? pt.x
+                         : pt.x - approxW
+              const ulX2 = anchor === 'middle' ? pt.x + approxW / 2
+                         : anchor === 'start'  ? pt.x + approxW
+                         : pt.x
+              const textY  = pt.y + 4
+              const ulY    = textY + 3   // justo bajo la línea base
+
               return (
-                <SvgText
-                  key={i}
-                  x={pt.x}
-                  y={pt.y + 4}
-                  fontSize={9}
-                  fontFamily={isHovered ? 'JetBrainsMono-Medium' : 'JetBrainsMono-Regular'}
-                  fontWeight={isHovered ? '600' : '400'}
-                  fill={isHovered ? colors.inkPrimary : colors.inkMuted}
-                  textAnchor={anchor}
-                >
-                  {metrics[i].label.toUpperCase()}
-                </SvgText>
+                <G key={i} onPress={() => setHovered(hovered === i ? null : i)}>
+                  {/* Hit area transparente (mejora tap en zona pequeña) */}
+                  <Rect
+                    x={ulX1 - 4} y={textY - 10}
+                    width={approxW + 8} height={20}
+                    fill="transparent"
+                  />
+                  <SvgText
+                    x={pt.x}
+                    y={textY}
+                    fontSize={9}
+                    fontFamily={isHovered ? 'JetBrainsMono-Medium' : 'JetBrainsMono-Regular'}
+                    fontWeight={isHovered ? '600' : '400'}
+                    fill={isHovered ? colors.inkPrimary : colors.inkMuted}
+                    textAnchor={anchor}
+                  >
+                    {label}
+                  </SvgText>
+                  {/* Subrayado sutil */}
+                  <Line
+                    x1={ulX1} y1={ulY}
+                    x2={ulX2} y2={ulY}
+                    stroke={isHovered ? colors.accent : `${colors.accent}45`}
+                    strokeWidth={isHovered ? 1 : 0.7}
+                  />
+                </G>
               )
             })}
           </G>
