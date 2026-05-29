@@ -1,6 +1,6 @@
 export const DARK_COLORS = {
-  bg: '#000000',
-  sheetBg: '#0a0a0f',
+  bg: '#0d0d0d',                        // near-black monochromatic (~95% dark)
+  sheetBg: '#000000',                   // pure black — alto contraste
   white: '#ffffff',
   accent: '#4f8cff',
   accentLight: '#7ab6ff',
@@ -15,14 +15,14 @@ export const DARK_COLORS = {
   inkFaint: 'rgba(255,255,255,0.15)',
   borderDefault: 'rgba(255,255,255,0.08)',
   borderBright: 'rgba(255,255,255,0.15)',
-  cardBg: 'rgba(255,255,255,0.05)',
-  glassBg: 'rgba(255,255,255,0.07)',
-  gradientTop: 'rgba(37,99,255,0.25)',
+  cardBg: '#000000',                    // card alto contraste — negro puro
+  glassBg: 'rgba(255,255,255,0.06)',
+  gradientTop: 'rgba(255,255,255,0.03)', // sutil, sin tinte azul
 }
 
 export const LIGHT_COLORS = {
-  bg: '#f2f4f9',
-  sheetBg: '#ffffff',
+  bg: '#f5f2ec',                        // crema — ~5% más oscuro/cálido que blanco
+  sheetBg: '#ffffff',                   // pure white — alto contraste
   white: '#ffffff',
   accent: '#2563ff',
   accentLight: '#4f8cff',
@@ -37,9 +37,9 @@ export const LIGHT_COLORS = {
   inkFaint: 'rgba(13,17,23,0.22)',
   borderDefault: 'rgba(13,17,23,0.09)',
   borderBright: 'rgba(13,17,23,0.16)',
-  cardBg: 'rgba(13,17,23,0.05)',
+  cardBg: '#ffffff',                    // card alto contraste — blanco puro
   glassBg: 'rgba(13,17,23,0.04)',
-  gradientTop: 'rgba(37,99,255,0.18)',
+  gradientTop: 'rgba(0,0,0,0.03)',      // sutil, sin tinte azul
 }
 
 export const PINK_COLORS = {
