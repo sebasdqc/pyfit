@@ -9,7 +9,7 @@ import {
   Animated,
   Easing,
   LayoutAnimation,
-  PanResponder,
+  FlatList,
   useWindowDimensions,
   Platform,
   UIManager,
@@ -720,59 +720,24 @@ function TuSemanaCard({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { width: screenW } = useWindowDimensions()
-  // ScrollView content has paddingHorizontal:20 each side
   const cardW = screenW - 40
-
-  const [selectedDate,  setSelectedDate]  = useState<string | null>(null)
-  const [displayOffset, setDisplayOffset] = useState(0)
 
   const today = useMemo(() => localDateStr(), [])
 
-  // Three consecutive weeks around displayOffset
-  const prevMonday = useMemo(() => getWeekMonday(displayOffset - 1), [displayOffset])
-  const currMonday = useMemo(() => getWeekMonday(displayOffset),     [displayOffset])
-  const nextMonday = useMemo(() => getWeekMonday(displayOffset + 1), [displayOffset])
-  const prevDates  = useMemo(() => getWeekDates(prevMonday), [prevMonday])
-  const currDates  = useMemo(() => getWeekDates(currMonday), [currMonday])
-  const nextDates  = useMemo(() => getWeekDates(nextMonday), [nextMonday])
+  // 53 semanas virtuales: −26 a +26 desde hoy, sin necesidad de resetear scroll
+  const RANGE  = 26
+  const CENTER = RANGE
+  const weekOffsets = useMemo(
+    () => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i - RANGE),
+    [],
+  )
 
-  // Deselect day when navigating weeks
-  useEffect(() => { setSelectedDate(null) }, [displayOffset])
+  const [currentIdx,   setCurrentIdx]   = useState(CENTER)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const flatRef = useRef<any>(null)
 
-  // ── Fluid swipe ──────────────────────────────────────────────────────────
-  // slideX: drag delta (resets to 0 after each completed swipe)
-  // baseX : always -cardW so the middle panel starts centered
-  const slideX   = useRef(new Animated.Value(0)).current
-  const baseX    = useRef(new Animated.Value(-cardW)).current
-  const cardWRef = useRef(cardW)
-  cardWRef.current = cardW
-  useEffect(() => { baseX.setValue(-cardW) }, [cardW])
-
-  const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gs) =>
-      Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.8,
-    onPanResponderMove: (_, gs) => {
-      slideX.setValue(gs.dx)
-    },
-    onPanResponderRelease: (_, gs) => {
-      const cw  = cardWRef.current
-      const thr = cw * 0.28
-      if (gs.dx < -thr) {
-        Animated.timing(slideX, { toValue: -cw, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true })
-          .start(() => { setDisplayOffset(p => Math.min(p + 1, 2)); slideX.setValue(0) })
-      } else if (gs.dx > thr) {
-        Animated.timing(slideX, { toValue: cw, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true })
-          .start(() => { setDisplayOffset(p => p - 1); slideX.setValue(0) })
-      } else {
-        Animated.spring(slideX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 18 }).start()
-      }
-    },
-    onPanResponderTerminate: () => {
-      Animated.spring(slideX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 18 }).start()
-    },
-  })).current
-
-  const containerX = Animated.add(baseX, slideX)
+  const currentOffset = weekOffsets[currentIdx]
+  useEffect(() => { setSelectedDate(null) }, [currentIdx])
 
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, FullSession[]>()
@@ -783,8 +748,9 @@ function TuSemanaCard({
     return map
   }, [sessions])
 
-  // Footer: solo usa la semana comprometida (displayOffset). Se actualiza
-  // únicamente al terminar la animación de swipe, no durante el arrastre.
+  // Footer — se actualiza cuando onMomentumScrollEnd confirma la página nueva
+  const currMonday = useMemo(() => getWeekMonday(currentOffset), [currentOffset])
+  const currDates  = useMemo(() => getWeekDates(currMonday),     [currMonday])
   const sesionesEstaSemana = useMemo(() =>
     currDates.reduce((t, iso) => t + (sessionsByDate.get(iso)?.length ?? 0), 0),
     [currDates, sessionsByDate],
@@ -802,66 +768,86 @@ function TuSemanaCard({
     return null
   }, [sesionesEstaSemana, diasDescansoSemana])
 
-  function handleDayPress(iso: string, state: DayState) {
+  const handleDayPress = useCallback((iso: string, state: DayState) => {
     if (state !== 'past-done') return
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     setSelectedDate(prev => (prev === iso ? null : iso))
-  }
+  }, [])
   const detailSessions = selectedDate ? (sessionsByDate.get(selectedDate) ?? []) : []
 
-  function renderWeekPanel(dates: string[], panelOffset: number) {
-    return (
-      <View key={panelOffset} style={{ width: cardW }}>
-        <View style={styles.semDaysRow}>
-          {dates.map((iso, idx) => {
-            const state     = getDayState(iso, today, sessionsByDate, semanaDetalle, panelOffset)
-            const count     = sessionsByDate.get(iso)?.length ?? 0
-            const isSelected = selectedDate === iso
-            const dayNumber = parseInt(iso.slice(8, 10), 10)
-            return (
-              <TouchableOpacity
-                key={iso}
-                style={styles.semDayCol}
-                onPress={() => handleDayPress(iso, state)}
-                disabled={state !== 'past-done'}
-                activeOpacity={0.75}
-              >
-                <View style={{ position: 'relative' }}>
-                  <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} />
-                  {state === 'past-done' && count >= 2 && (
-                    <View style={styles.semBadge}>
-                      <Text style={styles.semBadgeText}>{count}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.semCheckArea}>
-                  {state === 'past-done' && <Text style={styles.semCheckMark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({ length: cardW, offset: cardW * index, index }),
+    [cardW],
+  )
+
+  const renderItem = useCallback(
+    ({ item: weekOffset }: { item: number }) => {
+      const monday = getWeekMonday(weekOffset)
+      const dates  = getWeekDates(monday)
+      return (
+        <View style={{ width: cardW }}>
+          <View style={styles.semDaysRow}>
+            {dates.map((iso, idx) => {
+              const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
+              const count      = sessionsByDate.get(iso)?.length ?? 0
+              const isSelected = selectedDate === iso
+              const dayNumber  = parseInt(iso.slice(8, 10), 10)
+              return (
+                <TouchableOpacity
+                  key={iso}
+                  style={styles.semDayCol}
+                  onPress={() => handleDayPress(iso, state)}
+                  disabled={state !== 'past-done'}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ position: 'relative' }}>
+                    <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} />
+                    {state === 'past-done' && count >= 2 && (
+                      <View style={styles.semBadge}>
+                        <Text style={styles.semBadgeText}>{count}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.semCheckArea}>
+                    {state === 'past-done' && <Text style={styles.semCheckMark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         </View>
-      </View>
-    )
-  }
+      )
+    },
+    [cardW, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress],
+  )
 
   return (
     <View style={styles.semCard}>
       <View style={[styles.semDaysCard, { overflow: 'hidden' }]}>
-        {/* Tres paneles: semana anterior | actual | siguiente */}
-        <Animated.View
-          style={{ flexDirection: 'row', width: cardW * 3, transform: [{ translateX: containerX }] }}
-          {...panResponder.panHandlers}
-        >
-          {renderWeekPanel(prevDates, displayOffset - 1)}
-          {renderWeekPanel(currDates, displayOffset)}
-          {renderWeekPanel(nextDates, displayOffset + 1)}
-        </Animated.View>
+        <FlatList
+          ref={flatRef}
+          data={weekOffsets}
+          keyExtractor={String}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={CENTER}
+          getItemLayout={getItemLayout}
+          renderItem={renderItem}
+          extraData={selectedDate}
+          onMomentumScrollEnd={e => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / cardW)
+            setCurrentIdx(Math.max(0, Math.min(weekOffsets.length - 1, idx)))
+          }}
+          nestedScrollEnabled
+          bounces={false}
+          decelerationRate="fast"
+        />
 
-        {/* Footer — se actualiza solo al completar el swipe */}
+        {/* Footer — actualiza solo cuando la página queda centrada */}
         <View style={styles.semFooter}>
           <Text style={styles.semFooterText}>
-            {displayOffset !== 0 ? (
+            {currentOffset !== 0 ? (
               <>
                 <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
                 <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'}  ·  </Text>
