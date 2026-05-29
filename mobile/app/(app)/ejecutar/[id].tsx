@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Linking,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import { router, useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
@@ -344,43 +348,109 @@ function CircularTimer({ seconds, total, color }: { seconds: number; total: numb
   const strokeWidth = 10
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
-  const progress = total > 0 ? seconds / total : 0
-  const offset = circumference - progress * circumference
+
+  // Animated value for smooth progress (SVG props require useNativeDriver:false)
+  const animOffset = useRef(new Animated.Value(circumference)).current
+  const firstRender = useRef(true)
+
+  useEffect(() => {
+    const progress = total > 0 ? Math.max(0, seconds) / total : 0
+    const target = circumference - progress * circumference
+    if (firstRender.current) {
+      animOffset.setValue(target)
+      firstRender.current = false
+      return
+    }
+    Animated.timing(animOffset, {
+      toValue: target, duration: 1000,
+      easing: Easing.linear, useNativeDriver: false,
+    }).start()
+  }, [seconds])
+
+  const isOvertime = seconds <= 0
+  const displayText = isOvertime ? `-${Math.abs(seconds)}` : formatTime(seconds)
+  const ringColor  = isOvertime ? colors.red : color
+  const textColor  = isOvertime ? colors.red : colors.inkPrimary
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
       <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
-        {/* Track */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={colors.borderDefault}
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
+        <Circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={colors.borderDefault} strokeWidth={strokeWidth} />
+        <AnimatedCircle
+          cx={size/2} cy={size/2} r={radius} fill="none"
+          stroke={ringColor} strokeWidth={strokeWidth}
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
+          strokeDashoffset={animOffset} strokeLinecap="round"
         />
       </Svg>
-      {/* Center text - rotated back so it reads normally */}
       <View style={{ position: 'absolute', alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 36, color: colors.inkPrimary }}>
-          {formatTime(seconds)}
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 36, color: textColor }}>
+          {displayText}
         </Text>
         <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkMuted, letterSpacing: 2, textTransform: 'uppercase' }}>
-          {t('ejecutar_rest_label')}
+          {isOvertime ? 'TIEMPO EXTRA' : t('ejecutar_rest_label')}
         </Text>
       </View>
+    </View>
+  )
+}
+
+// ─── Slider Button (descanso) ─────────────────────────────────────────────────
+
+function SliderButton({ onComplete, label, color }: { onComplete: () => void; label: string; color: string }) {
+  const pan       = useRef(new Animated.Value(0)).current
+  const trackWRef = useRef(0)
+  const [trackW, setTrackW] = useState(0)
+  const doneRef   = useRef(false)
+  const HANDLE = 60, PAD = 4
+
+  const panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => !doneRef.current,
+    onMoveShouldSetPanResponder:  (_, gs) => !doneRef.current && Math.abs(gs.dx) > 4,
+    onPanResponderMove: (_, gs) => {
+      if (doneRef.current) return
+      const max = trackWRef.current - HANDLE - PAD * 2
+      if (max <= 0) return
+      pan.setValue(Math.max(0, Math.min(gs.dx, max)))
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (doneRef.current) return
+      const max = trackWRef.current - HANDLE - PAD * 2
+      if (max <= 0) return
+      const x = Math.max(0, Math.min(gs.dx, max))
+      if (x >= max * 0.72) {
+        doneRef.current = true
+        Animated.timing(pan, { toValue: max, duration: 120, easing: Easing.out(Easing.ease), useNativeDriver: true })
+          .start(() => onComplete())
+      } else {
+        Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 150, friction: 10 }).start()
+      }
+    },
+  })).current
+
+  const labelOpacity = pan.interpolate({ inputRange: [0, 140], outputRange: [1, 0], extrapolate: 'clamp' })
+
+  return (
+    <View
+      style={{ height: 64, borderRadius: 32, backgroundColor: `${color}18`, borderWidth: 1.5, borderColor: `${color}45`, overflow: 'hidden', justifyContent: 'center' }}
+      onLayout={e => { const w = e.nativeEvent.layout.width; trackWRef.current = w; setTrackW(w) }}
+    >
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', opacity: labelOpacity }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color, letterSpacing: -0.2 }}>{label}</Text>
+      </Animated.View>
+      {trackW > 0 && (
+        <Animated.View
+          style={{
+            position: 'absolute', top: PAD, left: PAD,
+            width: HANDLE, height: 64 - PAD * 2, borderRadius: 32 - PAD,
+            backgroundColor: color, alignItems: 'center', justifyContent: 'center',
+            transform: [{ translateX: pan }],
+          }}
+          {...panResponder.panHandlers}
+        >
+          <Text style={{ color: '#000', fontSize: 22, lineHeight: 26 }}>›</Text>
+        </Animated.View>
+      )}
     </View>
   )
 }
@@ -551,14 +621,9 @@ export default function EjecutarScreen() {
   useEffect(() => {
     if (!timerActivo) return
     intervalRef.current = setInterval(() => {
-      setTimerSegundos(prev => {
-        if (prev <= 1) {
-          setTimerActivo(false)
-          advanceFromRestRef.current()
-          return 0
-        }
-        return prev - 1
-      })
+      // Cuenta hacia atrás y continúa en negativo (tiempo extra).
+      // El avance ocurre solo cuando el usuario desliza el slider.
+      setTimerSegundos(prev => prev - 1)
     }, 1000)
     return () => {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
@@ -767,7 +832,7 @@ export default function EjecutarScreen() {
         {mode === 'ejercicio' ? (
           // ── Exercise mode ─────────────────────────────────────────────────
           <View style={styles.ejercicioContainer}>
-            {/* Exercise name */}
+            {/* Exercise name — large and centered */}
             <Text style={styles.ejercicioNombre}>{currentEj.nombre}</Text>
 
             {/* Demo media */}
@@ -777,7 +842,7 @@ export default function EjecutarScreen() {
               faseColor={faseStyle.color}
             />
 
-            {/* Technical note */}
+            {/* Technical note (instrucciones) */}
             {currentEj.notas ? (
               <View style={styles.notaCard}>
                 <Text style={styles.notaLabel}>{t('ejecutar_tech_note')}</Text>
@@ -785,17 +850,18 @@ export default function EjecutarScreen() {
               </View>
             ) : null}
 
-            {/* Series info card */}
+            {/* SERIE X/X — prominente entre las instrucciones y el card */}
+            <View style={styles.serieXofXWrap}>
+              <Text style={[styles.serieXofXNum, { color: faseStyle.color }]}>
+                {Math.min(seriesDone + 1, currentEj.series)}
+                <Text style={styles.serieXofXSlash}> / </Text>
+                <Text style={styles.serieXofXTotal}>{currentEj.series}</Text>
+              </Text>
+              <Text style={styles.serieXofXLabel}>SERIE</Text>
+            </View>
+
+            {/* Series info card — solo stats, sin encabezado */}
             <View style={[styles.serieCard, { borderColor: faseStyle.color + '40' }]}>
-              <View style={styles.serieHeader}>
-                <Text style={styles.serieTitle}>
-                  Serie{' '}
-                  <Text style={{ color: faseStyle.color }}>
-                    {Math.min(seriesDone + 1, currentEj.series)}
-                  </Text>
-                  /{currentEj.series}
-                </Text>
-              </View>
               <View style={styles.serieStats}>
                 <View style={styles.serieStat}>
                   <Text style={styles.serieStatValue}>{currentEj.repeticiones}</Text>
@@ -840,9 +906,7 @@ export default function EjecutarScreen() {
                 style={[styles.completarBtn, { backgroundColor: faseStyle.color }]}
                 onPress={completarSerie}
               >
-                <Text style={styles.completarBtnText}>
-                  {t('ejecutar_complete_serie')} {seriesDone + 1}/{currentEj.series}
-                </Text>
+                <Text style={styles.completarBtnText}>LISTA LA SERIE</Text>
               </TouchableOpacity>
             ) : (
               <View>
@@ -944,9 +1008,13 @@ export default function EjecutarScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.skipBtn} onPress={skipDescanso}>
-              <Text style={styles.skipBtnText}>{t('ejecutar_skip_rest')}</Text>
-            </TouchableOpacity>
+            <View style={{ width: '100%' }}>
+              <SliderButton
+                onComplete={skipDescanso}
+                label="Listo, sigamos"
+                color={faseStyle.color}
+              />
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1070,10 +1138,39 @@ function makeStyles(c: Colors) {
     },
     ejercicioNombre: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 26,
+      fontSize: 32,
       color: c.inkPrimary,
-      letterSpacing: -0.5,
-      lineHeight: 32,
+      letterSpacing: -0.8,
+      lineHeight: 38,
+      textAlign: 'center',
+    },
+    serieXofXWrap: {
+      alignItems: 'center',
+      paddingVertical: 6,
+    },
+    serieXofXNum: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 52,
+      letterSpacing: -2,
+      lineHeight: 56,
+    },
+    serieXofXSlash: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 36,
+      letterSpacing: -1,
+    },
+    serieXofXTotal: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 36,
+      letterSpacing: -1,
+    },
+    serieXofXLabel: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      color: c.inkMuted,
+      letterSpacing: 3,
+      textTransform: 'uppercase',
+      marginTop: 2,
     },
     notaCard: {
       backgroundColor: c.cardBg,
