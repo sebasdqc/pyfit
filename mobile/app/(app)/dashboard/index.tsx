@@ -761,7 +761,9 @@ function TuSemanaCard({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { width: screenW } = useWindowDimensions()
-  const cardW = screenW - 40
+  // Usamos onLayout para medir el ancho exacto del container del FlatList.
+  // Valor inicial aproximado para no renderizar en blanco el primer frame.
+  const [flatWidth, setFlatWidth] = useState(screenW - 40)
 
   const today = useMemo(() => localDateStr(), [])
 
@@ -833,16 +835,23 @@ function TuSemanaCard({
   const detailSessions = selectedDate ? (sessionsByDate.get(selectedDate) ?? []) : []
 
   const getItemLayout = useCallback(
-    (_: any, index: number) => ({ length: cardW, offset: cardW * index, index }),
-    [cardW],
+    (_: any, index: number) => ({ length: flatWidth, offset: flatWidth * index, index }),
+    [flatWidth],
   )
+
+  // Al medir el ancho exacto, re-posiciona en la semana actual
+  useEffect(() => {
+    if (flatWidth > 0) {
+      flatRef.current?.scrollToIndex({ index: currentIdx, animated: false })
+    }
+  }, [flatWidth])
 
   const renderItem = useCallback(
     ({ item: weekOffset }: { item: number }) => {
       const monday = getWeekMonday(weekOffset)
       const dates  = getWeekDates(monday)
       return (
-        <View style={{ width: cardW, paddingHorizontal: 4 }}>
+        <View style={{ width: flatWidth, paddingHorizontal: 4 }}>
           <View style={styles.semDaysRow}>
             {dates.map((iso, idx) => {
               const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
@@ -876,30 +885,38 @@ function TuSemanaCard({
         </View>
       )
     },
-    [cardW, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress, eventMap],
+    [flatWidth, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress, eventMap],
   )
 
   return (
     <View style={styles.semCard}>
-      <View style={[styles.semDaysCard, { overflow: 'hidden' }]}>
+      <View
+        style={[styles.semDaysCard, { overflow: 'hidden' }]}
+        onLayout={e => {
+          const w = e.nativeEvent.layout.width
+          if (w > 0 && w !== flatWidth) setFlatWidth(w)
+        }}
+      >
         <FlatList
           ref={flatRef}
           data={weekOffsets}
           keyExtractor={String}
           horizontal
-          pagingEnabled
           showsHorizontalScrollIndicator={false}
+          snapToInterval={flatWidth}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          disableIntervalMomentum
           initialScrollIndex={CENTER}
           getItemLayout={getItemLayout}
           renderItem={renderItem}
           extraData={selectedDate}
           onMomentumScrollEnd={e => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / cardW)
+            const idx = Math.round(e.nativeEvent.contentOffset.x / flatWidth)
             setCurrentIdx(Math.max(0, Math.min(weekOffsets.length - 1, idx)))
           }}
           nestedScrollEnabled
           bounces={false}
-          decelerationRate="fast"
         />
 
         {/* Footer — actualiza solo cuando la página queda centrada */}
