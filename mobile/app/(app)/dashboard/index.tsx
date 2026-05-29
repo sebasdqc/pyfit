@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   LayoutAnimation,
+  PanResponder,
   Platform,
   UIManager,
   Image,
@@ -718,10 +719,23 @@ function TuSemanaCard({
   styles: ReturnType<typeof makeStyles>
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [weekOffset,   setWeekOffset]   = useState(0)
 
-  const today     = useMemo(() => localDateStr(), [])  // fecha LOCAL, no UTC
-  const monday    = useMemo(() => getWeekMonday(0), [])
+  const today     = useMemo(() => localDateStr(), [])
+  const monday    = useMemo(() => getWeekMonday(weekOffset), [weekOffset])
   const weekDates = useMemo(() => getWeekDates(monday), [monday])
+
+  // Swipe izq → semana siguiente · swipe der → semana anterior
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.8,
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < -45) setWeekOffset(prev => Math.min(prev + 1, 2))
+        else if (gs.dx > 45) setWeekOffset(prev => Math.max(prev - 1, -52))
+      },
+    }),
+  ).current
 
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, FullSession[]>()
@@ -766,10 +780,10 @@ function TuSemanaCard({
   return (
     <View style={styles.semCard}>
       {/* Grid de días — dentro de un sub-card con fondo */}
-      <View style={styles.semDaysCard}>
+      <View style={styles.semDaysCard} {...panResponder.panHandlers}>
       <View style={styles.semDaysRow}>
         {weekDates.map((iso, idx) => {
-          const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, 0)
+          const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
           const count      = sessionsByDate.get(iso)?.length ?? 0
           const isSelected = selectedDate === iso
 
@@ -804,10 +818,16 @@ function TuSemanaCard({
         })}
       </View>
 
-        {/* Footer — contador de sesiones, dentro del card */}
+        {/* Footer — contador de sesiones + rango de semana si no es la actual */}
         <View style={styles.semFooter}>
           <Text style={styles.semFooterText}>
-            {sesionesEstaSemana === 0 ? (
+            {weekOffset !== 0 ? (
+              <>
+                <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
+                <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'}  ·  </Text>
+                <Text style={{ color: colors.inkMuted }}>{formatWeekRange(monday)}</Text>
+              </>
+            ) : sesionesEstaSemana === 0 ? (
               <>
                 <Text style={styles.semFooterCount}>0</Text>
                 <Text> sesiones esta semana  ·  </Text>
@@ -822,14 +842,13 @@ function TuSemanaCard({
             ) : (
               <>
                 <Text style={styles.semFooterCount}>{sesionesEstaSemana}</Text>
-                <Text> {sesionesEstaSemana === 1 ? 'sesión' : 'sesiones'} esta semana</Text>
+                <Text> sesiones esta semana</Text>
                 {motivacional ? (
                   <>
                     <Text>  ·  </Text>
                     <Text style={{
                       color: (sesionesEstaSemana >= 3 && sesionesEstaSemana <= 5)
-                        ? colors.green
-                        : colors.orange,
+                        ? colors.green : colors.orange,
                     }}>{motivacional}</Text>
                   </>
                 ) : null}

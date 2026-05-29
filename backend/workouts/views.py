@@ -1990,9 +1990,7 @@ def _stats_consistencia_mensual(request):
         d += timedelta(days=1)
 
     # Metrics
-    sesiones_completadas = sum(
-        1 for dia in dias if dia['intensidad'] > 0 or dia['es_descanso']
-    )
+    sesiones_completadas = sesiones.count()
     try:
         dias_semana = user.profile.dias_semana or 3
     except Exception:

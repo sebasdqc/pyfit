@@ -691,14 +691,36 @@ function HeatMapBlock({
                       return <View key={ci} style={{ width: cellSize, height: cellSize + 8 }} />
                     }
                     const eventTipo = eventMap.get(cell.fecha)
-                    const eventDot  = eventTipo ? EVENT_COLORS[eventTipo] : null
+                    const dayNum    = Number(cell.fecha.split('-')[2])
+                    const fontSize  = Math.max(7, Math.floor(cellSize * 0.38))
 
-                    const dayNum = Number(cell.fecha.split('-')[2])
-                    const numColor = cell.es_descanso
-                      ? colors.inkFaint
-                      : cell.intensidad >= 3
-                        ? '#ffffff'
-                        : colors.inkMuted
+                    // Color del número según fondo
+                    const numColor = eventTipo
+                      ? (eventTipo === 'descanso' ? '#fff' : '#000')
+                      : cell.es_descanso
+                        ? colors.inkFaint
+                        : cell.intensidad >= 3 ? '#ffffff' : colors.inkMuted
+
+                    // Estilo del recuadro
+                    const cellStyle: object = eventTipo
+                      ? {
+                          width: cellSize, height: cellSize, borderRadius: 4,
+                          backgroundColor: EVENT_COLORS[eventTipo],
+                          alignItems: 'center', justifyContent: 'center',
+                        }
+                      : cell.es_descanso
+                        ? {
+                            width: cellSize, height: cellSize, borderRadius: 3,
+                            borderWidth: 1, borderStyle: 'dashed',
+                            borderColor: 'rgba(255,170,50,0.55)',
+                            alignItems: 'center', justifyContent: 'center',
+                          }
+                        : {
+                            width: cellSize, height: cellSize, borderRadius: 3,
+                            backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
+                            alignItems: 'center', justifyContent: 'center',
+                          }
+
                     return (
                       <TouchableOpacity
                         key={ci}
@@ -706,42 +728,14 @@ function HeatMapBlock({
                         activeOpacity={0.7}
                         style={{ width: cellSize, height: cellSize + 8, alignItems: 'center' }}
                       >
-                        {cell.es_descanso ? (
-                          <View style={{
-                            width: cellSize, height: cellSize, borderRadius: 3,
-                            borderWidth: 1, borderStyle: 'dashed',
-                            borderColor: 'rgba(255,170,50,0.55)',
-                            alignItems: 'center', justifyContent: 'center',
+                        <View style={cellStyle}>
+                          <Text style={{
+                            fontFamily: 'JetBrainsMono-Regular',
+                            fontSize, color: numColor, lineHeight: cellSize,
                           }}>
-                            <Text style={{
-                              fontFamily: 'JetBrainsMono-Regular',
-                              fontSize: Math.max(7, Math.floor(cellSize * 0.38)),
-                              color: numColor, lineHeight: cellSize,
-                            }}>
-                              {dayNum}
-                            </Text>
-                          </View>
-                        ) : (
-                          <View style={{
-                            width: cellSize, height: cellSize, borderRadius: 3,
-                            backgroundColor: INTENSITY_BG[cell.intensidad] ?? INTENSITY_BG[0],
-                            alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <Text style={{
-                              fontFamily: 'JetBrainsMono-Regular',
-                              fontSize: Math.max(7, Math.floor(cellSize * 0.38)),
-                              color: numColor, lineHeight: cellSize,
-                            }}>
-                              {dayNum}
-                            </Text>
-                          </View>
-                        )}
-                        {eventDot && (
-                          <View style={{
-                            width: 4, height: 4, borderRadius: 2,
-                            backgroundColor: eventDot, marginTop: 2,
-                          }} />
-                        )}
+                            {dayNum}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     )
                   })}

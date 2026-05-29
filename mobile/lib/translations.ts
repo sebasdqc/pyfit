@@ -335,7 +335,7 @@ const translations = {
   stats_rpe_title:            { es: 'Progreso del rendimiento',           en: 'Performance Progress' },
   stats_rpe_subtitle:         { es: 'Escala 1–10 · Más alto es mejor',    en: 'Scale 1–10 · Higher is better' },
   stats_rpe_axis:             { es: 'día',                                en: 'day' },
-  stats_consistency_title:    { es: 'Consistencia mensual',               en: 'Monthly consistency' },
+  stats_consistency_title:    { es: 'Actividad mensual',                  en: 'Monthly activity' },
   stats_body_title:           { es: 'Cuerpo y contexto',                  en: 'Body and context' },
   stats_physical:             { es: 'Estado Físico',                      en: 'Physical State' },
   stats_mental:               { es: 'Estado Mental',                      en: 'Mental State' },
