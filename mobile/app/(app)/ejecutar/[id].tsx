@@ -405,11 +405,20 @@ function SliderButton({ onComplete, label, color }: { onComplete: () => void; la
   const trackWRef = useRef(0)
   const [trackW, setTrackW] = useState(0)
   const doneRef   = useRef(false)
-  const HANDLE = 60, PAD = 4
+  const HANDLE = 54, PAD = 4
+  const maxX = Math.max(0, trackW - HANDLE - PAD * 2)
+
+  // Sólo reclama el gesto cuando el arrastre es claramente HORIZONTAL — así el
+  // ScrollView padre sigue manejando el scroll vertical, pero el slider gana el
+  // gesto horizontal (antes el ScrollView lo robaba y se sentía "pegado").
+  const wantsHorizontal = (gs: any) =>
+    !doneRef.current && Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 3
 
   const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => !doneRef.current,
-    onMoveShouldSetPanResponder:  (_, gs) => !doneRef.current && Math.abs(gs.dx) > 4,
+    onMoveShouldSetPanResponder:  (_, gs) => wantsHorizontal(gs),
+    onMoveShouldSetPanResponderCapture: (_, gs) => wantsHorizontal(gs),
+    onPanResponderTerminationRequest: () => false,  // no ceder el gesto al scroll a mitad
     onPanResponderMove: (_, gs) => {
       if (doneRef.current) return
       const max = trackWRef.current - HANDLE - PAD * 2
@@ -421,31 +430,39 @@ function SliderButton({ onComplete, label, color }: { onComplete: () => void; la
       const max = trackWRef.current - HANDLE - PAD * 2
       if (max <= 0) return
       const x = Math.max(0, Math.min(gs.dx, max))
-      if (x >= max * 0.72) {
+      // Umbral más bajo (60%) → completar es más natural.
+      if (x >= max * 0.6) {
         doneRef.current = true
-        Animated.timing(pan, { toValue: max, duration: 120, easing: Easing.out(Easing.ease), useNativeDriver: true })
+        // useNativeDriver:false — el valor se mueve por setValue durante el gesto;
+        // con driver nativo los setValue del JS se ignoran y el handle se quedaba pegado.
+        Animated.timing(pan, { toValue: max, duration: 110, easing: Easing.out(Easing.ease), useNativeDriver: false })
           .start(() => onComplete())
       } else {
-        Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 150, friction: 10 }).start()
+        Animated.spring(pan, { toValue: 0, useNativeDriver: false, tension: 140, friction: 9 }).start()
       }
     },
   })).current
 
-  const labelOpacity = pan.interpolate({ inputRange: [0, 140], outputRange: [1, 0], extrapolate: 'clamp' })
+  const labelOpacity = pan.interpolate({
+    inputRange: [0, Math.max(40, maxX * 0.5)],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  })
 
   return (
     <View
-      style={{ height: 64, borderRadius: 32, backgroundColor: `${color}18`, borderWidth: 1.5, borderColor: `${color}45`, overflow: 'hidden', justifyContent: 'center' }}
+      // Más angosto (88%, centrado) → menor recorrido y menos fricción.
+      style={{ height: 60, width: '88%', alignSelf: 'center', borderRadius: 30, backgroundColor: `${color}18`, borderWidth: 1.5, borderColor: `${color}45`, overflow: 'hidden', justifyContent: 'center' }}
       onLayout={e => { const w = e.nativeEvent.layout.width; trackWRef.current = w; setTrackW(w) }}
     >
-      <Animated.View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', opacity: labelOpacity }}>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', opacity: labelOpacity }}>
         <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color, letterSpacing: -0.2 }}>{label}</Text>
       </Animated.View>
       {trackW > 0 && (
         <Animated.View
           style={{
             position: 'absolute', top: PAD, left: PAD,
-            width: HANDLE, height: 64 - PAD * 2, borderRadius: 32 - PAD,
+            width: HANDLE, height: 60 - PAD * 2, borderRadius: 30 - PAD,
             backgroundColor: color, alignItems: 'center', justifyContent: 'center',
             transform: [{ translateX: pan }],
           }}

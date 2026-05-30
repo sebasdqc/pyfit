@@ -1410,13 +1410,18 @@ export default function GenerateScreen() {
     () => sesion?.fases.flatMap(f => f.ejercicios).length ?? 0,
     [sesion],
   )
-  const totalSeries = useMemo(
-    () => sesion?.fases
-      .filter(f => f.nombre === 'principal')
-      .flatMap(f => f.ejercicios)
-      .reduce((s, ej) => s + ej.series, 0) ?? 0,
-    [sesion],
-  )
+  const totalSeries = useMemo(() => {
+    // El LLM nombra la fase principal de formas distintas ("principal",
+    // "Bloque principal", etc.), así que filtrar por nombre exacto daba 0.
+    // Contamos las series de trabajo (fases que NO son calentamiento/enfriamiento)
+    // y, si eso diera 0, caemos a todas las fases. Number() protege valores no numéricos.
+    const fases = sesion?.fases ?? []
+    const isAux = (n: string) => /calent|enfri|vuelta|movil|estir/i.test(n || '')
+    const sum = (arr: { series: number }[]) =>
+      arr.reduce((s, ej) => s + (Number(ej.series) || 0), 0)
+    const work = sum(fases.filter(f => !isAux(f.nombre)).flatMap(f => f.ejercicios))
+    return work > 0 ? work : sum(fases.flatMap(f => f.ejercicios))
+  }, [sesion])
 
   return (
     <View style={styles.root}>

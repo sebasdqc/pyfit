@@ -54,11 +54,19 @@ const ROUTE_LABEL_KEY: Record<string, string> = {
   'perfil/index':       'nav_profile',
 }
 
+// Rutas donde NO se muestra la barra inferior: durante el entrenamiento y su
+// feedback, para evitar fugas a otras pantallas a mitad de la sesión.
+const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]']
+
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { colors, isDark, palette } = useTheme()
   const { t } = useTranslation()
+
+  // Tras los hooks (reglas de hooks): ocultar la barra en el flujo de entrenamiento.
+  const activeRouteName = state.routes[state.index]?.name
+  if (HIDDEN_TABBAR_ROUTES.includes(activeRouteName)) return null
 
   const bottomPad = insets.bottom > 0 ? insets.bottom + 4 : 12
 
