@@ -1369,216 +1369,6 @@ def stats_dashboard(request):
     })
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def stats_full(request):
-    hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
-    hace_4_semanas = hoy - timedelta(weeks=4)
-    hace_7 = hoy - timedelta(days=7)
-    hace_14 = hoy - timedelta(days=14)
-    hace_72h = hoy - timedelta(days=3)
-
-    # ── rpe_historico: flat list of rpe_real floats (last 4 weeks) ──────────
-    sesiones_con_feedback = (
-        request.user.sessions
-        .filter(fecha__gte=hace_4_semanas, feedback__isnull=False)
-        .select_related('feedback')
-        .order_by('fecha')
-    )
-    rpe_historico = [float(s.feedback.rpe_real) for s in sesiones_con_feedback]
-
-    # ── cumplimiento_semanal: labels S-4..S-1 (oldest first) ────────────────
-    cumplimiento_semanal = []
-    for i in range(4, 0, -1):
-        inicio = hoy - timedelta(weeks=i)
-        fin = hoy - timedelta(weeks=i - 1)
-        sems = request.user.sessions.filter(fecha__gte=inicio, fecha__lt=fin)
-        cum = sems.filter(feedback__isnull=False).aggregate(avg=Avg('feedback__cumplimiento'))['avg'] or 0
-        cumplimiento_semanal.append({
-            'label': f'S-{i}',
-            'sesiones': sems.count(),
-            'cumplimiento': round(cum, 1),
-        })
-
-    # ── fatiga_porcentaje ────────────────────────────────────────────────────
-    ultimas_72 = request.user.sessions.filter(fecha__gte=hace_72h).count()
-    fatiga_porcentaje = min(100, ultimas_72 * 33)
-
-    # ── volumen_porcentaje ───────────────────────────────────────────────────
-    sesiones_semana_qs = request.user.sessions.filter(fecha__gte=hace_7)
-    dias_entrenados = sesiones_semana_qs.values_list('fecha', flat=True).distinct().count()
-    try:
-        dias_objetivo = request.user.profile.dias_semana or 3
-    except Exception:
-        dias_objetivo = 3
-    volumen_porcentaje = min(100, int(dias_entrenados / dias_objetivo * 100))
-
-    # ── sesiones counts ──────────────────────────────────────────────────────
-    sesiones_esta_semana = sesiones_semana_qs.count()
-    sesiones_semana_anterior = request.user.sessions.filter(fecha__gte=hace_14, fecha__lt=hace_7).count()
-
-    # ── profile fields ───────────────────────────────────────────────────────
-    try:
-        profile = request.user.profile
-        racha_actual = profile.racha_actual
-        nivel = profile.nivel_label
-        puntos_totales = profile.puntos_totales
-        logros = profile.logros
-    except Exception:
-        racha_actual = 0
-        nivel = 'Rookie'
-        puntos_totales = 0
-        logros = []
-
-    # ── alertas (with emoji field) ───────────────────────────────────────────
-    alertas = []
-    if ultimas_72 >= 3:
-        alertas.append({
-            'tipo': 'warning',
-            'emoji': '⚠️',
-            'mensaje': 'Alto volumen en 72h — considera un día de recuperación activa',
-        })
-    rpe_bajo = sesiones_semana_qs.filter(feedback__rpe_real__lt=5).count()
-    if rpe_bajo >= 2:
-        alertas.append({
-            'tipo': 'info',
-            'emoji': '💡',
-            'mensaje': 'RPE consistentemente bajo — puedes incrementar la intensidad',
-        })
-
-    # ── series_por_semana ────────────────────────────────────────────────────
-    sesiones_semana_con_ia = sesiones_semana_qs.exclude(respuesta_ia__isnull=True)
-    series_por_semana = 0
-    for s in sesiones_semana_con_ia:
-        for fase in (s.respuesta_ia or {}).get('fases', []):
-            for ej in fase.get('ejercicios', []):
-                try:
-                    series_por_semana += int(ej.get('series', 0))
-                except (TypeError, ValueError):
-                    pass
-
-    # ── distribucion_foco (last 4 weeks of checkins) ────────────────────────
-    distribucion_foco = []
-    try:
-        from checkins.models import DailyCheckin
-        hace_4_sem = hoy - timedelta(weeks=4)
-        checkins = DailyCheckin.objects.filter(
-            user=request.user, fecha__gte=hace_4_sem
-        ).exclude(foco_entrenamiento__isnull=True)
-        foco_counter: Counter = Counter()
-        for ci in checkins:
-            for foco in (ci.foco_entrenamiento or []):
-                if foco:
-                    foco_counter[foco] += 1
-        total_foco = sum(foco_counter.values())
-        if total_foco > 0:
-            distribucion_foco = [
-                {'nombre': nombre, 'porcentaje': round(cnt / total_foco * 100)}
-                for nombre, cnt in foco_counter.most_common()
-            ]
-    except Exception:
-        distribucion_foco = []
-
-    # ── adaptacion block ─────────────────────────────────────────────────────
-    adaptacion = None
-    try:
-        ap = UserAdaptationProfile.objects.get(user=request.user)
-
-        tiene_datos = ap.total_sesiones >= 3
-
-        # rpe_bias_label
-        rpe_bias_label = None
-        if ap.rpe_bias is not None:
-            bias = float(ap.rpe_bias)
-            if bias > 0.5:
-                rpe_bias_label = f'Percibes el esfuerzo {bias:+.1f} pts por encima del objetivo'
-            elif bias < -0.5:
-                rpe_bias_label = f'Percibes el esfuerzo {abs(bias):.1f} pts por debajo del objetivo'
-            else:
-                rpe_bias_label = 'Percepción del esfuerzo bien calibrada'
-
-        # ejercicios_top: top 5 with veces >= 2
-        exercise_profiles = (
-            UserExerciseProfile.objects
-            .filter(user=request.user, veces_realizado__gte=2)
-            .order_by('-veces_realizado')[:5]
-        )
-        ejercicios_top = [
-            {
-                'nombre': ep.exercise_nombre,
-                'veces': ep.veces_realizado,
-                'cumplimiento': float(ep.cumplimiento_promedio) if ep.cumplimiento_promedio is not None else None,
-                'patron': ep.patron_movimiento,
-            }
-            for ep in exercise_profiles
-        ]
-
-        # ejercicios_mejora: cumplimiento < 65 and veces >= 3, up to 3
-        ejercicios_mejora_qs = (
-            UserExerciseProfile.objects
-            .filter(user=request.user, veces_realizado__gte=3, cumplimiento_promedio__lt=65)
-            .order_by('cumplimiento_promedio')[:3]
-        )
-        ejercicios_mejora = [
-            {
-                'nombre': ep.exercise_nombre,
-                'veces': ep.veces_realizado,
-                'cumplimiento': float(ep.cumplimiento_promedio) if ep.cumplimiento_promedio is not None else None,
-            }
-            for ep in ejercicios_mejora_qs
-        ]
-
-        # patron_distribucion: sorted by total veces desc
-        patron_counter: Counter = Counter()
-        for ep in UserExerciseProfile.objects.filter(user=request.user).exclude(patron_movimiento=''):
-            patron_counter[ep.patron_movimiento] += ep.veces_realizado
-        patron_distribucion = [
-            {'patron': patron, 'veces': veces}
-            for patron, veces in patron_counter.most_common()
-        ]
-
-        # mesociclo via ai_workout
-        from ai_workout.views import _calcular_estado_mesociclo
-        mesociclo = _calcular_estado_mesociclo(request.user)
-
-        adaptacion = {
-            'tiene_datos': tiene_datos,
-            'total_sesiones': ap.total_sesiones,
-            'rpe_bias': float(ap.rpe_bias) if ap.rpe_bias is not None else None,
-            'rpe_bias_label': rpe_bias_label,
-            'cumplimiento_promedio': float(ap.cumplimiento_promedio) if ap.cumplimiento_promedio is not None else None,
-            'rating_promedio': float(ap.rating_promedio) if ap.rating_promedio is not None else None,
-            'volumen_tolerado_semana': ap.volumen_tolerado_semana,
-            'patron_preferido': ap.patron_preferido,
-            'semanas_carga_consecutivas': ap.semanas_carga_consecutivas,
-            'ejercicios_top': ejercicios_top,
-            'ejercicios_mejora': ejercicios_mejora,
-            'patron_distribucion': patron_distribucion,
-            'mesociclo': mesociclo,
-        }
-    except UserAdaptationProfile.DoesNotExist:
-        adaptacion = {'tiene_datos': False}
-    except Exception:
-        adaptacion = {'tiene_datos': False}
-
-    return Response({
-        'rpe_historico': rpe_historico,
-        'cumplimiento_semanal': cumplimiento_semanal,
-        'fatiga_porcentaje': fatiga_porcentaje,
-        'volumen_porcentaje': volumen_porcentaje,
-        'sesiones_esta_semana': sesiones_esta_semana,
-        'sesiones_semana_anterior': sesiones_semana_anterior,
-        'racha_actual': racha_actual,
-        'nivel': nivel,
-        'puntos_totales': puntos_totales,
-        'logros': logros,
-        'alertas': alertas,
-        'series_por_semana': series_por_semana,
-        'distribucion_foco': distribucion_foco,
-        'adaptacion': adaptacion,
-    })
-
-
 def _analizar_entrenamiento(user):
     from datetime import date, timedelta
     from collections import defaultdict
@@ -1829,9 +1619,9 @@ def competition_detail(request, pk):
 # ─── Filtro → foco_entrenamiento values ───────────────────────────────────────
 
 _FOCO_MAP = {
-    'fuerza':    ['serio'],
-    'cardio':    ['descargar'],
-    'movilidad': ['recuperar', 'moverme'],
+    'fuerza': ['serio'],
+    'cardio': ['descargar'],
+    'libre':  ['moverme'],   # EST-1: antes "movilidad" etiquetaba mal sesiones libres; 'recuperar' era token muerto
 }
 
 
@@ -1854,7 +1644,7 @@ def _stats_rpe_semanal(request):
     """
     user = request.user
     filtro = request.GET.get('filtro', 'todo')
-    hoy = date.today()
+    hoy = _get_local_date(request)   # EST-4: fecha local del dispositivo
     fecha_registro = user.date_joined.date()
     semanas_entrenando = max(1, (hoy - fecha_registro).days // 7 + 1)
     hace_28 = hoy - timedelta(days=27)
@@ -2120,7 +1910,7 @@ def stats_radar(request):
 
 def _stats_radar(request):
     user = request.user
-    today = date.today()
+    today = _get_local_date(request)   # EST-4: fecha local del dispositivo
 
     hace_30 = today - timedelta(days=30)
     hace_60 = today - timedelta(days=60)

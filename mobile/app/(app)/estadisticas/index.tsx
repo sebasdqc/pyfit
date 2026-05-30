@@ -27,13 +27,13 @@ import { useTranslation } from '../../../lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Filtro = 'todo' | 'fuerza' | 'cardio' | 'movilidad'
+type Filtro = 'todo' | 'fuerza' | 'cardio' | 'libre'
 
 const FILTROS: { id: Filtro; label: string }[] = [
-  { id: 'todo',      label: 'Todo' },
-  { id: 'fuerza',    label: 'Fuerza' },
-  { id: 'cardio',    label: 'Cardio' },
-  { id: 'movilidad', label: 'Movilidad' },
+  { id: 'todo',   label: 'Todo' },
+  { id: 'fuerza', label: 'Fuerza' },
+  { id: 'cardio', label: 'Cardio' },
+  { id: 'libre',  label: 'Libre' },
 ]
 
 interface DiaRendimiento { fecha: string; label: string; rendimiento: number }
