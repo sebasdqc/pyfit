@@ -55,13 +55,22 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
         max_tokens=max_tokens,
     )
     elapsed = _time.monotonic() - t0
-    text = (completion.choices[0].message.content or '').strip()
+    choice = completion.choices[0]
+    text = (choice.message.content or '').strip()
+    finish_reason = getattr(choice, 'finish_reason', None)
     tokens_out = getattr(completion.usage, 'completion_tokens', 0) or 0
     tokens_in  = getattr(completion.usage, 'prompt_tokens', 0) or 0
     logger.info(
-        'groq_call user=%s tokens_in=%d tokens_out=%d elapsed=%.2fs',
-        user_id, tokens_in, tokens_out, elapsed,
+        'groq_call user=%s tokens_in=%d tokens_out=%d finish=%s elapsed=%.2fs',
+        user_id, tokens_in, tokens_out, finish_reason, elapsed,
     )
+    # GEN-4: si Groq cortó por límite de tokens, el JSON viene incompleto. Lo
+    # registramos para diagnóstico (el json.loads fallará y el caller responde 502).
+    if finish_reason == 'length':
+        logger.warning(
+            'groq_call user=%s respuesta truncada por max_tokens (out=%d) — JSON incompleto',
+            user_id, tokens_out,
+        )
     if not text:
         raise ValueError('Empty response from AI')
     clean = text.replace('```json', '').replace('```', '').strip()
@@ -99,6 +108,34 @@ def calcular_rpe_target(fatiga, estado_animo, hrv):
         elif hrv > 80:
             rpe += 1
     return max(4, min(9, rpe))
+
+
+def _calcular_fase_ciclo(user):
+    """Texto de la fase actual del ciclo menstrual + su implicación para el
+    entrenamiento, o None si no aplica (el usuario no lo activó o no hay datos).
+    Los datos del ciclo se capturan en el perfil (MenstrualCycle: fecha_inicio +
+    duración). Umbrales estándar para ciclo ~28 días; sirve como guía para el LLM."""
+    try:
+        if not user.profile.usa_ciclo_menstrual:
+            return None
+    except Exception:
+        return None
+    ciclo = user.ciclos.order_by('-fecha_inicio').first()
+    if not ciclo or ciclo.fecha_inicio > date.today():
+        return None
+    dur = ciclo.duracion_ciclo or 28
+    dia = ((date.today() - ciclo.fecha_inicio).days % dur) + 1
+    if dia <= 5:
+        return (f'Día {dia} del ciclo — Fase MENSTRUAL. Energía y fuerza posiblemente reducidas; '
+                'prioriza intensidad moderada, técnica y movilidad, y respeta molestias.')
+    if dia <= 13:
+        return (f'Día {dia} del ciclo — Fase FOLICULAR. Buena tolerancia a la carga y recuperación; '
+                'ventana favorable para mayor intensidad/volumen y trabajo de fuerza.')
+    if dia <= 16:
+        return (f'Día {dia} del ciclo — OVULACIÓN. Pico de fuerza pero mayor laxitud ligamentosa; '
+                'aprovecha la intensidad cuidando la técnica en ejercicios de alto riesgo articular.')
+    return (f'Día {dia} del ciclo — Fase LÚTEA. Mayor fatiga percibida y peor recuperación hacia el final; '
+            'modera el volumen y prioriza calidad sobre carga máxima.')
 
 
 # ─── Device data integration (Garmin + Apple Health) ─────────────────────────
@@ -941,7 +978,7 @@ def generate_session(request):
         'implementos': loc.implementos or [],
         'competicion_nombre': competicion.nombre if competicion else None,
         'competicion_fecha': str(competicion.fecha) if competicion else None,
-        'fases_ciclo': None,
+        'fases_ciclo': _calcular_fase_ciclo(user),
         'dolor_hoy': checkin.dolor_hoy,
         'foco_entrenamiento': checkin.foco_entrenamiento or [],
         'exercise_pool': exercise_pool_legacy,
@@ -956,7 +993,7 @@ def generate_session(request):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=2048, user_id=user.id)
+        sesion_generada = _call_groq(prompt, max_tokens=4096, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON for user %s', user.id)
         return Response(
@@ -1321,7 +1358,7 @@ def session_ajustar(request, pk):
         'implementos':          loc.implementos or [],
         'competicion_nombre':   competicion.nombre if competicion else None,
         'competicion_fecha':    str(competicion.fecha) if competicion else None,
-        'fases_ciclo':          None,
+        'fases_ciclo':          _calcular_fase_ciclo(user),
         'dolor_hoy':            dolor_hoy,
         'foco_entrenamiento':   (checkin.foco_entrenamiento or []) if checkin else [],
         'exercise_pool':        exercise_pool_legacy,
@@ -1336,7 +1373,7 @@ def session_ajustar(request, pk):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=2048, user_id=user.id)
+        sesion_generada = _call_groq(prompt, max_tokens=4096, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq invalid JSON in ajustar for user %s', user.id)
         return Response(
