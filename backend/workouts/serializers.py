@@ -30,6 +30,11 @@ class SessionListSerializer(serializers.ModelSerializer):
     checkin = SessionCheckinSerializer(read_only=True)
     titulo = serializers.SerializerMethodField()
     objetivo_sesion = serializers.SerializerMethodField()
+    # HIS-1: respuesta_ia RECORTADA para el listado/calendario — solo título,
+    # objetivo, duración, RPE y fases con NOMBRES de ejercicios (suficiente para
+    # búsqueda y síntesis). El detalle completo (series/reps/notas/nota del
+    # entrenador) se sirve bajo demanda en GET /api/sessions/{id}/.
+    respuesta_ia = serializers.SerializerMethodField()
 
     class Meta:
         model = Session
@@ -47,6 +52,28 @@ class SessionListSerializer(serializers.ModelSerializer):
         if obj.respuesta_ia:
             return obj.respuesta_ia.get('objetivo_sesion', '')
         return ''
+
+    def get_respuesta_ia(self, obj):
+        ia = obj.respuesta_ia
+        if not isinstance(ia, dict):
+            return None
+        fases = [
+            {
+                'nombre': f.get('nombre', ''),
+                'ejercicios': [
+                    {'nombre': ej.get('nombre', '')}
+                    for ej in (f.get('ejercicios', []) or [])
+                ],
+            }
+            for f in (ia.get('fases', []) or [])
+        ]
+        return {
+            'titulo': ia.get('titulo', ''),
+            'objetivo_sesion': ia.get('objetivo_sesion', ''),
+            'duracion_total': ia.get('duracion_total'),
+            'rpe_target': ia.get('rpe_target'),
+            'fases': fases,
+        }
 
 
 class SessionDetailSerializer(serializers.ModelSerializer):

@@ -304,11 +304,31 @@ function SessionModal({
   const { t, ta } = useTranslation()
   const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
 
+  // HIS-1: el listado trae respuesta_ia RECORTADA (solo nombres). Al abrir el
+  // detalle se hace fetch de la sesión completa (series/reps/notas + nota).
+  const [fullIa, setFullIa] = useState<RespuestaIA | null>(null)
+  useEffect(() => {
+    if (!visible || !session) { setFullIa(null); return }
+    const yaCompleto = !!session.respuesta_ia?.fases?.some(
+      f => f.ejercicios?.some(e => (e as any).series != null)
+    )
+    if (yaCompleto) { setFullIa(session.respuesta_ia); return }
+    let cancel = false
+    setFullIa(null)
+    apiGet(`/api/sessions/${session.id}/`)
+      .then((d: any) => { if (!cancel) setFullIa(d?.respuesta_ia ?? null) })
+      .catch(() => { if (!cancel) setFullIa(null) })
+    return () => { cancel = true }
+  }, [visible, session])
+
   const monthShort = ta('historial_months')
   const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   if (!session) return null
-  const { respuesta_ia: ia, feedback } = session
+  // ia: detalle completo si ya se cargó; si no, la versión recortada del listado
+  // (muestra nombres al instante y los detalles aparecen al llegar el fetch).
+  const ia = fullIa ?? session.respuesta_ia
+  const feedback = session.feedback
   const titulo = ia?.titulo ?? 'Sesión de entrenamiento'
 
   return (
@@ -391,11 +411,13 @@ function SessionModal({
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={modalStyles.ejNombre}>{ej.nombre}</Text>
-                        <Text style={modalStyles.ejMeta}>
-                          {ej.series} series · {ej.repeticiones} reps
-                          {ej.rpe_sugerido ? ` · RPE ${ej.rpe_sugerido}` : ''}
-                          {ej.descanso_segundos ? ` · ${ej.descanso_segundos}s descanso` : ''}
-                        </Text>
+                        {ej.series != null && (
+                          <Text style={modalStyles.ejMeta}>
+                            {ej.series} series · {ej.repeticiones} reps
+                            {ej.rpe_sugerido ? ` · RPE ${ej.rpe_sugerido}` : ''}
+                            {ej.descanso_segundos ? ` · ${ej.descanso_segundos}s descanso` : ''}
+                          </Text>
+                        )}
                         {ej.notas ? <Text style={modalStyles.ejNotas}>{ej.notas}</Text> : null}
                       </View>
                     </View>
