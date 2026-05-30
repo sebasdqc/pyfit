@@ -14,7 +14,7 @@ class SessionFeedbackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SessionFeedback
-        fields = ['id', 'rpe_real', 'cumplimiento', 'rating', 'notas', 'created_at']
+        fields = ['id', 'rpe_real', 'cumplimiento', 'rating', 'notas', 'molestias', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 

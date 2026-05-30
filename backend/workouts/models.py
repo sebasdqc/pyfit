@@ -293,6 +293,7 @@ class SessionFeedback(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
     notas = models.TextField(blank=True, null=True)
+    molestias = models.JSONField(default=list, blank=True)   # FBK-1: zonas con molestia post-sesión
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

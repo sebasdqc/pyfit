@@ -436,6 +436,7 @@ export default function FeedbackScreen() {
       await apiPost(`/api/sessions/${id}/feedback/`, {
         rpe_real: rpeChoice ?? 7, cumplimiento, rating,
         notas: notas.trim() || null,
+        molestias: zonasMolestia,   // FBK-1: persistir zonas de molestia post-sesión
       })
     } catch {
       // Non-blocking: navigate anyway but log the error

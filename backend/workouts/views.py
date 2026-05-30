@@ -55,6 +55,26 @@ def session_detail(request, pk):
     return Response(SessionDetailSerializer(session).data)
 
 
+def _cumplimiento_real(session):
+    """Cumplimiento real desde series_log: series ejecutadas (con peso o reps) vs
+    prescritas. Devuelve None si no hay datos de ejecución (p. ej. 'marcar completada
+    sin ejecutar'), para que el caller use el valor derivado de la sensación."""
+    exercises = list(session.exercises.all())
+    prescritas = sum((e.series or 0) for e in exercises)
+    if prescritas <= 0:
+        return None
+    hechas = 0
+    tiene_log = False
+    for e in exercises:
+        log = e.series_log or []
+        if log:
+            tiene_log = True
+        hechas += sum(1 for s in log if isinstance(s, dict) and (s.get('peso') or s.get('reps')))
+    if not tiene_log:
+        return None
+    return max(0, min(100, round(hechas / prescritas * 100)))
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def session_feedback(request, pk):
@@ -63,13 +83,23 @@ def session_feedback(request, pk):
     except Session.DoesNotExist:
         return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
-    if hasattr(session, 'feedback'):
-        return Response({'error': 'Esta sesión ya tiene feedback'}, status=status.HTTP_400_BAD_REQUEST)
-
-    serializer = SessionFeedbackSerializer(data=request.data)
+    # FBK-3: feedback editable — si ya existe, se actualiza en vez de rechazar
+    # (útil cuando se entra al feedback desde una salida parcial).
+    existing = getattr(session, 'feedback', None)
+    serializer = (
+        SessionFeedbackSerializer(existing, data=request.data)
+        if existing else SessionFeedbackSerializer(data=request.data)
+    )
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     feedback = serializer.save(session=session)
+
+    # FBK-2: si la sesión se ejecutó en la app, usar el cumplimiento REAL
+    # (series hechas vs prescritas) en vez del derivado de la sensación.
+    cumpl_real = _cumplimiento_real(session)
+    if cumpl_real is not None and cumpl_real != feedback.cumplimiento:
+        feedback.cumplimiento = cumpl_real
+        feedback.save(update_fields=['cumplimiento'])
 
     try:
         with transaction.atomic():
@@ -86,7 +116,10 @@ def session_feedback(request, pk):
     DailyCoachInsight.objects.filter(user=request.user, fecha=_hoy).delete()
     DailySaludo.objects.filter(user=request.user, fecha=_hoy).delete()
 
-    return Response(SessionFeedbackSerializer(feedback).data, status=status.HTTP_201_CREATED)
+    return Response(
+        SessionFeedbackSerializer(feedback).data,
+        status=status.HTTP_200_OK if existing else status.HTTP_201_CREATED,
+    )
 
 
 @api_view(['POST'])
@@ -457,10 +490,6 @@ def _actualizar_adaptation_profile(user, session, feedback):
             cumplimiento_avg=Avg('feedback__cumplimiento'),
             rating_avg=Avg('feedback__rating'),
         )
-        rpe_bias = None
-        if agg['rpe_real_avg'] is not None and agg['rpe_target_avg'] is not None:
-            rpe_bias = round(agg['rpe_real_avg'] - agg['rpe_target_avg'], 2)
-
         cumplimiento_promedio = round(agg['cumplimiento_avg'], 2) if agg['cumplimiento_avg'] is not None else None
         rating_promedio = round(agg['rating_avg'], 2) if agg['rating_avg'] is not None else None
 
@@ -508,8 +537,12 @@ def _actualizar_adaptation_profile(user, session, feedback):
                 break
 
         adaptation, _ = UserAdaptationProfile.objects.get_or_create(user=user)
+        # FBK-5: rpe_bias con media exponencial del sesgo de ESTA sesión (fuente
+        # única; antes el cálculo por dificultad de serie y este se pisaban).
+        _prev_bias = float(adaptation.rpe_bias) if adaptation.rpe_bias is not None else 0.0
+        _delta = float(feedback.rpe_real) - float(session.rpe_target)
         adaptation.total_sesiones = total_sesiones
-        adaptation.rpe_bias = rpe_bias
+        adaptation.rpe_bias = round(0.30 * _delta + 0.70 * _prev_bias, 2)
         adaptation.cumplimiento_promedio = cumplimiento_promedio
         adaptation.rating_promedio = rating_promedio
         adaptation.volumen_tolerado_semana = volumen_tolerado
@@ -2219,55 +2252,7 @@ def save_series_log(request, pk):
         except Exception:
             pass
 
-    # Recalcular rpe_bias con las valoraciones de dificultad de esta sesión
-    _actualizar_rpe_bias_desde_log(request.user, session, log_entries)
-
     return Response({'updated': updated})
-
-
-def _actualizar_rpe_bias_desde_log(user, session, log_entries: list):
-    """
-    Calcula el sesgo de RPE percibido a partir de las valoraciones de dificultad
-    de esta sesión y actualiza UserAdaptationProfile.rpe_bias.
-
-    Escala de dificultad → RPE percibido equivalente:
-      1 (Muy fácil)  → rpe_target - 2
-      2 (Fácil)      → rpe_target - 1
-      3 (Normal)     → rpe_target
-      4 (Difícil)    → rpe_target + 1
-      5 (Muy difícil)→ rpe_target + 2
-    """
-    try:
-        rpe_target = float(session.rpe_target)
-
-        # Recoger todas las valoraciones de dificultad del log
-        dificultades = []
-        for entry in log_entries:
-            for s in entry.get('series', []):
-                d = s.get('dificultad')
-                if d is not None:
-                    try:
-                        dificultades.append(int(d))
-                    except (ValueError, TypeError):
-                        pass
-
-        if not dificultades:
-            return
-
-        # Convertir escala 1-5 a delta RPE (-2 a +2)
-        rpe_percibido_avg = rpe_target + (sum(dificultades) / len(dificultades) - 3)
-        delta = rpe_percibido_avg - rpe_target  # sesgo esta sesión
-
-        # Actualizar rpe_bias con media exponencial (α=0.3 → ≈ últimas 3-4 sesiones)
-        profile, _ = UserAdaptationProfile.objects.get_or_create(user=user)
-        alpha = 0.30
-        current_bias = float(profile.rpe_bias) if profile.rpe_bias is not None else 0.0
-        new_bias = round(alpha * delta + (1 - alpha) * current_bias, 2)
-        profile.rpe_bias = new_bias
-        profile.save(update_fields=['rpe_bias', 'updated_at'])
-
-    except Exception:
-        pass  # No crítico — no interrumpir el flujo
 
 
 @api_view(['GET', 'POST'])
