@@ -73,12 +73,15 @@ function getFaseStyle(faseNombre: string) {
   return FASES[key] ?? { color: COLORS.accent, bg: 'rgba(79,140,255,0.1)', label: faseNombre.toUpperCase() }
 }
 
-function flattenEjercicios(fases: Fase[]): FlatEjercicio[] {
+function flattenEjercicios(fases: Fase[] | null | undefined): FlatEjercicio[] {
   const flat: FlatEjercicio[] = []
   let globalIndex = 0
-  for (const fase of fases) {
-    const faseStyle = getFaseStyle(fase.nombre)
-    for (const ej of fase.ejercicios) {
+  for (const fase of Array.isArray(fases) ? fases : []) {            // EJE-4: defensivo ante fases malformadas
+    const faseStyle = getFaseStyle(fase?.nombre)
+    for (const ej of Array.isArray(fase?.ejercicios) ? fase.ejercicios : []) {
+      // EJE-6: omitir ejercicios sin nombre — el backend hace lo mismo al
+      // persistir, así el índice del frontend (idx+1) coincide con SessionExercise.orden.
+      if (!ej || !ej.nombre || !String(ej.nombre).trim()) continue
       flat.push({ ...ej, faseNombre: fase.nombre, faseColor: faseStyle.color, globalIndex })
       globalIndex++
     }
@@ -511,6 +514,7 @@ export default function EjecutarScreen() {
   const serieRatingRef = useRef<number | null>(null)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const restEndRef = useRef(0)   // EJE-5: timestamp objetivo del descanso (reloj de pared)
   const mountedRef = useRef(true)
   useEffect(() => () => { mountedRef.current = false }, [])
 
@@ -521,8 +525,13 @@ export default function EjecutarScreen() {
       try {
         const data = await apiGet(`/api/sessions/${id}/`)
         const raw: Sesion = data.sesion ?? data.respuesta_ia ?? data
+        const flat = flattenEjercicios(raw?.fases)
+        if (flat.length === 0) {
+          setError('La sesión no tiene ejercicios válidos. Genera una rutina nueva.')
+          return
+        }
         setSesion(raw)
-        setFlatList(flattenEjercicios(raw.fases))
+        setFlatList(flat)
       } catch (err: any) {
         setError(err.message || 'Error cargando la sesión')
       } finally {
@@ -620,11 +629,13 @@ export default function EjecutarScreen() {
 
   useEffect(() => {
     if (!timerActivo) return
-    intervalRef.current = setInterval(() => {
-      // Cuenta hacia atrás y continúa en negativo (tiempo extra).
-      // El avance ocurre solo cuando el usuario desliza el slider.
-      setTimerSegundos(prev => prev - 1)
-    }, 1000)
+    // EJE-5: reloj de pared — el valor se recalcula desde restEndRef en cada tick,
+    // así el conteo sigue correcto aunque iOS suspenda/throttle el intervalo en
+    // segundo plano (al volver, el siguiente tick corrige el valor). Sigue en
+    // negativo (tiempo extra); el avance ocurre solo al deslizar el slider.
+    const tick = () => setTimerSegundos(Math.round((restEndRef.current - Date.now()) / 1000))
+    tick()
+    intervalRef.current = setInterval(tick, 1000)
     return () => {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
     }
@@ -651,6 +662,7 @@ export default function EjecutarScreen() {
 
     // Always enter rest after each set
     const descanso = ej.descanso_segundos || 60
+    restEndRef.current = Date.now() + descanso * 1000   // EJE-5: objetivo de reloj de pared
     setTimerSegundos(descanso)
     setTimerTotal(descanso)
     setMode('descanso')
