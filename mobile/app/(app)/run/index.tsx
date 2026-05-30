@@ -36,8 +36,15 @@ function MetricColumn({
 }) {
   return (
     <View style={styles.metricCol}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <Text
+        style={styles.metricValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+      >
+        {value}
+      </Text>
+      <Text style={styles.metricLabel} numberOfLines={1}>{label}</Text>
     </View>
   )
 }
@@ -399,21 +406,23 @@ const styles = StyleSheet.create({
   metricCol: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 6,
   },
   metricValue: {
     fontFamily: 'SpaceGrotesk-Bold',
-    fontSize: 28,
+    fontSize: 23,
     color: '#ffffff',
-    letterSpacing: -0.8,
-    lineHeight: 34,
+    letterSpacing: -0.5,
+    lineHeight: 28,
+    textAlign: 'center',
   },
   metricLabel: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
+    fontSize: 9,
     color: 'rgba(255,255,255,0.45)',
-    letterSpacing: 1.5,
+    letterSpacing: 1.0,
     textTransform: 'uppercase',
-    marginTop: 4,
+    marginTop: 5,
   },
   metricDivider: {
     width: 1,
