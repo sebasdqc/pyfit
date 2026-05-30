@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle
-from .models import Profile, UserLocation, UserInjury, PasswordResetCode, Notification, NotificationPreference
+from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, Notification, NotificationPreference
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -408,6 +408,47 @@ def location_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
     return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def menstrual_cycle_view(request):
+    """PRF-1: GET devuelve el ciclo más reciente; POST registra el inicio del ciclo
+    (fecha_inicio + duración). Es lo que consume _calcular_fase_ciclo en la
+    generación para adaptar la sesión a la fase del ciclo (GEN-5)."""
+    from datetime import date as _date
+
+    if request.method == 'GET':
+        ciclo = request.user.ciclos.order_by('-fecha_inicio').first()
+        if not ciclo:
+            return Response(None)
+        return Response({
+            'fecha_inicio':   str(ciclo.fecha_inicio),
+            'duracion_ciclo': ciclo.duracion_ciclo,
+        })
+
+    try:
+        fecha_inicio = _date.fromisoformat(str(request.data.get('fecha_inicio', '')))
+    except ValueError:
+        return Response({'error': 'fecha_inicio inválida (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
+    if fecha_inicio > _date.today():
+        return Response({'error': 'La fecha de inicio no puede ser futura.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        dur = int(request.data.get('duracion_ciclo', 28))
+    except (ValueError, TypeError):
+        dur = 28
+    dur = max(20, min(45, dur))
+
+    # update_or_create por fecha → re-guardar la misma fecha actualiza la duración;
+    # una fecha nueva registra el inicio del nuevo ciclo (la generación usa el más reciente).
+    ciclo, _ = MenstrualCycle.objects.update_or_create(
+        user=request.user, fecha_inicio=fecha_inicio,
+        defaults={'duracion_ciclo': dur},
+    )
+    return Response(
+        {'fecha_inicio': str(ciclo.fecha_inicio), 'duracion_ciclo': ciclo.duracion_ciclo},
+        status=status.HTTP_201_CREATED,
+    )
 
 
 # ─── Notification helpers ─────────────────────────────────────────────────────

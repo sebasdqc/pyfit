@@ -89,9 +89,14 @@ export default function EntrenamientoScreen() {
     if (!fullProfile) return
     setSaving(true)
     try {
+      // PRF-3: sincronizar nivel_experiencia con el nivel editado — el motor
+      // prioriza nivel_experiencia para el techo de dificultad técnica, así que
+      // sin esto el cambio manual de nivel no afectaría la selección de ejercicios.
+      const nivelExp = ({ principiante: 2, intermedio: 3, avanzado: 4 } as Record<string, number>)[nivel] ?? 3
       await apiPut('/api/profile/', {
         ...fullProfile,
-        nivel, dias_semana: diasSemana, horario_preferido: horario,
+        nivel, nivel_experiencia: nivelExp,
+        dias_semana: diasSemana, horario_preferido: horario,
         rm_sentadilla: rmSentadilla, rm_peso_muerto: rmMuerto,
         rm_press_banca: rmBanca, rm_press_hombro: rmHombro,
       })

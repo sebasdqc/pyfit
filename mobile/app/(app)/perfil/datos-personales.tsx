@@ -110,6 +110,15 @@ export default function DatosPersonalesScreen() {
 
   async function save() {
     if (!fullProfile) return
+    // PRF-4: validar rango antes del PUT (el modelo exige 30–300 kg / 100–250 cm)
+    const p = Number(String(peso).replace(',', '.'))
+    if (peso && (isNaN(p) || p < 30 || p > 300)) {
+      Alert.alert('Peso inválido', 'El peso debe estar entre 30 y 300 kg.'); return
+    }
+    const a = Number(String(altura).replace(',', '.'))
+    if (altura && (isNaN(a) || a < 100 || a > 250)) {
+      Alert.alert('Altura inválida', 'La altura debe estar entre 100 y 250 cm.'); return
+    }
     setSaving(true)
     try {
       await apiPut('/api/profile/', {

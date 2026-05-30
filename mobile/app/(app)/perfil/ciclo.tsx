@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, Platform } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut } from '../../../lib/api'
+import { apiGet, apiPut, apiPost, localDateStr } from '../../../lib/api'
+
+function formatDate(d: Date): string {
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -20,19 +25,39 @@ export default function CicloScreen() {
   const [saving, setSaving] = useState(false)
   const [usaCiclo, setUsaCiclo] = useState(false)
   const [duracion, setDuracion] = useState('28')
+  const [fechaInicio, setFechaInicio] = useState<Date | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
-    apiGet('/api/profile/').then(data => {
-      setFullProfile(data)
-      setUsaCiclo(data.usa_ciclo_menstrual ?? false)
+    Promise.all([
+      apiGet('/api/profile/'),
+      apiGet('/api/menstrual-cycle/').catch(() => null),
+    ]).then(([prof, ciclo]) => {
+      setFullProfile(prof)
+      setUsaCiclo(prof.usa_ciclo_menstrual ?? false)
+      if (ciclo) {
+        if (ciclo.fecha_inicio)   setFechaInicio(new Date(ciclo.fecha_inicio + 'T00:00:00'))
+        if (ciclo.duracion_ciclo) setDuracion(String(ciclo.duracion_ciclo))
+      }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   async function save() {
     if (!fullProfile) return
+    if (usaCiclo && !fechaInicio) {
+      Alert.alert('Falta la fecha', 'Indica cuándo empezó tu último período para adaptar tus rutinas.')
+      return
+    }
     setSaving(true)
     try {
       await apiPut('/api/profile/', { ...fullProfile, usa_ciclo_menstrual: usaCiclo })
+      if (usaCiclo && fechaInicio) {
+        const dur = Math.max(20, Math.min(45, parseInt(duracion, 10) || 28))
+        await apiPost('/api/menstrual-cycle/', {
+          fecha_inicio: localDateStr(fechaInicio),
+          duracion_ciclo: dur,
+        })
+      }
       router.replace('/(app)/perfil')
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar')
@@ -78,11 +103,42 @@ export default function CicloScreen() {
             </TouchableOpacity>
 
             {usaCiclo && (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoText}>
-                  🌙 PyFit utilizará los datos de tu ciclo para ajustar el RPE objetivo, el volumen y el tipo de ejercicios en cada sesión.
-                </Text>
-              </View>
+              <>
+                <Text style={styles.fieldLabel}>INICIO DE TU ÚLTIMO PERÍODO</Text>
+                <TouchableOpacity style={styles.input} onPress={() => setShowPicker(true)} activeOpacity={0.8}>
+                  <Text style={fechaInicio ? styles.inputText : styles.inputPlaceholder}>
+                    {fechaInicio ? formatDate(fechaInicio) : 'Seleccionar fecha'}
+                  </Text>
+                </TouchableOpacity>
+
+                <Text style={styles.fieldLabel}>DURACIÓN DEL CICLO (DÍAS)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={duracion}
+                  onChangeText={txt => setDuracion(txt.replace(/[^0-9]/g, '').slice(0, 2))}
+                  keyboardType="number-pad"
+                  placeholder="28"
+                  placeholderTextColor={colors.inkMuted}
+                />
+
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoText}>
+                    🌙 PyFit utilizará los datos de tu ciclo para ajustar el RPE objetivo, el volumen y el tipo de ejercicios en cada sesión.
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {showPicker && (
+              <DateTimePicker
+                value={fechaInicio ?? new Date()}
+                mode="date"
+                maximumDate={new Date()}
+                onChange={(_e, d) => {
+                  setShowPicker(Platform.OS === 'ios')
+                  if (d) setFechaInicio(d)
+                }}
+              />
             )}
 
             <TouchableOpacity
@@ -131,6 +187,17 @@ function makeStyles(c: Colors) {
       backgroundColor: c.white,
     },
     toggleKnobOn: { alignSelf: 'flex-end' },
+    fieldLabel: {
+      color: c.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, marginTop: 4,
+    },
+    input: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16,
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary,
+    },
+    inputText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary },
+    inputPlaceholder: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
     infoCard: {
       backgroundColor: 'rgba(79,140,255,0.06)',
       borderWidth: 1, borderColor: 'rgba(79,140,255,0.2)',

@@ -65,6 +65,7 @@ urlpatterns = [
     # Injuries
     path('api/injuries/', user_views.injuries_view),
     path('api/injuries/<int:pk>/', user_views.injury_detail_view),
+    path('api/menstrual-cycle/', user_views.menstrual_cycle_view),
 
     # Check-ins
     path('api/checkins/today/', checkin_views.today_checkin),

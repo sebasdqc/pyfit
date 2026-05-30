@@ -73,7 +73,11 @@ export default function LesionesScreen() {
     setSaving(true)
     try {
       const created = await apiPost('/api/injuries/', {
-        zona: zona.toLowerCase(), severidad: severidad.toLowerCase(), descripcion: '',
+        zona: zona.toLowerCase(),
+        // PRF-4: 'crónica' → 'cronica' para coincidir con SEVERIDAD_CHOICES (la zona
+        // conserva la ñ, que sí es canónica). normalize solo afecta a la severidad.
+        severidad: severidad.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''),
+        descripcion: '',
       })
       setInjuries(prev => [...prev, created])
       setZona('')
