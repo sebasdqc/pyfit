@@ -65,6 +65,12 @@ FOCO_A_PATRONES: dict[str, list[str]] = {
     'hombros':     ['empuje_vertical'],
     'core':        ['core_antiextension', 'core_antirrotacion', 'core_antiflexion'],
     'brazos':      ['aislamiento'],
+    # Tokens de grupoMuscular que envía el check-in (d5b_grupo). Sin estos, la
+    # selección de grupo del usuario no elevaba ningún patrón en el motor.
+    'empujes':      ['empuje_horizontal', 'empuje_vertical'],
+    'tracciones':   ['jalon_horizontal', 'jalon_vertical'],
+    'piernas_quad': ['sentadilla'],
+    'piernas_glut': ['bisagra'],
     'completo':    [],
     'movilidad':   [],
     'resistencia': [],

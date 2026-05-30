@@ -38,15 +38,16 @@ const FISICO_TO_NUM: Record<EstadoFisico, number> = {
   fresco: 4, bien: 3, pesado: 2, molestia: 1,
 }
 
-// Calidad de sueño inferida del estado físico reportado (escala 1-10).
-// "Pesado / dormí mal" → valor bajo; "Fresco" → valor alto.
-// Mejor inferencia que un valor fijo mientras no haya slider dedicado.
-const FISICO_TO_SUENO: Record<EstadoFisico, number> = {
-  fresco:   8.5,  // Descansado, claramente durmió bien
-  bien:     7.0,  // Energía normal, sueño aceptable
-  molestia: 6.0,  // Molestia física, sueño posiblemente interrumpido
-  pesado:   4.5,  // Explícitamente "dormí mal o vengo de mucho"
-}
+// Calidad de sueño REAL preguntada en el check-in (pantalla d_sueno). `horas` es
+// el punto medio del rango y alimenta directamente calidad_sueno — el generador la
+// usa como horas reales para ajustar el RPE. Antes se fabricaba desde estadoFisico.
+const SUENO_OPTS = [
+  { id: 'poco'      as const, label: 'Menos de 6h', sub: 'Corto o fragmentado',     horas: 5.0, color: '#ff6b6b', bg: 'rgba(255,68,68,0.1)',  border: 'rgba(255,107,107,0.45)' },
+  { id: 'irregular' as const, label: '6 – 7h',       sub: 'Algo justo o variable',   horas: 6.5, color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.45)'  },
+  { id: 'bien'      as const, label: '7 – 8h',       sub: 'La cantidad recomendada', horas: 7.5, color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)'  },
+  { id: 'optimo'    as const, label: 'Más de 8h',    sub: 'Bien descansado',         horas: 8.5, color: '#32c896', bg: 'rgba(50,200,150,0.1)',  border: 'rgba(50,200,150,0.45)'  },
+]
+type CalidadSueno = typeof SUENO_OPTS[number]['id']
 
 const TIEMPO_OPTS = [
   { id: 'menos20'  as const, label: 'Menos de 20 min', minutos: 15,  color: '#ffaa32', bg: 'rgba(255,170,50,0.1)',  border: 'rgba(255,170,50,0.45)'  },
@@ -101,13 +102,13 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d4', 'd4b_running', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
+const SCREENS = ['d4', 'd4b_running', 'd1', 'd_sueno', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
 type ScreenId = typeof SCREENS[number]
 
 // Ordered interactive steps per disciplina path (drives progress bar)
-const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4b_running', 'd1', 'd2', 'd3', 'd5']
-const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd1', 'd2', 'd3', 'd5', 'd5b_grupo']
-const SEQ_OTHER:       ScreenId[] = ['d4', 'd1', 'd2', 'd3', 'd5']
+const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4b_running', 'd1', 'd_sueno', 'd2', 'd3', 'd5']
+const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd1', 'd_sueno', 'd2', 'd3', 'd5', 'd5b_grupo']
+const SEQ_OTHER:       ScreenId[] = ['d4', 'd1', 'd_sueno', 'd2', 'd3', 'd5']
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
@@ -268,6 +269,7 @@ export default function CheckinScreen() {
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [estadoFisico, setEstadoFisico] = useState<EstadoFisico | null>(null)
+  const [calidadSueno, setCalidadSueno] = useState<CalidadSueno | null>(null)
   const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
   const [estadoMental, setEstadoMental] = useState<EstadoMental | null>(null)
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
@@ -304,6 +306,7 @@ export default function CheckinScreen() {
   const canContinue = showFooterBtn && !submitting && (
     currentScreen === 'd4'       ? !!disciplina :
     currentScreen === 'd1'       ? !!estadoFisico :
+    currentScreen === 'd_sueno'  ? !!calidadSueno :
     currentScreen === 'd2'       ? !!estadoMental :
     currentScreen === 'd3'       ? !!tiempoDispo :
     currentScreen === 'd5b_grupo' ? !!grupoMuscular :
@@ -317,6 +320,7 @@ export default function CheckinScreen() {
   function validate(): string | null {
     if (currentScreen === 'd4'        && !disciplina)    return 'Indica qué quieres entrenar hoy.'
     if (currentScreen === 'd1'        && !estadoFisico)  return 'Indica cómo está tu cuerpo hoy.'
+    if (currentScreen === 'd_sueno'   && !calidadSueno)  return 'Indica cuánto dormiste anoche.'
     if (currentScreen === 'd2'        && !estadoMental)  return 'Indica cómo está tu cabeza hoy.'
     if (currentScreen === 'd3'        && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
     if (currentScreen === 'd5b_grupo' && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
@@ -372,7 +376,7 @@ export default function CheckinScreen() {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
         estado_fisico: estadoFisico ? FISICO_TO_NUM[estadoFisico] : null,
-        calidad_sueno: estadoFisico ? FISICO_TO_SUENO[estadoFisico] : 7,
+        calidad_sueno: SUENO_OPTS.find(s => s.id === calidadSueno)?.horas ?? 7,
         hrv: null,
         location: locationId,
         duracion_disponible: tiempoOpt?.minutos ?? 45,
@@ -387,7 +391,7 @@ export default function CheckinScreen() {
       submittingRef.current = false
       setSubmitting(false)
     }
-  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, locationId])
+  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, calidadSueno, locationId])
 
   // ── D5 processing orchestration ───────────────────────────────────────────
 
@@ -515,6 +519,34 @@ export default function CheckinScreen() {
             )}
           </View>
         )}
+      </>
+    )
+  }
+
+  function renderDSueno() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>RECUPERACIÓN</Text>
+        <Text style={styles.question}>¿Cuánto dormiste anoche?</Text>
+        <Text style={styles.questionSub}>El sueño condiciona tu recuperación y la carga que toleras hoy.</Text>
+
+        <View style={styles.optionsWrap}>
+          {SUENO_OPTS.map(opt => {
+            const on = calidadSueno === opt.id
+            return (
+              <TouchableOpacity key={opt.id}
+                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                onPress={() => { setCalidadSueno(opt.id); setError('') }}
+                activeOpacity={0.82}>
+                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
+                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label} · {opt.sub}</Text>
+                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
+                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       </>
     )
   }
@@ -1019,6 +1051,7 @@ export default function CheckinScreen() {
         { currentScreen === 'd4'          ? renderD4()
         : currentScreen === 'd4b_running' ? renderD4b()
         : currentScreen === 'd1'          ? renderD1()
+        : currentScreen === 'd_sueno'     ? renderDSueno()
         : currentScreen === 'd2'          ? renderD2()
         : currentScreen === 'd3'          ? renderD3()
         : currentScreen === 'd5b_grupo'   ? renderD5b()
