@@ -603,6 +603,8 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
         lines.append(f'  • {ex["nombre"]}')
         lines.append(f'    Músculos: {mp} | Secund: {ms}')
         lines.append(f'    {tl}{sf}{tiempo}{prog_txt}')
+        if ex.get('carga_previa'):
+            lines.append(f'    Última carga registrada: {ex["carga_previa"]} — progresa desde aquí si el RPE lo permite')
 
         cues = ex.get('coaching_cues', [])
         if cues:

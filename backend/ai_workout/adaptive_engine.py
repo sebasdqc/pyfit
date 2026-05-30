@@ -780,6 +780,26 @@ class AdaptiveEngineService:
             )
         }
 
+        # EJE-1: última carga real registrada (peso×reps) por ejercicio, desde
+        # series_log, para que el LLM progrese la carga real y no solo el RPE.
+        from workouts.models import SessionExercise
+        carga_previa: dict[str, str] = {}
+        for row in (
+            SessionExercise.objects
+            .filter(session__user=self.user, nombre__in=nombres)
+            .exclude(series_log__isnull=True)
+            .order_by('nombre', '-session__fecha', '-id')
+            .values('nombre', 'series_log')
+        ):
+            nombre = row['nombre']
+            if nombre in carga_previa:
+                continue
+            sets = [s for s in (row['series_log'] or []) if isinstance(s, dict) and s.get('peso')]
+            if not sets:
+                continue
+            last = sets[-1]
+            carga_previa[nombre] = f"{last.get('peso')}kg × {last.get('reps') or '?'} reps"
+
         tiempo_efectivo_s = max(0, (self.checkin.duracion_disponible - 15) * 60)
 
         enriched: list[dict] = []
@@ -813,6 +833,7 @@ class AdaptiveEngineService:
                 'progresion':      progresion,
                 'rpe_referencia':  rpe_referencia,
                 'veces_realizado': veces_realizado,
+                'carga_previa':    carga_previa.get(ex['nombre']),
             })
 
         # Estimar sets disponibles

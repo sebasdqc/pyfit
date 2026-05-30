@@ -663,10 +663,10 @@ export default function EjecutarScreen() {
     advanceFromRest()
   }
 
-  // ── Save series log on completion ────────────────────────────────────────────
+  // ── Save series log (al completar y al salir — EJE-2) ─────────────────────────
 
-  useEffect(() => {
-    if (!completed || !id) return
+  const sendSeriesLog = useCallback(() => {
+    if (!id) return
     const log = flatList
       .map((ej, idx) => {
         const entries = seriesLogRef.current[ej.globalIndex] ?? []
@@ -686,26 +686,38 @@ export default function EjecutarScreen() {
         console.warn('[series-log] POST failed — training data not saved remotely:', err?.message)
       })
     }
-  }, [completed]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [flatList, id])
+
+  useEffect(() => {
+    if (completed) sendSeriesLog()
+  }, [completed, sendSeriesLog])
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
   const handleSalir = () => {
-    Alert.alert(
-      t('ejecutar_exit_title'),
-      t('ejecutar_exit_msg'),
-      [
-        { text: t('ejecutar_exit_continue'), style: 'cancel' },
-        {
-          text: t('ejecutar_exit_confirm'),
-          style: 'destructive',
-          onPress: () => {
-            if (intervalRef.current) clearInterval(intervalRef.current)
-            router.back()
-          },
+    const hayProgreso = Object.values(seriesCompletadasRef.current).some(n => (n ?? 0) > 0)
+    const botones: any[] = [{ text: t('ejecutar_exit_continue'), style: 'cancel' }]
+    if (hayProgreso) {
+      // EJE-3: si ya entrenó algo, ofrecer registrar feedback de la sesión parcial
+      botones.push({
+        text: 'Salir y dar feedback',
+        onPress: () => {
+          if (intervalRef.current) clearInterval(intervalRef.current)
+          sendSeriesLog()                       // EJE-2: preservar peso/reps/dificultad
+          router.replace(`/(app)/feedback/${id}`)
         },
-      ]
-    )
+      })
+    }
+    botones.push({
+      text: t('ejecutar_exit_confirm'),
+      style: 'destructive',
+      onPress: () => {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        if (hayProgreso) sendSeriesLog()        // EJE-2: no perder el log al salir
+        router.back()
+      },
+    })
+    Alert.alert(t('ejecutar_exit_title'), t('ejecutar_exit_msg'), botones)
   }
 
   const handleAnterior = () => {
