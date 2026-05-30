@@ -76,9 +76,13 @@ export function fetchAdminUsers(query: string, page: number = 1): Promise<AdminU
 /**
  * Impersona al usuario. Guarda los nuevos tokens y limpia/setea
  * `admin_impersonating` localmente. Devuelve los datos del target.
+ *
+ * Si el admin tiene 2FA activo (`requires_otp` en /api/admin/me/), el backend
+ * exige `otpToken` (código TOTP de 6 dígitos). Sin él responde 403.
  */
-export async function startImpersonation(userId: number): Promise<{ user: any; impersonator: any }> {
-  const data = await apiPost(`/api/admin/impersonate/${userId}/`, {})
+export async function startImpersonation(userId: number, otpToken?: string): Promise<{ user: any; impersonator: any }> {
+  const body = otpToken ? { otp_token: otpToken } : {}
+  const data = await apiPost(`/api/admin/impersonate/${userId}/`, body)
   await saveTokens(data.access, data.refresh)
   await saveUser(data.user)
   await setImpersonating({

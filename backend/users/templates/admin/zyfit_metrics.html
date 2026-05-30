@@ -37,6 +37,15 @@
     .zk-action-btn.primary { background: rgb(79 140 255); color: white; border-color: rgb(79 140 255); }
     .zk-action-btn.secondary { background: transparent; color: rgb(122 182 255); border-color: rgba(79, 140, 255, 0.4); }
     .zk-action-btn:hover { opacity: 0.85; }
+    /* Selector de período */
+    .zk-period { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 18px; }
+    .zk-period .seg { display: inline-flex; border: 1px solid rgb(55 65 81); border-radius: 8px; overflow: hidden; }
+    .zk-period .seg a { padding: 7px 14px; font-size: 13px; color: rgb(156 163 175); text-decoration: none; border-right: 1px solid rgb(55 65 81); }
+    .zk-period .seg a:last-child { border-right: none; }
+    .zk-period .seg a.on { background: rgb(79 140 255); color: white; font-weight: 600; }
+    .zk-period form { display: flex; gap: 6px; align-items: center; }
+    .zk-period input[type=date] { background: rgb(17 24 39); border: 1px solid rgb(55 65 81); border-radius: 6px; color: rgb(229 231 235); padding: 6px 8px; font-size: 12px; }
+    .zk-period button { background: rgb(31 41 55); border: 1px solid rgb(55 65 81); color: rgb(122 182 255); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
   </style>
 {% endblock %}
 
@@ -52,6 +61,48 @@
   <div class="zk-action-bar">
     <a href="{% url 'zyfit_export_hub' %}" class="zk-action-btn primary">⬇ Exportar CSV</a>
     <a href="{% url 'zyfit_broadcast' %}" class="zk-action-btn secondary">📣 Broadcast</a>
+  </div>
+
+  {# ── SELECTOR DE PERÍODO (D4) ──────────────────────────────────────────────── #}
+  <div class="zk-section-title">Período de análisis
+    <span style="font-size: 12px; color: rgb(156 163 175); text-transform: none;">{{ period.from }} → {{ period.to }} · {{ period.days }} día{{ period.days|pluralize:"s" }} · solo usuarios reales</span>
+  </div>
+  <div class="zk-period">
+    <div class="seg">
+      <a href="?period=7"  class="{% if period_preset == '7' %}on{% endif %}">7 días</a>
+      <a href="?period=30" class="{% if period_preset == '30' %}on{% endif %}">30 días</a>
+      <a href="?period=90" class="{% if period_preset == '90' %}on{% endif %}">90 días</a>
+    </div>
+    <form method="get">
+      <input type="date" name="from" value="{{ period_from }}" max="{{ period_to }}">
+      <span style="color: rgb(107 114 128);">→</span>
+      <input type="date" name="to" value="{{ period_to }}">
+      <button type="submit">Aplicar</button>
+    </form>
+  </div>
+  <div class="zk-grid">
+    <div class="zk-card accent">
+      <div class="label">Nuevos usuarios</div>
+      <div class="value">{{ period.new_users }}</div>
+      <div class="sub">en el período</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Usuarios activos</div>
+      <div class="value">{{ period.active_users }}</div>
+      <div class="sub">sesión o check-in</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Sesiones</div>
+      <div class="value">{{ period.sessions }}</div>
+      <div class="sub">{{ period.checkins }} check-ins</div>
+    </div>
+    <div class="zk-card">
+      <div class="label">Feedback</div>
+      <div class="value">{{ period.feedback_count }}</div>
+      <div class="sub">
+        {% if period.rating_avg %}Rating {{ period.rating_avg|floatformat:1 }}/5{% else %}sin ratings{% endif %}
+      </div>
+    </div>
   </div>
 
   {# ── USUARIOS ───────────────────────────────────────────────────────────── #}
@@ -164,10 +215,11 @@
   </div>
 
   {# ── CALIDAD IA ────────────────────────────────────────────────────────────── #}
+  {% with ai_quality=period.ai_quality %}
   {% if ai_quality %}
-  <div class="zk-section-title">Calidad de IA · últimos 30 días</div>
+  <div class="zk-section-title">Calidad de IA · período seleccionado</div>
   <div class="zk-grid">
-    <div class="zk-card {% if ai_quality.rpe_bias is not None %}{% if ai_quality.rpe_bias == 0.0 %}health-good{% else %}health-warn{% endif %}{% endif %}">
+    <div class="zk-card {{ ai_quality.rpe_bias_health }}">
       <div class="label">RPE Bias</div>
       <div class="value">
         {% if ai_quality.rpe_bias is not None %}
@@ -217,6 +269,7 @@
   </div>
   {% endif %}
   {% endif %}
+  {% endwith %}
 
   {# ── CHURN RISK ────────────────────────────────────────────────────────────── #}
   {% if churn_risk %}

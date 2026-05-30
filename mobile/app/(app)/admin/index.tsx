@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   StyleSheet,
   Text,
   TextInput,
@@ -27,6 +28,7 @@ import { Colors } from '../../../lib/colors'
 import {
   AdminUserRow,
   AdminUsersResponse,
+  fetchAdminMe,
   fetchAdminUsers,
   startImpersonation,
 } from '../../../lib/admin'
@@ -60,11 +62,26 @@ export default function AdminScreen() {
   const [error,        setError]        = useState<string | null>(null)
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null)
 
+  // 2FA: si el admin tiene TOTP confirmado, /me/ devuelve requires_otp y
+  // pedimos el código antes de impersonar.
+  const [requiresOtp,  setRequiresOtp]  = useState(false)
+  const [otpTarget,    setOtpTarget]    = useState<AdminUserRow | null>(null)
+  const [otpCode,      setOtpCode]      = useState('')
+  const [otpError,     setOtpError]     = useState<string | null>(null)
+  const [otpSubmitting, setOtpSubmitting] = useState(false)
+
   // Debounce para no machacar el backend con cada tecleo
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(query), 250)
     return () => clearTimeout(t)
   }, [query])
+
+  // Saber si este admin necesita 2FA para impersonar
+  useEffect(() => {
+    fetchAdminMe()
+      .then(me => setRequiresOtp(!!me?.requires_otp))
+      .catch(() => setRequiresOtp(false))
+  }, [])
 
   const load = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true)
@@ -83,17 +100,44 @@ export default function AdminScreen() {
 
   useEffect(() => { load(true) }, [load])
 
-  async function handleImpersonate(u: AdminUserRow) {
-    if (impersonatingId) return
+  async function doImpersonate(u: AdminUserRow, otp?: string) {
     setImpersonatingId(u.id)
     try {
-      await startImpersonation(u.id)
+      await startImpersonation(u.id, otp)
+      setOtpTarget(null)
+      setOtpCode('')
       router.replace('/(app)/dashboard')
     } catch (e: any) {
-      setError(e?.message || 'No se pudo impersonar.')
+      const msg = e?.message || 'No se pudo impersonar.'
+      if (otpTarget) setOtpError(msg)
+      else           setError(msg)
     } finally {
       setImpersonatingId(null)
     }
+  }
+
+  function handleImpersonate(u: AdminUserRow) {
+    if (impersonatingId) return
+    if (requiresOtp) {
+      // Abrir el modal para capturar el código 2FA antes de impersonar.
+      setOtpError(null)
+      setOtpCode('')
+      setOtpTarget(u)
+    } else {
+      doImpersonate(u)
+    }
+  }
+
+  async function submitOtp() {
+    if (!otpTarget || otpSubmitting) return
+    if (otpCode.trim().length < 6) {
+      setOtpError('Ingresa el código de 6 dígitos.')
+      return
+    }
+    setOtpSubmitting(true)
+    setOtpError(null)
+    await doImpersonate(otpTarget, otpCode.trim())
+    setOtpSubmitting(false)
   }
 
   // ── Render rows ───────────────────────────────────────────────────────────
@@ -200,6 +244,59 @@ export default function AdminScreen() {
           }
         />
       )}
+
+      {/* Modal 2FA — código TOTP antes de impersonar */}
+      <Modal
+        visible={!!otpTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!otpSubmitting) setOtpTarget(null) }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEyebrow}>VERIFICACIÓN 2FA</Text>
+            <Text style={styles.modalTitle}>Código para impersonar</Text>
+            <Text style={styles.modalSub} numberOfLines={2}>
+              Ingresa tu código de 6 dígitos para ver como{' '}
+              {otpTarget?.nombre || otpTarget?.email}
+            </Text>
+            <TextInput
+              style={styles.otpInput}
+              value={otpCode}
+              onChangeText={setOtpCode}
+              placeholder="000000"
+              placeholderTextColor={colors.inkMuted}
+              keyboardType="number-pad"
+              autoFocus
+              maxLength={8}
+              textContentType="oneTimeCode"
+              editable={!otpSubmitting}
+            />
+            {otpError && <Text style={styles.otpError}>{otpError}</Text>}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { if (!otpSubmitting) setOtpTarget(null) }}
+                disabled={otpSubmitting}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>CANCELAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, otpSubmitting && styles.impersonateBtnLoading]}
+                onPress={submitOtp}
+                disabled={otpSubmitting}
+                activeOpacity={0.78}
+              >
+                {otpSubmitting
+                  ? <ActivityIndicator size="small" color="#000" />
+                  : <Text style={styles.modalConfirmText}>VERIFICAR</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -334,5 +431,55 @@ function makeStyles(c: Colors) {
     emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
     emptyTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary },
     emptySub:   { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted },
+
+    // ── Modal 2FA ──────────────────────────────────────────────────────────
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.72)',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+    },
+    modalCard: {
+      backgroundColor: c.bg,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      borderRadius: 22,
+      padding: 22,
+    },
+    modalEyebrow: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: c.accent, letterSpacing: 1.6 },
+    modalTitle:   { fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: c.inkPrimary, letterSpacing: -0.4, marginTop: 6 },
+    modalSub:     { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkSecondary, marginTop: 6, marginBottom: 16 },
+    otpInput: {
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 24,
+      letterSpacing: 8,
+      textAlign: 'center',
+      color: c.inkPrimary,
+    },
+    otpError: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff8585', marginTop: 10 },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+    modalCancel: {
+      flex: 1,
+      paddingVertical: 13,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      alignItems: 'center',
+    },
+    modalCancelText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2, color: c.inkSecondary },
+    modalConfirm: {
+      flex: 1,
+      paddingVertical: 13,
+      borderRadius: 12,
+      backgroundColor: c.accent,
+      alignItems: 'center',
+    },
+    modalConfirmText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2, color: '#000' },
   })
 }

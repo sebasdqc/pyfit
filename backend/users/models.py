@@ -123,6 +123,11 @@ class Profile(models.Model):
     logros = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil
+    # Marca de cuenta de prueba (QA, demos, el propio equipo). Las cuentas con
+    # esta bandera se excluyen de las métricas de negocio (KPIs, embudo,
+    # retención, churn) para que la analítica refleje usuarios reales. No afecta
+    # el funcionamiento normal de la app para esa cuenta.
+    is_test = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         db_table = 'profiles'
@@ -277,3 +282,37 @@ class PasswordResetCode(models.Model):
         # y podría ser predecible si el estado del PRNG se filtra via timing u otras APIs.
         code = ''.join(secrets.choice(string.digits) for _ in range(6))
         return cls.objects.create(user=user, code=code)
+
+
+class ImpersonationLog(models.Model):
+    """Rastro persistente y consultable de cada impersonación ('ver como usuario').
+
+    auditlog captura cambios de modelos, pero impersonar no cambia ningún
+    modelo — es la acción más sensible del panel y necesita su propia bitácora.
+    Una fila por evento (inicio/fin), con quién, a quién, cuándo e IP.
+    """
+
+    ACTION_CHOICES = [('start', 'Inicio'), ('stop', 'Fin')]
+
+    impersonator = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='impersonations_made',
+    )
+    target = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='impersonations_received',
+    )
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES, default='start')
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'impersonation_logs'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['-created_at'])]
+
+    def __str__(self):
+        imp = self.impersonator_id and self.impersonator.email or '?'
+        tgt = self.target_id and self.target.email or '?'
+        return f'{imp} → {tgt} [{self.action}]'

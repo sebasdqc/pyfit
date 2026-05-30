@@ -1,0 +1,199 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .u3-back { display:inline-flex; align-items:center; gap:6px; color:rgb(79 140 255); text-decoration:none; font-size:13px; font-weight:500; margin-bottom:16px; }
+    .u3-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+    .u3-name { font-size:24px; font-weight:700; color:rgb(248 250 252); letter-spacing:-0.02em; margin:0; }
+    .u3-email { font-family:ui-monospace,monospace; font-size:13px; color:rgb(156 163 175); margin-top:2px; }
+    .u3-badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .u3-badge { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; }
+    .u3-badge.blue { background:rgb(79 140 255 / 0.18); color:rgb(122 182 255); }
+    .u3-badge.amber{ background:rgb(251 191 36 / 0.18); color:rgb(251 191 36); }
+    .u3-badge.green{ background:rgb(52 211 153 / 0.18); color:rgb(52 211 153); }
+    .u3-badge.gray { background:rgb(75 85 99 / 0.4); color:rgb(156 163 175); }
+    .u3-badge.red  { background:rgb(248 113 113 / 0.18); color:rgb(248 113 113); }
+    .u3-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .u3-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; border:1px solid rgb(55 65 81); color:rgb(156 163 175); background:rgb(31 41 55); }
+    .u3-btn.primary { background:rgb(79 140 255); color:white; border-color:rgb(79 140 255); }
+    .u3-btn:hover { opacity:0.85; }
+    .u3-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:18px 0; }
+    .u3-card { background:rgb(31 41 55); border:1px solid rgb(55 65 81); border-radius:10px; padding:14px 16px; }
+    .u3-card .v { font-size:24px; font-weight:700; color:rgb(248 250 252); line-height:1.1; }
+    .u3-card .l { font-size:11px; letter-spacing:1.4px; color:rgb(107 114 128); text-transform:uppercase; margin-top:6px; }
+    .u3-card.accent { border-color:rgb(79 140 255); } .u3-card.accent .v { color:rgb(122 182 255); }
+    .u3-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
+    @media (max-width:900px){ .u3-cols{ grid-template-columns:1fr; } }
+    .u3-box { background:rgb(31 41 55); border:1px solid rgb(55 65 81); border-radius:12px; overflow:hidden; }
+    .u3-box-h { padding:12px 16px; background:rgb(17 24 39); border-bottom:1px solid rgb(55 65 81); font-size:11px; letter-spacing:1.5px; color:rgb(107 114 128); text-transform:uppercase; display:flex; justify-content:space-between; }
+    .u3-box-h a { font-size:12px; letter-spacing:0; text-transform:none; color:rgb(79 140 255); text-decoration:none; }
+    .u3-dl { width:100%; border-collapse:collapse; }
+    .u3-dl td { padding:8px 16px; font-size:13px; border-bottom:1px solid rgb(55 65 81); vertical-align:top; }
+    .u3-dl tr:last-child td { border-bottom:none; }
+    .u3-dl td.k { color:rgb(107 114 128); width:42%; }
+    .u3-dl td.v { color:rgb(229 231 235); }
+    .u3-tbl { width:100%; border-collapse:collapse; }
+    .u3-tbl th,.u3-tbl td { padding:9px 14px; text-align:left; font-size:13px; }
+    .u3-tbl th { background:rgb(17 24 39); color:rgb(156 163 175); font-size:11px; letter-spacing:1px; text-transform:uppercase; }
+    .u3-tbl tr+tr td { border-top:1px solid rgb(55 65 81); }
+    .u3-mono { font-family:ui-monospace,monospace; font-size:12px; color:rgb(156 163 175); }
+    .u3-sec { font-size:11px; letter-spacing:2px; color:rgb(107 114 128); text-transform:uppercase; margin:28px 0 10px; }
+    .u3-empty { padding:18px; text-align:center; color:rgb(107 114 128); font-size:13px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'zyfit_metrics' %}" class="u3-back">← Métricas</a>
+
+{# ── HEADER ─────────────────────────────────────────────────────────────────── #}
+<div class="u3-head">
+  <div>
+    <h1 class="u3-name">{{ profile.nombre|default:u.email }}</h1>
+    <div class="u3-email">{{ u.email }} · id {{ u.id }}</div>
+    <div class="u3-badges">
+      <span class="u3-badge blue">{{ nivel_label }} · {{ total_sessions }} ses.</span>
+      {% if u.is_superuser %}<span class="u3-badge amber">SUPERUSER</span>
+      {% elif u.is_staff %}<span class="u3-badge amber">STAFF</span>{% endif %}
+      {% if profile.is_test %}<span class="u3-badge red">🧪 CUENTA TEST</span>{% endif %}
+      {% if u.is_active %}<span class="u3-badge green">Activo</span>{% else %}<span class="u3-badge red">Inactivo</span>{% endif %}
+      {% if profile.plan %}<span class="u3-badge gray">Plan {{ profile.plan }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="u3-actions">
+    {% if profile %}<a href="{% url 'admin:users_profile_change' profile.id %}" class="u3-btn primary">Editar perfil</a>{% endif %}
+    <a href="{% url 'admin:users_user_change' u.id %}" class="u3-btn">Editar usuario</a>
+    <a href="{% url 'admin:workouts_session_changelist' %}?user__id__exact={{ u.id }}" class="u3-btn">Todas las sesiones →</a>
+  </div>
+</div>
+
+{# ── STAT CARDS ─────────────────────────────────────────────────────────────── #}
+<div class="u3-cards">
+  <div class="u3-card accent"><div class="v">{{ total_sessions }}</div><div class="l">Sesiones</div></div>
+  <div class="u3-card"><div class="v">{{ total_checkins }}</div><div class="l">Check-ins</div></div>
+  <div class="u3-card"><div class="v">{{ fb_n }}</div><div class="l">Feedback</div></div>
+  <div class="u3-card"><div class="v">{{ profile.racha_actual|default:0 }}</div><div class="l">Racha actual</div></div>
+  <div class="u3-card"><div class="v">{{ profile.mejor_racha|default:0 }}</div><div class="l">Mejor racha</div></div>
+  <div class="u3-card"><div class="v">{% if last_activity %}{{ last_activity }}{% else %}—{% endif %}</div><div class="l">Última actividad</div></div>
+</div>
+
+{# ── PERFIL + ADAPTACIÓN ────────────────────────────────────────────────────── #}
+<div class="u3-cols">
+  <div class="u3-box">
+    <div class="u3-box-h">Perfil</div>
+    {% if profile %}
+    <table class="u3-dl">
+      <tr><td class="k">Objetivo</td><td class="v">{{ profile.objetivo|default:"—" }}</td></tr>
+      <tr><td class="k">Sexo / Edad</td><td class="v">{{ profile.get_sexo_display|default:"—" }} · {% if edad %}{{ edad }} años{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Peso / Altura</td><td class="v">{% if profile.peso %}{{ profile.peso }} kg{% else %}—{% endif %} · {% if profile.altura %}{{ profile.altura }} cm{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Nivel</td><td class="v">{{ profile.get_nivel_display }} {% if profile.nivel_experiencia %}· exp {{ profile.nivel_experiencia }}/5{% endif %}</td></tr>
+      <tr><td class="k">Días/semana</td><td class="v">{{ profile.dias_semana|default:"—" }}</td></tr>
+      <tr><td class="k">Duración objetivo</td><td class="v">{% if profile.duracion_disponible %}{{ profile.duracion_disponible }} min{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Estrés / Trabajo</td><td class="v">{{ profile.nivel_estres|default:"—" }} · {{ profile.tipo_trabajo|default:"—" }}</td></tr>
+      <tr><td class="k">Sueño habitual</td><td class="v">{% if profile.calidad_sueno_habitual %}{{ profile.calidad_sueno_habitual }} h{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Condiciones médicas</td><td class="v">{{ profile.condiciones_medicas|default:"—" }}</td></tr>
+      <tr><td class="k">Notas médicas</td><td class="v">{{ profile.notas_medicas|default:"—" }}</td></tr>
+      <tr><td class="k">Ciclo menstrual</td><td class="v">{% if profile.usa_ciclo_menstrual %}Sí{% else %}No{% endif %}</td></tr>
+      <tr><td class="k">Registrado</td><td class="v u3-mono">{{ u.date_joined|date:"d M Y" }} · último login {% if u.last_login %}{{ u.last_login|date:"d M Y" }}{% else %}nunca{% endif %}</td></tr>
+    </table>
+    {% else %}<div class="u3-empty">Sin perfil — el usuario no completó onboarding.</div>{% endif %}
+  </div>
+
+  <div class="u3-box">
+    <div class="u3-box-h">Estado de adaptación (ML)</div>
+    {% if adapt %}
+    <table class="u3-dl">
+      <tr><td class="k">Sesiones (motor)</td><td class="v">{{ adapt.total_sesiones }}</td></tr>
+      <tr><td class="k">RPE bias</td><td class="v">{% if adapt.rpe_bias is not None %}{% if adapt.rpe_bias > 0 %}+{% endif %}{{ adapt.rpe_bias }}{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Cumplimiento prom.</td><td class="v">{% if adapt.cumplimiento_promedio is not None %}{{ adapt.cumplimiento_promedio }}%{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Rating prom.</td><td class="v">{% if adapt.rating_promedio is not None %}{{ adapt.rating_promedio }}/5{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Volumen tolerado</td><td class="v">{% if adapt.volumen_tolerado_semana is not None %}{{ adapt.volumen_tolerado_semana }} ses/sem{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Patrón preferido</td><td class="v">{{ adapt.patron_preferido|default:"—" }}</td></tr>
+      <tr><td class="k">Semanas de carga</td><td class="v">{{ adapt.semanas_carga_consecutivas }}</td></tr>
+      <tr><td class="k">Actualizado</td><td class="v u3-mono">{{ adapt.updated_at|date:"d M Y H:i" }}</td></tr>
+    </table>
+    {% else %}<div class="u3-empty">Sin perfil de adaptación todavía (se crea tras el primer feedback).</div>{% endif %}
+    <div class="u3-box-h" style="border-top:1px solid rgb(55 65 81);">Promedios de feedback (histórico)</div>
+    <table class="u3-dl">
+      <tr><td class="k">RPE real prom.</td><td class="v">{% if fb_rpe is not None %}{{ fb_rpe|floatformat:1 }}{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Cumplimiento prom.</td><td class="v">{% if fb_cumpl is not None %}{{ fb_cumpl|floatformat:0 }}%{% else %}—{% endif %}</td></tr>
+      <tr><td class="k">Rating prom.</td><td class="v">{% if fb_rating is not None %}{{ fb_rating|floatformat:1 }}/5{% else %}—{% endif %}</td></tr>
+    </table>
+  </div>
+</div>
+
+{# ── LESIONES + DISPOSITIVO ─────────────────────────────────────────────────── #}
+<div class="u3-cols">
+  <div class="u3-box">
+    <div class="u3-box-h">Lesiones activas <a href="{% url 'admin:users_userinjury_changelist' %}?user__id__exact={{ u.id }}">Ver →</a></div>
+    {% if injuries %}
+    <table class="u3-tbl">
+      <thead><tr><th>Zona</th><th>Severidad</th><th>Descripción</th></tr></thead>
+      <tbody>
+        {% for inj in injuries %}
+        <tr><td>{{ inj.get_zona_display }}</td><td>{{ inj.get_severidad_display }}</td><td class="u3-mono">{{ inj.descripcion|default:"—"|truncatechars:60 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="u3-empty">Sin lesiones activas.</div>{% endif %}
+  </div>
+
+  <div class="u3-box">
+    <div class="u3-box-h">Dispositivo conectado</div>
+    {% if device %}
+    <table class="u3-dl">
+      <tr><td class="k">Dispositivo</td><td class="v">{{ device.get_device_display }} · {{ device.status }}</td></tr>
+      <tr><td class="k">Último sync</td><td class="v u3-mono">{% if device.last_synced_at %}{{ device.last_synced_at|date:"d M Y H:i" }}{% else %}nunca{% endif %}</td></tr>
+      <tr><td class="k">HRV / Sueño</td><td class="v">{{ device.hrv|default:"—" }} · {{ device.sleep_score|default:"—" }}</td></tr>
+      <tr><td class="k">Body battery</td><td class="v">{{ device.body_battery|default:"—" }}</td></tr>
+    </table>
+    {% else %}<div class="u3-empty">Sin dispositivo conectado.</div>{% endif %}
+  </div>
+</div>
+
+{# ── ÚLTIMAS SESIONES ───────────────────────────────────────────────────────── #}
+<div class="u3-sec">Últimas sesiones</div>
+<div class="u3-box">
+  <table class="u3-tbl">
+    <thead><tr><th>Fecha</th><th>Duración</th><th>RPE target</th><th>RPE real</th><th>Cumpl.</th><th>Rating</th><th>Ubicación</th></tr></thead>
+    <tbody>
+      {% for s in recent_sessions %}
+      <tr>
+        <td><a href="{% url 'admin:workouts_session_change' s.id %}" style="color:rgb(122 182 255); text-decoration:none;">{{ s.fecha }}</a></td>
+        <td>{{ s.duracion_planificada }} min</td>
+        <td class="u3-mono">{{ s.rpe_target }}</td>
+        <td class="u3-mono">{% if s.fb_obj %}{{ s.fb_obj.rpe_real }}{% else %}—{% endif %}</td>
+        <td class="u3-mono">{% if s.fb_obj %}{{ s.fb_obj.cumplimiento }}%{% else %}—{% endif %}</td>
+        <td class="u3-mono">{% if s.fb_obj %}{{ s.fb_obj.rating }}/5{% else %}—{% endif %}</td>
+        <td class="u3-mono">{{ s.location.nombre|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="u3-empty">Sin sesiones.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── ÚLTIMOS CHECK-INS ──────────────────────────────────────────────────────── #}
+<div class="u3-sec">Últimos check-ins</div>
+<div class="u3-box" style="margin-bottom:40px;">
+  <table class="u3-tbl">
+    <thead><tr><th>Fecha</th><th>Ánimo</th><th>Sueño</th><th>HRV</th><th>Duración</th><th>Dolor</th></tr></thead>
+    <tbody>
+      {% for c in recent_checkins %}
+      <tr>
+        <td>{{ c.fecha }}</td>
+        <td class="u3-mono">{{ c.estado_animo|default:"—" }}/5</td>
+        <td class="u3-mono">{% if c.calidad_sueno %}{{ c.calidad_sueno }} h{% else %}—{% endif %}</td>
+        <td class="u3-mono">{{ c.hrv|default:"—" }}</td>
+        <td class="u3-mono">{% if c.duracion_disponible %}{{ c.duracion_disponible }} min{% else %}—{% endif %}</td>
+        <td class="u3-mono">{{ c.dolor_hoy|default:"—"|truncatechars:40 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="u3-empty">Sin check-ins.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

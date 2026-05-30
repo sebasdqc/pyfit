@@ -404,6 +404,7 @@ UNFOLD = {
                 'separator': True,
                 'items': [
                     {'title': 'Audit log',     'icon': 'history',        'link': reverse_lazy('admin:auditlog_logentry_changelist')},
+                    {'title': 'Impersonaciones', 'icon': 'switch_account', 'link': reverse_lazy('admin:users_impersonationlog_changelist')},
                     {'title': 'TOTP devices',  'icon': 'phonelink_lock', 'link': reverse_lazy('admin:otp_totp_totpdevice_changelist')},
                     {'title': 'Backup tokens', 'icon': 'vpn_key',        'link': reverse_lazy('admin:otp_static_staticdevice_changelist')},
                 ],

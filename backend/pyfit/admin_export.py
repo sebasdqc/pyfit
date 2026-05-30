@@ -12,6 +12,7 @@ import csv
 from datetime import date, timedelta
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -42,7 +43,10 @@ def export_users_csv(request):
     users = User.objects.filter(
         date_joined__date__gte=from_date,
         date_joined__date__lte=to_date,
-    ).select_related('profile').order_by('-date_joined')
+    ).select_related('profile').annotate(
+        _n_sessions=Count('sessions', distinct=True),
+        _n_checkins=Count('checkins', distinct=True),
+    ).order_by('-date_joined')
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="pyfit_usuarios_{from_date}_{to_date}.csv"'
@@ -59,8 +63,8 @@ def export_users_csv(request):
 
     for u in users:
         p = getattr(u, 'profile', None)
-        total_sessions = Session.objects.filter(user=u).count()
-        total_checkins = DailyCheckin.objects.filter(user=u).count()
+        total_sessions = u._n_sessions
+        total_checkins = u._n_checkins
         writer.writerow([
             u.id, u.email, u.username,
             u.date_joined.strftime('%Y-%m-%d %H:%M') if u.date_joined else '',

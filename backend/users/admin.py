@@ -2,7 +2,9 @@ import csv
 
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Count
 from django.http import HttpResponse
+from django.urls import reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.contrib.filters.admin import RangeDateFilter
@@ -10,7 +12,7 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from workouts.models import Session
 from .models import (
-    MenstrualCycle, Notification, NotificationPreference,
+    ImpersonationLog, MenstrualCycle, Notification, NotificationPreference,
     Profile, User, UserInjury, UserLocation,
 )
 
@@ -86,7 +88,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_form              = UserCreationForm
     change_password_form  = AdminPasswordChangeForm
 
-    list_display   = ['email', 'username', 'status_badge', 'is_staff', 'sessions_count', 'date_joined', 'last_login']
+    list_display   = ['email', 'username', 'status_badge', 'is_staff', 'sessions_count', 'ver_360', 'date_joined', 'last_login']
     list_filter    = ['is_staff', 'is_superuser', 'is_active', ('date_joined', RangeDateFilter)]
     search_fields  = ['email', 'username']
     ordering       = ['-date_joined']
@@ -94,28 +96,65 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     actions        = [activate_users, deactivate_users, export_users_csv_action,
                       send_welcome_notification, send_reengagement_notification]
 
+    def get_queryset(self, request):
+        # Annotate session count en una sola query en vez de un COUNT por fila.
+        return super().get_queryset(request).annotate(_n_sessions=Count('sessions'))
+
+    @admin.display(description='360')
+    def ver_360(self, obj):
+        url = reverse('zyfit_user_detail', args=[obj.id])
+        return format_html('<a href="{}" style="color:#7ab6ff;font-weight:600;">Ver 360 →</a>', url)
+
     @admin.display(description='Estado', ordering='is_active')
     def status_badge(self, obj):
         if obj.is_active:
             return format_html('<span style="color:#34d399;font-weight:600;">● Activo</span>')
         return format_html('<span style="color:#f87171;font-weight:600;">● Inactivo</span>')
 
-    @admin.display(description='Sesiones')
+    @admin.display(description='Sesiones', ordering='_n_sessions')
     def sessions_count(self, obj):
-        n = Session.objects.filter(user=obj).count()
+        n = obj._n_sessions
         if n == 0:
             return format_html('<span style="color:#6b7280;">0</span>')
         return format_html('<span style="color:#7ab6ff;font-weight:600;">{}</span>', n)
 
 
+def mark_as_test(modeladmin, request, queryset):
+    n = queryset.update(is_test=True)
+    messages.success(request, f'{n} perfil(es) marcado(s) como cuenta de prueba (excluidos de métricas).')
+mark_as_test.short_description = '🧪 Marcar como cuenta de prueba'
+
+
+def unmark_as_test(modeladmin, request, queryset):
+    n = queryset.update(is_test=False)
+    messages.success(request, f'{n} perfil(es) desmarcado(s) — vuelven a contar en métricas.')
+unmark_as_test.short_description = '👤 Quitar marca de cuenta de prueba'
+
+
 @admin.register(Profile)
 class ProfileAdmin(ModelAdmin):
-    list_display   = ['nombre', 'user', 'nivel_label', 'objetivo_short', 'racha_actual', 'puntos_totales', 'created_at']
-    list_filter    = ['nivel', 'sexo', 'estilo_coaching', ('created_at', RangeDateFilter)]
+    list_display   = ['nombre', 'user', 'nivel_col', 'objetivo_short', 'racha_actual', 'puntos_totales', 'is_test', 'ver_360', 'created_at']
+    list_filter    = ['nivel', 'sexo', 'estilo_coaching', 'is_test', ('created_at', RangeDateFilter)]
     search_fields  = ['nombre', 'user__email']
     readonly_fields = ['created_at', 'racha_actual', 'mejor_racha', 'puntos_totales', 'logros']
+    actions        = [mark_as_test, unmark_as_test]
+    list_select_related = ['user']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(_n_sessions=Count('user__sessions'))
+
+    @admin.display(description='Nivel', ordering='_n_sessions')
+    def nivel_col(self, obj):
+        n = obj._n_sessions
+        label = 'Leyenda' if n >= 30 else 'Élite' if n >= 15 else 'Atleta' if n >= 5 else 'Rookie'
+        return f'{label} · {n}'
+
+    @admin.display(description='360')
+    def ver_360(self, obj):
+        url = reverse('zyfit_user_detail', args=[obj.user_id])
+        return format_html('<a href="{}" style="color:#7ab6ff;font-weight:600;">Ver 360 →</a>', url)
     fieldsets = (
-        ('Identidad',     {'fields': ['user', 'nombre', 'sexo', 'fecha_nacimiento']}),
+        ('Identidad',     {'fields': ['user', 'nombre', 'sexo', 'fecha_nacimiento', 'is_test']}),
         ('Cuerpo',        {'fields': ['peso', 'altura', 'usa_ciclo_menstrual']}),
         ('Objetivo',      {'fields': ['objetivo', 'objetivos_multiples', 'objetivo_secundario', 'horizonte_temporal', 'motivacion']}),
         ('Entrenamiento', {'fields': ['nivel', 'dias_semana', 'horario_preferido', 'duracion_disponible', 'duracion_minima',
@@ -198,3 +237,33 @@ class MenstrualCycleAdmin(ModelAdmin):
     list_display   = ['user', 'fecha_inicio', 'duracion_ciclo']
     list_filter    = [('fecha_inicio', RangeDateFilter)]
     search_fields  = ['user__email']
+
+
+@admin.register(ImpersonationLog)
+class ImpersonationLogAdmin(ModelAdmin):
+    """Bitácora de solo lectura — auditoría del 'ver como usuario'."""
+    list_display   = ['created_at', 'impersonator', 'arrow', 'target', 'action_badge', 'ip']
+    list_filter    = ['action', ('created_at', RangeDateFilter)]
+    search_fields  = ['impersonator__email', 'target__email', 'ip']
+    readonly_fields = ['impersonator', 'target', 'action', 'ip', 'user_agent', 'created_at']
+    date_hierarchy = 'created_at'
+    list_per_page  = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False  # solo lectura
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('impersonator', 'target')
+
+    @admin.display(description='')
+    def arrow(self, obj):
+        return '→'
+
+    @admin.display(description='Acción', ordering='action')
+    def action_badge(self, obj):
+        color = '#7ab6ff' if obj.action == 'start' else '#9ca3af'
+        label = 'Inicio' if obj.action == 'start' else 'Fin'
+        return format_html('<span style="color:{};font-weight:600;">{}</span>', color, label)

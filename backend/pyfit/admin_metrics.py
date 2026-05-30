@@ -10,53 +10,105 @@ Dos puntos de entrada:
 2. `zyfit_metrics_view(request)` — Vista standalone (link del sidebar) que
    reusa el mismo template con datos extendidos: embudo de onboarding,
    retención cohort D1/D7/D30, distribución horaria, top ejercicios, etc.
+   Acepta `?period=7|30|90` o `?from=&to=` para acotar el bloque de período.
 
-Todas las consultas son agregadas. Si el dataset crece >50k usuarios la
-distribución horaria puede empezar a doler — ahí cacheamos.
+Regla de alcance de los datos (importante):
+  • Analítica de negocio (KPIs, embudo, retención, churn, niveles, top usuarios,
+    bloque de período) → SOLO usuarios reales: se excluyen `is_staff` y las
+    cuentas marcadas `Profile.is_test`. Así los números reflejan usuarios reales.
+  • Observabilidad / operación (salud del sistema, distribución horaria, top
+    ejercicios, lista de sesiones recientes) → TODOS los usuarios, para que el
+    equipo vea su propia actividad de prueba mientras testea.
+
+Caché: fuera de DEBUG, los bloques agregados se cachean 60s (LocMem). El home
+del admin se recalcularía en cada carga; con caché es instantáneo y los datos
+siguen siendo esencialmente "en vivo".
 """
 
 import os
 from collections import Counter
-from datetime import timedelta
+from datetime import date, timedelta
+
+from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Avg, Count, Q
+from django.core.cache import cache
+from django.db.models import Avg, Count, Exists, Max, OuterRef, Q
 from django.shortcuts import render
 from django.utils import timezone
 
-from users.models import Profile, User
+from users.models import Profile, User, UserLocation
 from workouts.models import Session, SessionFeedback, UserExerciseProfile
 from checkins.models import DailyCheckin
+
+
+_CACHE_TTL = 60  # segundos
+
+
+def _cached(key, fn, ttl=_CACHE_TTL):
+    """Devuelve `fn()` cacheado `ttl` segundos. En DEBUG nunca cachea (dev/tests)."""
+    if settings.DEBUG:
+        return fn()
+    val = cache.get(key)
+    if val is None:
+        val = fn()
+        cache.set(key, val, ttl)
+    return val
+
+
+# ─── Universo de usuarios "reales" (excluye staff y cuentas de prueba) ──────────
+
+def _real_users():
+    """Usuarios que cuentan para analítica de negocio: ni staff ni cuentas test.
+
+    Los usuarios sin Profile se conservan (no tienen `is_test=True`)."""
+    return User.objects.filter(is_staff=False).exclude(profile__is_test=True)
+
+
+def _real_sessions():
+    return Session.objects.filter(user__is_staff=False).exclude(user__profile__is_test=True)
+
+
+def _real_checkins():
+    return DailyCheckin.objects.filter(user__is_staff=False).exclude(user__profile__is_test=True)
+
+
+def _real_feedback():
+    return SessionFeedback.objects.filter(
+        session__user__is_staff=False
+    ).exclude(session__user__profile__is_test=True)
 
 
 # ─── KPI core ─────────────────────────────────────────────────────────────────
 
 def _compute_kpis() -> dict:
-    """Métricas resumen — siempre se calculan en una sola pasada."""
+    """Métricas resumen — siempre se calculan en una sola pasada. Solo reales."""
     now      = timezone.now()
     today    = now.date()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
 
-    total_users        = User.objects.count()
-    new_users_week     = User.objects.filter(date_joined__date__gte=week_ago).count()
-    new_users_month    = User.objects.filter(date_joined__date__gte=month_ago).count()
+    real = _real_users()
+
+    total_users        = real.count()
+    new_users_week     = real.filter(date_joined__date__gte=week_ago).count()
+    new_users_month    = real.filter(date_joined__date__gte=month_ago).count()
 
     # "Activo" = generó al menos una sesión O hizo un check-in en el periodo
-    active_7d = User.objects.filter(
+    active_7d = real.filter(
         Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
     ).distinct().count()
-    active_30d = User.objects.filter(
+    active_30d = real.filter(
         Q(sessions__fecha__gte=month_ago) | Q(checkins__fecha__gte=month_ago)
     ).distinct().count()
 
-    sessions_today      = Session.objects.filter(fecha=today).count()
-    sessions_this_week  = Session.objects.filter(fecha__gte=week_ago).count()
-    sessions_total      = Session.objects.count()
+    sessions_today      = _real_sessions().filter(fecha=today).count()
+    sessions_this_week  = _real_sessions().filter(fecha__gte=week_ago).count()
+    sessions_total      = _real_sessions().count()
 
-    checkins_today      = DailyCheckin.objects.filter(fecha=today).count()
-    checkins_this_week  = DailyCheckin.objects.filter(fecha__gte=week_ago).count()
+    checkins_today      = _real_checkins().filter(fecha=today).count()
+    checkins_this_week  = _real_checkins().filter(fecha__gte=week_ago).count()
 
-    feedback_week = SessionFeedback.objects.filter(created_at__date__gte=week_ago).aggregate(
+    feedback_week = _real_feedback().filter(created_at__date__gte=week_ago).aggregate(
         rpe_avg=Avg('rpe_real'),
         cump_avg=Avg('cumplimiento'),
         rating_avg=Avg('rating'),
@@ -84,21 +136,31 @@ def _compute_kpis() -> dict:
 # ─── Embudo de onboarding ────────────────────────────────────────────────────
 
 def _compute_funnel() -> list:
-    """Cinco etapas — cada una se mide como subset de la anterior (descendente).
+    """Cinco etapas — cada una como subset (descendente) sobre usuarios reales.
 
-    Las "etapas válidas" son cuentas de usuarios distintos que cumplieron
-    al menos una vez la condición. Ningún `cohort cleanup` — esto refleja
-    el estado actual del negocio, no de un cohort específico.
+    "Onboarding completo" replica EXACTAMENTE `Profile.is_onboarding_complete`
+    (campos escalares + dias_semana>=1 + tener ubicación o lista de lugares no
+    vacía), no una aproximación que sobreestima.
     """
-    total = User.objects.count()
+    real = _real_users()
+    total = real.count()
 
-    onboarding_done = Profile.objects.exclude(objetivo='').filter(
-        fecha_nacimiento__isnull=False, peso__isnull=False, altura__isnull=False,
-    ).exclude(sexo='').count()
+    has_loc = UserLocation.objects.filter(user=OuterRef('user'))
+    onboarding_done = (
+        Profile.objects.filter(
+            user__is_staff=False, is_test=False,
+            fecha_nacimiento__isnull=False, peso__isnull=False, altura__isnull=False,
+            dias_semana__gte=1,
+        )
+        .exclude(objetivo='').exclude(sexo='')
+        .annotate(_has_loc=Exists(has_loc))
+        .filter(Q(_has_loc=True) | (Q(lugares_entrenamiento__isnull=False) & ~Q(lugares_entrenamiento=[])))
+        .count()
+    )
 
-    has_checkin = User.objects.filter(checkins__isnull=False).distinct().count()
-    has_session = User.objects.filter(sessions__isnull=False).distinct().count()
-    has_feedback = User.objects.filter(sessions__feedback__isnull=False).distinct().count()
+    has_checkin = real.filter(checkins__isnull=False).distinct().count()
+    has_session = real.filter(sessions__isnull=False).distinct().count()
+    has_feedback = real.filter(sessions__feedback__isnull=False).distinct().count()
 
     def pct(n, base):
         return round(n / base * 100, 1) if base else 0
@@ -115,19 +177,18 @@ def _compute_funnel() -> list:
 # ─── Retention cohorts ───────────────────────────────────────────────────────
 
 def _retention_cohort(window_days: int) -> dict:
-    """Calcula retención para una ventana dada.
+    """Retención aproximada por cohorte (solo usuarios reales).
 
-    Lógica: tomamos a los usuarios registrados hace `window_days * 2`
-    a `window_days` días (la "cohorte"). De ellos, contamos cuántos tienen
-    actividad (sesión o check-in) en los últimos `window_days` días.
-
-    Esto aproxima D1/D7/D30 sin necesitar event tracking detallado.
+    Cohorte = usuarios reales registrados entre `window_days*2` y `window_days`
+    días atrás. Retenidos = los que tienen actividad (sesión o check-in) en los
+    últimos `window_days` días. Aproxima D1/D7/D30 sin event tracking detallado.
+    Excluir staff/test mejora mucho la señal en cohortes pequeñas.
     """
     today = timezone.now().date()
     cutoff_end   = today - timedelta(days=window_days)
     cutoff_start = today - timedelta(days=window_days * 2)
 
-    cohort = User.objects.filter(
+    cohort = _real_users().filter(
         date_joined__date__gte=cutoff_start,
         date_joined__date__lt=cutoff_end,
     )
@@ -147,16 +208,14 @@ def _retention_cohort(window_days: int) -> dict:
     }
 
 
-# ─── Distribución horaria de sesiones ────────────────────────────────────────
+# ─── Distribución horaria de sesiones (observabilidad — todos) ─────────────────
 
 def _compute_hourly_distribution() -> list:
     """Histograma de cuándo se CREAN las sesiones (hora local del servidor).
 
-    Útil para ver picos de uso y, en futuro, decidir cuándo escalar workers
-    o disparar campañas de re-engagement.
+    Útil para ver picos de uso y decidir cuándo escalar workers o disparar
+    campañas. Observabilidad: incluye a todos.
     """
-    # Cogemos los últimos 30 días para que la muestra sea suficiente sin
-    # tirar el SQL completo.
     cutoff = timezone.now() - timedelta(days=30)
     rows = Session.objects.filter(created_at__gte=cutoff).values_list('created_at', flat=True)
 
@@ -165,8 +224,6 @@ def _compute_hourly_distribution() -> list:
         local = timezone.localtime(dt)
         counter[local.hour] += 1
 
-    # Pasamos a una lista de 24 entradas con 0s donde no hubo nada — facilita
-    # iterar en el template y mantiene la escala constante.
     total = max(counter.values()) if counter else 0
     distribution = []
     for h in range(24):
@@ -182,7 +239,7 @@ def _compute_hourly_distribution() -> list:
 # ─── Health / observabilidad ─────────────────────────────────────────────────
 
 def _system_health() -> dict:
-    """Indicadores ligeros del estado del sistema sin depender de Sentry."""
+    """Indicadores del estado del sistema (operación — incluye a todos)."""
     cutoff = timezone.now() - timedelta(days=7)
     total_sessions_week = Session.objects.filter(created_at__gte=cutoff).count()
     sessions_with_response = Session.objects.filter(
@@ -203,7 +260,7 @@ def _system_health() -> dict:
     }
 
 
-# ─── Tendencias semana a semana ──────────────────────────────────────────────
+# ─── Tendencias semana a semana (solo reales) ──────────────────────────────────
 
 def _compute_trends() -> dict:
     """Deltas semana actual vs semana anterior para detectar tendencias."""
@@ -211,26 +268,26 @@ def _compute_trends() -> dict:
     week_ago = today - timedelta(days=7)
     two_weeks_ago = today - timedelta(days=14)
 
-    # Sessions
-    sessions_this_week = Session.objects.filter(fecha__gte=week_ago).count()
-    sessions_prev_week = Session.objects.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
+    real = _real_users()
+    rs   = _real_sessions()
+    rc   = _real_checkins()
 
-    # New users
-    users_this_week = User.objects.filter(date_joined__date__gte=week_ago).count()
-    users_prev_week = User.objects.filter(date_joined__date__gte=two_weeks_ago, date_joined__date__lt=week_ago).count()
+    sessions_this_week = rs.filter(fecha__gte=week_ago).count()
+    sessions_prev_week = rs.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
 
-    # Active users
-    active_this = User.objects.filter(
+    users_this_week = real.filter(date_joined__date__gte=week_ago).count()
+    users_prev_week = real.filter(date_joined__date__gte=two_weeks_ago, date_joined__date__lt=week_ago).count()
+
+    active_this = real.filter(
         Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
     ).distinct().count()
-    active_prev = User.objects.filter(
+    active_prev = real.filter(
         Q(sessions__fecha__gte=two_weeks_ago, sessions__fecha__lt=week_ago) |
         Q(checkins__fecha__gte=two_weeks_ago, checkins__fecha__lt=week_ago)
     ).distinct().count()
 
-    # Checkins
-    checkins_this = DailyCheckin.objects.filter(fecha__gte=week_ago).count()
-    checkins_prev = DailyCheckin.objects.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
+    checkins_this = rc.filter(fecha__gte=week_ago).count()
+    checkins_prev = rc.filter(fecha__gte=two_weeks_ago, fecha__lt=week_ago).count()
 
     def delta(curr, prev):
         if prev == 0:
@@ -253,67 +310,80 @@ def _compute_trends() -> dict:
     }
 
 
-# ─── Churn risk ───────────────────────────────────────────────────────────────
+# ─── Churn risk (solo reales, sin N+1) ─────────────────────────────────────────
 
 def _churn_risk_users() -> list:
-    """Usuarios que estaban activos (14-30d atrás) pero llevan 7+ días sin actividad.
+    """Usuarios reales activos (≤30d) pero silenciosos 7+ días.
 
-    Devuelve hasta 20 usuarios en riesgo, ordenados por última actividad (más antiguos primero).
+    Una sola query: anota última sesión / último check-in / total de sesiones,
+    acota en SQL a "previamente activo y ahora en silencio", y solo itera sobre
+    ese subconjunto reducido. Devuelve hasta 20 (más antiguos primero).
     """
     today = timezone.now().date()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
 
-    # Previously active: had activity in the 30-day window
-    previously_active = User.objects.filter(
+    # Conjuntos por id (subconsultas) — NULL-safe. Excluir/filtrar directamente
+    # sobre `Q(Max(...)>=x) | Q(Max(...)>=x)` falla cuando una de las fechas es
+    # NULL (sin check-ins): `False OR NULL = NULL` y `NOT NULL` descarta la fila.
+    previously_active_ids = _real_users().filter(
         Q(sessions__fecha__gte=month_ago) | Q(checkins__fecha__gte=month_ago)
-    ).distinct()
-
-    # Currently silent: no activity in last 7 days
-    recently_active_ids = User.objects.filter(
+    ).values_list('id', flat=True)
+    recently_active_ids = _real_users().filter(
         Q(sessions__fecha__gte=week_ago) | Q(checkins__fecha__gte=week_ago)
-    ).distinct().values_list('id', flat=True)
+    ).values_list('id', flat=True)
 
-    at_risk = previously_active.exclude(id__in=recently_active_ids)
+    candidates = (
+        _real_users()
+        .select_related('profile')
+        .annotate(
+            _last_session=Max('sessions__fecha'),
+            _last_checkin=Max('checkins__fecha'),
+            _n_sessions=Count('sessions', distinct=True),
+        )
+        .filter(id__in=previously_active_ids)       # activo en los últimos 30d…
+        .exclude(id__in=recently_active_ids)        # …pero silencioso en los últimos 7d
+    )
 
     results = []
-    for user in at_risk.select_related('profile')[:20]:
-        last_session = Session.objects.filter(user=user).order_by('-fecha').first()
-        last_checkin = DailyCheckin.objects.filter(user=user).order_by('-fecha').first()
-
+    for user in candidates:
         last_activity = None
-        if last_session:
-            last_activity = last_session.fecha
-        if last_checkin and (last_activity is None or last_checkin.fecha > last_activity):
-            last_activity = last_checkin.fecha
-
-        days_silent = (today - last_activity).days if last_activity else None
-        nombre = getattr(user, 'profile', None)
-        nombre = nombre.nombre if nombre else user.email.split('@')[0]
-
+        for d in (user._last_session, user._last_checkin):
+            if d and (last_activity is None or d > last_activity):
+                last_activity = d
+        if last_activity is None:
+            continue
+        days_silent = (today - last_activity).days
+        profile = getattr(user, 'profile', None)
+        nombre = profile.nombre if profile and profile.nombre else user.email.split('@')[0]
         results.append({
             'email':          user.email,
             'nombre':         nombre,
             'last_activity':  last_activity,
             'days_silent':    days_silent,
-            'total_sessions': Session.objects.filter(user=user).count(),
+            'total_sessions': user._n_sessions,
         })
 
-    results.sort(key=lambda x: x['days_silent'] or 999, reverse=True)
-    return results
+    results.sort(key=lambda x: x['days_silent'], reverse=True)
+    return results[:20]
 
 
-# ─── Calidad IA ───────────────────────────────────────────────────────────────
+# ─── Calidad IA (solo reales, rango parametrizable) ────────────────────────────
 
-def _ai_quality_metrics() -> dict:
-    """Calidad de las sesiones generadas por IA — últimos 30 días.
+def _ai_quality_metrics(from_date=None, to_date=None) -> dict:
+    """Calidad de las sesiones generadas — feedback de usuarios reales en rango.
 
-    Compara RPE target vs real, distribución de cumplimiento, y rating por objetivo.
+    Compara RPE target vs real, distribución de cumplimiento y de rating.
+    Por defecto: últimos 30 días.
     """
-    cutoff = timezone.now().date() - timedelta(days=30)
+    today = timezone.now().date()
+    if from_date is None:
+        from_date = today - timedelta(days=30)
+    if to_date is None:
+        to_date = today
 
-    feedbacks = SessionFeedback.objects.filter(
-        created_at__date__gte=cutoff
+    feedbacks = _real_feedback().filter(
+        created_at__date__gte=from_date, created_at__date__lte=to_date,
     ).select_related('session')
 
     rpe_diffs = []
@@ -331,7 +401,6 @@ def _ai_quality_metrics() -> dict:
     def avg(lst):
         return round(sum(lst) / len(lst), 2) if lst else None
 
-    # Distribution of cumplimiento buckets
     cum_buckets = {'perfect': 0, 'good': 0, 'partial': 0, 'poor': 0}
     for c in cumplimientos:
         if c >= 90:   cum_buckets['perfect'] += 1
@@ -339,14 +408,27 @@ def _ai_quality_metrics() -> dict:
         elif c >= 50: cum_buckets['partial'] += 1
         else:         cum_buckets['poor']    += 1
 
-    # Rating distribution
     rating_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
     for r in ratings:
         if r in rating_dist:
             rating_dist[r] += 1
 
+    # Clase de salud del RPE bias por BANDA (no igualdad de float): el target
+    # "perfecto" es bias≈0, pero ±0.5 sigue siendo bueno. Se calcula aquí para
+    # no hacer aritmética de floats en el template.
+    rpe_bias = avg(rpe_diffs)
+    if rpe_bias is None:
+        rpe_bias_health = ''
+    elif abs(rpe_bias) <= 0.5:
+        rpe_bias_health = 'health-good'
+    elif abs(rpe_bias) <= 1.5:
+        rpe_bias_health = 'health-warn'
+    else:
+        rpe_bias_health = 'health-bad'
+
     return {
-        'rpe_bias':          avg(rpe_diffs),   # positive = sessions feel harder than target
+        'rpe_bias':          rpe_bias,   # positivo = se sintió más duro que el target
+        'rpe_bias_health':   rpe_bias_health,
         'cumplimiento_avg':  avg(cumplimientos),
         'rating_avg':        avg(ratings),
         'total_feedback':    len(ratings),
@@ -356,29 +438,81 @@ def _ai_quality_metrics() -> dict:
     }
 
 
+# ─── Bloque de período (D4 — rango parametrizable, solo reales) ────────────────
+
+def _compute_period(from_date: date, to_date: date) -> dict:
+    """Métricas de negocio dentro de un rango de fechas elegido por el admin."""
+    real = _real_users()
+
+    new_users = real.filter(
+        date_joined__date__gte=from_date, date_joined__date__lte=to_date,
+    ).count()
+    active_users = real.filter(
+        Q(sessions__fecha__gte=from_date, sessions__fecha__lte=to_date) |
+        Q(checkins__fecha__gte=from_date, checkins__fecha__lte=to_date)
+    ).distinct().count()
+    sessions = _real_sessions().filter(fecha__gte=from_date, fecha__lte=to_date).count()
+    checkins = _real_checkins().filter(fecha__gte=from_date, fecha__lte=to_date).count()
+    fb = _real_feedback().filter(
+        created_at__date__gte=from_date, created_at__date__lte=to_date,
+    ).aggregate(n=Count('id'), rpe=Avg('rpe_real'), cumpl=Avg('cumplimiento'), rating=Avg('rating'))
+
+    return {
+        'from':             from_date,
+        'to':               to_date,
+        'days':             (to_date - from_date).days + 1,
+        'new_users':        new_users,
+        'active_users':     active_users,
+        'sessions':         sessions,
+        'checkins':         checkins,
+        'feedback_count':   fb['n'],
+        'rpe_avg':          float(fb['rpe'])    if fb['rpe']    else None,
+        'cumplimiento_avg': float(fb['cumpl'])  if fb['cumpl']  else None,
+        'rating_avg':       float(fb['rating']) if fb['rating'] else None,
+        'ai_quality':       _ai_quality_metrics(from_date, to_date),
+    }
+
+
+def _parse_period(request):
+    """Lee `?period=7|30|90` o `?from=&to=`. Default: últimos 30 días."""
+    today = timezone.now().date()
+    preset = request.GET.get('period')
+    if preset in ('7', '30', '90'):
+        return today - timedelta(days=int(preset) - 1), today, preset
+    try:
+        from_date = date.fromisoformat(request.GET.get('from', ''))
+    except ValueError:
+        from_date = today - timedelta(days=29)
+    try:
+        to_date = date.fromisoformat(request.GET.get('to', ''))
+    except ValueError:
+        to_date = today
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+    return from_date, to_date, 'custom'
+
+
 # ─── Datos secundarios ───────────────────────────────────────────────────────
 
 def _compute_extended() -> dict:
     """Datos secundarios — sólo se piden cuando alguien entra al dashboard completo."""
-    today    = timezone.now().date()
-
-    # Top ejercicios por veces realizado
+    # Top ejercicios (observabilidad — todos)
     top_exercises = list(
         UserExerciseProfile.objects.values('exercise_nombre')
         .annotate(total=Count('id'), veces=Avg('veces_realizado'))
         .order_by('-total')[:10]
     )
 
-    # Distribución de niveles (Rookie/Atleta/Élite/Leyenda) — basado en total de sesiones
+    # Distribución de niveles (negocio — solo reales) basada en total de sesiones
     nivel_buckets = {'rookie': 0, 'atleta': 0, 'elite': 0, 'leyenda': 0}
-    user_session_counts = User.objects.annotate(s=Count('sessions')).values_list('s', flat=True)
+    user_session_counts = _real_users().annotate(s=Count('sessions')).values_list('s', flat=True)
     for n in user_session_counts:
         if   n >= 30: nivel_buckets['leyenda'] += 1
         elif n >= 15: nivel_buckets['elite']   += 1
         elif n >= 5:  nivel_buckets['atleta']  += 1
         else:         nivel_buckets['rookie']  += 1
 
-    # Sesiones recientes (últimas 10 a través de todos los usuarios)
+    # Sesiones recientes (observabilidad — todos, incluye tests del equipo)
     recent_sessions = list(
         Session.objects.select_related('user').order_by('-created_at')[:10]
         .values('id', 'user__email', 'fecha', 'rpe_target', 'duracion_planificada', 'created_at')
@@ -394,39 +528,32 @@ def _compute_extended() -> dict:
         'top_exercises':    top_exercises,
         'nivel_buckets':    nivel_buckets,
         'recent_sessions':  recent_sessions,
-        'trends':           _compute_trends(),
-        'churn_risk':       _churn_risk_users(),
-        'ai_quality':       _ai_quality_metrics(),
     }
 
 
 # ─── Dashboard de hoy ─────────────────────────────────────────────────────────
 
-def _compute_dashboard_today() -> dict:
+def _compute_dashboard_today(churn_risk: list) -> dict:
     """Datos de hoy para el dashboard principal del admin.
 
-    Diseñado para respuesta rápida — solo consultas simples y acotadas.
+    Recibe `churn_risk` ya calculado para no recomputarlo (se comparte con la
+    vista de métricas). Diseñado para respuesta rápida.
     """
-    from datetime import date, timedelta as _td
-
     now       = timezone.now()
     today     = now.date()
     yesterday = today - timedelta(days=1)
     week_ago  = today - timedelta(days=7)
 
-    # Hoy
-    sessions_today   = Session.objects.filter(fecha=today).count()
-    checkins_today   = DailyCheckin.objects.filter(fecha=today).count()
-    new_users_today  = User.objects.filter(date_joined__date=today).count()
-    feedback_today   = SessionFeedback.objects.filter(created_at__date=today).count()
+    # Hoy (negocio — solo reales)
+    sessions_today   = _real_sessions().filter(fecha=today).count()
+    checkins_today   = _real_checkins().filter(fecha=today).count()
+    new_users_today  = _real_users().filter(date_joined__date=today).count()
+    feedback_today   = _real_feedback().filter(created_at__date=today).count()
+    sessions_yesterday = _real_sessions().filter(fecha=yesterday).count()
 
-    # Ayer (para comparar)
-    sessions_yesterday = Session.objects.filter(fecha=yesterday).count()
-
-    # Alertas automáticas
     alerts = []
 
-    # Alerta: tasa de éxito generate baja
+    # Alerta: tasa de éxito generate baja (operación — todas las sesiones)
     week_sessions = Session.objects.filter(created_at__date__gte=week_ago).count()
     week_with_ai  = Session.objects.filter(created_at__date__gte=week_ago, respuesta_ia__isnull=False).count()
     success_rate  = round(week_with_ai / week_sessions * 100, 1) if week_sessions else None
@@ -448,8 +575,7 @@ def _compute_dashboard_today() -> dict:
         })
 
     # Alerta: usuarios en churn risk
-    churn_count = _churn_risk_users()
-    n_churn = len(churn_count)
+    n_churn = len(churn_risk)
     if n_churn >= 3:
         alerts.append({
             'level': 'warn',
@@ -472,16 +598,16 @@ def _compute_dashboard_today() -> dict:
             'msg':   'Todo bien — sin alertas activas',
         })
 
-    # Últimas 5 sesiones con usuario
+    # Últimas 5 sesiones con usuario (observabilidad — todos)
     recent = list(
         Session.objects.select_related('user', 'feedback')
         .order_by('-created_at')[:5]
         .values('id', 'user__email', 'fecha', 'duracion_planificada', 'rpe_target', 'created_at')
     )
 
-    # Usuarios más activos esta semana (top 5)
+    # Usuarios más activos esta semana (negocio — solo reales)
     top_users = list(
-        Session.objects.filter(fecha__gte=week_ago)
+        _real_sessions().filter(fecha__gte=week_ago)
         .values('user__email')
         .annotate(n=Count('id'))
         .order_by('-n')[:5]
@@ -504,24 +630,50 @@ def _compute_dashboard_today() -> dict:
 
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
+def _home_payload() -> dict:
+    """KPIs + tendencias + pulso de hoy para la home del admin. Cacheable."""
+    churn = _churn_risk_users()
+    return {
+        'zyfit_kpis':      _compute_kpis(),
+        'trends':          _compute_trends(),
+        'dashboard_today': _compute_dashboard_today(churn),
+    }
+
+
 def dashboard_callback(request, context):
     """Pasado a UNFOLD.DASHBOARD_CALLBACK — popula la home del admin con KPIs."""
-    context['zyfit_kpis']      = _compute_kpis()
-    context['trends']          = _compute_trends()
-    context['dashboard_today'] = _compute_dashboard_today()
+    context.update(_cached('zyfit:home', _home_payload))
     return context
 
 
 @staff_member_required
 def zyfit_metrics_view(request):
-    """Vista dedicada (link en sidebar) con métricas extendidas."""
+    """Vista dedicada (link en sidebar) con métricas extendidas + bloque de período."""
+    from_date, to_date, preset = _parse_period(request)
+
+    def base_payload():
+        churn = _churn_risk_users()
+        return {
+            'zyfit_kpis':      _compute_kpis(),
+            'trends':          _compute_trends(),
+            'dashboard_today': _compute_dashboard_today(churn),
+            'churn_risk':      churn,
+            **_compute_extended(),
+        }
+
+    base   = _cached('zyfit:metrics_base', base_payload)
+    period = _cached(f'zyfit:period:{from_date}:{to_date}', lambda: _compute_period(from_date, to_date))
+
     ctx = {
-        **(dashboard_callback(request, {}) or {}),
-        **_compute_extended(),
-        'title':            'Métricas Zyfit',
-        'site_header':      'Zyfit Control',
-        'has_permission':   True,
-        'is_popup':         False,
-        'available_apps':   [],
+        **base,
+        'period':         period,
+        'period_preset':  preset,
+        'period_from':    from_date.isoformat(),
+        'period_to':      to_date.isoformat(),
+        'title':          'Métricas Zyfit',
+        'site_header':    'Zyfit Control',
+        'has_permission': True,
+        'is_popup':       False,
+        'available_apps': [],
     }
     return render(request, 'admin/zyfit_metrics.html', ctx)

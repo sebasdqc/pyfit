@@ -24,12 +24,37 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from pyfit.admin_security import _user_has_confirmed_otp, _verify_against_user_devices
+from .models import ImpersonationLog
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
 # Cuántos resultados por página al listar usuarios desde el admin
 PAGE_SIZE = 25
+
+
+def _client_ip(request):
+    """IP real detrás del proxy de DigitalOcean (X-Forwarded-For) o REMOTE_ADDR."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def _log_impersonation(request, impersonator, target, action):
+    """Persiste un evento de impersonación. Best-effort: nunca rompe el flujo."""
+    try:
+        ImpersonationLog.objects.create(
+            impersonator=impersonator,
+            target=target,
+            action=action,
+            ip=_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300],
+        )
+    except Exception:
+        logger.exception('No se pudo registrar ImpersonationLog (%s)', action)
 
 
 def _serialize_user_row(u) -> dict:
@@ -73,12 +98,18 @@ def admin_me(request):
             except User.DoesNotExist:
                 impersonator = None
 
+    # Si el staff tiene un dispositivo TOTP confirmado, la impersonación móvil
+    # exige el código 2FA (paridad con el endurecimiento del admin web). El
+    # cliente usa este flag para decidir si mostrar el input del código.
+    requires_otp = user.is_staff and _user_has_confirmed_otp(user)
+
     return Response({
         'id':           user.id,
         'email':        user.email,
         'is_staff':     user.is_staff,
         'is_superuser': user.is_superuser,
         'impersonating': impersonator,
+        'requires_otp': requires_otp,
     })
 
 
@@ -131,6 +162,25 @@ def admin_impersonate(request, pk):
         # de un superuser. Solo superusers pueden impersonar a otros superusers.
         return Response({'error': 'Permiso insuficiente para impersonar a este usuario'}, status=status.HTTP_403_FORBIDDEN)
 
+    # 2FA: si el admin tiene un dispositivo TOTP confirmado, exigimos el código
+    # en el cuerpo de la petición. El admin web ya pasa por OTP vía middleware;
+    # esta ruta móvil usa JWT (stateless), así que verificamos el token aquí.
+    # Bootstrap: si aún no tiene dispositivo confirmado, se permite (igual que el
+    # acceso inicial al admin web para poder enrolar el dispositivo).
+    if _user_has_confirmed_otp(request.user):
+        otp_token = (request.data.get('otp_token') or '').strip().replace(' ', '')
+        if not otp_token:
+            return Response(
+                {'error': 'Se requiere el código 2FA para impersonar.', 'code': 'otp_required'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if _verify_against_user_devices(request.user, otp_token) is None:
+            logger.warning('admin_impersonate: OTP inválido para %s', request.user.email)
+            return Response(
+                {'error': 'Código 2FA inválido o expirado.', 'code': 'otp_invalid'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
     refresh = RefreshToken.for_user(target)
     refresh['impersonator_id']    = request.user.id
     refresh['impersonator_email'] = request.user.email
@@ -147,6 +197,7 @@ def admin_impersonate(request, pk):
         'admin_impersonate: %s (id=%s) -> %s (id=%s)',
         request.user.email, request.user.id, target.email, target.id,
     )
+    _log_impersonation(request, request.user, target, 'start')
 
     return Response({
         'access':  str(access),
@@ -198,6 +249,8 @@ def admin_stop_impersonate(request):
         'admin_stop_impersonate: %s (id=%s) -> %s (id=%s)',
         request.user.email, request.user.id, admin_user.email, admin_user.id,
     )
+    # request.user es el usuario impersonado; admin_user es quien recupera su sesión.
+    _log_impersonation(request, admin_user, request.user, 'stop')
 
     return Response({
         'access':  str(refresh.access_token),
