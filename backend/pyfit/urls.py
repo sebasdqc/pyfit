@@ -75,6 +75,7 @@ urlpatterns = [
 
     # Sessions
     path('api/sessions/generate/', ai_views.generate_session),
+    path('api/sessions/today/', workout_views.session_today),
     path('api/sessions/', workout_views.session_list),
     path('api/sessions/<int:pk>/', workout_views.session_detail),
     path('api/sessions/<int:pk>/feedback/', workout_views.session_feedback),

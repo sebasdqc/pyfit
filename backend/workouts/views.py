@@ -55,6 +55,25 @@ def session_detail(request, pk):
     return Response(SessionDetailSerializer(session).data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_today(request):
+    """Sesión de hoy en la forma { sesion_id, sesion } que consume la pantalla de
+    generación.
+
+    Sirve de respaldo cuando POST /api/sessions/generate/ supera el timeout de la
+    pasarela (504) PERO el backend sí terminó de crear la sesión: el cliente hace
+    polling de este endpoint hasta que la rutina esté lista. Devuelve la sesión
+    más reciente del día; el cliente la distingue de una previa por su id.
+    """
+    hoy = _get_local_date(request)
+    s = request.user.sessions.filter(fecha=hoy).order_by('-created_at').first()
+    ia = s.respuesta_ia if s else None
+    if not s or not isinstance(ia, dict) or 'fases' not in ia:
+        return Response({'status': 'pending'})
+    return Response({'status': 'ready', 'sesion_id': s.id, 'sesion': ia})
+
+
 def _cumplimiento_real(session):
     """Cumplimiento real desde series_log: series ejecutadas (con peso o reps) vs
     prescritas. Devuelve None si no hay datos de ejecución (p. ej. 'marcar completada

@@ -35,13 +35,13 @@ from ai_workout.adaptive_engine import AdaptiveEngineService
 logger = logging.getLogger(__name__)
 
 # Timeout por intento de la petición a Groq (segundos).
-# IMPORTANTE: el SDK de Groq reintenta por defecto (max_retries=2). Con el
-# timeout antiguo (30s) un Groq lento daba 30s × 3 intentos ≈ 90s, que supera el
-# timeout de la pasarela de DigitalOcean → el cliente recibía un 504 mientras el
-# backend seguía reintentando. Acotamos a 1 reintento y bajamos el timeout para
-# que el peor caso (~40s) quede por debajo de la pasarela y del timeout del
-# cliente móvil (45s), devolviendo un 503 limpio y reintentable en vez de 504.
-GROQ_TIMEOUT_SECONDS = 20
+# IMPORTANTE: el SDK de Groq reintenta por defecto (max_retries=2). Con el default
+# un Groq lento daba 30s × 3 intentos ≈ 90s y el worker seguía ocupado mucho
+# tiempo. Acotamos a 1 reintento (peor caso ~60s, bajo el timeout de gunicorn de
+# 120s) y dejamos un timeout por intento holgado para que la generación COMPLETE
+# y cree la sesión aunque la pasarela ya le haya devuelto 504 al cliente: la
+# pantalla de generación recupera la sesión por polling de /api/sessions/today/.
+GROQ_TIMEOUT_SECONDS = 30
 GROQ_MAX_RETRIES = 1
 
 

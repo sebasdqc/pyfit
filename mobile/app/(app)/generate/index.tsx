@@ -24,6 +24,28 @@ import { apiGet, apiPost } from '../../../lib/api'
 // la pantalla de carga está montada, así que dura lo que dura la generación.
 const GEN_VIDEO = require('../../../assets/video_pantalla_generacion.mp4')
 
+// Polling de respaldo: la generación con IA puede tardar más que el timeout de la
+// pasarela (→ 504 en el POST) aunque el backend SÍ termine de crear la sesión.
+// En ese caso recuperamos la sesión nueva (id distinto al baseline previo).
+const TODAY_POLL_MAX_MS = 70000
+const TODAY_POLL_INTERVAL_MS = 3000
+
+async function pollForNewSession(baselineId: number | null): Promise<SesionResponse> {
+  const start = Date.now()
+  while (Date.now() - start < TODAY_POLL_MAX_MS) {
+    await new Promise(r => setTimeout(r, TODAY_POLL_INTERVAL_MS))
+    try {
+      const res: any = await apiGet('/api/sessions/today/')
+      if (res?.status === 'ready' && res.sesion && res.sesion_id !== baselineId) {
+        return { sesion_id: res.sesion_id, sesion: res.sesion }
+      }
+    } catch {
+      // Red intermitente — seguimos intentando dentro de la ventana.
+    }
+  }
+  throw new Error('La generación está tardando demasiado. Revisa tu conexión e intenta de nuevo.')
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Ejercicio {
@@ -1267,18 +1289,29 @@ export default function GenerateScreen() {
     setRetryKey(k => k + 1)
     contentFade.setValue(0)
     setError(null)
+
+    // Snapshot de la sesión de hoy ANTES de generar (en paralelo con el checkin).
+    // El baseline distingue la sesión NUEVA de una previa del día durante el polling.
+    const baselineP = apiGet('/api/sessions/today/')
+      .then((r: any) => (r?.status === 'ready' ? r.sesion_id : null))
+      .catch(() => null)
+    const checkinP = apiGet('/api/checkins/today/').catch(() => null)
+
     try {
-      const [sessionRes, checkinRes] = await Promise.allSettled([
-        apiPost('/api/sessions/generate/', {}),
-        apiGet('/api/checkins/today/'),
-      ])
-      if (sessionRes.status === 'rejected') throw sessionRes.reason
-      const data: SesionResponse = sessionRes.value
+      let data: SesionResponse
+      try {
+        data = await apiPost('/api/sessions/generate/', {})
+      } catch (postErr) {
+        // La pasarela puede devolver 504 aunque el backend SÍ haya creado la
+        // sesión (la generación tarda más que el timeout del proxy). En vez de
+        // fallar, recuperamos la sesión nueva por polling.
+        const baselineId = await baselineP
+        data = await pollForNewSession(baselineId)
+      }
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
-      if (checkinRes.status === 'fulfilled' && checkinRes.value?.id) {
-        setCheckin(checkinRes.value)
-      }
+      const checkinRes: any = await checkinP
+      if (checkinRes?.id) setCheckin(checkinRes)
     } catch (err: any) {
       setError(err.message || 'Error generando la sesión')
     } finally {
