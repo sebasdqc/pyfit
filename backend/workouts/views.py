@@ -33,7 +33,9 @@ from .serializers import SessionDetailSerializer, SessionListSerializer, Session
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def session_list(request):
-    sessions = request.user.sessions.select_related('feedback', 'checkin').all()
+    # HIS-2: prefetch de exercises para exponer el peso real (series_log) por
+    # ejercicio en el listado/historial sin disparar N+1.
+    sessions = request.user.sessions.select_related('feedback', 'checkin').prefetch_related('exercises').all()
     # Filtro opcional por fecha: el dashboard solo necesita una ventana reciente
     # para el calendario (acota el payload). El historial los pide todos sin param.
     desde = request.query_params.get('desde')

@@ -14,7 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
-import { COLORS, FASES, Colors } from '../../../lib/colors'
+import { FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet } from '../../../lib/api'
 import { useTranslation } from '../../../lib/i18n'
@@ -30,6 +30,7 @@ interface Ejercicio {
   descanso_segundos: number
   rpe_sugerido: number
   notas?: string
+  peso?: number | null  // HIS-2: peso real registrado (series_log), null si no se registró
 }
 
 interface Fase {
@@ -154,20 +155,6 @@ function getRpeColor(rpe: number): string {
   return '#ff4444'
 }
 
-// Level index = level - 1 (levels 1–4)
-const FISICO_CONFIG = [
-  { icon: '⊗', color: '#ff4444' },
-  { icon: '◌', color: '#ffaa32' },
-  { icon: '◎', color: '#4f8cff' },
-  { icon: '◉', color: '#32c896' },
-]
-const MENTAL_CONFIG = [
-  { icon: '⊗', color: '#ff4444' },
-  { icon: '◌', color: '#ffaa32' },
-  { icon: '◎', color: '#4f8cff' },
-  { icon: '◉', color: '#32c896' },
-]
-
 // ─── Week grouping ────────────────────────────────────────────────────────────
 
 function getWeekStartDate(dateStr: string): Date {
@@ -209,11 +196,22 @@ function groupByWeek(sessions: Session[], monthNames: string[]): { key: string; 
     }))
 }
 
-function getDayColor(session?: Session): string | null {
-  if (!session) return null
-  if (!session.feedback) return COLORS.accent
-  const c = session.feedback.cumplimiento
-  return cumplimientoColor(c)
+// ─── Calendar session type (Musculación / Running / Movilidad) ─────────────────
+// Cada día del calendario muestra hasta 3 puntos, uno por tipo de sesión presente
+// (deduplicado: 5 sesiones de running = 1 solo punto).
+type CalTipo = 'Musculación' | 'Running' | 'Movilidad'
+const CAL_TIPOS: CalTipo[] = ['Musculación', 'Running', 'Movilidad']
+const CAL_TIPO_COLORS: Record<CalTipo, string> = {
+  'Musculación': '#4f8cff',
+  'Running': '#ffaa32',
+  'Movilidad': '#32c896',
+}
+
+function getCalendarTipo(ia?: RespuestaIA): CalTipo {
+  const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
+  if (/running|correr|cardio|aeróbico|aerobico|trote|carrera|rodaje|kilómetro|kilometro|ritmo|resistencia cardiovascular/.test(text)) return 'Running'
+  if (/movilidad|estiramiento|estiramientos|flexibilidad|yoga|pilates|recuperación|recuperacion|soltura|foam|descanso activo|respiración|respiracion/.test(text)) return 'Movilidad'
+  return 'Musculación'
 }
 
 function inferTipoSesion(ia?: RespuestaIA): FilterTipo {
@@ -414,6 +412,7 @@ function SessionModal({
                         {ej.series != null && (
                           <Text style={modalStyles.ejMeta}>
                             {ej.series} series · {ej.repeticiones} reps
+                            {ej.peso != null ? ` · ${ej.peso} kg` : ''}
                             {ej.rpe_sugerido ? ` · RPE ${ej.rpe_sugerido}` : ''}
                             {ej.descanso_segundos ? ` · ${ej.descanso_segundos}s descanso` : ''}
                           </Text>
@@ -689,8 +688,6 @@ function SessionCard({
   const checkin     = session.checkin
   const tipoConf    = getTipoConfig(ia)
   const rpe         = feedback?.rpe_real
-  const fisico      = checkin?.estado_fisico    // 1-4
-  const mental      = checkin?.estado_animo != null ? Math.min(checkin.estado_animo, 4) : undefined
   const dolor       = checkin?.dolor_hoy
 
   const allEjercicios = ia?.fases?.flatMap(f => f.ejercicios) ?? []
@@ -728,21 +725,6 @@ function SessionCard({
             </View>
           ) : <View style={styles.rpeBadgeSpacer} />}
 
-          {(fisico != null || mental != null) && (
-            <View style={styles.estadoRow}>
-              {fisico != null && fisico >= 1 && fisico <= 4 && (
-                <Text style={[styles.estadoIcon, { color: FISICO_CONFIG[fisico - 1].color }]}>
-                  {FISICO_CONFIG[fisico - 1].icon}
-                </Text>
-              )}
-              {mental != null && mental >= 1 && mental <= 4 && (
-                <Text style={[styles.estadoIcon, { color: MENTAL_CONFIG[mental - 1].color }]}>
-                  {MENTAL_CONFIG[mental - 1].icon}
-                </Text>
-              )}
-            </View>
-          )}
-
           <Animated.Text style={[styles.chevron, { transform: [{ rotate: chevronRotate }] }]}>
             ⌄
           </Animated.Text>
@@ -765,8 +747,8 @@ function SessionCard({
                     <View style={styles.ejRow}>
                       <Text style={styles.ejName} numberOfLines={1}>{ej.nombre}</Text>
                       <Text style={styles.ejMeta}>
-                        {ej.series ? `${ej.series}×${ej.repeticiones}` : ej.repeticiones}
-                        {ej.rpe_sugerido ? ` · RPE ${ej.rpe_sugerido}` : ''}
+                        {ej.series ? `${ej.series}×${ej.repeticiones}` : (ej.repeticiones || '')}
+                        {ej.peso != null ? ` · ${ej.peso} kg` : ''}
                       </Text>
                     </View>
                   </View>
@@ -895,22 +877,12 @@ function CalendarView({
 
   return (
     <>
-      {/* Legend */}
+      {/* Legend — tipos de sesión */}
       <View style={calStyles.legend}>
-        {[
-          { color: '#32c896', label: t('historial_legend_high') },
-          { color: '#90EE90', label: t('historial_legend_medium') },
-          { color: colors.accent, label: t('historial_legend_rest') },
-          { color: '#ffaa32', label: '<70%' },
-          { color: '#ffaa32', label: t('historial_legend_today'), isToday: true },
-        ].map((item, i) => (
-          <View key={i} style={calStyles.legendItem}>
-            <View style={[
-              calStyles.legendDot,
-              { backgroundColor: item.isToday ? 'transparent' : item.color },
-              item.isToday && { borderWidth: 1.5, borderColor: '#ffaa32' },
-            ]} />
-            <Text style={calStyles.legendLabel}>{item.label}</Text>
+        {CAL_TIPOS.map(tipo => (
+          <View key={tipo} style={calStyles.legendItem}>
+            <View style={[calStyles.legendDot, { backgroundColor: CAL_TIPO_COLORS[tipo] }]} />
+            <Text style={calStyles.legendLabel}>{tipo}</Text>
           </View>
         ))}
       </View>
@@ -947,13 +919,11 @@ function CalendarView({
                   const isToday = dateStr === today
                   const isFuture = dateStr > today
 
-                  let dotColor: string | null = null
-                  if (daySessions?.length) {
-                    const topSession = daySessions[0]
-                    dotColor = getDayColor(topSession)
-                  } else if (isToday) {
-                    dotColor = '#ffaa32'
-                  }
+                  // Tipos distintos presentes en el día (deduplicados), en orden fijo
+                  const tiposDia = daySessions?.length
+                    ? CAL_TIPOS.filter(tipo =>
+                        daySessions.some(s => getCalendarTipo(s.respuesta_ia) === tipo))
+                    : []
 
                   return (
                     <TouchableOpacity
@@ -975,12 +945,15 @@ function CalendarView({
                       ]}>
                         {day.getDate()}
                       </Text>
-                      {dotColor && (
-                        <View style={[
-                          calStyles.dayDot,
-                          { backgroundColor: isToday && !daySessions ? 'transparent' : dotColor },
-                          isToday && !daySessions && { borderWidth: 1.5, borderColor: '#ffaa32' },
-                        ]} />
+                      {tiposDia.length > 0 && (
+                        <View style={calStyles.dayDotsRow}>
+                          {tiposDia.map(tipo => (
+                            <View
+                              key={tipo}
+                              style={[calStyles.dayDot, { backgroundColor: CAL_TIPO_COLORS[tipo] }]}
+                            />
+                          ))}
+                        </View>
                       )}
                     </TouchableOpacity>
                   )
@@ -1062,7 +1035,7 @@ function makeCalStyles(c: Colors) {
       borderRadius: 8,
     },
     dayCellToday: {
-      backgroundColor: 'rgba(79,140,255,0.12)',
+      backgroundColor: 'rgba(79,140,255,0.35)',
     },
     dayCellFuture: {
       opacity: 0.4,
@@ -1071,6 +1044,11 @@ function makeCalStyles(c: Colors) {
       color: c.inkSecondary,
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 12,
+    },
+    dayDotsRow: {
+      flexDirection: 'row',
+      gap: 2,
+      alignItems: 'center',
     },
     dayDot: {
       width: 5,
@@ -1721,8 +1699,8 @@ function makeStyles(c: Colors) {
     weekLabel: {
       color: c.inkMuted,
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 0.8,
+      fontSize: 12,
+      letterSpacing: 0.6,
       textTransform: 'uppercase',
       marginBottom: 10,
     },
@@ -1826,14 +1804,6 @@ function makeStyles(c: Colors) {
     },
     rpeBadgeSpacer: {
       height: 36,
-    },
-    estadoRow: {
-      flexDirection: 'row',
-      gap: 3,
-    },
-    estadoIcon: {
-      fontSize: 12,
-      lineHeight: 14,
     },
     chevron: {
       color: c.inkMuted,

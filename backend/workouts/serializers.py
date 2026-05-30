@@ -1,6 +1,28 @@
+import copy
+
 from rest_framework import serializers
 from .models import Session, SessionExercise, SessionFeedback, Competition
 from checkins.models import DailyCheckin
+
+
+def _peso_por_nombre(exercises):
+    """HIS-2: mapa {nombre normalizado: peso máximo registrado} desde series_log.
+
+    El nombre se normaliza igual que en _persist_session_exercises (strip + [:200])
+    para que coincida con SessionExercise.nombre.
+    """
+    result = {}
+    for ex in exercises:
+        pesos = []
+        for s in (ex.series_log or []):
+            if isinstance(s, dict) and s.get('peso') not in (None, ''):
+                try:
+                    pesos.append(float(s.get('peso')))
+                except (TypeError, ValueError):
+                    pass
+        if pesos:
+            result[ex.nombre] = max(pesos)
+    return result
 
 
 class SessionCheckinSerializer(serializers.ModelSerializer):
@@ -57,11 +79,25 @@ class SessionListSerializer(serializers.ModelSerializer):
         ia = obj.respuesta_ia
         if not isinstance(ia, dict):
             return None
+
+        # HIS-2: peso real registrado por ejercicio (máximo de series_log).
+        peso_por_nombre = _peso_por_nombre(obj.exercises.all())
+
+        def _ej(ej):
+            nombre = str(ej.get('nombre', '')).strip()[:200]
+            return {
+                'nombre': ej.get('nombre', ''),
+                'series': ej.get('series'),
+                'repeticiones': ej.get('repeticiones', ''),
+                'rpe_sugerido': ej.get('rpe_sugerido'),
+                'peso': peso_por_nombre.get(nombre),
+            }
+
         fases = [
             {
                 'nombre': f.get('nombre', ''),
                 'ejercicios': [
-                    {'nombre': ej.get('nombre', '')}
+                    _ej(ej)
                     for ej in (f.get('ejercicios', []) or [])
                 ],
             }
@@ -79,6 +115,9 @@ class SessionListSerializer(serializers.ModelSerializer):
 class SessionDetailSerializer(serializers.ModelSerializer):
     feedback = SessionFeedbackSerializer(read_only=True)
     exercises = SessionExerciseSerializer(many=True, read_only=True)
+    # HIS-2: respuesta_ia COMPLETA (series/reps/notas/nota del entrenador) pero
+    # enriquecida con el peso real registrado por ejercicio (series_log).
+    respuesta_ia = serializers.SerializerMethodField()
 
     class Meta:
         model = Session
@@ -86,6 +125,24 @@ class SessionDetailSerializer(serializers.ModelSerializer):
             'id', 'fecha', 'duracion_planificada', 'rpe_target', 'volumen_relativo',
             'respuesta_ia', 'feedback', 'exercises', 'created_at',
         ]
+
+    def get_respuesta_ia(self, obj):
+        ia = obj.respuesta_ia
+        if not isinstance(ia, dict):
+            return ia
+        peso_por_nombre = _peso_por_nombre(obj.exercises.all())
+        if not peso_por_nombre:
+            return ia
+        # Copia profunda para no mutar el JSON almacenado en memoria.
+        ia = copy.deepcopy(ia)
+        for fase in (ia.get('fases', []) or []):
+            for ej in (fase.get('ejercicios', []) or []):
+                if isinstance(ej, dict):
+                    nombre = str(ej.get('nombre', '')).strip()[:200]
+                    peso = peso_por_nombre.get(nombre)
+                    if peso is not None:
+                        ej['peso'] = peso
+        return ia
 
 
 class CompetitionSerializer(serializers.ModelSerializer):
