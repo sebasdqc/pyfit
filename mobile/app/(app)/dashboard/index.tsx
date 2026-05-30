@@ -143,7 +143,9 @@ interface SemanaDay {
 }
 
 interface CTAData {
-  estado: 'A' | 'B' | 'C' | 'D'
+  // A: listo · B: ya entrenó (ver resumen) · C: recuperación · D: primer entreno
+  // E: sesión generada hoy sin terminar → continuar entrenamiento
+  estado: 'A' | 'B' | 'C' | 'D' | 'E'
   pill_label: string
   pill_color: 'green' | 'neutral' | 'orange'
   titulo: string
@@ -724,7 +726,7 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
           borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
           borderRadius: 8,
         }}
-        onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha } } as any)}
+        onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
         activeOpacity={0.7}
       >
         <Text style={{
@@ -987,10 +989,11 @@ function CTACard({
     B: 'rgba(255,255,255,0.14)',
     C: 'rgba(255,170,50,0.35)',
     D: 'rgba(79,140,255,0.35)',
+    E: 'rgba(255,170,50,0.40)',
   }
 
   const pill = PILL[cta.pill_color]
-  const isActive = cta.estado === 'A' || cta.estado === 'D'
+  const isActive = cta.estado === 'A' || cta.estado === 'D' || cta.estado === 'E'
 
   // Título simplificado a 3 tipos de sesión
   const tipoSesion = useMemo(() => {
@@ -1002,15 +1005,20 @@ function CTACard({
   }, [cta.titulo, cta.descripcion])
 
   function handlePress() {
-    if (cta.estado === 'B') {
-      // Abrir la sesión de hoy en el historial (estado B = ya entrenó hoy)
-      router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr() } } as any)
+    if (cta.estado === 'E' && cta.sesion_hoy_id != null) {
+      // Sesión generada sin terminar → retomar la ejecución
+      router.push(`/(app)/ejecutar/${cta.sesion_hoy_id}` as any)
+    } else if (cta.estado === 'B') {
+      // Abrir la sesión de hoy en el historial (estado B = ya entrenó hoy).
+      // `ts` fuerza la reapertura del detalle aunque el tab siga montado.
+      router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr(), ts: String(Date.now()) } } as any)
     } else {
       router.push('/(app)/checkin')
     }
   }
 
   const btnLabel =
+    cta.estado === 'E' ? 'Continuar entrenamiento' :
     cta.estado === 'B' ? 'Ver resumen de tu sesión' :
     cta.estado === 'C' ? 'Iniciar recuperación activa' :
     cta.estado === 'D' ? 'Comenzar mi primer entrenamiento' :
@@ -1084,6 +1092,19 @@ function CTACard({
         >
           <View style={styles.ctaBtnTrainAgain}>
             <Text style={styles.ctaBtnTextTrainAgain}>{t('dashboard_train_again')}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Botón secundario "Generar otra rutina" — solo en estado E */}
+      {cta.estado === 'E' && (
+        <TouchableOpacity
+          style={[styles.ctaBtnWrap, { marginTop: 10 }]}
+          onPress={() => router.push('/(app)/checkin')}
+          activeOpacity={0.75}
+        >
+          <View style={styles.ctaBtnTrainAgain}>
+            <Text style={styles.ctaBtnTextTrainAgain}>Generar otra rutina</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -1440,8 +1461,9 @@ function makeStyles(c: Colors) {
       marginBottom: 20,
     },
     ctaCard: {
-      // Fondo ligeramente más claro que el dashboard (#000) para distinguirse
-      backgroundColor: 'rgba(255,255,255,0.10)',
+      // Azul oscuro (navy) — distingue el card de entrenamiento del resto del
+      // dashboard. El resto de colores/elementos (pill, título, botón) se mantienen.
+      backgroundColor: '#0E1C42',
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 22,
@@ -1476,7 +1498,9 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
       letterSpacing: -0.5,
       lineHeight: 24,
-      marginBottom: 16,
+      // El espacio hacia el botón lo da `ctaBtnWrap.marginTop`. Antes este
+      // marginBottom:16 dejaba el botón pegado a la descripción (que va debajo).
+      marginBottom: 0,
     },
     ctaDesc: {
       // eliminado — ya no se muestra
@@ -1485,6 +1509,7 @@ function makeStyles(c: Colors) {
     ctaBtnWrap: {
       borderRadius: 14,
       overflow: 'hidden',
+      marginTop: 18,
     },
     ctaBtnWrapSecondary: {
       overflow: 'visible',
@@ -1540,7 +1565,8 @@ function makeStyles(c: Colors) {
       overflow: 'hidden',
     },
     semDaysCard: {
-      backgroundColor: 'rgba(255,255,255,0.07)',
+      // Sin fondo — el calendario se integra directo con el fondo del dashboard
+      backgroundColor: 'transparent',
       borderWidth: 0,
       borderRadius: 18,
       paddingVertical: 10,

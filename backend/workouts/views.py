@@ -1101,16 +1101,40 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
             'sesion_hoy_id': None,
         }
 
-    # Estado B — ya entrenó hoy
+    # Sesión de hoy: distinguir GENERADA-sin-terminar vs COMPLETADA.
+    # La sesión se crea al GENERAR, no al terminar; por eso "tener una sesión
+    # hoy" no implica haber entrenado. El feedback es la señal de completada
+    # (se guarda al finalizar o al marcar completada sin ejecutar).
     sesion_hoy = user.sessions.filter(fecha=hoy).select_related('feedback').first()
     if sesion_hoy:
+        tiene_feedback = getattr(sesion_hoy, 'feedback', None) is not None
+        titulo_hoy = (
+            sesion_hoy.respuesta_ia.get('titulo') if sesion_hoy.respuesta_ia else None
+        )
+
+        # Estado E — sesión generada hoy pero aún sin terminar → Continuar
+        if not tiene_feedback:
+            empezada = sesion_hoy.inicio_real is not None
+            return {
+                'estado': 'E',
+                'pill_label': 'Entrenamiento en curso' if empezada else 'Sesión lista',
+                'pill_color': 'orange',
+                'titulo': titulo_hoy or 'Tu sesión de hoy',
+                'descripcion': (
+                    'Retoma donde la dejaste' if empezada
+                    else 'Tienes una sesión generada lista para empezar'
+                ),
+                'sesion_hoy_id': sesion_hoy.id,
+            }
+
+        # Estado B — ya entrenó hoy (hay feedback → completada)
         cumplimiento = getattr(getattr(sesion_hoy, 'feedback', None), 'cumplimiento', None)
         desc = f'{round(cumplimiento)}% de cumplimiento' if cumplimiento is not None else 'Sesión registrada'
         return {
             'estado': 'B',
             'pill_label': 'Ya entrenaste hoy',
             'pill_color': 'neutral',
-            'titulo': sesion_hoy.respuesta_ia.get('titulo', 'Sesión completada') if sesion_hoy.respuesta_ia else 'Sesión completada',
+            'titulo': titulo_hoy or 'Sesión completada',
             'descripcion': desc,
             'sesion_hoy_id': sesion_hoy.id,
         }

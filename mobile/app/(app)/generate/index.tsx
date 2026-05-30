@@ -13,11 +13,16 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
+import { useVideoPlayer, VideoView } from 'expo-video'
 import { router, useLocalSearchParams } from 'expo-router'
 import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
+
+// Video de fondo de la pantalla de generación (baja opacidad). Vive solo mientras
+// la pantalla de carga está montada, así que dura lo que dura la generación.
+const GEN_VIDEO = require('../../../assets/video_pantalla_generacion.mp4')
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -174,6 +179,13 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
   const apiDoneRef = useRef(apiDone)
   const onReadyRef = useRef(onReady)
 
+  // Video de fondo en bucle, silenciado. Se pausa al terminar la generación.
+  const videoPlayer = useVideoPlayer(GEN_VIDEO, p => {
+    p.loop = true
+    p.muted = true
+    p.play()
+  })
+
   const progress      = useRef(new Animated.Value(0)).current
   const textOpacity   = useRef(new Animated.Value(0)).current
   const screenOpacity = useRef(new Animated.Value(1)).current
@@ -225,7 +237,10 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
               toValue:        0,
               duration:       380,
               useNativeDriver: true,
-            }).start(() => onReadyRef.current())
+            }).start(() => {
+              try { videoPlayer.pause() } catch {}
+              onReadyRef.current()
+            })
           }, 600)
         }
       })
@@ -247,6 +262,16 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
 
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, { opacity: screenOpacity }]}>
+      {/* Video de fondo — baja opacidad para coherencia con la estética oscura */}
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: 0.22 }]}>
+        <VideoView
+          player={videoPlayer}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          nativeControls={false}
+        />
+      </View>
+
       {/* Progress ring */}
       <View style={{ transform: [{ rotate: '-90deg' }], marginBottom: 44 }}>
         <Svg width={RING_SIZE} height={RING_SIZE}>

@@ -1205,9 +1205,12 @@ export default function HistorialScreen() {
   const styles   = useMemo(() => makeStyles(colors), [colors])
   const insets   = useSafeAreaInsets()
 
-  // ── Deep-link param from dashboard "Ver rutina" ────────────────────────────
-  const { fecha: paramFecha } = useLocalSearchParams<{ fecha?: string }>()
-  const deepLinkHandled = useRef(false)
+  // ── Deep-link param from dashboard "Ver rutina" / "Ver resumen" ────────────
+  // `ts` es un nonce que cambia en cada navegación; permite reabrir el detalle
+  // aunque el tab de Historial siga montado (un guard booleano de una sola vez
+  // solo abría la primera vez en toda la vida del componente).
+  const { fecha: paramFecha, ts: paramTs } = useLocalSearchParams<{ fecha?: string; ts?: string }>()
+  const lastDeepLinkKey = useRef<string | null>(null)
 
   // ── View & data ────────────────────────────────────────────────────────────
   const [view,       setView]       = useState<'lista' | 'calendario'>('lista')
@@ -1255,8 +1258,11 @@ export default function HistorialScreen() {
 
   // ── Auto-open modal when navigated from dashboard with a fecha param ───────
   useEffect(() => {
-    if (!paramFecha || loading || deepLinkHandled.current) return
-    deepLinkHandled.current = true
+    if (!paramFecha || loading) return
+    // Con `ts` reaccionamos a cada navegación nueva; sin él, una sola vez por fecha.
+    const key = paramTs ?? `once:${paramFecha}`
+    if (lastDeepLinkKey.current === key) return
+    lastDeepLinkKey.current = key
     const ds = sessions.filter(s => s.fecha === paramFecha)
     if (ds.length === 1) {
       setSelectedSession(ds[0])
@@ -1265,7 +1271,7 @@ export default function HistorialScreen() {
       setDaySessions(ds)
       setDayModalVisible(true)
     }
-  }, [paramFecha, loading, sessions])
+  }, [paramFecha, paramTs, loading, sessions])
 
   const filteredSessions = useMemo(() => {
     let result = sessions

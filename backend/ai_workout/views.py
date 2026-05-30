@@ -34,8 +34,15 @@ from ai_workout.adaptive_engine import AdaptiveEngineService
 
 logger = logging.getLogger(__name__)
 
-# Timeout for the Groq HTTP request (seconds). Keep below gunicorn worker timeout.
-GROQ_TIMEOUT_SECONDS = 30
+# Timeout por intento de la petición a Groq (segundos).
+# IMPORTANTE: el SDK de Groq reintenta por defecto (max_retries=2). Con el
+# timeout antiguo (30s) un Groq lento daba 30s × 3 intentos ≈ 90s, que supera el
+# timeout de la pasarela de DigitalOcean → el cliente recibía un 504 mientras el
+# backend seguía reintentando. Acotamos a 1 reintento y bajamos el timeout para
+# que el peor caso (~40s) quede por debajo de la pasarela y del timeout del
+# cliente móvil (45s), devolviendo un 503 limpio y reintentable en vez de 504.
+GROQ_TIMEOUT_SECONDS = 20
+GROQ_MAX_RETRIES = 1
 
 
 def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
@@ -48,7 +55,11 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
         raise RuntimeError('GROQ_API_KEY not configured')
 
     t0 = _time.monotonic()
-    groq_client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS)
+    groq_client = Groq(
+        api_key=settings.GROQ_API_KEY,
+        timeout=GROQ_TIMEOUT_SECONDS,
+        max_retries=GROQ_MAX_RETRIES,
+    )
     completion = groq_client.chat.completions.create(
         model='llama-3.3-70b-versatile',
         messages=[{'role': 'user', 'content': prompt}],

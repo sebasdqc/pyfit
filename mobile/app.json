@@ -20,7 +20,10 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada.",
         "NSHealthShareUsageDescription": "Zyfit lee datos de salud para personalizar tus entrenamientos.",
         "NSHealthUpdateUsageDescription": "Zyfit puede registrar tus entrenamientos en Apple Health.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -63,7 +66,8 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      "expo-video"
     ],
     "extra": {
       "router": {
