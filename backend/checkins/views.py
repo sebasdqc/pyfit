@@ -40,8 +40,14 @@ def today_checkin(request):
 def create_checkin(request):
     hoy = _get_local_date(request)
     data = {**request.data, 'fecha': str(hoy)}
-    serializer = CheckinSerializer(data=data)
+    # Evita acumular check-ins duplicados del mismo día: si ya existe uno hoy se
+    # actualiza en lugar de crear otro (el último estado del día es el válido).
+    existing = request.user.checkins.filter(fecha=hoy).order_by('-created_at').first()
+    serializer = CheckinSerializer(existing, data=data) if existing else CheckinSerializer(data=data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save(user=request.user, fecha=hoy)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(
+        serializer.data,
+        status=status.HTTP_200_OK if existing else status.HTTP_201_CREATED,
+    )

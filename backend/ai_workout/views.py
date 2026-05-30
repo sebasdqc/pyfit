@@ -191,7 +191,14 @@ def process_device_data(user, checkin) -> tuple:
             context_lines.append(f'  • HRV nocturno: {hrv:.0f} ms')
 
         if stress_level is not None:
-            checkin_stress   = float(checkin.nivel_estres or 5) if hasattr(checkin, 'nivel_estres') else 5.0
+            # Estrés percibido del perfil (onboarding) en escala 0–100 para combinar
+            # con el estrés fisiológico del dispositivo. El check-in no captura un
+            # valor numérico de estrés (su estado mental alimenta estado_animo).
+            _percibido_map = {'bajo': 30.0, 'moderado': 55.0, 'alto': 80.0}
+            try:
+                checkin_stress = _percibido_map.get(user.profile.nivel_estres, 50.0)
+            except Exception:
+                checkin_stress = 50.0
             stress_combinado = (stress_level * 0.6) + (checkin_stress * 0.4)
             context_lines.append(
                 f'  • Estrés fisiológico: {stress_level:.0f}/100 (60%) '
@@ -269,6 +276,9 @@ def _get_exercise_pool(user, location, dolor_hoy=''):
         'tobillo': 'tobillo',
         'muñeca': 'muñeca',
         'codo': 'codo',
+        'pecho': 'hombro',
+        'abdomen': 'lumbar',
+        'muslo': 'cadera',
     }
     if dolor_hoy:
         dolor_lower = dolor_hoy.lower()

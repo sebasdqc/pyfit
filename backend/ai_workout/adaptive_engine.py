@@ -88,6 +88,9 @@ DOLOR_KEYWORDS: dict[str, str] = {
     'tobillo': 'tobillo',
     'muñeca':  'muñeca',
     'codo':    'codo',
+    'pecho':   'hombro',    # press/empuje → contraindicación de hombro
+    'abdomen': 'lumbar',    # core → carga espinal
+    'muslo':   'cadera',    # consistente con la normalización de lesiones del onboarding
 }
 
 # Equipo que nunca es restricción (peso corporal)
