@@ -981,11 +981,20 @@ def generate_session(request):
             status=status.HTTP_502_BAD_GATEWAY,
         )
 
+    # GEN-3: red de seguridad — descarta ejercicios contraindicados que el LLM haya
+    # elegido fuera del pool ya filtrado (lesiones activas / dolor de hoy).
+    _drop_contraindicated_exercises(sesion_generada, engine._get_injury_zones(), user.id)
+
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
 
     db_location = loc if isinstance(loc, user.locations.model) else None
 
     with transaction.atomic():
+        # GEN-2: reemplaza la sesión del día aún no ejecutada (sin inicio_real ni
+        # feedback) para no acumular duplicados al regenerar.
+        user.sessions.filter(
+            fecha=hoy, inicio_real__isnull=True, feedback__isnull=True,
+        ).delete()
         sesion = Session.objects.create(
             user=user,
             checkin=checkin,
@@ -1006,6 +1015,43 @@ def generate_session(request):
     DailySaludo.objects.filter(user=user, fecha=hoy).delete()
 
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
+
+
+def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id):
+    """Red de seguridad final: quita de la sesión generada los ejercicios del
+    catálogo cuyas contraindicaciones chocan con lesiones activas o el dolor de hoy.
+    El LLM debe elegir solo del pool ya filtrado, pero si se desvía a un ejercicio
+    contraindicado del catálogo, lo eliminamos antes de persistir. Devuelve cuántos
+    se descartaron."""
+    if not injury_zones or not isinstance(sesion_generada, dict):
+        return 0
+    nombres = [
+        str(ej.get('nombre', '')).strip()
+        for fase in sesion_generada.get('fases', []) or []
+        for ej in (fase.get('ejercicios', []) or [])
+        if str(ej.get('nombre', '')).strip()
+    ]
+    if not nombres:
+        return 0
+    contra_por_nombre = {
+        e.nombre.lower(): set(e.contraindicaciones or [])
+        for e in Exercise.objects.filter(nombre__in=nombres)
+    }
+    dropped = 0
+    for fase in sesion_generada.get('fases', []) or []:
+        keep = []
+        for ej in (fase.get('ejercicios', []) or []):
+            nombre = str(ej.get('nombre', '')).strip()
+            if contra_por_nombre.get(nombre.lower(), set()) & injury_zones:
+                dropped += 1
+                logger.warning(
+                    'generate: ejercicio contraindicado descartado "%s" (lesiones=%s) user=%s',
+                    nombre, sorted(injury_zones), user_id,
+                )
+                continue
+            keep.append(ej)
+        fase['ejercicios'] = keep
+    return dropped
 
 
 def _persist_session_exercises(sesion, sesion_generada):
@@ -1309,6 +1355,8 @@ def session_ajustar(request, pk):
             {'error': 'La IA devolvió una respuesta incompleta. Intenta de nuevo.'},
             status=status.HTTP_502_BAD_GATEWAY,
         )
+
+    _drop_contraindicated_exercises(sesion_generada, engine._get_injury_zones(), user.id)
 
     with transaction.atomic():
         session.respuesta_ia         = sesion_generada

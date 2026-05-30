@@ -1314,6 +1314,7 @@ export default function GenerateScreen() {
         elegido:  alt.nombre,
         motivo,
         fase:     faseNombre,
+        nuevo:    alt,   // objeto completo → el backend persiste el cambio en respuesta_ia
       }).catch(() => {})
     }
     setSubTarget(null)

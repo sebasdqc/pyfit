@@ -1203,15 +1203,53 @@ def session_sustituir(request, pk):
         session = request.user.sessions.get(pk=pk)
     except Session.DoesNotExist:
         return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    original = str(request.data.get('original', ''))[:200]
     sustitucion = {
-        'original': str(request.data.get('original', ''))[:200],
+        'original': original,
         'elegido':  str(request.data.get('elegido', ''))[:200],
         'motivo':   str(request.data.get('motivo', ''))[:100],
         'fase':     str(request.data.get('fase', ''))[:50],
     }
     session.sustituciones = (session.sustituciones or []) + [sustitucion]
-    session.save(update_fields=['sustituciones'])
-    return Response({'ok': True})
+
+    # GEN-1: persistir el cambio en respuesta_ia para que ejecutar/feedback usen el
+    # ejercicio sustituido (antes solo se guardaba el log y se ejecutaba el original).
+    nuevo = request.data.get('nuevo')
+    updated = False
+    if isinstance(nuevo, dict) and original and isinstance(session.respuesta_ia, dict):
+        fase_nombre = sustitucion['fase']
+        nuevo_ej = {
+            'nombre':            str(nuevo.get('nombre', ''))[:200],
+            'series':            nuevo.get('series'),
+            'repeticiones':      str(nuevo.get('repeticiones', ''))[:50],
+            'descanso_segundos': nuevo.get('descanso_segundos'),
+            'rpe_sugerido':      nuevo.get('rpe_sugerido'),
+            'notas':             str(nuevo.get('notas', '') or ''),
+        }
+        if nuevo_ej['nombre']:
+            for fase in session.respuesta_ia.get('fases', []) or []:
+                if fase_nombre and fase.get('nombre') != fase_nombre:
+                    continue
+                ejercicios = fase.get('ejercicios', []) or []
+                for i, ej in enumerate(ejercicios):
+                    if ej.get('nombre') == original:
+                        ejercicios[i] = nuevo_ej
+                        updated = True
+                        break
+                if updated:
+                    break
+
+    update_fields = ['sustituciones']
+    if updated:
+        update_fields.append('respuesta_ia')
+    session.save(update_fields=update_fields)
+
+    if updated:
+        from ai_workout.views import _persist_session_exercises
+        session.exercises.all().delete()
+        _persist_session_exercises(session, session.respuesta_ia)
+
+    return Response({'ok': True, 'updated': updated})
 
 
 @api_view(['GET'])
