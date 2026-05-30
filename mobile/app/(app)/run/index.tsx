@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
+  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,6 +38,68 @@ function MetricColumn({
     <View style={styles.metricCol}>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  )
+}
+
+// ─── Slide to Stop ──────────────────────────────────────────────────────────
+// Mismo patrón que el SliderButton de ejecutar (PanResponder + Animated, sin
+// gesture-handler). Umbral alto (85%) porque detener termina la carrera.
+
+function SlideToStop({ onStop }: { onStop: () => void }) {
+  const pan       = useRef(new Animated.Value(0)).current
+  const trackWRef = useRef(0)
+  const [trackW, setTrackW] = useState(0)
+  const doneRef   = useRef(false)
+  const HANDLE = 56, PAD = 4
+  const maxX = Math.max(0, trackW - HANDLE - PAD * 2)
+
+  const panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => !doneRef.current,
+    onMoveShouldSetPanResponder:  () => !doneRef.current,
+    onPanResponderMove: (_, gs) => {
+      if (doneRef.current) return
+      const max = trackWRef.current - HANDLE - PAD * 2
+      if (max <= 0) return
+      pan.setValue(Math.max(0, Math.min(gs.dx, max)))
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (doneRef.current) return
+      const max = trackWRef.current - HANDLE - PAD * 2
+      if (max <= 0) return
+      const x = Math.max(0, Math.min(gs.dx, max))
+      if (x >= max * 0.85) {
+        doneRef.current = true
+        Animated.timing(pan, { toValue: max, duration: 110, easing: Easing.out(Easing.ease), useNativeDriver: false })
+          .start(() => onStop())
+      } else {
+        Animated.spring(pan, { toValue: 0, useNativeDriver: false, tension: 140, friction: 9 }).start()
+      }
+    },
+  })).current
+
+  const labelOpacity = pan.interpolate({
+    inputRange: [0, Math.max(40, maxX * 0.5)],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  })
+
+  return (
+    <View
+      style={styles.slideTrack}
+      onLayout={e => { const w = e.nativeEvent.layout.width; trackWRef.current = w; setTrackW(w) }}
+    >
+      <Animated.View pointerEvents="none" style={[styles.slideLabelWrap, { opacity: labelOpacity }]}>
+        <Text style={styles.slideLabel}>DESLIZA PARA DETENER ›››</Text>
+      </Animated.View>
+      {trackW > 0 && (
+        <Animated.View
+          style={[styles.slideHandle, { transform: [{ translateX: pan }] }]}
+          {...panResponder.panHandlers}
+        >
+          <Text style={styles.slideHandleIcon}>›</Text>
+        </Animated.View>
+      )}
     </View>
   )
 }
@@ -100,21 +165,6 @@ export default function RunScreen() {
       Alert.alert('Error', error)
     }
   }, [error, status])
-
-  function handleStop() {
-    Alert.alert(
-      'Detener carrera',
-      '¿Estás seguro de que quieres terminar la carrera?',
-      [
-        { text: 'Continuar', style: 'cancel' },
-        {
-          text: 'Detener',
-          style: 'destructive',
-          onPress: () => stopRun(),
-        },
-      ],
-    )
-  }
 
   // Map region: prefer live run coordinates → pre-fetched device location → null (don't render yet)
   const activeCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
@@ -222,13 +272,7 @@ export default function RunScreen() {
           )}
 
           {status === 'active' && (
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.stopBtn]}
-              onPress={handleStop}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.actionBtnText}>DETENER</Text>
-            </TouchableOpacity>
+            <SlideToStop onStop={stopRun} />
           )}
 
           {status === 'completed' && (
@@ -390,14 +434,52 @@ const styles = StyleSheet.create({
   startBtn: {
     backgroundColor: '#32c896',
   },
-  stopBtn: {
-    backgroundColor: '#ff4444',
-  },
   actionBtnText: {
     fontFamily: 'SpaceGrotesk-Bold',
     fontSize: 17,
     color: '#ffffff',
     letterSpacing: 1,
+  },
+
+  // Slide to stop
+  slideTrack: {
+    height: 60,
+    width: '100%',
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,68,68,0.15)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,68,68,0.45)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  slideLabelWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  slideLabel: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize: 14,
+    color: '#ff4444',
+    letterSpacing: 0.5,
+  },
+  slideHandle: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 56,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ff4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slideHandleIcon: {
+    color: '#ffffff',
+    fontSize: 24,
+    lineHeight: 28,
+    fontFamily: 'SpaceGrotesk-Bold',
   },
   completingWrap: {
     paddingVertical: 18,

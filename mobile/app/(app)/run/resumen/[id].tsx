@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -198,6 +199,17 @@ export default function RunResumenScreen() {
         >
           <Text style={styles.doneBtnText}>Listo</Text>
         </TouchableOpacity>
+
+        {/* Compartir en redes sociales (próximamente) */}
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={() =>
+            Alert.alert('Próximamente', 'La función de compartir tu carrera estará disponible pronto.')
+          }
+          activeOpacity={0.75}
+        >
+          <Text style={styles.shareBtnText}>↗ Compartir en redes sociales</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   )
@@ -319,6 +331,24 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#ffffff',
     letterSpacing: 0.3,
+  },
+
+  // Compartir
+  shareBtn: {
+    borderRadius: 50,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'transparent',
+    marginTop: 12,
+  },
+  shareBtnText: {
+    fontFamily: 'SpaceGrotesk-Medium',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 0.2,
   },
 
   // Loading / error
