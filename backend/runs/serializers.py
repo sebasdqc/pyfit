@@ -22,7 +22,10 @@ class RunPointSerializer(serializers.ModelSerializer):
 class RunSessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RunSession
-        fields = ['started_at', 'session_type']
+        # `id` es imprescindible en la respuesta: el cliente lo usa para enviar
+        # puntos GPS y completar la sesión.
+        fields = ['id', 'started_at', 'session_type']
+        read_only_fields = ['id']
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

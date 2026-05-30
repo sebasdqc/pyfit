@@ -63,10 +63,10 @@ export default function RunResumenScreen() {
       })
   }, [id])
 
-  // Build polyline from points if available
+  // Build polyline from points if available (backend devuelve lat/lng)
   const polylineCoords = session?.points?.map(p => ({
-    latitude: p.latitude,
-    longitude: p.longitude,
+    latitude: p.lat,
+    longitude: p.lng,
   })) ?? []
 
   const mapRegion = polylineCoords.length > 0
@@ -88,32 +88,32 @@ export default function RunResumenScreen() {
     ? [
         {
           label: 'DISTANCIA',
-          value: formatDistance(session.total_distance ?? 0),
+          value: formatDistance(session.total_distance_m ?? 0),
         },
         {
           label: 'TIEMPO',
-          value: formatDuration(session.duration_seconds ?? 0),
+          value: formatDuration(session.total_duration_s ?? 0),
         },
         {
           label: 'RITMO PROM.',
-          value: formatPace(session.avg_pace ?? 0),
+          value: formatPace(session.avg_pace_s_per_km ?? 0),
         },
         {
           label: 'MEJOR RITMO',
-          value: formatPace(session.best_pace ?? 0),
+          value: formatPace(session.best_pace_s_per_km ?? 0),
         },
         {
           label: 'DESNIVEL +',
           value:
-            session.elevation_gain != null
-              ? `${Math.round(session.elevation_gain)} m`
+            session.elevation_gain_m != null
+              ? `${Math.round(session.elevation_gain_m)} m`
               : '-- m',
         },
         {
           label: 'CALORÍAS',
           value:
-            session.calories != null
-              ? `${Math.round(session.calories)} kcal`
+            session.calories_burned != null
+              ? `${Math.round(session.calories_burned)} kcal`
               : '-- kcal',
         },
       ]
