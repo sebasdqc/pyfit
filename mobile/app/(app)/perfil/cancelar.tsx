@@ -5,9 +5,9 @@
  *   plan_renovacion: ISO date 'YYYY-MM-DD' — fecha hasta la que dura el acceso Pro
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  Modal, Pressable, ScrollView, StyleSheet,
+  BackHandler, Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -121,9 +121,18 @@ export default function CancelarScreen() {
     : 'Tendrás acceso Pro hasta el final del período actual.'
 
   function handleBack() {
-    if (paso === 1) router.replace('/(app)/perfil')
+    if (paso === 1) router.back()
     else setPaso(1)
   }
+
+  // Back de hardware (Android): en el paso 2 vuelve al paso 1 en vez de salir.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (paso === 2) { setPaso(1); return true }
+      return false
+    })
+    return () => sub.remove()
+  }, [paso])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -206,7 +215,7 @@ export default function CancelarScreen() {
             {/* Botón primario — mantener */}
             <TouchableOpacity
               style={styles.ctaMantenBtn}
-              onPress={() => router.replace('/(app)/perfil')}
+              onPress={() => router.back()}
               activeOpacity={0.85}
             >
               <LinearGradient

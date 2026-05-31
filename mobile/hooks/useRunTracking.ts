@@ -61,6 +61,8 @@ export function useRunTracking(): UseRunTrackingReturn {
   const coordinatesRef       = useRef<GpsCoordinate[]>([])
   const totalDistanceRef     = useRef(0)
   const startingRef          = useRef(false)   // guard de reentrada para startRun
+  const stoppingRef          = useRef(false)   // guard de reentrada para stopRun
+  const startedAtRef         = useRef(0)        // epoch ms del inicio (timer wall-clock)
 
   // ── Limpiar todos los intervals/subscriptions
   const clearAll = useCallback(() => {
@@ -148,8 +150,12 @@ export function useRunTracking(): UseRunTrackingReturn {
       setElapsedSeconds(0)
       setStatus('active')
 
-      // ── Timer de tiempo transcurrido
-      timerRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
+      // ── Timer de tiempo transcurrido — calculado por reloj de pared para que
+      //    NO se desfase cuando iOS/Android congelan los timers JS en background.
+      startedAtRef.current = Date.now()
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
+      }, 1000)
 
       // ── Background GPS (pide permiso "always" y levanta el task)
       //    Devuelve true si el background quedó activo, false si cayó al fallback.
@@ -194,14 +200,14 @@ export function useRunTracking(): UseRunTrackingReturn {
 
   // ── Detener carrera
   const stopRun = useCallback(async () => {
-    if (sessionIdRef.current == null) return
+    if (sessionIdRef.current == null || stoppingRef.current) return  // guard reentrada
+    stoppingRef.current = true
     clearAll()
     await stopBackgroundGps().catch(() => {})
     setBackgroundActive(false)
 
     const sid     = sessionIdRef.current
     const endedAt = new Date().toISOString()
-    setStatus('completed')
 
     try {
       // Drenar cola final por si quedaron puntos en background
@@ -213,6 +219,10 @@ export function useRunTracking(): UseRunTrackingReturn {
       await completeRunSession(sid, endedAt)
     } catch {
       // Error de red — sesión parada localmente
+    } finally {
+      // Navegar al resumen DESPUÉS de completar (el efecto de la pantalla reacciona
+      // a 'completed'), para que el backend ya tenga las métricas al hacer el GET.
+      setStatus('completed')
     }
   }, [clearAll, drainQueue])
 

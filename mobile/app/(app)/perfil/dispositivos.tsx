@@ -4,7 +4,7 @@
  * Muestra el estado de Apple Health (iOS) y Garmin (pendiente de aprobación).
  * Permite conectar, sincronizar manualmente y desconectar cada dispositivo.
  */
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -198,6 +198,8 @@ export default function DispositivosScreen() {
   const [ahSyncing, setAhSyncing]              = useState(false)
   const [garminState, setGarminState]          = useState<DeviceState>(DISCONNECTED)
   const [garminLoading, setGarminLoading]      = useState(true)
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   // ── Verificar disponibilidad de HealthKit ─────────────────────────────────
   useEffect(() => {
@@ -244,11 +246,12 @@ export default function DispositivosScreen() {
   // ── Apple Health — Sincronizar ────────────────────────────────────────────
   async function _doAhSync() {
     const result = await AppleHealthService.syncData()
+    if (!mountedRef.current) return
     setAhState(prev => ({ ...prev, last_synced_at: result.last_synced_at }))
     // Recargar métricas desde backend para reflejar los nuevos datos
     try {
       const fresh = await apiGet('/api/integrations/apple-health/status/')
-      setAhState(fresh)
+      if (mountedRef.current) setAhState(fresh)
     } catch { /* ignore */ }
   }
 

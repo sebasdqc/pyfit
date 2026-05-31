@@ -132,7 +132,9 @@ export default function PreferenciasScreen() {
   }, [])
 
   function toggleEstilo(k: string) {
-    setEstilos(prev => prev.includes(k) ? prev.filter(e => e !== k) : [...prev, k])
+    // Single-select: el backend guarda un solo estilo (estilo_entrenamiento es
+    // string). Antes la UI permitía marcar varios pero solo se guardaba el 1º.
+    setEstilos(prev => prev.includes(k) ? [] : [k])
   }
 
   async function save() {
@@ -144,7 +146,7 @@ export default function PreferenciasScreen() {
         estilo_entrenamiento: estilos[0] ?? '',
         ejercicios_evitar: evitar,
       })
-      router.replace('/(app)/perfil')
+      router.back()
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar')
     } finally { setSaving(false) }
@@ -156,7 +158,7 @@ export default function PreferenciasScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.replace('/(app)/perfil')} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>

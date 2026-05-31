@@ -62,7 +62,7 @@ export default function ObjetivosScreen() {
       if (goal) {
         await apiPost('/api/training-cycle/', { goal })
       }
-      router.replace('/(app)/perfil')
+      router.back()
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar')
     } finally { setSaving(false) }
@@ -74,7 +74,7 @@ export default function ObjetivosScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.replace('/(app)/perfil')} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>

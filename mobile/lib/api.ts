@@ -27,10 +27,17 @@ async function getHeaders(includeAuth = true): Promise<Record<string, string>> {
   }
   if (includeAuth) {
     const token = await getAccessToken()
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+      _loggingOut = false   // hay sesión activa → rearmar el flag de logout
+    }
   }
   return headers
 }
+
+// Evita que un burst de requests con 401 simultáneo dispare N veces el
+// clear+replace a login. Se rearma en getHeaders cuando hay token (tras login).
+let _loggingOut = false
 
 // Singleton promise: si varias requests reciben 401 simultáneamente, todas
 // esperan el MISMO refresh en lugar de intentar cada una el suyo (race condition).
@@ -98,9 +105,12 @@ async function request(
   if (res.status === 401 && !isRetry) {
     const refreshed = await tryRefresh()
     if (!refreshed) {
-      await clearTokens()
-      await clearUser()
-      router.replace('/(auth)/login')
+      if (!_loggingOut) {
+        _loggingOut = true
+        await clearTokens()
+        await clearUser()
+        router.replace('/(auth)/login')
+      }
       throw new Error('Sesión expirada')
     }
     // Tras refrescar, reintentar solo métodos idempotentes. NO reintentamos POST

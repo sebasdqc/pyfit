@@ -552,13 +552,15 @@ export default function NotificacionesScreen() {
   const [prefsLoading,   setPrefsLoading]   = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     apiGet('/api/notificaciones/')
-      .then(setNotificaciones)
+      .then(d => { if (!cancelled) setNotificaciones(d) })
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => { if (!cancelled) setLoading(false) })
 
     apiGet('/api/notificaciones/preferencias/')
       .then((data: any) => {
+        if (cancelled) return
         setPrefs({
           invitacion:  data.invitacion  ?? true,
           insight:     data.insight     ?? true,
@@ -571,7 +573,8 @@ export default function NotificacionesScreen() {
         })
       })
       .catch(() => {})
-      .finally(() => setPrefsLoading(false))
+      .finally(() => { if (!cancelled) setPrefsLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const unreadCount = notificaciones.filter(n => !n.leida).length

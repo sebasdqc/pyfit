@@ -791,9 +791,13 @@ function TuSemanaCard({
   const evYear  = currMonday.getFullYear()
   const evMonth = currMonday.getMonth() + 1
   useEffect(() => {
+    let cancelled = false
     apiGet(`/api/eventos/?year=${evYear}&month=${evMonth}`)
-      .then((res: any) => setEventos(Array.isArray(res) ? res : []))
+      .then((res: any) => { if (!cancelled) setEventos(Array.isArray(res) ? res : []) })
       .catch(() => {})
+    // Al deslizar de mes rápido: descartar respuestas obsoletas y evitar
+    // setState tras desmontar.
+    return () => { cancelled = true }
   }, [evYear, evMonth])
 
   const eventMap = useMemo(() => {

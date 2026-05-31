@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useFocusEffect } from 'expo-router'
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -1052,8 +1053,9 @@ export default function EstadisticasScreen() {
       setEventos(prev => [...prev, ev])
       setNewEventTitulo('')
       setNewEventTipo('otro')
-    } catch {
-      // silent error — keep modal open
+    } catch (e: any) {
+      // Antes fallaba en silencio → el usuario creía que se guardó. Ahora avisamos.
+      Alert.alert('No se pudo guardar', e?.message ?? 'Revisa tu conexión e inténtalo de nuevo.')
     } finally {
       setSavingEvent(false)
     }
@@ -1063,8 +1065,8 @@ export default function EstadisticasScreen() {
     try {
       await apiDelete(`/api/eventos/${id}/`)
       setEventos(prev => prev.filter(e => e.id !== id))
-    } catch {
-      // silent
+    } catch (e: any) {
+      Alert.alert('No se pudo eliminar', e?.message ?? 'Revisa tu conexión e inténtalo de nuevo.')
     }
   }
 

@@ -371,6 +371,13 @@ export default function BuscarDispositivoScreen() {
   const [connectionStatus, setConnectionStatus] = useState<Record<string, ConnectionStatus>>({})
   const [connectingId, setConnectingId] = useState<string | null>(null)
 
+  const mountedRef = useRef(true)
+  const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    mountedRef.current = false
+    if (connectTimerRef.current) clearTimeout(connectTimerRef.current)
+  }, [])
+
   // Animaciones de fade por fila de dispositivo
   const rowAnims = useRef<Record<string, Animated.Value>>({})
   function getRowAnim(id: string) {
@@ -428,14 +435,17 @@ export default function BuscarDispositivoScreen() {
         })
       }
 
+      if (!mountedRef.current) return
       setConnectionStatus(prev => ({ ...prev, [device.id]: 'connected' }))
 
-      // Transición a Vista 2 tras 700 ms
-      setTimeout(() => {
+      // Transición a Vista 2 tras 700 ms (cancelable al desmontar)
+      connectTimerRef.current = setTimeout(() => {
+        if (!mountedRef.current) return
         setConnectedDevice(device)
         setView('success')
       }, 700)
     } catch (e: any) {
+      if (!mountedRef.current) return
       setConnectionStatus(prev => ({ ...prev, [device.id]: 'error' }))
       setConnectingId(null)
       Alert.alert('Error al conectar', e?.message ?? 'No se pudo establecer la conexión. Inténtalo de nuevo.')

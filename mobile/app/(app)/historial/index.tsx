@@ -1076,6 +1076,11 @@ function DayModal({
   const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
   const styles = useMemo(() => makeStyles(colors), [colors])
 
+  // Timer para abrir el detalle tras cerrar este modal; se cancela al desmontar
+  // o al elegir otra sesión (evita abrir el modal sobre una pantalla ya desenfocada).
+  const selectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (selectTimerRef.current) clearTimeout(selectTimerRef.current) }, [])
+
   const monthShort = ta('historial_months')
   const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -1102,7 +1107,11 @@ function DayModal({
                 <TouchableOpacity
                   key={s.id}
                   style={styles.sessionCard}
-                  onPress={() => { onClose(); setTimeout(() => onSelectSession(s), 300) }}
+                  onPress={() => {
+                    onClose()
+                    if (selectTimerRef.current) clearTimeout(selectTimerRef.current)
+                    selectTimerRef.current = setTimeout(() => onSelectSession(s), 300)
+                  }}
                   activeOpacity={0.75}
                 >
                   <Text style={styles.sessionTitle} numberOfLines={1}>

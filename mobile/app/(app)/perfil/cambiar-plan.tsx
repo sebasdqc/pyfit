@@ -177,7 +177,7 @@ export default function CambiarPlanScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
-          onPress={() => router.replace('/(app)/perfil')}
+          onPress={() => router.back()}
           style={styles.backBtn}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -230,7 +230,7 @@ export default function CambiarPlanScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelLink} onPress={() => router.replace('/(app)/perfil')} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.cancelLink} onPress={() => router.back()} activeOpacity={0.7}>
           <Text style={styles.cancelLinkText}>Mantener plan actual</Text>
         </TouchableOpacity>
       </ScrollView>

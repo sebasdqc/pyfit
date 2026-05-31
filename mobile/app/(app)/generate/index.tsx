@@ -30,10 +30,14 @@ const GEN_VIDEO = require('../../../assets/video_pantalla_generacion.mp4')
 const TODAY_POLL_MAX_MS = 70000
 const TODAY_POLL_INTERVAL_MS = 3000
 
-async function pollForNewSession(baselineId: number | null): Promise<SesionResponse> {
+async function pollForNewSession(
+  baselineId: number | null,
+  shouldContinue: () => boolean = () => true,
+): Promise<SesionResponse> {
   const start = Date.now()
   while (Date.now() - start < TODAY_POLL_MAX_MS) {
     await new Promise(r => setTimeout(r, TODAY_POLL_INTERVAL_MS))
+    if (!shouldContinue()) throw new Error('cancelled')  // detener al desmontar
     try {
       const res: any = await apiGet('/api/sessions/today/')
       if (res?.status === 'ready' && res.sesion && res.sesion_id !== baselineId) {
@@ -520,6 +524,8 @@ function SubstitutionModal({
   const [alternativas, setAlternativas] = useState<AlternativaEjercicio[] | null>(null)
   const [fetchError,   setFetchError]   = useState<string | null>(null)
   const sheetY = useRef(new Animated.Value(700)).current
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   useEffect(() => {
     if (visible) {
@@ -541,7 +547,7 @@ function SubstitutionModal({
   }
 
   async function buscarAlternativas() {
-    if (!ejercicio) return
+    if (!ejercicio || loading) return   // guard: evita dos búsquedas concurrentes
     setLoading(true); setFetchError(null); setAlternativas(null)
     try {
       const data = await apiPost('/api/ejercicios/regenerar/', {
@@ -550,11 +556,11 @@ function SubstitutionModal({
         session_id: sesionId,
         motivo,
       })
-      setAlternativas(data.alternativas ?? [])
+      if (mountedRef.current) setAlternativas(data.alternativas ?? [])
     } catch (e: any) {
-      setFetchError(e.message || 'No se pudieron cargar alternativas')
+      if (mountedRef.current) setFetchError(e.message || 'No se pudieron cargar alternativas')
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }
 
@@ -1268,6 +1274,8 @@ export default function GenerateScreen() {
   const { t: checkinTs } = useLocalSearchParams<{ t?: string }>()
   const lastTsRef = useRef<string>('__init__')
   const navTsRef  = useRef(0)   // debounce para no apilar pantallas al doble-tap
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
 
   const [apiDone,      setApiDone]      = useState(false)
   const [contentReady, setContentReady] = useState(false)
@@ -1307,16 +1315,17 @@ export default function GenerateScreen() {
         // sesión (la generación tarda más que el timeout del proxy). En vez de
         // fallar, recuperamos la sesión nueva por polling.
         const baselineId = await baselineP
-        data = await pollForNewSession(baselineId)
+        data = await pollForNewSession(baselineId, () => mountedRef.current)
       }
+      if (!mountedRef.current) return   // se salió de la pantalla mientras generaba
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
       const checkinRes: any = await checkinP
-      if (checkinRes?.id) setCheckin(checkinRes)
+      if (mountedRef.current && checkinRes?.id) setCheckin(checkinRes)
     } catch (err: any) {
-      setError(err.message || 'Error generando la sesión')
+      if (mountedRef.current) setError(err.message || 'Error generando la sesión')
     } finally {
-      setApiDone(true)
+      if (mountedRef.current) setApiDone(true)
     }
   }, [contentFade])
 
@@ -1330,12 +1339,14 @@ export default function GenerateScreen() {
   // Fetch justification lazily once session ID is known
   useEffect(() => {
     if (!sesionId) return
+    let cancelled = false
     setResumen(null)
     setResumenLoading(true)
     apiGet(`/api/sessions/${sesionId}/resumen/`)
-      .then(setResumen)
+      .then(r => { if (!cancelled) setResumen(r) })
       .catch(() => {})
-      .finally(() => setResumenLoading(false))
+      .finally(() => { if (!cancelled) setResumenLoading(false) })
+    return () => { cancelled = true }
   }, [sesionId])
 
   const handleReady = useCallback(() => {
