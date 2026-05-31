@@ -1267,6 +1267,7 @@ export default function GenerateScreen() {
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const { t: checkinTs } = useLocalSearchParams<{ t?: string }>()
   const lastTsRef = useRef<string>('__init__')
+  const navTsRef  = useRef(0)   // debounce para no apilar pantallas al doble-tap
 
   const [apiDone,      setApiDone]      = useState(false)
   const [contentReady, setContentReady] = useState(false)
@@ -1380,6 +1381,10 @@ export default function GenerateScreen() {
 
   const handleEjecutar = useCallback(() => {
     if (!sesionId) return
+    // Debounce: el doble tap apilaría 2 pantallas de ejecución en el stack.
+    const now = Date.now()
+    if (now - navTsRef.current < 700) return
+    navTsRef.current = now
     // Fire-and-forget: marks session as started for analytics.
     // Navigation does not depend on this completing.
     apiPost(`/api/sessions/${sesionId}/iniciar/`, {}).catch(() => {})
@@ -1388,6 +1393,9 @@ export default function GenerateScreen() {
 
   const handleMarcarCompletada = useCallback(() => {
     if (!sesionId) return
+    const now = Date.now()
+    if (now - navTsRef.current < 700) return
+    navTsRef.current = now
     router.push(`/(app)/feedback/${sesionId}`)
   }, [sesionId])
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useFocusEffect } from 'expo-router'
 import {
   View,
   Text,
@@ -900,6 +901,15 @@ export default function EstadisticasScreen() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [error,          setError]          = useState<string | null>(null)
 
+  // #9: tokens para descartar respuestas fuera de orden (mes/filtro cambian rápido)
+  const rpeReqRef     = useRef(0)
+  const consistReqRef = useRef(0)
+  const eventosReqRef = useRef(0)
+  // #8: refs espejo para refrescar al enfocar sin stale closure
+  const filtroRef     = useRef(filtro);    filtroRef.current = filtro
+  const mesRef        = useRef(mesActual); mesRef.current = mesActual
+  const firstFocusRef = useRef(true)
+
   // ── Fetchers ───────────────────────────────────────────────────────────────
   const fetchRadar = useCallback(async (isInitial = false) => {
     try {
@@ -912,15 +922,17 @@ export default function EstadisticasScreen() {
   }, [])
 
   const fetchRPE = useCallback(async (f: Filtro, isInitial = false) => {
+    const reqId = ++rpeReqRef.current
     if (!isInitial) setRpeChartBusy(true)
     try {
       const res: RPEData = await apiGet(`/api/stats/rpe-semanal/?filtro=${f}`)
+      if (reqId !== rpeReqRef.current) return   // respuesta obsoleta (filtro cambió)
       setRpeData(res)
       setRegDate({ year: res.fecha_registro_year, month: res.fecha_registro_month })
     } catch (e: any) {
-      if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+      if (reqId === rpeReqRef.current && isInitial) setError(e.message ?? 'Error cargando estadísticas')
     } finally {
-      setRpeChartBusy(false)
+      if (reqId === rpeReqRef.current) setRpeChartBusy(false)
     }
   }, [])
 
@@ -943,21 +955,25 @@ export default function EstadisticasScreen() {
   }, [])
 
   const fetchConsist = useCallback(async (year: number, month: number, isInitial = false) => {
+    const reqId = ++consistReqRef.current
     if (!isInitial) setConsistLoading(true)
     try {
       const res: ConsistData = await apiGet(`/api/stats/consistencia-mensual/?year=${year}&month=${month}`)
+      if (reqId !== consistReqRef.current) return   // respuesta obsoleta (cambió de mes)
       setConsistData(res)
       setRegDate({ year: res.fecha_registro_year, month: res.fecha_registro_month })
     } catch (e: any) {
-      if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+      if (reqId === consistReqRef.current && isInitial) setError(e.message ?? 'Error cargando estadísticas')
     } finally {
-      setConsistLoading(false)
+      if (reqId === consistReqRef.current) setConsistLoading(false)
     }
   }, [])
 
   const fetchEventos = useCallback(async (year: number, month: number) => {
+    const reqId = ++eventosReqRef.current
     try {
       const res: CalendarEventData[] = await apiGet(`/api/eventos/?year=${year}&month=${month}`)
+      if (reqId !== eventosReqRef.current) return   // respuesta obsoleta (cambió de mes)
       setEventos(res)
     } catch {
       // non-critical
@@ -975,6 +991,22 @@ export default function EstadisticasScreen() {
       fetchEventos(year, month),
     ]).finally(() => setInitialLoading(false))
   }, []) // eslint-disable-line
+
+  // #8: refrescar al volver al tab (los datos cambian tras entrenar/crear evento).
+  // El primer foco lo cubre el useEffect de arriba; del segundo en adelante,
+  // refresco silencioso (isInitial=false → no toma la pantalla de error).
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocusRef.current) { firstFocusRef.current = false; return }
+      const { year, month } = mesRef.current
+      fetchRadar()
+      fetchRPE(filtroRef.current)
+      fetchConsist(year, month)
+      fetchCuerpo()
+      fetchEjercicios()
+      fetchEventos(year, month)
+    }, [fetchRadar, fetchRPE, fetchConsist, fetchCuerpo, fetchEjercicios, fetchEventos]),
+  )
 
   // ── Month navigation ───────────────────────────────────────────────────────
   function goPrev() {
@@ -1059,9 +1091,12 @@ export default function EstadisticasScreen() {
               setError(null)
               setInitialLoading(true)
               Promise.all([
+                fetchRadar(true),
                 fetchRPE(filtro, true),
                 fetchConsist(mesActual.year, mesActual.month, true),
                 fetchCuerpo(true),
+                fetchEjercicios(true),
+                fetchEventos(mesActual.year, mesActual.month),
               ]).finally(() => setInitialLoading(false))
             }}
             style={styles.retryBtn}

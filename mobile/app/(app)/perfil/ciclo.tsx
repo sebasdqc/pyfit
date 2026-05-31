@@ -48,12 +48,22 @@ export default function CicloScreen() {
       Alert.alert('Falta la fecha', 'Indica cuándo empezó tu último período para adaptar tus rutinas.')
       return
     }
+    // #11: validar la duración en vez de recortarla en silencio. Vacío = 28
+    // (el placeholder lo muestra); un valor explícito fuera de 20–45 se avisa.
+    let dur = 28
+    if (usaCiclo && duracion.trim() !== '') {
+      const parsed = parseInt(duracion, 10)
+      if (isNaN(parsed) || parsed < 20 || parsed > 45) {
+        Alert.alert('Duración inválida', 'La duración del ciclo debe estar entre 20 y 45 días.')
+        return
+      }
+      dur = parsed
+    }
     setSaving(true)
     try {
       // PRF: PATCH parcial — solo este campo (evita lost update).
       await apiPatch('/api/profile/', { usa_ciclo_menstrual: usaCiclo })
       if (usaCiclo && fechaInicio) {
-        const dur = Math.max(20, Math.min(45, parseInt(duracion, 10) || 28))
         await apiPost('/api/menstrual-cycle/', {
           fecha_inicio: localDateStr(fechaInicio),
           duracion_ciclo: dur,

@@ -342,6 +342,8 @@ export default function FeedbackScreen() {
   const styles     = useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
   const scrollRef  = useRef<ScrollView>(null)
+  const submittingRef = useRef(false)   // guard doble-tap en "Listo"
+  const navTsRef      = useRef(0)        // debounce de goNext (evita saltarse un paso)
 
   // ── Step 1 state ───────────────────────────────────────────────────────────
   const [rpeChoice,     setRpeChoice]     = useState<number | null>(null)
@@ -424,12 +426,18 @@ export default function FeedbackScreen() {
   }
 
   function goNext() {
+    // Debounce: dos taps muy seguidos saltarían el paso 2 (dos setStep en lote).
+    const now = Date.now()
+    if (now - navTsRef.current < 600) return
+    navTsRef.current = now
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
     scrollRef.current?.scrollTo({ y: 0, animated: false })
-    setStep(s => s + 1)
+    setStep(s => Math.min(s + 1, 3))
   }
 
   async function handleListo() {
+    if (submittingRef.current) return   // guard doble-tap → no duplicar feedback/navegación
+    submittingRef.current = true
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     const { rating, cumplimiento } = sensacionToMetrics(sensacion)
     try {
