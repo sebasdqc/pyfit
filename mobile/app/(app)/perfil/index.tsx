@@ -276,10 +276,11 @@ export default function PerfilScreen() {
   const badgeCiclo = profile.usa_ciclo_menstrual ? 'Activo' : 'Configurar'
   const subPreferencias = profile.estilo_entrenamiento ? capitalizeFirst(profile.estilo_entrenamiento) : undefined
 
-  const PALETTE_OPTIONS: { id: Palette; label: string; icon: string }[] = [
-    { id: 'dark',   label: t('perfil_palette_dark'),   icon: '🌙' },
-    { id: 'light',  label: t('perfil_palette_light'),  icon: '☀️' },
-    { id: 'rosado', label: t('perfil_palette_rosado'), icon: '🌸' },
+  const PALETTE_OPTIONS: { id: Palette; label: string; icon: string; pro?: boolean }[] = [
+    { id: 'dark',     label: t('perfil_palette_dark'),     icon: '🌙' },
+    { id: 'light',    label: t('perfil_palette_light'),    icon: '☀️' },
+    { id: 'rosado',   label: t('perfil_palette_rosado'),   icon: '🌸' },
+    { id: 'midnight', label: t('perfil_palette_midnight'), icon: '🌌', pro: true },
   ]
   const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
 
@@ -525,6 +526,11 @@ export default function PerfilScreen() {
                     <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
                       {opt.label}
                     </Text>
+                    {opt.pro && (
+                      <View style={styles.groupBadge}>
+                        <Text style={styles.groupBadgeText}>Pro</Text>
+                      </View>
+                    )}
                     {palette === opt.id && (
                       <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
                     )}

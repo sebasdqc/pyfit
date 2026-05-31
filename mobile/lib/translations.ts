@@ -404,6 +404,7 @@ const translations = {
   perfil_palette_dark:        { es: 'Dark mode',                         en: 'Dark mode' },
   perfil_palette_light:       { es: 'Light mode',                        en: 'Light mode' },
   perfil_palette_rosado:      { es: 'Rosado',                            en: 'Pink' },
+  perfil_palette_midnight:    { es: 'Midnight',                          en: 'Midnight' },
   perfil_lang_label:          { es: 'Idioma',                            en: 'Language' },
   perfil_lang_es:             { es: 'Español',                           en: 'Español' },
   perfil_lang_en:             { es: 'English',                           en: 'English' },

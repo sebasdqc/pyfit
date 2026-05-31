@@ -67,6 +67,30 @@ export const PINK_COLORS = {
   gradientTop: 'rgba(236,72,153,0.12)', // glow rosa suave arriba
 }
 
+// Midnight = tema OSCURO (azul nocturno, acento cian). Mismo set de tokens que
+// dark/light/rosado; éxito/alerta/error (green/orange/red) no cambian.
+export const MIDNIGHT_COLORS = {
+  bg: '#080E1A',                        // fondo primario
+  sheetBg: '#0D1525',                   // fondo secundario
+  white: '#ffffff',
+  accent: '#00C2E0',                    // acento principal (cian)
+  accentLight: '#5AD6EE',
+  accentDark: '#0098B0',
+  cyan: '#6CE5FF',
+  green: '#32c896',
+  orange: '#ffaa32',
+  red: '#ff4444',
+  inkPrimary: '#E8F0F8',                // texto primario
+  inkSecondary: '#7A90A8',              // texto secundario
+  inkMuted: '#3D5468',                  // texto terciario
+  inkFaint: 'rgba(232,240,248,0.16)',
+  borderDefault: '#1A2940',             // borde sutil
+  borderBright: '#243550',              // borde medio
+  cardBg: '#111D30',                    // fondo terciario
+  glassBg: 'rgba(0,194,224,0.10)',      // acento fondo (baja opacidad)
+  gradientTop: 'rgba(0,194,224,0.10)',  // glow cian superior
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 

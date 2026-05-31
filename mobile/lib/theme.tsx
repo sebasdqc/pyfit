@@ -1,13 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
-import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, Colors } from './colors'
+import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, Colors } from './colors'
 
-export type Palette = 'dark' | 'light' | 'rosado'
+export type Palette = 'dark' | 'light' | 'rosado' | 'midnight'
 
 const PALETTE_COLORS: Record<Palette, Colors> = {
-  dark:   DARK_COLORS,
-  light:  LIGHT_COLORS,
-  rosado: PINK_COLORS,
+  dark:     DARK_COLORS,
+  light:    LIGHT_COLORS,
+  rosado:   PINK_COLORS,
+  midnight: MIDNIGHT_COLORS,
 }
 
 interface ThemeContextValue {
@@ -32,7 +33,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_palette')
       .then(val => {
-        if (val === 'light' || val === 'rosado' || val === 'dark') {
+        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight') {
           setPaletteState(val)
         } else if (val === null) {
           // legacy key
@@ -56,8 +57,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{
       palette,
-      // rosado pasa a ser tema CLARO → solo 'dark' cuenta como oscuro.
-      isDark: palette === 'dark',
+      // dark y midnight son oscuros; light y rosado son claros.
+      isDark: palette === 'dark' || palette === 'midnight',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,
