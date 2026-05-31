@@ -139,6 +139,30 @@ export const FOREST_COLORS = {
   gradientTop: 'rgba(126,200,50,0.10)', // glow lima superior
 }
 
+// Neon = tema OSCURO (negro-violeta, acento rosa neón). Mismo set de tokens;
+// éxito/alerta/error (green/orange/red) no cambian.
+export const NEON_COLORS = {
+  bg: '#05050A',                        // fondo primario
+  sheetBg: '#0A0A14',                   // fondo secundario
+  white: '#ffffff',
+  accent: '#FF2D78',                    // acento principal (rosa neón)
+  accentLight: '#FF6BA0',
+  accentDark: '#D6195E',
+  cyan: '#C49DFF',
+  green: '#32c896',
+  orange: '#ffaa32',
+  red: '#ff4444',
+  inkPrimary: '#F0E8FF',                // texto primario
+  inkSecondary: '#8878A8',              // texto secundario
+  inkMuted: '#4A3D6A',                  // texto terciario
+  inkFaint: 'rgba(240,232,255,0.16)',
+  borderDefault: '#1A1A35',             // borde sutil
+  borderBright: '#252545',              // borde medio
+  cardBg: '#0F0F1E',                    // fondo terciario
+  glassBg: 'rgba(255,45,120,0.10)',     // acento fondo (baja opacidad)
+  gradientTop: 'rgba(255,45,120,0.10)', // glow neón superior
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 

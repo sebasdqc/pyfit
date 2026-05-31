@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
-import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, FOREST_COLORS, Colors } from './colors'
+import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, FOREST_COLORS, NEON_COLORS, Colors } from './colors'
 
-export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand' | 'forest'
+export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand' | 'forest' | 'neon'
 
 const PALETTE_COLORS: Record<Palette, Colors> = {
   dark:     DARK_COLORS,
@@ -11,6 +11,7 @@ const PALETTE_COLORS: Record<Palette, Colors> = {
   midnight: MIDNIGHT_COLORS,
   sand:     SAND_COLORS,
   forest:   FOREST_COLORS,
+  neon:     NEON_COLORS,
 }
 
 interface ThemeContextValue {
@@ -35,7 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_palette')
       .then(val => {
-        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand' || val === 'forest') {
+        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand' || val === 'forest' || val === 'neon') {
           setPaletteState(val)
         } else if (val === null) {
           // legacy key
@@ -59,8 +60,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{
       palette,
-      // dark, midnight, sand y forest son oscuros; light y rosado son claros.
-      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand' || palette === 'forest',
+      // dark, midnight, sand, forest y neon son oscuros; light y rosado son claros.
+      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand' || palette === 'forest' || palette === 'neon',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,
