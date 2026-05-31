@@ -978,6 +978,7 @@ function CTACard({
   styles: ReturnType<typeof makeStyles>
   t: (key: any) => string
 }) {
+  const { isDark } = useTheme()
   const PILL: Record<CTAData['pill_color'], { color: string; bg: string; border: string }> = {
     green:   { color: '#32c896', bg: 'rgba(50,200,150,0.12)',  border: 'rgba(50,200,150,0.30)'  },
     neutral: { color: colors.inkMuted, bg: colors.glassBg,    border: colors.borderDefault      },
@@ -1025,7 +1026,7 @@ function CTACard({
     'Iniciar entrenamiento de hoy'
 
   return (
-    <View style={[styles.ctaCard, { borderColor: CARD_BORDER[cta.estado] }]}>
+    <View style={[styles.ctaCard, { backgroundColor: isDark ? '#0E1C42' : colors.cardBg, borderColor: CARD_BORDER[cta.estado] }]}>
       {isActive && (
         <LinearGradient
           colors={['rgba(79,140,255,0.13)', 'transparent']}
@@ -1770,7 +1771,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 24,
     },
     zsModalCard: {
-      backgroundColor: '#0d1117',
+      backgroundColor: c.sheetBg,
       borderWidth: 1,
       borderColor: 'rgba(79,140,255,0.30)',
       borderRadius: 24,
