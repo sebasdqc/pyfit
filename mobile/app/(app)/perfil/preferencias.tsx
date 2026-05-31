@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut } from '../../../lib/api'
+import { apiGet, apiPatch } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -139,8 +139,8 @@ export default function PreferenciasScreen() {
     if (!fullProfile) return
     setSaving(true)
     try {
-      await apiPut('/api/profile/', {
-        ...fullProfile,
+      // PRF: PATCH parcial — solo campos de esta pantalla (evita lost update).
+      await apiPatch('/api/profile/', {
         estilo_entrenamiento: estilos[0] ?? '',
         ejercicios_evitar: evitar,
       })

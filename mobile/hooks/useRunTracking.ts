@@ -60,6 +60,7 @@ export function useRunTracking(): UseRunTrackingReturn {
   const sessionIdRef         = useRef<number | null>(null)
   const coordinatesRef       = useRef<GpsCoordinate[]>([])
   const totalDistanceRef     = useRef(0)
+  const startingRef          = useRef(false)   // guard de reentrada para startRun
 
   // ── Limpiar todos los intervals/subscriptions
   const clearAll = useCallback(() => {
@@ -70,7 +71,12 @@ export function useRunTracking(): UseRunTrackingReturn {
     locationSubRef.current = null
   }, [])
 
-  useEffect(() => () => { clearAll() }, [clearAll])
+  useEffect(() => () => {
+    clearAll()
+    // Red de seguridad: si el componente se desmonta con el GPS de fondo aún
+    // activo, detenerlo para no dejar el foreground service / task huérfano.
+    stopBackgroundGps().catch(() => {})
+  }, [clearAll])
 
   // ── Integrar un punto GPS (foreground o background) en el estado
   const ingestPoint = useCallback((point: GpsCoordinate) => {
@@ -116,6 +122,8 @@ export function useRunTracking(): UseRunTrackingReturn {
 
   // ── Iniciar carrera
   const startRun = useCallback(async () => {
+    if (startingRef.current) return   // guard doble-tap: evita crear 2 RunSession
+    startingRef.current = true
     setError(null)
     try {
       // Permiso de foreground (mínimo necesario)
@@ -179,6 +187,8 @@ export function useRunTracking(): UseRunTrackingReturn {
       setError(err.message ?? 'Error al iniciar la carrera')
       clearAll()
       await stopBackgroundGps().catch(() => {})
+    } finally {
+      startingRef.current = false
     }
   }, [clearAll, flushPoints, drainQueue, ingestPoint])
 

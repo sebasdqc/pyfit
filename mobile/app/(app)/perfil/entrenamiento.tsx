@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut } from '../../../lib/api'
+import { apiGet, apiPatch } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -93,8 +93,8 @@ export default function EntrenamientoScreen() {
       // prioriza nivel_experiencia para el techo de dificultad técnica, así que
       // sin esto el cambio manual de nivel no afectaría la selección de ejercicios.
       const nivelExp = ({ principiante: 2, intermedio: 3, avanzado: 4 } as Record<string, number>)[nivel] ?? 3
-      await apiPut('/api/profile/', {
-        ...fullProfile,
+      // PRF: PATCH parcial — solo campos de esta pantalla (evita lost update).
+      await apiPatch('/api/profile/', {
         nivel, nivel_experiencia: nivelExp,
         dias_semana: diasSemana, horario_preferido: horario,
         rm_sentadilla: rmSentadilla, rm_peso_muerto: rmMuerto,

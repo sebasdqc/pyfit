@@ -3,6 +3,7 @@ import { Platform, View } from 'react-native'
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { I18nProvider } from '../lib/i18n'
 import { initSentry, withSentryWrap } from '../lib/sentry'
@@ -96,18 +97,23 @@ function RootLayout() {
     prepare()
   }, [])
 
-  if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: '#000' }} />
-  }
-
+  // GestureHandlerRootView debe envolver TODO el árbol (requisito de
+  // react-native-gesture-handler / react-navigation) para que swipe-back,
+  // transiciones y gestos funcionen de forma fiable en builds de producción.
   return (
-    <I18nProvider>
-      <ThemeProvider>
-        <SafeAreaProvider>
-          <ThemedApp />
-        </SafeAreaProvider>
-      </ThemeProvider>
-    </I18nProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {!ready ? (
+        <View style={{ flex: 1, backgroundColor: '#000' }} />
+      ) : (
+        <I18nProvider>
+          <ThemeProvider>
+            <SafeAreaProvider>
+              <ThemedApp />
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </I18nProvider>
+      )}
+    </GestureHandlerRootView>
   )
 }
 

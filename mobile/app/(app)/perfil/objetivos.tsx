@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut, apiPost } from '../../../lib/api'
+import { apiGet, apiPatch, apiPost } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,8 +53,8 @@ export default function ObjetivosScreen() {
     }
     setSaving(true)
     try {
-      await apiPut('/api/profile/', {
-        ...fullProfile,
+      // PRF: PATCH parcial — solo campos de esta pantalla (evita lost update).
+      await apiPatch('/api/profile/', {
         objetivo: objetivos[0],
         objetivos_multiples: objetivos,
       })

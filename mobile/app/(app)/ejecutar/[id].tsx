@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  BackHandler,
   Easing,
   Linking,
   PanResponder,
@@ -749,6 +750,19 @@ export default function EjecutarScreen() {
     })
     Alert.alert(t('ejecutar_exit_title'), t('ejecutar_exit_msg'), botones)
   }
+
+  // EJE: interceptar el back de hardware (Android) para que dispare la misma
+  // confirmación + guardado de progreso que el botón "SALIR", en vez de salir
+  // directo perdiendo el log de series. Ref para no recapturar el listener.
+  const handleSalirRef = useRef(handleSalir)
+  handleSalirRef.current = handleSalir
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleSalirRef.current()
+      return true   // consumir el evento — no navegar hasta confirmar
+    })
+    return () => sub.remove()
+  }, [])
 
   const handleAnterior = () => {
     if (currentIndex === 0) return

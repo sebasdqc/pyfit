@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut } from '../../../lib/api'
+import { apiGet, apiPatch } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -121,8 +121,9 @@ export default function DatosPersonalesScreen() {
     }
     setSaving(true)
     try {
-      await apiPut('/api/profile/', {
-        ...fullProfile,
+      // PRF: PATCH parcial — solo los campos de esta pantalla, para no pisar
+      // datos editados en otras pantallas (lost update).
+      await apiPatch('/api/profile/', {
         nombre, peso, altura,
         nivel_estres: nivelEstres,
         tipo_trabajo: tipoTrabajo,

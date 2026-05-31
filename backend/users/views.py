@@ -139,7 +139,7 @@ def logout_view(request):
     return Response({'detail': 'Sesión cerrada'})
 
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
     from django.db import transaction

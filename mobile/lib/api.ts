@@ -103,7 +103,15 @@ async function request(
       router.replace('/(auth)/login')
       throw new Error('Sesión expirada')
     }
-    return request(method, path, payload, auth, true)
+    // Tras refrescar, reintentar solo métodos idempotentes. NO reintentamos POST
+    // automáticamente: si el 401 llegara tras procesarse parcialmente (proxy/gateway),
+    // el reintento crearía el recurso dos veces. El token ya se renovó, así que el
+    // usuario puede repetir la acción sin volver a loguearse.
+    const idempotent = method === 'GET' || method === 'HEAD' || method === 'PUT' || method === 'DELETE'
+    if (idempotent) {
+      return request(method, path, payload, auth, true)
+    }
+    throw new Error('Tu sesión se renovó. Vuelve a intentar la acción.')
   }
 
   if (res.status === 204) return null

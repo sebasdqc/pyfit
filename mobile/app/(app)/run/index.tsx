@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  BackHandler,
   Easing,
   PanResponder,
   StyleSheet,
@@ -178,6 +179,33 @@ export default function RunScreen() {
     }
   }, [error, status])
 
+  // Salir con carrera activa: confirmar y detener correctamente (stopRun completa
+  // la sesión y para el GPS de fondo). `run` es un tab, así que NO podemos confiar
+  // en el desmontaje: hay que interceptar el botón y el back de hardware.
+  function handleExit() {
+    if (status === 'active') {
+      Alert.alert(
+        'Detener carrera',
+        '¿Terminar y guardar tu carrera?',
+        [
+          { text: 'Continuar', style: 'cancel' },
+          { text: 'Detener', style: 'destructive', onPress: () => stopRun() },
+        ],
+      )
+    } else {
+      router.back()
+    }
+  }
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (status === 'active') { handleExit(); return true }  // consumir, no salir
+      return false
+    })
+    return () => sub.remove()
+    // handleExit cierra sobre status/stopRun de este render; re-suscribe al cambiar status
+  }, [status])
+
   // Map region: prefer live run coordinates → pre-fetched device location → null (don't render yet)
   const activeCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
   const centerCoord = activeCoord ?? deviceLocation
@@ -236,7 +264,7 @@ export default function RunScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.82)' }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: colors.glassBg, borderColor: colors.borderDefault }]}
-          onPress={() => router.back()}
+          onPress={handleExit}
           activeOpacity={0.7}
         >
           <BackArrow color={colors.inkPrimary} />

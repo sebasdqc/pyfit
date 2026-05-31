@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet, apiPut, apiPost, localDateStr } from '../../../lib/api'
+import { apiGet, apiPatch, apiPost, localDateStr } from '../../../lib/api'
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -50,7 +50,8 @@ export default function CicloScreen() {
     }
     setSaving(true)
     try {
-      await apiPut('/api/profile/', { ...fullProfile, usa_ciclo_menstrual: usaCiclo })
+      // PRF: PATCH parcial — solo este campo (evita lost update).
+      await apiPatch('/api/profile/', { usa_ciclo_menstrual: usaCiclo })
       if (usaCiclo && fechaInicio) {
         const dur = Math.max(20, Math.min(45, parseInt(duracion, 10) || 28))
         await apiPost('/api/menstrual-cycle/', {
