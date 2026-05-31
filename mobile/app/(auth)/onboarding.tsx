@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
+  View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
+  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -11,8 +11,8 @@ import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import { Colors } from '../../lib/colors'
-import { apiPut, apiPost, localDateStr } from '../../lib/api'
-import { getUser, saveUser } from '../../lib/storage'
+import { apiPut, apiPost, apiDelete, localDateStr } from '../../lib/api'
+import { getUser, saveUser, clearTokens, clearUser } from '../../lib/storage'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +40,7 @@ type ScreenId =
 type FormData = {
   nombre: string
   fechaNacimiento: Date | null
+  pais: string
   sexo: Sexo
   peso: string
   pesoUnit: 'kg' | 'lb'
@@ -362,6 +363,49 @@ const DEPORTES = [
   'Golf', 'Equitación', 'Tiro con arco', 'Ciclismo indoor', 'Raquetbol',
 ]
 
+// Lista completa de países (estados soberanos + algunos territorios habituales),
+// en español y orden alfabético. Se usa en el selector buscable del paso 1.
+const COUNTRIES = [
+  'Afganistán', 'Albania', 'Alemania', 'Andorra', 'Angola', 'Antigua y Barbuda', 'Arabia Saudita',
+  'Argelia', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaiyán',
+  'Bahamas', 'Bangladés', 'Barbados', 'Baréin', 'Bélgica', 'Belice', 'Benín', 'Bielorrusia',
+  'Birmania (Myanmar)', 'Bolivia', 'Bosnia y Herzegovina', 'Botsuana', 'Brasil', 'Brunéi',
+  'Bulgaria', 'Burkina Faso', 'Burundi', 'Bután',
+  'Cabo Verde', 'Camboya', 'Camerún', 'Canadá', 'Catar', 'Chad', 'Chile', 'China', 'Chipre',
+  'Ciudad del Vaticano', 'Colombia', 'Comoras', 'Corea del Norte', 'Corea del Sur',
+  'Costa de Marfil', 'Costa Rica', 'Croacia', 'Cuba',
+  'Dinamarca', 'Dominica',
+  'Ecuador', 'Egipto', 'El Salvador', 'Emiratos Árabes Unidos', 'Eritrea', 'Eslovaquia',
+  'Eslovenia', 'España', 'Estados Unidos', 'Estonia', 'Esuatini (Suazilandia)', 'Etiopía',
+  'Filipinas', 'Finlandia', 'Fiyi', 'Francia',
+  'Gabón', 'Gambia', 'Georgia', 'Ghana', 'Granada', 'Grecia', 'Guatemala', 'Guinea',
+  'Guinea-Bisáu', 'Guinea Ecuatorial', 'Guyana',
+  'Haití', 'Honduras', 'Hungría',
+  'India', 'Indonesia', 'Irak', 'Irán', 'Irlanda', 'Islandia', 'Islas Marshall', 'Islas Salomón',
+  'Israel', 'Italia',
+  'Jamaica', 'Japón', 'Jordania',
+  'Kazajistán', 'Kenia', 'Kirguistán', 'Kiribati', 'Kuwait',
+  'Laos', 'Lesoto', 'Letonia', 'Líbano', 'Liberia', 'Libia', 'Liechtenstein', 'Lituania', 'Luxemburgo',
+  'Macedonia del Norte', 'Madagascar', 'Malasia', 'Malaui', 'Maldivas', 'Malí', 'Malta',
+  'Marruecos', 'Mauricio', 'Mauritania', 'México', 'Micronesia', 'Moldavia', 'Mónaco', 'Mongolia',
+  'Montenegro', 'Mozambique',
+  'Namibia', 'Nauru', 'Nepal', 'Nicaragua', 'Níger', 'Nigeria', 'Noruega', 'Nueva Zelanda',
+  'Omán',
+  'Países Bajos', 'Pakistán', 'Palaos', 'Palestina', 'Panamá', 'Papúa Nueva Guinea', 'Paraguay',
+  'Perú', 'Polonia', 'Portugal', 'Puerto Rico',
+  'Reino Unido', 'República Centroafricana', 'República Checa', 'República del Congo',
+  'República Democrática del Congo', 'República Dominicana', 'Ruanda', 'Rumania', 'Rusia',
+  'Samoa', 'San Cristóbal y Nieves', 'San Marino', 'San Vicente y las Granadinas', 'Santa Lucía',
+  'Santo Tomé y Príncipe', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leona', 'Singapur', 'Siria',
+  'Somalia', 'Sri Lanka', 'Sudáfrica', 'Sudán', 'Sudán del Sur', 'Suecia', 'Suiza', 'Surinam',
+  'Tailandia', 'Tanzania', 'Tayikistán', 'Timor Oriental', 'Togo', 'Tonga', 'Trinidad y Tobago',
+  'Túnez', 'Turkmenistán', 'Turquía', 'Tuvalu',
+  'Ucrania', 'Uganda', 'Uruguay', 'Uzbekistán',
+  'Vanuatu', 'Venezuela', 'Vietnam',
+  'Yemen', 'Yibuti',
+  'Zambia', 'Zimbabue',
+]
+
 function formatDate(d: Date) {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
 }
@@ -548,7 +592,7 @@ export default function OnboardingScreen() {
 
   // ── Form data ──────────────────────────────────────────────────────────────
   const [data, setData] = useState<FormData>({
-    nombre: '', fechaNacimiento: null, sexo: '',
+    nombre: '', fechaNacimiento: null, pais: '', sexo: '',
     peso: '', pesoUnit: 'kg', altura: '', alturaUnit: 'cm',
     usaCicloMenstrual: false, experienciaEntrenando: null, frecuenciaHistorica: null, deportes: [],
     calidadSueno: null, nivelEstres: null, tipoTrabajo: null, lesiones: [],
@@ -565,10 +609,13 @@ export default function OnboardingScreen() {
   const [screenIndex, setScreenIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   // ── Block 1 helpers ────────────────────────────────────────────────────────
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [tempDate, setTempDate] = useState(new Date(2000, 0, 1))
+  const [showCountryPicker, setShowCountryPicker] = useState(false)
+  const [countryQuery, setCountryQuery] = useState('')
   const [deportesExpanded, setDeportesExpanded] = useState(false)
   const [deportesQuery, setDeportesQuery] = useState('')
 
@@ -614,6 +661,12 @@ export default function OnboardingScreen() {
   const isLast = screenIndex === screens.length - 1
   const progress = (screenIndex + 1) / Math.max(screens.length, 1)
 
+  const filteredCountries = useMemo(() => {
+    const q = normalize(countryQuery.trim())
+    if (!q) return COUNTRIES
+    return COUNTRIES.filter(cn => normalize(cn).includes(q))
+  }, [countryQuery])
+
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setData(prev => ({ ...prev, [key]: value }))
     setError('')
@@ -624,6 +677,7 @@ export default function OnboardingScreen() {
     if (currentScreen === 'b1_personal') {
       if (!data.nombre.trim()) return t('onboarding_name_error')
       if (!data.fechaNacimiento) return 'La fecha de nacimiento es requerida.'
+      if (!data.pais) return 'Selecciona tu país.'
       if (!data.sexo) return 'Selecciona tu sexo biológico.'
       const p = Number(data.peso.replace(',', '.'))
       if (!data.peso || isNaN(p) || p <= 0) return 'Ingresa un peso válido.'
@@ -675,9 +729,40 @@ export default function OnboardingScreen() {
   }
 
   function goBack() {
-    if (screenIndex === 0) { router.back(); return }
+    if (screenIndex === 0) { confirmCancelRegistration(); return }
     setScreenIndex(i => i - 1)
     setError('')
+  }
+
+  // Retroceder desde el primer paso = abandonar el registro. La cuenta ya existe
+  // (se crea al registrarse, antes del onboarding), así que confirmamos y, si
+  // acepta, la borramos para no dejar un perfil incompleto en la base de datos.
+  function confirmCancelRegistration() {
+    if (cancelling) return
+    Alert.alert(
+      '¿Seguro que quieres cancelar tu registro?',
+      'Se eliminará tu cuenta y los datos que hayas introducido hasta ahora. Esta acción no se puede deshacer.',
+      [
+        { text: 'No, seguir', style: 'cancel' },
+        { text: 'Sí, cancelar', style: 'destructive', onPress: cancelRegistration },
+      ],
+    )
+  }
+
+  async function cancelRegistration() {
+    if (cancelling) return
+    setCancelling(true)
+    try {
+      // Borra la cuenta + todos sus datos asociados (cascada en el backend).
+      await apiDelete('/api/auth/account/')
+    } catch {
+      // Si el borrado falla (red caída, etc.) igual cerramos sesión local para
+      // no dejar al usuario atrapado en el onboarding; la cuenta incompleta
+      // podrá depurarse después.
+    }
+    await clearTokens()
+    await clearUser()
+    router.replace('/(auth)/login')
   }
 
   async function handleSave() {
@@ -724,6 +809,7 @@ export default function OnboardingScreen() {
       await apiPut('/api/profile/', {
         nombre: data.nombre.trim(),
         fecha_nacimiento: localDateStr(data.fechaNacimiento!),
+        pais: data.pais,
         sexo: data.sexo,
         peso: pesoKg,
         altura: alturaCm,
@@ -797,6 +883,7 @@ export default function OnboardingScreen() {
 
   function countVariables(): number {
     let n = 5 // nombre, fecha, sexo, peso, altura
+    if (data.pais) n++
     if (data.usaCicloMenstrual) n++
     if (data.experienciaEntrenando !== null) n++
     if (data.frecuenciaHistorica !== null) n++
@@ -905,6 +992,16 @@ export default function OnboardingScreen() {
             onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
             <Text style={data.fechaNacimiento ? styles.inputText : styles.inputPlaceholder}>
               {data.fechaNacimiento ? formatDate(data.fechaNacimiento) : 'DD / MM / AAAA'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>PAÍS</Text>
+          <TouchableOpacity style={[styles.input, styles.inputTouch]}
+            onPress={() => { setCountryQuery(''); setShowCountryPicker(true) }} activeOpacity={0.8}>
+            <Text style={data.pais ? styles.inputText : styles.inputPlaceholder}>
+              {data.pais || 'Selecciona tu país'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -2155,6 +2252,46 @@ export default function OnboardingScreen() {
         </View>
       </Modal>
 
+      {/* Country picker */}
+      <Modal transparent animationType="slide" visible={showCountryPicker}
+        onRequestClose={() => setShowCountryPicker(false)}>
+        <View style={styles.dateOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowCountryPicker(false)} />
+          <View style={styles.countrySheet}>
+            <View style={styles.dateHeader}>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Text style={styles.dateCancel}>{t('onboarding_cancel')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.dateTitle}>País</Text>
+              <View style={{ width: 50 }} />
+            </View>
+            <View style={styles.countrySearchWrap}>
+              <TextInput style={styles.deportesSearch}
+                placeholder="Buscar país…" placeholderTextColor={colors.inkMuted}
+                value={countryQuery} onChangeText={setCountryQuery}
+                autoCorrect={false} autoCapitalize="none" />
+            </View>
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={(item) => item}
+              keyboardShouldPersistTaps="handled"
+              style={styles.countryList}
+              renderItem={({ item }) => {
+                const on = data.pais === item
+                return (
+                  <TouchableOpacity style={styles.countryRow} activeOpacity={0.7}
+                    onPress={() => { set('pais', item); setShowCountryPicker(false) }}>
+                    <Text style={[styles.countryRowText, on && styles.countryRowTextOn]}>{item}</Text>
+                    {on && <Text style={styles.countryCheck}>✓</Text>}
+                  </TouchableOpacity>
+                )
+              }}
+              ListEmptyComponent={<Text style={styles.countryEmpty}>Sin resultados</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* Lesion modal */}
       <Modal transparent animationType="slide" visible={editingZona !== null}>
         <View style={styles.dateOverlay}>
@@ -2942,5 +3079,24 @@ function makeStyles(c: Colors) {
     dateCancel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
     dateTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
     dateDone: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.accent },
+
+    // Country picker
+    countrySheet: {
+      backgroundColor: c.sheetBg, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      borderWidth: 1, borderColor: c.borderDefault, paddingBottom: 24, height: '72%',
+    },
+    countrySearchWrap: { paddingHorizontal: 16, paddingTop: 14 },
+    countryList: { flex: 1, paddingHorizontal: 16 },
+    countryRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.borderDefault,
+    },
+    countryRowText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 15, color: c.inkPrimary },
+    countryRowTextOn: { color: c.accent },
+    countryCheck: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: c.accent },
+    countryEmpty: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkMuted,
+      textAlign: 'center', paddingVertical: 30,
+    },
   })
 }

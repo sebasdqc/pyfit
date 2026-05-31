@@ -139,6 +139,19 @@ def logout_view(request):
     return Response({'detail': 'Sesión cerrada'})
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    """Borra la cuenta del usuario autenticado y todos sus datos asociados
+    (Profile, ubicaciones, lesiones, sesiones, ciclos… vía on_delete=CASCADE).
+
+    Se usa cuando el usuario cancela el registro durante el onboarding: como la
+    cuenta se crea al registrarse (antes del onboarding), abandonar dejaría un
+    usuario con perfil incompleto. Esto garantiza que no queden datos a medias."""
+    request.user.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def profile_view(request):

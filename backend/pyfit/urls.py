@@ -53,6 +53,7 @@ urlpatterns = [
     path('api/auth/login/', user_views.login_view),
     path('api/auth/refresh/', TokenRefreshView.as_view()),
     path('api/auth/logout/', user_views.logout_view),
+    path('api/auth/account/', user_views.delete_account),
     path('api/auth/reset-password/', user_views.reset_password),
     path('api/auth/confirm-reset/', user_views.confirm_reset),
 

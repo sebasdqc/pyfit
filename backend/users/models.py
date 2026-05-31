@@ -49,6 +49,7 @@ class Profile(models.Model):
         validators=[MinValueValidator(100), MaxValueValidator(250)],
     )
     sexo = models.CharField(max_length=20, choices=SEXO_CHOICES, blank=True)
+    pais = models.CharField(max_length=80, blank=True, default='')
     dias_semana = models.IntegerField(
         default=3, validators=[MinValueValidator(1), MaxValueValidator(7)],
     )
