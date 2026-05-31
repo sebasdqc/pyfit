@@ -1802,7 +1802,7 @@ function makeStyles(c: Colors) {
       gap: 10,
     },
     ctaPrimary: {
-      backgroundColor: c.white,
+      backgroundColor: c.inkPrimary,   // inverso: oscuro en claro, casi-blanco en dark
       borderRadius:    16,
       paddingVertical: 17,
       flexDirection:   'row',

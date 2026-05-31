@@ -410,16 +410,17 @@ function BodyMap({
   editingZona: string | null
   onZonePress: (zone: string) => void
 }) {
+  const { colors } = useTheme()
   function zoneFill(id: string) {
     if (editingZona === id) return 'rgba(79,140,255,0.32)'
     const inj = lesiones.find(l => l.zona === id)
-    if (!inj) return 'rgba(255,255,255,0.07)'
+    if (!inj) return colors.glassBg
     return inj.estado === 'activa' ? 'rgba(255,68,68,0.26)' : 'rgba(50,200,150,0.22)'
   }
   function zoneStroke(id: string) {
     if (editingZona === id) return '#4f8cff'
     const inj = lesiones.find(l => l.zona === id)
-    if (!inj) return 'rgba(255,255,255,0.14)'
+    if (!inj) return colors.borderBright
     return inj.estado === 'activa' ? '#ff4444' : '#32c896'
   }
   function dotColor(id: string) {
@@ -1354,7 +1355,7 @@ export default function OnboardingScreen() {
           {ejerciciosExpanded && (
             <View style={styles.deportesDropdown}>
               <TextInput style={styles.deportesSearch} placeholder="Buscar ejercicio..."
-                placeholderTextColor={'rgba(255,255,255,0.35)'} value={ejerciciosQuery}
+                placeholderTextColor={colors.inkMuted} value={ejerciciosQuery}
                 onChangeText={setEjerciciosQuery} autoCorrect={false} />
               <View style={styles.deportesGrid}>
                 {filtered.map(e => {
@@ -1385,7 +1386,7 @@ export default function OnboardingScreen() {
             <TextInput
               style={[styles.input, styles.textarea]}
               placeholder="Ej: dolor de rodilla al cargar, cirugía de hombro hace 6 meses..."
-              placeholderTextColor={'rgba(255,255,255,0.35)'}
+              placeholderTextColor={colors.inkMuted}
               value={data.motivoLimitacion}
               onChangeText={v => set('motivoLimitacion', v)}
               multiline
@@ -1450,7 +1451,7 @@ export default function OnboardingScreen() {
             <TextInput
               style={styles.input}
               placeholder="Describe brevemente qué condición tienes"
-              placeholderTextColor={'rgba(255,255,255,0.35)'}
+              placeholderTextColor={colors.inkMuted}
               value={data.condicionOtra}
               onChangeText={v => set('condicionOtra', v)}
               maxLength={120}
@@ -1466,7 +1467,7 @@ export default function OnboardingScreen() {
           <TextInput
             style={[styles.input, styles.textarea]}
             placeholder="Cualquier otra cosa que debamos saber. Breve."
-            placeholderTextColor={'rgba(255,255,255,0.35)'}
+            placeholderTextColor={colors.inkMuted}
             value={data.notasMedicas}
             onChangeText={v => set('notasMedicas', v)}
             multiline
@@ -1844,7 +1845,7 @@ export default function OnboardingScreen() {
           <TextInput
             style={[styles.input, styles.textarea]}
             placeholder="Ej: una boda en agosto, volver a correr sin cansarme, sentirme bien en la playa..."
-            placeholderTextColor={'rgba(255,255,255,0.28)'}
+            placeholderTextColor={colors.inkMuted}
             value={data.motivacion}
             onChangeText={v => set('motivacion', v)}
             multiline
@@ -2191,8 +2192,8 @@ export default function OnboardingScreen() {
                     return (
                       <TouchableOpacity key={g}
                         style={[styles.gravBtn,
-                          { borderColor: on ? cfg.color : 'rgba(255,255,255,0.12)',
-                            backgroundColor: on ? cfg.bg : 'rgba(255,255,255,0.04)' }]}
+                          { borderColor: on ? cfg.color : colors.borderBright,
+                            backgroundColor: on ? cfg.bg : colors.glassBg }]}
                         onPress={() => { setDraftGravedad(g); setLesionError('') }}
                         activeOpacity={0.8}>
                         <Text style={[styles.gravBtnText, { color: on ? cfg.color : 'rgba(255,255,255,0.5)' }]}>

@@ -462,7 +462,7 @@ function ZyfitScoreCard({
           <Svg width={RING_SIZE} height={RING_SIZE}>
             <Circle
               cx={RING_CX} cy={RING_CY} r={RING_R}
-              fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={RING_STROKE}
+              fill="none" stroke={colors.borderDefault} strokeWidth={RING_STROKE}
             />
             <AnimatedCircle
               cx={RING_CX} cy={RING_CY} r={RING_R}
@@ -613,8 +613,8 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }:
         shadowColor: colors.accent, shadowOpacity: 0.55,
         shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 5,
       }}>
-        <Text style={{ color: '#fff', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
-        <Text style={{ color: '#fff', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+        <Text style={{ color: colors.white, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: colors.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
@@ -642,11 +642,11 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }:
       <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
         <Svg width={W} height={H} style={{ position: 'absolute' }}>
           <Rect x={2} y={2} width={W - 4} height={H - 4} rx={R - 1} ry={R - 1}
-            fill="none" stroke="rgba(255,255,255,0.15)"
+            fill="none" stroke={colors.borderBright}
             strokeWidth={1.5} strokeDasharray="3 2.5" />
         </Svg>
-        <Text style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+        <Text style={{ color: colors.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
@@ -655,12 +655,12 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }:
     return (
       <View style={{
         width: W, height: H, borderRadius: R,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+        backgroundColor: colors.glassBg,
+        borderWidth: 1, borderColor: colors.borderDefault,
         alignItems: 'center', justifyContent: 'center', gap: 2,
       }}>
-        <Text style={{ color: 'rgba(255,255,255,0.28)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.28)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+        <Text style={{ color: colors.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
@@ -669,12 +669,12 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }:
   return (
     <View style={{
       width: W, height: H, borderRadius: R,
-      backgroundColor: 'rgba(255,255,255,0.02)',
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+      backgroundColor: colors.glassBg,
+      borderWidth: 1, borderColor: colors.borderDefault,
       alignItems: 'center', justifyContent: 'center', gap: 2,
     }}>
-      <Text style={{ color: 'rgba(255,255,255,0.18)', fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
-      <Text style={{ color: 'rgba(255,255,255,0.18)', fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+      <Text style={{ color: colors.inkFaint, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+      <Text style={{ color: colors.inkFaint, fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
     </View>
   )
 }
@@ -692,8 +692,8 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: 'rgba(255,255,255,0.04)',
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+      backgroundColor: colors.glassBg,
+      borderWidth: 1, borderColor: colors.borderDefault,
       borderRadius: 12, padding: 10, marginBottom: 8,
     }}>
       {/* Ícono disciplina */}
@@ -723,7 +723,7 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
       <TouchableOpacity
         style={{
           paddingHorizontal: 10, paddingVertical: 6,
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+          borderWidth: 1, borderColor: colors.borderBright,
           borderRadius: 8,
         }}
         onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
@@ -986,7 +986,7 @@ function CTACard({
 
   const CARD_BORDER: Record<CTAData['estado'], string> = {
     A: 'rgba(79,140,255,0.35)',
-    B: 'rgba(255,255,255,0.14)',
+    B: colors.borderBright,
     C: 'rgba(255,170,50,0.35)',
     D: 'rgba(79,140,255,0.35)',
     E: 'rgba(255,170,50,0.40)',
@@ -1452,10 +1452,10 @@ function makeStyles(c: Colors) {
 
     // ── Zone 2 — CTA Card
     ctaCardSkeleton: {
-      // Fondo ligeramente más claro que el dashboard (#000) para distinguirse
-      backgroundColor: 'rgba(255,255,255,0.10)',
+      // Fondo ligeramente más claro que el dashboard para distinguirse
+      backgroundColor: c.glassBg,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.14)',
+      borderColor: c.borderBright,
       borderRadius: 22,
       padding: 22,
       marginBottom: 20,
@@ -1536,7 +1536,7 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.20)',
+      borderColor: c.borderBright,
       borderRadius: 14,
     },
     ctaBtnTextTrainAgain: {
@@ -1727,7 +1727,7 @@ function makeStyles(c: Colors) {
     zsScorePlaceholder: {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 28,
-      color: 'rgba(255,255,255,0.15)',
+      color: c.inkFaint,
       lineHeight: 34,
     },
     zsLabel: {

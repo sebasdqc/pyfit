@@ -701,7 +701,7 @@ export default function CheckinScreen() {
                   </Text>
                   {opt.tag && (
                     <View style={{
-                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      backgroundColor: colors.glassBg,
                       borderRadius: 6,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
@@ -709,7 +709,7 @@ export default function CheckinScreen() {
                       <Text style={{
                         fontFamily: 'JetBrainsMono-Regular',
                         fontSize: 8,
-                        color: 'rgba(255,255,255,0.4)',
+                        color: colors.inkMuted,
                         letterSpacing: 0.8,
                       }}>{opt.tag}</Text>
                     </View>

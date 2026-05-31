@@ -245,7 +245,7 @@ function makeStyles(c: Colors) {
     input: { backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     inputMulti: { minHeight: 80, textAlignVertical: 'top', paddingTop: 12 },
     rowFields: { flexDirection: 'row' },
-    readOnlyBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: c.borderDefault, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
+    readOnlyBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
     readOnlyText: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },

@@ -16,12 +16,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
 import { formatDistance, formatDuration, formatPace } from '../../../lib/runMetrics'
+import { useTheme } from '../../../lib/theme'
+import { Colors } from '../../../lib/colors'
 
 // ─── Back Arrow Icon (inline SVG-free) ───────────────────────────────────────
 
-function BackArrow() {
+function BackArrow({ color }: { color: string }) {
   return (
-    <Text style={{ color: '#ffffff', fontSize: 22, lineHeight: 26 }}>{'‹'}</Text>
+    <Text style={{ color, fontSize: 22, lineHeight: 26 }}>{'‹'}</Text>
   )
 }
 
@@ -30,21 +32,23 @@ function BackArrow() {
 function MetricColumn({
   label,
   value,
+  colors,
 }: {
   label: string
   value: string
+  colors: Colors
 }) {
   return (
     <View style={styles.metricCol}>
       <Text
-        style={styles.metricValue}
+        style={[styles.metricValue, { color: colors.inkPrimary }]}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.6}
       >
         {value}
       </Text>
-      <Text style={styles.metricLabel} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.metricLabel, { color: colors.inkMuted }]} numberOfLines={1}>{label}</Text>
     </View>
   )
 }
@@ -115,6 +119,7 @@ function SlideToStop({ onStop }: { onStop: () => void }) {
 
 export default function RunScreen() {
   const insets = useSafeAreaInsets()
+  const { colors, isDark } = useTheme()
   const {
     sessionId,
     status,
@@ -194,12 +199,12 @@ export default function RunScreen() {
   const lastCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
       {/* ── Full screen map — only render once we know the device location ── */}
       {!locationReady && (
-        <View style={styles.mapLoading}>
-          <ActivityIndicator size="large" color="#4f8cff" />
-          <Text style={styles.mapLoadingText}>Obteniendo ubicación...</Text>
+        <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>Obteniendo ubicación...</Text>
         </View>
       )}
       {locationReady && initialRegion && (
@@ -210,59 +215,62 @@ export default function RunScreen() {
           showsUserLocation
           followsUserLocation={status !== 'completed'}
           mapType="standard"
-          customMapStyle={darkMapStyle}
+          customMapStyle={isDark ? darkMapStyle : []}
         >
           {polylineCoords.length > 1 && (
             <Polyline
               coordinates={polylineCoords}
-              strokeColor="#4f8cff"
+              strokeColor={colors.accent}
               strokeWidth={4}
             />
           )}
         </MapView>
       )}
       {locationReady && !initialRegion && (
-        <View style={styles.mapLoading}>
-          <Text style={styles.mapLoadingText}>No se pudo obtener la ubicación.{'\n'}Activa el GPS e intenta de nuevo.</Text>
+        <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
+          <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>No se pudo obtener la ubicación.{'\n'}Activa el GPS e intenta de nuevo.</Text>
         </View>
       )}
 
       {/* ── Header overlay ── */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.82)' }]}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: colors.glassBg, borderColor: colors.borderDefault }]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <BackArrow />
+          <BackArrow color={colors.inkPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>FREE RUN</Text>
+        <Text style={[styles.headerTitle, { color: colors.inkPrimary }]}>FREE RUN</Text>
         {/* Indicador de background GPS activo */}
         {status === 'active' && (
           <View style={[styles.bgBadge, backgroundActive ? styles.bgBadgeOn : styles.bgBadgeOff]}>
-            <Text style={styles.bgBadgeText}>{backgroundActive ? '📡 BG' : '📍 FG'}</Text>
+            <Text style={[styles.bgBadgeText, { color: colors.inkPrimary }]}>{backgroundActive ? '📡 BG' : '📍 FG'}</Text>
           </View>
         )}
         {status !== 'active' && <View style={styles.headerRight} />}
       </View>
 
       {/* ── Bottom metrics panel ── */}
-      <View style={[styles.panel, { paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.panel, { paddingBottom: insets.bottom + 20, backgroundColor: colors.sheetBg, borderTopColor: colors.borderDefault }]}>
         {/* Metrics row */}
         <View style={styles.metricsRow}>
           <MetricColumn
             label="DISTANCIA"
             value={formatDistance(totalDistance)}
+            colors={colors}
           />
-          <View style={styles.metricDivider} />
+          <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
           <MetricColumn
             label="TIEMPO"
             value={formatDuration(elapsedSeconds)}
+            colors={colors}
           />
-          <View style={styles.metricDivider} />
+          <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
           <MetricColumn
             label="RITMO"
             value={formatPace(currentPace)}
+            colors={colors}
           />
         </View>
 
@@ -270,11 +278,11 @@ export default function RunScreen() {
         <View style={styles.btnWrap}>
           {status === 'idle' && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.startBtn]}
+              style={[styles.actionBtn, { backgroundColor: colors.green }]}
               onPress={startRun}
               activeOpacity={0.85}
             >
-              <Text style={styles.actionBtnText}>EMPEZAR</Text>
+              <Text style={[styles.actionBtnText, { color: colors.white }]}>EMPEZAR</Text>
             </TouchableOpacity>
           )}
 
@@ -284,7 +292,7 @@ export default function RunScreen() {
 
           {status === 'completed' && (
             <View style={styles.completingWrap}>
-              <Text style={styles.completingText}>Guardando resultados...</Text>
+              <Text style={[styles.completingText, { color: colors.inkMuted }]}>Guardando resultados...</Text>
             </View>
           )}
         </View>
@@ -439,9 +447,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  startBtn: {
-    backgroundColor: '#32c896',
   },
   actionBtnText: {
     fontFamily: 'SpaceGrotesk-Bold',

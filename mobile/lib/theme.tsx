@@ -56,7 +56,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{
       palette,
-      isDark: palette !== 'light',
+      // rosado pasa a ser tema CLARO → solo 'dark' cuenta como oscuro.
+      isDark: palette === 'dark',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,

@@ -17,6 +17,8 @@ import {
   formatDuration,
   formatPace,
 } from '../../../../lib/runMetrics'
+import { useTheme } from '../../../../lib/theme'
+import { Colors } from '../../../../lib/colors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,11 +29,11 @@ interface MetricCard {
 
 // ─── Metric Card ──────────────────────────────────────────────────────────────
 
-function MetricCardItem({ label, value }: MetricCard) {
+function MetricCardItem({ label, value, colors }: MetricCard & { colors: Colors }) {
   return (
-    <View style={styles.metricCard}>
-      <Text style={styles.metricCardValue}>{value}</Text>
-      <Text style={styles.metricCardLabel}>{label}</Text>
+    <View style={[styles.metricCard, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}>
+      <Text style={[styles.metricCardValue, { color: colors.inkPrimary }]}>{value}</Text>
+      <Text style={[styles.metricCardLabel, { color: colors.inkMuted }]}>{label}</Text>
     </View>
   )
 }
@@ -40,6 +42,7 @@ function MetricCardItem({ label, value }: MetricCard) {
 
 export default function RunResumenScreen() {
   const insets = useSafeAreaInsets()
+  const { colors, isDark } = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [session, setSession] = useState<RunSession | null>(null)
   const [loading, setLoading] = useState(true)
@@ -123,9 +126,9 @@ export default function RunResumenScreen() {
   // ── Loading state
   if (loading) {
     return (
-      <View style={[styles.root, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4f8cff" />
-        <Text style={styles.loadingText}>Calculando resultados...</Text>
+      <View style={[styles.root, styles.centerContent, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.inkMuted }]}>Calculando resultados...</Text>
       </View>
     )
   }
@@ -133,22 +136,22 @@ export default function RunResumenScreen() {
   // ── Error state
   if (error || !session) {
     return (
-      <View style={[styles.root, styles.centerContent]}>
-        <Text style={styles.errorText}>{error ?? 'Error desconocido'}</Text>
+      <View style={[styles.root, styles.centerContent, { backgroundColor: colors.bg }]}>
+        <Text style={[styles.errorText, { color: colors.red }]}>{error ?? 'Error desconocido'}</Text>
         <TouchableOpacity
-          style={styles.doneBtn}
+          style={[styles.doneBtn, { backgroundColor: colors.accent }]}
           onPress={() => router.replace('/(app)/dashboard')}
         >
-          <Text style={styles.doneBtnText}>Volver al inicio</Text>
+          <Text style={[styles.doneBtnText, { color: colors.white }]}>Volver al inicio</Text>
         </TouchableOpacity>
       </View>
     )
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={[styles.root, { paddingTop: insets.top, backgroundColor: colors.bg }]}>
       {/* ── Mini map ── */}
-      <View style={styles.mapContainer}>
+      <View style={[styles.mapContainer, { backgroundColor: colors.bg }]}>
         <MapView
           style={StyleSheet.absoluteFillObject}
           provider={PROVIDER_DEFAULT}
@@ -157,12 +160,12 @@ export default function RunResumenScreen() {
           zoomEnabled={false}
           rotateEnabled={false}
           pitchEnabled={false}
-          customMapStyle={darkMapStyle}
+          customMapStyle={isDark ? darkMapStyle : []}
         >
           {polylineCoords.length > 1 && (
             <Polyline
               coordinates={polylineCoords}
-              strokeColor="#4f8cff"
+              strokeColor={colors.accent}
               strokeWidth={4}
             />
           )}
@@ -182,33 +185,33 @@ export default function RunResumenScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <Text style={styles.title}>Resumen</Text>
+        <Text style={[styles.title, { color: colors.inkPrimary }]}>Resumen</Text>
 
         {/* Metric grid (2 columns) */}
         <View style={styles.grid}>
           {metrics.map((m, i) => (
-            <MetricCardItem key={i} label={m.label} value={m.value} />
+            <MetricCardItem key={i} label={m.label} value={m.value} colors={colors} />
           ))}
         </View>
 
         {/* CTA */}
         <TouchableOpacity
-          style={styles.doneBtn}
+          style={[styles.doneBtn, { backgroundColor: colors.accent }]}
           onPress={() => router.replace('/(app)/dashboard')}
           activeOpacity={0.85}
         >
-          <Text style={styles.doneBtnText}>Listo</Text>
+          <Text style={[styles.doneBtnText, { color: colors.white }]}>Listo</Text>
         </TouchableOpacity>
 
         {/* Compartir en redes sociales (próximamente) */}
         <TouchableOpacity
-          style={styles.shareBtn}
+          style={[styles.shareBtn, { borderColor: colors.borderBright }]}
           onPress={() =>
             Alert.alert('Próximamente', 'La función de compartir tu carrera estará disponible pronto.')
           }
           activeOpacity={0.75}
         >
-          <Text style={styles.shareBtnText}>↗ Compartir en redes sociales</Text>
+          <Text style={[styles.shareBtnText, { color: colors.inkMuted }]}>↗ Compartir en redes sociales</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

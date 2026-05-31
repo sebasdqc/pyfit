@@ -940,7 +940,7 @@ function CalendarView({
                     >
                       <Text style={[
                         calStyles.dayNum,
-                        isToday && { color: '#fff', fontFamily: 'SpaceGrotesk-Bold' },
+                        isToday && { color: colors.inkPrimary, fontFamily: 'SpaceGrotesk-Bold' },
                         isFuture && !daySessions && { color: colors.inkFaint },
                       ]}>
                         {day.getDate()}

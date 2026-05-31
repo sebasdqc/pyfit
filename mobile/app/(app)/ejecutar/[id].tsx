@@ -196,7 +196,7 @@ function SerieRatingPicker({
   colors: Colors
 }) {
   return (
-    <View style={ratingStyles.wrap}>
+    <View style={[ratingStyles.wrap, { backgroundColor: colors.glassBg, borderColor: colors.borderDefault }]}>
       <Text style={[ratingStyles.question, { color: colors.inkMuted }]}>¿CÓMO ESTUVO LA SERIE?</Text>
       <View style={ratingStyles.row}>
         {DIFICULTAD_OPTS.map(opt => {
@@ -208,6 +208,7 @@ function SerieRatingPicker({
               activeOpacity={0.75}
               style={[
                 ratingStyles.btn,
+                { borderColor: colors.borderDefault },
                 selected && { backgroundColor: opt.color + '22', borderColor: opt.color },
               ]}
             >
@@ -1430,7 +1431,7 @@ function makeStyles(c: Colors) {
       marginBottom: 36,
     },
     feedbackBtn: {
-      backgroundColor: c.white,
+      backgroundColor: c.inkPrimary,   // inverso: oscuro en claro, casi-blanco en dark
       borderRadius: 16,
       paddingVertical: 16,
       paddingHorizontal: 40,

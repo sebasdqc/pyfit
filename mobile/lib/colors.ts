@@ -42,26 +42,29 @@ export const LIGHT_COLORS = {
   gradientTop: 'rgba(0,0,0,0.03)',      // sutil, sin tinte azul
 }
 
+// Rosado = tema CLARO (fondo rosa claro, tinta plum oscura). El acento se
+// mantiene saturado (pink-600) para que el texto blanco de los botones siga
+// contrastando, igual que el azul del light mode.
 export const PINK_COLORS = {
-  bg: '#0d0009',
-  sheetBg: '#180011',
+  bg: '#fdf2f8',                        // rosa muy claro (pink-50)
+  sheetBg: '#ffffff',                   // blanco puro — alto contraste
   white: '#ffffff',
-  accent: '#f472b6',
-  accentLight: '#f9a8d4',
-  accentDark: '#ec4899',
-  cyan: '#e879f9',
-  green: '#34d399',
-  orange: '#fb923c',
-  red: '#f87171',
-  inkPrimary: '#fdf2f8',
-  inkSecondary: 'rgba(253,242,248,0.62)',
-  inkMuted: 'rgba(253,242,248,0.38)',
-  inkFaint: 'rgba(253,242,248,0.16)',
-  borderDefault: 'rgba(244,114,182,0.13)',
-  borderBright: 'rgba(244,114,182,0.26)',
-  cardBg: 'rgba(244,114,182,0.07)',
-  glassBg: 'rgba(244,114,182,0.09)',
-  gradientTop: 'rgba(236,72,153,0.22)',
+  accent: '#db2777',                    // pink-600 saturado
+  accentLight: '#ec4899',
+  accentDark: '#be185d',
+  cyan: '#0891b2',
+  green: '#16a34a',
+  orange: '#d97706',
+  red: '#dc2626',
+  inkPrimary: '#2d0a1e',                // plum casi negro
+  inkSecondary: 'rgba(45,10,30,0.62)',
+  inkMuted: 'rgba(45,10,30,0.42)',
+  inkFaint: 'rgba(45,10,30,0.20)',
+  borderDefault: 'rgba(190,24,93,0.12)',
+  borderBright: 'rgba(190,24,93,0.24)',
+  cardBg: '#ffffff',                    // card alto contraste — blanco puro
+  glassBg: 'rgba(190,24,93,0.05)',
+  gradientTop: 'rgba(236,72,153,0.12)', // glow rosa suave arriba
 }
 
 // Keep COLORS alias pointing to dark for backward compatibility

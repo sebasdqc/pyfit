@@ -81,7 +81,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       {
         width,
         paddingBottom: bottomPad,
-        backgroundColor: palette === 'light' ? 'rgba(245,242,236,0.97)' : palette === 'rosado' ? 'rgba(13,0,9,0.97)' : 'rgba(13,13,13,0.97)',
+        backgroundColor: palette === 'light' ? 'rgba(245,242,236,0.97)' : palette === 'rosado' ? 'rgba(253,242,248,0.97)' : 'rgba(13,13,13,0.97)',
         borderTopColor: colors.borderDefault,
       },
     ]}>
@@ -106,8 +106,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           // En light mode el bg es casi blanco, así que un botón blanco se pierde.
           // Invertimos: bg oscuro con texto claro en light; bg claro con texto
           // oscuro en dark/rosado para mantener máxima visibilidad.
-          const centerBg   = palette === 'light' ? colors.inkPrimary : COLORS.white
-          const centerText = palette === 'light' ? colors.bg          : '#000'
+          // light y rosado son temas claros → botón oscuro con texto claro para
+          // que destaque sobre la barra clara; en dark, botón blanco con texto negro.
+          const centerBg   = isDark ? COLORS.white : colors.inkPrimary
+          const centerText = isDark ? '#000'       : colors.bg
           return (
             <View key={route.key} style={styles.tabItem}>
               <TouchableOpacity
