@@ -91,6 +91,30 @@ export const MIDNIGHT_COLORS = {
   gradientTop: 'rgba(0,194,224,0.10)',  // glow cian superior
 }
 
+// Sand = tema OSCURO (marrón cálido, acento cobre/ámbar). Mismo set de tokens;
+// éxito/alerta/error (green/orange/red) no cambian.
+export const SAND_COLORS = {
+  bg: '#16120D',                        // fondo primario
+  sheetBg: '#1E1810',                   // fondo secundario
+  white: '#ffffff',
+  accent: '#C8874A',                    // acento principal (cobre)
+  accentLight: '#D9A06B',
+  accentDark: '#A66B33',
+  cyan: '#E0B884',
+  green: '#32c896',
+  orange: '#ffaa32',
+  red: '#ff4444',
+  inkPrimary: '#F0E8DC',                // texto primario
+  inkSecondary: '#9A8870',              // texto secundario
+  inkMuted: '#5C4E3A',                  // texto terciario
+  inkFaint: 'rgba(240,232,220,0.16)',
+  borderDefault: '#332A1E',             // borde sutil
+  borderBright: '#42351F',              // borde medio
+  cardBg: '#252015',                    // fondo terciario
+  glassBg: 'rgba(200,135,74,0.10)',     // acento fondo (baja opacidad)
+  gradientTop: 'rgba(200,135,74,0.10)', // glow cobre superior
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 

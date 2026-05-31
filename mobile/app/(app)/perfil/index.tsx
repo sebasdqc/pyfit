@@ -281,6 +281,7 @@ export default function PerfilScreen() {
     { id: 'light',    label: t('perfil_palette_light'),    icon: '☀️' },
     { id: 'rosado',   label: t('perfil_palette_rosado'),   icon: '🌸' },
     { id: 'midnight', label: t('perfil_palette_midnight'), icon: '🌌', pro: true },
+    { id: 'sand',     label: t('perfil_palette_sand'),     icon: '🏜️', pro: true },
   ]
   const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
 

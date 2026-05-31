@@ -1,14 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
-import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, Colors } from './colors'
+import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, Colors } from './colors'
 
-export type Palette = 'dark' | 'light' | 'rosado' | 'midnight'
+export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand'
 
 const PALETTE_COLORS: Record<Palette, Colors> = {
   dark:     DARK_COLORS,
   light:    LIGHT_COLORS,
   rosado:   PINK_COLORS,
   midnight: MIDNIGHT_COLORS,
+  sand:     SAND_COLORS,
 }
 
 interface ThemeContextValue {
@@ -33,7 +34,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_palette')
       .then(val => {
-        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight') {
+        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand') {
           setPaletteState(val)
         } else if (val === null) {
           // legacy key
@@ -57,8 +58,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{
       palette,
-      // dark y midnight son oscuros; light y rosado son claros.
-      isDark: palette === 'dark' || palette === 'midnight',
+      // dark, midnight y sand son oscuros; light y rosado son claros.
+      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,
