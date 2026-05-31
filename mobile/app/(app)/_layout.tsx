@@ -81,7 +81,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       {
         width,
         paddingBottom: bottomPad,
-        backgroundColor: palette === 'light' ? 'rgba(245,242,236,0.97)' : palette === 'rosado' ? 'rgba(253,242,248,0.97)' : palette === 'midnight' ? 'rgba(8,14,26,0.97)' : palette === 'sand' ? 'rgba(22,18,13,0.97)' : 'rgba(13,13,13,0.97)',
+        backgroundColor: palette === 'light' ? 'rgba(245,242,236,0.97)' : palette === 'rosado' ? 'rgba(253,242,248,0.97)' : palette === 'midnight' ? 'rgba(8,14,26,0.97)' : palette === 'sand' ? 'rgba(22,18,13,0.97)' : palette === 'forest' ? 'rgba(8,15,10,0.97)' : 'rgba(13,13,13,0.97)',
         borderTopColor: colors.borderDefault,
       },
     ]}>

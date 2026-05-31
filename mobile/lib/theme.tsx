@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
-import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, Colors } from './colors'
+import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, FOREST_COLORS, Colors } from './colors'
 
-export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand'
+export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand' | 'forest'
 
 const PALETTE_COLORS: Record<Palette, Colors> = {
   dark:     DARK_COLORS,
@@ -10,6 +10,7 @@ const PALETTE_COLORS: Record<Palette, Colors> = {
   rosado:   PINK_COLORS,
   midnight: MIDNIGHT_COLORS,
   sand:     SAND_COLORS,
+  forest:   FOREST_COLORS,
 }
 
 interface ThemeContextValue {
@@ -34,7 +35,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_palette')
       .then(val => {
-        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand') {
+        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand' || val === 'forest') {
           setPaletteState(val)
         } else if (val === null) {
           // legacy key
@@ -58,8 +59,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{
       palette,
-      // dark, midnight y sand son oscuros; light y rosado son claros.
-      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand',
+      // dark, midnight, sand y forest son oscuros; light y rosado son claros.
+      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand' || palette === 'forest',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,

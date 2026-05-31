@@ -115,6 +115,30 @@ export const SAND_COLORS = {
   gradientTop: 'rgba(200,135,74,0.10)', // glow cobre superior
 }
 
+// Forest = tema OSCURO (verde bosque, acento lima). Mismo set de tokens;
+// éxito/alerta/error (green/orange/red) no cambian.
+export const FOREST_COLORS = {
+  bg: '#080F0A',                        // fondo primario
+  sheetBg: '#0D1710',                   // fondo secundario
+  white: '#ffffff',
+  accent: '#7EC832',                    // acento principal (lima)
+  accentLight: '#9BD95E',
+  accentDark: '#5FA024',
+  cyan: '#B6E08A',
+  green: '#32c896',
+  orange: '#ffaa32',
+  red: '#ff4444',
+  inkPrimary: '#E4F0DC',                // texto primario
+  inkSecondary: '#7A9870',              // texto secundario
+  inkMuted: '#3D5C38',                  // texto terciario
+  inkFaint: 'rgba(228,240,220,0.16)',
+  borderDefault: '#1A2E1E',             // borde sutil
+  borderBright: '#243D28',              // borde medio
+  cardBg: '#112015',                    // fondo terciario
+  glassBg: 'rgba(126,200,50,0.10)',     // acento fondo (baja opacidad)
+  gradientTop: 'rgba(126,200,50,0.10)', // glow lima superior
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 
