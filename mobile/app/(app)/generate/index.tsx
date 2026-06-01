@@ -438,6 +438,17 @@ const FASE_META: Record<string, { icon: string; desc: string }> = {
   enfriamiento:  { icon: '❄️', desc: 'Recuperación y vuelta a la calma' },
 }
 
+// Oscurece un color hex (#rrggbb) hacia negro por un factor (0..1). Se usa para
+// teñir el fondo de cada card de fase con su propio color (naranja/azul/verde)
+// pero en un tono oscuro que da contraste correcto al texto blanco encima.
+function darkenHex(hex: string, factor: number): string {
+  const h = hex.replace('#', '')
+  const r = Math.round(parseInt(h.slice(0, 2), 16) * factor)
+  const g = Math.round(parseInt(h.slice(2, 4), 16) * factor)
+  const b = Math.round(parseInt(h.slice(4, 6), 16) * factor)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
 const MOTIVOS = [
   { id: 'equipamiento', label: 'No tengo el equipamiento' },
   { id: 'molestia',     label: 'Tengo una molestia' },
@@ -463,7 +474,7 @@ function EjercicioRow({
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
       {/* Left: name + modified badge */}
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: colors.inkPrimary, lineHeight: 20 }} numberOfLines={2}>{ejercicio.nombre}</Text>
+        <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: '#fff', lineHeight: 20 }} numberOfLines={2}>{ejercicio.nombre}</Text>
         {isModified && (
           <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: 'rgba(79,140,255,0.35)', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 }}>
             <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.accentLight, letterSpacing: 0.5, textTransform: 'uppercase' }}>Modificado</Text>
@@ -473,12 +484,12 @@ function EjercicioRow({
 
       {/* Center: parameter pills */}
       <View style={{ flexDirection: 'row', gap: 6, flexShrink: 0 }}>
-        <View style={{ backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
-          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: colors.inkSecondary }}>{ejercicio.series}×{ejercicio.repeticiones}</Text>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: 'rgba(255,255,255,0.92)' }}>{ejercicio.series}×{ejercicio.repeticiones}</Text>
         </View>
         {isPrincipal && ejercicio.rpe_sugerido ? (
-          <View style={{ backgroundColor: 'rgba(79,140,255,0.08)', borderWidth: 1, borderColor: 'rgba(79,140,255,0.3)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
-            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: colors.accentLight }}>RPE {ejercicio.rpe_sugerido}</Text>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 }}>
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: '#fff' }}>RPE {ejercicio.rpe_sugerido}</Text>
           </View>
         ) : null}
       </View>
@@ -486,11 +497,11 @@ function EjercicioRow({
       {/* Right: reload button (principal only) */}
       {isPrincipal ? (
         <TouchableOpacity
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           onPress={onSustituir}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: colors.inkMuted, lineHeight: 20 }}>↻</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', lineHeight: 20 }}>↻</Text>
         </TouchableOpacity>
       ) : (
         <View style={{ width: 36 }} />
@@ -1154,25 +1165,22 @@ function FaseBlock({
   })
 
   return (
-    <View style={[blkSt.card, { borderColor: faseStyle.color + '28' }]}>
+    <View style={[blkSt.card, { backgroundColor: darkenHex(faseStyle.color, 0.35), borderColor: faseStyle.color + '66' }]}>
       <TouchableOpacity style={blkSt.header} onPress={toggle} activeOpacity={0.75}>
         {/* Icon square */}
-        <View style={[blkSt.iconWrap, { backgroundColor: faseStyle.bg }]}>
+        <View style={[blkSt.iconWrap, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
           <Text style={blkSt.iconEmoji}>{meta.icon}</Text>
         </View>
 
         {/* Name + description */}
         <View style={blkSt.nameWrap}>
-          <Text style={[blkSt.name, { color: faseStyle.color }]}>{faseStyle.label}</Text>
+          <Text style={[blkSt.name, { color: '#fff' }]}>{faseStyle.label}</Text>
           <Text style={blkSt.desc}>{fase.duracion_minutos} min · {meta.desc}</Text>
         </View>
 
-        {/* Exercise count + chevron */}
+        {/* Chevron */}
         <View style={blkSt.right}>
-          <Text style={[blkSt.count, { color: faseStyle.color }]}>
-            {fase.ejercicios.length} ej.
-          </Text>
-          <Animated.Text style={[blkSt.chevron, { color: faseStyle.color, transform: [{ rotate: chevronRotate }] }]}>
+          <Animated.Text style={[blkSt.chevron, { color: 'rgba(255,255,255,0.85)', transform: [{ rotate: chevronRotate }] }]}>
             ›
           </Animated.Text>
         </View>
@@ -1200,10 +1208,10 @@ function FaseBlock({
 function makeBlkStyles(c: Colors) {
   return StyleSheet.create({
     card: {
-      borderWidth:     1,
-      borderRadius:    20,
-      overflow:        'hidden',
-      backgroundColor: c.cardBg,
+      borderWidth:  1,
+      borderRadius: 20,
+      overflow:     'hidden',
+      // backgroundColor se asigna inline: tono oscuro del color de cada fase.
     },
     header: {
       flexDirection: 'row',
@@ -1221,33 +1229,28 @@ function makeBlkStyles(c: Colors) {
     },
     iconEmoji: {
       fontSize: 18,
+      color:    '#fff',
     },
     nameWrap: {
       flex: 1,
       gap:   3,
     },
     name: {
-      fontFamily:    'JetBrainsMono-Regular',
-      fontSize:      10,
-      letterSpacing:  1,
+      fontFamily:    'JetBrainsMono-Medium',
+      fontSize:      15,
+      letterSpacing:  0.5,
       textTransform: 'uppercase',
-      fontWeight:    '500',
     },
     desc: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize:   12,
-      color:      c.inkMuted,
+      color:      'rgba(255,255,255,0.7)',
       lineHeight: 16,
     },
     right: {
       alignItems:  'flex-end',
       gap:          4,
       flexShrink:   0,
-    },
-    count: {
-      fontFamily:    'JetBrainsMono-Regular',
-      fontSize:      11,
-      letterSpacing:  0.5,
     },
     chevron: {
       fontSize:   22,
@@ -1260,7 +1263,7 @@ function makeBlkStyles(c: Colors) {
     },
     sep: {
       height:          1,
-      backgroundColor: c.borderDefault,
+      backgroundColor: 'rgba(255,255,255,0.14)',
     },
   })
 }
