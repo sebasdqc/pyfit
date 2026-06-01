@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router'
+import { StackActions } from '@react-navigation/native'
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../../lib/colors'
@@ -51,7 +52,7 @@ const ROUTE_LABEL_KEY: Record<string, string> = {
   'estadisticas/index': 'nav_stats',
   'checkin/index':      'nav_train',
   'historial/index':    'nav_history',
-  'perfil/index':       'nav_profile',
+  'perfil':             'nav_profile',
 }
 
 // Rutas donde NO se muestra la barra inferior: durante el entrenamiento y su
@@ -97,9 +98,17 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             target: route.key,
             canPreventDefault: true,
           })
-          if (!focused && !event.defaultPrevented) {
-            navigation.navigate({ name: route.name, merge: true })
+          if (event.defaultPrevented) return
+          if (focused) {
+            // Re-tap en el tab activo → volver a la raíz de su stack anidado
+            // (p. ej. Perfil deep → perfil/index). No-op en tabs hoja.
+            const nested = route.state
+            if (nested && typeof nested.index === 'number' && nested.index > 0 && nested.key) {
+              navigation.dispatch({ ...StackActions.popToTop(), target: nested.key })
+            }
+            return
           }
+          navigation.navigate({ name: route.name, merge: true })
         }
 
         if (isCenter) {
@@ -157,10 +166,9 @@ export default function AppLayout() {
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
-        // backBehavior="history": el botón "Atrás" (router.back) regresa a la
-        // pantalla visitada justo antes — perfil → mi-cuenta → datos-personales
-        // hace bien el camino inverso. Con el default 'firstRoute' saltaba al
-        // primer tab (dashboard) en vez de a la pantalla anterior.
+        // backBehavior="history": al hacer "Atrás" desde la raíz de un tab,
+        // regresa al tab visitado justo antes (no siempre a Inicio). El back
+        // DENTRO de Perfil lo maneja su Stack anidado (pop real de la pila).
         backBehavior="history"
       >
       <Tabs.Screen
@@ -188,8 +196,12 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => <IconHistory color={color} />,
         }}
       />
+      {/* Perfil es un Stack anidado (app/(app)/perfil/_layout.tsx). El Tabs lo
+          ve como UNA sola ruta "perfil"; sus sub-pantallas (datos-personales,
+          mi-cuenta, dispositivos, etc.) viven dentro del Stack, donde el botón
+          Atrás hace pop real. */}
       <Tabs.Screen
-        name="perfil/index"
+        name="perfil"
         options={{
           tabBarLabel: 'Perfil',
           tabBarIcon: ({ color }) => <IconProfile color={color} />,
@@ -200,29 +212,6 @@ export default function AppLayout() {
       <Tabs.Screen name="generate/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="ejecutar/[id]" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
-      {/* Perfil — menús de sección (nivel 1) */}
-      <Tabs.Screen name="perfil/mi-cuenta" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/datos-entrenamiento" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/tus-dispositivos" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/evidencia" options={{ href: null, tabBarLabel: '' }} />
-      {/* Perfil sub-screens */}
-      <Tabs.Screen name="perfil/datos-personales" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/entrenamiento" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/objetivos" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/ubicaciones" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/lesiones" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/ciclo" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/preferencias" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/ciencia" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/bibliografia" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/glosario" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/referidos" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/suscripcion" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/historial-pagos" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/cancelar" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/dispositivos" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/buscar-dispositivo" options={{ href: null, tabBarLabel: '' }} />
-      <Tabs.Screen name="perfil/cambiar-plan" options={{ href: null, tabBarLabel: '' }} />
       {/* Free Run */}
       <Tabs.Screen name="run/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="run/resumen/[id]" options={{ href: null, tabBarLabel: '' }} />
