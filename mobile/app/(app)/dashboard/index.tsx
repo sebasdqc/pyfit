@@ -1790,15 +1790,16 @@ function makeStyles(c: Colors) {
       lineHeight: 18,
     },
     zsHowBtn: {
-      alignSelf: 'flex-start',
+      alignSelf: 'center',
       paddingVertical: 2,
-      marginLeft: RING_SIZE + 16,
     },
     zsHowText: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 11,
       color: c.accent,
       letterSpacing: 0.1,
+      textAlign: 'center',
+      textDecorationLine: 'underline',
     },
     // Modal
     zsModalOverlay: {
@@ -1880,7 +1881,7 @@ function makeStyles(c: Colors) {
       textTransform: 'uppercase',
     },
     z5HowBtn: {
-      alignSelf: 'flex-start',
+      alignSelf: 'center',
       paddingVertical: 2,
     },
     z5Text: {
