@@ -568,13 +568,16 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
         if p in by_patron:
             patron_order.append(p)
 
-    # Collect up to 50 exercises
+    # Collect up to 30 exercises. El pool es el "menú" del que el LLM elige ~15;
+    # 30 da variedad de sobra. Antes era 50, pero con perfiles ricos el prompt
+    # llegaba a ~9.3k tokens y, sumado a max_tokens, excedía el límite de 12k
+    # TPM de Groq (HTTP 413 → la generación fallaba siempre).
     selected: list[dict] = []
     for pat in patron_order:
         selected.extend(by_patron.get(pat, []))
-        if len(selected) >= 50:
+        if len(selected) >= 30:
             break
-    selected = selected[:50]
+    selected = selected[:30]
 
     PROG_ICONS = {
         'incrementar': '↑ puede progresar',
@@ -1006,7 +1009,10 @@ def generate_session(request):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=4096, user_id=user.id)
+        # max_tokens=3500: la salida real es ~2k-3k tokens; con el pool acotado a
+        # 30, prompt(~6.3k) + 3500 ≈ 9.8k, holgado bajo el límite de 12k TPM de
+        # Groq (free tier). Subir el tier elimina el límite y permite volver a 4096.
+        sesion_generada = _call_groq(prompt, max_tokens=3500, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON for user %s', user.id)
         return Response(
