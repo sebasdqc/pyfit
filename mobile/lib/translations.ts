@@ -196,6 +196,11 @@ const translations = {
   generate_work_label:        { es: 'Trabajo',                           en: 'Work' },
   generate_rpe_label:         { es: 'Intensidad RPE',                    en: 'RPE Intensity' },
   generate_sets_label:        { es: 'series',                            en: 'sets' },
+  // Unidades compactas de las ParamCards simplificadas del Plan de Entrenamiento.
+  generate_unit_minutes:      { es: 'minutos',                           en: 'minutes' },
+  generate_unit_exercises:    { es: 'ejercicios',                        en: 'exercises' },
+  generate_unit_series:       { es: 'series',                            en: 'sets' },
+  generate_unit_intensity:    { es: 'intensidad',                        en: 'intensity' },
   generate_reps_label:        { es: 'reps',                              en: 'reps' },
   generate_rest_label:        { es: 's descanso',                        en: 's rest' },
   generate_btn_start:         { es: 'Empezar sesión',                    en: 'Start session' },

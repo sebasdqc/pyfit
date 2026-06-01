@@ -81,61 +81,6 @@ interface SesionResponse {
   sesion: Sesion
 }
 
-interface CheckinData {
-  id: number
-  estado_fisico:       number | null
-  estado_animo:        number
-  duracion_disponible: number
-  foco_entrenamiento:  string[]
-}
-
-// ─── Checkin chip helpers ─────────────────────────────────────────────────────
-
-type Chip = { icon: string; label: string; color: string }
-
-function fisicoChip(v: number | null): Chip | null {
-  const map: Record<number, Chip> = {
-    4: { icon: '⚡', label: 'Fresco',    color: '#32c896' },
-    3: { icon: '👍', label: 'Bien',      color: '#4f8cff' },
-    2: { icon: '😮‍💨', label: 'Pesado',    color: '#ffaa32' },
-    1: { icon: '⚠️', label: 'Molestia',  color: '#ff6b6b' },
-  }
-  return v != null ? (map[v] ?? null) : null
-}
-
-function animoChip(v: number): Chip | null {
-  const map: Record<number, Chip> = {
-    5: { icon: '🎯', label: 'Enfocado',  color: '#32c896' },
-    3: { icon: '😐', label: 'Normal',    color: '#4f8cff' },
-    2: { icon: '💭', label: 'Distraído', color: '#ffaa32' },
-    1: { icon: '😴', label: 'Agotado',   color: '#ff6b6b' },
-  }
-  return map[v] ?? null
-}
-
-function tiempoChip(v: number): Chip {
-  return { icon: '⏱', label: `${v} min`, color: '#8899aa' }
-}
-
-function intencionChip(foco: string[]): Chip | null {
-  const map: Record<string, Chip> = {
-    descargar: { icon: '💥', label: 'Descargar',   color: '#ffaa32' },
-    moverme:   { icon: '🚶', label: 'Moverme',     color: '#32c896' },
-    serio:     { icon: '💪', label: 'En serio',    color: '#4f8cff' },
-    recuperar: { icon: '🌊', label: 'Recuperarme', color: '#6ce5ff' },
-  }
-  return foco?.[0] ? (map[foco[0]] ?? null) : null
-}
-
-function buildCheckinChips(c: CheckinData): Chip[] {
-  return [
-    fisicoChip(c.estado_fisico),
-    animoChip(c.estado_animo),
-    tiempoChip(c.duracion_disponible),
-    intencionChip(c.foco_entrenamiento),
-  ].filter(Boolean) as Chip[]
-}
-
 // ─── Resumen types + helper ───────────────────────────────────────────────────
 
 interface Decision { icon: string; text: string }
@@ -405,15 +350,14 @@ function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; load
 
 // ─── Param Card ───────────────────────────────────────────────────────────────
 
-function ParamCard({ value, unit, label }: { value: string; unit: string; label: string }) {
+function ParamCard({ value, unit }: { value: string; unit: string }) {
   const { colors } = useTheme()
   return (
-    <View style={{ flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 16, padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: colors.inkPrimary, letterSpacing: -0.5, lineHeight: 34 }}>{value}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 26, color: colors.inkPrimary, letterSpacing: -0.5, lineHeight: 30 }}>{value}</Text>
         <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: colors.inkMuted, lineHeight: 18 }}>{unit}</Text>
       </View>
-      <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 1.5 }}>{label}</Text>
     </View>
   )
 }
@@ -1288,7 +1232,6 @@ export default function GenerateScreen() {
   const [error,          setError]          = useState<string | null>(null)
   const [sesionId,       setSesionId]       = useState<string | null>(null)
   const [sesion,         setSesion]         = useState<Sesion | null>(null)
-  const [checkin,        setCheckin]        = useState<CheckinData | null>(null)
   const [resumen,        setResumen]        = useState<Resumen | null>(null)
   const [resumenLoading, setResumenLoading] = useState(false)
   const [subTarget,      setSubTarget]      = useState<SubTarget | null>(null)
@@ -1302,12 +1245,11 @@ export default function GenerateScreen() {
     contentFade.setValue(0)
     setError(null)
 
-    // Snapshot de la sesión de hoy ANTES de generar (en paralelo con el checkin).
-    // El baseline distingue la sesión NUEVA de una previa del día durante el polling.
+    // Snapshot de la sesión de hoy ANTES de generar. El baseline distingue la
+    // sesión NUEVA de una previa del día durante el polling.
     const baselineP = apiGet('/api/sessions/today/')
       .then((r: any) => (r?.status === 'ready' ? r.sesion_id : null))
       .catch(() => null)
-    const checkinP = apiGet('/api/checkins/today/').catch(() => null)
 
     try {
       let data: SesionResponse
@@ -1323,8 +1265,6 @@ export default function GenerateScreen() {
       if (!mountedRef.current) return   // se salió de la pantalla mientras generaba
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
-      const checkinRes: any = await checkinP
-      if (mountedRef.current && checkinRes?.id) setCheckin(checkinRes)
     } catch (err: any) {
       if (mountedRef.current) setError(err.message || 'Error generando la sesión')
     } finally {
@@ -1426,7 +1366,6 @@ export default function GenerateScreen() {
   }, [sesionId])
 
   const rir          = sesion ? (10 - sesion.rpe_target).toFixed(0) : '—'
-  const checkinChips = useMemo(() => checkin ? buildCheckinChips(checkin) : [], [checkin])
 
   const totalEjercicios = useMemo(
     () => sesion?.fases.flatMap(f => f.ejercicios).length ?? 0,
@@ -1485,30 +1424,8 @@ export default function GenerateScreen() {
             <View style={styles.sessionHeader}>
               <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
               <Text style={styles.sessionTitle}>{sesion.titulo}</Text>
-              <Text style={styles.sessionObjetivo}>{sesion.objetivo_sesion}</Text>
               <Text style={styles.sessionMeta}>{formatDateES(lang)} · {sesion.duracion_total} {t('generate_mins_label')}</Text>
             </View>
-
-            {/* Checkin context chips */}
-            {checkinChips.length > 0 && (
-              <>
-                <View style={styles.chipsDivider} />
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.chipsScroll}
-                  contentContainerStyle={styles.chipsContent}
-                >
-                  {checkinChips.map((chip, i) => (
-                    <View key={i} style={[styles.chip, { borderColor: chip.color + '40' }]}>
-                      <Text style={styles.chipIcon}>{chip.icon}</Text>
-                      <Text style={[styles.chipLabel, { color: chip.color }]}>{chip.label}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-                <View style={styles.chipsDivider} />
-              </>
-            )}
 
             {/* Justification card */}
             <JustificacionCard resumen={resumen} loading={resumenLoading} />
@@ -1518,25 +1435,21 @@ export default function GenerateScreen() {
               <View style={styles.paramsRow}>
                 <ParamCard
                   value={String(sesion.duracion_total)}
-                  unit={t('generate_mins_label')}
-                  label={t('generate_duration_label')}
+                  unit={t('generate_unit_minutes')}
                 />
                 <ParamCard
                   value={String(totalEjercicios)}
-                  unit="ej."
-                  label={t('generate_exercises_label')}
+                  unit={t('generate_unit_exercises')}
                 />
               </View>
               <View style={styles.paramsRow}>
                 <ParamCard
                   value={String(totalSeries)}
-                  unit={t('generate_sets_label')}
-                  label={t('generate_work_label')}
+                  unit={t('generate_unit_series')}
                 />
                 <ParamCard
-                  value={String(sesion.rpe_target)}
-                  unit="/10"
-                  label={t('generate_rpe_label')}
+                  value={`${sesion.rpe_target}/10`}
+                  unit={t('generate_unit_intensity')}
                 />
               </View>
             </View>
@@ -1699,52 +1612,11 @@ function makeStyles(c: Colors) {
       lineHeight:    34,
       marginBottom:   6,
     },
-    sessionObjetivo: {
-      fontFamily:   'InstrumentSerif-Italic',
-      fontSize:     15,
-      color:        c.inkSecondary,
-      lineHeight:   22,
-      marginBottom:  8,
-    },
     sessionMeta: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize:   13,
       color:      c.inkMuted,
       letterSpacing: 0.1,
-    },
-
-    // Checkin chips
-    chipsDivider: {
-      height:          1,
-      backgroundColor: c.borderDefault,
-      marginVertical:  16,
-    },
-    chipsScroll: {
-      marginHorizontal: -20,
-    },
-    chipsContent: {
-      paddingHorizontal: 20,
-      gap:               8,
-      flexDirection:     'row',
-      alignItems:        'center',
-    },
-    chip: {
-      flexDirection:     'row',
-      alignItems:        'center',
-      gap:               6,
-      backgroundColor:   c.cardBg,
-      borderWidth:       1,
-      borderRadius:      20,
-      paddingVertical:    7,
-      paddingHorizontal: 12,
-    },
-    chipIcon: {
-      fontSize: 13,
-    },
-    chipLabel: {
-      fontFamily: 'SpaceGrotesk-Medium',
-      fontSize:   13,
-      lineHeight: 18,
     },
 
     // Params grid
