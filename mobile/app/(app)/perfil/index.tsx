@@ -51,11 +51,6 @@ function nivelLabel(nivel: string) {
   return ({ rookie: 'Rookie', atleta: 'Atleta', elite: 'Élite', leyenda: 'Leyenda' } as any)[nivel?.toLowerCase()] ?? nivel ?? 'Rookie'
 }
 
-function capitalizeFirst(s: string) {
-  if (!s) return ''
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
 const MESES_ABREV = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 
 function formatRenovacion(planTipo: string | undefined, iso: string | null | undefined): string {
@@ -178,15 +173,13 @@ export default function PerfilScreen() {
   const [loading, setLoading] = useState(true)
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
-  const [activeInjuries, setActiveInjuries] = useState(0)
   const [uploading, setUploading] = useState(false)
 
   const fetchAll = useCallback(async () => {
     try {
-      const [profileRes, statsRes, injuriesRes] = await Promise.allSettled([
+      const [profileRes, statsRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
         apiGet('/api/stats/profile/'),
-        apiGet('/api/injuries/'),
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
@@ -194,9 +187,6 @@ export default function PerfilScreen() {
       }
       if (statsRes.status === 'fulfilled') {
         setProfileStats(statsRes.value)
-      }
-      if (injuriesRes.status === 'fulfilled') {
-        setActiveInjuries((injuriesRes.value as any[]).filter((i: any) => i.activa).length)
       }
     } catch {
       // fail silently
@@ -260,21 +250,6 @@ export default function PerfilScreen() {
     (profileStats?.consistencia_30d ?? 0) >= 70 ? '#32c896' :
     (profileStats?.consistencia_30d ?? 0) >= 40 ? '#ffaa32' :
     colors.red
-
-  // Group row subtitles and badges
-  const subDatosPersonales = profile.peso && profile.altura ? `${profile.peso} kg · ${profile.altura} cm` : undefined
-  const subEntrenamiento = profile.nivel ? nivelLabel(profile.nivel) : undefined
-  const subObjetivos = profile.objetivos_multiples?.[0] || profile.objetivo || undefined
-  const subUbicaciones = profile.locations?.length > 0
-    ? `${profile.locations.length} ${lang === 'es'
-        ? (profile.locations.length === 1 ? 'ubicación' : 'ubicaciones')
-        : (profile.locations.length === 1 ? 'location' : 'locations')}`
-    : undefined
-  const badgeLesiones = activeInjuries > 0
-    ? `${activeInjuries} ${activeInjuries === 1 ? 'activa' : 'activas'}`
-    : undefined
-  const badgeCiclo = profile.usa_ciclo_menstrual ? 'Activo' : 'Configurar'
-  const subPreferencias = profile.estilo_entrenamiento ? capitalizeFirst(profile.estilo_entrenamiento) : undefined
 
   const PALETTE_OPTIONS: { id: Palette; label: string; icon: string; pro?: boolean }[] = [
     { id: 'dark',     label: t('perfil_palette_dark'),     icon: '🌙' },
@@ -371,62 +346,26 @@ export default function PerfilScreen() {
           />
         )}
 
-        {/* ── MI CUENTA ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_account')}</Text>
+        {/* ── SECCIONES (nivel 1) ──
+            Cada card abre su propio sub-menú; las opciones viven dentro de él. */}
         <View style={styles.card}>
-          <GroupRow icon="👤" title={t('perfil_row_personal')} subtitle={subDatosPersonales}
-            onPress={() => router.push('/(app)/perfil/datos-personales' as any)} styles={styles} />
-          {profile.sexo === 'femenino' && (
-            <>
-              <View style={styles.divider} />
-              <GroupRow icon="🌙" title={t('perfil_row_cycle')} badge={badgeCiclo}
-                onPress={() => router.push('/(app)/perfil/ciclo' as any)} styles={styles} />
-            </>
-          )}
+          <GroupRow icon="👤" title={t('perfil_section_account')} subtitle={t('perfil_card_account_sub')}
+            onPress={() => router.push('/(app)/perfil/mi-cuenta' as any)} styles={styles} />
         </View>
 
-        {/* ── DATOS DE ENTRENAMIENTO ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_training')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="🎯" title={t('perfil_row_objectives')} subtitle={subObjetivos}
-            onPress={() => router.push('/(app)/perfil/objetivos' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="📍" title={t('perfil_row_locations')} subtitle={subUbicaciones}
-            onPress={() => router.push('/(app)/perfil/ubicaciones' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="⚡" title={t('perfil_row_preferences')} subtitle={subPreferencias}
-            onPress={() => router.push('/(app)/perfil/preferencias' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="🏋️" title={t('perfil_row_training')} subtitle={subEntrenamiento}
-            onPress={() => router.push('/(app)/perfil/entrenamiento' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="🩹" title={t('perfil_row_injuries')} badge={badgeLesiones}
-            onPress={() => router.push('/(app)/perfil/lesiones' as any)} styles={styles} />
+          <GroupRow icon="🏋️" title={t('perfil_section_training')} subtitle={t('perfil_card_training_sub')}
+            onPress={() => router.push('/(app)/perfil/datos-entrenamiento' as any)} styles={styles} />
         </View>
 
-        {/* ── TUS DISPOSITIVOS ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_devices')}</Text>
         <View style={styles.card}>
-          <GroupRow
-            icon="⌚"
-            title={t('perfil_row_devices')}
-            subtitle={t('perfil_row_devices_sub')}
-            onPress={() => router.push('/(app)/perfil/dispositivos' as any)}
-            styles={styles}
-          />
+          <GroupRow icon="⌚" title={t('perfil_section_devices')} subtitle={t('perfil_row_devices_sub')}
+            onPress={() => router.push('/(app)/perfil/tus-dispositivos' as any)} styles={styles} />
         </View>
 
-        {/* ── EVIDENCIA ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_evidence')}</Text>
         <View style={styles.card}>
-          <GroupRow icon="🧬" title={t('perfil_row_how_coach')}
-            onPress={() => router.push('/(app)/perfil/ciencia' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="📚" title={t('perfil_row_bibliography')}
-            onPress={() => router.push('/(app)/perfil/bibliografia' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="📖" title={t('perfil_row_glossary')}
-            onPress={() => router.push('/(app)/perfil/glosario' as any)} styles={styles} />
+          <GroupRow icon="🧬" title={t('perfil_section_evidence')} subtitle={t('perfil_card_evidence_sub')}
+            onPress={() => router.push('/(app)/perfil/evidencia' as any)} styles={styles} />
         </View>
 
         {/* ── BLOQUE ADMINISTRATIVO ── */}
@@ -653,12 +592,7 @@ function makeStyles(c: Colors) {
     adnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkPrimary, lineHeight: 22, letterSpacing: -0.1 },
 
     // Groups
-    groupLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      color: c.inkMuted, letterSpacing: 2, textTransform: 'uppercase',
-      marginBottom: 10, marginTop: 4,
-    },
-    card: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 20, marginBottom: 24, overflow: 'hidden' },
+    card: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 20, marginBottom: 14, overflow: 'hidden' },
     divider: { height: 1, backgroundColor: c.borderDefault, marginHorizontal: 18 },
     groupRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16, gap: 14 },
     groupRowIcon: { fontSize: 18, width: 24, textAlign: 'center' },

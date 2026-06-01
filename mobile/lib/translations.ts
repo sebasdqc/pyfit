@@ -391,6 +391,10 @@ const translations = {
   perfil_row_how_coach:       { es: 'Cómo funciona tu entrenador',       en: 'How your coach works' },
   perfil_row_bibliography:    { es: 'Bibliografía',                      en: 'Bibliography' },
   perfil_row_glossary:        { es: 'Glosario',                          en: 'Glossary' },
+  // Subtítulos de las cards de sección (nivel 1) en la pantalla de Perfil.
+  perfil_card_account_sub:    { es: 'Tu información personal',            en: 'Your personal information' },
+  perfil_card_training_sub:   { es: 'Objetivos, ubicaciones, preferencias y más', en: 'Goals, locations, preferences and more' },
+  perfil_card_evidence_sub:   { es: 'Cómo funciona tu entrenador',        en: 'How your coach works' },
   perfil_row_subscription:    { es: 'Mi suscripción',                    en: 'My subscription' },
   perfil_row_upgrade:         { es: 'Actualizar a Pro',                  en: 'Upgrade to Pro' },
   perfil_row_referrals:       { es: 'Referidos',                         en: 'Referrals' },

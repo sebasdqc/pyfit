@@ -157,6 +157,11 @@ export default function AppLayout() {
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
+        // backBehavior="history": el botón "Atrás" (router.back) regresa a la
+        // pantalla visitada justo antes — perfil → mi-cuenta → datos-personales
+        // hace bien el camino inverso. Con el default 'firstRoute' saltaba al
+        // primer tab (dashboard) en vez de a la pantalla anterior.
+        backBehavior="history"
       >
       <Tabs.Screen
         name="dashboard/index"
@@ -195,6 +200,11 @@ export default function AppLayout() {
       <Tabs.Screen name="generate/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="ejecutar/[id]" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
+      {/* Perfil — menús de sección (nivel 1) */}
+      <Tabs.Screen name="perfil/mi-cuenta" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/datos-entrenamiento" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/tus-dispositivos" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="perfil/evidencia" options={{ href: null, tabBarLabel: '' }} />
       {/* Perfil sub-screens */}
       <Tabs.Screen name="perfil/datos-personales" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="perfil/entrenamiento" options={{ href: null, tabBarLabel: '' }} />
