@@ -1140,6 +1140,8 @@ function InsightCard({
 
   const labelColor = modo === 'empty' ? colors.inkMuted : colors.accent
 
+  const [modalVisible, setModalVisible] = useState(false)
+
   return (
     <View style={styles.z5Card}>
       {/* Tag: ícono + "TU ENTRENADOR" */}
@@ -1152,6 +1154,38 @@ function InsightCard({
       <Text style={styles.z5Text}>
         {renderMensajeConFragmento(mensaje, fragmento, styles.z5Text, styles.z5TextHighlight)}
       </Text>
+
+      {/* ── Enlace explicación ── */}
+      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.z5HowBtn}>
+        <Text style={styles.zsHowText}>¿Qué hace tu entrenador? →</Text>
+      </TouchableOpacity>
+
+      {/* ── Modal explicación ── */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.zsModalOverlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.zsModalCard} onPress={e => e.stopPropagation()}>
+            <Text style={styles.zsModalTitle}>¿Qué hace tu entrenador?</Text>
+            <Text style={styles.zsModalBody}>
+              Tu <Text style={styles.zsModalAccent}>entrenador Zyfit</Text> analiza todo lo que registras para darte un resumen claro de cómo vas y recomendaciones para tu próxima sesión.{'\n\n'}
+              <Text style={styles.zsModalBold}>📥 Recopila tus datos</Text>{'\n'}
+              Check-ins diarios, sesiones completadas, feedback (RPE, cumplimiento, molestias), rachas, sueño y nivel de fatiga.{'\n\n'}
+              <Text style={styles.zsModalBold}>🧠 Interpreta tu momento</Text>{'\n'}
+              Cruza esa información para entender cómo estás entrenando, recuperándote y progresando.{'\n\n'}
+              <Text style={styles.zsModalBold}>💡 Te resume y recomienda</Text>{'\n'}
+              Te devuelve un mensaje breve con lo más relevante de tu estado actual y qué conviene ajustar.{'\n\n'}
+              Se actualiza con cada check-in y sesión, así que siempre refleja tu momento más reciente.
+            </Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.zsModalCloseBtn}>
+              <Text style={styles.zsModalCloseText}>Entendido</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -1844,6 +1878,10 @@ function makeStyles(c: Colors) {
       color: c.accent,
       letterSpacing: 2,
       textTransform: 'uppercase',
+    },
+    z5HowBtn: {
+      alignSelf: 'flex-start',
+      paddingVertical: 2,
     },
     z5Text: {
       fontFamily: 'SpaceGrotesk-Regular',
