@@ -26,11 +26,14 @@ import { login, register } from '../../lib/auth'
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
 function PyFitLogo() {
-  const { colors } = useTheme()
+  const { colors, isDark } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   return (
     <Image
-      source={require('../../Logo-Zyfit-Blanco.png')}
+      // Logo blanco sobre fondos oscuros; negro sobre temas claros (light/rosado).
+      source={isDark
+        ? require('../../Logo-Zyfit-Blanco.png')
+        : require('../../Logo-Zyfit-negro.png')}
       style={styles.logoImage}
       resizeMode="contain"
     />
@@ -130,8 +133,8 @@ function GlowOrb({
       <Svg width={size} height={size}>
         <Defs>
           <RadialGradient id={gid} cx={size / 2} cy={size / 2} r={size / 2} gradientUnits="userSpaceOnUse">
-            <Stop offset={0} stopColor={color} stopOpacity={0.9} />
-            <Stop offset={0.5} stopColor={color} stopOpacity={0.35} />
+            <Stop offset={0} stopColor={color} stopOpacity={1} />
+            <Stop offset={0.45} stopColor={color} stopOpacity={0.55} />
             <Stop offset={1} stopColor={color} stopOpacity={0} />
           </RadialGradient>
         </Defs>
@@ -148,21 +151,24 @@ function LoginAura() {
   const { width } = useWindowDimensions()
   return (
     <View pointerEvents="none" style={auraStyles.container}>
-      <GlowOrb gid="orbCyan" color={colors.cyan} size={300}
-        top={-40} left={-90} driftX={28}
-        scaleFrom={0.95} scaleTo={1.2} opFrom={0.18} opTo={0.5} duration={5200} delay={300} />
-      <GlowOrb gid="orbDark" color={colors.accentDark} size={340}
-        top={-90} left={width - 240} driftX={24}
-        scaleFrom={1} scaleTo={1.16} opFrom={0.22} opTo={0.55} duration={4600} delay={900} />
-      <GlowOrb gid="orbMain" color={colors.accent} size={440}
-        top={-160} left={width / 2 - 220} driftX={16}
-        scaleFrom={1} scaleTo={1.18} opFrom={0.45} opTo={0.85} duration={3800} delay={0} />
+      <GlowOrb gid="orbCyan" color={colors.cyan} size={360}
+        top={-50} left={-110} driftX={42}
+        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300} />
+      <GlowOrb gid="orbDark" color={colors.accentDark} size={430}
+        top={-110} left={width - 270} driftX={38}
+        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800} />
+      <GlowOrb gid="orbMain" color={colors.accent} size={560}
+        top={-210} left={width / 2 - 280} driftX={28}
+        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0} />
+      <GlowOrb gid="orbCore" color={colors.accentLight} size={260}
+        top={-70} left={width / 2 - 130} driftX={14}
+        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500} />
     </View>
   )
 }
 
 const auraStyles = StyleSheet.create({
-  container: { position: 'absolute', top: 0, left: 0, right: 0, height: 480, overflow: 'hidden' },
+  container: { position: 'absolute', top: 0, left: 0, right: 0, height: 540, overflow: 'hidden' },
 })
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -419,9 +425,10 @@ function makeStyles(c: Colors) {
       marginBottom: 40,
     },
     logoImage: {
-      width: 240,
+      // Wordmark apaisado (ratio ≈ 3.11:1 → 2520×809).
+      width: 248,
       height: 80,
-      marginBottom: 8,
+      marginBottom: 10,
     },
     tagline: {
       fontFamily: 'SpaceGrotesk-Regular',

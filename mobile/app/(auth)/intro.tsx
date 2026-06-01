@@ -15,7 +15,7 @@ import { useTheme } from '../../lib/theme'
 const ADVANCE_DELAY = 2800
 
 export default function IntroScreen() {
-  const { colors } = useTheme()
+  const { colors, isDark } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
   const logoOpacity = useRef(new Animated.Value(0)).current
@@ -97,7 +97,9 @@ export default function IntroScreen() {
       <View style={styles.center}>
         <Animated.View style={{ opacity: logoOpacity, transform: [{ translateY: logoY }] }}>
           <Image
-            source={require('../../Logo-Zyfit-Blanco.png')}
+            source={isDark
+              ? require('../../Logo-Zyfit-Blanco.png')
+              : require('../../Logo-Zyfit-negro.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -148,8 +150,9 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 32,
     },
     logo: {
-      width: 260,
-      height: 94,
+      // Wordmark apaisado (ratio ≈ 3.11:1 → 2520×809).
+      width: 268,
+      height: 86,
     },
     tagline: {
       fontFamily: 'InstrumentSerif-Italic',
