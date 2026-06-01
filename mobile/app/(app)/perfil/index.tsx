@@ -371,27 +371,11 @@ export default function PerfilScreen() {
           />
         )}
 
-        {/* ── GRUPO 1: TUS DATOS ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_data')}</Text>
+        {/* ── MI CUENTA ── */}
+        <Text style={styles.groupLabel}>{t('perfil_section_account')}</Text>
         <View style={styles.card}>
           <GroupRow icon="👤" title={t('perfil_row_personal')} subtitle={subDatosPersonales}
             onPress={() => router.push('/(app)/perfil/datos-personales' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="🏋️" title={t('perfil_row_training')} subtitle={subEntrenamiento}
-            onPress={() => router.push('/(app)/perfil/entrenamiento' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="🎯" title={t('perfil_row_objectives')} subtitle={subObjetivos}
-            onPress={() => router.push('/(app)/perfil/objetivos' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <GroupRow icon="📍" title={t('perfil_row_locations')} subtitle={subUbicaciones}
-            onPress={() => router.push('/(app)/perfil/ubicaciones' as any)} styles={styles} />
-        </View>
-
-        {/* ── GRUPO 2: TU CUERPO ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_body')}</Text>
-        <View style={styles.card}>
-          <GroupRow icon="🩹" title={t('perfil_row_injuries')} badge={badgeLesiones}
-            onPress={() => router.push('/(app)/perfil/lesiones' as any)} styles={styles} />
           {profile.sexo === 'femenino' && (
             <>
               <View style={styles.divider} />
@@ -401,7 +385,26 @@ export default function PerfilScreen() {
           )}
         </View>
 
-        {/* ── GRUPO 3: DISPOSITIVOS ── */}
+        {/* ── DATOS DE ENTRENAMIENTO ── */}
+        <Text style={styles.groupLabel}>{t('perfil_section_training')}</Text>
+        <View style={styles.card}>
+          <GroupRow icon="🎯" title={t('perfil_row_objectives')} subtitle={subObjetivos}
+            onPress={() => router.push('/(app)/perfil/objetivos' as any)} styles={styles} />
+          <View style={styles.divider} />
+          <GroupRow icon="📍" title={t('perfil_row_locations')} subtitle={subUbicaciones}
+            onPress={() => router.push('/(app)/perfil/ubicaciones' as any)} styles={styles} />
+          <View style={styles.divider} />
+          <GroupRow icon="⚡" title={t('perfil_row_preferences')} subtitle={subPreferencias}
+            onPress={() => router.push('/(app)/perfil/preferencias' as any)} styles={styles} />
+          <View style={styles.divider} />
+          <GroupRow icon="🏋️" title={t('perfil_row_training')} subtitle={subEntrenamiento}
+            onPress={() => router.push('/(app)/perfil/entrenamiento' as any)} styles={styles} />
+          <View style={styles.divider} />
+          <GroupRow icon="🩹" title={t('perfil_row_injuries')} badge={badgeLesiones}
+            onPress={() => router.push('/(app)/perfil/lesiones' as any)} styles={styles} />
+        </View>
+
+        {/* ── TUS DISPOSITIVOS ── */}
         <Text style={styles.groupLabel}>{t('perfil_section_devices')}</Text>
         <View style={styles.card}>
           <GroupRow
@@ -413,14 +416,7 @@ export default function PerfilScreen() {
           />
         </View>
 
-        {/* ── GRUPO 4: TU ENTRENADOR ── */}
-        <Text style={styles.groupLabel}>{t('perfil_section_coach')}</Text>
-        <View style={styles.card}>
-          <GroupRow icon="⚡" title={t('perfil_row_preferences')} subtitle={subPreferencias}
-            onPress={() => router.push('/(app)/perfil/preferencias' as any)} styles={styles} />
-        </View>
-
-        {/* ── GRUPO 4: EVIDENCIA ── */}
+        {/* ── EVIDENCIA ── */}
         <Text style={styles.groupLabel}>{t('perfil_section_evidence')}</Text>
         <View style={styles.card}>
           <GroupRow icon="🧬" title={t('perfil_row_how_coach')}

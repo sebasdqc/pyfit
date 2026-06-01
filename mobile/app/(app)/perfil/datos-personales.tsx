@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert,
-  StyleSheet, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform, Modal, FlatList,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPatch } from '../../../lib/api'
+import { COUNTRIES, normalizeCountry } from '../../../lib/countries'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -90,16 +91,27 @@ export default function DatosPersonalesScreen() {
   const [saving, setSaving] = useState(false)
 
   const [nombre, setNombre] = useState('')
+  const [pais, setPais] = useState('')
   const [peso, setPeso] = useState('')
   const [altura, setAltura] = useState('')
   const [nivelEstres, setNivelEstres] = useState('')
   const [tipoTrabajo, setTipoTrabajo] = useState('')
   const [experiencia, setExperiencia] = useState('')
 
+  const [showCountryPicker, setShowCountryPicker] = useState(false)
+  const [countryQuery, setCountryQuery] = useState('')
+
+  const filteredCountries = useMemo(() => {
+    const q = normalizeCountry(countryQuery.trim())
+    if (!q) return COUNTRIES
+    return COUNTRIES.filter(cn => normalizeCountry(cn).includes(q))
+  }, [countryQuery])
+
   useEffect(() => {
     apiGet('/api/profile/').then(data => {
       setFullProfile(data)
       setNombre(data.nombre ?? '')
+      setPais(data.pais ?? '')
       setPeso(data.peso ? String(data.peso) : '')
       setAltura(data.altura ? String(data.altura) : '')
       setNivelEstres(data.nivel_estres ?? '')
@@ -124,7 +136,7 @@ export default function DatosPersonalesScreen() {
       // PRF: PATCH parcial — solo los campos de esta pantalla, para no pisar
       // datos editados en otras pantallas (lost update).
       await apiPatch('/api/profile/', {
-        nombre, peso, altura,
+        nombre, pais, peso, altura,
         nivel_estres: nivelEstres,
         tipo_trabajo: tipoTrabajo,
         experiencia_deportiva: experiencia,
@@ -180,6 +192,17 @@ export default function DatosPersonalesScreen() {
               <GlassInput label="NOMBRE" value={nombre} onChangeText={setNombre}
                 placeholder="Tu nombre" styles={styles} />
 
+              {/* País — selector buscable (mismo catálogo que el onboarding) */}
+              <View style={styles.fieldGroup}>
+                <SectionLabel text="PAÍS" styles={styles} />
+                <TouchableOpacity style={[styles.input, styles.inputTouch]} activeOpacity={0.7}
+                  onPress={() => { setCountryQuery(''); setShowCountryPicker(true) }}>
+                  <Text style={pais ? styles.inputText : styles.inputPlaceholder}>
+                    {pais || 'Selecciona tu país'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
                   <GlassInput label="PESO (kg)" value={peso} onChangeText={setPeso}
@@ -222,6 +245,46 @@ export default function DatosPersonalesScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Country picker */}
+      <Modal transparent animationType="slide" visible={showCountryPicker}
+        onRequestClose={() => setShowCountryPicker(false)}>
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowCountryPicker(false)} />
+          <View style={styles.countrySheet}>
+            <View style={styles.sheetHeader}>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Text style={styles.sheetCancel}>Cancelar</Text>
+              </TouchableOpacity>
+              <Text style={styles.sheetTitle}>País</Text>
+              <View style={{ width: 64 }} />
+            </View>
+            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <TextInput style={styles.countrySearch}
+                placeholder="Buscar país…" placeholderTextColor={colors.inkMuted}
+                value={countryQuery} onChangeText={setCountryQuery}
+                autoCorrect={false} autoCapitalize="none" />
+            </View>
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={(item) => item}
+              keyboardShouldPersistTaps="handled"
+              style={styles.countryList}
+              renderItem={({ item }) => {
+                const on = pais === item
+                return (
+                  <TouchableOpacity style={styles.countryRow} activeOpacity={0.7}
+                    onPress={() => { setPais(item); setShowCountryPicker(false) }}>
+                    <Text style={[styles.countryRowText, on && styles.countryRowTextOn]}>{item}</Text>
+                    {on && <Text style={styles.countryCheck}>✓</Text>}
+                  </TouchableOpacity>
+                )
+              }}
+              ListEmptyComponent={<Text style={styles.countryEmpty}>Sin resultados</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -245,6 +308,40 @@ function makeStyles(c: Colors) {
     sectionLabel: { color: c.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
     input: { backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     inputMulti: { minHeight: 80, textAlignVertical: 'top', paddingTop: 12 },
+    inputTouch: { justifyContent: 'center', minHeight: 44 },
+    inputText: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
+    inputPlaceholder: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
+
+    // Country picker
+    sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+    countrySheet: {
+      backgroundColor: c.sheetBg, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      borderWidth: 1, borderColor: c.borderDefault, paddingBottom: 24, height: '72%',
+    },
+    sheetHeader: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 16,
+      borderBottomWidth: 1, borderBottomColor: c.borderDefault,
+    },
+    sheetCancel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
+    sheetTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary },
+    countrySearch: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+    },
+    countryList: { flex: 1, paddingHorizontal: 16, marginTop: 6 },
+    countryRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.borderDefault,
+    },
+    countryRowText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 15, color: c.inkPrimary },
+    countryRowTextOn: { color: c.accent },
+    countryCheck: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: c.accent },
+    countryEmpty: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkMuted,
+      textAlign: 'center', paddingVertical: 30,
+    },
     rowFields: { flexDirection: 'row' },
     readOnlyBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
     readOnlyText: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
