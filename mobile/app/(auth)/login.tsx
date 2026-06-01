@@ -426,8 +426,8 @@ function makeStyles(c: Colors) {
     },
     logoImage: {
       // Wordmark apaisado (ratio ≈ 3.11:1 → 2520×809).
-      width: 248,
-      height: 80,
+      width: 196,
+      height: 63,
       marginBottom: 10,
     },
     tagline: {
@@ -526,10 +526,17 @@ function makeStyles(c: Colors) {
     // Primary button
     primaryBtnWrap: {
       borderRadius: 14,
-      overflow: 'hidden',
       marginBottom: 20,
+      // Glow azul sutil — sin overflow:hidden para que la sombra no se recorte;
+      // el redondeo lo aporta el gradiente interno (primaryBtn).
+      shadowColor: c.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.55,
+      shadowRadius: 15,
+      elevation: 12,
     },
     primaryBtn: {
+      borderRadius: 14,
       paddingVertical: 16,
       alignItems: 'center',
       justifyContent: 'center',
