@@ -45,11 +45,14 @@ GROQ_TIMEOUT_SECONDS = 30
 GROQ_MAX_RETRIES = 1
 
 
-def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
+def _call_groq(prompt: str, max_tokens: int, user_id=None, return_usage=False):
     """
     Call Groq and return parsed JSON. Raises ValueError on parse/empty response,
     or any underlying Groq exception. Caller is responsible for translating
     exceptions into HTTP responses.
+
+    Con `return_usage=True` devuelve `(data, usage)` donde usage = {tokens_in,
+    tokens_out, elapsed_ms} para que el caller pueda persistir métricas del motor.
     """
     if not settings.GROQ_API_KEY:
         raise RuntimeError('GROQ_API_KEY not configured')
@@ -85,7 +88,15 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None) -> dict:
     if not text:
         raise ValueError('Empty response from AI')
     clean = text.replace('```json', '').replace('```', '').strip()
-    return json.loads(clean)
+    data = json.loads(clean)
+    if return_usage:
+        usage = {
+            'tokens_in':  tokens_in,
+            'tokens_out': tokens_out,
+            'elapsed_ms': int(elapsed * 1000),
+        }
+        return data, usage
+    return data
 
 
 # ─── Fatiga & RPE helpers ─────────────────────────────────────────────────────
@@ -889,6 +900,7 @@ JSON requerido:
 @throttle_classes([GenerateSessionRateThrottle])
 def generate_session(request):
     user = request.user
+    _gen_t0 = _time.monotonic()  # cronómetro de generación (salud del motor)
     hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
     hace_14_dias = hoy - timedelta(days=14)
 
@@ -926,12 +938,14 @@ def generate_session(request):
     exercise_pool_enriched = engine.get_exercise_pool()
 
     # Fallback to legacy pool if normalized tables return too few exercises
+    uso_fallback = False
     if len(exercise_pool_enriched) < 5:
         logger.warning(
             'adaptive_engine pool too small (%d) for user %s — falling back to legacy pool',
             len(exercise_pool_enriched), user.id,
         )
         exercise_pool_enriched = None  # signal build_prompt to use legacy formatter
+        uso_fallback = True            # motor degradado: salud del motor lo monitorea
 
     pattern_priorities = engine.get_pattern_priorities()
 
@@ -1012,7 +1026,9 @@ def generate_session(request):
         # max_tokens=3500: la salida real es ~2k-3k tokens; con el pool acotado a
         # 30, prompt(~6.3k) + 3500 ≈ 9.8k, holgado bajo el límite de 12k TPM de
         # Groq (free tier). Subir el tier elimina el límite y permite volver a 4096.
-        sesion_generada = _call_groq(prompt, max_tokens=3500, user_id=user.id)
+        sesion_generada, _groq_usage = _call_groq(
+            prompt, max_tokens=3500, user_id=user.id, return_usage=True,
+        )
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON for user %s', user.id)
         return Response(
@@ -1062,6 +1078,11 @@ def generate_session(request):
             prompt_usado=prompt,
             respuesta_ia=sesion_generada,
             decisiones=sesion_generada.get('decisions_log'),
+            # Salud del motor: duración total server-side + tokens + flag de fallback.
+            generacion_ms=int((_time.monotonic() - _gen_t0) * 1000),
+            tokens_in=_groq_usage.get('tokens_in'),
+            tokens_out=_groq_usage.get('tokens_out'),
+            uso_fallback=uso_fallback,
         )
         _persist_session_exercises(sesion, sesion_generada)
 

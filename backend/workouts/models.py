@@ -250,6 +250,11 @@ class Session(models.Model):
     logro = models.JSONField(null=True, blank=True)       # {"icon": "...", "titulo": "...", "descripcion": "..."}
     sustituciones = models.JSONField(null=True, blank=True)  # [{original, elegido, motivo, fase}]
     inicio_real = models.DateTimeField(null=True, blank=True)
+    # Observabilidad del motor adaptativo (poblados en generate_session):
+    generacion_ms = models.IntegerField(null=True, blank=True)   # duración server-side de la generación (ms)
+    tokens_in     = models.IntegerField(null=True, blank=True)   # prompt_tokens del LLM
+    tokens_out    = models.IntegerField(null=True, blank=True)   # completion_tokens del LLM
+    uso_fallback  = models.BooleanField(default=False)           # True si cayó al pool legacy (motor degradado)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

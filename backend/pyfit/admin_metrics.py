@@ -33,7 +33,7 @@ from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
 from django.db.models import (
-    Avg, Count, DateField, DurationField, Exists, ExpressionWrapper, F, Max, Min, OuterRef, Q,
+    Avg, Count, DateField, DurationField, Exists, ExpressionWrapper, F, Max, Min, OuterRef, Q, Sum,
 )
 from django.db.models.functions import TruncDate
 from django.shortcuts import render
@@ -638,11 +638,10 @@ def _compute_dashboard_today(churn_risk: list) -> dict:
 # cohorte con la VENTANA YA CERRADA (registrados hace 7–14 días): los registrados
 # hace menos de 7 días aún no cumplieron su semana, así que no entran al cálculo.
 #
-# Nota de definición: el schema no tiene un flag de "sesión completada", y el
-# resto del panel trata cada `Session` generada como la unidad de actividad. Por
-# eso aquí "completar una sesión" = existe una `Session` con `fecha` dentro de la
-# ventana. Si más adelante se quiere endurecer a "sesión ejecutada", basta con
-# añadir `sessions__inicio_real__isnull=False` al filtro del Count.
+# Definición de "completada": el usuario llegó al feedback post-sesión (existe
+# `SessionFeedback`). Una sesión solo generada NO cuenta. Esta es la definición
+# unificada en todo el dashboard (funnel, fila de KPIs y North Star): una rutina
+# generada pero no ejecutada no representa valor real para el usuario.
 
 ACTIVATION_GOAL_PCT     = 40   # meta de la beta cerrada
 ACTIVATION_MIN_SESSIONS = 3    # sesiones que definen "activado"
@@ -652,10 +651,9 @@ ACTIVATION_WINDOW_DAYS  = 7    # ventana desde el registro
 def _activation_for_cohort(reg_from: date, reg_to: date) -> tuple:
     """(activados, tamaño) de la cohorte real registrada en [reg_from, reg_to).
 
-    "Activado" = ≥ACTIVATION_MIN_SESSIONS sesiones cuya `fecha` cae dentro de los
-    primeros ACTIVATION_WINDOW_DAYS días desde el registro de ESE usuario. Solo
-    usuarios reales (sin staff ni cuentas de prueba), coherente con el resto de la
-    analítica de negocio del panel.
+    "Activado" = ≥ACTIVATION_MIN_SESSIONS sesiones COMPLETADAS (con feedback) cuya
+    `fecha` cae dentro de los primeros ACTIVATION_WINDOW_DAYS días desde el registro
+    de ESE usuario. Solo usuarios reales (sin staff ni cuentas de prueba).
 
     El conteo por-usuario se resuelve en SQL con un Count condicional cuyo límite
     superior es una expresión por fila (fecha de registro + 7 días): evita iterar
@@ -678,6 +676,7 @@ def _activation_for_cohort(reg_from: date, reg_to: date) -> tuple:
     activated = (
         cohort.annotate(
             _first7=Count('sessions', distinct=True, filter=Q(
+                sessions__feedback__isnull=False,
                 sessions__fecha__gte=reg_date,
                 sessions__fecha__lte=window_end,
             )),
@@ -955,6 +954,240 @@ def _kpi_row(period_days: int) -> dict:
     }
 
 
+# ─── Funnel de activación y retención (acumulado · NO responde al período) ─────
+#
+# Flujo del usuario desde el registro hasta la sesión nº10. Estado histórico del
+# pipeline completo, por eso se calcula sobre TODO el acumulado. "Sesión" =
+# completada (con feedback), unificado con North Star y la fila de KPIs.
+
+def _compute_activation_funnel() -> dict:
+    """Seis etapas descendentes sobre usuarios reales + detección de la mayor caída."""
+    real  = _real_users()
+    total = real.count()
+
+    # Etapa 2 — onboarding completo (replica Profile.is_onboarding_complete).
+    has_loc = UserLocation.objects.filter(user=OuterRef('user'))
+    onboarding = (
+        Profile.objects.filter(
+            user__is_staff=False, is_test=False,
+            fecha_nacimiento__isnull=False, peso__isnull=False, altura__isnull=False,
+            dias_semana__gte=1,
+        )
+        .exclude(objetivo='').exclude(sexo='')
+        .annotate(_has_loc=Exists(has_loc))
+        .filter(Q(_has_loc=True) | (Q(lugares_entrenamiento__isnull=False) & ~Q(lugares_entrenamiento=[])))
+        .count()
+    )
+
+    # Etapa 3 — ≥1 sesión completada.
+    con_sesion = real.filter(sessions__feedback__isnull=False).distinct().count()
+
+    # Etapa 4 — activación: ≥3 completadas en los primeros 7 días (mismo criterio
+    # que el North Star, aplicado a TODOS los usuarios, no solo a la cohorte cerrada).
+    reg_date   = TruncDate('date_joined')
+    window_end = ExpressionWrapper(reg_date + timedelta(days=ACTIVATION_WINDOW_DAYS), output_field=DateField())
+    activados = (
+        real.annotate(_n=Count('sessions', distinct=True, filter=Q(
+            sessions__feedback__isnull=False,
+            sessions__fecha__gte=reg_date,
+            sessions__fecha__lte=window_end,
+        )))
+        .filter(_n__gte=ACTIVATION_MIN_SESSIONS)
+        .count()
+    )
+
+    # Etapa 5 — activos a 30 días: aún entrenando ≥30 días después de su 1ª sesión
+    # completada (span entre primera y última completada ≥ 30 días).
+    spans = (
+        real.annotate(
+            _f=Min('sessions__fecha', filter=Q(sessions__feedback__isnull=False)),
+            _l=Max('sessions__fecha', filter=Q(sessions__feedback__isnull=False)),
+        )
+        .exclude(_f__isnull=True)
+        .values_list('_f', '_l')
+    )
+    activos_30d = sum(1 for f, l in spans if (l - f).days >= 30)
+
+    # Etapa 6 — ≥10 sesiones completadas en total.
+    diez = (
+        real.annotate(_c=Count('sessions', distinct=True, filter=Q(sessions__feedback__isnull=False)))
+        .filter(_c__gte=10)
+        .count()
+    )
+
+    def pct(n):
+        return round(n / total * 100, 1) if total else 0.0
+
+    stages = [
+        {'label': 'Registrados',          'value': total,       'pct': 100.0 if total else 0.0},
+        {'label': 'Onboarding completo',  'value': onboarding,  'pct': pct(onboarding)},
+        {'label': '≥1 sesión completada', 'value': con_sesion,  'pct': pct(con_sesion)},
+        {'label': 'Activación · 3 en 7d', 'value': activados,   'pct': pct(activados)},
+        {'label': 'Activos a 30 días',    'value': activos_30d, 'pct': pct(activos_30d)},
+        {'label': '≥10 sesiones',         'value': diez,        'pct': pct(diez)},
+    ]
+
+    # Mayor caída relativa entre etapas consecutivas (el "leak" prioritario).
+    stages[0]['drop_rel'] = None
+    biggest_idx, biggest_drop = None, -1.0
+    for i in range(1, len(stages)):
+        prev, curr = stages[i - 1]['value'], stages[i]['value']
+        drop_rel = round((prev - curr) / prev * 100, 1) if prev else 0.0
+        stages[i]['drop_rel'] = drop_rel        # % de usuarios perdidos vs etapa anterior
+        if drop_rel > biggest_drop:
+            biggest_drop, biggest_idx = drop_rel, i
+    if biggest_idx is not None:
+        stages[biggest_idx]['is_biggest_drop'] = True
+
+    return {
+        'stages':        stages,
+        'total':         total,
+        'biggest_idx':   biggest_idx,
+        'biggest_drop':  biggest_drop if biggest_idx is not None else None,
+        'biggest_from':  stages[biggest_idx - 1]['label'] if biggest_idx else None,
+        'biggest_to':    stages[biggest_idx]['label'] if biggest_idx else None,
+    }
+
+
+# ─── Salud del motor adaptativo (técnico · responde al período salvo RPE trend) ─
+#
+# Precios Groq para llama-3.3-70b-versatile (USD por 1M de tokens). Ajustar si
+# cambia el tier/modelo.
+GROQ_PRICE_IN_PER_1M  = 0.59
+GROQ_PRICE_OUT_PER_1M = 0.79
+
+
+def _rpe_trend_4w() -> dict:
+    """Variación promedio de RPE real por usuario, semana a semana, últimas 4 semanas.
+
+    Para cada usuario real: promedio semanal de `rpe_real`; se promedian las
+    diferencias entre semanas consecutivas; luego se promedia entre usuarios.
+    Negativo = la carga se adapta a la baja (bien); estancado/positivo = revisar.
+    Siempre 4 semanas, independiente del período del dashboard (señal estadística).
+    """
+    today = timezone.now().date()
+    start = today - timedelta(days=28)
+    rows = (
+        _real_feedback()
+        .filter(session__fecha__gte=start, rpe_real__isnull=False)
+        .values_list('session__user_id', 'session__fecha', 'rpe_real')
+    )
+    by_user_week = {}
+    for uid, fecha, rpe in rows:
+        wk = (fecha - start).days // 7  # 0..3
+        by_user_week.setdefault(uid, {}).setdefault(wk, []).append(float(rpe))
+
+    deltas = []
+    for weeks in by_user_week.values():
+        ordered = [sum(v) / len(v) for _, v in sorted(weeks.items())]
+        deltas += [ordered[i] - ordered[i - 1] for i in range(1, len(ordered))]
+
+    trend = round(sum(deltas) / len(deltas), 2) if deltas else None
+    if trend is None:
+        estado = 'empty'
+    elif trend <= -0.1:
+        estado = 'meta'        # bajando → motor adapta bien
+    elif trend <= 0.3:
+        estado = 'precaucion'  # estancado
+    else:
+        estado = 'alerta'      # subiendo → problema de progresión
+    return {'value': trend, 'estado': estado, 'n': len(deltas)}
+
+
+def _compute_engine_health(period_days: int) -> dict:
+    """Siete indicadores técnicos del pipeline de generación. Período variable
+    salvo RPE trend (siempre 4 semanas)."""
+    today = timezone.now().date()
+    from_date = today - timedelta(days=period_days - 1)
+
+    gen = _real_sessions().filter(fecha__gte=from_date, fecha__lte=today)  # generadas en período
+    total_gen = gen.count()
+
+    # 1) Tiempo de generación (s) — proxy server-side. Saludable < 4 s.
+    gt = gen.exclude(generacion_ms__isnull=True).aggregate(prom=Avg('generacion_ms'), n=Count('id'))
+    gen_seg = round(gt['prom'] / 1000, 2) if gt['prom'] is not None else None
+    gen_estado = ('empty' if gen_seg is None else
+                  'meta' if gen_seg < 4 else 'precaucion' if gen_seg <= 8 else 'alerta')
+
+    # 2) Check-in completion rate: % de sesiones con check-in completo (4 campos:
+    #    estado_animo, calidad_sueno, duracion_disponible y foco_entrenamiento).
+    checkin_ok = (
+        gen.filter(
+            checkin__estado_animo__isnull=False,
+            checkin__calidad_sueno__isnull=False,
+            checkin__duracion_disponible__isnull=False,
+        )
+        .exclude(checkin__foco_entrenamiento=[])
+        .count()
+    )
+    checkin_rate = round(checkin_ok / total_gen * 100, 1) if total_gen else None
+    checkin_estado = ('empty' if checkin_rate is None else
+                      'meta' if checkin_rate >= 90 else 'precaucion' if checkin_rate >= 70 else 'alerta')
+
+    # 3) Feedback completion rate: % de sesiones EJECUTADAS (inicio_real) que
+    #    cerraron con feedback. El más crítico — sin feedback el motor no aprende.
+    ejecutadas = gen.filter(inicio_real__isnull=False).count()
+    con_fb     = gen.filter(inicio_real__isnull=False, feedback__isnull=False).count()
+    fb_rate = round(con_fb / ejecutadas * 100, 1) if ejecutadas else None
+    fb_estado = ('empty' if fb_rate is None else
+                 'meta' if fb_rate >= 70 else 'precaucion' if fb_rate >= 40 else 'alerta')
+
+    # 4) Fallback rate (motor → pool legacy). > 2 % activa alerta.
+    fb_pool = gen.filter(uso_fallback=True).count()
+    fallback_rate = round(fb_pool / total_gen * 100, 1) if total_gen else None
+    fallback_estado = ('empty' if fallback_rate is None else
+                       'meta' if fallback_rate <= 2 else 'alerta')
+
+    # 5) Costo promedio por sesión generada (USD).
+    tok = gen.aggregate(tin=Sum('tokens_in'), tout=Sum('tokens_out'), n=Count('id'))
+    if tok['n'] and (tok['tin'] or tok['tout']):
+        costo_total  = (tok['tin'] or 0) / 1e6 * GROQ_PRICE_IN_PER_1M + (tok['tout'] or 0) / 1e6 * GROQ_PRICE_OUT_PER_1M
+        costo_sesion = round(costo_total / tok['n'], 4)
+    else:
+        costo_sesion = None
+    costo_estado = ('empty' if costo_sesion is None else
+                    'meta' if costo_sesion < 0.01 else 'precaucion' if costo_sesion <= 0.02 else 'alerta')
+
+    # 6) RPE trend (siempre 4 semanas).
+    rpe = _rpe_trend_4w()
+
+    # 7) % de usuarias (sexo femenino) con ciclo menstrual activo.
+    fem   = _real_users().filter(profile__sexo='femenino')
+    fem_n = fem.count()
+    ciclo_on  = fem.filter(profile__usa_ciclo_menstrual=True).count()
+    ciclo_pct = round(ciclo_on / fem_n * 100, 1) if fem_n else None
+    ciclo_estado = ('empty' if ciclo_pct is None else
+                    'meta' if ciclo_pct >= 50 else 'precaucion' if ciclo_pct >= 25 else 'alerta')
+
+    def disp(v, suf='', pre=''):
+        return f'{pre}{v}{suf}' if v is not None else '—'
+
+    indicators = [
+        {'label': 'Tiempo de generación', 'display': disp(gen_seg, ' s'),  'estado': gen_estado,
+         'detail': f'{gt["n"]} con dato' if gt['n'] else 'sin datos', 'hint': 'saludable < 4 s'},
+        {'label': 'Check-in completo',    'display': disp(checkin_rate, '%'), 'estado': checkin_estado,
+         'detail': f'{checkin_ok}/{total_gen} sesiones', 'hint': '4 campos respondidos'},
+        {'label': 'Feedback completo',    'display': disp(fb_rate, '%'), 'estado': fb_estado,
+         'detail': f'{con_fb}/{ejecutadas} ejecutadas', 'hint': 'el motor aprende del feedback'},
+        {'label': 'Fallback (pool legacy)', 'display': disp(fallback_rate, '%'), 'estado': fallback_estado,
+         'detail': f'{fb_pool}/{total_gen} generadas', 'hint': 'alerta si > 2 %'},
+        {'label': 'Costo por sesión',     'display': disp(costo_sesion, pre='$'), 'estado': costo_estado,
+         'detail': f'{tok["n"] or 0} generadas', 'hint': 'tokens LLM × precio Groq'},
+        {'label': 'RPE trend · 4 sem',    'display': (f'{rpe["value"]:+.2f}' if rpe['value'] is not None else '—'),
+         'estado': rpe['estado'], 'detail': f'{rpe["n"]} deltas', 'hint': 'baja = adapta bien'},
+        {'label': 'Ciclo menstrual activo', 'display': disp(ciclo_pct, '%'), 'estado': ciclo_estado,
+         'detail': f'{ciclo_on}/{fem_n} usuarias', 'hint': 'adopción de la función'},
+    ]
+    alertas = [ind['label'] for ind in indicators if ind['estado'] == 'alerta']
+
+    return {
+        'indicators':   indicators,
+        'tiene_alerta': bool(alertas),
+        'alertas':      alertas,
+        'period_days':  period_days,
+    }
+
+
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
 def _home_payload() -> dict:
@@ -979,6 +1212,10 @@ def dashboard_callback(request, context):
         'kpi_row':     _cached(f'zyfit:kpirow:{period_days}', lambda: _kpi_row(period_days)),
         'kpi_period':  period_days,
         'kpi_periods': HOME_PERIODS,
+        # Funnel: histórico acumulado, NO depende del período.
+        'funnel':      _cached('zyfit:funnel', _compute_activation_funnel),
+        # Salud del motor: responde al período (salvo RPE trend, fijo a 4 semanas).
+        'engine':      _cached(f'zyfit:engine:{period_days}', lambda: _compute_engine_health(period_days)),
     })
     return context
 
