@@ -32,7 +32,9 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
-from django.db.models import Avg, Count, DateField, Exists, ExpressionWrapper, Max, OuterRef, Q
+from django.db.models import (
+    Avg, Count, DateField, DurationField, Exists, ExpressionWrapper, F, Max, Min, OuterRef, Q,
+)
 from django.db.models.functions import TruncDate
 from django.shortcuts import render
 from django.utils import timezone
@@ -727,6 +729,232 @@ def _compute_activation_rate() -> dict:
     }
 
 
+# ─── Fila de KPIs principales (período 7/30/90) ───────────────────────────────
+#
+# Cuatro indicadores de salud general bajo el North Star. Responden al selector
+# de período del dashboard (7/30/90 días), salvo "Usuarios totales" cuyo número
+# es el acumulado total (solo el delta del período cambia con la selección).
+#
+# "Sesión completada" = el usuario llegó al feedback post-sesión (existe
+# SessionFeedback). Una sesión solo generada NO cuenta. El tiempo de sesión se
+# mide entre `Session.inicio_real` (inicio de ejecución, lo setea el endpoint
+# `session_iniciar`) y `SessionFeedback.created_at` (cierre del feedback): ambos
+# timestamps ya existen en el schema, no hace falta añadir campos.
+#
+# Rangos de estado (criterio para la beta cerrada; se ajustan en estas constantes):
+#   • Usuarios totales:  nuevos en período >0 → meta · =0 → precaución.
+#   • Retención 30d:     ≥40% meta · 25–39% precaución · <25% alerta.
+#   • Sesiones/usuario:  normalizado a la semana → ≥2.5/sem meta · 1.0–2.5 prec. · <1.0 alerta.
+#   • Tiempo de sesión:  25–75 min meta · 15–25 ó 75–120 precaución · <15 ó >120 alerta.
+
+HOME_PERIODS          = (7, 30, 90)
+RETENTION_WINDOW_DAYS = 30     # ventana para "volver" tras la primera sesión
+
+SESSIONS_PER_WEEK_GOAL    = 2.5   # sesiones completadas/usuario/semana → meta
+SESSIONS_PER_WEEK_CAUTION = 1.0
+
+SESSION_MIN_GOOD_MIN    = 25   # banda saludable de duración de sesión (min)
+SESSION_MAX_GOOD_MIN    = 75
+SESSION_MIN_OK_MIN      = 15
+SESSION_MAX_OK_MIN      = 120
+SESSION_OUTLIER_MAX_MIN = 240  # >4h = ruido (app dejada abierta) → se excluye
+
+
+def _home_period_days(request) -> int:
+    """Lee `?period=7|30|90` para la home. Default 7 días."""
+    try:
+        p = int(request.GET.get('period', 7))
+    except (TypeError, ValueError):
+        p = 7
+    return p if p in HOME_PERIODS else 7
+
+
+def _compute_total_users(period_days: int) -> dict:
+    """Card 1 — Usuarios totales (acumulado) + nuevos en el período.
+
+    Universo: usuarios reales (sin staff ni cuentas de prueba), coherente con el
+    resto de la analítica de negocio del panel. El número es el acumulado total
+    sin filtro de cohorte ni activación; solo el delta varía con el período.
+    """
+    today = timezone.now().date()
+    from_date = today - timedelta(days=period_days - 1)
+    real = _real_users()
+    total  = real.count()
+    nuevos = real.filter(date_joined__date__gte=from_date).count()
+    return {
+        'total':       total,
+        'nuevos':      nuevos,
+        'period_days': period_days,
+        'estado':      'meta' if nuevos > 0 else 'precaucion',
+    }
+
+
+def _retention_30d_for_cohort(win_start: date, win_end: date) -> tuple:
+    """(retenidos, tamaño) de la cohorte cuya PRIMERA sesión completada cae en
+    [win_start, win_end). Retenido = ≥1 sesión completada adicional dentro de los
+    30 días siguientes a la primera. Solo usuarios reales.
+
+    Cohorte pequeña (beta): dos queries — la primera fija (id, primera_fecha) por
+    usuario; la segunda trae las fechas de sus sesiones completadas y se evalúa la
+    ventana por-usuario en Python (cada usuario tiene su propio día de referencia).
+    """
+    cohort = list(
+        _real_users()
+        .annotate(_first=Min('sessions__fecha', filter=Q(sessions__feedback__isnull=False)))
+        .filter(_first__gte=win_start, _first__lt=win_end)
+        .values_list('id', '_first')
+    )
+    n = len(cohort)
+    if n == 0:
+        return 0, 0
+
+    first_by_user = dict(cohort)
+    rows = (
+        Session.objects.filter(user_id__in=first_by_user.keys(), feedback__isnull=False)
+        .values_list('user_id', 'fecha')
+    )
+    dates_by_user = {}
+    for uid, fecha in rows:
+        dates_by_user.setdefault(uid, []).append(fecha)
+
+    retained = 0
+    for uid, first in first_by_user.items():
+        window_end = first + timedelta(days=RETENTION_WINDOW_DAYS)
+        if any(first < d <= window_end for d in dates_by_user.get(uid, ())):
+            retained += 1
+    return retained, n
+
+
+def _compute_retention_30d(period_days: int) -> dict:
+    """Card 2 — Retención a 30 días (cohorte con ventana cerrada) + delta vs. la previa.
+
+    El período selecciona el ANCHO de la ventana de cohorte, que siempre termina
+    hace 30 días para garantizar que cada usuario ya tuvo sus 30 días completos.
+    """
+    today = timezone.now().date()
+    base = today - timedelta(days=RETENTION_WINDOW_DAYS)   # primera sesión ≤ hace 30 días
+
+    cur_ret, cur_n   = _retention_30d_for_cohort(base - timedelta(days=period_days), base)
+    prev_ret, prev_n = _retention_30d_for_cohort(
+        base - timedelta(days=2 * period_days), base - timedelta(days=period_days),
+    )
+
+    rate      = round(cur_ret / cur_n * 100, 1) if cur_n else None
+    prev_rate = round(prev_ret / prev_n * 100, 1) if prev_n else None
+    delta     = round(rate - prev_rate, 1) if (rate is not None and prev_rate is not None) else None
+
+    if rate is None:
+        estado = 'empty'
+    elif rate >= 40:
+        estado = 'meta'
+    elif rate >= 25:
+        estado = 'precaucion'
+    else:
+        estado = 'alerta'
+
+    return {
+        'rate':        rate,
+        'retained':    cur_ret,
+        'cohort_size': cur_n,
+        'delta':       delta,
+        'prev_rate':   prev_rate,
+        'estado':      estado,
+        'period_days': period_days,
+    }
+
+
+def _compute_sessions_per_user(period_days: int) -> dict:
+    """Card 3 — Sesiones completadas por usuario activo en el período.
+
+    Completada = con feedback. Usuario activo = usuario real con ≥1 sesión
+    completada en el período. El estado se evalúa normalizado a la semana para que
+    sea comparable entre períodos.
+    """
+    today = timezone.now().date()
+    from_date = today - timedelta(days=period_days - 1)
+
+    completed = _real_sessions().filter(
+        feedback__isnull=False, fecha__gte=from_date, fecha__lte=today,
+    )
+    total  = completed.count()
+    active = completed.values('user_id').distinct().count()
+    avg    = round(total / active, 2) if active else None
+
+    if avg is None:
+        estado = 'empty'
+    else:
+        per_week = avg / (period_days / 7)
+        if per_week >= SESSIONS_PER_WEEK_GOAL:
+            estado = 'meta'
+        elif per_week >= SESSIONS_PER_WEEK_CAUTION:
+            estado = 'precaucion'
+        else:
+            estado = 'alerta'
+
+    return {
+        'avg':         avg,
+        'total':       total,
+        'active':      active,
+        'estado':      estado,
+        'period_days': period_days,
+    }
+
+
+def _compute_session_time(period_days: int) -> dict:
+    """Card 4 — Tiempo promedio de sesión (min): inicio de ejecución → cierre del feedback.
+
+    `Session.inicio_real` (inicio) y `SessionFeedback.created_at` (cierre) ya
+    existen. Se promedia sobre las sesiones completadas del período que tengan
+    ambos timestamps; se excluyen duraciones ≤0 o > SESSION_OUTLIER_MAX_MIN (app
+    dejada abierta). `n` indica la cobertura (puede ser parcial si no todas las
+    sesiones se ejecutaron dentro de la app).
+    """
+    today = timezone.now().date()
+    from_date = today - timedelta(days=period_days - 1)
+
+    qs = (
+        _real_sessions()
+        .filter(
+            feedback__isnull=False, inicio_real__isnull=False,
+            fecha__gte=from_date, fecha__lte=today,
+        )
+        .annotate(_dur=ExpressionWrapper(
+            F('feedback__created_at') - F('inicio_real'),
+            output_field=DurationField(),
+        ))
+        .filter(_dur__gt=timedelta(0), _dur__lte=timedelta(minutes=SESSION_OUTLIER_MAX_MIN))
+    )
+    agg = qs.aggregate(prom=Avg('_dur'), n=Count('id'))
+    prom_td, n = agg['prom'], agg['n']
+    avg_min = round(prom_td.total_seconds() / 60, 1) if prom_td else None
+
+    if avg_min is None:
+        estado = 'empty'
+    elif SESSION_MIN_GOOD_MIN <= avg_min <= SESSION_MAX_GOOD_MIN:
+        estado = 'meta'
+    elif SESSION_MIN_OK_MIN <= avg_min <= SESSION_MAX_OK_MIN:
+        estado = 'precaucion'
+    else:
+        estado = 'alerta'
+
+    return {
+        'avg_min':     avg_min,
+        'n':           n,
+        'estado':      estado,
+        'period_days': period_days,
+    }
+
+
+def _kpi_row(period_days: int) -> dict:
+    """Los cuatro cards de la fila de KPIs para el período dado."""
+    return {
+        'usuarios':  _compute_total_users(period_days),
+        'retencion': _compute_retention_30d(period_days),
+        'sesiones':  _compute_sessions_per_user(period_days),
+        'tiempo':    _compute_session_time(period_days),
+    }
+
+
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
 def _home_payload() -> dict:
@@ -741,8 +969,17 @@ def _home_payload() -> dict:
 
 
 def dashboard_callback(request, context):
-    """Pasado a UNFOLD.DASHBOARD_CALLBACK — popula la home del admin con KPIs."""
+    """Pasado a UNFOLD.DASHBOARD_CALLBACK — popula la home del admin.
+
+    `activation` (North Star) es independiente del período. La fila de KPIs sí
+    responde a `?period=7|30|90`, con caché por período."""
+    period_days = _home_period_days(request)
     context.update(_cached('zyfit:home', _home_payload))
+    context.update({
+        'kpi_row':     _cached(f'zyfit:kpirow:{period_days}', lambda: _kpi_row(period_days)),
+        'kpi_period':  period_days,
+        'kpi_periods': HOME_PERIODS,
+    })
     return context
 
 

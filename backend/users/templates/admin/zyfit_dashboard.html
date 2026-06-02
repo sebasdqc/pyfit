@@ -2,8 +2,8 @@
 {% load i18n %}
 
 {# Home del admin rediseñada. Al sobrescribir `content` reemplazamos por completo
-   el dashboard por defecto de Unfold (lista de apps + "Recent actions"). Por
-   ahora la home muestra un único KPI hero: el Activation Rate a 7 días. #}
+   el dashboard por defecto de Unfold (lista de apps + "Recent actions").
+   Estructura: North Star (Activation Rate) + fila de 4 KPIs de salud general. #}
 
 {% block content_title %}{% endblock %}
 
@@ -11,12 +11,12 @@
 {% with a=activation %}
 
 <style>
-  /* ── Hero Activation Rate ───────────────────────────────────────────────── */
-  .za-wrap { max-width: 760px; margin: 8px 0 32px; }
+  .zd-page { max-width: 960px; margin: 8px 0 36px; }
 
-  .za-head h1 { font-size: 22px; font-weight: 700; color: rgb(248 250 252); margin: 0 0 4px; letter-spacing: -0.02em; }
-  .za-head p  { font-size: 13px; color: rgb(107 114 128); margin: 0 0 20px; }
+  .zd-head h1 { font-size: 22px; font-weight: 700; color: rgb(248 250 252); margin: 0 0 4px; letter-spacing: -0.02em; }
+  .zd-head p  { font-size: 13px; color: rgb(107 114 128); margin: 0 0 22px; }
 
+  /* ── North Star (Activation Rate) ───────────────────────────────────────── */
   .za-card {
     position: relative;
     background: rgb(31 41 55);
@@ -25,66 +25,70 @@
     padding: 24px 26px 26px;
     overflow: hidden;
   }
-  /* Franja de acento superior según el estado */
-  .za-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: var(--za-accent);
-  }
-  .za-card.za-alerta     { --za-accent: rgb(248 113 113); --za-soft: rgb(248 113 113 / 0.12); }
-  .za-card.za-precaucion { --za-accent: rgb(251 191 36);  --za-soft: rgb(251 191 36 / 0.12); }
-  .za-card.za-meta       { --za-accent: rgb(52 211 153);  --za-soft: rgb(52 211 153 / 0.12); }
-  .za-card.za-empty      { --za-accent: rgb(107 114 128); --za-soft: rgb(107 114 128 / 0.12); }
+  .za-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--za-accent); }
+
+  .za-alerta,     .zk-alerta     { --za-accent: rgb(248 113 113); --za-soft: rgb(248 113 113 / 0.12); }
+  .za-precaucion, .zk-precaucion { --za-accent: rgb(251 191 36);  --za-soft: rgb(251 191 36 / 0.12); }
+  .za-meta,       .zk-meta       { --za-accent: rgb(52 211 153);  --za-soft: rgb(52 211 153 / 0.12); }
+  .za-empty,      .zk-empty      { --za-accent: rgb(107 114 128); --za-soft: rgb(107 114 128 / 0.12); }
 
   .za-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
   .za-label { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: rgb(148 163 184); font-weight: 600; }
   .za-sub   { font-size: 12px; color: rgb(107 114 128); margin-top: 5px; line-height: 1.5; max-width: 460px; }
+  .za-badge { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--za-accent); background: var(--za-soft); border: 1px solid var(--za-accent); }
 
-  .za-badge {
-    flex-shrink: 0;
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 999px;
-    font-size: 12px; font-weight: 700; white-space: nowrap;
-    color: var(--za-accent);
-    background: var(--za-soft);
-    border: 1px solid var(--za-accent);
-  }
-
-  /* Cifra principal + delta */
   .za-figure { display: flex; align-items: baseline; gap: 16px; margin-bottom: 18px; }
   .za-rate { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--za-accent); font-variant-numeric: tabular-nums; }
   .za-rate .za-pct { font-size: 30px; font-weight: 700; margin-left: 2px; }
   .za-delta { font-size: 14px; font-weight: 600; font-family: ui-monospace, monospace; padding-bottom: 8px; }
-  .za-delta.up   { color: rgb(52 211 153); }
-  .za-delta.down { color: rgb(248 113 113); }
-  .za-delta.flat { color: rgb(107 114 128); }
+  .za-delta.up { color: rgb(52 211 153); } .za-delta.down { color: rgb(248 113 113); } .za-delta.flat { color: rgb(107 114 128); }
   .za-delta small { color: rgb(107 114 128); font-weight: 400; margin-left: 4px; }
 
-  /* Barra de progreso hacia la meta */
   .za-bar { position: relative; height: 12px; border-radius: 999px; background: rgb(17 24 39); border: 1px solid rgb(55 65 81); overflow: hidden; }
   .za-bar-fill { height: 100%; border-radius: 999px; background: var(--za-accent); transition: width 0.4s ease; }
   .za-bar-legend { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: rgb(107 114 128); }
   .za-bar-legend .goal { color: rgb(203 213 225); font-weight: 600; }
-
-  /* Pie: cifra absoluta */
   .za-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgb(55 65 81); font-size: 13px; color: rgb(156 163 175); }
   .za-foot strong { color: rgb(229 231 235); font-weight: 700; }
   .za-foot .za-prev { color: rgb(107 114 128); }
-
   .za-empty-msg { font-size: 14px; color: rgb(148 163 184); padding: 8px 0 4px; line-height: 1.6; }
+
+  /* ── Barra de período + fila de KPIs ────────────────────────────────────── */
+  .zk-bar { display: flex; justify-content: space-between; align-items: center; margin: 26px 0 14px; }
+  .zk-bar-label { font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: rgb(107 114 128); font-weight: 600; }
+  .zk-period { display: inline-flex; gap: 4px; background: rgb(17 24 39); border: 1px solid rgb(55 65 81); border-radius: 10px; padding: 4px; }
+  .zk-period a { padding: 5px 13px; border-radius: 7px; font-size: 12px; font-weight: 600; color: rgb(148 163 184); text-decoration: none; transition: background 0.15s; }
+  .zk-period a:hover { color: rgb(203 213 225); }
+  .zk-period a.active { background: rgb(79 140 255); color: #fff; }
+
+  .zk-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 820px) { .zk-row { grid-template-columns: 1fr 1fr; } }
+
+  .zk-card { position: relative; background: rgb(31 41 55); border: 1px solid rgb(55 65 81); border-radius: 14px; padding: 16px 18px 15px; overflow: hidden; }
+  .zk-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--za-accent); opacity: 0.9; }
+  .zk-label { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: rgb(148 163 184); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .zk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--za-accent); flex-shrink: 0; }
+  .zk-num { font-size: 34px; font-weight: 800; color: rgb(248 250 252); letter-spacing: -0.02em; margin-top: 12px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .zk-num.muted { color: rgb(107 114 128); }
+  .zk-num .unit { font-size: 15px; font-weight: 700; color: rgb(148 163 184); margin-left: 3px; }
+  .zk-ctx { margin-top: 9px; font-size: 12px; color: rgb(107 114 128); font-family: ui-monospace, monospace; }
+  .zk-ctx .up { color: rgb(52 211 153); } .zk-ctx .down { color: rgb(248 113 113); }
+  .zk-sub { margin-top: 7px; font-size: 12px; color: rgb(148 163 184); }
 </style>
 
-<div class="za-wrap">
+<div class="zd-page">
 
-  <div class="za-head">
+  <div class="zd-head">
     <h1>Dashboard Zyfit</h1>
     <p>{% now "l, j N Y · H:i" %} UTC · datos en vivo</p>
   </div>
 
+  {# ── NORTH STAR · Activation Rate ──────────────────────────────────────── #}
   <div class="za-card za-{{ a.estado }}">
 
     <div class="za-top">
       <div>
-        <div class="za-label">Activation Rate · 7 días</div>
+        <div class="za-label">★ North Star · Activation Rate · 7 días</div>
         <div class="za-sub">
           Cohorte registrada hace 7–14 días (ventana ya cerrada) ·
           ≥{{ a.min_sessions }} sesiones en sus primeros {{ a.window_days }} días desde el registro
@@ -104,7 +108,6 @@
         El indicador aparecerá cuando haya usuarios registrados hace entre 7 y 14 días.
       </div>
     {% else %}
-
       <div class="za-figure">
         <span class="za-rate">{{ a.rate|floatformat:1 }}<span class="za-pct">%</span></span>
         {% if a.delta is not None %}
@@ -132,10 +135,80 @@
           <span class="za-prev"> · semana anterior: {{ a.prev_rate|floatformat:1 }}%</span>
         {% endif %}
       </div>
-
     {% endif %}
 
   </div>
+
+  {# ── FILA DE KPIs · selector de período ────────────────────────────────── #}
+  <div class="zk-bar">
+    <div class="zk-bar-label">Salud del producto · últimos {{ kpi_period }} días</div>
+    <div class="zk-period">
+      {% for p in kpi_periods %}
+        <a href="?period={{ p }}" class="{% if p == kpi_period %}active{% endif %}">{{ p }}d</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% with u=kpi_row.usuarios r=kpi_row.retencion s=kpi_row.sesiones t=kpi_row.tiempo %}
+  <div class="zk-row">
+
+    {# Card 1 — Usuarios totales #}
+    <div class="zk-card zk-{{ u.estado }}">
+      <div class="zk-label"><span class="zk-dot"></span>Usuarios totales</div>
+      <div class="zk-num">{{ u.total }}</div>
+      <div class="zk-ctx">
+        {% if u.nuevos > 0 %}<span class="up">+{{ u.nuevos }}</span>{% else %}+0{% endif %}
+        en los últimos {{ u.period_days }} días
+      </div>
+    </div>
+
+    {# Card 2 — Retención a 30 días #}
+    <div class="zk-card zk-{{ r.estado }}">
+      <div class="zk-label"><span class="zk-dot"></span>Retención · 30 días</div>
+      {% if r.rate is None %}
+        <div class="zk-num muted">—</div>
+        <div class="zk-ctx">sin cohorte cerrada</div>
+      {% else %}
+        <div class="zk-num">{{ r.rate|floatformat:1 }}<span class="unit">%</span></div>
+        <div class="zk-ctx">
+          {% if r.delta is not None %}
+            {% if r.delta > 0 %}<span class="up">▲ +{{ r.delta|floatformat:1 }} pp</span>
+            {% elif r.delta < 0 %}<span class="down">▼ {{ r.delta|floatformat:1 }} pp</span>
+            {% else %}±0.0 pp{% endif %} vs. anterior
+          {% else %}sin cohorte previa{% endif %}
+        </div>
+        <div class="zk-sub">{{ r.retained }} de {{ r.cohort_size }} volvieron</div>
+      {% endif %}
+    </div>
+
+    {# Card 3 — Sesiones por usuario #}
+    <div class="zk-card zk-{{ s.estado }}">
+      <div class="zk-label"><span class="zk-dot"></span>Sesiones por usuario</div>
+      {% if s.avg is None %}
+        <div class="zk-num muted">—</div>
+        <div class="zk-ctx">sin sesiones completadas</div>
+      {% else %}
+        <div class="zk-num">{{ s.avg|floatformat:1 }}</div>
+        <div class="zk-ctx">completadas · usuario activo</div>
+        <div class="zk-sub">{{ s.total }} completadas en el período</div>
+      {% endif %}
+    </div>
+
+    {# Card 4 — Tiempo promedio de sesión #}
+    <div class="zk-card zk-{{ t.estado }}">
+      <div class="zk-label"><span class="zk-dot"></span>Tiempo de sesión</div>
+      {% if t.avg_min is None %}
+        <div class="zk-num muted">—</div>
+        <div class="zk-ctx">sin datos de ejecución</div>
+      {% else %}
+        <div class="zk-num">{{ t.avg_min|floatformat:0 }}<span class="unit">min</span></div>
+        <div class="zk-ctx">inicio → feedback</div>
+        <div class="zk-sub">{{ t.n }} sesion{{ t.n|pluralize:"es" }} con datos</div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endwith %}
 
 </div>
 
