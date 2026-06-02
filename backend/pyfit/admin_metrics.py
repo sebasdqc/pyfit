@@ -2,10 +2,10 @@
 
 Dos puntos de entrada:
 
-1. `dashboard_callback(request, context)` — Inyecta cards de KPI directamente
-   en la página principal del admin (configurado vía `UNFOLD.DASHBOARD_CALLBACK`
-   en settings.py). Resultado: al entrar a `/zyfit-admin/`, lo primero que se
-   ve son los números clave del producto.
+1. `dashboard_callback(request, context)` — Inyecta el contexto de la home del
+   admin (configurado vía `UNFOLD.DASHBOARD_CALLBACK` en settings.py). Tras el
+   rediseño, la home muestra un único KPI hero: el Activation Rate a 7 días
+   (`_compute_activation_rate`). El resto de métricas vive en la vista dedicada.
 
 2. `zyfit_metrics_view(request)` — Vista standalone (link del sidebar) que
    reusa el mismo template con datos extendidos: embudo de onboarding,
@@ -32,7 +32,8 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
-from django.db.models import Avg, Count, Exists, Max, OuterRef, Q
+from django.db.models import Avg, Count, DateField, Exists, ExpressionWrapper, Max, OuterRef, Q
+from django.db.models.functions import TruncDate
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -628,15 +629,114 @@ def _compute_dashboard_today(churn_risk: list) -> dict:
     }
 
 
+# ─── Activation Rate a 7 días (KPI hero del dashboard) ─────────────────────────
+#
+# Indicador más crítico de la beta cerrada: % de usuarios que completan ≥3
+# sesiones dentro de sus primeros 7 días desde el registro. Solo se evalúa la
+# cohorte con la VENTANA YA CERRADA (registrados hace 7–14 días): los registrados
+# hace menos de 7 días aún no cumplieron su semana, así que no entran al cálculo.
+#
+# Nota de definición: el schema no tiene un flag de "sesión completada", y el
+# resto del panel trata cada `Session` generada como la unidad de actividad. Por
+# eso aquí "completar una sesión" = existe una `Session` con `fecha` dentro de la
+# ventana. Si más adelante se quiere endurecer a "sesión ejecutada", basta con
+# añadir `sessions__inicio_real__isnull=False` al filtro del Count.
+
+ACTIVATION_GOAL_PCT     = 40   # meta de la beta cerrada
+ACTIVATION_MIN_SESSIONS = 3    # sesiones que definen "activado"
+ACTIVATION_WINDOW_DAYS  = 7    # ventana desde el registro
+
+
+def _activation_for_cohort(reg_from: date, reg_to: date) -> tuple:
+    """(activados, tamaño) de la cohorte real registrada en [reg_from, reg_to).
+
+    "Activado" = ≥ACTIVATION_MIN_SESSIONS sesiones cuya `fecha` cae dentro de los
+    primeros ACTIVATION_WINDOW_DAYS días desde el registro de ESE usuario. Solo
+    usuarios reales (sin staff ni cuentas de prueba), coherente con el resto de la
+    analítica de negocio del panel.
+
+    El conteo por-usuario se resuelve en SQL con un Count condicional cuyo límite
+    superior es una expresión por fila (fecha de registro + 7 días): evita iterar
+    en Python y evita una query por usuario.
+    """
+    cohort = _real_users().filter(
+        date_joined__date__gte=reg_from,
+        date_joined__date__lt=reg_to,
+    )
+    cohort_size = cohort.count()
+    if cohort_size == 0:
+        return 0, 0
+
+    reg_date   = TruncDate('date_joined')
+    window_end = ExpressionWrapper(
+        reg_date + timedelta(days=ACTIVATION_WINDOW_DAYS),
+        output_field=DateField(),
+    )
+
+    activated = (
+        cohort.annotate(
+            _first7=Count('sessions', distinct=True, filter=Q(
+                sessions__fecha__gte=reg_date,
+                sessions__fecha__lte=window_end,
+            )),
+        )
+        .filter(_first7__gte=ACTIVATION_MIN_SESSIONS)
+        .count()
+    )
+    return activated, cohort_size
+
+
+def _compute_activation_rate() -> dict:
+    """Activation rate de la cohorte con ventana cerrada + delta vs. la previa."""
+    today = timezone.now().date()
+
+    # Cohorte actual: registrados hace 7–14 días (su ventana de 7 días ya cerró).
+    cur_act, cur_size = _activation_for_cohort(
+        today - timedelta(days=14), today - timedelta(days=7),
+    )
+    # Cohorte de la semana anterior: registrados hace 14–21 días (para el delta).
+    prev_act, prev_size = _activation_for_cohort(
+        today - timedelta(days=21), today - timedelta(days=14),
+    )
+
+    rate      = round(cur_act / cur_size * 100, 1) if cur_size else None
+    prev_rate = round(prev_act / prev_size * 100, 1) if prev_size else None
+    delta     = round(rate - prev_rate, 1) if (rate is not None and prev_rate is not None) else None
+
+    if rate is None:
+        estado = 'empty'
+    elif rate < 30:
+        estado = 'alerta'
+    elif rate < ACTIVATION_GOAL_PCT:
+        estado = 'precaucion'
+    else:
+        estado = 'meta'
+
+    return {
+        'rate':         rate,             # % actual (None si la cohorte está vacía)
+        'goal':         ACTIVATION_GOAL_PCT,
+        # Avance hacia la meta (0–100) para la barra; >100% se recorta a 100.
+        'progress':     min(round(rate / ACTIVATION_GOAL_PCT * 100), 100) if rate is not None else 0,
+        'activated':    cur_act,
+        'cohort_size':  cur_size,
+        'prev_rate':    prev_rate,
+        'delta':        delta,            # puntos porcentuales vs. semana anterior
+        'estado':       estado,           # alerta | precaucion | meta | empty
+        'min_sessions': ACTIVATION_MIN_SESSIONS,
+        'window_days':  ACTIVATION_WINDOW_DAYS,
+    }
+
+
 # ─── Hooks ────────────────────────────────────────────────────────────────────
 
 def _home_payload() -> dict:
-    """KPIs + tendencias + pulso de hoy para la home del admin. Cacheable."""
-    churn = _churn_risk_users()
+    """Payload de la home del admin.
+
+    Tras el rediseño la home muestra un único KPI hero: el Activation Rate a 7
+    días. El resto de métricas (KPIs, tendencias, pulso, embudo, retención…) vive
+    en la vista dedicada `zyfit_metrics_view`. Cacheable 60s."""
     return {
-        'zyfit_kpis':      _compute_kpis(),
-        'trends':          _compute_trends(),
-        'dashboard_today': _compute_dashboard_today(churn),
+        'activation': _compute_activation_rate(),
     }
 
 

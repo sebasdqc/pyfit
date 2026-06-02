@@ -1,0 +1,143 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{# Home del admin rediseñada. Al sobrescribir `content` reemplazamos por completo
+   el dashboard por defecto de Unfold (lista de apps + "Recent actions"). Por
+   ahora la home muestra un único KPI hero: el Activation Rate a 7 días. #}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+{% with a=activation %}
+
+<style>
+  /* ── Hero Activation Rate ───────────────────────────────────────────────── */
+  .za-wrap { max-width: 760px; margin: 8px 0 32px; }
+
+  .za-head h1 { font-size: 22px; font-weight: 700; color: rgb(248 250 252); margin: 0 0 4px; letter-spacing: -0.02em; }
+  .za-head p  { font-size: 13px; color: rgb(107 114 128); margin: 0 0 20px; }
+
+  .za-card {
+    position: relative;
+    background: rgb(31 41 55);
+    border: 1px solid rgb(55 65 81);
+    border-radius: 16px;
+    padding: 24px 26px 26px;
+    overflow: hidden;
+  }
+  /* Franja de acento superior según el estado */
+  .za-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--za-accent);
+  }
+  .za-card.za-alerta     { --za-accent: rgb(248 113 113); --za-soft: rgb(248 113 113 / 0.12); }
+  .za-card.za-precaucion { --za-accent: rgb(251 191 36);  --za-soft: rgb(251 191 36 / 0.12); }
+  .za-card.za-meta       { --za-accent: rgb(52 211 153);  --za-soft: rgb(52 211 153 / 0.12); }
+  .za-card.za-empty      { --za-accent: rgb(107 114 128); --za-soft: rgb(107 114 128 / 0.12); }
+
+  .za-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+  .za-label { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: rgb(148 163 184); font-weight: 600; }
+  .za-sub   { font-size: 12px; color: rgb(107 114 128); margin-top: 5px; line-height: 1.5; max-width: 460px; }
+
+  .za-badge {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+    color: var(--za-accent);
+    background: var(--za-soft);
+    border: 1px solid var(--za-accent);
+  }
+
+  /* Cifra principal + delta */
+  .za-figure { display: flex; align-items: baseline; gap: 16px; margin-bottom: 18px; }
+  .za-rate { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--za-accent); font-variant-numeric: tabular-nums; }
+  .za-rate .za-pct { font-size: 30px; font-weight: 700; margin-left: 2px; }
+  .za-delta { font-size: 14px; font-weight: 600; font-family: ui-monospace, monospace; padding-bottom: 8px; }
+  .za-delta.up   { color: rgb(52 211 153); }
+  .za-delta.down { color: rgb(248 113 113); }
+  .za-delta.flat { color: rgb(107 114 128); }
+  .za-delta small { color: rgb(107 114 128); font-weight: 400; margin-left: 4px; }
+
+  /* Barra de progreso hacia la meta */
+  .za-bar { position: relative; height: 12px; border-radius: 999px; background: rgb(17 24 39); border: 1px solid rgb(55 65 81); overflow: hidden; }
+  .za-bar-fill { height: 100%; border-radius: 999px; background: var(--za-accent); transition: width 0.4s ease; }
+  .za-bar-legend { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: rgb(107 114 128); }
+  .za-bar-legend .goal { color: rgb(203 213 225); font-weight: 600; }
+
+  /* Pie: cifra absoluta */
+  .za-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgb(55 65 81); font-size: 13px; color: rgb(156 163 175); }
+  .za-foot strong { color: rgb(229 231 235); font-weight: 700; }
+  .za-foot .za-prev { color: rgb(107 114 128); }
+
+  .za-empty-msg { font-size: 14px; color: rgb(148 163 184); padding: 8px 0 4px; line-height: 1.6; }
+</style>
+
+<div class="za-wrap">
+
+  <div class="za-head">
+    <h1>Dashboard Zyfit</h1>
+    <p>{% now "l, j N Y · H:i" %} UTC · datos en vivo</p>
+  </div>
+
+  <div class="za-card za-{{ a.estado }}">
+
+    <div class="za-top">
+      <div>
+        <div class="za-label">Activation Rate · 7 días</div>
+        <div class="za-sub">
+          Cohorte registrada hace 7–14 días (ventana ya cerrada) ·
+          ≥{{ a.min_sessions }} sesiones en sus primeros {{ a.window_days }} días desde el registro
+        </div>
+      </div>
+      <div class="za-badge">
+        {% if a.estado == 'alerta' %}🔴 Alerta
+        {% elif a.estado == 'precaucion' %}🟡 Precaución
+        {% elif a.estado == 'meta' %}🟢 Meta alcanzada
+        {% else %}⚪ Sin datos{% endif %}
+      </div>
+    </div>
+
+    {% if a.rate is None %}
+      <div class="za-empty-msg">
+        Todavía no hay una cohorte con la ventana de 7 días cerrada para evaluar.
+        El indicador aparecerá cuando haya usuarios registrados hace entre 7 y 14 días.
+      </div>
+    {% else %}
+
+      <div class="za-figure">
+        <span class="za-rate">{{ a.rate|floatformat:1 }}<span class="za-pct">%</span></span>
+        {% if a.delta is not None %}
+          <span class="za-delta {% if a.delta > 0 %}up{% elif a.delta < 0 %}down{% else %}flat{% endif %}">
+            {% if a.delta > 0 %}▲ +{{ a.delta|floatformat:1 }}{% elif a.delta < 0 %}▼ {{ a.delta|floatformat:1 }}{% else %}±0.0{% endif %} pp
+            <small>vs. semana anterior</small>
+          </span>
+        {% else %}
+          <span class="za-delta flat">— <small>sin cohorte previa</small></span>
+        {% endif %}
+      </div>
+
+      <div class="za-bar" title="{{ a.rate|floatformat:1 }}% de la meta {{ a.goal }}%">
+        <div class="za-bar-fill" style="width: {{ a.progress }}%;"></div>
+      </div>
+      <div class="za-bar-legend">
+        <span>0%</span>
+        <span class="goal">Meta beta · {{ a.goal }}%</span>
+      </div>
+
+      <div class="za-foot">
+        <strong>{{ a.activated }}</strong> de <strong>{{ a.cohort_size }}</strong>
+        usuario{{ a.cohort_size|pluralize:"s" }} de la cohorte activaron
+        {% if a.prev_rate is not None %}
+          <span class="za-prev"> · semana anterior: {{ a.prev_rate|floatformat:1 }}%</span>
+        {% endif %}
+      </div>
+
+    {% endif %}
+
+  </div>
+
+</div>
+
+{% endwith %}
+{% endblock %}

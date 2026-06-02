@@ -26,6 +26,12 @@ admin.site.site_header = 'Zyfit Control'
 admin.site.site_title  = 'Zyfit Control'
 admin.site.index_title = 'Panel de administración'
 
+# Home del admin rediseñada: un único KPI hero (Activation Rate a 7 días).
+# Unfold respeta `index_template` en su `AdminSite.index()`, así que apuntamos a
+# nuestra plantilla. Al sobrescribir el bloque `content`, desaparecen la lista de
+# apps y el panel "Recent actions" del dashboard por defecto de Unfold.
+admin.site.index_template = 'admin/zyfit_dashboard.html'
+
 
 from pyfit.admin_metrics import zyfit_metrics_view
 from pyfit.admin_security import otp_verify_view
