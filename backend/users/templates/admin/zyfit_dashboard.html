@@ -107,6 +107,42 @@
   .ze-v.muted { color: rgb(107 114 128); }
   .ze-d { font-size: 11px; color: rgb(107 114 128); font-family: ui-monospace, monospace; margin-top: 6px; }
   .ze-h { font-size: 11px; color: rgb(100 116 139); margin-top: 3px; }
+
+  /* ── Acciones prioritarias ──────────────────────────────────────────────── */
+  .zp-empty { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; background: rgb(6 78 59 / 0.4); border: 1px solid rgb(4 120 87); color: rgb(110 231 183); }
+  .zp-item { display: flex; gap: 12px; padding: 13px 0; border-bottom: 1px solid rgb(55 65 81); }
+  .zp-item:last-child { border-bottom: none; }
+  .zp-badge { flex-shrink: 0; align-self: flex-start; padding: 3px 9px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+  .zp-badge.alta  { color: rgb(252 165 165); background: rgb(127 29 29 / 0.45); border: 1px solid rgb(185 28 28); }
+  .zp-badge.media { color: rgb(252 211 77);  background: rgb(120 53 15 / 0.45); border: 1px solid rgb(180 83 9); }
+  .zp-ind  { font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: rgb(148 163 184); font-weight: 700; }
+  .zp-ind .v { color: rgb(248 250 252); font-family: ui-monospace, monospace; margin-left: 6px; }
+  .zp-prob { font-size: 13.5px; color: rgb(229 231 235); margin-top: 3px; font-weight: 500; }
+  .zp-fix  { font-size: 12.5px; color: rgb(148 163 184); margin-top: 3px; }
+  .zp-fix::before { content: '→ '; color: rgb(122 182 255); }
+  .zp-more { font-size: 12px; color: rgb(107 114 128); margin-top: 10px; }
+
+  /* ── WAU/MAU ────────────────────────────────────────────────────────────── */
+  .zw-grid { display: grid; grid-template-columns: auto 1fr; gap: 26px; align-items: center; }
+  @media (max-width: 700px) { .zw-grid { grid-template-columns: 1fr; } }
+  .zw-ratio { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; color: var(--za-accent); line-height: 1; font-variant-numeric: tabular-nums; }
+  .zw-lab { font-size: 13px; font-weight: 700; color: var(--za-accent); margin-top: 6px; }
+  .zw-stats { font-size: 12px; color: rgb(148 163 184); margin-top: 10px; font-family: ui-monospace, monospace; }
+  .zw-stats strong { color: rgb(229 231 235); }
+  .zw-chart-cap { font-size: 11px; color: rgb(107 114 128); margin-bottom: 5px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* ── Tabla de cohortes ──────────────────────────────────────────────────── */
+  .zc-scroll { overflow-x: auto; }
+  .zc-table { border-collapse: separate; border-spacing: 4px; font-size: 12px; }
+  .zc-table th { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: rgb(107 114 128); font-weight: 600; padding: 4px 6px; text-align: center; }
+  .zc-table td.head { color: rgb(203 213 225); font-weight: 600; text-align: left; white-space: nowrap; padding-right: 10px; font-family: ui-monospace, monospace; }
+  .zc-cell { width: 48px; height: 34px; border-radius: 6px; text-align: center; line-height: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgb(248 250 252); }
+  .zc-cell.empty { color: rgb(71 85 105); font-weight: 400; }
+  .zc-cell.meta { background: rgb(52 211 153 / 0.18); color: rgb(110 231 183); }
+  .zc-cell.precaucion { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
+  .zc-cell.alerta { background: rgb(248 113 113 / 0.18); color: rgb(252 165 165); }
+  .zc-size { font-size: 10px; color: rgb(107 114 128); font-weight: 400; }
+  .zc-improve { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 9px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; background: rgb(6 78 59 / 0.4); border: 1px solid rgb(4 120 87); color: rgb(110 231 183); }
 </style>
 
 <div class="zd-page">
@@ -170,6 +206,29 @@
       </div>
     {% endif %}
 
+  </div>
+
+  {# ── ACCIONES PRIORITARIAS (inteligencia · estado actual) ──────────────── #}
+  <div class="zs-card">
+    <div class="zs-head"><div class="zs-title">🎯 Acciones prioritarias</div></div>
+    <div class="zs-note">Qué revisar hoy · generado por reglas sobre el estado actual de las métricas</div>
+    {% if actions.all_clear %}
+      <div class="zp-empty">🟢 Todo en rango — no hay acciones pendientes ahora mismo.</div>
+    {% else %}
+      {% for ac in actions.actions %}
+        <div class="zp-item">
+          <span class="zp-badge {{ ac.urgencia }}">{{ ac.urgencia }}</span>
+          <div>
+            <div class="zp-ind">{{ ac.indicador }}<span class="v">{{ ac.valor }}</span></div>
+            <div class="zp-prob">{{ ac.problema }}</div>
+            <div class="zp-fix">{{ ac.accion }}</div>
+          </div>
+        </div>
+      {% endfor %}
+      {% if actions.overflow %}
+        <div class="zp-more">+{{ actions.overflow }} acción{{ actions.overflow|pluralize:"es" }} más activa (se muestran las 5 de mayor urgencia)</div>
+      {% endif %}
+    {% endif %}
   </div>
 
   {# ── FILA DE KPIs · selector de período ────────────────────────────────── #}
@@ -243,6 +302,32 @@
   </div>
   {% endwith %}
 
+  {# ── ENGAGEMENT RATIO WAU/MAU ──────────────────────────────────────────── #}
+  {% with w=waumau %}
+  <div class="zs-card za-{{ w.estado }}">
+    <div class="zs-head"><div class="zs-title">Engagement · WAU / MAU</div></div>
+    <div class="zs-note">¿Se está formando hábito? · ventanas 7d / 30d, siempre actuales · {% if w.estado == 'alerta' %}🔴 crítico{% endif %}</div>
+    <div class="zw-grid">
+      <div>
+        <div class="zw-ratio">{% if w.ratio is None %}—{% else %}{{ w.ratio }}{% endif %}</div>
+        <div class="zw-lab">{{ w.label }}</div>
+        <div class="zw-stats"><strong>{{ w.wau }}</strong> WAU · <strong>{{ w.mau }}</strong> MAU</div>
+      </div>
+      <div>
+        <div class="zw-chart-cap">Evolución del ratio · últimas 8 semanas</div>
+        {% if w.points %}
+          <svg viewBox="0 0 {{ w.svg_w }} {{ w.svg_h }}" width="100%" height="{{ w.svg_h }}" preserveAspectRatio="none">
+            <line x1="0" y1="{{ w.goal_y }}" x2="{{ w.svg_w }}" y2="{{ w.goal_y }}" stroke="rgb(52 211 153 / 0.5)" stroke-width="1" stroke-dasharray="4 4"/>
+            <polyline points="{{ w.points }}" fill="none" stroke="var(--za-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {% else %}
+          <div class="zs-note">Sin datos suficientes para la serie.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+
   {# ── FUNNEL DE ACTIVACIÓN Y RETENCIÓN (acumulado) ──────────────────────── #}
   <div class="zs-card">
     <div class="zs-head">
@@ -265,6 +350,40 @@
         {% endif %}
       </div>
     {% endfor %}
+  </div>
+
+  {# ── RETENCIÓN POR COHORTE (tabla triangular · histórico) ──────────────── #}
+  <div class="zs-card">
+    <div class="zs-head"><div class="zs-title">Retención por cohorte</div></div>
+    <div class="zs-note">Cohorte = semana de la 1ª sesión completada · cada celda = % que volvió esa semana · no depende del período</div>
+    {% if cohort.rows %}
+      <div class="zc-scroll">
+        <table class="zc-table">
+          <thead>
+            <tr><th></th>{% for wl in cohort.week_labels %}<th>{{ wl }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for row in cohort.rows %}
+              <tr>
+                <td class="head">{{ row.label }} <span class="zc-size">· {{ row.size }}u</span></td>
+                {% for cell in row.cells %}
+                  {% if cell %}
+                    <td><div class="zc-cell {{ cell.estado }}">{{ cell.pct|floatformat:0 }}%</div></td>
+                  {% else %}
+                    <td><div class="zc-cell empty">·</div></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if cohort.improving %}
+        <div class="zc-improve">📈 La cohorte de {{ cohort.improving.new }} retiene mejor que la de {{ cohort.improving.old }} — los cambios al producto están teniendo efecto.</div>
+      {% endif %}
+    {% else %}
+      <div class="zs-note">Aún no hay cohortes con sesiones completadas.</div>
+    {% endif %}
   </div>
 
   {# ── SALUD DEL MOTOR ADAPTATIVO ────────────────────────────────────────── #}

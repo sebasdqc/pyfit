@@ -1091,7 +1091,22 @@ def _rpe_trend_4w() -> dict:
         estado = 'precaucion'  # estancado
     else:
         estado = 'alerta'      # subiendo → problema de progresión
-    return {'value': trend, 'estado': estado, 'n': len(deltas)}
+
+    # Media GLOBAL de RPE por semana (todas las sesiones de la semana) para
+    # detectar "RPE subiendo dos semanas consecutivas" en las acciones prioritarias.
+    global_week = {}
+    for uid, fecha, rpe in rows:
+        wk = (fecha - start).days // 7
+        global_week.setdefault(wk, []).append(float(rpe))
+    means = [sum(v) / len(v) for _, v in sorted(global_week.items())]
+    two_weeks_positive = (
+        len(means) >= 3 and (means[-1] - means[-2]) > 0 and (means[-2] - means[-3]) > 0
+    )
+
+    return {
+        'value': trend, 'estado': estado, 'n': len(deltas),
+        'two_weeks_positive': two_weeks_positive,
+    }
 
 
 def _compute_engine_health(period_days: int) -> dict:
@@ -1185,6 +1200,231 @@ def _compute_engine_health(period_days: int) -> dict:
         'tiene_alerta': bool(alertas),
         'alertas':      alertas,
         'period_days':  period_days,
+        # Valores crudos para las reglas de "Acciones prioritarias".
+        'raw': {
+            'feedback_rate':      fb_rate,
+            'fallback_rate':      fallback_rate,
+            'rpe_trend':          rpe['value'],
+            'rpe_two_weeks_pos':  rpe['two_weeks_positive'],
+        },
+    }
+
+
+# ─── Retención por cohorte (tabla triangular · NO responde al período) ─────────
+#
+# Cohorte = usuarios agrupados por la SEMANA CALENDARIO de su PRIMERA sesión
+# completada (no por registro: quien nunca entrena no aporta señal de retención).
+# Cada celda = % de la cohorte con ≥1 sesión completada en esa semana-desde-la-1ª.
+# Semana 1 (índice 0) = semana de la primera sesión → ~100% (línea base).
+# Celda vacía = esa semana aún no ocurrió para la cohorte (no es 0).
+
+COHORT_MAX        = 6   # cohortes semanales mostradas
+COHORT_MAX_WEEKS  = 8   # columnas de semana (legibilidad)
+
+
+def _monday(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _compute_cohort_retention() -> dict:
+    """Tabla de retención por cohorte semanal + detección de mejora entre cohortes."""
+    today = timezone.now().date()
+    rows = _real_sessions().filter(feedback__isnull=False).values_list('user_id', 'fecha')
+
+    by_user = {}
+    for uid, fecha in rows:
+        by_user.setdefault(uid, []).append(fecha)
+
+    cohorts = {}   # lunes_cohorte -> {'users': set, 'weeks': {k: set(users)}}
+    for uid, dates in by_user.items():
+        cm = _monday(min(dates))
+        meta = cohorts.setdefault(cm, {'users': set(), 'weeks': {}})
+        meta['users'].add(uid)
+        for d in dates:
+            k = (d - cm).days // 7
+            if k >= 0:
+                meta['weeks'].setdefault(k, set()).add(uid)
+
+    if not cohorts:
+        return {'rows': [], 'week_count': 0, 'improving': None}
+
+    cohort_starts = sorted(cohorts)[-COHORT_MAX:]
+    maxk = max((today - cm).days // 7 for cm in cohort_starts)
+    week_count = min(maxk + 1, COHORT_MAX_WEEKS)
+
+    out = []
+    for cm in cohort_starts:
+        meta = cohorts[cm]
+        size = len(meta['users'])
+        cells = []
+        for k in range(week_count):
+            if cm + timedelta(days=7 * k) > today:
+                cells.append(None)                       # semana futura → vacía
+            else:
+                ret = len(meta['weeks'].get(k, ()))
+                pct = round(ret / size * 100, 1) if size else 0.0
+                estado = 'meta' if pct > 60 else 'precaucion' if pct >= 35 else 'alerta'
+                cells.append({'pct': pct, 'estado': estado, 'n': ret})
+        out.append({'start': cm, 'label': cm.strftime('%d %b'), 'size': size, 'cells': cells})
+
+    # Detección: ¿la cohorte más reciente retiene consistentemente más que la más
+    # antigua en las semanas que ambas tienen (excluyendo la base, semana 1)?
+    improving = None
+    if len(out) >= 2:
+        new, old = out[-1], out[0]
+        pairs = [
+            (new['cells'][k]['pct'], old['cells'][k]['pct'])
+            for k in range(1, week_count)
+            if k < len(new['cells']) and k < len(old['cells'])
+            and new['cells'][k] is not None and old['cells'][k] is not None
+        ]
+        if len(pairs) >= 2 and all(n >= o for n, o in pairs) and any(n > o for n, o in pairs):
+            improving = {'new': new['label'], 'old': old['label']}
+
+    return {
+        'rows':        out,
+        'week_count':  week_count,
+        'week_labels': [f'S{k + 1}' for k in range(week_count)],
+        'improving':   improving,
+    }
+
+
+# ─── Engagement ratio WAU/MAU (hábito · serie fija de 8 semanas) ───────────────
+#
+# WAU = usuarios reales con ≥1 sesión completada en 7 días; MAU = en 30 días.
+# Solo cuentan sesiones COMPLETADAS (con feedback). Las ventanas 7d/30d son
+# definitorias del indicador, así que no escalan con el selector de período:
+# el card siempre refleja el momento actual (se recalcula en cada carga).
+
+def _wau_mau_at(end: date) -> tuple:
+    """(wau, mau, ratio) a la fecha `end` (ventanas 7d / 30d hacia atrás)."""
+    completed = _real_sessions().filter(feedback__isnull=False)
+    wau = completed.filter(fecha__gte=end - timedelta(days=6),  fecha__lte=end).values('user_id').distinct().count()
+    mau = completed.filter(fecha__gte=end - timedelta(days=29), fecha__lte=end).values('user_id').distinct().count()
+    ratio = round(wau / mau, 2) if mau else None
+    return wau, mau, ratio
+
+
+def _compute_wau_mau() -> dict:
+    """Ratio actual + WAU/MAU absolutos + serie de 8 semanas (con sparkline SVG)."""
+    today = timezone.now().date()
+    wau, mau, ratio = _wau_mau_at(today)
+
+    series = []
+    for i in range(7, -1, -1):
+        w, m, r = _wau_mau_at(today - timedelta(days=7 * i))
+        series.append(r)
+
+    if ratio is None:
+        estado, label = 'empty', 'Sin datos'
+    elif ratio > 0.4:
+        estado, label = 'meta', 'Hábito saludable'
+    elif ratio >= 0.25:
+        estado, label = 'precaucion', 'En desarrollo'
+    else:
+        estado, label = 'alerta', 'Crítico'
+
+    # Caída semana a semana (última vs anterior) para las acciones prioritarias.
+    last_delta = None
+    if series[-1] is not None and series[-2] is not None:
+        last_delta = round(series[-1] - series[-2], 2)
+
+    # Sparkline SVG (320×70). Escala fija 0–0.6 (0.4 = meta); puntos None se omiten.
+    W, H, SCALE = 320, 70, 0.6
+    n = len(series)
+    pts = []
+    for i, r in enumerate(series):
+        if r is None:
+            continue
+        x = round(i * (W - 8) / (n - 1) + 4, 1)
+        y = round(H - min(r, SCALE) / SCALE * (H - 8) - 4, 1)
+        pts.append(f'{x},{y}')
+    goal_y = round(H - 0.4 / SCALE * (H - 8) - 4, 1)
+
+    return {
+        'ratio':      ratio,
+        'label':      label,
+        'estado':     estado,
+        'wau':        wau,
+        'mau':        mau,
+        'series':     series,
+        'points':     ' '.join(pts),
+        'svg_w':      W,
+        'svg_h':      H,
+        'goal_y':     goal_y,
+        'last_delta': last_delta,
+    }
+
+
+# ─── Acciones prioritarias (reglas determinísticas · estado actual) ────────────
+#
+# Evalúa el estado más reciente de las métricas (ventana fija de 30 días para las
+# del motor) y propone qué revisar HOY. No responde al selector de período.
+
+def _compute_priority_actions(cohort: dict, wau: dict) -> dict:
+    """Genera acciones por reglas; ordena alta→media; máximo 5 visibles."""
+    actions = []
+
+    eng = _compute_engine_health(30)   # snapshot fijo de 30 días
+    raw = eng['raw']
+    act = _compute_activation_rate()
+
+    # 1) Feedback completion < 70 % → alta.
+    if raw['feedback_rate'] is not None and raw['feedback_rate'] < 70:
+        actions.append({
+            'urgencia': 'alta', 'indicador': 'Feedback completion', 'valor': f'{raw["feedback_rate"]}%',
+            'problema': 'El motor no está aprendiendo: muchas sesiones se cierran sin feedback.',
+            'accion':   'Revisa el flujo de cierre post-sesión y por qué los usuarios no lo completan.',
+        })
+    # 2) Activation rate 7d < 40 % → media.
+    if act['rate'] is not None and act['rate'] < 40:
+        actions.append({
+            'urgencia': 'media', 'indicador': 'Activation rate 7d', 'valor': f'{act["rate"]}%',
+            'problema': 'Menos usuarios de lo esperado activan en su primera semana.',
+            'accion':   'Revisa la experiencia de la primera sesión generada.',
+        })
+    # 3) Fallback rate > 2 % → alta.
+    if raw['fallback_rate'] is not None and raw['fallback_rate'] > 2:
+        actions.append({
+            'urgencia': 'alta', 'indicador': 'Fallback rate', 'valor': f'{raw["fallback_rate"]}%',
+            'problema': 'El motor cae al pool legacy con frecuencia inusual (el LLM/motor falla seguido).',
+            'accion':   'Revisa los logs de generación: por qué el motor adaptativo no arma pool.',
+        })
+    # 4) RPE trend positivo dos semanas consecutivas → media.
+    if raw['rpe_two_weeks_pos']:
+        actions.append({
+            'urgencia': 'media', 'indicador': 'RPE trend', 'valor': f'+{raw["rpe_trend"]}',
+            'problema': 'El RPE promedio sube dos semanas seguidas: la carga no se adapta a la baja.',
+            'accion':   'Revisa la lógica de progresión del motor (cálculo de RPE target).',
+        })
+    # 5) Cohorte con retención semana 2 < 40 % → media (la peor).
+    peor = None
+    for row in cohort.get('rows', []):
+        c = row['cells']
+        if len(c) > 1 and c[1] is not None and c[1]['pct'] < 40:
+            if peor is None or c[1]['pct'] < peor['cells'][1]['pct']:
+                peor = row
+    if peor is not None:
+        actions.append({
+            'urgencia': 'media', 'indicador': 'Retención por cohorte', 'valor': f'{peor["cells"][1]["pct"]}%',
+            'problema': f'La cohorte del {peor["label"]} retiene por debajo del 40 % en su semana 2.',
+            'accion':   'Revisa qué vivió esa cohorte; foco en la experiencia de la 2ª semana.',
+        })
+    # 6) WAU/MAU cae > 0.05 en una semana → alta.
+    if wau.get('last_delta') is not None and wau['last_delta'] < -0.05:
+        actions.append({
+            'urgencia': 'alta', 'indicador': 'WAU/MAU', 'valor': str(wau['ratio']),
+            'problema': f'El ratio de hábito cayó {abs(wau["last_delta"])} puntos en la última semana.',
+            'accion':   'Deterioro de hábito: revisa retención y activa reenganche.',
+        })
+
+    order = {'alta': 0, 'media': 1}
+    actions.sort(key=lambda a: order[a['urgencia']])
+    return {
+        'actions':   actions[:5],
+        'total':     len(actions),
+        'overflow':  max(0, len(actions) - 5),
+        'all_clear': not actions,
     }
 
 
@@ -1207,6 +1447,11 @@ def dashboard_callback(request, context):
     `activation` (North Star) es independiente del período. La fila de KPIs sí
     responde a `?period=7|30|90`, con caché por período."""
     period_days = _home_period_days(request)
+    # Cohortes y WAU/MAU tienen su propia dimensión temporal (NO dependen del
+    # período). Las acciones prioritarias se alimentan de ambos + el motor.
+    cohort = _cached('zyfit:cohort', _compute_cohort_retention)
+    waumau = _cached('zyfit:waumau', _compute_wau_mau)
+
     context.update(_cached('zyfit:home', _home_payload))
     context.update({
         'kpi_row':     _cached(f'zyfit:kpirow:{period_days}', lambda: _kpi_row(period_days)),
@@ -1216,6 +1461,10 @@ def dashboard_callback(request, context):
         'funnel':      _cached('zyfit:funnel', _compute_activation_funnel),
         # Salud del motor: responde al período (salvo RPE trend, fijo a 4 semanas).
         'engine':      _cached(f'zyfit:engine:{period_days}', lambda: _compute_engine_health(period_days)),
+        'cohort':      cohort,
+        'waumau':      waumau,
+        # Acciones prioritarias: estado actual (reglas sobre cohorte + WAU/MAU + motor).
+        'actions':     _cached('zyfit:actions', lambda: _compute_priority_actions(cohort, waumau)),
     })
     return context
 
