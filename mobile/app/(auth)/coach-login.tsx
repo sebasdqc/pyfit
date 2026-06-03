@@ -11,10 +11,13 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  Animated,
+  Easing,
+  useWindowDimensions,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path, Rect } from 'react-native-svg'
+import Svg, { Path, Rect, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg'
 import { coachLogin } from '../../lib/auth'
 import { P, CONTACT_URL } from '../../lib/coachTheme'
 
@@ -37,6 +40,93 @@ function LockIcon() {
     </Svg>
   )
 }
+
+// ─── Orbes animados de fondo (aurora morada) ─────────────────────────────────
+
+// Mismo efecto que el login del atleta: un gradiente radial SVG (centro
+// brillante → transparente) dentro de un Animated.View que late (escala +
+// opacidad) y deriva en horizontal. Adaptado a la identidad morada fija del
+// portal de coach. Usa el Animated nativo de RN (useNativeDriver) para no
+// depender de Reanimated ni de un rebuild del dev client.
+type OrbProps = {
+  gid: string; color: string; size: number; top: number; left: number; driftX: number
+  scaleFrom: number; scaleTo: number; opFrom: number; opTo: number; duration: number; delay: number
+}
+
+function GlowOrb({
+  gid, color, size, top, left, driftX,
+  scaleFrom, scaleTo, opFrom, opTo, duration, delay,
+}: OrbProps) {
+  const progress = React.useRef(new Animated.Value(0)).current
+
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1, duration, delay,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(progress, {
+          toValue: 0, duration,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [progress, duration, delay])
+
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [scaleFrom, scaleTo] })
+  const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [opFrom, opTo] })
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-driftX, driftX] })
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute', top, left, width: size, height: size,
+        opacity, transform: [{ translateX }, { scale }],
+      }}
+    >
+      <Svg width={size} height={size}>
+        <Defs>
+          <RadialGradient id={gid} cx={size / 2} cy={size / 2} r={size / 2} gradientUnits="userSpaceOnUse">
+            <Stop offset={0} stopColor={color} stopOpacity={1} />
+            <Stop offset={0.45} stopColor={color} stopOpacity={0.55} />
+            <Stop offset={1} stopColor={color} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Ellipse cx={size / 2} cy={size / 2} rx={size / 2} ry={size / 2} fill={`url(#${gid})`} />
+      </Svg>
+    </Animated.View>
+  )
+}
+
+// Cuatro orbes morados superpuestos en la parte superior, con fases/duraciones
+// distintas para que el conjunto respire como una aurora viva.
+function CoachLoginAura() {
+  const { width } = useWindowDimensions()
+  return (
+    <View pointerEvents="none" style={auraStyles.container}>
+      <GlowOrb gid="cOrbLight" color={P.purpleLight} size={360}
+        top={-50} left={-110} driftX={42}
+        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300} />
+      <GlowOrb gid="cOrbDark" color={P.purpleDark} size={430}
+        top={-110} left={width - 270} driftX={38}
+        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800} />
+      <GlowOrb gid="cOrbMain" color={P.purple} size={560}
+        top={-210} left={width / 2 - 280} driftX={28}
+        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0} />
+      <GlowOrb gid="cOrbCore" color={P.purpleMid} size={260}
+        top={-70} left={width / 2 - 130} driftX={14}
+        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500} />
+    </View>
+  )
+}
+
+const auraStyles = StyleSheet.create({
+  container: { position: 'absolute', top: 0, left: 0, right: 0, height: 540, overflow: 'hidden' },
+})
 
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +175,9 @@ export default function CoachLoginScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Orbes animados morados detrás de la parte superior */}
+      <CoachLoginAura />
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -113,60 +206,63 @@ export default function CoachLoginScreen() {
             <Text style={styles.subtitle}>Tu portal inteligente de entrenamientos</Text>
           </View>
 
-          {/* Campos */}
-          <View style={styles.inputRow}>
-            <EnvelopeIcon />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electrónico"
-              placeholderTextColor={P.purpleFaint}
-              value={email}
-              onChangeText={(t) => { setEmail(t); setMessage('') }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+          {/* Recuadro del formulario — mismo estilo que el login del atleta */}
+          <View style={styles.card}>
+            {/* Campos */}
+            <View style={styles.inputRow}>
+              <EnvelopeIcon />
+              <TextInput
+                style={styles.input}
+                placeholder="Correo electrónico"
+                placeholderTextColor={P.purpleFaint}
+                value={email}
+                onChangeText={(t) => { setEmail(t); setMessage('') }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <LockIcon />
+              <TextInput
+                style={styles.input}
+                placeholder="Contraseña"
+                placeholderTextColor={P.purpleFaint}
+                value={password}
+                onChangeText={(t) => { setPassword(t); setMessage('') }}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Olvidaste tu contraseña */}
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              activeOpacity={0.6}
+              onPress={() => router.push('/(auth)/forgot-password' as any)}
+            >
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            {/* Botón de acceso */}
+            <TouchableOpacity
+              style={styles.accessBtn}
+              activeOpacity={0.85}
+              onPress={handleAccess}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={P.white} size="small" />
+              ) : (
+                <Text style={styles.accessBtnText}>Acceder al portal</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Mensaje inline (no popup) */}
+            {!!message && <Text style={styles.message}>{message}</Text>}
           </View>
-
-          <View style={styles.inputRow}>
-            <LockIcon />
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              placeholderTextColor={P.purpleFaint}
-              value={password}
-              onChangeText={(t) => { setPassword(t); setMessage('') }}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Olvidaste tu contraseña */}
-          <TouchableOpacity
-            style={styles.forgotBtn}
-            activeOpacity={0.6}
-            onPress={() => router.push('/(auth)/forgot-password' as any)}
-          >
-            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
-
-          {/* Botón de acceso */}
-          <TouchableOpacity
-            style={styles.accessBtn}
-            activeOpacity={0.85}
-            onPress={handleAccess}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={P.white} size="small" />
-            ) : (
-              <Text style={styles.accessBtnText}>Acceder al portal</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Mensaje inline (no popup) */}
-          {!!message && <Text style={styles.message}>{message}</Text>}
 
           {/* Separador "¿aún no eres coach?" */}
           <View style={styles.dividerRow}>
@@ -260,6 +356,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: P.purpleFaint,
     letterSpacing: 0.2,
+  },
+
+  // Recuadro del formulario — mismo recuadro que el login del atleta, en morado
+  card: {
+    backgroundColor: P.cardBg,
+    borderWidth: 1,
+    borderColor: P.border,
+    borderRadius: 24,
+    padding: 24,
   },
 
   // Inputs
