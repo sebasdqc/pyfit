@@ -372,6 +372,7 @@ const translations = {
   perfil_dna_label:           { es: 'TU ADN',                            en: 'YOUR DNA' },
   perfil_dna_tag:             { es: 'PERFIL DE ENTRENAMIENTO',            en: 'TRAINING PROFILE' },
   perfil_consistency:         { es: 'CONSIST.',                          en: 'CONSIST.' },
+  perfil_measured_data:       { es: 'DATOS MEDIDOS',                     en: 'MEASURED DATA' },
   perfil_sessions_label:      { es: 'SESIONES',                          en: 'SESSIONS' },
   perfil_streak_label:        { es: 'RACHA',                             en: 'STREAK' },
   perfil_days_suffix:         { es: 'días',                              en: 'days' },

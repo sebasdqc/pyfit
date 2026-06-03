@@ -38,6 +38,7 @@ interface ProfileStats {
   semanas_activas: number
   consistencia_30d: number
   sesiones_mes: number
+  datos_medidos_30d: number
   adn_entrenamiento?: string | null
 }
 
@@ -45,6 +46,11 @@ interface ProfileStats {
 
 function getInitials(nombre: string) {
   return nombre.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+}
+
+// Agrupa miles con el separador local (1.284 / 1,284) sin depender de Intl
+function agruparMiles(n: number, sep: string) {
+  return String(Math.max(0, Math.round(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, sep)
 }
 
 function nivelLabel(nivel: string) {
@@ -246,10 +252,7 @@ export default function PerfilScreen() {
 
   const initials = getInitials(profile.nombre || 'U')
   const nivel = nivelLabel(profile.nivel)
-  const consistenciaColor =
-    (profileStats?.consistencia_30d ?? 0) >= 70 ? '#32c896' :
-    (profileStats?.consistencia_30d ?? 0) >= 40 ? '#ffaa32' :
-    colors.red
+  const datosMedidos = agruparMiles(profileStats?.datos_medidos_30d ?? 0, lang === 'en' ? ',' : '.')
 
   const PALETTE_OPTIONS: { id: Palette; label: string; icon: string; pro?: boolean }[] = [
     { id: 'dark',     label: t('perfil_palette_dark'),     icon: '🌙' },
@@ -308,11 +311,16 @@ export default function PerfilScreen() {
         {/* ── MÉTRICAS ── */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>{t('perfil_consistency')}</Text>
-            <Text style={[styles.metricValue, { color: consistenciaColor }]}>
-              {statsLoading ? '–' : `${profileStats?.consistencia_30d ?? 0}%`}
+            <Text style={styles.metricLabel}>{t('perfil_measured_data')}</Text>
+            <Text
+              style={[styles.metricValue, { color: colors.cyan }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.45}
+            >
+              {statsLoading ? '–' : datosMedidos}
             </Text>
-            <Text style={styles.metricSub}>Últimos 30 días</Text>
+            <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : 'Last 30 days'}</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('perfil_sessions_label')}</Text>

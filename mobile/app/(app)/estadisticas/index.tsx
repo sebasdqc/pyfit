@@ -1457,9 +1457,12 @@ function makeStyles(c: Colors) {
     // Filter tabs
     filterRow:           { flexDirection: 'row', gap: 6, marginBottom: 16 },
     filterTab:           { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: c.borderDefault },
-    filterTabActive:     { backgroundColor: c.accent, borderColor: c.accent },
-    filterTabText:       { fontFamily: 'SpaceGrotesk-Medium', fontSize: 11, color: c.inkMuted, letterSpacing: 0.1 },
-    filterTabTextActive: { color: '#ffffff' },
+    // Selección visible del card: fondo tintado sutil + borde de acento
+    filterTabActive:     { backgroundColor: c.glassBg, borderColor: c.accent },
+    // Las letras siempre en el color de mayor contraste, esté o no seleccionado
+    filterTabText:       { fontFamily: 'SpaceGrotesk-Medium', fontSize: 11, color: c.inkPrimary, letterSpacing: 0.1 },
+    // Al seleccionar solo se subraya la palabra (en color de acento)
+    filterTabTextActive: { textDecorationLine: 'underline', textDecorationColor: c.accent },
 
     // Chart
     chartArea:   { height: CHART_H },

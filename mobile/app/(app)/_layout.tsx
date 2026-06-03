@@ -2,10 +2,9 @@ import { Tabs } from 'expo-router'
 import { StackActions } from '@react-navigation/native'
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { COLORS } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
-import Svg, { Path, Circle } from 'react-native-svg'
+import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +43,18 @@ function IconProfile({ color }: { color: string }) {
   )
 }
 
+// Play triángulo relleno para el botón central ENTRENAR
+function IconPlay({ color, size = 26 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginLeft: 2 }}>
+      <Path
+        d="M8 5.2v13.6a1 1 0 0 0 1.54.84l10.5-6.8a1 1 0 0 0 0-1.68L9.54 4.36A1 1 0 0 0 8 5.2z"
+        fill={color}
+      />
+    </Svg>
+  )
+}
+
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 
 // Map route names → translation keys for tab labels
@@ -62,7 +73,7 @@ const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'run/index', 'ru
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const { colors, isDark, palette } = useTheme()
+  const { colors, palette } = useTheme()
   const { t } = useTranslation()
 
   // Tras los hooks (reglas de hooks): ocultar la barra en el flujo de entrenamiento.
@@ -112,22 +123,37 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         }
 
         if (isCenter) {
-          // En light mode el bg es casi blanco, así que un botón blanco se pierde.
-          // Invertimos: bg oscuro con texto claro en light; bg claro con texto
-          // oscuro en dark/rosado para mantener máxima visibilidad.
-          // light y rosado son temas claros → botón oscuro con texto claro para
-          // que destaque sobre la barra clara; en dark, botón blanco con texto negro.
-          const centerBg   = isDark ? COLORS.white : colors.inkPrimary
-          const centerText = isDark ? '#000'       : colors.bg
+          // Botón ENTRENAR: círculo flotante con icono PLAY, elevado sobre el
+          // borde superior y rodeado de un halo brillante (radial gradient del
+          // color de acento) que lo hace destacar en todas las paletas.
           return (
-            <View key={route.key} style={styles.tabItem}>
-              <TouchableOpacity
-                onPress={onPress}
-                style={[styles.centerBtn, { backgroundColor: centerBg }]}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.centerBtnText, { color: centerText }]}>{t('nav_train')}</Text>
-              </TouchableOpacity>
+            <View key={route.key} style={styles.tabItem} pointerEvents="box-none">
+              <View style={styles.centerWrap}>
+                {/* Halo brillante detrás del botón */}
+                <Svg
+                  width={CENTER_GLOW}
+                  height={CENTER_GLOW}
+                  style={styles.centerGlow}
+                  pointerEvents="none"
+                >
+                  <Defs>
+                    <RadialGradient id="trainGlow" cx="50%" cy="50%" r="50%">
+                      <Stop offset="0%" stopColor={colors.accent} stopOpacity={0.55} />
+                      <Stop offset="50%" stopColor={colors.accent} stopOpacity={0.22} />
+                      <Stop offset="100%" stopColor={colors.accent} stopOpacity={0} />
+                    </RadialGradient>
+                  </Defs>
+                  <Circle cx={CENTER_GLOW / 2} cy={CENTER_GLOW / 2} r={CENTER_GLOW / 2} fill="url(#trainGlow)" />
+                </Svg>
+                <TouchableOpacity
+                  onPress={onPress}
+                  style={[styles.centerBtn, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
+                  activeOpacity={0.85}
+                  accessibilityLabel={t('nav_train')}
+                >
+                  <IconPlay color="#ffffff" size={26} />
+                </TouchableOpacity>
+              </View>
             </View>
           )
         }
@@ -224,6 +250,9 @@ export default function AppLayout() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
+const CENTER_BTN = 58    // diámetro del botón flotante ENTRENAR
+const CENTER_GLOW = 110  // diámetro del halo brillante detrás del botón
+
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
@@ -256,32 +285,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Botón central ENTRENAR
-  centerBtn: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    // Sube el botón para que sobresalga sobre el borde superior
-    marginTop: Platform.OS === 'ios' ? -14 : -10,
-    // Sombra para destacar el botón
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.accent,
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+  // Botón central ENTRENAR — contenedor que sube el botón sobre el borde
+  centerWrap: {
+    width: CENTER_BTN,
+    height: CENTER_BTN,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Eleva el botón para que flote sobre el borde superior de la barra
+    marginTop: Platform.OS === 'ios' ? -26 : -22,
   },
 
-  centerBtnText: {
-    color: '#000',
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    letterSpacing: 0.5,
+  // Halo brillante centrado detrás del botón (más grande que el botón)
+  centerGlow: {
+    position: 'absolute',
+    top: (CENTER_BTN - CENTER_GLOW) / 2,
+    left: (CENTER_BTN - CENTER_GLOW) / 2,
+  },
+
+  // Botón circular flotante con icono PLAY
+  centerBtn: {
+    width: CENTER_BTN,
+    height: CENTER_BTN,
+    borderRadius: CENTER_BTN / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    // Glow/sombra que irradia en todas direcciones (shadowColor = acento, inline)
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.85,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
 })

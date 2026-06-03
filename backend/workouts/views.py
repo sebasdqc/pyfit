@@ -1602,6 +1602,91 @@ Reglas:
         return None
 
 
+def _contar_datos_medidos(user, desde):
+    """Suma TODOS los puntos de dato medidos del usuario en los últimos 30 días.
+
+    Cuenta cada valor no nulo que la app captura sobre el usuario: estados de
+    check-in (ánimo, sueño, HRV, foco, dolor, duración), parámetros planificados
+    de cada sesión y ejercicio, cada serie registrada en ejecución, el feedback
+    post-sesión, las métricas de carrera, cada punto GPS y los syncs de wearables.
+
+    El objetivo es mostrarle al usuario cuánto lo conocemos. Es puramente
+    informativo: cada bloque está aislado en try/except para no romper el
+    endpoint si una fuente de datos falla o no existe todavía.
+    """
+    total = 0
+
+    # 1) Check-ins diarios — cada campo medido no nulo
+    try:
+        from checkins.models import DailyCheckin
+        for c in DailyCheckin.objects.filter(user=user, fecha__gte=desde).iterator():
+            for v in (c.estado_animo, c.calidad_sueno, c.hrv, c.duracion_disponible, c.estado_fisico):
+                if v is not None:
+                    total += 1
+            if c.foco_entrenamiento:
+                total += len(c.foco_entrenamiento)
+            if c.dolor_hoy:
+                total += 1
+    except Exception:
+        pass
+
+    # 2) Sesiones + ejercicios + series registradas en ejecución
+    try:
+        sesiones = user.sessions.filter(fecha__gte=desde).prefetch_related('exercises')
+        for s in sesiones:
+            total += 2  # duracion_planificada + rpe_target (siempre presentes)
+            for ex in s.exercises.all():
+                for v in (ex.series, ex.repeticiones, ex.descanso_segundos, ex.rpe_sugerido):
+                    if v is not None and v != '':
+                        total += 1
+                if ex.series_log:
+                    for serie in ex.series_log:
+                        if isinstance(serie, dict):
+                            total += sum(1 for val in serie.values() if val not in (None, ''))
+                        else:
+                            total += 1
+    except Exception:
+        pass
+
+    # 3) Feedback post-sesión
+    try:
+        for fb in SessionFeedback.objects.filter(
+            session__user=user, created_at__date__gte=desde
+        ).iterator():
+            for v in (fb.rpe_real, fb.cumplimiento, fb.rating):
+                if v is not None:
+                    total += 1
+            if fb.molestias:
+                total += len(fb.molestias)
+    except Exception:
+        pass
+
+    # 4) Carreras (RunSession) + cada punto GPS
+    try:
+        from runs.models import RunSession, RunPoint
+        for r in RunSession.objects.filter(user=user, started_at__date__gte=desde).iterator():
+            total += 6  # distancia, duración, pace medio, mejor pace, calorías, desnivel
+            if r.avg_heart_rate is not None:
+                total += 1
+        total += RunPoint.objects.filter(
+            session__user=user, session__started_at__date__gte=desde
+        ).count()
+    except Exception:
+        pass
+
+    # 5) Wearables conectados (DeviceIntegration) — métricas sincronizadas
+    try:
+        from devices.models import DeviceIntegration
+        for d in DeviceIntegration.objects.filter(user=user, updated_at__date__gte=desde).iterator():
+            for v in (d.hrv, d.sleep_score, d.resting_hr, d.stress_level, d.body_battery):
+                if v is not None:
+                    total += 1
+    except Exception:
+        pass
+
+    return total
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_profile(request):
@@ -1629,10 +1714,14 @@ def stats_profile(request):
 
     adn_entrenamiento = _generar_adn_entrenamiento(request.user)
 
+    # Total de datos medidos en los últimos 30 días (para la card "DATOS MEDIDOS")
+    datos_medidos_30d = _contar_datos_medidos(request.user, hace_30)
+
     return Response({
         'semanas_activas': semanas_activas,
         'consistencia_30d': consistencia_30d,
         'sesiones_mes': sesiones_mes,
+        'datos_medidos_30d': datos_medidos_30d,
         'adn_entrenamiento': adn_entrenamiento,
     })
 
