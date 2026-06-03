@@ -62,12 +62,16 @@ function CoachTabBar({ state, descriptors, navigation }: any) {
   const bottomPad = insets.bottom > 0 ? insets.bottom + 4 : 12
 
   const visibleRoutes = state.routes.filter((r: any) => TABS[r.name])
+  const activeRouteName = state.routes[state.index]?.name
 
   return (
     <View style={[styles.tabBar, { paddingBottom: bottomPad }]}>
       {visibleRoutes.map((route: any) => {
-        const index = state.routes.indexOf(route)
-        const focused = state.index === index
+        // El detalle de atleta (atleta/[id]) vive fuera del tab bar pero se llega
+        // desde Atletas → mantenemos ese tab resaltado mientras se navega.
+        const focused =
+          activeRouteName === route.name ||
+          (route.name === 'atletas' && activeRouteName === 'atleta/[id]')
         const meta = TABS[route.name]
         const color = focused ? P.purpleMid : P.purpleFaint
 

@@ -24,6 +24,7 @@ export const P = {
   purple: '#7C5CFF',          // morado sólido (botón, chip activo, dots)
   purpleDark: '#5B3FD9',
   purpleMid: '#A78BFA',       // morado medio (logo, títulos, tab activo)
+  purpleLight: '#C4B5FD',     // morado claro (acentos suaves, barras)
   purpleSoft: '#9484C9',      // morado apagado (texto secundario, links)
   purpleFaint: '#605489',     // morado muy apagado (subtítulo, placeholder, tab inactivo)
   ink: '#E7E1FF',             // texto claro

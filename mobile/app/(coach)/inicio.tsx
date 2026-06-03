@@ -11,41 +11,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales } from '../../lib/coachTheme'
 import { getCoachUser } from '../../lib/storage'
-
-// ─── Datos de ejemplo de la cartera ─────────────────────────────────────────────
-// PLACEHOLDER: cuando exista el endpoint de cartera del coach (GET /api/coach/
-// atletas/ o similar) reemplazar este array por la respuesta real. El resto de
-// la pantalla ya está cableado a esta forma de datos.
-type Estado = 'alerta' | 'pendiente' | 'al_dia'
-
-type Atleta = {
-  id: string
-  nombre: string
-  ultima: string          // tiempo desde la última actividad ("hace 3 días")
-  estado: Estado
-  problemas?: string[]    // tags de problema (cards con alerta)
-  rutinaActiva?: boolean
-  sinRutina?: boolean
-  inactivo?: boolean
-  score?: number          // Zyfit Score
-}
-
-const ATLETAS: Atleta[] = [
-  { id: '1', nombre: 'Carlos Méndez',  ultima: 'hace 3 días', estado: 'alerta',    problemas: ['Sin check-in', 'Score bajando'],     inactivo: true,  score: 54 },
-  { id: '2', nombre: 'Lucía Romero',   ultima: 'ayer',        estado: 'pendiente', problemas: ['Sin rutina activa'],                  sinRutina: true, score: 68 },
-  { id: '3', nombre: 'Diego Fuentes',  ultima: 'hace 6 días', estado: 'alerta',    problemas: ['Sin check-in', 'Sin rutina activa'],  sinRutina: true, inactivo: true, score: 49 },
-  { id: '4', nombre: 'Mara Torres',    ultima: 'hace 2 días', estado: 'pendiente', problemas: ['Score bajando'],                      score: 71 },
-  { id: '5', nombre: 'Sofía Lagos',    ultima: 'hace 4 h',    estado: 'al_dia',    rutinaActiva: true, score: 82 },
-  { id: '6', nombre: 'Andrés Pinto',   ultima: 'ayer',        estado: 'al_dia',    rutinaActiva: true, score: 91 },
-  { id: '7', nombre: 'Valentina Cruz', ultima: 'hace 6 h',    estado: 'al_dia',    rutinaActiva: true, score: 75 },
-  { id: '8', nombre: 'Tomás Gil',      ultima: 'hace 8 h',    estado: 'al_dia',    rutinaActiva: true, score: 88 },
-]
+import { Estado, Atleta, ATLETAS, hasAlert } from '../../lib/coachMockData'
 
 // Adherencia semanal de la cartera (placeholder + delta vs semana anterior).
 const ADHERENCIA = 78
 const ADHERENCIA_DELTA = 4   // +subió / -bajó
-
-const hasAlert = (a: Atleta) => a.estado !== 'al_dia'
 
 type Filtro = 'atencion' | 'todos' | 'sin_rutina' | 'inactivos'
 
