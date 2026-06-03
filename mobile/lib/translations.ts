@@ -26,6 +26,7 @@ const translations = {
   login_error_fields:         { es: 'Por favor completa todos los campos.', en: 'Please complete all fields.' },
   login_error_generic:        { es: 'Ocurrió un error. Intenta de nuevo.', en: 'An error occurred. Try again.' },
   login_lang_label:           { es: 'ES',                                 en: 'EN' },
+  login_coach_portal:         { es: 'PORTAL ENTRENADOR',                  en: 'COACH PORTAL' },
 
   // ─── Forgot Password ─────────────────────────────────────────────────────────
   forgot_title:               { es: 'Recuperar contraseña',                en: 'Reset password' },

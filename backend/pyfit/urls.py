@@ -57,6 +57,7 @@ urlpatterns = [
     # Auth
     path('api/auth/register/', user_views.register),
     path('api/auth/login/', user_views.login_view),
+    path('api/auth/coach/login/', user_views.coach_login_view),
     path('api/auth/refresh/', TokenRefreshView.as_view()),
     path('api/auth/logout/', user_views.logout_view),
     path('api/auth/account/', user_views.delete_account),

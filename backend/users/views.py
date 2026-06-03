@@ -58,6 +58,46 @@ def login_view(request):
             'nombre': profile.nombre if profile else '',
             'onboarding_completo': bool(profile and profile.is_onboarding_complete),
             'is_staff': user.is_staff,
+            'role': user.role,
+        },
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def coach_login_view(request):
+    """Login del portal de entrenador.
+
+    Valida credenciales y exige que la cuenta sea un coach con el acceso
+    activado. Si las credenciales son válidas pero el acceso de coach no está
+    activo (rol distinto, coach sin activar o cuenta inactiva) devuelve 403 con
+    `pending_activation` para que el cliente muestre el aviso de activación
+    pendiente — sin revelar si la cuenta es o no coach. No afecta a los atletas
+    ni al login estándar.
+    """
+    email = request.data.get('email', '').lower().strip()
+    password = request.data.get('password', '')
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+    if not user.check_password(password):
+        return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+    if not user.coach_acceso_activo:
+        return Response({
+            'pending_activation': True,
+            'detail': 'Tu acceso está pendiente de activación. Si ya nos contactaste, te escribiremos pronto.',
+        }, status=status.HTTP_403_FORBIDDEN)
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'nombre': (user.get_full_name() or user.first_name or user.email.split('@')[0]),
+            'role': user.role,
         },
     })
 

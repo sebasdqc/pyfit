@@ -9,12 +9,42 @@ from django.utils import timezone
 
 
 class User(AbstractUser):
+    # Rol de la cuenta. Por defecto 'athlete' → todas las cuentas existentes y
+    # los registros normales siguen siendo atletas y funcionan exactamente igual.
+    # 'coach' identifica a un entrenador que usa el portal de coach.
+    ROLE_ATHLETE = 'athlete'
+    ROLE_COACH = 'coach'
+    ROLE_CHOICES = [(ROLE_ATHLETE, 'Atleta'), (ROLE_COACH, 'Coach')]
+
     email = models.EmailField(unique=True)
+    role = models.CharField(
+        max_length=20, choices=ROLE_CHOICES, default=ROLE_ATHLETE, db_index=True,
+    )
+    # Un coach puede existir (role='coach') con su acceso al portal todavía
+    # pendiente de activación manual por el equipo. Mientras coach_activo=False
+    # el login de coach devuelve el aviso de "activación pendiente". No tiene
+    # ningún efecto sobre los atletas (siempre False para ellos).
+    coach_activo = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
     class Meta:
         db_table = 'users'
+
+    @property
+    def is_coach(self) -> bool:
+        return self.role == self.ROLE_COACH
+
+    @property
+    def is_athlete(self) -> bool:
+        return self.role == self.ROLE_ATHLETE
+
+    @property
+    def coach_acceso_activo(self) -> bool:
+        """Un coach puede entrar al portal solo si su rol es coach, su acceso
+        fue activado y la cuenta sigue activa."""
+        return self.is_coach and self.coach_activo and self.is_active
 
 
 class Profile(models.Model):

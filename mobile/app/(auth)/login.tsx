@@ -369,6 +369,15 @@ export default function LoginScreen() {
               </Text>
             </Text>
           </View>
+
+          {/* Acceso discreto al portal del entrenador — al fondo de todo */}
+          <TouchableOpacity
+            style={styles.coachPortalBtn}
+            onPress={() => router.push('/(auth)/coach-login' as any)}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.coachPortalText}>{t('login_coach_portal')}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -600,6 +609,22 @@ function makeStyles(c: Colors) {
     },
     disclaimerLink: {
       color: c.accentLight,
+    },
+
+    // Acceso al portal del entrenador — línea discreta, gris apagado, subrayada
+    coachPortalBtn: {
+      alignSelf: 'center',
+      marginTop: 28,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    coachPortalText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      color: c.inkMuted,
+      letterSpacing: 2,
+      textDecorationLine: 'underline',
+      textAlign: 'center',
     },
   })
 }

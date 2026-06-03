@@ -25,10 +25,10 @@ def export_users_csv_action(modeladmin, request, queryset):
     response['Content-Disposition'] = 'attachment; filename="usuarios_seleccion.csv"'
     response.write('﻿')  # UTF-8 BOM for Excel
     writer = csv.writer(response)
-    writer.writerow(['id', 'email', 'username', 'is_active', 'is_staff', 'date_joined', 'last_login'])
+    writer.writerow(['id', 'email', 'username', 'role', 'coach_activo', 'is_active', 'is_staff', 'date_joined', 'last_login'])
     for u in queryset.select_related():
         writer.writerow([
-            u.id, u.email, u.username, u.is_active, u.is_staff,
+            u.id, u.email, u.username, u.role, u.coach_activo, u.is_active, u.is_staff,
             u.date_joined.strftime('%Y-%m-%d') if u.date_joined else '',
             u.last_login.strftime('%Y-%m-%d') if u.last_login else '',
         ])
@@ -80,6 +80,27 @@ def send_reengagement_notification(modeladmin, request, queryset):
 send_reengagement_notification.short_description = '📣 Enviar notificación de re-engagement'
 
 
+def grant_coach(modeladmin, request, queryset):
+    """Marca como coach sin activar el acceso (queda pendiente de activación)."""
+    n = queryset.update(role=User.ROLE_COACH)
+    messages.success(request, f'{n} cuenta(s) marcada(s) como coach (acceso pendiente de activación).')
+grant_coach.short_description = '🧑‍🏫 Marcar como coach (pendiente)'
+
+
+def activate_coach(modeladmin, request, queryset):
+    """Convierte en coach y activa el acceso al portal en un solo paso."""
+    n = queryset.update(role=User.ROLE_COACH, coach_activo=True)
+    messages.success(request, f'{n} coach(es) con acceso al portal activado.')
+activate_coach.short_description = '✅ Activar acceso de coach'
+
+
+def revoke_coach(modeladmin, request, queryset):
+    """Revierte la cuenta a atleta y desactiva el acceso de coach."""
+    n = queryset.update(role=User.ROLE_ATHLETE, coach_activo=False)
+    messages.success(request, f'{n} cuenta(s) revertida(s) a atleta.')
+revoke_coach.short_description = '↩ Revertir a atleta'
+
+
 # ─── Admin classes ────────────────────────────────────────────────────────────
 
 @admin.register(User)
@@ -88,17 +109,30 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_form              = UserCreationForm
     change_password_form  = AdminPasswordChangeForm
 
-    list_display   = ['email', 'username', 'status_badge', 'is_staff', 'sessions_count', 'ver_360', 'date_joined', 'last_login']
-    list_filter    = ['is_staff', 'is_superuser', 'is_active', ('date_joined', RangeDateFilter)]
+    list_display   = ['email', 'username', 'rol_badge', 'status_badge', 'is_staff', 'sessions_count', 'ver_360', 'date_joined', 'last_login']
+    list_filter    = ['role', 'coach_activo', 'is_staff', 'is_superuser', 'is_active', ('date_joined', RangeDateFilter)]
     search_fields  = ['email', 'username']
     ordering       = ['-date_joined']
     readonly_fields = ['date_joined', 'last_login']
-    actions        = [activate_users, deactivate_users, export_users_csv_action,
-                      send_welcome_notification, send_reengagement_notification]
+    actions        = [activate_users, deactivate_users, grant_coach, activate_coach, revoke_coach,
+                      export_users_csv_action, send_welcome_notification, send_reengagement_notification]
+
+    # Sección de rol Zyfit añadida a los fieldsets estándar de Django.
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Rol Zyfit', {'fields': ('role', 'coach_activo')}),
+    )
 
     def get_queryset(self, request):
         # Annotate session count en una sola query en vez de un COUNT por fila.
         return super().get_queryset(request).annotate(_n_sessions=Count('sessions'))
+
+    @admin.display(description='Rol', ordering='role')
+    def rol_badge(self, obj):
+        if obj.role == User.ROLE_COACH:
+            if obj.coach_activo:
+                return format_html('<span style="color:#a78bfa;font-weight:600;">🧑‍🏫 Coach</span>')
+            return format_html('<span style="color:#fbbf24;font-weight:600;">🧑‍🏫 Coach · pendiente</span>')
+        return format_html('<span style="color:#6b7280;">Atleta</span>')
 
     @admin.display(description='360')
     def ver_360(self, obj):
