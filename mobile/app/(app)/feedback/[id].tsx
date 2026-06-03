@@ -3,6 +3,7 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
 import { useTranslation } from '../../../lib/i18n'
+import WorkoutShareCard from '../../../components/WorkoutShareCard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -362,6 +364,9 @@ export default function FeedbackScreen() {
 
   // ── Step nav ───────────────────────────────────────────────────────────────
   const [step, setStep] = useState(1)
+
+  // ── Share card modal ─────────────────────────────────────────────────────────
+  const [shareOpen, setShareOpen] = useState(false)
   const step1Complete   = rpeChoice !== null && sensacion !== null
   const canAdvance      = step === 1 ? step1Complete : true
 
@@ -454,7 +459,8 @@ export default function FeedbackScreen() {
   }
 
   function handleCompartir() {
-    Alert.alert(t('feedback_coming_soon'), t('feedback_share_soon'))
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+    setShareOpen(true)
   }
 
   function handleSkip() {
@@ -670,6 +676,33 @@ export default function FeedbackScreen() {
           <View style={{ height: 40 }} />
         </Animated.View>
       </ScrollView>
+
+      {/* ── Modal: tarjeta para compartir ── */}
+      <Modal
+        visible={shareOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShareOpen(false)}
+      >
+        <View style={styles.shareModalRoot}>
+          <View style={[styles.shareModalClose, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity
+              onPress={() => setShareOpen(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.shareModalCloseText}>×</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.shareModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <WorkoutShareCard sessionType="gym" session={{ id }} />
+          </ScrollView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   )
 }
@@ -900,6 +933,19 @@ function makeStyles(c: Colors) {
     },
     compartirBtnText: {
       fontFamily: 'SpaceGrotesk-Medium', fontSize: 15, color: c.inkMuted, letterSpacing: -0.1,
+    },
+
+    // ── Share card modal ──────────────────────────────────────────────────────
+    shareModalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
+    shareModalClose: {
+      flexDirection: 'row', justifyContent: 'flex-end',
+      paddingHorizontal: 20, paddingBottom: 4,
+    },
+    shareModalCloseText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 32, color: '#ffffff', lineHeight: 36,
+    },
+    shareModalContent: {
+      flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24,
     },
   })
 }

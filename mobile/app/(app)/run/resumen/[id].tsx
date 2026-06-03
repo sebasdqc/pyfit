@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +19,7 @@ import {
 } from '../../../../lib/runMetrics'
 import { useTheme } from '../../../../lib/theme'
 import { Colors } from '../../../../lib/colors'
+import WorkoutShareCard from '../../../../components/WorkoutShareCard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export default function RunResumenScreen() {
   const [session, setSession] = useState<RunSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -203,17 +205,42 @@ export default function RunResumenScreen() {
           <Text style={[styles.doneBtnText, { color: colors.white }]}>Listo</Text>
         </TouchableOpacity>
 
-        {/* Compartir en redes sociales (próximamente) */}
+        {/* Compartir en redes sociales */}
         <TouchableOpacity
           style={[styles.shareBtn, { borderColor: colors.borderBright }]}
-          onPress={() =>
-            Alert.alert('Próximamente', 'La función de compartir tu carrera estará disponible pronto.')
-          }
+          onPress={() => setShareOpen(true)}
           activeOpacity={0.75}
         >
           <Text style={[styles.shareBtnText, { color: colors.inkMuted }]}>↗ Compartir en redes sociales</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── Modal: tarjeta para compartir ── */}
+      <Modal
+        visible={shareOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShareOpen(false)}
+      >
+        <View style={styles.shareModalRoot}>
+          <View style={[styles.shareModalClose, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity
+              onPress={() => setShareOpen(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.shareModalCloseText}>×</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.shareModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <WorkoutShareCard sessionType="running" session={session} />
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -352,6 +379,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 0.2,
+  },
+
+  // Share card modal
+  shareModalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+  },
+  shareModalClose: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+  },
+  shareModalCloseText: {
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize: 32,
+    color: '#ffffff',
+    lineHeight: 36,
+  },
+  shareModalContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
   },
 
   // Loading / error
