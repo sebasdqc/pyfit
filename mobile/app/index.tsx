@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { getAccessToken, getUser } from '../lib/storage'
+import { getAccessToken, getUser, getCoachUser } from '../lib/storage'
 
 export default function Index() {
   const [target, setTarget] = useState<string | null>(null)
@@ -11,7 +11,10 @@ export default function Index() {
       const token = await getAccessToken()
       if (cancelled) return
       if (!token) {
-        setTarget('/(auth)/intro')
+        // Sin sesión de atleta: si hay sesión de coach, entrar al portal.
+        const coach = await getCoachUser()
+        if (cancelled) return
+        setTarget(coach ? '/(coach)/inicio' : '/(auth)/intro')
         return
       }
       const user = await getUser()

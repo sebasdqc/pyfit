@@ -30,3 +30,28 @@ export async function getUser(): Promise<any | null> {
 export async function clearUser() {
   await SecureStore.deleteItemAsync('user_data')
 }
+
+// ─── Sesión del portal de entrenador ───────────────────────────────────────────
+// Claves propias del coach, separadas de las del atleta para que ambas sesiones
+// no se pisen. El portal del coach todavía no consume los tokens (la home usa
+// datos de ejemplo), pero los persistimos para cuando existan endpoints de coach.
+const COACH_ACCESS_KEY = 'coach_access_token'
+const COACH_REFRESH_KEY = 'coach_refresh_token'
+const COACH_USER_KEY = 'coach_user_data'
+
+export async function saveCoachSession(access: string, refresh: string, user: object) {
+  await SecureStore.setItemAsync(COACH_ACCESS_KEY, access)
+  await SecureStore.setItemAsync(COACH_REFRESH_KEY, refresh)
+  await SecureStore.setItemAsync(COACH_USER_KEY, JSON.stringify(user))
+}
+
+export async function getCoachUser(): Promise<any | null> {
+  const raw = await SecureStore.getItemAsync(COACH_USER_KEY)
+  return raw ? JSON.parse(raw) : null
+}
+
+export async function clearCoachSession() {
+  await SecureStore.deleteItemAsync(COACH_ACCESS_KEY)
+  await SecureStore.deleteItemAsync(COACH_REFRESH_KEY)
+  await SecureStore.deleteItemAsync(COACH_USER_KEY)
+}

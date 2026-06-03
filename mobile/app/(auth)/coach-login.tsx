@@ -16,29 +16,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { coachLogin } from '../../lib/auth'
-
-// ─── Identidad morada del portal de entrenador ─────────────────────────────────
-// Pantalla independiente con su propia paleta púrpura. NO usa el tema del atleta
-// (que cambia entre dark/light/midnight/etc.) — el portal del coach se ve igual
-// siempre, con su matiz azul-morado profundo característico.
-const P = {
-  bg: '#0A0816',              // fondo general — azul-morado muy profundo, casi negro
-  cardBg: '#15102C',          // card de beneficios — algo más clara que el fondo
-  inputBg: '#120E26',         // fondo de inputs — oscuro azul-morado
-  badgeBg: '#1B1340',         // badge — morado muy oscuro
-  border: 'rgba(150,128,255,0.18)',     // borde morado sutil
-  borderBright: 'rgba(150,128,255,0.30)',
-  divider: 'rgba(150,128,255,0.12)',    // líneas finas moradas muy apagadas
-  purple: '#7C5CFF',          // morado sólido (botón, dots, logo)
-  purpleDark: '#5B3FD9',
-  purpleMid: '#A78BFA',       // morado medio (logo, títulos)
-  purpleSoft: '#9484C9',      // morado apagado (texto secundario, links)
-  purpleFaint: '#605489',     // morado muy apagado (subtítulo, placeholder, pie)
-  ink: '#E7E1FF',             // texto claro al escribir
-  white: '#F5F2FF',
-}
-
-const CONTACT_URL = 'mailto:hola@pyfit.app?subject=Quiero%20ser%20coach%20en%20Zyfit'
+import { P, CONTACT_URL } from '../../lib/coachTheme'
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
 
@@ -96,9 +74,7 @@ export default function CoachLoginScreen() {
       return
     }
     if (res.status === 'ok') {
-      // El portal del coach aún no tiene pantallas propias; confirmamos el
-      // acceso. Cuando exista el dashboard de coach, navegar aquí.
-      setMessage('Acceso concedido. Estamos preparando tu portal de entrenador.')
+      router.replace('/(coach)/inicio' as any)
       return
     }
     // pending → la cuenta no es un coach con acceso activado
