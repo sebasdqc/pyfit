@@ -8,6 +8,16 @@ from django.db import models
 from django.utils import timezone
 
 
+# Alfabeto sin caracteres ambiguos (sin 0/O, 1/I/L) para códigos de referido
+# cortos y legibles al dictarlos o escribirlos a mano.
+REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+
+def generar_codigo_referido(length: int = 6) -> str:
+    """Genera un código de referido aleatorio (CSPRNG) con el alfabeto legible."""
+    return ''.join(secrets.choice(REFERRAL_CODE_ALPHABET) for _ in range(length))
+
+
 class User(AbstractUser):
     # Rol de la cuenta. Por defecto 'athlete' → todas las cuentas existentes y
     # los registros normales siguen siendo atletas y funcionan exactamente igual.
@@ -154,6 +164,11 @@ class Profile(models.Model):
     logros = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil
+    # Código de referido único por usuario. Se autogenera en save() si falta y se
+    # rellena para las cuentas existentes vía migración de datos, de modo que
+    # TODOS los perfiles tengan siempre uno. null permitido solo para no romper
+    # la migración inicial (multiples NULL conviven con unique en Postgres).
+    codigo_referido = models.CharField(max_length=12, unique=True, null=True, blank=True)
     # Marca de cuenta de prueba (QA, demos, el propio equipo). Las cuentas con
     # esta bandera se excluyen de las métricas de negocio (KPIs, embudo,
     # retención, churn) para que la analítica refleje usuarios reales. No afecta
@@ -165,6 +180,27 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def asignar_codigo_referido(self):
+        """Asigna un código de referido único si todavía no tiene uno.
+
+        Reintenta ante la (improbabilísima) colisión y, como último recurso,
+        alarga el código. No toca el valor si ya existe."""
+        if self.codigo_referido:
+            return
+        for _ in range(12):
+            code = generar_codigo_referido()
+            if not Profile.objects.filter(codigo_referido=code).exists():
+                self.codigo_referido = code
+                return
+        self.codigo_referido = generar_codigo_referido(10)
+
+    def save(self, *args, **kwargs):
+        # Garantiza que todo perfil tenga código de referido desde su creación,
+        # sin importar la vía (registro, onboarding, admin, get_or_create…).
+        if not self.codigo_referido:
+            self.asignar_codigo_referido()
+        super().save(*args, **kwargs)
 
     @property
     def edad(self):

@@ -74,7 +74,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'plan', 'plan_tipo', 'plan_renovacion',
             'goal', 'goal_changed_at', 'previous_goal',
             'created_at', 'locations',
-            'avatar',
+            'avatar', 'codigo_referido',
             # Onboarding extended fields
             'calidad_sueno_habitual', 'condiciones_medicas', 'notas_medicas', 'motivo_limitacion',
             'lugares_entrenamiento', 'implementos_perfil', 'duracion_disponible', 'duracion_minima',
@@ -88,5 +88,5 @@ class ProfileSerializer(serializers.ModelSerializer):
             'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',
             'plan', 'plan_tipo', 'plan_renovacion',
             'goal_changed_at', 'previous_goal',
-            'created_at', 'locations',
+            'created_at', 'locations', 'codigo_referido',
         ]
