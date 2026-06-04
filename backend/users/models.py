@@ -429,3 +429,20 @@ class CoachAthlete(models.Model):
 
     def __str__(self):
         return f'{self.coach_id} → {self.athlete_id} [{self.estado}]'
+
+
+class CoachMessage(models.Model):
+    """Mensaje del chat coach↔atleta, asociado a un vínculo CoachAthlete."""
+    link = models.ForeignKey(CoachAthlete, on_delete=models.CASCADE, related_name='mensajes')
+    from_coach = models.BooleanField()   # True = lo envió el coach; False = el atleta
+    texto = models.TextField()
+    leido = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'coach_messages'
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['link', 'created_at'])]
+
+    def __str__(self):
+        return f'{"coach" if self.from_coach else "atleta"}: {self.texto[:30]}'

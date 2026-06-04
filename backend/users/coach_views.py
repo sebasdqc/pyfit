@@ -22,7 +22,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from workouts.models import Session, SessionFeedback
-from .models import Profile, CoachAthlete, generar_codigo_referido, default_coach_config
+from .models import Profile, CoachAthlete, CoachMessage, generar_codigo_referido, default_coach_config
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -563,4 +563,76 @@ def coach_vincular(request):
         'detail': f'Te vinculaste con {profile.nombre or coach.email}.',
         'coach_nombre': profile.nombre or coach.email.split('@')[0],
         'ya_estaba': not created,
+    })
+
+
+# ─── Chat coach↔atleta ──────────────────────────────────────────────────────────
+
+def _serialize_mensaje(msg):
+    return {
+        'id': msg.id,
+        'from_coach': msg.from_coach,
+        'texto': msg.texto,
+        'created_at': msg.created_at.isoformat(),
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsCoach])
+def coach_atleta_mensajes(request, pk):
+    """Chat del coach con un atleta de su cartera. GET lista (y marca como leídos
+    los del atleta); POST envía un mensaje del coach."""
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'POST':
+        texto = (request.data.get('texto') or '').strip()
+        if not texto:
+            return Response({'error': 'El mensaje está vacío.'}, status=status.HTTP_400_BAD_REQUEST)
+        msg = CoachMessage.objects.create(link=link, from_coach=True, texto=texto[:2000])
+        return Response(_serialize_mensaje(msg), status=status.HTTP_201_CREATED)
+
+    # GET: marca como leídos los mensajes que envió el atleta
+    CoachMessage.objects.filter(link=link, from_coach=False, leido=False).update(leido=True)
+    mensajes = [_serialize_mensaje(m) for m in link.mensajes.all()[:200]]
+    return Response({'mensajes': mensajes})
+
+
+def _athlete_active_link(athlete):
+    """Vínculo activo más reciente del atleta (su coach actual), o None."""
+    return (CoachAthlete.objects
+            .filter(athlete=athlete, estado=CoachAthlete.ESTADO_ACTIVO)
+            .select_related('coach__profile')
+            .order_by('-created_at').first())
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def coach_chat(request):
+    """Chat del atleta con su coach. GET devuelve {coach, mensajes} (y marca como
+    leídos los del coach); POST envía un mensaje del atleta."""
+    link = _athlete_active_link(request.user)
+    if not link:
+        if request.method == 'POST':
+            return Response({'error': 'No tienes un coach vinculado.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'coach': None, 'mensajes': []})
+
+    coach = link.coach
+    coach_profile = getattr(coach, 'profile', None)
+    coach_nombre = (coach_profile.nombre if coach_profile else '') or coach.first_name or coach.email.split('@')[0]
+
+    if request.method == 'POST':
+        texto = (request.data.get('texto') or '').strip()
+        if not texto:
+            return Response({'error': 'El mensaje está vacío.'}, status=status.HTTP_400_BAD_REQUEST)
+        msg = CoachMessage.objects.create(link=link, from_coach=False, texto=texto[:2000])
+        return Response(_serialize_mensaje(msg), status=status.HTTP_201_CREATED)
+
+    # GET: marca como leídos los mensajes que envió el coach
+    CoachMessage.objects.filter(link=link, from_coach=True, leido=False).update(leido=True)
+    mensajes = [_serialize_mensaje(m) for m in link.mensajes.all()[:200]]
+    return Response({
+        'coach': {'id': coach.id, 'nombre': coach_nombre},
+        'mensajes': mensajes,
     })

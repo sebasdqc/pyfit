@@ -19,11 +19,14 @@ import { hasAlert } from '../../../lib/coachMockData'
 import {
   fetchAtletaDetalle,
   fetchAtletaSesiones,
+  fetchAtletaMensajes,
+  sendAtletaMensaje,
   patchAtletaConfig,
   putAtletaDirectiva,
   type AtletaDetalle,
   type CoachConfig,
   type SesionHist,
+  type Mensaje,
 } from '../../../lib/coachApi'
 import { getCoachUser } from '../../../lib/storage'
 
@@ -59,16 +62,8 @@ type ToggleKey = (typeof TOGGLES)[number]['key']
 
 type Barra = 'done' | 'skip' | 'alto'
 
-type Mensaje = { id: string; from: 'coach' | 'atleta'; text: string; hora: string }
-const CHAT_INICIAL: Mensaje[] = [
-  { id: 'm1', from: 'atleta', text: 'Hola coach, terminé la sesión de hoy 💪', hora: '09:14' },
-  { id: 'm2', from: 'coach',  text: '¡Excelente! ¿Cómo sentiste la sentadilla?', hora: '09:20' },
-  { id: 'm3', from: 'atleta', text: 'Pesada las últimas 2 series, RPE 8 fácil', hora: '09:22' },
-  { id: 'm4', from: 'coach',  text: 'Perfecto, la próxima bajamos un poco la carga.', hora: '09:25' },
-]
-
-function horaActual(): string {
-  const d = new Date()
+function horaDe(iso: string): string {
+  const d = new Date(iso)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
@@ -123,11 +118,22 @@ export default function CoachAtletaDetalle() {
   const [dNota, setDNota] = useState('')
   const [savingDir, setSavingDir] = useState(false)
   const [dirMsg, setDirMsg] = useState<string | null>(null)
-  const [mensajes, setMensajes] = useState<Mensaje[]>(CHAT_INICIAL)
+  const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
   const chatRef = useRef<ScrollView>(null)
 
   useEffect(() => { getCoachUser().then((u) => setCoachNombre(u?.nombre || 'Coach')) }, [])
+
+  // Chat: carga al abrir el tab y hace polling cada 5s mientras está abierto.
+  useEffect(() => {
+    if (tab !== 'chat' || !params.id) return
+    let alive = true
+    const cargar = () => fetchAtletaMensajes(params.id!).then((r) => { if (alive) setMensajes(r.mensajes) }).catch(() => {})
+    cargar()
+    const t = setInterval(cargar, 5000)
+    return () => { alive = false; clearInterval(t) }
+  }, [tab, params.id])
 
   // Persiste un toggle de configuración (optimista; revierte si el backend falla).
   function onToggle(key: ToggleKey, v: boolean) {
@@ -183,12 +189,20 @@ export default function CoachAtletaDetalle() {
   const avatarFg = alerta ? P.orange : P.green
   const avatarBg = alerta ? P.orangeSoft : P.greenSoft
 
-  function enviar() {
+  async function enviar() {
     const text = input.trim()
-    if (!text) return
-    setMensajes((prev) => [...prev, { id: `c${prev.length}`, from: 'coach', text, hora: horaActual() }])
+    if (!text || !params.id || sending) return
+    setSending(true)
     setInput('')
-    setTimeout(() => chatRef.current?.scrollToEnd({ animated: true }), 50)
+    try {
+      const msg = await sendAtletaMensaje(params.id, text)
+      setMensajes((prev) => [...prev, msg])
+      setTimeout(() => chatRef.current?.scrollToEnd({ animated: true }), 50)
+    } catch {
+      setInput(text)   // restaura el texto si falla el envío
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -357,15 +371,18 @@ export default function CoachAtletaDetalle() {
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => chatRef.current?.scrollToEnd({ animated: false })}
             >
+              {mensajes.length === 0 && (
+                <Text style={styles.chatEmpty}>Aún no hay mensajes. Escribe el primero 👋</Text>
+              )}
               {mensajes.map((m) => {
-                const mine = m.from === 'coach'
+                const mine = m.from_coach   // el coach es quien ve esta pantalla
                 return (
                   <View key={m.id} style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
                     <View style={[styles.bubble, mine ? styles.bubbleCoach : styles.bubbleAtleta]}>
-                      <Text style={styles.bubbleText}>{m.text}</Text>
+                      <Text style={styles.bubbleText}>{m.texto}</Text>
                     </View>
                     <Text style={styles.msgMeta}>
-                      {m.hora} · {mine ? coachNombre : nombre.split(' ')[0]}
+                      {horaDe(m.created_at)} · {mine ? coachNombre : nombre.split(' ')[0]}
                     </Text>
                   </View>
                 )
@@ -577,6 +594,7 @@ const styles = StyleSheet.create({
 
   // Chat
   chatContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
+  chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleFaint, textAlign: 'center', marginTop: 40 },
   msgRow: { marginBottom: 14, maxWidth: '100%' },
   bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleCoach: { backgroundColor: P.purple, borderTopRightRadius: 4 },

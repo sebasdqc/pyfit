@@ -17,7 +17,7 @@ import {
   saveCoachTokens,
   clearCoachSession,
 } from './storage'
-import { localDateStr } from './api'
+import { localDateStr, apiGet, apiPost } from './api'
 import type { Atleta, Estado } from './coachMockData'
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'
@@ -202,4 +202,33 @@ export function patchAtletaConfig(id: string | number, config: Partial<CoachConf
 /** Guarda la directiva del coach para el atleta (bias de la IA del atleta). */
 export function putAtletaDirectiva(id: string | number, directiva: CoachDirectiva): Promise<{ directiva: CoachDirectiva; directiva_updated_at: string }> {
   return coachRequest('PUT', `/api/coach/atletas/${id}/directiva/`, directiva)
+}
+
+// ── Chat coach↔atleta ────────────────────────────────────────────────────────
+
+export interface Mensaje {
+  id:          number
+  from_coach:  boolean
+  texto:       string
+  created_at:  string
+}
+
+// Lado COACH (token de coach)
+export function fetchAtletaMensajes(id: string | number): Promise<{ mensajes: Mensaje[] }> {
+  return coachRequest('GET', `/api/coach/atletas/${id}/mensajes/`)
+}
+export function sendAtletaMensaje(id: string | number, texto: string): Promise<Mensaje> {
+  return coachRequest('POST', `/api/coach/atletas/${id}/mensajes/`, { texto })
+}
+
+// Lado ATLETA (token de atleta → api.ts)
+export interface MiCoachChat {
+  coach:     { id: number; nombre: string } | null
+  mensajes:  Mensaje[]
+}
+export function fetchMiCoachChat(): Promise<MiCoachChat> {
+  return apiGet('/api/coach/chat/')
+}
+export function sendMiCoachMensaje(texto: string): Promise<Mensaje> {
+  return apiPost('/api/coach/chat/', { texto })
 }
