@@ -91,6 +91,38 @@ function flattenEjercicios(fases: Fase[] | null | undefined): FlatEjercicio[] {
 }
 
 
+// ─── Detección de ejercicios de peso corporal ──────────────────────────────────
+// Heurística conservadora: solo se considera "peso corporal" cuando el nombre del
+// ejercicio coincide con un movimiento que casi nunca lleva carga externa Y no
+// menciona ningún implemento con peso. Ante la duda, se deja el campo de peso
+// editable (no se bloquea), para no romper el registro de ejercicios cargados.
+const EQUIPO_CON_CARGA = [
+  'mancuerna', 'barra', 'kettlebell', 'pesa rusa', 'disco', 'polea', 'cable',
+  'máquina', 'maquina', 'lastr', 'goblet', 'landmine', 'smith', 'multipower',
+  'con peso', 'con carga', 'press', 'remo', 'curl', 'jalón', 'jalon',
+  'peso muerto', 'hip thrust',
+]
+
+const PESO_CORPORAL_KEYWORDS = [
+  'flexion', 'flexión', 'push up', 'push-up', 'plancha', 'plank', 'burpee',
+  'mountain climber', 'escalador', 'jumping jack', 'salto de tijera',
+  'abdominal', 'crunch', 'encogimiento', 'superman', 'bird dog', 'perro de caza',
+  'elevación de piernas', 'elevacion de piernas', 'elevación de rodillas',
+  'elevacion de rodillas', 'rodillas al pecho', 'estiramiento', 'movilidad',
+  'respiración', 'respiracion', 'gato', 'dominada', 'fondos', 'skipping',
+  'talones al glúteo', 'talones al gluteo', 'saltar la cuerda', 'salto de cuerda',
+  'comba', 'wall sit', 'sentadilla isométrica', 'sentadilla isometrica',
+  'sentadilla al aire', 'sentadilla sin peso', 'air squat',
+]
+
+function esEjercicioPesoCorporal(ej: Ejercicio | null | undefined): boolean {
+  if (!ej?.nombre) return false
+  const n = String(ej.nombre).toLowerCase()
+  if (EQUIPO_CON_CARGA.some(k => n.includes(k))) return false
+  return PESO_CORPORAL_KEYWORDS.some(k => n.includes(k))
+}
+
+
 function formatTime(seconds: number): string {
   if (seconds >= 60) {
     const m = Math.floor(seconds / 60)
@@ -783,6 +815,7 @@ export default function EjecutarScreen() {
   // ── Derived current exercise ────────────────────────────────────────────────
 
   const currentEj = flatList[currentIndex]
+  const esPesoCorporal = esEjercicioPesoCorporal(currentEj)
   const seriesDone = currentEj ? (seriesCompletadas[currentEj.globalIndex] ?? 0) : 0
   const rir = currentEj ? (10 - currentEj.rpe_sugerido).toFixed(0) : '—'
   const faseStyle = currentEj ? getFaseStyle(currentEj.faseNombre) : { color: colors.accent, label: '' }
@@ -998,19 +1031,27 @@ export default function EjecutarScreen() {
             <View style={styles.descansoInputRow}>
               <View style={styles.descansoInputWrap}>
                 <Text style={styles.descansoInputLabel}>{t('ejecutar_weight')}</Text>
-                <View style={styles.descansoInputInner}>
-                  <TextInput
-                    style={styles.descansoInput}
-                    value={currentPeso}
-                    onChangeText={v => { setCurrentPeso(v); currentPesoRef.current = v }}
-                    placeholder="—"
-                    placeholderTextColor={colors.inkFaint}
-                    keyboardType="decimal-pad"
-                    maxLength={6}
-                    returnKeyType="done"
-                  />
-                  <Text style={styles.descansoInputUnit}>kg</Text>
-                </View>
+                {esPesoCorporal ? (
+                  <View style={[styles.descansoInputInner, styles.descansoInputLocked]}>
+                    <Text style={styles.descansoInputLockedText} numberOfLines={1}>
+                      {t('ejecutar_bodyweight')}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.descansoInputInner}>
+                    <TextInput
+                      style={styles.descansoInput}
+                      value={currentPeso}
+                      onChangeText={v => { setCurrentPeso(v); currentPesoRef.current = v }}
+                      placeholder="—"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="decimal-pad"
+                      maxLength={6}
+                      returnKeyType="done"
+                    />
+                    <Text style={styles.descansoInputUnit}>kg</Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.descansoInputSep} />
@@ -1381,6 +1422,18 @@ function makeStyles(c: Colors) {
       fontSize: 10,
       color: c.inkMuted,
       letterSpacing: 0.5,
+    },
+    descansoInputLocked: {
+      justifyContent: 'center',
+      backgroundColor: c.cardBg,
+      borderColor: c.borderDefault,
+    },
+    descansoInputLockedText: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 13,
+      color: c.inkSecondary,
+      textAlign: 'center',
+      letterSpacing: -0.2,
     },
     descansoInputSep: {
       width: 1,

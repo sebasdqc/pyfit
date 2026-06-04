@@ -246,6 +246,7 @@ const translations = {
   ejecutar_no_demo:           { es: 'Sin demo disponible',               en: 'No demo available' },
   ejecutar_youtube:           { es: 'Ver técnica en YouTube →',          en: 'Watch technique on YouTube →' },
   ejecutar_weight:            { es: 'PESO',                              en: 'WEIGHT' },
+  ejecutar_bodyweight:        { es: 'Peso corporal',                     en: 'Bodyweight' },
   ejecutar_reps:              { es: 'REPS',                              en: 'REPS' },
   ejecutar_next_label:        { es: 'A CONTINUACIÓN',                    en: 'NEXT UP' },
   ejecutar_next_exercise:     { es: 'SIGUIENTE EJERCICIO',               en: 'NEXT EXERCISE' },
