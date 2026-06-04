@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -355,6 +355,15 @@ def coach_atletas(request):
 
     cards = [_athlete_card(a, hoy, ahora) for a in athletes]
 
+    # Mensajes sin leer del atleta → coach (una sola consulta para la cartera).
+    unread = dict(
+        CoachMessage.objects.filter(link__coach=coach, from_coach=False, leido=False)
+        .values('link__athlete_id').annotate(n=Count('id'))
+        .values_list('link__athlete_id', 'n')
+    )
+    for a, c in zip(athletes, cards):
+        c['no_leidos'] = unread.get(a.id, 0)
+
     # Métricas de cartera
     activos = len(cards)
     atencion_hoy = sum(1 for c in cards if c['estado'] != 'al_dia')
@@ -636,3 +645,15 @@ def coach_chat(request):
         'coach': {'id': coach.id, 'nombre': coach_nombre},
         'mensajes': mensajes,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_chat_unread(request):
+    """Conteo de mensajes del coach sin leer (no marca como leídos). Para el badge
+    del perfil del atleta."""
+    link = _athlete_active_link(request.user)
+    if not link:
+        return Response({'no_leidos': 0})
+    n = CoachMessage.objects.filter(link=link, from_coach=True, leido=False).count()
+    return Response({'no_leidos': n})

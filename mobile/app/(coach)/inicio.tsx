@@ -90,6 +90,14 @@ function EstadoBadge({ estado }: { estado: Estado }) {
   )
 }
 
+function UnreadBadge({ n }: { n: number }) {
+  return (
+    <View style={styles.unreadBadge}>
+      <Text style={styles.unreadBadgeText}>{n > 9 ? '9+' : n}</Text>
+    </View>
+  )
+}
+
 type Tone = 'orange' | 'purple' | 'green'
 function Tag({ label, tone }: { label: string; tone: Tone }) {
   const fg = tone === 'orange' ? P.orange : tone === 'green' ? P.green : P.purpleSoft
@@ -131,6 +139,7 @@ function ListCard({ a }: { a: Atleta }) {
           <Text style={styles.nombre} numberOfLines={1}>{a.nombre}</Text>
           <Text style={styles.ultima} numberOfLines={1}>Última actividad {a.ultima}</Text>
         </View>
+        {!!a.no_leidos && <UnreadBadge n={a.no_leidos} />}
         <EstadoBadge estado={a.estado} />
       </View>
       <View style={styles.tagsRow}>
@@ -156,7 +165,10 @@ function GridCard({ a }: { a: Atleta }) {
       <Avatar nombre={a.nombre} estado={a.estado} size={52} />
       <Text style={[styles.nombre, styles.gridText]} numberOfLines={1}>{a.nombre}</Text>
       <Text style={[styles.ultima, styles.gridText]} numberOfLines={1}>{a.ultima}</Text>
-      <View style={{ marginVertical: 8 }}><EstadoBadge estado={a.estado} /></View>
+      <View style={{ marginVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <EstadoBadge estado={a.estado} />
+        {!!a.no_leidos && <UnreadBadge n={a.no_leidos} />}
+      </View>
       <View style={styles.gridTags}>
         {tags.map((t) => <Tag key={t.label} label={t.label} tone={t.tone} />)}
       </View>
@@ -585,6 +597,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
+  unreadBadge: {
+    minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6,
+    backgroundColor: P.purple, alignItems: 'center', justifyContent: 'center',
+  },
+  unreadBadgeText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: P.white },
   badgeText: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 10,

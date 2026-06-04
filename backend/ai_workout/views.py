@@ -1448,6 +1448,7 @@ def session_ajustar(request, pk):
         'adaptation_context':   adaptation_context,
         'estado_mesociclo':     estado_mesociclo,
         'periodizacion':        periodizacion,
+        'coach_directiva':      _get_coach_directiva(user),
     }
 
     prompt = build_prompt(ctx)

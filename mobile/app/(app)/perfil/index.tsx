@@ -10,6 +10,7 @@ import { Colors } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
+import { fetchMiCoachUnread } from '../../../lib/coachApi'
 import { logout } from '../../../lib/auth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -180,12 +181,14 @@ export default function PerfilScreen() {
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [coachUnread, setCoachUnread] = useState(0)
 
   const fetchAll = useCallback(async () => {
     try {
-      const [profileRes, statsRes] = await Promise.allSettled([
+      const [profileRes, statsRes, unreadRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
         apiGet('/api/stats/profile/'),
+        fetchMiCoachUnread(),
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
@@ -194,6 +197,7 @@ export default function PerfilScreen() {
       if (statsRes.status === 'fulfilled') {
         setProfileStats(statsRes.value)
       }
+      setCoachUnread(unreadRes.status === 'fulfilled' ? (unreadRes.value?.no_leidos ?? 0) : 0)
     } catch {
       // fail silently
     } finally {
@@ -373,6 +377,7 @@ export default function PerfilScreen() {
 
         <View style={styles.card}>
           <GroupRow icon="🧑‍🏫" title={t('perfil_section_coach_signup')} subtitle={t('perfil_card_coach_signup_sub')}
+            badge={coachUnread > 0 ? (coachUnread > 9 ? '9+' : String(coachUnread)) : undefined}
             onPress={() => router.push('/(app)/perfil/registro-coach' as any)} styles={styles} />
         </View>
 

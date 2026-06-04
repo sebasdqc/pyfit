@@ -21,6 +21,7 @@ export type Atleta = {
   inactivo?: boolean
   score?: number          // Zyfit Score
   adherencia?: number     // % adherencia del período (analytics)
+  no_leidos?: number      // mensajes del atleta sin leer (badge de chat)
 }
 
 export const ATLETAS: Atleta[] = [

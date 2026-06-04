@@ -229,6 +229,10 @@ export interface MiCoachChat {
 export function fetchMiCoachChat(): Promise<MiCoachChat> {
   return apiGet('/api/coach/chat/')
 }
+/** Conteo de mensajes del coach sin leer (no marca como leídos). Para el badge del perfil. */
+export function fetchMiCoachUnread(): Promise<{ no_leidos: number }> {
+  return apiGet('/api/coach/chat/unread/')
+}
 export function sendMiCoachMensaje(texto: string): Promise<Mensaje> {
   return apiPost('/api/coach/chat/', { texto })
 }
