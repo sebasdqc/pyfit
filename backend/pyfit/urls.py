@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from users import views as user_views
 from users import admin_views as admin_api_views
+from users import coach_views
 from checkins import views as checkin_views
 from workouts import views as workout_views
 from ai_workout import views as ai_views
@@ -131,6 +132,11 @@ urlpatterns = [
     # Integraciones de dispositivos
     path('api/integrations/garmin/',       include(garmin_urlpatterns)),
     path('api/integrations/apple-health/', include(apple_health_urlpatterns)),
+
+    # Coach API (Portal de Coach — Fase 1: cartera real)
+    path('api/coach/me/',        coach_views.coach_me),
+    path('api/coach/atletas/',   coach_views.coach_atletas),
+    path('api/coach/vincular/',  coach_views.coach_vincular),
 
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),

@@ -1,21 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales } from '../../lib/coachTheme'
 import { getCoachUser } from '../../lib/storage'
-import { Estado, Atleta, ATLETAS, hasAlert } from '../../lib/coachMockData'
-
-// Adherencia semanal de la cartera (placeholder + delta vs semana anterior).
-const ADHERENCIA = 78
-const ADHERENCIA_DELTA = 4   // +subió / -bajó
+import { Estado, Atleta, hasAlert } from '../../lib/coachMockData'
+import { fetchCartera, fetchCoachMe, type CarteraMetrics } from '../../lib/coachApi'
 
 type Filtro = 'atencion' | 'todos' | 'sin_rutina' | 'inactivos'
 
@@ -177,26 +176,58 @@ export default function CoachInicio() {
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [vista, setVista] = useState<'lista' | 'grid'>('lista')
 
-  useEffect(() => {
-    getCoachUser().then((u) => setNombre(u?.nombre || 'Coach'))
+  const [atletas, setAtletas] = useState<Atleta[]>([])
+  const [metrics, setMetrics] = useState<CarteraMetrics | null>(null)
+  const [codigo, setCodigo] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const cargar = useCallback(async (spinner = true) => {
+    if (spinner) setLoading(true)
+    else setRefreshing(true)
+    setError(null)
+    try {
+      const res = await fetchCartera()
+      setAtletas(res.atletas)
+      setMetrics(res.metrics)
+    } catch (e: any) {
+      setError(e?.message || 'No se pudo cargar tu cartera.')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }, [])
 
-  const activos = ATLETAS.length
-  const atencionHoy = ATLETAS.filter(hasAlert).length
+  useEffect(() => {
+    getCoachUser().then((u) => setNombre(u?.nombre || 'Coach'))
+    fetchCoachMe()
+      .then((me) => { setNombre(me.nombre); setCodigo(me.codigo_coach) })
+      .catch(() => {})
+    cargar(true)
+  }, [cargar])
 
-  const filtrados = useMemo(() => ATLETAS.filter((a) => matchesFiltro(a, filtro)), [filtro])
+  const activos = metrics?.activos ?? 0
+  const atencionHoy = metrics?.atencion_hoy ?? 0
+  const adherencia = metrics?.adherencia ?? 0
+  const adherenciaDelta = metrics?.adherencia_delta ?? 0
+
+  const filtrados = useMemo(() => atletas.filter((a) => matchesFiltro(a, filtro)), [atletas, filtro])
   const conAlerta = filtrados.filter(hasAlert)
   const resto = filtrados.filter((a) => !hasAlert(a))
   // En grid mostramos todo lo filtrado, con las alertas primero.
   const grid = [...conAlerta, ...resto]
 
-  const subio = ADHERENCIA_DELTA >= 0
+  const subio = adherenciaDelta >= 0
 
   return (
     <View style={styles.root}>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => cargar(false)} tintColor={P.purpleSoft} />
+        }
       >
         {/* Barra superior */}
         <View style={styles.topBar}>
@@ -217,10 +248,10 @@ export default function CoachInicio() {
             <Text style={styles.metricNote}>{atencionHoy} necesitan atención hoy</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{ADHERENCIA}%</Text>
+            <Text style={styles.metricValue}>{adherencia}%</Text>
             <Text style={styles.metricLabel}>Adherencia semanal</Text>
             <Text style={[styles.metricNote, { color: subio ? P.green : P.red }]}>
-              {subio ? '▲' : '▼'} {Math.abs(ADHERENCIA_DELTA)}% vs semana anterior
+              {subio ? '▲' : '▼'} {Math.abs(adherenciaDelta)}% vs semana anterior
             </Text>
           </View>
         </View>
@@ -274,7 +305,31 @@ export default function CoachInicio() {
         </View>
 
         {/* Contenido */}
-        {filtrados.length === 0 ? (
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={P.purpleMid} />
+          </View>
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={() => cargar(true)} activeOpacity={0.8}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : atletas.length === 0 ? (
+          <View style={styles.emptyCartera}>
+            <Text style={styles.emptyTitle}>Aún no tienes atletas</Text>
+            <Text style={styles.emptySub}>
+              Comparte tu código de coach para que tus atletas se vinculen a tu cartera.
+            </Text>
+            {!!codigo && (
+              <View style={styles.codeBox}>
+                <Text style={styles.codeLabel}>TU CÓDIGO</Text>
+                <Text style={styles.codeValue}>{codigo}</Text>
+              </View>
+            )}
+          </View>
+        ) : filtrados.length === 0 ? (
           <Text style={styles.empty}>No hay atletas en este filtro.</Text>
         ) : vista === 'lista' ? (
           <>
@@ -430,6 +485,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
   },
+  loadingWrap: { paddingTop: 60, alignItems: 'center' },
+  errorBox: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,77,77,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,77,77,0.3)',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.red, textAlign: 'center' },
+  retryText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 12, color: P.purpleMid, letterSpacing: 0.4 },
+  emptyCartera: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 12, gap: 10 },
+  emptyTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 18, color: P.ink },
+  emptySub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: P.purpleFaint, textAlign: 'center', lineHeight: 20 },
+  codeBox: {
+    marginTop: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    backgroundColor: P.cardBg,
+    borderWidth: 1,
+    borderColor: P.border,
+    alignItems: 'center',
+    gap: 4,
+  },
+  codeLabel: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: P.purpleFaint, letterSpacing: 2 },
+  codeValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: P.purpleMid, letterSpacing: 4 },
 
   // Cards comunes
   cardWarm: {

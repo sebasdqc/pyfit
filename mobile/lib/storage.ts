@@ -55,3 +55,16 @@ export async function clearCoachSession() {
   await SecureStore.deleteItemAsync(COACH_REFRESH_KEY)
   await SecureStore.deleteItemAsync(COACH_USER_KEY)
 }
+
+export async function getCoachAccessToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(COACH_ACCESS_KEY)
+}
+
+export async function getCoachRefreshToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(COACH_REFRESH_KEY)
+}
+
+export async function saveCoachTokens(access: string, refresh: string) {
+  await SecureStore.setItemAsync(COACH_ACCESS_KEY, access)
+  await SecureStore.setItemAsync(COACH_REFRESH_KEY, refresh)
+}

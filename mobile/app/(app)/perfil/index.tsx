@@ -371,6 +371,11 @@ export default function PerfilScreen() {
             onPress={() => router.push('/(app)/perfil/evidencia' as any)} styles={styles} />
         </View>
 
+        <View style={styles.card}>
+          <GroupRow icon="🧑‍🏫" title={t('perfil_section_coach_signup')} subtitle={t('perfil_card_coach_signup_sub')}
+            onPress={() => router.push('/(app)/perfil/registro-coach' as any)} styles={styles} />
+        </View>
+
         {/* ── BLOQUE ADMINISTRATIVO ── */}
         <View style={styles.adminCard}>
           {/* Suscripción — fila con dos estados mutuamente excluyentes según el plan.

@@ -403,6 +403,8 @@ const translations = {
   perfil_card_account_sub:    { es: 'Tu información personal',            en: 'Your personal information' },
   perfil_card_training_sub:   { es: 'Objetivos, ubicaciones, preferencias y más', en: 'Goals, locations, preferences and more' },
   perfil_card_evidence_sub:   { es: 'Cómo funciona tu entrenador',        en: 'How your coach works' },
+  perfil_section_coach_signup: { es: 'Registro con Coach',                en: 'Register with Coach' },
+  perfil_card_coach_signup_sub: { es: 'Vincúlate con tu entrenador por código', en: 'Link to your coach with a code' },
   perfil_row_subscription:    { es: 'Mi suscripción',                    en: 'My subscription' },
   perfil_row_upgrade:         { es: 'Actualizar a Pro',                  en: 'Upgrade to Pro' },
   perfil_row_referrals:       { es: 'Referidos',                         en: 'Referrals' },

@@ -169,6 +169,10 @@ class Profile(models.Model):
     # TODOS los perfiles tengan siempre uno. null permitido solo para no romper
     # la migración inicial (multiples NULL conviven con unique en Postgres).
     codigo_referido = models.CharField(max_length=12, unique=True, null=True, blank=True)
+    # Código de invitación de COACH. Solo se rellena para cuentas coach (de forma
+    # perezosa, la primera vez que el coach abre su portal). El atleta lo ingresa
+    # para vincularse a su cartera. null para atletas → no les genera código.
+    codigo_coach = models.CharField(max_length=12, unique=True, null=True, blank=True)
     # Marca de cuenta de prueba (QA, demos, el propio equipo). Las cuentas con
     # esta bandera se excluyen de las métricas de negocio (KPIs, embudo,
     # retención, churn) para que la analítica refleje usuarios reales. No afecta
@@ -383,3 +387,33 @@ class ImpersonationLog(models.Model):
         imp = self.impersonator_id and self.impersonator.email or '?'
         tgt = self.target_id and self.target.email or '?'
         return f'{imp} → {tgt} [{self.action}]'
+
+
+class CoachAthlete(models.Model):
+    """Vínculo entre un coach y un atleta de su cartera.
+
+    Un atleta puede aparecer en la cartera de varios coaches (no se restringe),
+    pero un par (coach, atleta) es único. El atleta se vincula ingresando el
+    `codigo_coach` del coach; el coach puede pausar el vínculo sin borrarlo.
+    """
+    ESTADO_ACTIVO = 'activo'
+    ESTADO_PAUSADO = 'pausado'
+    ESTADO_CHOICES = [(ESTADO_ACTIVO, 'Activo'), (ESTADO_PAUSADO, 'Pausado')]
+
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cartera',
+    )
+    athlete = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coaches',
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'coach_athletes'
+        unique_together = [['coach', 'athlete']]
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['coach', 'estado'])]
+
+    def __str__(self):
+        return f'{self.coach_id} → {self.athlete_id} [{self.estado}]'
