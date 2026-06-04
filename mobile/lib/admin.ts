@@ -27,6 +27,8 @@ export interface AdminUserRow {
   nombre:          string
   is_staff:        boolean
   is_superuser:    boolean
+  role:            string      // 'athlete' | 'coach'
+  coach_activo:    boolean
   date_joined:     string | null
   last_login:      string | null
   total_sesiones:  number
@@ -71,6 +73,31 @@ export function fetchAdminUsers(query: string, page: number = 1): Promise<AdminU
   const params = new URLSearchParams({ page: String(page) })
   if (query.trim()) params.set('q', query.trim())
   return apiGet(`/api/admin/users/?${params.toString()}`)
+}
+
+export interface CreateCoachInput {
+  email:    string
+  password: string
+  nombre:   string
+  activo:   boolean
+}
+
+/** Crea una cuenta de coach desde cero (solo staff). Devuelve la fila del coach. */
+export function createCoach(input: CreateCoachInput): Promise<AdminUserRow> {
+  return apiPost('/api/admin/coaches/', {
+    email:    input.email.trim().toLowerCase(),
+    password: input.password,
+    nombre:   input.nombre.trim(),
+    activo:   input.activo,
+  })
+}
+
+/**
+ * Promueve un usuario existente a coach (coach=true) o lo revierte a atleta
+ * (coach=false). `activo` decide si el acceso queda activo o pendiente.
+ */
+export function setUserCoach(userId: number, coach: boolean, activo: boolean): Promise<AdminUserRow> {
+  return apiPost(`/api/admin/users/${userId}/set-coach/`, { coach, activo })
 }
 
 /**

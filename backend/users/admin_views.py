@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.admin_security import _user_has_confirmed_otp, _verify_against_user_devices
-from .models import ImpersonationLog
+from .models import ImpersonationLog, Profile
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -63,9 +63,13 @@ def _serialize_user_row(u) -> dict:
     return {
         'id':                u.id,
         'email':             u.email,
-        'nombre':            profile.nombre if profile else '',
+        # Los coaches no siempre tienen Profile (se crean desde el admin), así que
+        # caemos a first_name para que el nombre se muestre en el listado.
+        'nombre':            (profile.nombre if profile else '') or u.first_name,
         'is_staff':          u.is_staff,
         'is_superuser':      u.is_superuser,
+        'role':              u.role,
+        'coach_activo':      u.coach_activo,
         'date_joined':       u.date_joined.isoformat() if u.date_joined else None,
         'last_login':        u.last_login.isoformat() if u.last_login else None,
         'total_sesiones':   getattr(u, '_total_sesiones', 0),
@@ -263,3 +267,95 @@ def admin_stop_impersonate(request):
             'onboarding_completo': True,   # un admin ya completó onboarding por definición
         },
     })
+
+
+# ─── Gestión de coaches ─────────────────────────────────────────────────────────
+
+def _password_errors(value: str):
+    """Corre los AUTH_PASSWORD_VALIDATORS de Django. Devuelve lista de mensajes
+    o None si la contraseña es válida. create_user() no los corre por defecto."""
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    try:
+        validate_password(value)
+    except DjangoValidationError as exc:
+        return list(exc.messages)
+    return None
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_create_coach(request):
+    """Crea una cuenta de coach desde cero. Solo staff.
+
+    Body: { email, password, nombre, activo }. `activo` decide si el acceso al
+    portal queda activo (coach_activo=True) o pendiente de activación. No afecta
+    a atletas ni al registro público (que siempre crea role='athlete').
+    """
+    email    = (request.data.get('email') or '').lower().strip()
+    password = request.data.get('password') or ''
+    nombre   = (request.data.get('nombre') or '').strip()
+    activo   = bool(request.data.get('activo', False))
+
+    if not email or '@' not in email:
+        return Response({'error': 'Email inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not nombre:
+        return Response({'error': 'El nombre es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
+    pw_errors = _password_errors(password)
+    if pw_errors:
+        return Response({'error': ' '.join(pw_errors)}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(email__iexact=email).exists():
+        return Response({'error': 'Ya existe una cuenta con ese email.'}, status=status.HTTP_409_CONFLICT)
+
+    from django.db import IntegrityError
+    try:
+        user = User.objects.create_user(username=email, email=email, password=password)
+    except IntegrityError:
+        return Response({'error': 'Ya existe una cuenta con ese email.'}, status=status.HTTP_409_CONFLICT)
+    user.first_name   = nombre
+    user.role         = User.ROLE_COACH
+    user.coach_activo = activo
+    user.save(update_fields=['first_name', 'role', 'coach_activo'])
+    # Profile opcional: el portal de coach no lo exige, pero crearlo mantiene el
+    # nombre visible en el listado y deja el registro consistente con un atleta.
+    Profile.objects.get_or_create(user=user, defaults={'nombre': nombre})
+
+    logger.info('admin_create_coach: %s creó coach %s (activo=%s)', request.user.email, email, activo)
+    user._total_sesiones = 0
+    user._ultima_sesion  = None
+    return Response(_serialize_user_row(user), status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_set_coach(request, pk):
+    """Promueve un usuario existente a coach o lo revierte a atleta. Solo staff.
+
+    Body: { coach: bool, activo: bool }.
+      - coach=True  → role='coach', coach_activo=`activo`.
+      - coach=False → role='athlete', coach_activo=False (revoca el acceso).
+    """
+    try:
+        target = User.objects.select_related('profile').annotate(
+            _total_sesiones=Count('sessions', distinct=True),
+            _ultima_sesion=Max('sessions__fecha'),
+        ).get(pk=pk)
+    except User.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    hacer_coach = bool(request.data.get('coach', True))
+    activo      = bool(request.data.get('activo', False))
+
+    if hacer_coach:
+        target.role         = User.ROLE_COACH
+        target.coach_activo = activo
+    else:
+        target.role         = User.ROLE_ATHLETE
+        target.coach_activo = False
+    target.save(update_fields=['role', 'coach_activo'])
+
+    logger.info(
+        'admin_set_coach: %s -> %s (coach=%s, activo=%s)',
+        request.user.email, target.email, hacer_coach, activo,
+    )
+    return Response(_serialize_user_row(target))

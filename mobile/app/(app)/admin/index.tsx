@@ -16,6 +16,7 @@ import {
   FlatList,
   Modal,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -28,8 +29,10 @@ import { Colors } from '../../../lib/colors'
 import {
   AdminUserRow,
   AdminUsersResponse,
+  createCoach,
   fetchAdminMe,
   fetchAdminUsers,
+  setUserCoach,
   startImpersonation,
 } from '../../../lib/admin'
 
@@ -69,6 +72,21 @@ export default function AdminScreen() {
   const [otpCode,      setOtpCode]      = useState('')
   const [otpError,     setOtpError]     = useState<string | null>(null)
   const [otpSubmitting, setOtpSubmitting] = useState(false)
+
+  // Crear coach desde cero (email + password + nombre + activo)
+  const [createOpen,   setCreateOpen]   = useState(false)
+  const [cName,        setCName]        = useState('')
+  const [cEmail,       setCEmail]       = useState('')
+  const [cPassword,    setCPassword]    = useState('')
+  const [cActivo,      setCActivo]      = useState(true)
+  const [creating,     setCreating]     = useState(false)
+  const [createError,  setCreateError]  = useState<string | null>(null)
+
+  // Promover/revocar coach sobre un usuario existente
+  const [coachTarget,  setCoachTarget]  = useState<AdminUserRow | null>(null)
+  const [coachActivo,  setCoachActivo]  = useState(true)
+  const [savingCoach,  setSavingCoach]  = useState(false)
+  const [coachError,   setCoachError]   = useState<string | null>(null)
 
   // Debounce para no machacar el backend con cada tecleo
   useEffect(() => {
@@ -140,10 +158,66 @@ export default function AdminScreen() {
     setOtpSubmitting(false)
   }
 
+  // ── Coaches ─────────────────────────────────────────────────────────────────
+
+  function openCreateCoach() {
+    setCName('')
+    setCEmail('')
+    setCPassword('')
+    setCActivo(true)
+    setCreateError(null)
+    setCreateOpen(true)
+  }
+
+  async function submitCreateCoach() {
+    if (creating) return
+    if (!cName.trim() || !cEmail.trim() || !cPassword) {
+      setCreateError('Completa nombre, email y contraseña.')
+      return
+    }
+    if (cPassword.length < 8) {
+      setCreateError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setCreating(true)
+    setCreateError(null)
+    try {
+      await createCoach({ email: cEmail, password: cPassword, nombre: cName, activo: cActivo })
+      setCreateOpen(false)
+      await load(false)
+    } catch (e: any) {
+      setCreateError(e?.message || 'No se pudo crear el coach.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  function openCoachModal(u: AdminUserRow) {
+    setCoachTarget(u)
+    setCoachActivo(u.role === 'coach' ? u.coach_activo : true)
+    setCoachError(null)
+  }
+
+  async function submitSetCoach(coach: boolean) {
+    if (!coachTarget || savingCoach) return
+    setSavingCoach(true)
+    setCoachError(null)
+    try {
+      await setUserCoach(coachTarget.id, coach, coach ? coachActivo : false)
+      setCoachTarget(null)
+      await load(false)
+    } catch (e: any) {
+      setCoachError(e?.message || 'No se pudo actualizar el coach.')
+    } finally {
+      setSavingCoach(false)
+    }
+  }
+
   // ── Render rows ───────────────────────────────────────────────────────────
 
   const renderItem = ({ item }: { item: AdminUserRow }) => {
     const isImpersonating = impersonatingId === item.id
+    const isCoach = item.role === 'coach'
     return (
       <View style={styles.userCard}>
         <View style={styles.userMeta}>
@@ -153,6 +227,13 @@ export default function AdminScreen() {
             </Text>
             {item.is_superuser && <View style={styles.badgeSuperuser}><Text style={styles.badgeTextSuperuser}>SU</Text></View>}
             {item.is_staff && !item.is_superuser && <View style={styles.badgeStaff}><Text style={styles.badgeTextStaff}>STAFF</Text></View>}
+            {isCoach && (
+              <View style={item.coach_activo ? styles.badgeCoach : styles.badgeCoachPend}>
+                <Text style={item.coach_activo ? styles.badgeTextCoach : styles.badgeTextCoachPend}>
+                  {item.coach_activo ? 'COACH' : 'COACH·PEND'}
+                </Text>
+              </View>
+            )}
           </View>
           <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
           <Text style={styles.userStats}>
@@ -160,17 +241,28 @@ export default function AdminScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.impersonateBtn, isImpersonating && styles.impersonateBtnLoading]}
-          onPress={() => handleImpersonate(item)}
-          disabled={!!impersonatingId}
-          activeOpacity={0.78}
-        >
-          {isImpersonating
-            ? <ActivityIndicator size="small" color="#000" />
-            : <Text style={styles.impersonateBtnText}>VER COMO</Text>
-          }
-        </TouchableOpacity>
+        <View style={styles.userActions}>
+          <TouchableOpacity
+            style={[styles.impersonateBtn, isImpersonating && styles.impersonateBtnLoading]}
+            onPress={() => handleImpersonate(item)}
+            disabled={!!impersonatingId}
+            activeOpacity={0.78}
+          >
+            {isImpersonating
+              ? <ActivityIndicator size="small" color="#000" />
+              : <Text style={styles.impersonateBtnText}>VER COMO</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.coachBtn, isCoach && styles.coachBtnActive]}
+            onPress={() => openCoachModal(item)}
+            activeOpacity={0.78}
+          >
+            <Text style={[styles.coachBtnText, isCoach && styles.coachBtnTextActive]}>
+              {isCoach ? 'COACH ⚙' : '＋ COACH'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
   }
@@ -186,6 +278,9 @@ export default function AdminScreen() {
           <Text style={styles.eyebrow}>ZYFIT CONTROL</Text>
           <Text style={styles.title}>Panel de administración</Text>
         </View>
+        <TouchableOpacity style={styles.createCoachBtn} onPress={openCreateCoach} activeOpacity={0.8}>
+          <Text style={styles.createCoachBtnText}>＋ COACH</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stat strip */}
@@ -294,6 +389,165 @@ export default function AdminScreen() {
                 }
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal — crear coach desde cero */}
+      <Modal
+        visible={createOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!creating) setCreateOpen(false) }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEyebrow}>NUEVO COACH</Text>
+            <Text style={styles.modalTitle}>Crear cuenta de coach</Text>
+            <Text style={styles.modalSub}>Crea una cuenta con acceso al portal de entrenador.</Text>
+
+            <TextInput
+              style={styles.formInput}
+              value={cName}
+              onChangeText={setCName}
+              placeholder="Nombre"
+              placeholderTextColor={colors.inkMuted}
+              editable={!creating}
+            />
+            <TextInput
+              style={styles.formInput}
+              value={cEmail}
+              onChangeText={setCEmail}
+              placeholder="Email"
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={!creating}
+            />
+            <TextInput
+              style={styles.formInput}
+              value={cPassword}
+              onChangeText={setCPassword}
+              placeholder="Contraseña (mín. 8)"
+              placeholderTextColor={colors.inkMuted}
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!creating}
+            />
+
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Acceso activo</Text>
+                <Text style={styles.toggleHint}>
+                  {cActivo ? 'Podrá entrar al portal de inmediato' : 'Quedará pendiente de activación'}
+                </Text>
+              </View>
+              <Switch
+                value={cActivo}
+                onValueChange={setCActivo}
+                trackColor={{ false: colors.borderBright, true: colors.accent }}
+                thumbColor="#fff"
+                disabled={creating}
+              />
+            </View>
+
+            {createError && <Text style={styles.otpError}>{createError}</Text>}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { if (!creating) setCreateOpen(false) }}
+                disabled={creating}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>CANCELAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, creating && styles.impersonateBtnLoading]}
+                onPress={submitCreateCoach}
+                disabled={creating}
+                activeOpacity={0.78}
+              >
+                {creating
+                  ? <ActivityIndicator size="small" color="#000" />
+                  : <Text style={styles.modalConfirmText}>CREAR</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal — promover/gestionar coach sobre un usuario existente */}
+      <Modal
+        visible={!!coachTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!savingCoach) setCoachTarget(null) }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEyebrow}>
+              {coachTarget?.role === 'coach' ? 'GESTIONAR COACH' : 'PROMOVER A COACH'}
+            </Text>
+            <Text style={styles.modalTitle} numberOfLines={1}>
+              {coachTarget?.nombre || coachTarget?.email}
+            </Text>
+            <Text style={styles.modalSub} numberOfLines={1}>{coachTarget?.email}</Text>
+
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Acceso activo</Text>
+                <Text style={styles.toggleHint}>
+                  {coachActivo ? 'Puede entrar al portal' : 'Pendiente de activación'}
+                </Text>
+              </View>
+              <Switch
+                value={coachActivo}
+                onValueChange={setCoachActivo}
+                trackColor={{ false: colors.borderBright, true: colors.accent }}
+                thumbColor="#fff"
+                disabled={savingCoach}
+              />
+            </View>
+
+            {coachError && <Text style={styles.otpError}>{coachError}</Text>}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { if (!savingCoach) setCoachTarget(null) }}
+                disabled={savingCoach}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>CANCELAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, savingCoach && styles.impersonateBtnLoading]}
+                onPress={() => submitSetCoach(true)}
+                disabled={savingCoach}
+                activeOpacity={0.78}
+              >
+                {savingCoach
+                  ? <ActivityIndicator size="small" color="#000" />
+                  : <Text style={styles.modalConfirmText}>
+                      {coachTarget?.role === 'coach' ? 'GUARDAR' : 'PROMOVER'}
+                    </Text>
+                }
+              </TouchableOpacity>
+            </View>
+
+            {coachTarget?.role === 'coach' && (
+              <TouchableOpacity
+                style={styles.revokeBtn}
+                onPress={() => submitSetCoach(false)}
+                disabled={savingCoach}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.revokeBtnText}>Revocar acceso · volver a atleta</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -428,6 +682,60 @@ function makeStyles(c: Colors) {
       color:      '#000',
     },
 
+    // ── Acciones por fila (impersonar + coach) ──────────────────────────────
+    userActions: { gap: 8, alignItems: 'stretch' },
+    coachBtn: {
+      paddingHorizontal: 14,
+      paddingVertical:    8,
+      borderRadius:       10,
+      minWidth:           90,
+      alignItems:         'center',
+      borderWidth:        1,
+      borderColor:        'rgba(167,139,250,0.5)',
+      backgroundColor:    'rgba(167,139,250,0.12)',
+    },
+    coachBtnActive: {
+      backgroundColor: 'rgba(167,139,250,0.22)',
+      borderColor:     'rgba(167,139,250,0.7)',
+    },
+    coachBtnText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize:   10,
+      letterSpacing: 1,
+      color:      '#a78bfa',
+    },
+    coachBtnTextActive: { color: '#c4b5fd' },
+
+    // Badge de coach en la fila (morado activo / ámbar pendiente)
+    badgeCoach: {
+      backgroundColor: 'rgba(167,139,250,0.22)',
+      borderWidth: 1, borderColor: 'rgba(167,139,250,0.5)',
+      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    },
+    badgeCoachPend: {
+      backgroundColor: 'rgba(251,191,36,0.22)',
+      borderWidth: 1, borderColor: 'rgba(251,191,36,0.5)',
+      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    },
+    badgeTextCoach:     { fontFamily: 'JetBrainsMono-Medium', fontSize: 8, letterSpacing: 1.1, color: '#a78bfa' },
+    badgeTextCoachPend: { fontFamily: 'JetBrainsMono-Medium', fontSize: 8, letterSpacing: 1.1, color: '#b45309' },
+
+    // Botón "＋ COACH" del header
+    createCoachBtn: {
+      paddingHorizontal: 12,
+      paddingVertical:    8,
+      borderRadius:       10,
+      borderWidth:        1,
+      borderColor:        'rgba(167,139,250,0.5)',
+      backgroundColor:    'rgba(167,139,250,0.14)',
+    },
+    createCoachBtnText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize:   10,
+      letterSpacing: 1,
+      color:      '#a78bfa',
+    },
+
     emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
     emptyTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary },
     emptySub:   { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted },
@@ -481,5 +789,29 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
     },
     modalConfirmText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2, color: '#000' },
+
+    // ── Form crear/gestionar coach ───────────────────────────────────────────
+    formInput: {
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 15,
+      color: c.inkPrimary,
+      marginTop: 10,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 16,
+    },
+    toggleLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.inkPrimary },
+    toggleHint:  { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
+    revokeBtn:   { marginTop: 14, alignItems: 'center', paddingVertical: 8 },
+    revokeBtnText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.6, color: '#ff8585' },
   })
 }

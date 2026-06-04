@@ -135,6 +135,8 @@ urlpatterns = [
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),
     path('api/admin/users/',                    admin_api_views.admin_users_list),
+    path('api/admin/coaches/',                  admin_api_views.admin_create_coach),
+    path('api/admin/users/<int:pk>/set-coach/', admin_api_views.admin_set_coach),
     path('api/admin/impersonate/<int:pk>/',     admin_api_views.admin_impersonate),
     path('api/admin/stop-impersonate/',         admin_api_views.admin_stop_impersonate),
 ]
