@@ -133,9 +133,11 @@ urlpatterns = [
     path('api/integrations/garmin/',       include(garmin_urlpatterns)),
     path('api/integrations/apple-health/', include(apple_health_urlpatterns)),
 
-    # Coach API (Portal de Coach — Fase 1: cartera real)
+    # Coach API (Portal de Coach — Fase 1: cartera; Fase 2: detalle + historial)
     path('api/coach/me/',        coach_views.coach_me),
     path('api/coach/atletas/',   coach_views.coach_atletas),
+    path('api/coach/atletas/<int:pk>/',          coach_views.coach_atleta_detalle),
+    path('api/coach/atletas/<int:pk>/sesiones/', coach_views.coach_atleta_sesiones),
     path('api/coach/vincular/',  coach_views.coach_vincular),
 
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)

@@ -9,12 +9,19 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { P, iniciales } from '../../../lib/coachTheme'
-import { getAtleta, hasAlert, type Atleta } from '../../../lib/coachMockData'
+import { hasAlert } from '../../../lib/coachMockData'
+import {
+  fetchAtletaDetalle,
+  fetchAtletaSesiones,
+  type AtletaDetalle,
+  type SesionHist,
+} from '../../../lib/coachApi'
 import { getCoachUser } from '../../../lib/storage'
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
@@ -35,16 +42,9 @@ function IconSend({ color }: { color: string }) {
   )
 }
 
-// ─── Datos de ejemplo del detalle ───────────────────────────────────────────────
-// PLACEHOLDER: rutina, historial, métricas y chat son de ejemplo. Conectar a los
-// endpoints de coach cuando existan. El hero sí usa los datos reales del atleta.
-
-const METRICAS = (a: Atleta) => [
-  { label: 'Consistencia',     value: a.estado === 'al_dia' ? '88%' : '54%', extra: a.estado === 'al_dia' ? '▲' : '▼', extraColor: a.estado === 'al_dia' ? P.green : P.red },
-  { label: 'Sesiones del mes', value: a.estado === 'al_dia' ? '10' : '4',    extra: '/ 12', extraColor: P.purpleFaint },
-  { label: 'RPE promedio',     value: '7.4',                                  extra: 'últimas 5', extraColor: P.purpleFaint },
-  { label: 'Con este coach',   value: '3 meses',                              extra: '', extraColor: P.purpleFaint },
-]
+// ─── Datos del detalle ──────────────────────────────────────────────────────────
+// Perfil (métricas) e Historial son REALES (endpoints de coach). Rutina y Chat
+// siguen siendo placeholder hasta las Fases 3 y 4.
 
 const TOGGLES = [
   { key: 'checkin',  nombre: 'Check-in diario',     desc: 'El atleta reporta ánimo, sueño y energía cada día.' },
@@ -67,16 +67,6 @@ const RUTINA = {
 }
 
 type Barra = 'done' | 'skip' | 'alto'
-type Sesion = { fecha: string; rpe: number; completados: number; total: number; min: number; barras: Barra[] }
-
-const SESIONES: Sesion[] = [
-  { fecha: 'Hoy',          rpe: 7.5, completados: 6, total: 6, min: 52, barras: ['done', 'done', 'done', 'done', 'done', 'done'] },
-  { fecha: 'Ayer',         rpe: 8.6, completados: 4, total: 7, min: 38, barras: ['alto', 'done', 'skip', 'done', 'skip', 'done', 'alto'] },
-  { fecha: 'Lun 25 may',   rpe: 7.0, completados: 5, total: 6, min: 48, barras: ['done', 'done', 'done', 'skip', 'done', 'done'] },
-  { fecha: 'Sáb 23 may',   rpe: 6.8, completados: 6, total: 6, min: 55, barras: ['done', 'done', 'done', 'done', 'done', 'done'] },
-  { fecha: 'Jue 21 may',   rpe: 8.9, completados: 3, total: 7, min: 31, barras: ['alto', 'skip', 'done', 'skip', 'alto', 'skip', 'done'] },
-  { fecha: 'Mar 19 may',   rpe: 7.2, completados: 5, total: 5, min: 50, barras: ['done', 'done', 'done', 'done', 'done'] },
-]
 
 type Mensaje = { id: string; from: 'coach' | 'atleta'; text: string; hora: string }
 const CHAT_INICIAL: Mensaje[] = [
@@ -119,10 +109,16 @@ const TABS: { key: Tab; label: string }[] = [
 export default function CoachAtletaDetalle() {
   const insets = useSafeAreaInsets()
   const params = useLocalSearchParams<{ id?: string; nombre?: string }>()
-  const atleta = getAtleta(params.id)
-  const nombre = atleta?.nombre || params.nombre || 'Atleta'
-  const estado = atleta?.estado ?? 'al_dia'
-  const alerta = atleta ? hasAlert(atleta) : false
+
+  const [detalle, setDetalle] = useState<AtletaDetalle | null>(null)
+  const [loadingDet, setLoadingDet] = useState(true)
+  const [errDet, setErrDet] = useState<string | null>(null)
+  const [sesiones, setSesiones] = useState<SesionHist[] | null>(null)
+  const [loadingSes, setLoadingSes] = useState(true)
+
+  const nombre = detalle?.nombre || params.nombre || 'Atleta'
+  const estado = detalle?.estado ?? 'al_dia'
+  const alerta = detalle ? hasAlert(detalle) : false
 
   const [tab, setTab] = useState<Tab>('perfil')
   const [coachNombre, setCoachNombre] = useState('Coach')
@@ -130,12 +126,33 @@ export default function CoachAtletaDetalle() {
     checkin: true, feedback: true, ia: true, manual: false,
   })
   // La rutina arranca pendiente de aprobación salvo que el atleta ya tenga una activa.
-  const [pendiente, setPendiente] = useState(!atleta?.rutinaActiva)
+  const [pendiente, setPendiente] = useState(false)
   const [mensajes, setMensajes] = useState<Mensaje[]>(CHAT_INICIAL)
   const [input, setInput] = useState('')
   const chatRef = useRef<ScrollView>(null)
 
   useEffect(() => { getCoachUser().then((u) => setCoachNombre(u?.nombre || 'Coach')) }, [])
+
+  useEffect(() => {
+    const id = params.id
+    if (!id) { setLoadingDet(false); setLoadingSes(false); return }
+    fetchAtletaDetalle(id)
+      .then((d) => { setDetalle(d); setPendiente(!d.rutinaActiva) })
+      .catch((e: any) => setErrDet(e?.message || 'No se pudo cargar el atleta.'))
+      .finally(() => setLoadingDet(false))
+    fetchAtletaSesiones(id)
+      .then((r) => setSesiones(r.sesiones))
+      .catch(() => setSesiones([]))
+      .finally(() => setLoadingSes(false))
+  }, [params.id])
+
+  const m = detalle?.metrics
+  const metricas = m ? [
+    { label: 'Consistencia',     value: `${m.consistencia}%`, extra: m.consistencia >= 70 ? '▲' : '▼', extraColor: m.consistencia >= 70 ? P.green : P.red },
+    { label: 'Sesiones del mes', value: `${m.sesiones_mes}`, extra: `/ ${m.sesiones_target}`, extraColor: P.purpleFaint },
+    { label: 'RPE promedio',     value: m.rpe_promedio != null ? m.rpe_promedio.toFixed(1) : '—', extra: 'últimas 5', extraColor: P.purpleFaint },
+    { label: 'Con este coach',   value: m.antiguedad, extra: '', extraColor: P.purpleFaint },
+  ] : []
 
   const avatarFg = alerta ? P.orange : P.green
   const avatarBg = alerta ? P.orangeSoft : P.greenSoft
@@ -170,10 +187,12 @@ export default function CoachAtletaDetalle() {
         </View>
         <View style={styles.heroCenter}>
           <Text style={styles.heroName} numberOfLines={1}>{nombre}</Text>
-          <Text style={styles.heroSub} numberOfLines={2}>{atleta?.situacion || 'Última sesión hoy'}</Text>
+          <Text style={styles.heroSub} numberOfLines={2}>
+            {detalle?.situacion || (loadingDet ? 'Cargando…' : 'Sin datos')}
+          </Text>
         </View>
         <View style={styles.heroScore}>
-          <Text style={styles.heroScoreNum}>{atleta?.score ?? '—'}</Text>
+          <Text style={styles.heroScoreNum}>{detalle?.score ?? '—'}</Text>
           <Text style={styles.heroScoreLabel}>Zyfit Score</Text>
         </View>
       </View>
@@ -199,8 +218,13 @@ export default function CoachAtletaDetalle() {
       <View style={{ flex: 1 }}>
         {tab === 'perfil' && (
           <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+            {loadingDet ? (
+              <View style={styles.loadingWrap}><ActivityIndicator color={P.purpleMid} /></View>
+            ) : errDet ? (
+              <Text style={styles.emptyText}>{errDet}</Text>
+            ) : (
             <View style={styles.metricsGrid}>
-              {METRICAS(atleta || ({} as Atleta)).map((m) => (
+              {metricas.map((m) => (
                 <View key={m.label} style={styles.metricCard}>
                   <View style={styles.metricTop}>
                     <Text style={styles.metricValue}>{m.value}</Text>
@@ -210,6 +234,7 @@ export default function CoachAtletaDetalle() {
                 </View>
               ))}
             </View>
+            )}
 
             <Text style={styles.sectionLabel}>Configuración del atleta</Text>
             {TOGGLES.map((tg) => (
@@ -271,18 +296,24 @@ export default function CoachAtletaDetalle() {
 
         {tab === 'historial' && (
           <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
-            {SESIONES.map((s, i) => (
-              <View key={i} style={styles.sesionCard}>
-                <View style={styles.sesionTop}>
-                  <Text style={styles.sesionFecha}>{s.fecha}</Text>
-                  <Text style={styles.sesionRpe}>RPE {s.rpe.toFixed(1)}</Text>
+            {loadingSes ? (
+              <View style={styles.loadingWrap}><ActivityIndicator color={P.purpleMid} /></View>
+            ) : !sesiones || sesiones.length === 0 ? (
+              <Text style={styles.emptyText}>Sin sesiones registradas todavía.</Text>
+            ) : (
+              sesiones.map((s, i) => (
+                <View key={i} style={styles.sesionCard}>
+                  <View style={styles.sesionTop}>
+                    <Text style={styles.sesionFecha}>{s.fecha}</Text>
+                    <Text style={styles.sesionRpe}>RPE {s.rpe.toFixed(1)}</Text>
+                  </View>
+                  <MiniBars barras={s.barras} />
+                  <Text style={styles.sesionResumen}>
+                    {s.completados} de {s.total} ejercicios · {s.min} min
+                  </Text>
                 </View>
-                <MiniBars barras={s.barras} />
-                <Text style={styles.sesionResumen}>
-                  {s.completados} de {s.total} ejercicios · {s.min} min
-                </Text>
-              </View>
-            ))}
+              ))
+            )}
           </ScrollView>
         )}
 
@@ -389,6 +420,11 @@ const styles = StyleSheet.create({
 
   // Contenido común
   tabContent: { paddingHorizontal: 20, paddingBottom: 28 },
+  loadingWrap: { paddingTop: 48, alignItems: 'center' },
+  emptyText: {
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: P.purpleFaint,
+    textAlign: 'center', marginTop: 40,
+  },
   sectionLabel: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 10,

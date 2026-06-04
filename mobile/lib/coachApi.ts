@@ -105,10 +105,42 @@ async function coachRequest(method: string, path: string, body?: unknown, isRetr
   return res.json()
 }
 
+export interface AtletaDetalleMetrics {
+  consistencia:     number
+  sesiones_mes:     number
+  sesiones_target:  number
+  rpe_promedio:     number | null
+  antiguedad:       string
+}
+
+export interface AtletaDetalle extends Atleta {
+  metrics:  AtletaDetalleMetrics
+  desde:    string
+}
+
+export type Barra = 'done' | 'skip' | 'alto'
+
+export interface SesionHist {
+  fecha:        string
+  rpe:          number
+  completados:  number
+  total:        number
+  min:          number
+  barras:       Barra[]
+}
+
 export function fetchCoachMe(): Promise<CoachMe> {
   return coachRequest('GET', '/api/coach/me/')
 }
 
 export function fetchCartera(): Promise<CarteraResponse> {
   return coachRequest('GET', '/api/coach/atletas/')
+}
+
+export function fetchAtletaDetalle(id: string | number): Promise<AtletaDetalle> {
+  return coachRequest('GET', `/api/coach/atletas/${id}/`)
+}
+
+export function fetchAtletaSesiones(id: string | number): Promise<{ sesiones: SesionHist[] }> {
+  return coachRequest('GET', `/api/coach/atletas/${id}/sesiones/`)
 }

@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg
 from django.utils import timezone
 from rest_framework import status
@@ -20,7 +21,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
-from workouts.models import SessionFeedback
+from workouts.models import Session, SessionFeedback
 from .models import Profile, CoachAthlete, generar_codigo_referido
 
 logger = logging.getLogger(__name__)
@@ -185,6 +186,125 @@ def _athlete_card(athlete, hoy, ahora) -> dict:
     }
 
 
+# ─── Helpers de detalle / historial ─────────────────────────────────────────────
+
+_DIAS_ABBR = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']      # weekday() Mon=0
+_MESES_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+               'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+
+def _humanize_fecha(fecha, hoy) -> str:
+    """'Hoy' / 'Ayer' / 'Lun 25 may' a partir de la fecha de la sesión."""
+    d = (hoy - fecha).days
+    if d == 0:
+        return 'Hoy'
+    if d == 1:
+        return 'Ayer'
+    return f'{_DIAS_ABBR[fecha.weekday()]} {fecha.day} {_MESES_ABBR[fecha.month - 1]}'
+
+
+def _get_link(coach, pk):
+    """Vínculo ACTIVO coach→atleta, o None. Es la barrera de autorización: un
+    coach solo puede ver atletas de su propia cartera."""
+    return (CoachAthlete.objects
+            .filter(coach=coach, athlete_id=pk, estado=CoachAthlete.ESTADO_ACTIVO)
+            .select_related('athlete__profile').first())
+
+
+def _athlete_detail_metrics(athlete, hoy, link) -> dict:
+    """Métricas del tab Perfil del detalle (consistencia, sesiones/mes, RPE, antigüedad)."""
+    profile = getattr(athlete, 'profile', None)
+    dias_semana = (profile.dias_semana if profile and profile.dias_semana else 3)
+
+    hace_28 = hoy - timedelta(days=28)
+    n_ses_28 = athlete.sessions.filter(fecha__gte=hace_28).count()
+    esperadas = dias_semana * 4
+    consistencia = _clamp(n_ses_28 / esperadas * 100) if esperadas else 0
+
+    sesiones_mes = athlete.sessions.filter(fecha__gte=hoy - timedelta(days=30)).count()
+
+    # RPE promedio de las últimas 5 sesiones con feedback
+    ult_rpe = list(
+        SessionFeedback.objects.filter(session__user=athlete)
+        .order_by('-session__fecha', '-created_at')
+        .values_list('rpe_real', flat=True)[:5]
+    )
+    rpe_prom = round(sum(float(x) for x in ult_rpe) / len(ult_rpe), 1) if ult_rpe else None
+
+    # Antigüedad con este coach
+    dias_coach = (hoy - link.created_at.date()).days
+    if dias_coach >= 60:
+        antiguedad = f'{dias_coach // 30} meses'
+    elif dias_coach >= 30:
+        antiguedad = '1 mes'
+    elif dias_coach >= 1:
+        antiguedad = f'{dias_coach} días'
+    else:
+        antiguedad = 'hoy'
+
+    return {
+        'consistencia': consistencia,
+        'sesiones_mes': sesiones_mes,
+        'sesiones_target': esperadas,
+        'rpe_promedio': rpe_prom,
+        'antiguedad': antiguedad,
+    }
+
+
+def _feedback_de(session):
+    try:
+        return session.feedback
+    except ObjectDoesNotExist:
+        return None
+
+
+def _session_history_item(session, hoy) -> dict:
+    """Una fila del Historial: completados/total, barras por ejercicio, RPE y min.
+
+    Las barras se derivan de series_log (datos reales de ejecución): 'skip' si el
+    ejercicio no se registró, 'alto' si alguna serie tuvo dificultad ≥ 4, si no
+    'done'. Si la sesión no tiene series_log pero sí feedback, se estima a partir
+    del cumplimiento."""
+    exercises = list(session.exercises.all())
+    total = len(exercises)
+    feedback = _feedback_de(session)
+
+    barras, logged = [], 0
+    any_log = False
+    for ex in exercises:
+        log = ex.series_log if isinstance(ex.series_log, list) else None
+        if log:
+            any_log = True
+            logged += 1
+            alto = any(
+                isinstance(s, dict) and s.get('dificultad') not in (None, '')
+                and float(s.get('dificultad')) >= 4
+                for s in log
+            )
+            barras.append('alto' if alto else 'done')
+        else:
+            barras.append('skip')
+
+    if any_log:
+        completados = logged
+    elif feedback is not None and total:
+        completados = int(round(feedback.cumplimiento / 100 * total))
+        barras = ['done'] * completados + ['skip'] * (total - completados)
+    else:
+        completados = 0
+
+    rpe = float(feedback.rpe_real) if feedback else float(session.rpe_target)
+
+    return {
+        'fecha': _humanize_fecha(session.fecha, hoy),
+        'rpe': round(rpe, 1),
+        'completados': completados,
+        'total': total,
+        'min': session.duracion_planificada,
+        'barras': barras,
+    }
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
@@ -242,6 +362,38 @@ def coach_atletas(request):
         },
         'atletas': cards,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsCoach])
+def coach_atleta_detalle(request, pk):
+    """Detalle de un atleta de la cartera (hero + métricas del tab Perfil)."""
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    hoy = _hoy(request)
+    athlete = link.athlete
+    card = _athlete_card(athlete, hoy, timezone.now())
+    card['metrics'] = _athlete_detail_metrics(athlete, hoy, link)
+    card['desde'] = link.created_at.date().isoformat()
+    return Response(card)
+
+
+@api_view(['GET'])
+@permission_classes([IsCoach])
+def coach_atleta_sesiones(request, pk):
+    """Historial de sesiones del atleta (últimas 20). Solo si está en la cartera."""
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    hoy = _hoy(request)
+    sesiones = (Session.objects.filter(user_id=pk)
+                .select_related('feedback')
+                .prefetch_related('exercises')
+                .order_by('-fecha', '-created_at')[:20])
+    return Response({'sesiones': [_session_history_item(s, hoy) for s in sesiones]})
 
 
 @api_view(['POST'])
