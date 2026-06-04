@@ -648,6 +648,26 @@ def _pool_to_grouped(pool: list) -> dict:
     return grouped
 
 
+def _get_coach_directiva(user):
+    """Directiva activa del coach del atleta (vínculo más reciente con contenido).
+
+    Devuelve un dict {objetivo, foco, evitar, nota} o None. Envuelto en try/except
+    para NO romper nunca la generación si algo falla (camino crítico)."""
+    try:
+        from users.models import CoachAthlete
+        link = (CoachAthlete.objects
+                .filter(athlete=user, estado=CoachAthlete.ESTADO_ACTIVO)
+                .order_by('-directiva_updated_at', '-created_at')
+                .first())
+        if link and isinstance(link.directiva, dict):
+            d = link.directiva
+            if any(d.get(k) for k in ('objetivo', 'foco', 'evitar', 'nota')):
+                return d
+    except Exception:
+        logger.exception('No se pudo leer la directiva del coach para user=%s', getattr(user, 'id', '?'))
+    return None
+
+
 def build_prompt(ctx):
     # Choose pool formatting: enriched (new) vs grouped (legacy fallback)
     enriched_pool = ctx.get('exercise_pool_enriched')
@@ -712,6 +732,25 @@ DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
         )
     else:
         restriccion_medica = ''
+
+    # Directiva del coach (Fase 3): guía de alta prioridad fijada por el coach del
+    # atleta. Se respeta por encima de las preferencias, pero SIEMPRE por debajo de
+    # las restricciones absolutas de seguridad (dolor, médicas, implementos).
+    cd = ctx.get('coach_directiva') or {}
+    cd_lines = []
+    if cd.get('objetivo'):
+        cd_lines.append(f"   - Objetivo de la semana fijado por el coach: {cd['objetivo']}")
+    if cd.get('foco'):
+        cd_lines.append(f"   - Enfatiza especialmente: {cd['foco']}")
+    if cd.get('evitar'):
+        cd_lines.append(f"   - Evita (indicación del coach): {cd['evitar']}")
+    if cd.get('nota'):
+        cd_lines.append(f"   - Nota del coach: {cd['nota']}")
+    directiva_coach = (
+        "\n   - DIRECTIVA DEL ENTRENADOR (alta prioridad — el coach del atleta la fijó; síguela "
+        "salvo que choque con una restricción absoluta de seguridad de arriba):\n"
+        + "\n".join(cd_lines)
+    ) if cd_lines else ''
 
     return f"""
 Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
@@ -843,7 +882,7 @@ INSTRUCCIONES FINALES:
    - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
    - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
    - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.
-   - NO superes {max_sets} sets en el bloque principal.{restriccion_medica}
+   - NO superes {max_sets} sets en el bloque principal.{restriccion_medica}{directiva_coach}
 1. Genera UNA sesión completa para HOY, no un plan semanal
 2. Cada ejercicio debe ser ejecutable con los implementos disponibles — verifica esto antes de incluirlo
 3. La nota del entrenador DEBE citar al menos 2 principios científicos específicos explicando POR QUÉ la sesión está diseñada así hoy
@@ -1018,6 +1057,7 @@ def generate_session(request):
         'adaptation_context': adaptation_context,
         'estado_mesociclo': estado_mesociclo,
         'periodizacion': periodizacion,
+        'coach_directiva': _get_coach_directiva(user),
     }
 
     prompt = build_prompt(ctx)

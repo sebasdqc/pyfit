@@ -378,7 +378,36 @@ def coach_atleta_detalle(request, pk):
     card['metrics'] = _athlete_detail_metrics(athlete, hoy, link)
     card['desde'] = link.created_at.date().isoformat()
     card['config'] = link.config or default_coach_config()
+    card['directiva'] = link.directiva or {}
+    card['directiva_updated_at'] = (
+        link.directiva_updated_at.isoformat() if link.directiva_updated_at else None
+    )
     return Response(card)
+
+
+@api_view(['PUT'])
+@permission_classes([IsCoach])
+def coach_atleta_directiva(request, pk):
+    """Guarda la directiva del coach para el atleta. La generación diaria del
+    atleta la inyecta en el prompt de IA como guía de alta prioridad."""
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    body = request.data if isinstance(request.data, dict) else {}
+    directiva = {
+        'objetivo': str(body.get('objetivo') or '').strip()[:120],
+        'foco':     str(body.get('foco') or '').strip()[:200],
+        'evitar':   str(body.get('evitar') or '').strip()[:200],
+        'nota':     str(body.get('nota') or '').strip()[:400],
+    }
+    link.directiva = directiva
+    link.directiva_updated_at = timezone.now()
+    link.save(update_fields=['directiva', 'directiva_updated_at'])
+    return Response({
+        'directiva': directiva,
+        'directiva_updated_at': link.directiva_updated_at.isoformat(),
+    })
 
 
 @api_view(['PATCH'])

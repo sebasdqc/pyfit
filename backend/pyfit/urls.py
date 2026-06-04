@@ -138,7 +138,8 @@ urlpatterns = [
     path('api/coach/atletas/',   coach_views.coach_atletas),
     path('api/coach/atletas/<int:pk>/',          coach_views.coach_atleta_detalle),
     path('api/coach/atletas/<int:pk>/sesiones/', coach_views.coach_atleta_sesiones),
-    path('api/coach/atletas/<int:pk>/config/',   coach_views.coach_atleta_config),
+    path('api/coach/atletas/<int:pk>/config/',    coach_views.coach_atleta_config),
+    path('api/coach/atletas/<int:pk>/directiva/', coach_views.coach_atleta_directiva),
     path('api/coach/vincular/',  coach_views.coach_vincular),
 
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)

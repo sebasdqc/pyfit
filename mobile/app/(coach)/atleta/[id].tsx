@@ -20,6 +20,7 @@ import {
   fetchAtletaDetalle,
   fetchAtletaSesiones,
   patchAtletaConfig,
+  putAtletaDirectiva,
   type AtletaDetalle,
   type CoachConfig,
   type SesionHist,
@@ -55,18 +56,6 @@ const TOGGLES = [
   { key: 'manual',   nombre: 'Rutina manual',        desc: 'Tú defines y editas la rutina manualmente.' },
 ] as const
 type ToggleKey = (typeof TOGGLES)[number]['key']
-
-const RUTINA = {
-  semana: 'Semana 3 — Hipertrofia',
-  dias: 4,
-  ejercicios: [
-    { nombre: 'Sentadilla trasera',   series: 4, reps: '8',  carga: '75%', descanso: '2:30' },
-    { nombre: 'Press de banca',        series: 4, reps: '10', carga: '70%', descanso: '2:00' },
-    { nombre: 'Remo con barra',        series: 3, reps: '12', carga: '65%', descanso: '1:30' },
-    { nombre: 'Peso muerto rumano',    series: 3, reps: '10', carga: '70%', descanso: '2:00' },
-    { nombre: 'Press militar',         series: 3, reps: '10', carga: '60%', descanso: '1:30' },
-  ],
-}
 
 type Barra = 'done' | 'skip' | 'alto'
 
@@ -127,8 +116,13 @@ export default function CoachAtletaDetalle() {
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
     checkin: true, feedback: true, ia: true, manual: false,
   })
-  // La rutina arranca pendiente de aprobación salvo que el atleta ya tenga una activa.
-  const [pendiente, setPendiente] = useState(false)
+  // Directiva del coach (tab Rutina) — guía que sesga la IA del atleta.
+  const [dObjetivo, setDObjetivo] = useState('')
+  const [dFoco, setDFoco] = useState('')
+  const [dEvitar, setDEvitar] = useState('')
+  const [dNota, setDNota] = useState('')
+  const [savingDir, setSavingDir] = useState(false)
+  const [dirMsg, setDirMsg] = useState<string | null>(null)
   const [mensajes, setMensajes] = useState<Mensaje[]>(CHAT_INICIAL)
   const [input, setInput] = useState('')
   const chatRef = useRef<ScrollView>(null)
@@ -143,11 +137,33 @@ export default function CoachAtletaDetalle() {
       .catch(() => setToggles((prev) => ({ ...prev, [key]: !v })))
   }
 
+  async function guardarDirectiva() {
+    if (!params.id || savingDir) return
+    setSavingDir(true)
+    setDirMsg(null)
+    try {
+      await putAtletaDirectiva(params.id, {
+        objetivo: dObjetivo.trim(), foco: dFoco.trim(), evitar: dEvitar.trim(), nota: dNota.trim(),
+      })
+      setDirMsg('Directiva guardada · el atleta la verá en su próxima rutina.')
+    } catch (e: any) {
+      setDirMsg(e?.message || 'No se pudo guardar la directiva.')
+    } finally {
+      setSavingDir(false)
+    }
+  }
+
   useEffect(() => {
     const id = params.id
     if (!id) { setLoadingDet(false); setLoadingSes(false); return }
     fetchAtletaDetalle(id)
-      .then((d) => { setDetalle(d); setPendiente(!d.rutinaActiva); if (d.config) setToggles(d.config) })
+      .then((d) => {
+        setDetalle(d)
+        if (d.config) setToggles(d.config)
+        const dir = d.directiva || {}
+        setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
+        setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
+      })
       .catch((e: any) => setErrDet(e?.message || 'No se pudo cargar el atleta.'))
       .finally(() => setLoadingDet(false))
     fetchAtletaSesiones(id)
@@ -266,42 +282,44 @@ export default function CoachAtletaDetalle() {
         )}
 
         {tab === 'rutina' && (
-          <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.rutinaHeader}>
-              <Text style={styles.rutinaTitle}>Rutina activa</Text>
-              <TouchableOpacity style={styles.nuevaBtn} activeOpacity={0.85}>
-                <Text style={styles.nuevaBtnText}>+ Nueva</Text>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={insets.top + 80}
+          >
+            <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={styles.rutinaTitle}>Directiva de la semana</Text>
+              <Text style={styles.dirHint}>
+                Define la guía de entrenamiento. La IA del atleta la usará para generar su próxima rutina.
+              </Text>
+
+              <Text style={styles.fieldLabel}>OBJETIVO</Text>
+              <TextInput style={styles.dirInput} value={dObjetivo} onChangeText={setDObjetivo}
+                placeholder="Ej: Fuerza de tren inferior" placeholderTextColor={P.purpleFaint} maxLength={120} />
+
+              <Text style={styles.fieldLabel}>ÉNFASIS / FOCO</Text>
+              <TextInput style={styles.dirInput} value={dFoco} onChangeText={setDFoco}
+                placeholder="Ej: Sentadilla, peso muerto" placeholderTextColor={P.purpleFaint} maxLength={200} />
+
+              <Text style={styles.fieldLabel}>EVITAR</Text>
+              <TextInput style={styles.dirInput} value={dEvitar} onChangeText={setDEvitar}
+                placeholder="Ej: Cardio de impacto" placeholderTextColor={P.purpleFaint} maxLength={200} />
+
+              <Text style={styles.fieldLabel}>NOTA</Text>
+              <TextInput style={[styles.dirInput, styles.dirInputMulti]} value={dNota} onChangeText={setDNota}
+                placeholder="Ej: Subir carga ~5% si RPE < 7" placeholderTextColor={P.purpleFaint}
+                multiline maxLength={400} />
+
+              <TouchableOpacity style={[styles.guardarBtn, savingDir && { opacity: 0.6 }]}
+                activeOpacity={0.85} disabled={savingDir} onPress={guardarDirectiva}>
+                {savingDir
+                  ? <ActivityIndicator color={P.white} />
+                  : (<><IconCheck color={P.white} /><Text style={styles.guardarBtnText}>Guardar directiva</Text></>)}
               </TouchableOpacity>
-            </View>
 
-            {pendiente && (
-              <View style={styles.pendingPill}>
-                <Text style={styles.pendingPillText}>Pendiente de aprobación</Text>
-              </View>
-            )}
-
-            <View style={styles.estadoCard}>
-              <Text style={styles.estadoSemana}>{RUTINA.semana}</Text>
-              <Text style={styles.estadoDias}>{RUTINA.dias} días / semana</Text>
-            </View>
-
-            {RUTINA.ejercicios.map((e, i) => (
-              <View key={i} style={styles.ejercicioCard}>
-                <View style={styles.ejercicioTop}>
-                  <Text style={styles.ejercicioNombre} numberOfLines={1}>{e.nombre}</Text>
-                  <Text style={styles.ejercicioSeries}>{e.series} × {e.reps}</Text>
-                </View>
-                <Text style={styles.ejercicioMeta}>Carga {e.carga} · Descanso {e.descanso}</Text>
-              </View>
-            ))}
-
-            {pendiente && (
-              <TouchableOpacity style={styles.aprobarBtn} activeOpacity={0.85} onPress={() => setPendiente(false)}>
-                <IconCheck color={P.green} />
-                <Text style={styles.aprobarText}>Aprobar y publicar al atleta</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
+              {!!dirMsg && <Text style={styles.dirSavedMsg}>{dirMsg}</Text>}
+            </ScrollView>
+          </KeyboardAvoidingView>
         )}
 
         {tab === 'historial' && (
@@ -478,6 +496,20 @@ const styles = StyleSheet.create({
   // Rutina
   rutinaHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   rutinaTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 18, color: P.ink },
+  dirHint: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleFaint, lineHeight: 19, marginTop: 4, marginBottom: 18 },
+  fieldLabel: { fontFamily: 'JetBrainsMono-Medium', fontSize: 9, color: P.purpleFaint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 },
+  dirInput: {
+    backgroundColor: P.inputBg, borderWidth: 1, borderColor: P.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: P.ink,
+  },
+  dirInputMulti: { minHeight: 80, textAlignVertical: 'top' },
+  guardarBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: P.purple, borderRadius: 14, paddingVertical: 15, marginTop: 6, minHeight: 50,
+  },
+  guardarBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: P.white },
+  dirSavedMsg: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.green, textAlign: 'center', marginTop: 14 },
   nuevaBtn: { backgroundColor: P.purple, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   nuevaBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, color: P.white },
   pendingPill: {

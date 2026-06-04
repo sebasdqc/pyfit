@@ -120,10 +120,19 @@ export interface CoachConfig {
   manual:    boolean
 }
 
+export interface CoachDirectiva {
+  objetivo:  string
+  foco:      string
+  evitar:    string
+  nota:      string
+}
+
 export interface AtletaDetalle extends Atleta {
-  metrics:  AtletaDetalleMetrics
-  desde:    string
-  config:   CoachConfig
+  metrics:                AtletaDetalleMetrics
+  desde:                  string
+  config:                 CoachConfig
+  directiva:              Partial<CoachDirectiva>
+  directiva_updated_at:   string | null
 }
 
 export type Barra = 'done' | 'skip' | 'alto'
@@ -156,4 +165,9 @@ export function fetchAtletaSesiones(id: string | number): Promise<{ sesiones: Se
 /** Actualiza (parcialmente) la config del atleta que controla el coach. */
 export function patchAtletaConfig(id: string | number, config: Partial<CoachConfig>): Promise<{ config: CoachConfig }> {
   return coachRequest('PATCH', `/api/coach/atletas/${id}/config/`, { config })
+}
+
+/** Guarda la directiva del coach para el atleta (bias de la IA del atleta). */
+export function putAtletaDirectiva(id: string | number, directiva: CoachDirectiva): Promise<{ directiva: CoachDirectiva; directiva_updated_at: string }> {
+  return coachRequest('PUT', `/api/coach/atletas/${id}/directiva/`, directiva)
 }

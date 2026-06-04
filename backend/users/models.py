@@ -415,6 +415,10 @@ class CoachAthlete(models.Model):
     # Configuración del atleta que controla el coach (check-in, feedback, IA,
     # rutina manual). Persistida por par coach↔atleta.
     config = models.JSONField(default=default_coach_config, blank=True)
+    # Directiva del coach (Fase 3): guía {objetivo, foco, evitar, nota} que la
+    # generación diaria del atleta inyecta en el prompt de IA como alta prioridad.
+    directiva = models.JSONField(default=dict, blank=True)
+    directiva_updated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
