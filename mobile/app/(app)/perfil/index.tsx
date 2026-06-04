@@ -311,7 +311,10 @@ export default function PerfilScreen() {
         {/* ── MÉTRICAS ── */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>{t('perfil_measured_data')}</Text>
+            <View style={styles.metricCardText}>
+              <Text style={styles.metricLabel}>{t('perfil_measured_data')}</Text>
+              <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : 'Last 30 days'}</Text>
+            </View>
             <Text
               style={[styles.metricValue, { color: colors.cyan }]}
               numberOfLines={1}
@@ -320,14 +323,6 @@ export default function PerfilScreen() {
             >
               {statsLoading ? '–' : datosMedidos}
             </Text>
-            <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : 'Last 30 days'}</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>{t('perfil_sessions_label')}</Text>
-            <Text style={[styles.metricValue, { color: colors.accent }]}>
-              {statsLoading ? '–' : (profileStats?.sesiones_mes ?? 0)}
-            </Text>
-            <Text style={styles.metricSub}>{lang === 'es' ? 'Este mes' : 'This month'}</Text>
           </View>
         </View>
 
@@ -578,14 +573,16 @@ function makeStyles(c: Colors) {
     dropdownDivider: { height: 1 },
 
     // Metrics grid
-    metricsGrid: { flexDirection: 'row', gap: 12, marginBottom: 28 },
+    metricsGrid: { marginBottom: 28 },
     metricCard: {
-      flex: 1, backgroundColor: c.cardBg,
+      backgroundColor: c.cardBg,
       borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, padding: 18, alignItems: 'center', gap: 4,
+      borderRadius: 20, paddingVertical: 22, paddingHorizontal: 24,
+      flexDirection: 'row', alignItems: 'center', gap: 16,
     },
-    metricLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 1.8, textTransform: 'uppercase' },
-    metricValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 44, letterSpacing: -2, lineHeight: 50 },
+    metricCardText: { flex: 1, gap: 2 },
+    metricLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase' },
+    metricValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 48, letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'right' },
     metricSub: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
 
     // ADN
