@@ -22,7 +22,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from workouts.models import Session, SessionFeedback
-from .models import Profile, CoachAthlete, generar_codigo_referido
+from .models import Profile, CoachAthlete, generar_codigo_referido, default_coach_config
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -377,7 +377,30 @@ def coach_atleta_detalle(request, pk):
     card = _athlete_card(athlete, hoy, timezone.now())
     card['metrics'] = _athlete_detail_metrics(athlete, hoy, link)
     card['desde'] = link.created_at.date().isoformat()
+    card['config'] = link.config or default_coach_config()
     return Response(card)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsCoach])
+def coach_atleta_config(request, pk):
+    """Actualiza la configuración del atleta que controla el coach. Acepta un
+    dict parcial (solo las claves que cambian) y lo fusiona."""
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    incoming = request.data.get('config')
+    if not isinstance(incoming, dict):
+        incoming = request.data if isinstance(request.data, dict) else {}
+
+    cfg = dict(link.config or default_coach_config())
+    for k in ('checkin', 'feedback', 'ia', 'manual'):
+        if k in incoming:
+            cfg[k] = bool(incoming[k])
+    link.config = cfg
+    link.save(update_fields=['config'])
+    return Response({'config': cfg})
 
 
 @api_view(['GET'])

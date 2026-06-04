@@ -389,6 +389,11 @@ class ImpersonationLog(models.Model):
         return f'{imp} → {tgt} [{self.action}]'
 
 
+def default_coach_config():
+    """Config por defecto que el coach controla para cada atleta de su cartera."""
+    return {'checkin': True, 'feedback': True, 'ia': True, 'manual': False}
+
+
 class CoachAthlete(models.Model):
     """Vínculo entre un coach y un atleta de su cartera.
 
@@ -407,6 +412,9 @@ class CoachAthlete(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coaches',
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
+    # Configuración del atleta que controla el coach (check-in, feedback, IA,
+    # rutina manual). Persistida por par coach↔atleta.
+    config = models.JSONField(default=default_coach_config, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

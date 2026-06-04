@@ -113,9 +113,17 @@ export interface AtletaDetalleMetrics {
   antiguedad:       string
 }
 
+export interface CoachConfig {
+  checkin:   boolean
+  feedback:  boolean
+  ia:        boolean
+  manual:    boolean
+}
+
 export interface AtletaDetalle extends Atleta {
   metrics:  AtletaDetalleMetrics
   desde:    string
+  config:   CoachConfig
 }
 
 export type Barra = 'done' | 'skip' | 'alto'
@@ -143,4 +151,9 @@ export function fetchAtletaDetalle(id: string | number): Promise<AtletaDetalle> 
 
 export function fetchAtletaSesiones(id: string | number): Promise<{ sesiones: SesionHist[] }> {
   return coachRequest('GET', `/api/coach/atletas/${id}/sesiones/`)
+}
+
+/** Actualiza (parcialmente) la config del atleta que controla el coach. */
+export function patchAtletaConfig(id: string | number, config: Partial<CoachConfig>): Promise<{ config: CoachConfig }> {
+  return coachRequest('PATCH', `/api/coach/atletas/${id}/config/`, { config })
 }

@@ -19,7 +19,9 @@ import { hasAlert } from '../../../lib/coachMockData'
 import {
   fetchAtletaDetalle,
   fetchAtletaSesiones,
+  patchAtletaConfig,
   type AtletaDetalle,
+  type CoachConfig,
   type SesionHist,
 } from '../../../lib/coachApi'
 import { getCoachUser } from '../../../lib/storage'
@@ -133,11 +135,19 @@ export default function CoachAtletaDetalle() {
 
   useEffect(() => { getCoachUser().then((u) => setCoachNombre(u?.nombre || 'Coach')) }, [])
 
+  // Persiste un toggle de configuración (optimista; revierte si el backend falla).
+  function onToggle(key: ToggleKey, v: boolean) {
+    setToggles((prev) => ({ ...prev, [key]: v }))
+    if (!params.id) return
+    patchAtletaConfig(params.id, { [key]: v } as Partial<CoachConfig>)
+      .catch(() => setToggles((prev) => ({ ...prev, [key]: !v })))
+  }
+
   useEffect(() => {
     const id = params.id
     if (!id) { setLoadingDet(false); setLoadingSes(false); return }
     fetchAtletaDetalle(id)
-      .then((d) => { setDetalle(d); setPendiente(!d.rutinaActiva) })
+      .then((d) => { setDetalle(d); setPendiente(!d.rutinaActiva); if (d.config) setToggles(d.config) })
       .catch((e: any) => setErrDet(e?.message || 'No se pudo cargar el atleta.'))
       .finally(() => setLoadingDet(false))
     fetchAtletaSesiones(id)
@@ -245,7 +255,7 @@ export default function CoachAtletaDetalle() {
                 </View>
                 <Switch
                   value={toggles[tg.key]}
-                  onValueChange={(v) => setToggles((prev) => ({ ...prev, [tg.key]: v }))}
+                  onValueChange={(v) => onToggle(tg.key, v)}
                   trackColor={{ false: '#2A2440', true: P.purple }}
                   thumbColor={P.white}
                   ios_backgroundColor="#2A2440"

@@ -8,12 +8,14 @@ import {
   StyleSheet,
   Alert,
   Linking,
+  Share,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales, CONTACT_URL } from '../../lib/coachTheme'
 import { ATLETAS } from '../../lib/coachMockData'
+import { fetchCoachMe } from '../../lib/coachApi'
 import { getCoachUser, clearCoachSession } from '../../lib/storage'
 
 // ─── Tonos de íconos ────────────────────────────────────────────────────────────
@@ -160,9 +162,13 @@ const SLOTS_INCLUIDOS = 15
 export default function CoachAjustes() {
   const insets = useSafeAreaInsets()
   const [user, setUser] = useState<any>(null)
+  const [codigo, setCodigo] = useState<string>('')
   const [notif, setNotif] = useState({ inactividad: true, scoreCaida: true, resumen: false })
 
-  useEffect(() => { getCoachUser().then(setUser) }, [])
+  useEffect(() => {
+    getCoachUser().then(setUser)
+    fetchCoachMe().then((me) => setCodigo(me.codigo_coach)).catch(() => {})
+  }, [])
 
   const nombre = user?.nombre || 'Coach'
   const activos = ATLETAS.length
@@ -171,6 +177,23 @@ export default function CoachAjustes() {
 
   function proximamente(titulo: string) {
     Alert.alert(titulo, 'Esta sección estará disponible próximamente.')
+  }
+
+  // Comparte el código de coach por la hoja nativa para que el atleta se vincule.
+  async function invitarAtleta() {
+    let code = codigo
+    if (!code) {
+      try { const me = await fetchCoachMe(); code = me.codigo_coach; setCodigo(code) } catch {}
+    }
+    if (!code) {
+      Alert.alert('Invitar atleta', 'No se pudo obtener tu código. Intenta de nuevo.')
+      return
+    }
+    const message =
+      `¡Entrena conmigo en Zyfit! 💪\n\n` +
+      `Vincúlate a mi cartera con este código: ${code}\n\n` +
+      `En la app: Perfil → Registro con Coach → ingresa el código.`
+    try { await Share.share({ message }) } catch {}
   }
 
   async function handleLogout() {
@@ -245,8 +268,8 @@ export default function CoachAjustes() {
             tone="green"
             icon={<IconInvite c={TONES.green.fg} />}
             title="Invitar atleta"
-            desc="Enviar link de vinculación"
-            onPress={() => proximamente('Invitar atleta')}
+            desc={codigo ? `Comparte tu código · ${codigo}` : 'Comparte tu código de vinculación'}
+            onPress={invitarAtleta}
           />
           <Row
             tone="purple"
