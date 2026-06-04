@@ -138,15 +138,19 @@ function MediaCard({
   demo,
   loading,
   faseColor,
+  defaultExpanded = false,
 }: {
   demo: DemoMedia | null
   loading: boolean
   faseColor: string
+  defaultExpanded?: boolean
 }) {
   const { colors } = useTheme()
   const { t } = useTranslation()
   const mediaStyles = React.useMemo(() => makeMediaStyles(colors), [colors])
-  const [expanded, setExpanded] = useState(false)
+  // Principiantes ven las instrucciones desplegadas por defecto; intermedios y
+  // avanzados las ven colapsadas. El usuario puede alternar libremente.
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
   const hasGif = !!demo?.gif_url
   const hasImage = !!demo?.imagen_url
@@ -536,6 +540,8 @@ export default function EjecutarScreen() {
   const [sesion, setSesion] = useState<Sesion | null>(null)
   const [flatList, setFlatList] = useState<FlatEjercicio[]>([])
   const [completed, setCompleted] = useState(false)
+  // Nivel del usuario — define si la demo de cada ejercicio arranca desplegada.
+  const [nivel, setNivel] = useState<string | null>(null)
 
   // Demo media
   const [currentDemo, setCurrentDemo] = useState<DemoMedia | null>(null)
@@ -591,6 +597,17 @@ export default function EjecutarScreen() {
     }
     if (id) fetchSession()
   }, [id])
+
+  // ── Fetch nivel del usuario ──────────────────────────────────────────────────
+  // Solo se usa para decidir el estado inicial de la demo (desplegada para
+  // principiantes). Si falla, se mantiene el comportamiento colapsado por defecto.
+  useEffect(() => {
+    let cancelled = false
+    apiGet('/api/profile/')
+      .then((data: any) => { if (!cancelled) setNivel(data?.nivel ?? null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // ── Demo media fetch ────────────────────────────────────────────────────────
 
@@ -926,9 +943,11 @@ export default function EjecutarScreen() {
 
             {/* Demo media */}
             <MediaCard
+              key={nivel ?? 'pending'}
               demo={currentDemo}
               loading={demoLoading}
               faseColor={faseStyle.color}
+              defaultExpanded={nivel === 'principiante'}
             />
 
             {/* Technical note (instrucciones) */}
