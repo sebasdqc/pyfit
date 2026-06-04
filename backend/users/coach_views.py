@@ -183,6 +183,9 @@ def _athlete_card(athlete, hoy, ahora) -> dict:
         'inactivo': inactivo,
         'score': score,
         'adherencia': adherencia if adherencia is not None else 0,
+        # Componentes reales del Zyfit Score (para el desglose de Analytics).
+        'consistencia': consistencia,
+        'recencia': recencia,
     }
 
 
@@ -305,6 +308,18 @@ def _session_history_item(session, hoy) -> dict:
     }
 
 
+def _sesiones_por_semana(athlete_ids, hoy, n):
+    """Conteo de sesiones por semana (de la cartera o de un atleta), oldest→newest."""
+    out = []
+    for i in range(n - 1, -1, -1):
+        desde = hoy - timedelta(days=7 * (i + 1))
+        hasta = hoy - timedelta(days=7 * i)
+        out.append(Session.objects.filter(
+            user_id__in=athlete_ids, fecha__gt=desde, fecha__lte=hasta,
+        ).count())
+    return out
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
@@ -407,6 +422,74 @@ def coach_atleta_directiva(request, pk):
     return Response({
         'directiva': directiva,
         'directiva_updated_at': link.directiva_updated_at.isoformat(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsCoach])
+def coach_analytics(request):
+    """Analytics agregados de la cartera + por atleta. ?periodo=4|8|12 semanas."""
+    coach = request.user
+    hoy = _hoy(request)
+    ahora = timezone.now()
+    try:
+        semanas = int(request.query_params.get('periodo', 4))
+    except (TypeError, ValueError):
+        semanas = 4
+    semanas = max(1, min(12, semanas))
+
+    links = (CoachAthlete.objects
+             .filter(coach=coach, estado=CoachAthlete.ESTADO_ACTIVO)
+             .select_related('athlete__profile'))
+    athletes = [l.athlete for l in links]
+    ids = [a.id for a in athletes]
+    cards = [_athlete_card(a, hoy, ahora) for a in athletes]
+
+    atletas_out = []
+    for a, c in zip(athletes, cards):
+        rpe_raw = SessionFeedback.objects.filter(
+            session__user=a, session__fecha__gte=hoy - timedelta(days=28),
+        ).aggregate(r=Avg('rpe_real'))['r']
+        atletas_out.append({
+            'id': c['id'], 'nombre': c['nombre'], 'estado': c['estado'],
+            'score': c['score'], 'adherencia': c['adherencia'],
+            'consistencia': c['consistencia'], 'recencia': c['recencia'],
+            'rpe_promedio': round(float(rpe_raw), 1) if rpe_raw is not None else None,
+            'carga_semanal': _sesiones_por_semana([a.id], hoy, 4),
+        })
+
+    n = len(cards)
+    adherencia_media = int(round(sum(c['adherencia'] for c in cards) / n)) if n else 0
+    consistencia_media = int(round(sum(c['consistencia'] for c in cards) / n)) if n else 0
+    score_promedio = int(round(sum(c['score'] for c in cards) / n)) if n else 0
+    sesiones_total = Session.objects.filter(
+        user_id__in=ids, fecha__gte=hoy - timedelta(days=7 * semanas),
+    ).count()
+
+    def _avg_cumpl(desde, hasta):
+        return SessionFeedback.objects.filter(
+            session__user_id__in=ids, session__fecha__gte=desde, session__fecha__lt=hasta,
+        ).aggregate(a=Avg('cumplimiento'))['a'] or 0
+    adher_delta = int(round(
+        _avg_cumpl(hoy - timedelta(days=7), hoy + timedelta(days=1))
+        - _avg_cumpl(hoy - timedelta(days=14), hoy - timedelta(days=7))
+    ))
+
+    sem_counts = _sesiones_por_semana(ids, hoy, semanas)
+    sesiones_semana = [{'label': f'S{i + 1}', 'value': v} for i, v in enumerate(sem_counts)]
+
+    return Response({
+        'periodo_semanas': semanas,
+        'metrics': {
+            'adherencia_media': adherencia_media,
+            'adherencia_delta': adher_delta,
+            'consistencia_media': consistencia_media,
+            'score_promedio': score_promedio,
+            'sesiones_total': sesiones_total,
+            'activos': n,
+        },
+        'sesiones_semana': sesiones_semana,
+        'atletas': atletas_out,
     })
 
 

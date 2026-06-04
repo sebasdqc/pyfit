@@ -18,7 +18,7 @@ import {
   clearCoachSession,
 } from './storage'
 import { localDateStr } from './api'
-import type { Atleta } from './coachMockData'
+import type { Atleta, Estado } from './coachMockData'
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -152,6 +152,38 @@ export function fetchCoachMe(): Promise<CoachMe> {
 
 export function fetchCartera(): Promise<CarteraResponse> {
   return coachRequest('GET', '/api/coach/atletas/')
+}
+
+// ── Analytics ──────────────────────────────────────────────────────────────────
+
+export interface AnalyticsAtleta {
+  id:             string
+  nombre:         string
+  estado:         Estado
+  score:          number
+  adherencia:     number
+  consistencia:   number
+  recencia:       number
+  rpe_promedio:   number | null
+  carga_semanal:  number[]
+}
+
+export interface AnalyticsResponse {
+  periodo_semanas: number
+  metrics: {
+    adherencia_media:    number
+    adherencia_delta:    number
+    consistencia_media:  number
+    score_promedio:      number
+    sesiones_total:      number
+    activos:             number
+  }
+  sesiones_semana: { label: string; value: number }[]
+  atletas:         AnalyticsAtleta[]
+}
+
+export function fetchAnalytics(semanas: number): Promise<AnalyticsResponse> {
+  return coachRequest('GET', `/api/coach/analytics/?periodo=${semanas}`)
 }
 
 export function fetchAtletaDetalle(id: string | number): Promise<AtletaDetalle> {

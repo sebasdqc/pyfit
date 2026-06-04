@@ -136,6 +136,7 @@ urlpatterns = [
     # Coach API (Portal de Coach — Fase 1: cartera; Fase 2: detalle + historial)
     path('api/coach/me/',        coach_views.coach_me),
     path('api/coach/atletas/',   coach_views.coach_atletas),
+    path('api/coach/analytics/', coach_views.coach_analytics),
     path('api/coach/atletas/<int:pk>/',          coach_views.coach_atleta_detalle),
     path('api/coach/atletas/<int:pk>/sesiones/', coach_views.coach_atleta_sesiones),
     path('api/coach/atletas/<int:pk>/config/',    coach_views.coach_atleta_config),
