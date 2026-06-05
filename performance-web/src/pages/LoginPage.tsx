@@ -1,18 +1,19 @@
 // Login de Zyfit Performance — panel web para centros deportivos de alto
 // rendimiento. Pantalla a viewport completo: fotografía de fondo (servida desde
-// la raíz pública del proyecto) con una capa de oscurecimiento plana que la
-// mantiene legible, y el formulario flotando en la banda izquierda, sin card.
-// Identidad: púrpura de acción sobre fondos azul-morado profundo, sin sombras
-// ni gradientes. La lógica de autenticación se conserva intacta.
+// la raíz pública del proyecto) con una capa de oscurecimiento densa que la
+// mantiene legible, y un recuadro (card) que agrupa todos los elementos del
+// login —logo, título y formulario— flotando en la banda izquierda.
+// Identidad: púrpura de acción sobre fondos azul-morado profundo, sin gradientes.
+// La lógica de autenticación se conserva intacta.
 
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 
-// Imagen de fondo. Vive en performance-web/public/ y se sirve en la raíz («/»),
-// por eso se referencia por su nombre y no por una URL externa ni embebida.
-// Si no carga, el contenedor cae al color de respaldo (bg-perf-ink).
+// Assets servidos desde performance-web/public/ (raíz «/»): no son URLs externas
+// ni van embebidos en el código. Si el fondo no carga, cae a bg-perf-ink.
 const BG_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
+const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
 // Enlaces externos del equipo Zyfit. La única propiedad web pública verificada
 // es la landing pyfit.app (no hay aún canal de contacto ni login web de coach
@@ -51,17 +52,11 @@ export function LoginPage() {
         style={{ backgroundImage: `url('${BG_IMAGE}')` }}
         aria-hidden
       />
-      {/* Capa de oscurecimiento plana (sin gradiente) para legibilidad. */}
-      <div className="absolute inset-0 bg-[rgba(8,6,20,0.72)]" aria-hidden />
+      {/* Capa de oscurecimiento plana, densa (sin gradiente) para legibilidad. */}
+      <div className="absolute inset-0 bg-[rgba(7,5,18,0.86)]" aria-hidden />
 
-      {/* Barra superior: logo a la izquierda, navegación discreta a la derecha. */}
-      <header className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-6 py-6 sm:px-10 md:px-12 md:py-8">
-        <div className="leading-none">
-          <div className="text-xl font-bold tracking-tight text-white">ZYFIT</div>
-          <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.25em] text-white/60">
-            Performance
-          </div>
-        </div>
+      {/* Barra superior: navegación discreta a la derecha. El logo vive en el card. */}
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-end px-6 py-6 sm:px-10 md:px-12 md:py-8">
         <nav className="flex items-center gap-6 text-sm text-white/60">
           <a href={HOME_HREF} className="transition-colors hover:text-white">
             Inicio
@@ -72,15 +67,24 @@ export function LoginPage() {
         </nav>
       </header>
 
-      {/* Contenido principal: banda izquierda, centrado verticalmente. */}
+      {/* Contenido principal: recuadro en la banda izquierda, centrado vertical. */}
       <main className="relative z-10 flex h-full items-center">
         <div className="w-full px-6 sm:px-10 md:px-12 lg:px-20">
-          <div className="w-full max-w-[420px] md:max-w-[440px]">
+          {/* Recuadro que recubre todos los elementos del login. */}
+          <div className="w-full max-w-[460px] rounded-2xl border border-white/[0.14] bg-white/[0.05] p-7 backdrop-blur-md sm:p-9">
+            {/* Logo Zyfit (blanco) + tag de la vertical. */}
+            <div className="mb-8 flex items-end gap-3">
+              <img src={LOGO_IMAGE} alt="Zyfit" className="h-6 w-auto sm:h-7" />
+              <span className="pb-1 text-[10px] font-medium uppercase tracking-[0.28em] text-white/55">
+                Performance
+              </span>
+            </div>
+
             <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-perf-purpleMuted/80">
               Acceso profesional
             </p>
 
-            <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
               Accede a tu portal<span className="text-perf-purple">.</span>
             </h1>
 
