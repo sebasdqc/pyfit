@@ -7,6 +7,7 @@ export default {
         // Único acento del portal: el azul de Zyfit Performance.
         accent: '#4f8cff',
         accentDark: '#2563ff',
+        accentLight: '#7ab6ff', // azul claro: etiquetas, links, label flotante
         perf: {
           // Fondos azul-marino profundo (no negro puro) — diferencias sutiles.
           bg: '#0a0e1a', // fondo general de la página
@@ -17,11 +18,8 @@ export default {
           ok: '#32c896', // verde — disponible / positivo
           warn: '#ffaa32', // ámbar — duda / monitoreo
           danger: '#ff4444', // rojo — baja / riesgo crítico
-          // Púrpura del login (pantalla aparte). NO se usa en el portal interno.
-          purple: '#7c5cff',
-          purpleDark: '#6a47e6',
-          purpleMuted: '#a89bff',
-          ink: '#0c0a1c',
+          // (El púrpura #7C5CFF es de Zyfit Coach — app RN, coachTheme.ts —, no
+          //  de Zyfit Performance. Aquí el único acento es el azul.)
         },
       },
     },

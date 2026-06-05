@@ -3,7 +3,8 @@
 // la raíz pública del proyecto) con una capa de oscurecimiento densa que la
 // mantiene legible, y un recuadro (card) que agrupa todos los elementos del
 // login —logo, título y formulario— flotando en la banda izquierda.
-// Identidad: púrpura de acción sobre fondos azul-morado profundo, sin gradientes.
+// Identidad: azul (acento único de Zyfit Performance) sobre fondos azul-marino
+// profundo, sin gradientes. El púrpura es de Zyfit Coach (app RN), no de aquí.
 // La lógica de autenticación se conserva intacta.
 
 import { useState, type FormEvent, type ReactNode } from 'react'
@@ -11,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 
 // Assets servidos desde performance-web/public/ (raíz «/»): no son URLs externas
-// ni van embebidos en el código. Si el fondo no carga, cae a bg-perf-ink.
+// ni van embebidos en el código. Si el fondo no carga, cae a bg-perf-bg.
 const BG_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
 const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
@@ -44,15 +45,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-perf-ink">
+    <div className="relative h-screen w-screen overflow-hidden bg-perf-bg">
       {/* Fondo fotográfico + color de respaldo (se ve si la imagen no carga). */}
       <div
-        className="absolute inset-0 bg-perf-ink bg-cover bg-center"
+        className="absolute inset-0 bg-perf-bg bg-cover bg-center"
         style={{ backgroundImage: `url('${BG_IMAGE}')` }}
         aria-hidden
       />
       {/* Capa de oscurecimiento plana, densa (sin gradiente) para legibilidad. */}
-      <div className="absolute inset-0 bg-[rgba(7,5,18,0.86)]" aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(6,9,18,0.86)]" aria-hidden />
 
       {/* Contenido principal: recuadro en la banda izquierda, centrado vertical. */}
       <main className="relative z-10 flex h-full items-center">
@@ -67,19 +68,19 @@ export function LoginPage() {
               </span>
             </div>
 
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-perf-purpleMuted/80">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
               Acceso profesional
             </p>
 
             <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
-              Accede a tu portal<span className="text-perf-purple">.</span>
+              Accede a tu portal<span className="text-accent">.</span>
             </h1>
 
             <p className="mt-4 text-sm text-white/50">
               ¿No tienes acceso aún?{' '}
               <a
                 href={CONTACT_HREF}
-                className="font-medium text-perf-purpleMuted transition-colors hover:text-perf-purple"
+                className="font-medium text-accentLight transition-colors hover:text-accent"
               >
                 Contáctanos
               </a>
@@ -123,7 +124,7 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="h-12 flex-1 rounded-lg bg-perf-purple text-sm font-semibold text-white transition-colors hover:bg-perf-purpleDark disabled:opacity-60"
+                  className="h-12 flex-1 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:opacity-60"
                 >
                   {submitting ? 'Accediendo…' : 'Acceder'}
                 </button>
@@ -174,11 +175,11 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         placeholder=" "
-        className="peer h-14 w-full rounded-xl border border-white/10 bg-white/5 px-4 pr-12 pt-2 text-[15px] text-white outline-none transition-colors placeholder:text-transparent focus:border-perf-purple"
+        className="peer h-14 w-full rounded-xl border border-white/10 bg-white/5 px-4 pr-12 pt-2 text-[15px] text-white outline-none transition-colors placeholder:text-transparent focus:border-accent"
       />
       <label
         htmlFor={id}
-        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-white/40 transition-all peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:text-perf-purpleMuted peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:text-perf-purpleMuted"
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-white/40 transition-all peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:text-accentLight peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:text-accentLight"
       >
         {label}
       </label>
