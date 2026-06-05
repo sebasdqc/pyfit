@@ -32,8 +32,8 @@ function PyFitLogo() {
     <Image
       // Logo blanco sobre fondos oscuros; negro sobre temas claros (light/rosado).
       source={isDark
-        ? require('../../Logo-Zyfit-Blanco.png')
-        : require('../../Logo-Zyfit-negro.png')}
+        ? require('../../assets/Logo-Zyfit-Blanco.png')
+        : require('../../assets/Logo-Zyfit-negro.png')}
       style={styles.logoImage}
       resizeMode="contain"
     />

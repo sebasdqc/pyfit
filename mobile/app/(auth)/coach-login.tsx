@@ -199,7 +199,7 @@ export default function CoachLoginScreen() {
           {/* Logo + subtítulo */}
           <View style={styles.logoBlock}>
             <Image
-              source={require('../../Logo-Zyfit-Blanco.png')}
+              source={require('../../assets/Logo-Zyfit-Blanco.png')}
               style={styles.logo}
               resizeMode="contain"
             />

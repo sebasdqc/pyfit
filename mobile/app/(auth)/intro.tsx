@@ -98,8 +98,8 @@ export default function IntroScreen() {
         <Animated.View style={{ opacity: logoOpacity, transform: [{ translateY: logoY }] }}>
           <Image
             source={isDark
-              ? require('../../Logo-Zyfit-Blanco.png')
-              : require('../../Logo-Zyfit-negro.png')}
+              ? require('../../assets/Logo-Zyfit-Blanco.png')
+              : require('../../assets/Logo-Zyfit-negro.png')}
             style={styles.logo}
             resizeMode="contain"
           />
