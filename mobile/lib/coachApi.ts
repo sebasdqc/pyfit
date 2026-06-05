@@ -233,6 +233,10 @@ export function fetchMiCoachChat(): Promise<MiCoachChat> {
 export function fetchMiCoachUnread(): Promise<{ no_leidos: number }> {
   return apiGet('/api/coach/chat/unread/')
 }
+/** Coach activo del atleta (liviano, sin mensajes). Para el badge de generación y el aviso del check-in. */
+export function fetchMiCoach(): Promise<{ coach: { id: number; nombre: string } | null }> {
+  return apiGet('/api/coach/mi-coach/')
+}
 export function sendMiCoachMensaje(texto: string): Promise<Mensaje> {
   return apiPost('/api/coach/chat/', { texto })
 }

@@ -152,6 +152,9 @@ const translations = {
   checkin_dim4_eyebrow:       { es: 'DIMENSIÓN 4 — DISCIPLINA',         en: 'DIMENSION 4 — DISCIPLINE' },
   checkin_dim4_question:      { es: '¿Qué quieres\nentrenar hoy?',      en: 'What do you want\nto train today?' },
   checkin_dim4_sub:           { es: 'Elige el tipo de entrenamiento',   en: 'Choose the training type' },
+  // Aviso de coach vinculado (se compone con el nombre del coach en medio)
+  checkin_coach_notice_pre:   { es: 'Estas respuestas le estarán llegando a',  en: 'Your answers will reach' },
+  checkin_coach_notice_post:  { es: 'para mejorar el seguimiento de tus rutinas.', en: 'to improve how they track your training.' },
   checkin_running_eyebrow:    { es: 'TIPO DE RUNNING',                  en: 'RUNNING TYPE' },
   checkin_running_question:   { es: '¿Cómo quieres\ncorrer hoy?',       en: 'How do you want\nto run today?' },
   checkin_running_sub:        { es: 'Elige el modo de entrenamiento',   en: 'Choose the training mode' },
@@ -229,6 +232,7 @@ const translations = {
   generate_cool_label:        { es: '❄️ VUELTA A LA CALMA',              en: '❄️ COOL-DOWN' },
   generate_mins_label:        { es: 'min',                               en: 'min' },
   generate_coach_label:       { es: 'NOTA DEL ENTRENADOR',               en: 'TRAINER\'S NOTE' },
+  generate_coach_guided:      { es: 'Guiado por',                        en: 'Guided by' },
 
   // ─── Ejecutar ────────────────────────────────────────────────────────────────
   ejecutar_loading:           { es: 'Cargando sesión...',               en: 'Loading session...' },

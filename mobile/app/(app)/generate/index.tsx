@@ -19,6 +19,7 @@ import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
+import { fetchMiCoach } from '../../../lib/coachApi'
 
 // Video de fondo de la pantalla de generación (baja opacidad). Vive solo mientras
 // la pantalla de carga está montada, así que dura lo que dura la generación.
@@ -1237,6 +1238,17 @@ export default function GenerateScreen() {
   const [subTarget,      setSubTarget]      = useState<SubTarget | null>(null)
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
   const [ajusteVisible,  setAjusteVisible]  = useState(false)
+  const [coachNombre,    setCoachNombre]    = useState<string | null>(null)
+
+  // Coach vinculado (si existe) → badge "Guiado por". Failure-safe: sin coach o
+  // sin red, simplemente no se muestra.
+  useEffect(() => {
+    let cancelled = false
+    fetchMiCoach()
+      .then(r => { if (!cancelled) setCoachNombre(r.coach?.nombre ?? null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   const generate = useCallback(async () => {
     setApiDone(false)
@@ -1425,6 +1437,14 @@ export default function GenerateScreen() {
               <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
               <Text style={styles.sessionTitle}>{sesion.titulo}</Text>
               <Text style={styles.sessionMeta}>{formatDateES(lang)} · {sesion.duracion_total} {t('generate_mins_label')}</Text>
+              {coachNombre ? (
+                <View style={styles.coachBadge}>
+                  <Text style={styles.coachBadgeIcon}>🧑‍🏫</Text>
+                  <Text style={styles.coachBadgeText}>
+                    {t('generate_coach_guided')} <Text style={styles.coachBadgeName}>{coachNombre}</Text>
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Justification card */}
@@ -1617,6 +1637,29 @@ function makeStyles(c: Colors) {
       fontSize:   13,
       color:      c.inkMuted,
       letterSpacing: 0.1,
+    },
+    coachBadge: {
+      flexDirection: 'row',
+      alignItems:    'center',
+      alignSelf:     'flex-start',
+      gap:           6,
+      marginTop:     12,
+      paddingVertical:   5,
+      paddingHorizontal: 10,
+      borderRadius:  999,
+      backgroundColor: 'rgba(79,140,255,0.1)',
+      borderWidth:   1,
+      borderColor:   'rgba(79,140,255,0.3)',
+    },
+    coachBadgeIcon: { fontSize: 12 },
+    coachBadgeText: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize:   12,
+      color:      c.inkSecondary,
+    },
+    coachBadgeName: {
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      color:      c.accent,
     },
 
     // Params grid

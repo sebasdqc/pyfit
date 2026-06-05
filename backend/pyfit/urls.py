@@ -145,6 +145,7 @@ urlpatterns = [
     path('api/coach/vincular/',  coach_views.coach_vincular),
     path('api/coach/chat/unread/', coach_views.coach_chat_unread),
     path('api/coach/chat/',      coach_views.coach_chat),
+    path('api/coach/mi-coach/',  coach_views.coach_mi_coach),
 
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),

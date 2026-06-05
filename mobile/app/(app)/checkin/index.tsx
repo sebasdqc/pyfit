@@ -11,6 +11,7 @@ import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
+import { fetchMiCoach } from '../../../lib/coachApi'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
 
@@ -241,6 +242,17 @@ export default function CheckinScreen() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Coach vinculado (si existe) → aviso en la 1ª página. Failure-safe: sin coach
+  // o sin red, no se muestra nada.
+  const [coachNombre, setCoachNombre] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetchMiCoach()
+      .then(r => { if (!cancelled) setCoachNombre(r.coach?.nombre ?? null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   async function saveNewLoc() {
     if (!newLocNombre.trim() || !newLocTipo) {
@@ -620,6 +632,17 @@ export default function CheckinScreen() {
         <Text style={styles.eyebrow}>{t('checkin_dim4_eyebrow')}</Text>
         <Text style={styles.question}>{t('checkin_dim4_question')}</Text>
         <Text style={styles.questionSub}>{t('checkin_dim4_sub')}</Text>
+
+        {coachNombre ? (
+          <View style={styles.coachNotice}>
+            <Text style={styles.coachNoticeIcon}>🧑‍🏫</Text>
+            <Text style={styles.coachNoticeText}>
+              {t('checkin_coach_notice_pre')}{' '}
+              <Text style={styles.coachNoticeName}>{coachNombre}</Text>{' '}
+              {t('checkin_coach_notice_post')}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.optionsWrap}>
           {DISCIPLINA_OPTS.map(opt => {
@@ -1123,6 +1146,19 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
       color: c.inkMuted, lineHeight: 20, marginBottom: 32, fontStyle: 'italic',
     },
+    coachNotice: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+      backgroundColor: 'rgba(79,140,255,0.08)',
+      borderWidth: 1, borderColor: 'rgba(79,140,255,0.25)',
+      borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14,
+      marginTop: -16, marginBottom: 28,
+    },
+    coachNoticeIcon: { fontSize: 16, marginTop: 1 },
+    coachNoticeText: {
+      flex: 1, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+      color: c.inkSecondary, lineHeight: 19,
+    },
+    coachNoticeName: { fontFamily: 'SpaceGrotesk-SemiBold', color: c.accent },
 
     optionsWrap: { gap: 10 },
     estadoCard: {

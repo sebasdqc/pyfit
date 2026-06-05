@@ -616,6 +616,12 @@ def _athlete_active_link(athlete):
             .order_by('-created_at').first())
 
 
+def _coach_nombre(coach):
+    """Nombre visible del coach: profile.nombre → first_name → local-part del email."""
+    p = getattr(coach, 'profile', None)
+    return (p.nombre if p else '') or coach.first_name or coach.email.split('@')[0]
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def coach_chat(request):
@@ -628,8 +634,7 @@ def coach_chat(request):
         return Response({'coach': None, 'mensajes': []})
 
     coach = link.coach
-    coach_profile = getattr(coach, 'profile', None)
-    coach_nombre = (coach_profile.nombre if coach_profile else '') or coach.first_name or coach.email.split('@')[0]
+    coach_nombre = _coach_nombre(coach)
 
     if request.method == 'POST':
         texto = (request.data.get('texto') or '').strip()
@@ -657,3 +662,16 @@ def coach_chat_unread(request):
         return Response({'no_leidos': 0})
     n = CoachMessage.objects.filter(link=link, from_coach=True, leido=False).count()
     return Response({'no_leidos': n})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_mi_coach(request):
+    """Coach activo del atleta (id + nombre), sin traer mensajes. Liviano: alimenta
+    el badge de la pantalla de generación y el aviso del check-in. Devuelve
+    {coach: {id, nombre} | null}."""
+    link = _athlete_active_link(request.user)
+    if not link:
+        return Response({'coach': None})
+    coach = link.coach
+    return Response({'coach': {'id': coach.id, 'nombre': _coach_nombre(coach)}})
