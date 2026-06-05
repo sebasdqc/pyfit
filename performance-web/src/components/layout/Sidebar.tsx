@@ -22,7 +22,7 @@ interface NavItem {
 // previstos (pendientes de ruteo) — se muestran como ítems del menú.
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-  { id: 'plantilla', label: 'Plantilla', icon: 'plantilla' },
+  { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria' },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento' },
   { id: 'lesiones', label: 'Lesiones', icon: 'lesiones' },
