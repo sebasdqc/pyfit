@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* El styling fino del panel queda fuera del alcance de este andamiaje.
+   Tailwind está cableado y listo para usarse. */

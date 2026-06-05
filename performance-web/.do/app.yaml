@@ -1,0 +1,37 @@
+# Zyfit Performance — panel web B2B desplegado como Static Site en DigitalOcean
+# App Platform. Es una app SEPARADA del backend (pyfit-backend), con su propia
+# URL *.ondigitalocean.app. Mismo pipeline que el backend: deploy on push a main.
+#
+# Primer deploy:
+#   doctl apps create --spec performance-web/.do/app.yaml
+# Actualizaciones (o se hace solo con deploy_on_push):
+#   doctl apps update <APP_ID> --spec performance-web/.do/app.yaml
+#
+# Tras el primer deploy DO asigna la URL (zyfit-performance-xxxxx.ondigitalocean.app).
+# El backend ya la admite vía CORS_ALLOWED_ORIGIN_REGEXES (ver .do/app.yaml del
+# backend). Para producción final, apuntar panel.pyfit.app a esta app (ya está
+# en el CORS exacto del backend).
+
+name: zyfit-performance
+region: nyc
+
+static_sites:
+  - name: panel
+    # Ruta relativa a la raíz del repo (no a la ubicación de este archivo).
+    source_dir: /performance-web
+    github:
+      repo: sebasdqc/pyfit
+      branch: main
+      deploy_on_push: true
+    # npm ci usa package-lock.json (debe estar commiteado). Vite emite a dist/.
+    build_command: npm ci && npm run build
+    output_dir: dist
+    # SPA con React Router: cualquier ruta desconocida sirve index.html para que
+    # el ruteo del cliente (/dashboard, /login, /centers/...) funcione al recargar.
+    catchall_document: index.html
+    envs:
+      # Vite inyecta las VITE_* en BUILD time → quedan inlineadas en el bundle.
+      # Apunta al backend Django existente en DO.
+      - key: VITE_API_URL
+        scope: BUILD_TIME
+        value: "https://sea-lion-app-a2j4f.ondigitalocean.app"

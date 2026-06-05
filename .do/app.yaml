@@ -32,7 +32,12 @@ services:
         value: ".ondigitalocean.app,localhost"
       - key: CORS_ALLOWED_ORIGINS
         scope: RUN_AND_BUILD_TIME
-        value: "https://pyfit.app,http://localhost:3000,http://localhost:8081"
+        value: "https://pyfit.app,https://panel.pyfit.app,http://localhost:3000,http://localhost:8081,http://localhost:5180"
+      # Permite la URL autogenerada del Static Site del panel en DO
+      # (zyfit-performance-xxxxx.ondigitalocean.app) sin fijar el subdominio.
+      - key: CORS_ALLOWED_ORIGIN_REGEXES
+        scope: RUN_AND_BUILD_TIME
+        value: '^https://zyfit-performance-.*\.ondigitalocean\.app$'
       - key: EMAIL_HOST
         scope: RUN_AND_BUILD_TIME
         value: "smtp.gmail.com"

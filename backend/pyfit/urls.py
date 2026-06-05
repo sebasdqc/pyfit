@@ -154,6 +154,9 @@ urlpatterns = [
     path('api/coach/chat/',      coach_views.coach_chat),
     path('api/coach/mi-coach/',  coach_views.coach_mi_coach),
 
+    # Zyfit Performance (vertical B2B — panel web de centros deportivos)
+    path('api/performance/', include('performance.urls')),
+
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),
     path('api/admin/users/',                    admin_api_views.admin_users_list),

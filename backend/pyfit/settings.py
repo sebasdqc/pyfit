@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     'ai_workout',
     'runs',
     'devices',
+    # Vertical B2B "Zyfit Performance" (panel web para centros deportivos).
+    'performance',
     # Celery beat schedule almacenado en Django DB
     'django_celery_beat',
 ]
@@ -169,11 +171,23 @@ CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000,http://localhost:8081',
+        # 3000 landing Next.js · 8081 Expo · 5180 panel Zyfit Performance
+        'http://localhost:3000,http://localhost:8081,http://localhost:5180',
     ).split(',')
     if o.strip()
 ]
 CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'False') == 'True'
+
+# Orígenes permitidos por expresión regular (además de la lista exacta de
+# arriba). Útil para el panel Zyfit Performance desplegado como Static Site en
+# DO: su URL autogenerada (p. ej. zyfit-performance-xxxxx.ondigitalocean.app) no
+# se conoce antes del primer deploy, así que se permite con un regex en vez de
+# tener que fijar el subdominio exacto. Vacío por defecto.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r.strip()
+    for r in os.environ.get('CORS_ALLOWED_ORIGIN_REGEXES', '').split(',')
+    if r.strip()
+]
 
 # Safety: never allow wide-open CORS in production. If someone flips the flag
 # accidentally, fail loudly instead of leaking the API.

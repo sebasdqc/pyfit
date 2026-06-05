@@ -21,10 +21,28 @@ def generar_codigo_referido(length: int = 6) -> str:
 class User(AbstractUser):
     # Rol de la cuenta. Por defecto 'athlete' → todas las cuentas existentes y
     # los registros normales siguen siendo atletas y funcionan exactamente igual.
-    # 'coach' identifica a un entrenador que usa el portal de coach.
+    #
+    # Los dos primeros roles son del producto de consumo (app móvil):
+    #   - 'athlete' identifica a un usuario normal de la app.
+    #   - 'coach'   identifica a un entrenador que usa el portal de coach.
+    # Los dos siguientes pertenecen a la vertical B2B "Zyfit Performance"
+    # (panel web para centros deportivos de alto rendimiento):
+    #   - 'director_tecnico' dirige un centro y registra a sus atletas.
+    #   - 'admin'            soy yo, administrador del producto (acceso total al panel).
+    # Son aditivos: ningún atleta/coach existente cambia, y el default sigue
+    # siendo 'athlete'. El rol fino de cada staff DENTRO de un centro vive en
+    # performance.CenterMembership (un mismo User puede ser director en un centro
+    # y, p.ej., fisioterapeuta en otro); este campo es la identidad global.
     ROLE_ATHLETE = 'athlete'
     ROLE_COACH = 'coach'
-    ROLE_CHOICES = [(ROLE_ATHLETE, 'Atleta'), (ROLE_COACH, 'Coach')]
+    ROLE_DIRECTOR = 'director_tecnico'
+    ROLE_ADMIN = 'admin'
+    ROLE_CHOICES = [
+        (ROLE_ATHLETE, 'Atleta'),
+        (ROLE_COACH, 'Coach'),
+        (ROLE_DIRECTOR, 'Director técnico'),
+        (ROLE_ADMIN, 'Admin de producto'),
+    ]
 
     email = models.EmailField(unique=True)
     role = models.CharField(
@@ -51,10 +69,30 @@ class User(AbstractUser):
         return self.role == self.ROLE_ATHLETE
 
     @property
+    def is_director(self) -> bool:
+        """Director técnico de la vertical B2B Zyfit Performance."""
+        return self.role == self.ROLE_DIRECTOR
+
+    @property
+    def is_admin(self) -> bool:
+        """Administrador de producto (rol B2B). Es independiente de `is_staff`
+        de Django, que sigue gobernando el acceso al admin web."""
+        return self.role == self.ROLE_ADMIN
+
+    @property
     def coach_acceso_activo(self) -> bool:
         """Un coach puede entrar al portal solo si su rol es coach, su acceso
         fue activado y la cuenta sigue activa."""
         return self.is_coach and self.coach_activo and self.is_active
+
+    @property
+    def performance_acceso(self) -> bool:
+        """Acceso al panel web de Zyfit Performance. Lo tienen los directores
+        técnicos, el admin de producto y cualquier staff de Django. El alcance
+        fino (a qué centros y módulos) lo resuelve performance.CenterMembership."""
+        return self.is_active and (
+            self.role in (self.ROLE_DIRECTOR, self.ROLE_ADMIN) or self.is_staff
+        )
 
 
 class Profile(models.Model):
