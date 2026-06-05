@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
+import { fetchMiCoach } from '../../../lib/coachApi'
 import { useTranslation } from '../../../lib/i18n'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
 
@@ -365,6 +366,27 @@ export default function FeedbackScreen() {
   // ── Step nav ───────────────────────────────────────────────────────────────
   const [step, setStep] = useState(1)
 
+  // ── Gating por config del coach ──────────────────────────────────────────────
+  // null = aún sin resolver (no renderizamos el flujo para no mostrar un flash
+  // del formulario). Si el coach desactivó el feedback post-sesión, saltamos
+  // directo al dashboard. Failure-safe: sin coach/sin red → se muestra normal.
+  const [feedbackOff, setFeedbackOff] = useState<boolean | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetchMiCoach()
+      .then(r => {
+        if (cancelled) return
+        if (r.config?.feedback === false) {
+          setFeedbackOff(true)
+          router.replace('/(app)/dashboard')
+        } else {
+          setFeedbackOff(false)
+        }
+      })
+      .catch(() => { if (!cancelled) setFeedbackOff(false) })
+    return () => { cancelled = true }
+  }, [])
+
   // ── Share card modal ─────────────────────────────────────────────────────────
   const [shareOpen, setShareOpen] = useState(false)
   const step1Complete   = rpeChoice !== null && sensacion !== null
@@ -477,6 +499,16 @@ export default function FeedbackScreen() {
   const currentStepCfg = STEP_CONFIG[step - 1]
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // Mientras no sepamos la config del coach (o si vamos a saltar el feedback),
+  // mostramos solo el fondo: evita el flash del formulario antes de redirigir.
+  if (feedbackOff !== false) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+      </View>
+    )
+  }
 
   return (
     <KeyboardAvoidingView

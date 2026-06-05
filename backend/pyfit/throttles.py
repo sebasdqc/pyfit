@@ -40,3 +40,21 @@ class AjustarSesionRateThrottle(UserRateThrottle):
     disparar costes arbitrarios.
     """
     scope = 'ajustar_sesion'
+
+
+class CoachChatRateThrottle(UserRateThrottle):
+    """60 mensajes por minuto por usuario — anti-spam del chat coach↔atleta.
+    Solo cuenta los envíos (POST): el GET hace polling cada 5s y no debe gastar
+    el presupuesto ni ser bloqueado."""
+    scope = 'coach_chat'
+
+    def allow_request(self, request, view):
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return True
+        return super().allow_request(request, view)
+
+
+class CoachVincularRateThrottle(UserRateThrottle):
+    """20 intentos por hora por usuario — frena el barrido de códigos de coach
+    (el atleta está autenticado, así que el límite es por cuenta)."""
+    scope = 'coach_vincular'

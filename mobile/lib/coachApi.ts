@@ -18,7 +18,7 @@ import {
   clearCoachSession,
 } from './storage'
 import { localDateStr, apiGet, apiPost } from './api'
-import type { Atleta, Estado } from './coachMockData'
+import type { Atleta, Estado } from './coachTypes'
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -117,7 +117,6 @@ export interface CoachConfig {
   checkin:   boolean
   feedback:  boolean
   ia:        boolean
-  manual:    boolean
 }
 
 export interface CoachDirectiva {
@@ -152,6 +151,45 @@ export function fetchCoachMe(): Promise<CoachMe> {
 
 export function fetchCartera(): Promise<CarteraResponse> {
   return coachRequest('GET', '/api/coach/atletas/')
+}
+
+// ── Facturación ──────────────────────────────────────────────────────────────
+
+export interface CoachBilling {
+  plan:             string
+  estado:           string
+  slots_incluidos:  number
+  slots_usados:     number
+  fecha_corte:      string | null
+  atletas_pro:      { id: string; nombre: string }[]
+}
+
+export function fetchCoachBilling(): Promise<CoachBilling> {
+  return coachRequest('GET', '/api/coach/billing/')
+}
+
+// ── Gestión de cartera (pausar / reactivar / desvincular) ────────────────────
+
+export interface AtletaGestion {
+  id:      string
+  nombre:  string
+  estado:  'activo' | 'pausado'
+  ultima:  string
+  desde:   string
+}
+
+export function fetchCarteraGestion(): Promise<{ atletas: AtletaGestion[] }> {
+  return coachRequest('GET', '/api/coach/gestion/')
+}
+
+/** Pausa o reactiva el vínculo con un atleta. */
+export function patchAtletaEstado(id: string | number, estado: 'activo' | 'pausado'): Promise<{ id: string; estado: string }> {
+  return coachRequest('PATCH', `/api/coach/atletas/${id}/estado/`, { estado })
+}
+
+/** Desvincula (elimina) a un atleta de la cartera. 204 → null. */
+export function desvincularAtleta(id: string | number): Promise<null> {
+  return coachRequest('DELETE', `/api/coach/atletas/${id}/desvincular/`)
 }
 
 // ── Analytics ──────────────────────────────────────────────────────────────────
@@ -233,10 +271,16 @@ export function fetchMiCoachChat(): Promise<MiCoachChat> {
 export function fetchMiCoachUnread(): Promise<{ no_leidos: number }> {
   return apiGet('/api/coach/chat/unread/')
 }
-/** Coach activo del atleta (liviano, sin mensajes). Para el badge de generación y el aviso del check-in. */
-export function fetchMiCoach(): Promise<{ coach: { id: number; nombre: string } | null }> {
+/** Coach activo del atleta (liviano, sin mensajes) + config efectiva. Alimenta el
+ * badge de generación, el aviso del check-in y el gating de config. `config` viene
+ * con los defaults aunque no haya coach, así el cliente nunca ramifica por null. */
+export function fetchMiCoach(): Promise<{ coach: { id: number; nombre: string } | null; config: CoachConfig }> {
   return apiGet('/api/coach/mi-coach/')
 }
 export function sendMiCoachMensaje(texto: string): Promise<Mensaje> {
   return apiPost('/api/coach/chat/', { texto })
+}
+/** El atleta se desvincula de su coach actual. 204 → null. */
+export function desvincularMiCoach(): Promise<null> {
+  return apiPost('/api/coach/desvincular/', {})
 }

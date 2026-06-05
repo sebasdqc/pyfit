@@ -17,12 +17,16 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, Count
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
+from pyfit.throttles import CoachChatRateThrottle, CoachVincularRateThrottle
 from workouts.models import Session, SessionFeedback
-from .models import Profile, CoachAthlete, CoachMessage, generar_codigo_referido, default_coach_config
+from .models import (
+    Profile, CoachAthlete, CoachMessage, CoachSubscription,
+    generar_codigo_referido, default_coach_config, COACH_CONFIG_KEYS,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -214,6 +218,14 @@ def _get_link(coach, pk):
             .select_related('athlete__profile').first())
 
 
+def _effective_config(link) -> dict:
+    """Config normalizada del vínculo: arranca de los defaults vigentes y aplica
+    solo las claves reconocidas (descarta 'manual' y claves heredadas)."""
+    cfg = default_coach_config()
+    cfg.update({k: bool(v) for k, v in (link.config or {}).items() if k in COACH_CONFIG_KEYS})
+    return cfg
+
+
 def _athlete_detail_metrics(athlete, hoy, link) -> dict:
     """Métricas del tab Perfil del detalle (consistencia, sesiones/mes, RPE, antigüedad)."""
     profile = getattr(athlete, 'profile', None)
@@ -338,6 +350,37 @@ def coach_me(request):
     })
 
 
+def _ensure_subscription(coach) -> CoachSubscription:
+    """Suscripción del coach, creándola perezosamente con valores por defecto la
+    primera vez (igual que el código de invitación). Administrada, sin cobrador."""
+    sub, _ = CoachSubscription.objects.get_or_create(coach=coach)
+    return sub
+
+
+@api_view(['GET'])
+@permission_classes([IsCoach])
+def coach_billing(request):
+    """Facturación del coach: plan, estado, slots y atletas con Pro (cartera real).
+    Reemplaza los datos mock de la pantalla de Ajustes."""
+    coach = request.user
+    sub = _ensure_subscription(coach)
+    links = (CoachAthlete.objects
+             .filter(coach=coach, estado=CoachAthlete.ESTADO_ACTIVO)
+             .select_related('athlete__profile'))
+    atletas = [{
+        'id': str(l.athlete_id),
+        'nombre': _coach_nombre(l.athlete),
+    } for l in links]
+    return Response({
+        'plan': sub.plan,
+        'estado': sub.estado,
+        'slots_incluidos': sub.slots_incluidos,
+        'slots_usados': len(atletas),
+        'fecha_corte': sub.fecha_corte.isoformat() if sub.fecha_corte else None,
+        'atletas_pro': atletas,
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsCoach])
 def coach_atletas(request):
@@ -401,7 +444,8 @@ def coach_atleta_detalle(request, pk):
     card = _athlete_card(athlete, hoy, timezone.now())
     card['metrics'] = _athlete_detail_metrics(athlete, hoy, link)
     card['desde'] = link.created_at.date().isoformat()
-    card['config'] = link.config or default_coach_config()
+    card['config'] = _effective_config(link)
+    card['estado_vinculo'] = link.estado
     card['directiva'] = link.directiva or {}
     card['directiva_updated_at'] = (
         link.directiva_updated_at.isoformat() if link.directiva_updated_at else None
@@ -468,7 +512,13 @@ def coach_analytics(request):
         })
 
     n = len(cards)
-    adherencia_media = int(round(sum(c['adherencia'] for c in cards) / n)) if n else 0
+    # Adherencia media de la cartera: promedio SQL de `cumplimiento` sobre el
+    # período, ignorando atletas sin feedback (mismo criterio que coach_atletas).
+    # Promediar c['adherencia'] metía 0 por cada atleta sin feedback y sesgaba.
+    adher_period = SessionFeedback.objects.filter(
+        session__user_id__in=ids, session__fecha__gte=hoy - timedelta(days=7 * semanas),
+    ).aggregate(a=Avg('cumplimiento'))['a']
+    adherencia_media = int(round(adher_period)) if adher_period is not None else 0
     consistencia_media = int(round(sum(c['consistencia'] for c in cards) / n)) if n else 0
     score_promedio = int(round(sum(c['score'] for c in cards) / n)) if n else 0
     sesiones_total = Session.objects.filter(
@@ -515,8 +565,11 @@ def coach_atleta_config(request, pk):
     if not isinstance(incoming, dict):
         incoming = request.data if isinstance(request.data, dict) else {}
 
-    cfg = dict(link.config or default_coach_config())
-    for k in ('checkin', 'feedback', 'ia', 'manual'):
+    # Parte de la config por defecto (3 claves vigentes) e ignora 'manual' y
+    # cualquier clave heredada que ya no se aplique.
+    cfg = default_coach_config()
+    cfg.update({k: v for k, v in (link.config or {}).items() if k in COACH_CONFIG_KEYS})
+    for k in COACH_CONFIG_KEYS:
         if k in incoming:
             cfg[k] = bool(incoming[k])
     link.config = cfg
@@ -540,8 +593,77 @@ def coach_atleta_sesiones(request, pk):
     return Response({'sesiones': [_session_history_item(s, hoy) for s in sesiones]})
 
 
+# ─── Gestión de la cartera (pausar / reactivar / desvincular) ────────────────────
+
+def _get_any_link(coach, pk):
+    """Vínculo coach→atleta sin importar el estado (activo o pausado). Para la
+    pantalla de gestión, que necesita operar también sobre pausados."""
+    return (CoachAthlete.objects
+            .filter(coach=coach, athlete_id=pk)
+            .select_related('athlete__profile').first())
+
+
+@api_view(['GET'])
+@permission_classes([IsCoach])
+def coach_cartera_gestion(request):
+    """Lista slim de TODA la cartera (activos + pausados) para la gestión. No
+    calcula Zyfit Score (es barata): solo nombre, estado y última actividad."""
+    coach = request.user
+    hoy = _hoy(request)
+    ahora = timezone.now()
+    links = (CoachAthlete.objects
+             .filter(coach=coach)
+             .select_related('athlete__profile')
+             .prefetch_related('athlete__sessions'))
+    out = []
+    for l in links:
+        last = l.athlete.sessions.order_by('-fecha', '-created_at').first()
+        out.append({
+            'id': str(l.athlete_id),
+            'nombre': _coach_nombre(l.athlete),
+            'estado': l.estado,
+            'ultima': _humanize_actividad(last, ahora, hoy),
+            'desde': l.created_at.date().isoformat(),
+        })
+    # Activos primero, luego por nombre.
+    out.sort(key=lambda a: (a['estado'] != CoachAthlete.ESTADO_ACTIVO, a['nombre'].lower()))
+    return Response({'atletas': out})
+
+
+@api_view(['PATCH'])
+@permission_classes([IsCoach])
+def coach_atleta_estado(request, pk):
+    """Pausa o reactiva el vínculo con un atleta. Pausado lo saca de la cartera
+    activa, de los analytics y del bias de la IA, sin borrar historial ni chat."""
+    link = _get_any_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+
+    nuevo = (request.data.get('estado') or '').strip()
+    if nuevo not in (CoachAthlete.ESTADO_ACTIVO, CoachAthlete.ESTADO_PAUSADO):
+        return Response({'error': 'Estado inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+    if link.estado != nuevo:
+        link.estado = nuevo
+        link.save(update_fields=['estado'])
+    return Response({'id': str(pk), 'estado': link.estado})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsCoach])
+def coach_atleta_desvincular(request, pk):
+    """Elimina el vínculo con un atleta (incluye su chat, por cascada). El atleta
+    deja de estar en la cartera; puede volver a vincularse con el código."""
+    link = _get_any_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+    link.delete()
+    logger.info('coach desvinculó atleta %s (coach %s)', pk, request.user.email)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([CoachVincularRateThrottle])
 def coach_vincular(request):
     """Un atleta se vincula a un coach ingresando su código de invitación."""
     codigo = (request.data.get('codigo') or '').strip().upper()
@@ -575,6 +697,20 @@ def coach_vincular(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def coach_desvincular(request):
+    """El atleta se desvincula de su coach actual (el vínculo activo más reciente).
+    Borra el vínculo y su chat; la generación vuelve al prompt sin directiva."""
+    link = _athlete_active_link(request.user)
+    if not link:
+        return Response({'error': 'No tienes un coach vinculado.'}, status=status.HTTP_400_BAD_REQUEST)
+    coach_email = link.coach.email
+    link.delete()
+    logger.info('coach_desvincular: atleta %s salió del coach %s', request.user.email, coach_email)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # ─── Chat coach↔atleta ──────────────────────────────────────────────────────────
 
 def _serialize_mensaje(msg):
@@ -588,6 +724,7 @@ def _serialize_mensaje(msg):
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsCoach])
+@throttle_classes([CoachChatRateThrottle])
 def coach_atleta_mensajes(request, pk):
     """Chat del coach con un atleta de su cartera. GET lista (y marca como leídos
     los del atleta); POST envía un mensaje del coach."""
@@ -624,6 +761,7 @@ def _coach_nombre(coach):
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([CoachChatRateThrottle])
 def coach_chat(request):
     """Chat del atleta con su coach. GET devuelve {coach, mensajes} (y marca como
     leídos los del coach); POST envía un mensaje del atleta."""
@@ -667,11 +805,17 @@ def coach_chat_unread(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def coach_mi_coach(request):
-    """Coach activo del atleta (id + nombre), sin traer mensajes. Liviano: alimenta
-    el badge de la pantalla de generación y el aviso del check-in. Devuelve
-    {coach: {id, nombre} | null}."""
+    """Coach activo del atleta (id + nombre) + config efectiva, sin traer mensajes.
+    Liviano: alimenta el badge de generación, el aviso del check-in y el gating de
+    config (checkin/feedback/ia). Devuelve {coach: {id, nombre} | null, config}.
+
+    `config` es la config del vínculo activo, o los defaults si no hay coach, así
+    el cliente siempre puede leer las tres claves sin ramificar por null."""
     link = _athlete_active_link(request.user)
     if not link:
-        return Response({'coach': None})
+        return Response({'coach': None, 'config': default_coach_config()})
     coach = link.coach
-    return Response({'coach': {'id': coach.id, 'nombre': _coach_nombre(coach)}})
+    return Response({
+        'coach': {'id': coach.id, 'nombre': _coach_nombre(coach)},
+        'config': _effective_config(link),
+    })

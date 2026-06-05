@@ -152,6 +152,8 @@ REST_FRAMEWORK = {
         'generate_session': '10/hour',
         'regenerar_ejercicio': '20/hour',
         'ajustar_sesion': '15/hour',   # cost guard: each call hits Groq API
+        'coach_chat': '60/minute',     # anti-spam del chat coach↔atleta
+        'coach_vincular': '20/hour',   # frena el barrido de códigos de coach
     },
 }
 

@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { P, iniciales } from '../../../lib/coachTheme'
-import { hasAlert } from '../../../lib/coachMockData'
+import { hasAlert } from '../../../lib/coachTypes'
 import {
   fetchAtletaDetalle,
   fetchAtletaSesiones,
@@ -49,14 +49,14 @@ function IconSend({ color }: { color: string }) {
 }
 
 // ─── Datos del detalle ──────────────────────────────────────────────────────────
-// Perfil (métricas) e Historial son REALES (endpoints de coach). Rutina y Chat
-// siguen siendo placeholder hasta las Fases 3 y 4.
+// Las cuatro pestañas son REALES: Perfil (métricas + config), Rutina (directiva
+// que sesga la IA del atleta), Historial y Chat. Los toggles de config se aplican
+// de verdad en el flujo del atleta (ver coach_mi_coach / generate_session).
 
 const TOGGLES = [
-  { key: 'checkin',  nombre: 'Check-in diario',     desc: 'El atleta reporta ánimo, sueño y energía cada día.' },
-  { key: 'feedback', nombre: 'Feedback post-sesión', desc: 'Pide RPE y notas al terminar cada entrenamiento.' },
-  { key: 'ia',       nombre: 'Rutinas con IA',       desc: 'Genera rutinas automáticas adaptadas al atleta.' },
-  { key: 'manual',   nombre: 'Rutina manual',        desc: 'Tú defines y editas la rutina manualmente.' },
+  { key: 'checkin',  nombre: 'Check-in diario',     desc: 'El atleta reporta ánimo, sueño y energía cada día. Si lo apagas, entrena sin completarlo.' },
+  { key: 'feedback', nombre: 'Feedback post-sesión', desc: 'Pide RPE y notas al terminar cada entrenamiento. Si lo apagas, no se le pide.' },
+  { key: 'ia',       nombre: 'Rutinas con IA',       desc: 'Genera rutinas automáticas adaptadas al atleta. Si lo apagas, pausas su generación.' },
 ] as const
 type ToggleKey = (typeof TOGGLES)[number]['key']
 
@@ -109,7 +109,7 @@ export default function CoachAtletaDetalle() {
   const [tab, setTab] = useState<Tab>('perfil')
   const [coachNombre, setCoachNombre] = useState('Coach')
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
-    checkin: true, feedback: true, ia: true, manual: false,
+    checkin: true, feedback: true, ia: true,
   })
   // Directiva del coach (tab Rutina) — guía que sesga la IA del atleta.
   const [dObjetivo, setDObjetivo] = useState('')

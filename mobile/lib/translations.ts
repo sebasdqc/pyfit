@@ -233,6 +233,8 @@ const translations = {
   generate_mins_label:        { es: 'min',                               en: 'min' },
   generate_coach_label:       { es: 'NOTA DEL ENTRENADOR',               en: 'TRAINER\'S NOTE' },
   generate_coach_guided:      { es: 'Guiado por',                        en: 'Guided by' },
+  generate_coach_paused_title:{ es: 'Tu coach gestiona tu plan',         en: 'Your coach manages your plan' },
+  generate_coach_paused_body: { es: 'La generación con IA está en pausa por indicación de tu coach',   en: 'AI generation is paused by your coach' },
 
   // ─── Ejecutar ────────────────────────────────────────────────────────────────
   ejecutar_loading:           { es: 'Cargando sesión...',               en: 'Loading session...' },

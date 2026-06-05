@@ -14,9 +14,22 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales, CONTACT_URL } from '../../lib/coachTheme'
-import { ATLETAS } from '../../lib/coachMockData'
-import { fetchCoachMe } from '../../lib/coachApi'
+import { fetchCoachMe, fetchCoachBilling, type CoachBilling } from '../../lib/coachApi'
 import { getCoachUser, clearCoachSession } from '../../lib/storage'
+
+// Estado de la suscripción → etiqueta visible.
+const ESTADO_LABEL: Record<string, string> = {
+  activa: 'Activo', pausada: 'Pausado', vencida: 'Vencido',
+}
+
+// '2026-07-15' → '15 jul 2026'.
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+function fmtFecha(iso: string | null): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return '—'
+  return `${d} ${MESES[m - 1]} ${y}`
+}
 
 // ─── Tonos de íconos ────────────────────────────────────────────────────────────
 
@@ -46,30 +59,6 @@ function IconUsers({ c }: { c: string }) {
       <Path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20" stroke={c} strokeWidth={sw} strokeLinecap="round" />
       <Circle cx={10} cy={8} r={3.3} stroke={c} strokeWidth={sw} />
       <Path d="M20 20v-1.5a3.5 3.5 0 0 0-2.6-3.38M15.5 5.2a3.4 3.4 0 0 1 0 6.6" stroke={c} strokeWidth={sw} strokeLinecap="round" />
-    </Svg>
-  )
-}
-function IconBell({ c }: { c: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" stroke={c} strokeWidth={sw} strokeLinejoin="round" />
-      <Path d="M10 19a2 2 0 0 0 4 0" stroke={c} strokeWidth={sw} strokeLinecap="round" />
-    </Svg>
-  )
-}
-function IconTrendDown({ c }: { c: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 8l6 6 3-3 9 9" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M16 20h5v-5" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  )
-}
-function IconCalendar({ c }: { c: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Rect x={4} y={5} width={16} height={15} rx={2.5} stroke={c} strokeWidth={sw} />
-      <Path d="M4 9.5h16M8.5 3v4M15.5 3v4" stroke={c} strokeWidth={sw} strokeLinecap="round" />
     </Svg>
   )
 }
@@ -155,25 +144,28 @@ function Row({
 
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
-const PLAN = 'Coach Pro'
-const PROX_CORTE = '15 jul 2026'
-const SLOTS_INCLUIDOS = 15
-
 export default function CoachAjustes() {
   const insets = useSafeAreaInsets()
   const [user, setUser] = useState<any>(null)
   const [codigo, setCodigo] = useState<string>('')
-  const [notif, setNotif] = useState({ inactividad: true, scoreCaida: true, resumen: false })
+  const [totalAtletas, setTotalAtletas] = useState(0)
+  const [billing, setBilling] = useState<CoachBilling | null>(null)
 
   useEffect(() => {
     getCoachUser().then(setUser)
-    fetchCoachMe().then((me) => setCodigo(me.codigo_coach)).catch(() => {})
+    fetchCoachMe()
+      .then((me) => { setCodigo(me.codigo_coach); setTotalAtletas(me.total_atletas) })
+      .catch(() => {})
+    fetchCoachBilling().then(setBilling).catch(() => {})
   }, [])
 
   const nombre = user?.nombre || 'Coach'
-  const activos = ATLETAS.length
-  const proVisibles = ATLETAS.slice(0, 5)
-  const proRestantes = ATLETAS.length - proVisibles.length
+  // Conteo real de atletas: billing manda (incluye slots_usados); fallback a /me.
+  const activos = billing?.slots_usados ?? totalAtletas
+  const planNombre = billing?.plan || 'Coach Pro'
+  const slotsIncluidos = billing?.slots_incluidos ?? 0
+  const proVisibles = (billing?.atletas_pro ?? []).slice(0, 5)
+  const proRestantes = (billing?.atletas_pro?.length ?? 0) - proVisibles.length
 
   function proximamente(titulo: string) {
     Alert.alert(titulo, 'Esta sección estará disponible próximamente.')
@@ -217,7 +209,7 @@ export default function CoachAjustes() {
           <View style={styles.profileMid}>
             <Text style={styles.profileName} numberOfLines={1}>{nombre}</Text>
             <Text style={styles.profileRole}>Entrenador personal</Text>
-            <Text style={styles.profileSub} numberOfLines={1}>{PLAN} · {activos} atletas activos</Text>
+            <Text style={styles.profileSub} numberOfLines={1}>{planNombre} · {activos} {activos === 1 ? 'atleta activo' : 'atletas activos'}</Text>
           </View>
           <Chevron />
         </TouchableOpacity>
@@ -226,39 +218,44 @@ export default function CoachAjustes() {
         <SectionLabel>Plan y facturación</SectionLabel>
         <View style={styles.card}>
           <View style={styles.planTop}>
-            <Text style={styles.planNombre}>{PLAN}</Text>
-            <View style={styles.planBadge}><Text style={styles.planBadgeText}>Activo</Text></View>
+            <Text style={styles.planNombre}>{planNombre}</Text>
+            <View style={styles.planBadge}>
+              <Text style={styles.planBadgeText}>{ESTADO_LABEL[billing?.estado ?? 'activa'] || 'Activo'}</Text>
+            </View>
           </View>
 
           <View style={styles.planRow}>
             <Text style={styles.planLabel}>Próxima fecha de corte</Text>
-            <Text style={styles.planValue}>{PROX_CORTE}</Text>
+            <Text style={styles.planValue}>{fmtFecha(billing?.fecha_corte ?? null)}</Text>
           </View>
           <View style={styles.planRow}>
             <Text style={styles.planLabel}>Slots incluidos</Text>
-            <Text style={styles.planValue}>{SLOTS_INCLUIDOS} atletas</Text>
+            <Text style={styles.planValue}>{slotsIncluidos} atletas</Text>
           </View>
           <View style={styles.planRow}>
             <Text style={styles.planLabel}>Slots usados</Text>
-            <Text style={styles.planValue}>{activos} / {SLOTS_INCLUIDOS}</Text>
+            <Text style={styles.planValue}>{activos} / {slotsIncluidos}</Text>
           </View>
 
-          <View style={styles.planDivider} />
-
-          <Text style={styles.proLabel}>Atletas con Pro activo</Text>
-          <View style={styles.avatarStack}>
-            {proVisibles.map((a, i) => (
-              <View key={a.id} style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}>
-                <Text style={styles.stackAvatarText}>{iniciales(a.nombre)}</Text>
+          {proVisibles.length > 0 && (
+            <>
+              <View style={styles.planDivider} />
+              <Text style={styles.proLabel}>Atletas con Pro activo</Text>
+              <View style={styles.avatarStack}>
+                {proVisibles.map((a, i) => (
+                  <View key={a.id} style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}>
+                    <Text style={styles.stackAvatarText}>{iniciales(a.nombre)}</Text>
+                  </View>
+                ))}
+                {proRestantes > 0 && (
+                  <View style={[styles.stackAvatar, styles.stackMore, { marginLeft: -10 }]}>
+                    <Text style={styles.stackMoreText}>+{proRestantes}</Text>
+                  </View>
+                )}
               </View>
-            ))}
-            {proRestantes > 0 && (
-              <View style={[styles.stackAvatar, styles.stackMore, { marginLeft: -10 }]}>
-                <Text style={styles.stackMoreText}>+{proRestantes}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.proNote}>Cada atleta vinculado tiene Zyfit Pro sin costo adicional</Text>
+              <Text style={styles.proNote}>Cada atleta vinculado tiene Zyfit Pro sin costo adicional</Text>
+            </>
+          )}
         </View>
 
         {/* Gestión */}
@@ -278,36 +275,6 @@ export default function CoachAjustes() {
             desc="Vincular, desvincular, pausar"
             count={`${activos}`}
             onPress={() => router.navigate('/(coach)/atletas' as any)}
-            last
-          />
-        </View>
-
-        {/* Notificaciones */}
-        <SectionLabel>Notificaciones</SectionLabel>
-        <View style={styles.card}>
-          <Row
-            tone="purple"
-            icon={<IconBell c={TONES.purple.fg} />}
-            title="Alertas de inactividad"
-            desc="Atleta sin actividad +3 días"
-            toggle={notif.inactividad}
-            onValue={(v) => setNotif((p) => ({ ...p, inactividad: v }))}
-          />
-          <Row
-            tone="amber"
-            icon={<IconTrendDown c={TONES.amber.fg} />}
-            title="Score en caída"
-            desc="Zyfit Score baja más de 10 pts"
-            toggle={notif.scoreCaida}
-            onValue={(v) => setNotif((p) => ({ ...p, scoreCaida: v }))}
-          />
-          <Row
-            tone="green"
-            icon={<IconCalendar c={TONES.green.fg} />}
-            title="Resumen semanal"
-            desc="Reporte de cartera cada lunes"
-            toggle={notif.resumen}
-            onValue={(v) => setNotif((p) => ({ ...p, resumen: v }))}
             last
           />
         </View>

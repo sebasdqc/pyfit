@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { P, iniciales } from '../../lib/coachTheme'
-import { type Estado } from '../../lib/coachMockData'
+import { type Estado } from '../../lib/coachTypes'
 import { fetchAnalytics, type AnalyticsResponse, type AnalyticsAtleta } from '../../lib/coachApi'
 
 // ─── Config ─────────────────────────────────────────────────────────────────────

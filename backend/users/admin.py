@@ -12,8 +12,8 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from workouts.models import Session
 from .models import (
-    ImpersonationLog, MenstrualCycle, Notification, NotificationPreference,
-    Profile, User, UserInjury, UserLocation,
+    CoachAthlete, CoachSubscription, ImpersonationLog, MenstrualCycle,
+    Notification, NotificationPreference, Profile, User, UserInjury, UserLocation,
 )
 
 
@@ -271,6 +271,31 @@ class MenstrualCycleAdmin(ModelAdmin):
     list_display   = ['user', 'fecha_inicio', 'duracion_ciclo']
     list_filter    = [('fecha_inicio', RangeDateFilter)]
     search_fields  = ['user__email']
+
+
+@admin.register(CoachSubscription)
+class CoachSubscriptionAdmin(ModelAdmin):
+    """Suscripción del portal de coach (administrada — sin cobrador conectado).
+    Aquí el staff ajusta plan, estado, slots incluidos y fecha de corte."""
+    list_display  = ['coach', 'plan', 'estado', 'slots_incluidos', 'fecha_corte', 'created_at']
+    list_filter   = ['estado', 'plan']
+    search_fields = ['coach__email', 'coach__first_name']
+    autocomplete_fields = ['coach']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('coach')
+
+
+@admin.register(CoachAthlete)
+class CoachAthleteAdmin(ModelAdmin):
+    """Vínculos coach↔atleta (cartera). Solo lectura de gestión; el flujo real
+    de vincular/pausar/desvincular ocurre desde la app."""
+    list_display  = ['coach', 'athlete', 'estado', 'directiva_updated_at', 'created_at']
+    list_filter   = ['estado']
+    search_fields = ['coach__email', 'athlete__email']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('coach', 'athlete')
 
 
 @admin.register(ImpersonationLog)

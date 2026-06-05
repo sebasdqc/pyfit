@@ -655,9 +655,13 @@ def _get_coach_directiva(user):
     para NO romper nunca la generación si algo falla (camino crítico)."""
     try:
         from users.models import CoachAthlete
+        # Coach "actual" = vínculo activo más reciente por created_at. MISMO criterio
+        # que _athlete_active_link en coach_views, para que el badge "Guiado por X",
+        # la config y la directiva apunten siempre al mismo coach (no a uno por
+        # antigüedad y otro por la directiva más nueva cuando hay varios coaches).
         link = (CoachAthlete.objects
                 .filter(athlete=user, estado=CoachAthlete.ESTADO_ACTIVO)
-                .order_by('-directiva_updated_at', '-created_at')
+                .order_by('-created_at')
                 .first())
         if link and isinstance(link.directiva, dict):
             d = link.directiva
@@ -666,6 +670,41 @@ def _get_coach_directiva(user):
     except Exception:
         logger.exception('No se pudo leer la directiva del coach para user=%s', getattr(user, 'id', '?'))
     return None
+
+
+def _get_coach_config(user):
+    """Config efectiva del coach activo del atleta (checkin/feedback/ia), o None si
+    no tiene coach. Mismo criterio de "coach actual" que la directiva (vínculo
+    activo más reciente). Failure-safe: nunca rompe la generación."""
+    try:
+        from users.models import CoachAthlete, default_coach_config, COACH_CONFIG_KEYS
+        link = (CoachAthlete.objects
+                .filter(athlete=user, estado=CoachAthlete.ESTADO_ACTIVO)
+                .order_by('-created_at').first())
+        if not link:
+            return None
+        cfg = default_coach_config()
+        cfg.update({k: bool(v) for k, v in (link.config or {}).items() if k in COACH_CONFIG_KEYS})
+        return cfg
+    except Exception:
+        logger.exception('No se pudo leer la config del coach para user=%s', getattr(user, 'id', '?'))
+        return None
+
+
+def _crear_checkin_neutro(user, hoy):
+    """Check-in neutro del día, creado cuando el coach desactivó el check-in
+    diario para que la generación proceda sin que el atleta lo complete. Es una
+    fila real de DailyCheckin (no un sustituto sintético), así que el FK de la
+    sesión y el motor adaptativo funcionan igual que con un check-in normal."""
+    from checkins.models import DailyCheckin
+    perfil = getattr(user, 'profile', None)
+    dur = perfil.duracion_disponible if (perfil and perfil.duracion_disponible) else 60
+    dur = max(10, min(300, int(dur)))
+    loc = user.locations.order_by('created_at').first()
+    return DailyCheckin.objects.create(
+        user=user, fecha=hoy, estado_animo=3, calidad_sueno=7,
+        duracion_disponible=dur, location=loc, foco_entrenamiento=[],
+    )
 
 
 def build_prompt(ctx):
@@ -948,9 +987,24 @@ def generate_session(request):
     except Exception:
         return Response({'error': 'Perfil no encontrado. Completa el onboarding.'}, status=400)
 
+    # Config del coach (failure-safe; None si el atleta no tiene coach → camino
+    # crítico intacto). Controla dos cosas en la generación:
+    #   · ia=False      → el coach pausó la generación con IA (bloquea, 403).
+    #   · checkin=False  → el coach quitó el check-in diario (se provisiona uno
+    #                      neutro si falta, en vez de exigirlo).
+    coach_cfg = _get_coach_config(user)
+    if coach_cfg and not coach_cfg.get('ia', True):
+        return Response({
+            'coach_pausa_ia': True,
+            'error': 'Tu coach pausó la generación automática con IA.',
+        }, status=403)
+
     checkin = user.checkins.select_related('location').filter(fecha=hoy).order_by('-created_at').first()
     if not checkin:
-        return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
+        if coach_cfg and not coach_cfg.get('checkin', True):
+            checkin = _crear_checkin_neutro(user, hoy)
+        else:
+            return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
 
     if checkin.location:
         loc = checkin.location

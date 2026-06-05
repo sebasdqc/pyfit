@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales } from '../../lib/coachTheme'
 import { getCoachUser } from '../../lib/storage'
-import { Estado, Atleta, hasAlert } from '../../lib/coachMockData'
+import { Estado, Atleta, hasAlert } from '../../lib/coachTypes'
 import { fetchCartera, fetchCoachMe, type CarteraMetrics } from '../../lib/coachApi'
 
 type Filtro = 'atencion' | 'todos' | 'sin_rutina' | 'inactivos'

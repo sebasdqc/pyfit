@@ -19,7 +19,7 @@ import { COLORS, FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
-import { fetchMiCoach } from '../../../lib/coachApi'
+import { fetchMiCoach, type CoachConfig } from '../../../lib/coachApi'
 
 // Video de fondo de la pantalla de generación (baja opacidad). Vive solo mientras
 // la pantalla de carga está montada, así que dura lo que dura la generación.
@@ -1239,14 +1239,21 @@ export default function GenerateScreen() {
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
   const [ajusteVisible,  setAjusteVisible]  = useState(false)
   const [coachNombre,    setCoachNombre]    = useState<string | null>(null)
+  // Config del coach (controla el gating de IA). null = aún sin resolver. Failure-safe:
+  // si falla la red asumimos IA permitida para no bloquear el camino crítico.
+  const [coachConfig,    setCoachConfig]    = useState<CoachConfig | null>(null)
+  const coachPausaIa = coachConfig?.ia === false
 
-  // Coach vinculado (si existe) → badge "Guiado por". Failure-safe: sin coach o
-  // sin red, simplemente no se muestra.
+  // Coach vinculado (si existe) → badge "Guiado por" + config. Failure-safe.
   useEffect(() => {
     let cancelled = false
     fetchMiCoach()
-      .then(r => { if (!cancelled) setCoachNombre(r.coach?.nombre ?? null) })
-      .catch(() => {})
+      .then(r => {
+        if (cancelled) return
+        setCoachNombre(r.coach?.nombre ?? null)
+        setCoachConfig(r.config)
+      })
+      .catch(() => { if (!cancelled) setCoachConfig({ checkin: true, feedback: true, ia: true }) })
     return () => { cancelled = true }
   }, [])
 
@@ -1285,11 +1292,16 @@ export default function GenerateScreen() {
   }, [contentFade])
 
   useEffect(() => {
+    // Espera a conocer la config del coach antes de generar (es rápida). Si el
+    // coach pausó la IA, no generamos: limpiamos el overlay de carga y mostramos
+    // el estado pausado. El backend además lo bloquea (403) como respaldo.
+    if (coachConfig === null) return
+    if (coachConfig.ia === false) { setApiDone(true); return }
     const key = checkinTs ?? ''
     if (key === lastTsRef.current) return
     lastTsRef.current = key
     generate()
-  }, [checkinTs, generate])
+  }, [checkinTs, generate, coachConfig])
 
   // Fetch justification lazily once session ID is known
   useEffect(() => {
@@ -1411,7 +1423,21 @@ export default function GenerateScreen() {
         style={[StyleSheet.absoluteFill, { opacity: contentFade }]}
         pointerEvents={contentReady ? 'auto' : 'none'}
       >
-        {error ? (
+        {coachPausaIa ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorIcon}>🧑‍🏫</Text>
+            <Text style={styles.errorTitle}>{t('generate_coach_paused_title')}</Text>
+            <Text style={styles.errorMessage}>
+              {t('generate_coach_paused_body')}{coachNombre ? ` ${coachNombre}.` : '.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.replace('/(app)/dashboard')}
+            >
+              <Text style={styles.backBtnText}>{t('common_back')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={styles.errorTitle}>{t('common_error')}</Text>

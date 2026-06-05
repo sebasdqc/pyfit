@@ -249,7 +249,15 @@ export default function CheckinScreen() {
   useEffect(() => {
     let cancelled = false
     fetchMiCoach()
-      .then(r => { if (!cancelled) setCoachNombre(r.coach?.nombre ?? null) })
+      .then(r => {
+        if (cancelled) return
+        setCoachNombre(r.coach?.nombre ?? null)
+        // El coach desactivó el check-in diario → el atleta no lo completa: lo
+        // saltamos directo a generación (el backend provisiona un check-in neutro).
+        if (r.config?.checkin === false) {
+          router.replace(`/(app)/generate?t=${Date.now()}`)
+        }
+      })
       .catch(() => {})
     return () => { cancelled = true }
   }, [])

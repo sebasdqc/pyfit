@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -18,7 +19,7 @@ import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
-import { fetchMiCoachChat, sendMiCoachMensaje, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
+import { fetchMiCoachChat, sendMiCoachMensaje, desvincularMiCoach, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
 
 function horaDe(iso: string): string {
   const d = new Date(iso)
@@ -85,6 +86,27 @@ export default function RegistroCoachScreen() {
     }
   }
 
+  function confirmarDesvincular() {
+    Alert.alert(
+      'Desvincular coach',
+      `Dejarás de estar en la cartera de ${coach?.nombre ?? 'tu coach'} y se borrará este chat. Podrás volver a vincularte con un código.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Desvincular', style: 'destructive', onPress: desvincular },
+      ],
+    )
+  }
+
+  async function desvincular() {
+    try {
+      await desvincularMiCoach()
+      setChat({ coach: null, mensajes: [] })   // vuelve al modo de ingreso de código
+      setInput('')
+    } catch (e: any) {
+      Alert.alert('No se pudo desvincular', e?.message || 'Intenta de nuevo.')
+    }
+  }
+
   async function enviar() {
     const text = input.trim()
     if (!text || sending) return
@@ -132,6 +154,9 @@ export default function RegistroCoachScreen() {
               <Text style={styles.coachLabel}>VINCULADO CON</Text>
               <Text style={styles.coachName} numberOfLines={1}>{coach.nombre}</Text>
             </View>
+            <TouchableOpacity onPress={confirmarDesvincular} activeOpacity={0.7} style={styles.unlinkBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.unlinkText}>Desvincular</Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView
@@ -278,6 +303,8 @@ function makeStyles(c: Colors) {
     coachAvatarText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: c.accent },
     coachLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 1.4 },
     coachName: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary, marginTop: 2 },
+    unlinkBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: c.borderDefault },
+    unlinkText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, color: c.inkMuted },
 
     chatContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
     chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted, textAlign: 'center', marginTop: 40 },

@@ -390,8 +390,19 @@ class ImpersonationLog(models.Model):
 
 
 def default_coach_config():
-    """Config por defecto que el coach controla para cada atleta de su cartera."""
-    return {'checkin': True, 'feedback': True, 'ia': True, 'manual': False}
+    """Config por defecto que el coach controla para cada atleta de su cartera.
+
+    Las tres claves se aplican de verdad en el flujo del atleta (ver
+    `coach_mi_coach` y `generate_session`): `checkin` decide si el check-in diario
+    es obligatorio, `feedback` si se pide feedback post-sesión, `ia` si el atleta
+    puede generar rutinas con IA. No incluye 'manual' (no existe edición manual de
+    rutinas); las filas antiguas que aún tengan esa clave la ignoran sin efecto."""
+    return {'checkin': True, 'feedback': True, 'ia': True}
+
+
+# Claves de configuración que el coach controla y que SÍ se aplican en el flujo
+# del atleta. Fuente única de verdad para validar el PATCH y leer la config.
+COACH_CONFIG_KEYS = ('checkin', 'feedback', 'ia')
 
 
 class CoachAthlete(models.Model):
@@ -429,6 +440,39 @@ class CoachAthlete(models.Model):
 
     def __str__(self):
         return f'{self.coach_id} → {self.athlete_id} [{self.estado}]'
+
+
+class CoachSubscription(models.Model):
+    """Suscripción del portal de coach (plan, slots, fecha de corte).
+
+    No hay cobrador conectado todavía: la suscripción es administrada (igual que
+    la activación del coach). Se crea perezosamente con valores por defecto la
+    primera vez que el coach abre su facturación, igual que `codigo_coach`. Es la
+    fuente de verdad que la pantalla de Ajustes consume (reemplaza los datos mock).
+    """
+    ESTADO_ACTIVA = 'activa'
+    ESTADO_PAUSADA = 'pausada'
+    ESTADO_VENCIDA = 'vencida'
+    ESTADO_CHOICES = [
+        (ESTADO_ACTIVA, 'Activa'), (ESTADO_PAUSADA, 'Pausada'), (ESTADO_VENCIDA, 'Vencida'),
+    ]
+
+    coach = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_subscription',
+    )
+    plan = models.CharField(max_length=40, default='Coach Pro')
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVA)
+    # Slots de atletas incluidos en el plan. El uso real se deriva de la cartera
+    # (no se persiste un contador para no desincronizarse de CoachAthlete).
+    slots_incluidos = models.IntegerField(default=15)
+    fecha_corte = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'coach_subscriptions'
+
+    def __str__(self):
+        return f'{self.coach_id} · {self.plan} [{self.estado}]'
 
 
 class CoachMessage(models.Model):
