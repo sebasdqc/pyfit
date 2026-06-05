@@ -302,6 +302,23 @@ export default function CoachAtletaDetalle() {
             keyboardVerticalOffset={insets.top + 80}
           >
             <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Rutina manual — el coach arma la sesión del día */}
+              <View style={styles.manualCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.manualTitle}>Rutina manual</Text>
+                  <Text style={styles.manualDesc}>Arma tú la sesión de un día. Los días sin rutina los genera la IA con tu directiva.</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.manualBtn}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({ pathname: '/(coach)/rutina-builder', params: { id: params.id, nombre } } as any)}
+                >
+                  <Text style={styles.manualBtnText}>Armar</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.manualDivider} />
+
               <Text style={styles.rutinaTitle}>Directiva de la semana</Text>
               <Text style={styles.dirHint}>
                 Define la guía de entrenamiento. La IA del atleta la usará para generar su próxima rutina.
@@ -513,6 +530,15 @@ const styles = StyleSheet.create({
   // Rutina
   rutinaHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   rutinaTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 18, color: P.ink },
+  manualCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: P.cardBg, borderWidth: 1, borderColor: P.border, borderRadius: 16, padding: 16, marginTop: 4,
+  },
+  manualTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: P.ink },
+  manualDesc: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: P.purpleFaint, marginTop: 4, lineHeight: 17 },
+  manualBtn: { backgroundColor: P.purple, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 11 },
+  manualBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: P.white },
+  manualDivider: { height: StyleSheet.hairlineWidth, backgroundColor: P.divider, marginVertical: 20 },
   dirHint: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleFaint, lineHeight: 19, marginTop: 4, marginBottom: 18 },
   fieldLabel: { fontFamily: 'JetBrainsMono-Medium', fontSize: 9, color: P.purpleFaint, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 },
   dirInput: {

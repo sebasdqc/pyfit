@@ -107,8 +107,9 @@ export default function CoachLayout() {
         <Tabs.Screen name="analytics" />
         <Tabs.Screen name="atletas" />
         <Tabs.Screen name="ajustes" />
-        {/* Detalle de atleta — fuera del tab bar */}
+        {/* Detalle de atleta + constructor de rutina — fuera del tab bar */}
         <Tabs.Screen name="atleta/[id]" options={{ href: null }} />
+        <Tabs.Screen name="rutina-builder" options={{ href: null }} />
       </Tabs>
     </View>
   )

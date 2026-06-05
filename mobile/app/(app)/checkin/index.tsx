@@ -11,7 +11,7 @@ import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
-import { fetchMiCoach } from '../../../lib/coachApi'
+import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
 
@@ -248,17 +248,23 @@ export default function CheckinScreen() {
   const [coachNombre, setCoachNombre] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
-    fetchMiCoach()
-      .then(r => {
+    ;(async () => {
+      // 1) ¿El coach preparó una sesión para hoy? → ir directo a ejecutarla
+      // (precede a todo; los días sin rutina del coach siguen el flujo de IA).
+      try {
+        const at = await fetchAssignedToday()
+        if (cancelled) return
+        if (at.sesion_id) { router.replace(`/(app)/ejecutar/${at.sesion_id}`); return }
+      } catch {}
+      // 2) Coach + config: alimenta el aviso y, si el coach quitó el check-in,
+      // salta a generación (el backend provisiona un check-in neutro).
+      try {
+        const r = await fetchMiCoach()
         if (cancelled) return
         setCoachNombre(r.coach?.nombre ?? null)
-        // El coach desactivó el check-in diario → el atleta no lo completa: lo
-        // saltamos directo a generación (el backend provisiona un check-in neutro).
-        if (r.config?.checkin === false) {
-          router.replace(`/(app)/generate?t=${Date.now()}`)
-        }
-      })
-      .catch(() => {})
+        if (r.config?.checkin === false) router.replace(`/(app)/generate?t=${Date.now()}`)
+      } catch {}
+    })()
     return () => { cancelled = true }
   }, [])
 

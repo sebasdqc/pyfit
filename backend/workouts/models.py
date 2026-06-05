@@ -235,8 +235,20 @@ class UserAdaptationProfile(models.Model):
 
 class Session(models.Model):
     VOLUMEN_CHOICES = [('bajo', 'Bajo'), ('medio', 'Medio'), ('alto', 'Alto')]
+    # Origen de la sesión: 'ia' (generada por el motor adaptativo, default y caso
+    # histórico) o 'coach' (armada manualmente por el coach del atleta y publicada).
+    # El atleta la ejecuta igual sea cual sea el origen.
+    ORIGEN_IA = 'ia'
+    ORIGEN_COACH = 'coach'
+    ORIGEN_CHOICES = [(ORIGEN_IA, 'IA'), (ORIGEN_COACH, 'Coach')]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions')
+    origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES, default=ORIGEN_IA, db_index=True)
+    # Coach que la armó (solo cuando origen='coach'); null para sesiones de IA.
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sesiones_creadas',
+    )
     checkin = models.ForeignKey('checkins.DailyCheckin', on_delete=models.SET_NULL, null=True, blank=True)
     location = models.ForeignKey('users.UserLocation', on_delete=models.SET_NULL, null=True, blank=True)
     fecha = models.DateField()

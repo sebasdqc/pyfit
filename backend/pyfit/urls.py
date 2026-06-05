@@ -85,6 +85,7 @@ urlpatterns = [
     # Sessions
     path('api/sessions/generate/', ai_views.generate_session),
     path('api/sessions/today/', workout_views.session_today),
+    path('api/sessions/assigned-today/', workout_views.session_assigned_today),
     path('api/sessions/', workout_views.session_list),
     path('api/sessions/<int:pk>/', workout_views.session_detail),
     path('api/sessions/<int:pk>/feedback/', workout_views.session_feedback),
@@ -145,6 +146,7 @@ urlpatterns = [
     path('api/coach/atletas/<int:pk>/estado/',    coach_views.coach_atleta_estado),
     path('api/coach/atletas/<int:pk>/desvincular/', coach_views.coach_atleta_desvincular),
     path('api/coach/atletas/<int:pk>/directiva/', coach_views.coach_atleta_directiva),
+    path('api/coach/atletas/<int:pk>/rutina/',    coach_views.coach_atleta_rutina),
     path('api/coach/atletas/<int:pk>/mensajes/',  coach_views.coach_atleta_mensajes),
     path('api/coach/vincular/',  coach_views.coach_vincular),
     path('api/coach/desvincular/', coach_views.coach_desvincular),

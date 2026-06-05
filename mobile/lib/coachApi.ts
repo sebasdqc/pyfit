@@ -242,6 +242,61 @@ export function putAtletaDirectiva(id: string | number, directiva: CoachDirectiv
   return coachRequest('PUT', `/api/coach/atletas/${id}/directiva/`, directiva)
 }
 
+// ── Rutina manual del coach (borrador → publicar) ────────────────────────────
+
+export interface RutinaEjercicio {
+  nombre:             string
+  series:             number
+  repeticiones:       string
+  descanso_segundos:  number
+  rpe_sugerido:       number | null
+  notas:              string
+}
+export interface RutinaFase {
+  nombre:      string
+  ejercicios:  RutinaEjercicio[]
+}
+export interface RutinaContenido {
+  titulo:               string
+  objetivo_sesion:      string
+  duracion_total:       number
+  rpe_target:           number
+  fases:                RutinaFase[]
+  nota_del_entrenador:  string
+}
+export interface CoachRutina {
+  fecha:       string
+  estado:      'borrador' | 'publicada'
+  titulo:      string
+  contenido:   Partial<RutinaContenido>
+  session_id:  number | null
+  bloqueada:   boolean            // el atleta ya la inició/cerró → no editable
+  updated_at:  string | null
+}
+export interface RutinaPayload {
+  fecha:           string
+  titulo:          string
+  objetivo:        string
+  duracion_total:  number
+  rpe_target:      number
+  nota:            string
+  fases:           RutinaFase[]
+  publicar:        boolean
+}
+
+/** Trae la rutina manual (borrador o publicada) de una fecha, o null. */
+export function fetchAtletaRutina(id: string | number, fecha: string): Promise<{ rutina: CoachRutina | null; fecha: string }> {
+  return coachRequest('GET', `/api/coach/atletas/${id}/rutina/?fecha=${fecha}`)
+}
+/** Guarda borrador (publicar=false) o publica (materializa la sesión del atleta). */
+export function saveAtletaRutina(id: string | number, payload: RutinaPayload): Promise<{ rutina: CoachRutina }> {
+  return coachRequest('PUT', `/api/coach/atletas/${id}/rutina/`, payload)
+}
+/** Descarta la rutina de una fecha (y su sesión si no fue iniciada). 204 → null. */
+export function deleteAtletaRutina(id: string | number, fecha: string): Promise<null> {
+  return coachRequest('DELETE', `/api/coach/atletas/${id}/rutina/?fecha=${fecha}`)
+}
+
 // ── Chat coach↔atleta ────────────────────────────────────────────────────────
 
 export interface Mensaje {
@@ -283,4 +338,9 @@ export function sendMiCoachMensaje(texto: string): Promise<Mensaje> {
 /** El atleta se desvincula de su coach actual. 204 → null. */
 export function desvincularMiCoach(): Promise<null> {
   return apiPost('/api/coach/desvincular/', {})
+}
+/** Sesión que el coach preparó para hoy (publicada, sin completar). El flujo
+ * ENTRENAR la usa para ir directo a ejecutarla en vez de generar con IA. */
+export function fetchAssignedToday(): Promise<{ sesion_id: number | null; titulo?: string }> {
+  return apiGet('/api/sessions/assigned-today/')
 }

@@ -12,8 +12,9 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from workouts.models import Session
 from .models import (
-    CoachAthlete, CoachSubscription, ImpersonationLog, MenstrualCycle,
-    Notification, NotificationPreference, Profile, User, UserInjury, UserLocation,
+    CoachAssignedSession, CoachAthlete, CoachSubscription, ImpersonationLog,
+    MenstrualCycle, Notification, NotificationPreference, Profile, User,
+    UserInjury, UserLocation,
 )
 
 
@@ -296,6 +297,18 @@ class CoachAthleteAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('coach', 'athlete')
+
+
+@admin.register(CoachAssignedSession)
+class CoachAssignedSessionAdmin(ModelAdmin):
+    """Rutinas manuales que el coach arma para sus atletas (borrador/publicada)."""
+    list_display  = ['coach', 'athlete', 'fecha', 'estado', 'titulo', 'updated_at']
+    list_filter   = ['estado']
+    search_fields = ['coach__email', 'athlete__email', 'titulo']
+    date_hierarchy = 'fecha'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('coach', 'athlete', 'session')
 
 
 @admin.register(ImpersonationLog)

@@ -76,6 +76,25 @@ def session_today(request):
     return Response({'status': 'ready', 'sesion_id': s.id, 'sesion': ia})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_assigned_today(request):
+    """Sesión que el coach preparó para HOY (origen='coach') y que el atleta aún
+    no completó. El flujo ENTRENAR la usa para ir directo a ejecutarla en vez de
+    generar con IA (los días sin sesión del coach siguen el flujo de IA normal).
+    Devuelve {sesion_id, titulo} o {sesion_id: null}. Las sesiones en BORRADOR no
+    existen como Session, así que nunca aparecen aquí."""
+    hoy = _get_local_date(request)
+    s = (request.user.sessions
+         .filter(fecha=hoy, origen=Session.ORIGEN_COACH)
+         .select_related('feedback')
+         .order_by('-created_at').first())
+    if not s or getattr(s, 'feedback', None) is not None:
+        return Response({'sesion_id': None})
+    titulo = s.respuesta_ia.get('titulo') if isinstance(s.respuesta_ia, dict) else None
+    return Response({'sesion_id': s.id, 'titulo': titulo or 'Sesión de tu coach'})
+
+
 def _cumplimiento_real(session):
     """Cumplimiento real desde series_log: series ejecutadas (con peso o reps) vs
     prescritas. Devuelve None si no hay datos de ejecución (p. ej. 'marcar completada
@@ -1110,6 +1129,24 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
     from datetime import date
     if hoy is None:
         hoy = date.today()
+
+    # Sesión del coach para HOY (origen='coach') sin completar → tiene prioridad
+    # sobre cualquier otro estado, incluso en la primera semana: si el coach
+    # preparó la sesión, el atleta debe verla y entrar directo a ejecutarla.
+    sesion_coach = (user.sessions
+                    .filter(fecha=hoy, origen=Session.ORIGEN_COACH)
+                    .select_related('feedback').order_by('-created_at').first())
+    if sesion_coach and getattr(sesion_coach, 'feedback', None) is None:
+        empezada = sesion_coach.inicio_real is not None
+        titulo_c = sesion_coach.respuesta_ia.get('titulo') if isinstance(sesion_coach.respuesta_ia, dict) else None
+        return {
+            'estado': 'E',
+            'pill_label': 'Entrenamiento en curso' if empezada else 'Sesión de tu coach',
+            'pill_color': 'orange',
+            'titulo': titulo_c or 'Tu sesión de hoy',
+            'descripcion': 'Retoma donde la dejaste' if empezada else 'Tu coach preparó tu sesión de hoy',
+            'sesion_hoy_id': sesion_coach.id,
+        }
 
     # Estado D — primera semana (< 3 sesiones totales)
     if total_sesiones < 3:

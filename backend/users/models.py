@@ -475,6 +475,53 @@ class CoachSubscription(models.Model):
         return f'{self.coach_id} · {self.plan} [{self.estado}]'
 
 
+class CoachAssignedSession(models.Model):
+    """Rutina manual que el coach arma para un atleta en una fecha (Fase rutina-manual).
+
+    Es el CONTENEDOR del borrador: el contenido vive aquí (no como Session) para
+    que los borradores NUNCA contaminen las consultas del atleta (dashboard,
+    historial, estadísticas, fatiga). Solo al PUBLICAR se materializa una
+    `workouts.Session` real (origen='coach') que el atleta consume por el camino
+    de siempre; el FK `session` apunta a esa fila materializada.
+
+    `contenido` replica la forma de `Session.respuesta_ia`:
+      {titulo, objetivo_sesion, duracion_total, rpe_target,
+       fases: [{nombre, duracion_minutos, ejercicios: [{nombre, series,
+                repeticiones, descanso_segundos, rpe_sugerido, notas}]}],
+       nota_del_entrenador}
+    """
+    ESTADO_BORRADOR = 'borrador'
+    ESTADO_PUBLICADA = 'publicada'
+    ESTADO_CHOICES = [(ESTADO_BORRADOR, 'Borrador'), (ESTADO_PUBLICADA, 'Publicada')]
+
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rutinas_asignadas',
+    )
+    athlete = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rutinas_de_coach',
+    )
+    fecha = models.DateField()
+    titulo = models.CharField(max_length=200, blank=True)
+    contenido = models.JSONField(default=dict, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_BORRADOR)
+    # Session materializada al publicar (null mientras es borrador). SET_NULL para
+    # no borrar la rutina si el atleta elimina su sesión.
+    session = models.ForeignKey(
+        'workouts.Session', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'coach_assigned_sessions'
+        unique_together = [['coach', 'athlete', 'fecha']]
+        ordering = ['-fecha']
+        indexes = [models.Index(fields=['athlete', 'fecha'])]
+
+    def __str__(self):
+        return f'{self.coach_id}→{self.athlete_id} {self.fecha} [{self.estado}]'
+
+
 class CoachMessage(models.Model):
     """Mensaje del chat coach↔atleta, asociado a un vínculo CoachAthlete."""
     link = models.ForeignKey(CoachAthlete, on_delete=models.CASCADE, related_name='mensajes')

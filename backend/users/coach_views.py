@@ -22,9 +22,9 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from pyfit.throttles import CoachChatRateThrottle, CoachVincularRateThrottle
-from workouts.models import Session, SessionFeedback
+from workouts.models import Session, SessionExercise, SessionFeedback
 from .models import (
-    Profile, CoachAthlete, CoachMessage, CoachSubscription,
+    Profile, CoachAthlete, CoachMessage, CoachSubscription, CoachAssignedSession,
     generar_codigo_referido, default_coach_config, COACH_CONFIG_KEYS,
 )
 
@@ -476,6 +476,210 @@ def coach_atleta_directiva(request, pk):
         'directiva': directiva,
         'directiva_updated_at': link.directiva_updated_at.isoformat(),
     })
+
+
+# ─── Rutina manual del coach (borrador → publicar) ───────────────────────────────
+
+def _safe_int(v, default=0, lo=None, hi=None):
+    try:
+        n = int(float(v))
+    except (TypeError, ValueError):
+        return default
+    if lo is not None:
+        n = max(lo, n)
+    if hi is not None:
+        n = min(hi, n)
+    return n
+
+
+def _safe_rpe(v):
+    """RPE 1–10 redondeado a 0.1, o None si vacío/ inválido."""
+    if v in (None, ''):
+        return None
+    try:
+        return max(1.0, min(10.0, round(float(v), 1)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_fecha(raw):
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(str(raw)[:10], '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+def _normalizar_contenido(body):
+    """Construye el dict con la forma `respuesta_ia` a partir del cuerpo del
+    constructor del coach. Sanitiza tipos y límites; descarta ejercicios sin
+    nombre. Lenient: un borrador puede quedar vacío o incompleto."""
+    fases_in = body.get('fases') if isinstance(body.get('fases'), list) else []
+    fases = []
+    for f in fases_in:
+        if not isinstance(f, dict):
+            continue
+        ejs_in = f.get('ejercicios') if isinstance(f.get('ejercicios'), list) else []
+        ejs = []
+        for e in ejs_in:
+            if not isinstance(e, dict):
+                continue
+            nombre = str(e.get('nombre') or '').strip()[:200]
+            if not nombre:
+                continue
+            ejs.append({
+                'nombre': nombre,
+                'series': _safe_int(e.get('series'), 1, 1, 20),
+                'repeticiones': str(e.get('repeticiones') or '').strip()[:50],
+                'descanso_segundos': _safe_int(e.get('descanso_segundos'), 60, 0, 1200),
+                'rpe_sugerido': _safe_rpe(e.get('rpe_sugerido')),
+                'notas': str(e.get('notas') or '').strip()[:500],
+            })
+        fases.append({
+            'nombre': (str(f.get('nombre') or '').strip()[:120] or 'Bloque'),
+            'duracion_minutos': _safe_int(f.get('duracion_minutos'), 0, 0, 300),
+            'ejercicios': ejs,
+        })
+    return {
+        'titulo': str(body.get('titulo') or '').strip()[:200],
+        'objetivo_sesion': str(body.get('objetivo') or '').strip()[:200],
+        'duracion_total': _safe_int(body.get('duracion_total'), 45, 5, 300),
+        'rpe_target': _safe_rpe(body.get('rpe_target')) or 7.0,
+        'fases': fases,
+        'nota_del_entrenador': str(body.get('nota') or '').strip()[:600],
+    }
+
+
+def _session_bloqueada(sess):
+    """La sesión materializada ya no es editable porque el atleta la inició o
+    cerró con feedback (no queremos pisar lo que ya hizo)."""
+    return bool(sess and (sess.inicio_real is not None or _feedback_de(sess) is not None))
+
+
+def _materializar_session(assigned):
+    """Crea o refresca la `Session` real (origen='coach') desde el contenido del
+    borrador. No reescribe si el atleta ya la empezó. Devuelve (session, escrita)."""
+    c = assigned.contenido or {}
+    sess = assigned.session
+    if _session_bloqueada(sess):
+        return sess, False
+    if sess is None:
+        sess = Session(user=assigned.athlete)
+    sess.user = assigned.athlete
+    sess.origen = Session.ORIGEN_COACH
+    sess.creado_por = assigned.coach
+    sess.fecha = assigned.fecha
+    sess.duracion_planificada = _safe_int(c.get('duracion_total'), 45, 5, 300)
+    sess.rpe_target = c.get('rpe_target') or 7
+    sess.respuesta_ia = c
+    sess.save()
+    sess.exercises.all().delete()
+    bulk, orden = [], 0
+    for fase in c.get('fases', []):
+        for e in fase.get('ejercicios', []):
+            orden += 1
+            bulk.append(SessionExercise(
+                session=sess, orden=orden, nombre=str(e.get('nombre') or '')[:200],
+                series=_safe_int(e.get('series'), 1, 1, 20),
+                repeticiones=str(e.get('repeticiones') or '')[:50],
+                descanso_segundos=_safe_int(e.get('descanso_segundos'), 60, 0, 1200),
+                rpe_sugerido=e.get('rpe_sugerido'), notas=str(e.get('notas') or ''),
+            ))
+    if bulk:
+        SessionExercise.objects.bulk_create(bulk)
+    return sess, True
+
+
+def _serialize_rutina(a):
+    return {
+        'fecha': a.fecha.isoformat(),
+        'estado': a.estado,
+        'titulo': a.titulo,
+        'contenido': a.contenido or {},
+        'session_id': a.session_id,
+        # True = el atleta ya la empezó/cerró → la UI bloquea la edición.
+        'bloqueada': _session_bloqueada(a.session),
+        'updated_at': a.updated_at.isoformat() if a.updated_at else None,
+    }
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsCoach])
+def coach_atleta_rutina(request, pk):
+    """Rutina manual del coach para un atleta en una fecha.
+
+    GET  ?fecha=YYYY-MM-DD  → trae el borrador/publicada de esa fecha (o null).
+    PUT  {fecha,titulo,objetivo,duracion_total,rpe_target,nota,fases,publicar}
+         → guarda borrador (publicar=false) o publica (materializa la Session).
+    DELETE ?fecha= → descarta la rutina (y su Session si no fue iniciada).
+    """
+    link = _get_link(request.user, pk)
+    if not link:
+        return Response({'error': 'Atleta no encontrado en tu cartera.'}, status=status.HTTP_404_NOT_FOUND)
+    athlete = link.athlete
+
+    raw_fecha = request.query_params.get('fecha') or (
+        request.data.get('fecha') if isinstance(request.data, dict) else None)
+    fecha = _parse_fecha(raw_fecha) or _hoy(request)
+
+    if request.method == 'GET':
+        a = (CoachAssignedSession.objects
+             .filter(coach=request.user, athlete=athlete, fecha=fecha)
+             .select_related('session', 'session__feedback').first())
+        return Response({'rutina': _serialize_rutina(a) if a else None, 'fecha': fecha.isoformat()})
+
+    if request.method == 'DELETE':
+        a = (CoachAssignedSession.objects
+             .filter(coach=request.user, athlete=athlete, fecha=fecha)
+             .select_related('session', 'session__feedback').first())
+        if not a:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if _session_bloqueada(a.session):
+            return Response({'error': 'El atleta ya empezó esta sesión; no se puede eliminar.'},
+                            status=status.HTTP_409_CONFLICT)
+        if a.session_id:
+            a.session.delete()
+        a.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # PUT — guardar borrador o publicar
+    body = request.data if isinstance(request.data, dict) else {}
+    publicar = bool(body.get('publicar'))
+    contenido = _normalizar_contenido(body)
+
+    a, _ = CoachAssignedSession.objects.select_related('session', 'session__feedback').get_or_create(
+        coach=request.user, athlete=athlete, fecha=fecha,
+        defaults={'estado': CoachAssignedSession.ESTADO_BORRADOR},
+    )
+    if _session_bloqueada(a.session):
+        return Response({'error': 'El atleta ya empezó esta sesión; no se puede editar.'},
+                        status=status.HTTP_409_CONFLICT)
+
+    if publicar:
+        total_ej = sum(len(f['ejercicios']) for f in contenido['fases'])
+        if not contenido['titulo']:
+            return Response({'error': 'Ponle un título a la sesión para publicarla.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if total_ej == 0:
+            return Response({'error': 'Agrega al menos un ejercicio para publicarla.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    a.titulo = contenido['titulo']
+    a.contenido = contenido
+    if publicar:
+        sess, _ = _materializar_session(a)
+        a.session = sess
+        a.estado = CoachAssignedSession.ESTADO_PUBLICADA
+    else:
+        # Volver a borrador: si había una Session publicada SIN iniciar, se quita
+        # de la vista del atleta (borrador = no visible).
+        if a.session_id and not _session_bloqueada(a.session):
+            a.session.delete()
+            a.session = None
+        a.estado = CoachAssignedSession.ESTADO_BORRADOR
+    a.save()
+    return Response({'rutina': _serialize_rutina(a)})
 
 
 @api_view(['GET'])
