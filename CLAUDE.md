@@ -3,6 +3,28 @@
 
 ---
 
+## ⚠️ VISUALIZACIÓN / PREVIEW — SIEMPRE EN DIGITALOCEAN (NUNCA LOCALHOST)
+
+**Regla absoluta:** la visualización/preview de cualquier cambio en la **web** (el panel
+**Zyfit Performance** y, en general, todo lo desplegado en DigitalOcean) se hace **SIEMPRE
+desplegando en DigitalOcean vía `git push origin main`**, NUNCA en `localhost`.
+
+- **NO** sugieras `npm run dev` / `localhost:5180` / `expo` como forma de "ver" un cambio web.
+  El build local (`npm run build`) sirve **solo** para detectar errores de TypeScript/compilación,
+  no como visualización.
+- **Flujo de visualización:** commit → `git push origin main` → DO reconstruye solo
+  (`deploy_on_push` a `main`) → el usuario lo ve en la URL de DO.
+- **URLs en vivo (DigitalOcean):**
+  - Panel **Zyfit Performance** (Static Site, `source_dir: /performance-web`):
+    **https://zyfit-performance-svp4v.ondigitalocean.app**  · app `zyfit-performance`, ID `b50f22a7-3cdf-44fe-be54-e52a0d8ff2c6`.
+  - Backend Django: **https://sea-lion-app-a2j4f.ondigitalocean.app** · app `sea-lion-app`, ID `8a67cba4-79c2-438d-a8e7-f7c317c019c5`.
+- Ambas apps tienen `deploy_on_push` a `main`: **cada `git push` publica**. Tras pushear,
+  avisa al usuario que abra la URL de DO (el deploy tarda ~1–3 min).
+- **Excepción:** la app **móvil** se visualiza en **Expo Go** (no está en DO). Esta regla aplica
+  a lo desplegado en DigitalOcean (panel web + backend).
+
+---
+
 ## CONTEXTO DEL PROYECTO
 
 PyFit es una aplicación fitness de IA adaptativa que genera rutinas de entrenamiento personalizadas basadas en múltiples variables fisiológicas, de estilo de vida y de rendimiento del usuario.
