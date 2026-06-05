@@ -4,16 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Acentos azules heredados de la app de consumo (se mantienen).
+        // Único acento del portal: el azul de Zyfit Performance.
         accent: '#4f8cff',
         accentDark: '#2563ff',
-        // Identidad de Zyfit Performance (vertical B2B): púrpura de acción
-        // sobre fondos azul-morado profundo, casi negros.
         perf: {
-          purple: '#7c5cff', // color primario de acción (botón, foco, acentos)
-          purpleDark: '#6a47e6', // hover del botón primario
-          purpleMuted: '#a89bff', // etiquetas/links sobre fondo oscuro
-          ink: '#0c0a1c', // fondo de respaldo si la imagen no carga
+          // Fondos azul-marino profundo (no negro puro) — diferencias sutiles.
+          bg: '#0a0e1a', // fondo general de la página
+          surface: '#0f1525', // cards / sidebar — ligeramente más claros
+          surface2: '#141c30', // hover / elementos internos
+          border: '#1c2740', // borde muy oscuro, casi invisible
+          // Sistema semántico (estados): disponible / monitoreo / riesgo.
+          ok: '#32c896', // verde — disponible / positivo
+          warn: '#ffaa32', // ámbar — duda / monitoreo
+          danger: '#ff4444', // rojo — baja / riesgo crítico
+          // Púrpura del login (pantalla aparte). NO se usa en el portal interno.
+          purple: '#7c5cff',
+          purpleDark: '#6a47e6',
+          purpleMuted: '#a89bff',
+          ink: '#0c0a1c',
         },
       },
     },
