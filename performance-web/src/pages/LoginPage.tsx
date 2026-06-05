@@ -16,11 +16,10 @@ const BG_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
 const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
 // Enlaces externos del equipo Zyfit. La única propiedad web pública verificada
-// es la landing pyfit.app (no hay aún canal de contacto ni login web de coach
+// es la landing pyfit.app (no hay aún canal de soporte ni portal invitado
 // dedicados); centralizados aquí para repuntarlos cuando existan.
-const HOME_HREF = 'https://pyfit.app'
 const CONTACT_HREF = 'https://pyfit.app'
-const COACH_LOGIN_HREF = 'https://pyfit.app' // Portal Entrenador → login de Zyfit Coach
+const GUEST_PORTAL_HREF = 'https://pyfit.app' // Portal Invitado
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -55,23 +54,11 @@ export function LoginPage() {
       {/* Capa de oscurecimiento plana, densa (sin gradiente) para legibilidad. */}
       <div className="absolute inset-0 bg-[rgba(7,5,18,0.86)]" aria-hidden />
 
-      {/* Barra superior: navegación discreta a la derecha. El logo vive en el card. */}
-      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-end px-6 py-6 sm:px-10 md:px-12 md:py-8">
-        <nav className="flex items-center gap-6 text-sm text-white/60">
-          <a href={HOME_HREF} className="transition-colors hover:text-white">
-            Inicio
-          </a>
-          <a href={CONTACT_HREF} className="transition-colors hover:text-white">
-            Contacto
-          </a>
-        </nav>
-      </header>
-
       {/* Contenido principal: recuadro en la banda izquierda, centrado vertical. */}
       <main className="relative z-10 flex h-full items-center">
         <div className="w-full px-6 sm:px-10 md:px-12 lg:px-20">
-          {/* Recuadro que recubre todos los elementos del login. */}
-          <div className="w-full max-w-[460px] rounded-2xl border border-white/[0.14] bg-white/[0.05] p-7 backdrop-blur-md sm:p-9">
+          {/* Recuadro (glass con sombra) que recubre todos los elementos del login. */}
+          <div className="w-full max-w-[460px] rounded-2xl border border-white/[0.14] bg-white/[0.05] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.55)] backdrop-blur-md sm:p-9">
             {/* Logo Zyfit (blanco) + tag de la vertical. */}
             <div className="mb-8 flex items-end gap-3">
               <img src={LOGO_IMAGE} alt="Zyfit" className="h-6 w-auto sm:h-7" />
@@ -128,10 +115,10 @@ export function LoginPage() {
                   en móvil se apilan con el primario arriba (flex-col-reverse). */}
               <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row">
                 <a
-                  href={COACH_LOGIN_HREF}
+                  href={GUEST_PORTAL_HREF}
                   className="flex h-12 flex-1 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
                 >
-                  Portal Entrenador
+                  Portal Invitado
                 </a>
                 <button
                   type="submit"
@@ -141,6 +128,15 @@ export function LoginPage() {
                   {submitting ? 'Accediendo…' : 'Acceder'}
                 </button>
               </div>
+
+              {/* Acción terciaria: soporte. */}
+              <a
+                href={CONTACT_HREF}
+                className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white"
+              >
+                <SupportIcon />
+                Contactar a soporte
+              </a>
             </form>
           </div>
         </div>
@@ -207,6 +203,17 @@ function LockIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="11" width="16" height="9" rx="2" />
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  )
+}
+
+function SupportIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+      <path d="M21 19a2 2 0 0 1-2 2h-3" />
+      <rect x="3" y="14" width="4" height="6" rx="1" />
+      <rect x="17" y="14" width="4" height="6" rx="1" />
     </svg>
   )
 }
