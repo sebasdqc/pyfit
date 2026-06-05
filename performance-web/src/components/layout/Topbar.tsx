@@ -3,6 +3,7 @@
 // usuario (avatar + nombre + dropdown). En móvil aparece el botón hamburguesa.
 
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/auth/useAuth'
@@ -98,7 +99,15 @@ function UserMenu({ nombre, onLogout }: { nombre: string; onLogout: () => void }
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-perf-border bg-perf-surface shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
+        <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-xl border border-perf-border bg-perf-surface py-1 shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
+          <Link
+            to="/perfil"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            <Icon name="plantilla" size={16} />
+            Mi perfil
+          </Link>
           <button
             type="button"
             onClick={onLogout}

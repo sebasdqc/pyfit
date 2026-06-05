@@ -81,9 +81,18 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* Usuario activo */}
+      {/* Usuario activo → perfil */}
       <div className="border-t border-perf-border px-3 py-3">
-        <div className="flex items-center gap-3 rounded-xl px-2 py-2 md:justify-center md:px-0 lg:justify-start lg:px-2">
+        <NavLink
+          to="/perfil"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.04] md:justify-center md:px-0 lg:justify-start lg:px-2 ${
+              isActive ? 'bg-accent/10' : ''
+            }`
+          }
+          title="Mi perfil"
+        >
           <Avatar name={user?.nombre ?? 'Usuario'} size={34} />
           <div className="min-w-0 md:hidden lg:block">
             <p className="truncate text-sm font-medium text-white/90">{user?.nombre ?? 'Usuario'}</p>
@@ -91,7 +100,7 @@ export function Sidebar({
               {ROLE_LABEL[user?.role ?? ''] ?? 'Staff'}
             </p>
           </div>
-        </div>
+        </NavLink>
       </div>
     </aside>
   )

@@ -4,8 +4,8 @@
 // + ACWR · accesos a módulos). Único acento: el azul. Estados: verde/ámbar/rojo.
 // Datos de muestra (esta fase aún no conecta a la API).
 
-import type { ReactNode } from 'react'
 import { Icon, type IconName } from '@/components/Icon'
+import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/auth/useAuth'
 
@@ -193,28 +193,6 @@ export function DashboardPage() {
 }
 
 // ── Componentes ────────────────────────────────────────────────────────────
-function Panel({
-  title,
-  subtitle,
-  children,
-  className = '',
-}: {
-  title: string
-  subtitle?: string
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <section className={`rounded-2xl border border-perf-border bg-perf-surface ${className}`}>
-      <div className="border-b border-perf-border px-5 py-3.5">
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-xs text-white/45">{subtitle}</p>}
-      </div>
-      <div className="p-5">{children}</div>
-    </section>
-  )
-}
-
 function MetricCard({ m, className = '' }: { m: Metric; className?: string }) {
   const sem = SEM[m.tone]
   return (
