@@ -23,6 +23,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
+  { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria' },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento' },
   { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones' },

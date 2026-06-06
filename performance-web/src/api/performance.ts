@@ -4,7 +4,7 @@
 
 import { api } from './client'
 import type {
-  CenterAthlete, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
+  CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
   TacticalPlay, Escena,
 } from '@/types'
@@ -34,9 +34,38 @@ export async function getCenter(centerId: number): Promise<SportsCenter> {
   return res.data
 }
 
+// ── Staff del centro (CenterMembership) ──────────────────────────────────────
+export async function listStaff(centerId: number): Promise<CenterStaff[]> {
+  const res = await api.get<CenterStaff[]>(`/performance/centers/${centerId}/staff/`)
+  return res.data
+}
+
+// Alta de staff por email: el backend vincula o crea la cuenta (necesita
+// contraseña temporal para entrar al panel) y siembra los módulos según el rol.
+export type StaffPayload = { email: string; nombre: string; rol: CenterRole; password: string }
+export async function createStaff(centerId: number, payload: StaffPayload): Promise<CenterStaff> {
+  const res = await api.post<CenterStaff>(`/performance/centers/${centerId}/staff/`, payload)
+  return res.data
+}
+
 // ── Atletas (los registra el director técnico) ───────────────────────────────
 export async function listCenterAthletes(centerId: number): Promise<CenterAthlete[]> {
   const res = await api.get<CenterAthlete[]>(`/performance/centers/${centerId}/athletes/`)
+  return res.data
+}
+
+// Alta de atleta por email: el backend vincula o crea la cuenta de consumo (sin
+// contraseña; la reclama luego en la app móvil).
+export type AthletePayload = {
+  email: string
+  nombre: string
+  dorsal?: string
+  posicion?: string
+  grupo?: string
+  estado?: CenterAthlete['estado']
+}
+export async function createCenterAthlete(centerId: number, payload: AthletePayload): Promise<CenterAthlete> {
+  const res = await api.post<CenterAthlete>(`/performance/centers/${centerId}/athletes/`, payload)
   return res.data
 }
 

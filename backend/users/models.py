@@ -88,11 +88,21 @@ class User(AbstractUser):
     @property
     def performance_acceso(self) -> bool:
         """Acceso al panel web de Zyfit Performance. Lo tienen los directores
-        técnicos, el admin de producto y cualquier staff de Django. El alcance
-        fino (a qué centros y módulos) lo resuelve performance.CenterMembership."""
-        return self.is_active and (
-            self.role in (self.ROLE_DIRECTOR, self.ROLE_ADMIN) or self.is_staff
-        )
+        técnicos, el admin de producto, cualquier staff de Django y cualquier
+        miembro con una membresía de centro activa (preparador, fisio, etc.). El
+        alcance fino (a qué centros y módulos) lo resuelve performance.CenterMembership."""
+        if not self.is_active:
+            return False
+        if self.role in (self.ROLE_DIRECTOR, self.ROLE_ADMIN) or self.is_staff:
+            return True
+        # Staff de un centro: cualquiera con membresía activa. Carga diferida del
+        # modelo para no introducir una dependencia de importación users→performance.
+        from django.apps import apps
+        try:
+            Membership = apps.get_model('performance', 'CenterMembership')
+        except LookupError:
+            return False
+        return Membership.objects.filter(user=self, activo=True).exists()
 
 
 class Profile(models.Model):

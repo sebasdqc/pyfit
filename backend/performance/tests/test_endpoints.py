@@ -329,3 +329,74 @@ class SeedTestsCommandTests(TestCase):
         )
         call_command('seed_tests', stdout=StringIO())
         self.assertFalse(TestDefinition.objects.get(slug='test-viejo').activo)
+
+
+class AltaPorEmailTests(_Base):
+    """Alta de staff y atletas por email (vincula o crea la cuenta)."""
+
+    def staff_url(self):
+        return f'/api/performance/centers/{self.center.id}/staff/'
+
+    def athletes_url(self):
+        return f'/api/performance/centers/{self.center.id}/athletes/'
+
+    # ── Staff ────────────────────────────────────────────────────────────────
+    def test_alta_staff_crea_cuenta_con_acceso(self):
+        res = self.client.post(self.staff_url(), {
+            'email': 'fisio@x.com', 'nombre': 'Ana Fisio',
+            'rol': CenterMembership.ROL_FISIO, 'password': 'temporal123',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        nuevo = User.objects.get(email='fisio@x.com')
+        # La membresía activa le da acceso al panel aunque su rol global sea atleta.
+        self.assertTrue(nuevo.performance_acceso)
+        m = CenterMembership.objects.get(center=self.center, user=nuevo)
+        self.assertEqual(m.rol, CenterMembership.ROL_FISIO)
+        # Los módulos se siembran del rol (fisio → lesiones).
+        self.assertEqual(res.json()['modulos'], ['lesiones'])
+        self.assertEqual(res.json()['nombre'], 'Ana Fisio')
+
+    def test_alta_staff_email_existente_vincula_sin_duplicar(self):
+        existente = User.objects.create_user(
+            username='prep@x.com', email='prep@x.com', password='x',
+        )
+        res = self.client.post(self.staff_url(), {
+            'email': 'prep@x.com', 'nombre': 'X',
+            'rol': CenterMembership.ROL_PREPARADOR, 'password': 'temporal123',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(User.objects.filter(email='prep@x.com').count(), 1)
+        self.assertTrue(CenterMembership.objects.filter(center=self.center, user=existente).exists())
+
+    def test_alta_staff_password_corta_400(self):
+        res = self.client.post(self.staff_url(), {
+            'email': 'corta@x.com', 'nombre': 'Y',
+            'rol': CenterMembership.ROL_ANALISTA, 'password': 'corta',
+        }, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(User.objects.filter(email='corta@x.com').exists())
+
+    # ── Atletas ──────────────────────────────────────────────────────────────
+    def test_alta_atleta_crea_cuenta_sin_password(self):
+        res = self.client.post(self.athletes_url(), {
+            'email': 'jugador@x.com', 'nombre': 'Leo Atleta', 'dorsal': '10',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        nuevo = User.objects.get(email='jugador@x.com')
+        # Cuenta de consumo: sin contraseña usable y sin acceso al panel.
+        self.assertFalse(nuevo.has_usable_password())
+        self.assertFalse(nuevo.performance_acceso)
+        link = CenterAthlete.objects.get(center=self.center, athlete=nuevo)
+        self.assertEqual(link.dorsal, '10')
+        self.assertEqual(link.registrado_por, self.director)
+        self.assertEqual(res.json()['nombre'], 'Leo Atleta')
+
+    def test_alta_email_invalido_400(self):
+        res = self.client.post(self.athletes_url(), {'email': 'no-es-email', 'nombre': 'Z'}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_alta_atleta_requiere_director(self):
+        # Un atleta autenticado no puede registrar atletas.
+        self.client.force_authenticate(self.athlete)
+        res = self.client.post(self.athletes_url(), {'email': 'otro@x.com', 'nombre': 'W'}, format='json')
+        self.assertEqual(res.status_code, 403)

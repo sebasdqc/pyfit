@@ -62,12 +62,26 @@ export interface CenterAthlete {
   center: number
   athlete: number
   email: string
+  nombre: string // nombre visible de la cuenta (servidor)
   registrado_por: number | null
   dorsal: string
   posicion: string
   grupo: string
   estado: 'activo' | 'lesionado' | 'baja'
   foto: string // data URL (base64) o '' — ver CenterAthlete.foto en el backend
+  created_at: string
+}
+
+// Miembro del staff de un centro (performance.CenterMembership).
+export interface CenterStaff {
+  id: number
+  center: number
+  user: number
+  email: string
+  nombre: string
+  rol: CenterRole
+  modulos: ModuleId[]
+  activo: boolean
   created_at: string
 }
 

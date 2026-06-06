@@ -21,6 +21,7 @@ filtrado avanzado, paginación y la UI quedan fuera de alcance de este andamiaje
 """
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -62,6 +63,46 @@ def _get_center_or_404(user, pk):
         from django.http import Http404
         raise Http404
     return center
+
+
+def _resolve_or_create_user(email, nombre, password=None, *, require_password=False):
+    """Vincula a una persona por email para darla de alta como staff o atleta.
+
+    Devuelve (user, error_str). Si la cuenta existe, la reutiliza (ignora la
+    contraseña). Si no existe, la crea:
+      - staff (require_password=True): necesita contraseña — entra al panel.
+      - atleta (require_password=False): se crea con contraseña no usable; es una
+        cuenta de consumo que la persona podrá reclamar luego en la app móvil.
+    Crea también un Profile con el nombre para mantenerlo visible y consistente.
+    """
+    from users.models import Profile
+
+    email = (email or '').lower().strip()
+    nombre = (nombre or '').strip()
+    if not email or '@' not in email:
+        return None, 'Indica un email válido.'
+
+    existing = User.objects.filter(email__iexact=email).first()
+    if existing:
+        return existing, None
+
+    if require_password:
+        if not password or len(password) < 8:
+            return None, 'La contraseña temporal debe tener al menos 8 caracteres.'
+
+    try:
+        # password=None hace que create_user fije una contraseña no usable.
+        user = User.objects.create_user(
+            username=email, email=email, password=password if require_password else None,
+        )
+    except IntegrityError:
+        return None, 'Ya existe una cuenta con ese email.'
+
+    if nombre:
+        user.first_name = nombre
+        user.save(update_fields=['first_name'])
+    Profile.objects.get_or_create(user=user, defaults={'nombre': nombre or email.split('@')[0]})
+    return user, None
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -175,6 +216,16 @@ def center_staff(request, pk):
         if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
             return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
         data = {**request.data, 'center': center.id}
+        # Alta por email: vincula o crea la cuenta del staff (necesita contraseña
+        # para entrar al panel). También se acepta un `user` por id directamente.
+        if not data.get('user'):
+            user_obj, err = _resolve_or_create_user(
+                data.get('email'), data.get('nombre'), data.get('password'),
+                require_password=True,
+            )
+            if err:
+                return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+            data['user'] = user_obj.id
         serializer = CenterMembershipSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -200,6 +251,16 @@ def center_athletes(request, pk):
                 status=status.HTTP_403_FORBIDDEN,
             )
         data = {**request.data, 'center': center.id}
+        # Alta por email: vincula o crea la cuenta del atleta (sin contraseña; es
+        # una cuenta de consumo que reclamará luego). También se acepta `athlete`
+        # por id directamente.
+        if not data.get('athlete'):
+            user_obj, err = _resolve_or_create_user(
+                data.get('email'), data.get('nombre'), require_password=False,
+            )
+            if err:
+                return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+            data['athlete'] = user_obj.id
         serializer = CenterAthleteSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

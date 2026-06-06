@@ -29,27 +29,44 @@ class SportsCenterSerializer(serializers.ModelSerializer):
         return obj.memberships.filter(activo=True).count()
 
 
+def _display_name(user):
+    """Nombre visible de una cuenta: nombre completo, first_name o parte local
+    del email. No depende de un Profile (que puede no existir)."""
+    if user is None:
+        return ''
+    full = (user.get_full_name() or '').strip()
+    return full or user.first_name or user.email.split('@')[0]
+
+
 class CenterMembershipSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
+    nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = CenterMembership
         fields = [
-            'id', 'center', 'user', 'email', 'rol', 'modulos', 'activo', 'created_at',
+            'id', 'center', 'user', 'email', 'nombre', 'rol', 'modulos', 'activo', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'email']
+        read_only_fields = ['id', 'created_at', 'email', 'nombre']
+
+    def get_nombre(self, obj):
+        return _display_name(obj.user)
 
 
 class CenterAthleteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='athlete.email', read_only=True)
+    nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = CenterAthlete
         fields = [
-            'id', 'center', 'athlete', 'email', 'registrado_por',
+            'id', 'center', 'athlete', 'email', 'nombre', 'registrado_por',
             'dorsal', 'posicion', 'grupo', 'estado', 'foto', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'email', 'registrado_por']
+        read_only_fields = ['id', 'created_at', 'email', 'nombre', 'registrado_por']
+
+    def get_nombre(self, obj):
+        return _display_name(obj.athlete)
 
     # La foto llega como data URL (base64) ya reescalada en el cliente. Acotamos
     # tamaño y forma para no almacenar imágenes grandes en la BD (provisional
