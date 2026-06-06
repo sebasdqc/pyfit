@@ -335,14 +335,19 @@ class PhysicalTest(CenterRecord):
         ]
 
 
-# ─── Módulo PLANIFICACIÓN ─────────────────────────────────────────────────────
+# ─── Módulo PLANIFICACIÓN: periodización (macro → meso → micro) ───────────────
+# TrainingPlan actúa como MACROCICLO (temporada o gran fase). De él cuelgan sus
+# mesociclos (fases) y de cada uno sus microciclos (semanas). Vocabulario de
+# periodización clásica de equipo (Matveyev/Bompa); lo estructura manualmente el
+# cuerpo técnico (NO es el motor adaptativo del consumo).
 
 class TrainingPlan(models.Model):
-    """Plan / periodización de entrenamiento de un centro.
+    """Macrociclo: plan / periodización de entrenamiento de un centro.
 
     Puede ser individual (athlete != null) o de equipo (athlete == null). No
     hereda de CenterRecord porque su sujeto es el centro/grupo, no siempre un
-    atleta, y tiene rango de fechas en vez de una fecha puntual.
+    atleta, y tiene rango de fechas en vez de una fecha puntual. Sus fases se
+    modelan en Mesocycle y las semanas de cada fase en Microcycle.
     """
 
     center = models.ForeignKey(
@@ -370,6 +375,95 @@ class TrainingPlan(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class Mesocycle(models.Model):
+    """Fase del macrociclo (típicamente 3–6 semanas), ordenada dentro del plan.
+
+    El `tipo` son las fases clásicas de la periodización por equipos; el cuerpo
+    técnico fija el énfasis y la carga objetivo de cada fase.
+    """
+
+    TIPO_PREP_GENERAL = 'prep_general'
+    TIPO_PREP_ESPECIFICA = 'prep_especifica'
+    TIPO_PRECOMPETITIVO = 'precompetitivo'
+    TIPO_COMPETITIVO = 'competitivo'
+    TIPO_TRANSICION = 'transicion'
+    TIPO_CHOICES = [
+        (TIPO_PREP_GENERAL, 'Preparación general'),
+        (TIPO_PREP_ESPECIFICA, 'Preparación específica'),
+        (TIPO_PRECOMPETITIVO, 'Precompetitivo'),
+        (TIPO_COMPETITIVO, 'Competitivo'),
+        (TIPO_TRANSICION, 'Transición'),
+    ]
+    CARGA_CHOICES = [
+        ('baja', 'Baja'), ('media', 'Media'), ('alta', 'Alta'), ('pico', 'Pico'),
+    ]
+
+    plan = models.ForeignKey(
+        TrainingPlan, on_delete=models.CASCADE, related_name='mesociclos',
+    )
+    orden = models.PositiveIntegerField(default=0)
+    nombre = models.CharField(max_length=120)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_PREP_GENERAL)
+    enfasis = models.CharField(max_length=200, blank=True)
+    carga_objetivo = models.CharField(max_length=10, choices=CARGA_CHOICES, default='media')
+    duracion_semanas = models.PositiveIntegerField(default=4)
+    notas = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'performance_mesocycles'
+        ordering = ['plan', 'orden']
+        indexes = [models.Index(fields=['plan', 'orden'])]
+
+    def __str__(self):
+        return f'{self.nombre} ({self.tipo})'
+
+
+class Microcycle(models.Model):
+    """Semana de un mesociclo, ordenada dentro de la fase.
+
+    `carga_relativa` (0–100 %) es la palanca que dibuja la onda de carga del
+    macrociclo; `tipo` es el carácter de la semana (carga, choque, recuperación…).
+    """
+
+    TIPO_AJUSTE = 'ajuste'
+    TIPO_CARGA = 'carga'
+    TIPO_CHOQUE = 'choque'
+    TIPO_ACTIVACION = 'activacion'
+    TIPO_COMPETITIVO = 'competitivo'
+    TIPO_RECUPERACION = 'recuperacion'
+    TIPO_CHOICES = [
+        (TIPO_AJUSTE, 'Ajuste'),
+        (TIPO_CARGA, 'Carga'),
+        (TIPO_CHOQUE, 'Choque'),
+        (TIPO_ACTIVACION, 'Activación'),
+        (TIPO_COMPETITIVO, 'Competitivo'),
+        (TIPO_RECUPERACION, 'Recuperación'),
+    ]
+    NIVEL_CHOICES = [('bajo', 'Bajo'), ('medio', 'Medio'), ('alto', 'Alto')]
+
+    mesociclo = models.ForeignKey(
+        Mesocycle, on_delete=models.CASCADE, related_name='microciclos',
+    )
+    orden = models.PositiveIntegerField(default=0)
+    nombre = models.CharField(max_length=120, blank=True)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_CARGA)
+    # Carga relativa de la semana (% respecto al pico del macrociclo).
+    carga_relativa = models.PositiveIntegerField(default=50)
+    volumen = models.CharField(max_length=10, choices=NIVEL_CHOICES, default='medio')
+    intensidad = models.CharField(max_length=10, choices=NIVEL_CHOICES, default='medio')
+    notas = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'performance_microcycles'
+        ordering = ['mesociclo', 'orden']
+        indexes = [models.Index(fields=['mesociclo', 'orden'])]
+
+    def __str__(self):
+        return f'{self.nombre or self.tipo} ({self.carga_relativa}%)'
 
 
 # ─── Módulo PSICOLÓGICO ───────────────────────────────────────────────────────

@@ -33,6 +33,7 @@ from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
+    Mesocycle, Microcycle,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -40,7 +41,8 @@ from .permissions import IsPerformanceUser, IsDirectorOrAdmin, user_centers
 from .serializers import (
     SportsCenterSerializer, CenterMembershipSerializer, CenterAthleteSerializer,
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
-    TrainingPlanSerializer, PsychAssessmentSerializer,
+    TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
+    MesocycleSerializer, MicrocycleSerializer,
 )
 
 User = get_user_model()
@@ -343,6 +345,93 @@ def module_test(request, pk):
 @permission_classes([IsPerformanceUser])
 def module_planificacion(request, pk):
     return _module_endpoint(request, pk, TrainingPlan, TrainingPlanSerializer, 'creado_por')
+
+
+# ─── Planificación: periodización (macrociclo → mesociclos → microciclos) ─────
+# Todo cuelga del macrociclo (TrainingPlan). Cada handler valida la cadena de
+# pertenencia centro → plan → mesociclo → microciclo y devuelve 404 si se rompe,
+# de modo que no se puede tocar la periodización de un centro ajeno.
+
+def _get_plan_or_404(center, plan_id):
+    return get_object_or_404(TrainingPlan, pk=plan_id, center=center)
+
+
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def plan_detail(request, pk, plan_id):
+    """Árbol completo del macrociclo (fases + semanas), o lo elimina."""
+    center = _get_center_or_404(request.user, pk)
+    plan = _get_plan_or_404(center, plan_id)
+    if request.method == 'DELETE':
+        plan.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(TrainingPlanDetailSerializer(plan).data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def plan_mesociclos(request, pk, plan_id):
+    """Lista / crea las fases (mesociclos) de un macrociclo."""
+    center = _get_center_or_404(request.user, pk)
+    plan = _get_plan_or_404(center, plan_id)
+    if request.method == 'POST':
+        serializer = MesocycleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(plan=plan)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(MesocycleSerializer(plan.mesociclos.all(), many=True).data)
+
+
+@api_view(['PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def mesociclo_detail(request, pk, plan_id, meso_id):
+    """Actualiza o elimina una fase del macrociclo."""
+    center = _get_center_or_404(request.user, pk)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    if request.method == 'DELETE':
+        meso.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = MesocycleSerializer(meso, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def meso_microciclos(request, pk, plan_id, meso_id):
+    """Lista / crea las semanas (microciclos) de una fase."""
+    center = _get_center_or_404(request.user, pk)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    if request.method == 'POST':
+        serializer = MicrocycleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(mesociclo=meso)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(MicrocycleSerializer(meso.microciclos.all(), many=True).data)
+
+
+@api_view(['PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def microciclo_detail(request, pk, plan_id, meso_id, micro_id):
+    """Actualiza o elimina una semana de una fase."""
+    center = _get_center_or_404(request.user, pk)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
+    if request.method == 'DELETE':
+        micro.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = MicrocycleSerializer(micro, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
 
 
 @api_view(['GET', 'POST'])

@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    TestDefinition,
+    TestDefinition, Mesocycle, Microcycle,
 )
 
 
@@ -68,6 +68,20 @@ class TrainingPlanAdmin(ModelAdmin):
     list_display = ('nombre', 'center', 'athlete', 'fecha_inicio', 'fecha_fin')
     list_filter = ('center',)
     search_fields = ('nombre', 'objetivo')
+
+
+@admin.register(Mesocycle)
+class MesocycleAdmin(ModelAdmin):
+    list_display = ('nombre', 'plan', 'orden', 'tipo', 'carga_objetivo', 'duracion_semanas')
+    list_filter = ('tipo', 'carga_objetivo')
+    search_fields = ('nombre', 'plan__nombre')
+
+
+@admin.register(Microcycle)
+class MicrocycleAdmin(ModelAdmin):
+    list_display = ('__str__', 'mesociclo', 'orden', 'tipo', 'carga_relativa', 'volumen', 'intensidad')
+    list_filter = ('tipo', 'volumen', 'intensidad')
+    search_fields = ('nombre', 'mesociclo__nombre')
 
 
 @admin.register(PsychAssessment)

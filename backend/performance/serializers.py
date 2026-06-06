@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    TestDefinition,
+    TestDefinition, Mesocycle, Microcycle,
 )
 
 
@@ -90,14 +90,57 @@ class PhysicalTestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'registrado_por']
 
 
+class MicrocycleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Microcycle
+        fields = [
+            'id', 'mesociclo', 'orden', 'nombre', 'tipo',
+            'carga_relativa', 'volumen', 'intensidad', 'notas', 'created_at',
+        ]
+        # `mesociclo` lo fija la vista a partir de la ruta.
+        read_only_fields = ['id', 'created_at', 'mesociclo']
+
+
+class MesocycleSerializer(serializers.ModelSerializer):
+    microciclos = MicrocycleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Mesocycle
+        fields = [
+            'id', 'plan', 'orden', 'nombre', 'tipo', 'enfasis', 'carga_objetivo',
+            'duracion_semanas', 'notas', 'created_at', 'microciclos',
+        ]
+        # `plan` lo fija la vista a partir de la ruta.
+        read_only_fields = ['id', 'created_at', 'plan']
+
+
 class TrainingPlanSerializer(serializers.ModelSerializer):
+    total_mesociclos = serializers.SerializerMethodField()
+    total_microciclos = serializers.SerializerMethodField()
+
     class Meta:
         model = TrainingPlan
         fields = [
             'id', 'center', 'athlete', 'creado_por', 'nombre', 'objetivo',
             'descripcion', 'fecha_inicio', 'fecha_fin', 'created_at',
+            'total_mesociclos', 'total_microciclos',
         ]
         read_only_fields = ['id', 'created_at', 'creado_por']
+
+    def get_total_mesociclos(self, obj):
+        return obj.mesociclos.count()
+
+    def get_total_microciclos(self, obj):
+        return Microcycle.objects.filter(mesociclo__plan=obj).count()
+
+
+class TrainingPlanDetailSerializer(TrainingPlanSerializer):
+    """Árbol completo del macrociclo: fases con sus semanas anidadas."""
+
+    mesociclos = MesocycleSerializer(many=True, read_only=True)
+
+    class Meta(TrainingPlanSerializer.Meta):
+        fields = TrainingPlanSerializer.Meta.fields + ['mesociclos']
 
 
 class PsychAssessmentSerializer(serializers.ModelSerializer):

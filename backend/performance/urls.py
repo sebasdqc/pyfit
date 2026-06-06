@@ -25,4 +25,11 @@ urlpatterns = [
     path('centers/<int:pk>/test/', views.module_test),
     path('centers/<int:pk>/planificacion/', views.module_planificacion),
     path('centers/<int:pk>/psicologico/', views.module_psicologico),
+
+    # Planificación — periodización (macrociclo → mesociclos → microciclos)
+    path('centers/<int:pk>/planificacion/<int:plan_id>/', views.plan_detail),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/', views.plan_mesociclos),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/', views.mesociclo_detail),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/', views.meso_microciclos),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/', views.microciclo_detail),
 ]

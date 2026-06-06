@@ -109,3 +109,57 @@ export interface TestComputeResponse {
   familia: TestFamilia
   resultados: Record<string, unknown>
 }
+
+// ── Módulo PLANIFICACIÓN: periodización (macro → meso → micro) ────────────────
+export type MesoTipo =
+  | 'prep_general' | 'prep_especifica' | 'precompetitivo' | 'competitivo' | 'transicion'
+export type MicroTipo =
+  | 'ajuste' | 'carga' | 'choque' | 'activacion' | 'competitivo' | 'recuperacion'
+export type Nivel = 'bajo' | 'medio' | 'alto'
+export type CargaObjetivo = 'baja' | 'media' | 'alta' | 'pico'
+
+export interface Microcycle {
+  id: number
+  mesociclo: number
+  orden: number
+  nombre: string
+  tipo: MicroTipo
+  carga_relativa: number
+  volumen: Nivel
+  intensidad: Nivel
+  notas: string
+  created_at: string
+}
+
+export interface Mesocycle {
+  id: number
+  plan: number
+  orden: number
+  nombre: string
+  tipo: MesoTipo
+  enfasis: string
+  carga_objetivo: CargaObjetivo
+  duracion_semanas: number
+  notas: string
+  created_at: string
+  microciclos: Microcycle[]
+}
+
+export interface TrainingPlan {
+  id: number
+  center: number
+  athlete: number | null
+  creado_por: number | null
+  nombre: string
+  objetivo: string
+  descripcion: string
+  fecha_inicio: string
+  fecha_fin: string | null
+  created_at: string
+  total_mesociclos: number
+  total_microciclos: number
+}
+
+export interface TrainingPlanDetail extends TrainingPlan {
+  mesociclos: Mesocycle[]
+}

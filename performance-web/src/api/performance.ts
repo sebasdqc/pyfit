@@ -5,6 +5,7 @@
 import { api } from './client'
 import type {
   CenterAthlete, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
+  TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -70,4 +71,64 @@ export async function computeTest(
     inputs,
   })
   return res.data
+}
+
+// ── Módulo PLANIFICACIÓN: periodización (macro → meso → micro) ────────────────
+const planBase = (centerId: number) => `/performance/centers/${centerId}/planificacion`
+
+export async function listPlans(centerId: number): Promise<TrainingPlan[]> {
+  const res = await api.get<TrainingPlan[]>(`${planBase(centerId)}/`)
+  return res.data
+}
+
+export async function createPlan(
+  centerId: number,
+  payload: Partial<TrainingPlan> & { nombre: string; fecha_inicio: string },
+): Promise<TrainingPlan> {
+  const res = await api.post<TrainingPlan>(`${planBase(centerId)}/`, payload)
+  return res.data
+}
+
+export async function getPlanTree(centerId: number, planId: number): Promise<TrainingPlanDetail> {
+  const res = await api.get<TrainingPlanDetail>(`${planBase(centerId)}/${planId}/`)
+  return res.data
+}
+
+export async function deletePlan(centerId: number, planId: number): Promise<void> {
+  await api.delete(`${planBase(centerId)}/${planId}/`)
+}
+
+export async function createMeso(
+  centerId: number, planId: number, payload: Partial<Mesocycle>,
+): Promise<Mesocycle> {
+  const res = await api.post<Mesocycle>(`${planBase(centerId)}/${planId}/mesociclos/`, payload)
+  return res.data
+}
+
+export async function deleteMeso(centerId: number, planId: number, mesoId: number): Promise<void> {
+  await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/`)
+}
+
+export async function createMicro(
+  centerId: number, planId: number, mesoId: number, payload: Partial<Microcycle>,
+): Promise<Microcycle> {
+  const res = await api.post<Microcycle>(
+    `${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/`, payload,
+  )
+  return res.data
+}
+
+export async function updateMicro(
+  centerId: number, planId: number, mesoId: number, microId: number, payload: Partial<Microcycle>,
+): Promise<Microcycle> {
+  const res = await api.patch<Microcycle>(
+    `${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}/`, payload,
+  )
+  return res.data
+}
+
+export async function deleteMicro(
+  centerId: number, planId: number, mesoId: number, microId: number,
+): Promise<void> {
+  await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}/`)
 }
