@@ -139,3 +139,11 @@ export async function deleteMicro(
 ): Promise<void> {
   await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}/`)
 }
+
+// ── Módulo PSICOLÓGICO: índice de bienestar (cálculo en servidor) ─────────────
+export async function computeWellness(
+  values: { sueno: number; fatiga: number; estres: number; dolor_muscular: number; animo: number },
+): Promise<{ indice_bienestar: number; estado: 'ok' | 'duda' | 'alerta' }> {
+  const res = await api.post('/performance/psicologico/wellness/compute/', values)
+  return res.data
+}

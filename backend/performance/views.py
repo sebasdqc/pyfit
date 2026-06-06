@@ -33,7 +33,7 @@ from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    Mesocycle, Microcycle,
+    Mesocycle, Microcycle, WellnessCheckin,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -42,7 +42,7 @@ from .serializers import (
     SportsCenterSerializer, CenterMembershipSerializer, CenterAthleteSerializer,
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
-    MesocycleSerializer, MicrocycleSerializer,
+    MesocycleSerializer, MicrocycleSerializer, WellnessCheckinSerializer,
 )
 
 User = get_user_model()
@@ -438,3 +438,48 @@ def microciclo_detail(request, pk, plan_id, meso_id, micro_id):
 @permission_classes([IsPerformanceUser])
 def module_psicologico(request, pk):
     return _module_endpoint(request, pk, PsychAssessment, PsychAssessmentSerializer, 'registrado_por')
+
+
+# ─── Psicológico: monitoreo de bienestar (wellness check-ins) ─────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def psicologico_wellness(request, pk):
+    """Lista / registra check-ins de bienestar de un centro. El índice de
+    bienestar lo calcula el servidor al guardar. Filtro opcional `?athlete=<id>`.
+    """
+    center = _get_center_or_404(request.user, pk)
+    if request.method == 'POST':
+        data = {**request.data, 'center': center.id}
+        serializer = WellnessCheckinSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = WellnessCheckin.objects.filter(center=center)
+    athlete = request.query_params.get('athlete')
+    if athlete:
+        qs = qs.filter(athlete=athlete)
+    return Response(WellnessCheckinSerializer(qs, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsPerformanceUser])
+def wellness_compute(request):
+    """Calcula el índice de bienestar (0–100) + estado SIN persistir, desde las 5
+    subescalas (1–7). El cálculo ocurre siempre en el servidor."""
+    from .wellness import ITEM_NAMES, SCALE_MAX, SCALE_MIN, compute_index, estado
+    vals, errors = {}, {}
+    for n in ITEM_NAMES:
+        try:
+            iv = int(request.data.get(n))
+            if iv < SCALE_MIN or iv > SCALE_MAX:
+                raise ValueError
+            vals[n] = iv
+        except (TypeError, ValueError):
+            errors[n] = f'Debe ser un entero entre {SCALE_MIN} y {SCALE_MAX}.'
+    if errors:
+        return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+    idx = compute_index(vals)
+    return Response({'indice_bienestar': idx, 'estado': estado(idx)})

@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    TestDefinition, Mesocycle, Microcycle,
+    TestDefinition, Mesocycle, Microcycle, WellnessCheckin,
 )
 
 
@@ -151,3 +151,21 @@ class PsychAssessmentSerializer(serializers.ModelSerializer):
             'tipo', 'puntuacion', 'notas', 'created_at',
         ]
         read_only_fields = ['id', 'created_at', 'registrado_por']
+
+
+class WellnessCheckinSerializer(serializers.ModelSerializer):
+    estado = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WellnessCheckin
+        fields = [
+            'id', 'center', 'athlete', 'registrado_por', 'fecha',
+            'sueno', 'fatiga', 'estres', 'dolor_muscular', 'animo',
+            'indice_bienestar', 'estado', 'notas', 'created_at',
+        ]
+        # El índice lo calcula el servidor (model.save); el cliente no lo fija.
+        read_only_fields = ['id', 'created_at', 'registrado_por', 'indice_bienestar']
+
+    def get_estado(self, obj):
+        from .wellness import estado
+        return estado(obj.indice_bienestar)

@@ -28,7 +28,7 @@ const NAV: NavItem[] = [
   { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones' },
   { id: 'tests', label: 'Tests', icon: 'tests', to: '/tests' },
   { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion' },
-  { id: 'psicologico', label: 'Psicológico', icon: 'psicologico' },
+  { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico' },
   { id: 'reportes', label: 'Reportes', icon: 'reportes' },
   { id: 'ajustes', label: 'Ajustes', icon: 'ajustes' },
 ]

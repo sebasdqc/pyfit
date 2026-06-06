@@ -22,6 +22,7 @@ la barra lateral del panel web y el control de acceso por pertenencia.
 """
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -493,3 +494,30 @@ class PsychAssessment(CenterRecord):
     class Meta(CenterRecord.Meta):
         db_table = 'performance_psych_assessments'
         indexes = [models.Index(fields=['center', 'athlete', '-fecha'])]
+
+
+class WellnessCheckin(CenterRecord):
+    """Check-in de bienestar de un atleta (autopercepción, escala 1–7, mayor = mejor).
+
+    Subescalas tipo Hooper-Mackinnon + ánimo. El `indice_bienestar` (0–100) lo
+    calcula el servidor al guardar, desde `performance.wellness` (única fuente de
+    la fórmula). Un check-in por atleta y día.
+    """
+
+    sueno = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)])
+    fatiga = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)])
+    estres = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)])
+    dolor_muscular = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)])
+    animo = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)])
+    # Índice agregado 0–100 (mayor = mejor), calculado en save().
+    indice_bienestar = models.PositiveSmallIntegerField(default=0)
+
+    class Meta(CenterRecord.Meta):
+        db_table = 'performance_wellness_checkins'
+        unique_together = [['center', 'athlete', 'fecha']]
+        indexes = [models.Index(fields=['center', 'athlete', '-fecha'])]
+
+    def save(self, *args, **kwargs):
+        from .wellness import ITEM_NAMES, compute_index
+        self.indice_bienestar = compute_index({n: getattr(self, n) for n in ITEM_NAMES})
+        super().save(*args, **kwargs)

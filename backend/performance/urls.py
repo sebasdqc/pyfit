@@ -13,6 +13,9 @@ urlpatterns = [
     path('tests/catalog/', views.tests_catalog),
     path('tests/compute/', views.tests_compute),
 
+    # Módulo PSICOLÓGICO: cálculo del índice de bienestar (no acotado a un centro)
+    path('psicologico/wellness/compute/', views.wellness_compute),
+
     # Centros
     path('centers/', views.centers_view),
     path('centers/<int:pk>/', views.center_detail),
@@ -25,6 +28,7 @@ urlpatterns = [
     path('centers/<int:pk>/test/', views.module_test),
     path('centers/<int:pk>/planificacion/', views.module_planificacion),
     path('centers/<int:pk>/psicologico/', views.module_psicologico),
+    path('centers/<int:pk>/psicologico/wellness/', views.psicologico_wellness),
 
     # Planificación — periodización (macrociclo → mesociclos → microciclos)
     path('centers/<int:pk>/planificacion/<int:plan_id>/', views.plan_detail),
