@@ -41,6 +41,7 @@ export interface AthletePerf {
   nombre: string
   posicion: string
   estado: Athlete['estado']
+  foto?: string
   metrics: PerfMetrics
   series: PerfPoint[]
 }
@@ -95,6 +96,7 @@ export function athletePerf(a: Athlete): AthletePerf {
     nombre: a.nombre,
     posicion: a.posicion,
     estado: a.estado,
+    foto: a.foto,
     metrics: { cargaAguda, cargaCronica, acwr: round2(acwr), monotonia, strain, cmj, hrv, readiness, maxVel, distancia, hsr, sprints, playerLoad },
     series,
   }

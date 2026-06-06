@@ -13,6 +13,7 @@ import {
 import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
+import { Spinner } from '@/components/ui/Spinner'
 import { SEM, type Tone } from '@/lib/tone'
 import { loadSquad } from '@/lib/squadStore'
 import { computeWellness, fetchInstruments, scoreInstrument, type PsychInstrument } from '@/api/performance'
@@ -247,7 +248,7 @@ function AthleteView({
                 a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
               }`}
             >
-              <Avatar name={a.nombre} size={22} />
+              <Avatar name={a.nombre} src={a.foto} size={22} />
               <span className="whitespace-nowrap">{a.nombre}</span>
             </button>
           ))}
@@ -465,7 +466,7 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
                 a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
               }`}
             >
-              <Avatar name={a.nombre} size={22} />
+              <Avatar name={a.nombre} src={a.foto} size={22} />
               <span className="whitespace-nowrap">{a.nombre}</span>
             </button>
           ))}
@@ -476,6 +477,11 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
       <Panel title="Cuestionario" subtitle={loading ? 'Cargando…' : `${instruments.length} instrumentos`}>
         {loadErr ? (
           <p className="text-sm text-perf-danger">{loadErr}</p>
+        ) : loading ? (
+          <div className="flex items-center gap-2.5 py-6 text-sm text-white/45">
+            <Spinner size={18} />
+            Cargando instrumentos…
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {instruments.map((i) => {

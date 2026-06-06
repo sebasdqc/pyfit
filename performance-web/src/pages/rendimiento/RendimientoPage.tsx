@@ -167,7 +167,7 @@ function IndividualView({ perfs, sel, onSelect }: { perfs: AthletePerf[]; sel: s
                   isSel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
                 }`}
               >
-                <Avatar name={a.nombre} size={24} />
+                <Avatar name={a.nombre} src={a.foto} size={24} />
                 <span className="whitespace-nowrap">{a.nombre}</span>
                 <span className={`h-1.5 w-1.5 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
               </button>
@@ -178,7 +178,7 @@ function IndividualView({ perfs, sel, onSelect }: { perfs: AthletePerf[]; sel: s
 
       {/* Cabecera */}
       <div className="flex items-center gap-3 rounded-2xl border border-perf-border bg-perf-surface p-5">
-        <Avatar name={p.nombre} size={48} />
+        <Avatar name={p.nombre} src={p.foto} size={48} />
         <div>
           <p className="text-base font-semibold text-white">{p.nombre}</p>
           <p className="text-xs text-white/50">{p.posicion}</p>

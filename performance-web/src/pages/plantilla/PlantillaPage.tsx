@@ -125,7 +125,7 @@ export function PlantillaPage() {
                     : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
                 }`}
               >
-                <Avatar name={a.nombre} size={24} />
+                <Avatar name={a.nombre} src={a.foto} size={24} />
                 <span className="whitespace-nowrap">{a.nombre}</span>
                 <span className={`h-1.5 w-1.5 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
                 {compare && isSel && (
@@ -194,7 +194,7 @@ function SingleDetail({ a, canEdit, onEdit }: { a: Athlete; canEdit: boolean; on
           }
         >
           <div className="flex items-center gap-3">
-            <Avatar name={a.nombre} size={56} />
+            <Avatar name={a.nombre} src={a.foto} size={56} />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold text-white">{a.nombre}</p>
               <p className="text-xs text-white/50">#{a.dorsal} · {a.posicion}</p>

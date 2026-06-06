@@ -1,4 +1,5 @@
-// Avatar circular con iniciales. Fondo oscuro plano, sin imágenes (esta fase).
+// Avatar circular. Si recibe `src` (foto del atleta) muestra la imagen;
+// si no, cae a las iniciales del nombre sobre fondo oscuro plano.
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -9,13 +10,26 @@ function initials(name: string): string {
 
 export function Avatar({
   name,
+  src,
   size = 36,
   className = '',
 }: {
   name: string
+  src?: string | null
   size?: number
   className?: string
 }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`inline-block shrink-0 rounded-full border border-perf-border object-cover ${className}`}
+        style={{ width: size, height: size }}
+      />
+    )
+  }
+
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded-full border border-perf-border bg-perf-surface2 font-semibold text-white/85 ${className}`}

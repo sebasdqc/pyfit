@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
+import { Spinner } from '@/components/ui/Spinner'
 import { SEM } from '@/lib/tone'
 import { ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
 import { loadSquad } from '@/lib/squadStore'
@@ -188,7 +189,10 @@ export function TestPage() {
         {loadErr ? (
           <p className="text-sm text-perf-danger">{loadErr}</p>
         ) : loading ? (
-          <p className="text-sm text-white/40">Cargando catálogo…</p>
+          <div className="flex items-center gap-2.5 py-6 text-sm text-white/45">
+            <Spinner size={18} />
+            Cargando catálogo…
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {visibles.map((t) => {
@@ -568,7 +572,7 @@ function AthleteChip({ a, sel, onClick }: { a: Athlete; sel: boolean; onClick: (
         sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
       }`}
     >
-      <Avatar name={a.nombre} size={22} />
+      <Avatar name={a.nombre} src={a.foto} size={22} />
       <span className="whitespace-nowrap">{a.nombre}</span>
       <span className={`h-1.5 w-1.5 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
     </button>

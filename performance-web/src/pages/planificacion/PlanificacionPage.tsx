@@ -10,6 +10,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { Panel } from '@/components/ui/Panel'
+import { Spinner } from '@/components/ui/Spinner'
 import { useAuth } from '@/auth/useAuth'
 import {
   listPlans, createPlan, getPlanTree, deletePlan,
@@ -212,7 +213,12 @@ function PlanList({
 
       {error ? (
         <p className="text-sm text-perf-danger">{error}</p>
-      ) : plans.length === 0 && !loading ? (
+      ) : loading ? (
+        <div className="flex items-center gap-2.5 py-6 text-sm text-white/45">
+          <Spinner size={18} />
+          Cargando macrociclos…
+        </div>
+      ) : plans.length === 0 ? (
         <p className="text-sm text-white/40">Aún no hay macrociclos. Crea el primero.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">

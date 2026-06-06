@@ -22,6 +22,7 @@ export function LesionesPage() {
   const squad = useMemo(() => loadSquad(), [])
   const nameOf = (id: string) => squad.find((a) => a.id === id)?.nombre ?? id
   const posOf = (id: string) => squad.find((a) => a.id === id)?.posicion ?? ''
+  const fotoOf = (id: string) => squad.find((a) => a.id === id)?.foto
 
   const [vista, setVista] = useState<Vista>('frente')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -100,6 +101,7 @@ export function LesionesPage() {
               inj={inj}
               nombre={nameOf(inj.athleteId)}
               posicion={posOf(inj.athleteId)}
+              foto={fotoOf(inj.athleteId)}
               selected={selectedId === inj.id}
               onClick={() => select(inj)}
             />
@@ -110,7 +112,7 @@ export function LesionesPage() {
               <ul className="flex flex-col divide-y divide-perf-border">
                 {altas.map((inj) => (
                   <li key={inj.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <Avatar name={nameOf(inj.athleteId)} size={32} />
+                    <Avatar name={nameOf(inj.athleteId)} src={fotoOf(inj.athleteId)} size={32} />
                     <span className="flex-1 truncate text-sm text-white/80">{nameOf(inj.athleteId)}</span>
                     <span className="truncate text-xs text-white/45">{inj.zona}</span>
                     <Badge tone="ok" label="Alta médica" />
@@ -136,9 +138,9 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone: Tone 
 }
 
 function InjuryCard({
-  inj, nombre, posicion, selected, onClick,
+  inj, nombre, posicion, foto, selected, onClick,
 }: {
-  inj: Injury; nombre: string; posicion: string; selected: boolean; onClick: () => void
+  inj: Injury; nombre: string; posicion: string; foto?: string; selected: boolean; onClick: () => void
 }) {
   const est = ESTADO_LESION[inj.estado]
   return (
@@ -150,7 +152,7 @@ function InjuryCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <Avatar name={nombre} size={40} />
+        <Avatar name={nombre} src={foto} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="truncate text-sm font-medium text-white">{nombre}</p>
