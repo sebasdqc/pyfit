@@ -5,16 +5,18 @@
 // máx), con tendencias de las últimas 10 semanas. Datos de muestra derivados de
 // la plantilla (lib/mockPerformance), respetando las ediciones guardadas.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart,
   ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
+import { DemoBadge } from '@/components/ui/DemoBadge'
+import { SquadState } from '@/components/ui/SquadState'
 import { SEM, acwrTone, type Tone } from '@/lib/tone'
 import { ESTADO_LABEL, ESTADO_TONE } from '@/lib/mockSquad'
-import { loadSquad } from '@/lib/squadStore'
+import { useSquad } from '@/centers/useSquad'
 import { buildPerformance, teamAverages, teamLoadSeries, type AthletePerf } from '@/lib/mockPerformance'
 
 // ── Tema de los gráficos (oscuro, plano) ────────────────────────────────────
@@ -32,36 +34,51 @@ const tip = {
 const lastName = (n: string) => n.split(' ').slice(1).join(' ') || n
 
 export function RendimientoPage() {
-  const squad = useMemo(() => loadSquad(), [])
+  const { athletes: squad, loading, error, isRealRoster } = useSquad()
   const perfs = useMemo(() => buildPerformance(squad), [squad])
   const [tab, setTab] = useState<'general' | 'individual'>('general')
-  const [sel, setSel] = useState<string>(squad[0]?.id ?? '')
+  const [sel, setSel] = useState<string>('')
+
+  // Mantiene una selección válida al cambiar de centro/plantilla.
+  useEffect(() => {
+    if (!squad.length) return
+    setSel((prev) => (squad.some((a) => a.id === prev) ? prev : squad[0].id))
+  }, [squad])
+
+  const noContent = loading || error || (isRealRoster && squad.length === 0)
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
       {/* Encabezado + tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Rendimiento</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight text-white">Rendimiento</h1>
+            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
+          </div>
           <p className="text-xs text-white/45">Carga, neuromuscular, autonómico y carga externa</p>
         </div>
-        <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
-          {(['general', 'individual'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded-md px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                tab === t ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
-              }`}
-            >
-              {t === 'general' ? 'Visión general' : 'Por atleta'}
-            </button>
-          ))}
-        </div>
+        {!noContent && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
+            {(['general', 'individual'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`rounded-md px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  tab === t ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+                }`}
+              >
+                {t === 'general' ? 'Visión general' : 'Por atleta'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {tab === 'general' ? (
+      {noContent ? (
+        <SquadState loading={loading} error={error} empty={isRealRoster && squad.length === 0} />
+      ) : tab === 'general' ? (
         <GeneralView perfs={perfs} />
       ) : (
         <IndividualView perfs={perfs} sel={sel} onSelect={setSel} />

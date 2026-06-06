@@ -8,11 +8,11 @@ import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/Icon'
-import { useAuth } from '@/auth/useAuth'
+import { useActiveCenter } from '@/centers/useActiveCenter'
+import { useSquad } from '@/centers/useSquad'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
 import {
-  listCenters,
   listCenterAthletes, createCenterAthlete, deleteCenterAthlete,
   listStaff, createStaff,
 } from '@/api/performance'
@@ -39,6 +39,16 @@ const ESTADO_STYLE: Record<CenterAthlete['estado'], string> = {
   baja: 'text-perf-danger bg-perf-danger/10',
 }
 
+// App de consumo donde el atleta reclama su cuenta (no hay portal web propio aún).
+const APP_URL = 'https://pyfit.app'
+function inviteText(email: string): string {
+  return (
+    `Te han añadido como atleta en Zyfit Performance.\n` +
+    `Activa tu cuenta en la app con tu correo: ${email}\n` +
+    `Descárgala en ${APP_URL} y usa "¿Olvidaste tu contraseña?" para crear tu acceso.`
+  )
+}
+
 // Mensaje legible de un error de axios/DRF (detail o errores por campo).
 function errorMessage(e: unknown): string {
   const data = (e as { response?: { data?: unknown } })?.response?.data
@@ -56,26 +66,12 @@ function errorMessage(e: unknown): string {
 
 // ── Página ─────────────────────────────────────────────────────────────────
 export function EquipoPage() {
-  const { user } = useAuth()
-  const [centers, setCenters] = useState<{ id: number; nombre: string }[]>(
-    () => (user?.centros ?? []).map((c) => ({ id: c.center_id, nombre: c.center_nombre })),
-  )
-  const [centerId, setCenterId] = useState<number | null>(user?.centros?.[0]?.center_id ?? null)
+  // Opera sobre el MISMO centro activo que el resto del panel (una sola fuente de
+  // verdad): así, registrar un atleta aquí lo hace aparecer en los módulos.
+  const { centers, activeCenterId, setActiveCenterId } = useActiveCenter()
   const [tab, setTab] = useState<'atletas' | 'staff'>('atletas')
 
-  useEffect(() => {
-    if (centers.length === 0) {
-      listCenters()
-        .then((cs) => {
-          const mapped = cs.map((c) => ({ id: c.id, nombre: c.nombre }))
-          setCenters(mapped)
-          setCenterId((prev) => prev ?? mapped[0]?.id ?? null)
-        })
-        .catch(() => {})
-    }
-  }, [centers.length])
-
-  if (centerId == null) {
+  if (activeCenterId == null) {
     return (
       <div className="mx-auto max-w-[1400px]">
         <h1 className="text-xl font-semibold text-white">Equipo del centro</h1>
@@ -86,12 +82,7 @@ export function EquipoPage() {
         </p>
         {centers.length === 0 && (
           <div className="mt-4">
-            <CreateCenterButton
-              onCreated={(c) => {
-                setCenters((prev) => [...prev, { id: c.id, nombre: c.nombre }])
-                setCenterId(c.id)
-              }}
-            />
+            <CreateCenterButton onCreated={(c) => setActiveCenterId(c.id)} />
           </div>
         )}
       </div>
@@ -100,7 +91,8 @@ export function EquipoPage() {
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
-      {/* Encabezado + selector de centro */}
+      {/* Encabezado + selector de centro (espejo del selector del Topbar; útil
+          en móvil, donde el del Topbar se oculta). */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-white">Equipo del centro</h1>
@@ -108,12 +100,12 @@ export function EquipoPage() {
         </div>
         {centers.length > 1 && (
           <select
-            value={centerId}
-            onChange={(e) => setCenterId(Number(e.target.value))}
+            value={activeCenterId}
+            onChange={(e) => setActiveCenterId(Number(e.target.value))}
             className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
           >
             {centers.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.center_id} value={c.center_id}>{c.center_nombre}</option>
             ))}
           </select>
         )}
@@ -125,13 +117,16 @@ export function EquipoPage() {
         <TabBtn active={tab === 'staff'} onClick={() => setTab('staff')} label="Staff" />
       </div>
 
-      {tab === 'atletas' ? <AtletasTab centerId={centerId} /> : <StaffTab centerId={centerId} />}
+      {tab === 'atletas' ? <AtletasTab centerId={activeCenterId} /> : <StaffTab centerId={activeCenterId} />}
     </div>
   )
 }
 
 // ── Pestaña ATLETAS ──────────────────────────────────────────────────────────
 function AtletasTab({ centerId }: { centerId: number }) {
+  // Refresca la plantilla unificada al alta/baja para que los módulos (Plantilla,
+  // Rendimiento, Test…) reflejen el cambio sin recargar.
+  const { reload } = useSquad()
   const [list, setList] = useState<CenterAthlete[] | null>(null)
   const [open, setOpen] = useState(false)
 
@@ -145,6 +140,7 @@ function AtletasTab({ centerId }: { centerId: number }) {
     try {
       await deleteCenterAthlete(centerId, a.id)
       setList((prev) => (prev ?? []).filter((x) => x.id !== a.id))
+      reload()
     } catch {
       /* noop: el listado se mantiene */
     }
@@ -183,6 +179,12 @@ function AtletasTab({ centerId }: { centerId: number }) {
                   {[a.posicion, a.grupo].filter(Boolean).join(' · ') || a.email}
                 </p>
               </div>
+              {!a.cuenta_activa && (
+                <span className="hidden shrink-0 rounded-full bg-perf-warn/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-perf-warn sm:inline">
+                  Invitación pendiente
+                </span>
+              )}
+              {!a.cuenta_activa && <InviteButton email={a.email} />}
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${ESTADO_STYLE[a.estado]}`}>
                 {a.estado}
               </span>
@@ -202,7 +204,10 @@ function AtletasTab({ centerId }: { centerId: number }) {
       {open && (
         <AtletaModal
           onClose={() => setOpen(false)}
-          onCreated={(a) => setList((prev) => [a, ...(prev ?? [])])}
+          onCreated={(a) => {
+            setList((prev) => [a, ...(prev ?? [])])
+            reload()
+          }}
           centerId={centerId}
         />
       )}
@@ -395,6 +400,31 @@ function StaffModal({
 }
 
 // ── Piezas de UI ─────────────────────────────────────────────────────────────
+// Copia al portapapeles una invitación lista para enviarle al atleta (no hay
+// envío de email automático todavía; el director la comparte por su canal).
+function InviteButton({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(inviteText(email))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      /* sin permiso de portapapeles: no hacemos nada */
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="shrink-0 rounded-lg border border-perf-border px-2.5 py-1 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white"
+      title="Copiar invitación para el atleta"
+    >
+      {copied ? 'Copiado ✓' : 'Invitar'}
+    </button>
+  )
+}
+
 function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button

@@ -6,7 +6,7 @@ import { api } from './client'
 import type {
   CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
-  TacticalPlay, Escena,
+  TacticalPlay, Escena, WellnessRecord,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -237,6 +237,30 @@ export async function updatePlay(
 
 export async function deletePlay(centerId: number, playId: number): Promise<void> {
   await api.delete(`${simBase(centerId)}/${playId}/`)
+}
+
+// ── Módulo PSICOLÓGICO: check-ins de bienestar por atleta (API real) ─────────
+// `athlete` = id de USUARIO real. El servidor calcula y persiste el índice.
+export async function listWellness(centerId: number, athleteId?: number): Promise<WellnessRecord[]> {
+  const res = await api.get<WellnessRecord[]>(`/performance/centers/${centerId}/psicologico/wellness/`, {
+    params: athleteId != null ? { athlete: athleteId } : undefined,
+  })
+  return res.data
+}
+
+export type WellnessPayload = {
+  athlete: number
+  fecha: string
+  sueno: number
+  fatiga: number
+  estres: number
+  dolor_muscular: number
+  animo: number
+  notas?: string
+}
+export async function createWellness(centerId: number, payload: WellnessPayload): Promise<WellnessRecord> {
+  const res = await api.post<WellnessRecord>(`/performance/centers/${centerId}/psicologico/wellness/`, payload)
+  return res.data
 }
 
 // ── Módulo PSICOLÓGICO: índice de bienestar (cálculo en servidor) ─────────────

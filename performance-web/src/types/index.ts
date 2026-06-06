@@ -69,6 +69,25 @@ export interface CenterAthlete {
   grupo: string
   estado: 'activo' | 'lesionado' | 'baja'
   foto: string // data URL (base64) o '' — ver CenterAthlete.foto en el backend
+  cuenta_activa: boolean // cuenta reclamada (puede iniciar sesión) vs invitación pendiente
+  created_at: string
+}
+
+// Check-in de bienestar (performance.WellnessCheckin). `athlete` = id de USUARIO
+// (no el del vínculo CenterAthlete). El índice y el estado los calcula el servidor.
+export interface WellnessRecord {
+  id: number
+  center: number
+  athlete: number
+  fecha: string // YYYY-MM-DD
+  sueno: number
+  fatiga: number
+  estres: number
+  dolor_muscular: number
+  animo: number
+  indice_bienestar: number
+  estado: 'ok' | 'duda' | 'alerta'
+  notas: string
   created_at: string
 }
 

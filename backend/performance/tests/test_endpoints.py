@@ -220,6 +220,23 @@ class AthleteEndpointTests(_Base):
         self.assertEqual(res.status_code, 204)
         self.assertFalse(CenterAthlete.objects.filter(center=self.center, athlete=self.athlete).exists())
 
+    def test_cuenta_activa_segun_password(self):
+        # El atleta base tiene contraseña usable → cuenta activa.
+        res = self.client.get(f'/api/performance/centers/{self.center.id}/athletes/')
+        self.assertEqual(res.status_code, 200)
+        base = next(a for a in res.json() if a['id'] == self.link_id())
+        self.assertTrue(base['cuenta_activa'])
+
+        # Atleta dado de alta sin contraseña usable (cuenta de consumo por reclamar)
+        # → invitación pendiente.
+        pend = User.objects.create_user(
+            username='pend@x.com', email='pend@x.com', role='athlete', password=None,
+        )
+        CenterAthlete.objects.create(center=self.center, athlete=pend, registrado_por=self.director)
+        res = self.client.get(f'/api/performance/centers/{self.center.id}/athletes/')
+        fila = next(a for a in res.json() if a['athlete'] == pend.id)
+        self.assertFalse(fila['cuenta_activa'])
+
 
 class SimuladorEndpointTests(_Base):
     """Pizarra táctica: crear/listar/editar/borrar jugadas y validación de que

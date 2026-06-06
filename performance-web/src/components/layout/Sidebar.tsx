@@ -8,6 +8,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Icon, type IconName } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/auth/useAuth'
+import { useActiveCenter } from '@/centers/useActiveCenter'
+import type { ModuleId } from '@/types'
 
 const LOGO = '/Logo-Zyfit-Blanco.png'
 
@@ -16,6 +18,10 @@ interface NavItem {
   label: string
   icon: IconName
   to?: string // si no hay ruta aún, el ítem es visual (fase de diseño)
+  // Si el ítem es uno de los 5 módulos, su id de gating (puede ocultarse según
+  // la membresía del usuario en el centro activo).
+  moduleId?: ModuleId
+  soon?: boolean // destino del roadmap aún no construido → se marca "Pronto"
 }
 
 // Navegación del portal. Dashboard ya está cableado; el resto son destinos
@@ -24,15 +30,15 @@ const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
-  { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria' },
-  { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento' },
-  { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones' },
-  { id: 'tests', label: 'Tests', icon: 'tests', to: '/tests' },
-  { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion' },
-  { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico' },
+  { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
+  { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
+  { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones', moduleId: 'lesiones' },
+  { id: 'tests', label: 'Tests', icon: 'tests', to: '/tests', moduleId: 'test' },
+  { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
+  { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
   { id: 'simulador', label: 'Simulador', icon: 'simulador', to: '/simulador' },
-  { id: 'reportes', label: 'Reportes', icon: 'reportes' },
-  { id: 'ajustes', label: 'Ajustes', icon: 'ajustes' },
+  { id: 'reportes', label: 'Reportes', icon: 'reportes', soon: true },
+  { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -50,7 +56,12 @@ export function Sidebar({
   onNavigate: () => void
 }) {
   const { user } = useAuth()
+  const { canSeeModule } = useActiveCenter()
   const { pathname } = useLocation()
+
+  // Gating fino: oculta los módulos que la membresía del usuario no incluye en
+  // el centro activo (admin/director ven todos).
+  const nav = NAV.filter((item) => !item.moduleId || canSeeModule(item.moduleId))
 
   return (
     <aside
@@ -72,7 +83,7 @@ export function Sidebar({
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
         <ul className="flex flex-col gap-1">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = item.to ? pathname.startsWith(item.to) : false
             return (
               <li key={item.id}>
@@ -119,18 +130,25 @@ function NavItemRow({
 }) {
   const base =
     'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors md:justify-center md:px-0 lg:justify-start lg:px-3'
-  const state = active
-    ? 'bg-accent/10 text-white'
-    : 'text-white/55 hover:bg-white/[0.04] hover:text-white/90'
+  const state = item.soon
+    ? 'cursor-default text-white/30'
+    : active
+      ? 'bg-accent/10 text-white'
+      : 'text-white/55 hover:bg-white/[0.04] hover:text-white/90'
 
   const inner = (
     <>
       {/* Acento azul a la izquierda del ítem activo */}
-      {active && (
+      {active && !item.soon && (
         <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
       )}
-      <Icon name={item.icon} size={19} className={active ? 'text-accent' : ''} />
+      <Icon name={item.icon} size={19} className={active && !item.soon ? 'text-accent' : ''} />
       <span className="md:hidden lg:inline">{item.label}</span>
+      {item.soon && (
+        <span className="ml-auto hidden rounded-full border border-perf-border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/35 lg:inline">
+          Pronto
+        </span>
+      )}
     </>
   )
 
@@ -142,7 +160,12 @@ function NavItemRow({
     )
   }
   return (
-    <button type="button" className={`${base} ${state} w-full`} title={item.label}>
+    <button
+      type="button"
+      disabled={item.soon}
+      className={`${base} ${state} w-full`}
+      title={item.soon ? 'Próximamente' : item.label}
+    >
       {inner}
     </button>
   )

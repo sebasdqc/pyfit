@@ -5,14 +5,16 @@
 // atleta usa la plantilla de muestra y el historial se persiste en localStorage
 // (mismo patrón que el resto del panel) hasta que el backend exponga atletas reales.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
+import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SEM } from '@/lib/tone'
 import { ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
-import { loadSquad } from '@/lib/squadStore'
+import { useSquad } from '@/centers/useSquad'
 import { fetchTestCatalog, computeTest } from '@/api/performance'
 import { loadTests, saveTest, deleteTest, type SavedTest } from '@/lib/testStore'
 import type { TestCatalogItem, TestFamilia, TestSchemaField } from '@/types'
@@ -71,14 +73,20 @@ function buildInputs(schema: TestSchemaField[], values: Values): Record<string, 
 }
 
 export function TestPage() {
-  const squad = useMemo(() => loadSquad(), [])
+  const { athletes: squad, loading: squadLoading, isRealRoster } = useSquad()
   const [catalog, setCatalog] = useState<TestCatalogItem[]>([])
   const [loadErr, setLoadErr] = useState('')
   const [loading, setLoading] = useState(true)
 
   const [familia, setFamilia] = useState<'todos' | TestFamilia>('todos')
   const [slug, setSlug] = useState<string | null>(null)
-  const [athleteId, setAthleteId] = useState<string>(squad[0]?.id ?? '')
+  const [athleteId, setAthleteId] = useState<string>('')
+
+  // Mantiene seleccionado un atleta válido cuando llega/cambia la plantilla.
+  useEffect(() => {
+    if (!squad.length) return
+    setAthleteId((prev) => (squad.some((a) => a.id === prev) ? prev : squad[0].id))
+  }, [squad])
   const [fecha, setFecha] = useState<string>(today())
   const [values, setValues] = useState<Values>({})
   const [computed, setComputed] = useState<Record<string, unknown> | null>(null)
@@ -162,7 +170,10 @@ export function TestPage() {
       {/* Encabezado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Tests</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight text-white">Tests</h1>
+            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
+          </div>
           <p className="text-xs text-white/45">
             Evaluación física, técnica y táctica · el cálculo se realiza en el servidor
           </p>
@@ -229,11 +240,27 @@ export function TestPage() {
               {/* Atleta */}
               <div>
                 <FieldLabel>Atleta</FieldLabel>
-                <div className="flex flex-wrap gap-2">
-                  {squad.map((a) => (
-                    <AthleteChip key={a.id} a={a} sel={a.id === athleteId} onClick={() => setAthleteId(a.id)} />
-                  ))}
-                </div>
+                {squad.length === 0 ? (
+                  <p className="text-sm text-white/40">
+                    {squadLoading ? (
+                      'Cargando atletas…'
+                    ) : (
+                      <>
+                        Aún no hay atletas.{' '}
+                        <Link to="/equipo" className="text-accentLight hover:text-accent">
+                          Regístralos en Equipo
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {squad.map((a) => (
+                      <AthleteChip key={a.id} a={a} sel={a.id === athleteId} onClick={() => setAthleteId(a.id)} />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Fecha */}

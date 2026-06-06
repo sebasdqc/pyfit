@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { BodyMap } from '@/components/BodyMap'
+import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SEM, type Tone } from '@/lib/tone'
 import { loadSquad } from '@/lib/squadStore'
 import {
@@ -45,9 +46,14 @@ export function LesionesPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-white">Lesiones</h1>
-        <p className="text-xs text-white/45">{activas.length} partes activos · seguimiento y vuelta a competición</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight text-white">Lesiones</h1>
+            <DemoBadge variant="demo" />
+          </div>
+          <p className="text-xs text-white/45">{activas.length} partes activos · seguimiento y vuelta a competición</p>
+        </div>
       </div>
 
       {/* KPIs */}

@@ -5,7 +5,7 @@
 // de atleta usa la plantilla de muestra y el historial se guarda en localStorage
 // (como el módulo Test) hasta que el backend exponga atletas reales.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -15,8 +15,15 @@ import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { SEM, type Tone } from '@/lib/tone'
-import { loadSquad } from '@/lib/squadStore'
-import { computeWellness, fetchInstruments, scoreInstrument, type PsychInstrument } from '@/api/performance'
+import { DemoBadge } from '@/components/ui/DemoBadge'
+import { SquadState } from '@/components/ui/SquadState'
+import { useSquad } from '@/centers/useSquad'
+import type { Athlete } from '@/lib/mockSquad'
+import type { WellnessRecord } from '@/types'
+import {
+  computeWellness, fetchInstruments, scoreInstrument, listWellness, createWellness,
+  type PsychInstrument,
+} from '@/api/performance'
 import {
   loadWellness, saveWellness, deleteWellness,
   type SavedWellness, type WellnessEstado,
@@ -49,17 +56,42 @@ const tip = {
 }
 const axisTick = { fontSize: 11, fill: 'rgba(255,255,255,0.4)' }
 
-type Squad = ReturnType<typeof loadSquad>
+type Squad = Athlete[]
+
+// Check-in del servidor → forma de la UI. `athlete` (id de usuario) se traduce al
+// id del vínculo (athleteId) con el que trabaja toda la UI; descarta los que no
+// estén en la plantilla actual.
+function fromServerWellness(r: WellnessRecord, userToLink: Map<number, string>): SavedWellness | null {
+  const athleteId = userToLink.get(r.athlete)
+  if (!athleteId) return null
+  return {
+    id: String(r.id),
+    athleteId,
+    fecha: r.fecha,
+    sueno: r.sueno,
+    fatiga: r.fatiga,
+    estres: r.estres,
+    dolor_muscular: r.dolor_muscular,
+    animo: r.animo,
+    indice_bienestar: r.indice_bienestar,
+    estado: r.estado,
+    guardadoEn: r.created_at,
+  }
+}
 
 export function PsicologicoPage() {
-  const squad = useMemo(() => loadSquad(), [])
+  const { athletes: squad, loading, error, isRealRoster, centerId } = useSquad()
   const [section, setSection] = useState<'bienestar' | 'cuestionarios'>('bienestar')
+  const noContent = loading || error || (isRealRoster && squad.length === 0)
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Psicológico</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight text-white">Psicológico</h1>
+            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
+          </div>
           <p className="text-xs text-white/45">
             {section === 'bienestar'
               ? 'Monitoreo de bienestar · índice calculado en el servidor'
@@ -82,16 +114,54 @@ export function PsicologicoPage() {
         </div>
       </div>
 
-      {section === 'bienestar' ? <BienestarSection squad={squad} /> : <CuestionariosSection squad={squad} />}
+      {noContent ? (
+        <SquadState loading={loading} error={error} empty={isRealRoster && squad.length === 0} />
+      ) : section === 'bienestar' ? (
+        <BienestarSection squad={squad} isRealRoster={isRealRoster} centerId={centerId} />
+      ) : (
+        <CuestionariosSection squad={squad} />
+      )}
     </div>
   )
 }
 
 // ── Sección BIENESTAR (Fase A) ───────────────────────────────────────────────
-function BienestarSection({ squad }: { squad: Squad }) {
-  const [all, setAll] = useState<SavedWellness[]>(() => loadWellness())
+function BienestarSection({
+  squad, isRealRoster, centerId,
+}: {
+  squad: Squad
+  isRealRoster: boolean
+  centerId: number | null
+}) {
+  const [all, setAll] = useState<SavedWellness[]>(() => (isRealRoster ? [] : loadWellness()))
   const [tab, setTab] = useState<'equipo' | 'atleta'>('equipo')
   const [sel, setSel] = useState<string>(squad[0]?.id ?? '')
+
+  // Roster real → check-ins del servidor (compartidos entre dispositivos).
+  // Demo (mock) → localStorage, como antes.
+  useEffect(() => {
+    if (!isRealRoster || centerId == null) return
+    let alive = true
+    const userToLink = new Map<number, string>()
+    for (const a of squad) if (a.userId != null) userToLink.set(a.userId, a.id)
+    listWellness(centerId)
+      .then((recs) => {
+        if (!alive) return
+        setAll(recs.map((r) => fromServerWellness(r, userToLink)).filter(Boolean) as SavedWellness[])
+      })
+      .catch(() => { if (alive) setAll([]) })
+    return () => { alive = false }
+  }, [isRealRoster, centerId, squad])
+
+  // Upsert en memoria (un check-in por atleta y fecha) tras guardar.
+  const upsert = useCallback((rec: SavedWellness) => {
+    setAll((prev) => [rec, ...prev.filter((w) => !(w.athleteId === rec.athleteId && w.fecha === rec.fecha))])
+  }, [])
+
+  // El borrado solo aplica a la demo local (el servidor no expone DELETE de wellness).
+  const removeLocal = useCallback((id: string) => {
+    setAll(deleteWellness(id))
+  }, [])
 
   const latestByAthlete = useMemo(() => {
     const map = new Map<string, SavedWellness>()
@@ -122,7 +192,16 @@ function BienestarSection({ squad }: { squad: Squad }) {
       {tab === 'equipo' ? (
         <TeamView squad={squad} latest={latestByAthlete} all={all} onGoAthlete={(id) => { setSel(id); setTab('atleta') }} />
       ) : (
-        <AthleteView squad={squad} sel={sel} onSelect={setSel} all={all} setAll={setAll} />
+        <AthleteView
+          squad={squad}
+          sel={sel}
+          onSelect={setSel}
+          all={all}
+          isRealRoster={isRealRoster}
+          centerId={centerId}
+          onUpsert={upsert}
+          onDelete={removeLocal}
+        />
       )}
     </>
   )
@@ -132,7 +211,7 @@ function BienestarSection({ squad }: { squad: Squad }) {
 function TeamView({
   squad, latest, all, onGoAthlete,
 }: {
-  squad: ReturnType<typeof loadSquad>
+  squad: Squad
   latest: Map<string, SavedWellness>
   all: SavedWellness[]
   onGoAthlete: (id: string) => void
@@ -220,13 +299,16 @@ function TeamView({
 
 // ── Vista por atleta ─────────────────────────────────────────────────────────
 function AthleteView({
-  squad, sel, onSelect, all, setAll,
+  squad, sel, onSelect, all, isRealRoster, centerId, onUpsert, onDelete,
 }: {
-  squad: ReturnType<typeof loadSquad>
+  squad: Squad
   sel: string
   onSelect: (id: string) => void
   all: SavedWellness[]
-  setAll: (w: SavedWellness[]) => void
+  isRealRoster: boolean
+  centerId: number | null
+  onUpsert: (rec: SavedWellness) => void
+  onDelete: (id: string) => void
 }) {
   const atleta = squad.find((a) => a.id === sel) ?? squad[0]
   const serie = useMemo(
@@ -256,7 +338,13 @@ function AthleteView({
       </Panel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <CheckinForm athleteId={sel} onSaved={setAll} />
+        <CheckinForm
+          athleteId={sel}
+          athleteUserId={atleta?.userId}
+          isRealRoster={isRealRoster}
+          centerId={centerId}
+          onSaved={onUpsert}
+        />
 
         <Panel title="Tendencia de bienestar" subtitle={serie.length ? `${serie.length} check-in(s)` : 'Sin datos aún'}>
           {chart.length > 0 ? (
@@ -287,7 +375,9 @@ function AthleteView({
                 <span className="flex-1 text-xs text-white/45">
                   Sueño {w.sueno} · Energía {w.fatiga} · Calma {w.estres} · Dolor {w.dolor_muscular} · Ánimo {w.animo}
                 </span>
-                <button type="button" onClick={() => setAll(deleteWellness(w.id))} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
+                {!isRealRoster && (
+                  <button type="button" onClick={() => onDelete(w.id)} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
+                )}
               </div>
             ))}
           </div>
@@ -298,29 +388,55 @@ function AthleteView({
 }
 
 // ── Formulario de check-in (5 sliders + fecha) ───────────────────────────────
-function CheckinForm({ athleteId, onSaved }: { athleteId: string; onSaved: (w: SavedWellness[]) => void }) {
+function CheckinForm({
+  athleteId, athleteUserId, isRealRoster, centerId, onSaved,
+}: {
+  athleteId: string
+  athleteUserId?: number
+  isRealRoster: boolean
+  centerId: number | null
+  onSaved: (rec: SavedWellness) => void
+}) {
   const [vals, setVals] = useState<Record<string, number>>({ sueno: 5, fatiga: 5, estres: 5, dolor_muscular: 5, animo: 5 })
   const [fecha, setFecha] = useState(today())
   const [busy, setBusy] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [error, setError] = useState('')
 
   const preview = clientIndex(vals)
   const previewEstado = clientEstado(preview)
 
   async function onSave() {
-    setBusy(true); setSavedMsg(false)
+    setBusy(true); setSavedMsg(false); setError('')
     const values = {
       sueno: vals.sueno, fatiga: vals.fatiga, estres: vals.estres,
       dolor_muscular: vals.dolor_muscular, animo: vals.animo,
     }
-    let indice = preview
-    let estado: WellnessEstado = previewEstado
     try {
-      const r = await computeWellness(values)   // servidor = fuente autoritativa
-      indice = r.indice_bienestar; estado = r.estado
-    } catch { /* sin red: se usa el cálculo cliente (misma fórmula) */ }
-    onSaved(saveWellness({ athleteId, fecha, ...values, indice_bienestar: indice, estado }))
-    setBusy(false); setSavedMsg(true)
+      if (isRealRoster && centerId != null && athleteUserId != null) {
+        // Persistencia REAL en el servidor (compartida, alimenta el panel).
+        const r = await createWellness(centerId, { athlete: athleteUserId, fecha, ...values })
+        onSaved({
+          id: String(r.id), athleteId, fecha, ...values,
+          indice_bienestar: r.indice_bienestar, estado: r.estado, guardadoEn: r.created_at,
+        })
+      } else {
+        // Demo: índice confirmado por el servidor (misma fórmula), guardado local.
+        let indice = preview
+        let estado: WellnessEstado = previewEstado
+        try {
+          const r = await computeWellness(values)
+          indice = r.indice_bienestar; estado = r.estado
+        } catch { /* sin red: cálculo cliente */ }
+        const list = saveWellness({ athleteId, fecha, ...values, indice_bienestar: indice, estado })
+        onSaved(list[0])
+      }
+      setSavedMsg(true)
+    } catch {
+      setError('No se pudo guardar el check-in. Revisa tu conexión.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -360,6 +476,7 @@ function CheckinForm({ athleteId, onSaved }: { athleteId: string; onSaved: (w: S
             {busy ? 'Guardando…' : 'Guardar check-in'}
           </button>
           {savedMsg && <span className="text-xs text-perf-ok">✓ Guardado (índice confirmado por el servidor)</span>}
+          {error && <span className="text-xs text-perf-danger">{error}</span>}
         </div>
       </div>
     </Panel>

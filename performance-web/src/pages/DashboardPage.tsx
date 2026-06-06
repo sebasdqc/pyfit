@@ -4,10 +4,12 @@
 // + ACWR · accesos a módulos). Único acento: el azul. Estados: verde/ámbar/rojo.
 // Datos de muestra (esta fase aún no conecta a la API).
 
+import { useNavigate } from 'react-router-dom'
 import { Icon, type IconName } from '@/components/Icon'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
-import { useAuth } from '@/auth/useAuth'
+import { DemoBadge } from '@/components/ui/DemoBadge'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 // ── Paleta semántica → clases ──────────────────────────────────────────────
 type Tone = 'accent' | 'ok' | 'warn' | 'danger'
@@ -45,6 +47,12 @@ const MODULO_BADGE: Record<Modulo, { label: string; tone: Tone }> = {
   acwr: { label: 'ACWR', tone: 'warn' },
   psico: { label: 'Psicológico', tone: 'accent' },
 }
+// A qué módulo lleva cada alerta al hacer clic.
+const MODULO_ROUTE: Record<Modulo, string> = {
+  lesion: '/lesiones',
+  acwr: '/rendimiento',
+  psico: '/psicologico',
+}
 const ALERTAS: { n: string; desc: string; mod: Modulo }[] = [
   { n: 'Luis Fernández', desc: 'Molestia isquiotibial — 3.º día de baja', mod: 'lesion' },
   { n: 'Javier Pérez', desc: 'ACWR 1.62 — carga aguda elevada', mod: 'acwr' },
@@ -78,13 +86,17 @@ const METRICS: Metric[] = [
 
 // ── Página ─────────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const { user } = useAuth()
-  const centro = user?.centros?.[0]?.center_nombre ?? 'Tu centro deportivo'
+  const { activeCenter } = useActiveCenter()
+  const navigate = useNavigate()
+  const centro = activeCenter?.center_nombre ?? 'Tu centro deportivo'
   const counts = { ok: SQUAD.filter((p) => p.s === 'ok').length, duda: SQUAD.filter((p) => p.s === 'duda').length, baja: SQUAD.filter((p) => p.s === 'baja').length }
 
   return (
     <div className="mx-auto flex max-w-[1500px] flex-col gap-4">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">{centro}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">{centro}</p>
+        <DemoBadge variant="demo" />
+      </div>
 
       {/* Métricas principales */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -145,13 +157,19 @@ export function DashboardPage() {
         <Panel title="Alertas prioritarias" subtitle={`${ALERTAS.length} requieren atención`}>
           <ul className="flex flex-col divide-y divide-perf-border">
             {ALERTAS.map((a) => (
-              <li key={a.n} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <Avatar name={a.n} size={38} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white/90">{a.n}</p>
-                  <p className="truncate text-xs text-white/45">{a.desc}</p>
-                </div>
-                <Badge tone={MODULO_BADGE[a.mod].tone} label={MODULO_BADGE[a.mod].label} />
+              <li key={a.n} className="first:pt-0 last:pb-0">
+                <button
+                  type="button"
+                  onClick={() => navigate(MODULO_ROUTE[a.mod])}
+                  className="flex w-full items-center gap-3 py-3 text-left transition-opacity hover:opacity-80"
+                >
+                  <Avatar name={a.n} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white/90">{a.n}</p>
+                    <p className="truncate text-xs text-white/45">{a.desc}</p>
+                  </div>
+                  <Badge tone={MODULO_BADGE[a.mod].tone} label={MODULO_BADGE[a.mod].label} />
+                </button>
               </li>
             ))}
           </ul>
@@ -184,9 +202,9 @@ export function DashboardPage() {
 
       {/* Fila 3 — accesos directos a módulos */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ModuleCard icon="rendimiento" title="Rendimiento" metric="612 UA" detail="Carga media · +4% vs. ant." />
-        <ModuleCard icon="lesiones" title="Lesiones" metric="3 activas" detail="2 jugadores en duda" />
-        <ModuleCard icon="tests" title="Tests" metric="34.2 cm" detail="CMJ medio · próximo 12 jun" />
+        <ModuleCard icon="rendimiento" title="Rendimiento" metric="612 UA" detail="Carga media · +4% vs. ant." onClick={() => navigate('/rendimiento')} />
+        <ModuleCard icon="lesiones" title="Lesiones" metric="3 activas" detail="2 jugadores en duda" onClick={() => navigate('/lesiones')} />
+        <ModuleCard icon="tests" title="Tests" metric="34.2 cm" detail="CMJ medio · próximo 12 jun" onClick={() => navigate('/tests')} />
       </div>
     </div>
   )
@@ -218,10 +236,11 @@ function MetricCard({ m, className = '' }: { m: Metric; className?: string }) {
   )
 }
 
-function ModuleCard({ icon, title, metric, detail }: { icon: IconName; title: string; metric: string; detail: string }) {
+function ModuleCard({ icon, title, metric, detail, onClick }: { icon: IconName; title: string; metric: string; detail: string; onClick?: () => void }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="group flex items-center gap-4 rounded-2xl border border-perf-border bg-perf-surface p-5 text-left transition-colors hover:bg-perf-surface2"
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">

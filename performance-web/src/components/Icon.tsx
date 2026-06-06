@@ -30,8 +30,10 @@ export type IconName =
   | 'edit'
   | 'camera'
   | 'simulador'
+  | 'check'
 
 const PATHS: Record<IconName, ReactNode> = {
+  check: <path d="m5 12 5 5 9-11" />,
   simulador: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />

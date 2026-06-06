@@ -3,7 +3,7 @@
 // "Comparar" permite enfrentar a 2 jugadores (radar superpuesto + comparación
 // métrica a métrica). Datos de muestra (esta fase aún no conecta a la API).
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -15,18 +15,19 @@ import {
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/Icon'
+import { DemoBadge } from '@/components/ui/DemoBadge'
+import { SquadState } from '@/components/ui/SquadState'
 import { SEM, acwrTone, type Tone } from '@/lib/tone'
 import {
   ESTADO_LABEL,
   ESTADO_TONE,
   RADAR_AXES,
-  SQUAD,
   type Athlete,
 } from '@/lib/mockSquad'
 import { useAuth } from '@/auth/useAuth'
+import { useSquad } from '@/centers/useSquad'
 import { AthleteEditModal } from '@/components/AthleteEditModal'
-import { canEditRole, updateAthlete } from '@/lib/squadEdit'
-import { loadSquad, saveSquad } from '@/lib/squadStore'
+import { canEditRole } from '@/lib/squadEdit'
 
 const COLOR_A = '#4f8cff' // azul (atleta A / único)
 const COLOR_B = '#ffaa32' // ámbar (atleta B en comparativa)
@@ -38,11 +39,26 @@ export function PlantillaPage() {
   // los flags (asegura que cualquier cuenta con acceso real al panel pueda editar).
   const canEdit = canEditRole(user?.role) || !!user?.is_admin || !!user?.is_director
 
-  const [squad, setSquad] = useState<Athlete[]>(() => loadSquad())
+  const { athletes: squad, loading, error, isRealRoster, applyEdit } = useSquad()
   const [compare, setCompare] = useState(false)
-  const [selected, setSelected] = useState<string[]>([SQUAD[0].id])
+  const [selected, setSelected] = useState<string[]>([])
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Selecciona el primer atleta cuando llega la plantilla (o si la selección
+  // anterior quedó obsoleta al cambiar de centro).
+  useEffect(() => {
+    if (squad.length === 0) {
+      setSelected((prev) => (prev.length ? [] : prev))
+      return
+    }
+    setSelected((prev) => {
+      const valid = prev.filter((id) => squad.some((a) => a.id === id))
+      return valid.length ? valid : [squad[0].id]
+    })
+  }, [squad])
+
+  const noContent = loading || error || (isRealRoster && squad.length === 0)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -72,24 +88,37 @@ export function PlantillaPage() {
       {/* Encabezado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Plantilla</h1>
-          <p className="text-xs text-white/45">{squad.length} atletas en el centro</p>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight text-white">Plantilla</h1>
+            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
+          </div>
+          <p className="text-xs text-white/45">
+            {noContent ? 'Atletas del centro' : `${squad.length} atletas en el centro`}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={toggleCompare}
-          className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
-            compare
-              ? 'border-accent bg-accent/10 text-accent'
-              : 'border-perf-border bg-perf-surface text-white/80 hover:bg-perf-surface2 hover:text-white'
-          }`}
-        >
-          <Icon name="plantilla" size={16} />
-          {compare ? 'Comparando' : 'Comparar'}
-        </button>
+        {!noContent && (
+          <button
+            type="button"
+            onClick={toggleCompare}
+            className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
+              compare
+                ? 'border-accent bg-accent/10 text-accent'
+                : 'border-perf-border bg-perf-surface text-white/80 hover:bg-perf-surface2 hover:text-white'
+            }`}
+          >
+            <Icon name="plantilla" size={16} />
+            {compare ? 'Comparando' : 'Comparar'}
+          </button>
+        )}
       </div>
 
-      {/* Selector por chips */}
+      {noContent && (
+        <SquadState loading={loading} error={error} empty={isRealRoster && squad.length === 0} />
+      )}
+
+      {/* Selector por chips + detalle */}
+      {!noContent && (
+        <>
       <Panel
         title={compare ? 'Elige 2 atletas para comparar' : 'Elige un atleta'}
         subtitle={
@@ -152,18 +181,19 @@ export function PlantillaPage() {
       ) : (
         <EmptyHint text="Elige un atleta en los chips de arriba para ver su ficha." />
       )}
+        </>
+      )}
 
       {editingAthlete && (
         <AthleteEditModal
           athlete={editingAthlete}
           onClose={() => setEditingId(null)}
           onSave={(patch) => {
+            // Roster real: los campos reales (dorsal/posición/grupo/estado/foto)
+            // se guardan en la API; los sintéticos, en override local. Demo mock:
+            // todo en localStorage. Lo resuelve applyEdit según el origen.
             const meta = { editadoPor: user?.nombre ?? 'Usuario', editadoEn: new Date().toISOString() }
-            setSquad((prev) => {
-              const next = updateAthlete(prev, editingAthlete.id, { ...patch, ...meta })
-              saveSquad(next) // persiste en localStorage
-              return next
-            })
+            applyEdit(editingAthlete.id, patch, meta)
             setEditingId(null)
           }}
         />

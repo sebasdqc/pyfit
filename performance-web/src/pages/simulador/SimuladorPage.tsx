@@ -5,8 +5,8 @@
 // en el backend (API real). Hoy es estático; el modelo ya prevé animación
 // (escena = lista de frames), ver performance.TacticalPlay.
 //
-// Nota: los jugadores salen de la plantilla MOCK (loadSquad) como el resto del
-// panel en esta fase; al haber atletas reales, basta cambiar la fuente del squad.
+// Nota: los jugadores salen de la plantilla unificada (useSquad): atletas reales
+// del centro activo cuando existen, o el squad de demostración si no hay centro.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Panel } from '@/components/ui/Panel'
@@ -14,7 +14,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/auth/useAuth'
-import { loadSquad } from '@/lib/squadStore'
+import { useSquad } from '@/centers/useSquad'
 import type { Athlete } from '@/lib/mockSquad'
 import type { Escena, Ficha, Pt, TacticalPlay, Trazo, TrazoTipo } from '@/types'
 import { listCenters } from '@/api/performance'
@@ -29,7 +29,7 @@ const emptyScene = (): Scene => ({ fichas: [], trazos: [] })
 
 export function SimuladorPage() {
   const { user } = useAuth()
-  const squad = useMemo(() => loadSquad(), [])
+  const { athletes: squad } = useSquad()
 
   // Resolución del centro (igual que Planificación).
   const [centers, setCenters] = useState<{ id: number; nombre: string }[]>(

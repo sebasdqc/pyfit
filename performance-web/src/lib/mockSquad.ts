@@ -23,7 +23,10 @@ export const RADAR_AXES: { key: RadarKey; label: string }[] = [
 ]
 
 export interface Athlete {
-  id: string
+  id: string // roster real: id del vínculo CenterAthlete (string); mock: slug
+  // id de USUARIO real del atleta (FK athlete). Solo presente en roster real;
+  // necesario para los endpoints que referencian al usuario (p. ej. wellness).
+  userId?: number
   nombre: string
   dorsal: number
   posicion: string

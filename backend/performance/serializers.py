@@ -56,17 +56,25 @@ class CenterMembershipSerializer(serializers.ModelSerializer):
 class CenterAthleteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='athlete.email', read_only=True)
     nombre = serializers.SerializerMethodField()
+    # ¿La cuenta del atleta está reclamada (puede iniciar sesión)? Los atletas se
+    # dan de alta sin contraseña usable (la reclaman en la app de consumo); este
+    # flag deja ver en el panel quién ya activó su cuenta y quién sigue pendiente.
+    cuenta_activa = serializers.SerializerMethodField()
 
     class Meta:
         model = CenterAthlete
         fields = [
-            'id', 'center', 'athlete', 'email', 'nombre', 'registrado_por',
+            'id', 'center', 'athlete', 'email', 'nombre', 'cuenta_activa', 'registrado_por',
             'dorsal', 'posicion', 'grupo', 'estado', 'foto', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'email', 'nombre', 'registrado_por']
+        read_only_fields = ['id', 'created_at', 'email', 'nombre', 'cuenta_activa', 'registrado_por']
 
     def get_nombre(self, obj):
         return _display_name(obj.athlete)
+
+    def get_cuenta_activa(self, obj):
+        u = obj.athlete
+        return bool(u and u.is_active and u.has_usable_password())
 
     # La foto llega como data URL (base64) ya reescalada en el cliente. Acotamos
     # tamaño y forma para no almacenar imágenes grandes en la BD (provisional
