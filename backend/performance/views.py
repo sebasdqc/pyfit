@@ -33,7 +33,7 @@ from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    Mesocycle, Microcycle, WellnessCheckin,
+    Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -43,6 +43,7 @@ from .serializers import (
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
     MesocycleSerializer, MicrocycleSerializer, WellnessCheckinSerializer,
+    TacticalPlaySerializer,
 )
 
 User = get_user_model()
@@ -582,3 +583,43 @@ def wellness_compute(request):
         return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
     idx = compute_index(vals)
     return Response({'indice_bienestar': idx, 'estado': estado(idx)})
+
+
+# ─── Simulador (pizarra táctica) ──────────────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def center_plays(request, pk):
+    """Lista / crea jugadas de la pizarra táctica del centro.
+
+    La escena llega con coordenadas normalizadas (0..1); el serializer las valida.
+    Cualquier usuario con acceso al panel y al centro puede crear jugadas (es una
+    herramienta de trabajo del cuerpo técnico, no un alta administrativa)."""
+    center = _get_center_or_404(request.user, pk)
+    if request.method == 'POST':
+        serializer = TacticalPlaySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(center=center, registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    qs = center.jugadas.select_related('registrado_por').all()
+    return Response(TacticalPlaySerializer(qs, many=True).data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def play_detail(request, pk, play_id):
+    """Consulta, actualiza o elimina una jugada del centro."""
+    center = _get_center_or_404(request.user, pk)
+    play = get_object_or_404(TacticalPlay, pk=play_id, center=center)
+    if request.method == 'GET':
+        return Response(TacticalPlaySerializer(play).data)
+    if request.method == 'DELETE':
+        play.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == 'PATCH'
+    serializer = TacticalPlaySerializer(play, data=request.data, partial=partial)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)

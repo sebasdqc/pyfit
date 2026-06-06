@@ -542,3 +542,69 @@ class WellnessCheckin(CenterRecord):
         from .wellness import ITEM_NAMES, compute_index
         self.indice_bienestar = compute_index({n: getattr(self, n) for n in ITEM_NAMES})
         super().save(*args, **kwargs)
+
+
+class TacticalPlay(models.Model):
+    """Jugada de la PIZARRA TÁCTICA (módulo Simulador).
+
+    Tablero de una cancha donde el cuerpo técnico coloca jugadores (de la
+    plantilla del centro), rivales y un balón, y dibuja supuestos de jugada con
+    distintos trazos (pase, conducción, movimiento sin balón, bloqueo).
+
+    REGLA CLAVE — coordenadas NORMALIZADAS: todo lo que se coloca o se dibuja se
+    guarda en valores relativos al ancho/alto del campo (x, y ∈ [0, 1]), NUNCA
+    en píxeles, para que la jugada se vea igual en cualquier dispositivo. El
+    serializer valida que así sea.
+
+    Pensado para crecer a ANIMACIÓN sin cambiar el esquema: la escena se guarda
+    como una lista ordenada de `frames` (keyframes). Hoy la UI produce un único
+    frame (estático); cuando se añadan animaciones, se guardan más frames y se
+    interpola entre ellos. Forma de `escena`:
+
+        {
+          "version": 1,
+          "frames": [
+            {
+              "fichas": [
+                {"id": "...", "tipo": "jugador"|"rival"|"balon",
+                 "ref": <id atleta|null>, "etiqueta": "10", "x": 0.5, "y": 0.6}
+              ],
+              "trazos": [
+                {"id": "...", "tipo": "pase"|"conduccion"|"mov_sin_balon"|"bloqueo",
+                 "puntos": [{"x": 0.5, "y": 0.6}, {"x": 0.7, "y": 0.4}]}
+              ]
+            }
+          ]
+        }
+    """
+
+    center = models.ForeignKey(
+        SportsCenter, on_delete=models.CASCADE, related_name='jugadas',
+    )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='jugadas_registradas',
+    )
+    nombre = models.CharField(max_length=140)
+    descripcion = models.TextField(blank=True)
+    formacion = models.CharField(
+        max_length=40, blank=True, help_text='Formación, p. ej. "4-3-3" (opcional).',
+    )
+    campo = models.CharField(
+        max_length=20, default='completo',
+        help_text='Vista de cancha: completo | medio (para futuros set pieces).',
+    )
+    escena = models.JSONField(
+        default=dict, blank=True,
+        help_text='Documento de la escena con coordenadas normalizadas (0..1). Ver docstring.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_tactical_plays'
+        ordering = ['-updated_at']
+        indexes = [models.Index(fields=['center', '-updated_at'])]
+
+    def __str__(self):
+        return f'{self.nombre} @ {self.center_id}'

@@ -33,6 +33,10 @@ urlpatterns = [
     path('centers/<int:pk>/psicologico/', views.module_psicologico),
     path('centers/<int:pk>/psicologico/wellness/', views.psicologico_wellness),
 
+    # Simulador — pizarra táctica (jugadas con coordenadas normalizadas)
+    path('centers/<int:pk>/simulador/', views.center_plays),
+    path('centers/<int:pk>/simulador/<int:play_id>/', views.play_detail),
+
     # Planificación — periodización (macrociclo → mesociclos → microciclos)
     path('centers/<int:pk>/planificacion/<int:plan_id>/', views.plan_detail),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/', views.plan_mesociclos),

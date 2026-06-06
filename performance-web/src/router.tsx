@@ -14,6 +14,7 @@ import { LesionesPage } from '@/pages/lesiones/LesionesPage'
 import { TestPage } from '@/pages/test/TestPage'
 import { PlanificacionPage } from '@/pages/planificacion/PlanificacionPage'
 import { PsicologicoPage } from '@/pages/psicologico/PsicologicoPage'
+import { SimuladorPage } from '@/pages/simulador/SimuladorPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           { path: 'tests', element: <TestPage /> },
           { path: 'planificacion', element: <PlanificacionPage /> },
           { path: 'psicologico', element: <PsicologicoPage /> },
+          { path: 'simulador', element: <SimuladorPage /> },
           { path: 'perfil', element: <ProfilePage /> },
           {
             path: 'centers/:centerId',
@@ -40,6 +42,7 @@ export const router = createBrowserRouter([
               { path: 'test', element: <TestPage /> },
               { path: 'planificacion', element: <PlanificacionPage /> },
               { path: 'psicologico', element: <PsicologicoPage /> },
+              { path: 'simulador', element: <SimuladorPage /> },
             ],
           },
         ],

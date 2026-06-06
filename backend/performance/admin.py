@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    TestDefinition, Mesocycle, Microcycle, WellnessCheckin,
+    TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
 )
 
 
@@ -96,3 +96,11 @@ class WellnessCheckinAdmin(ModelAdmin):
     list_display = ('athlete', 'center', 'fecha', 'indice_bienestar', 'sueno', 'fatiga', 'estres', 'dolor_muscular', 'animo')
     list_filter = ('center',)
     search_fields = ('athlete__email',)
+
+
+@admin.register(TacticalPlay)
+class TacticalPlayAdmin(ModelAdmin):
+    list_display = ('nombre', 'center', 'formacion', 'campo', 'registrado_por', 'updated_at')
+    list_filter = ('center', 'campo')
+    search_fields = ('nombre', 'descripcion', 'center__nombre')
+    autocomplete_fields = ('center', 'registrado_por')

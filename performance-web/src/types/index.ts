@@ -71,6 +71,57 @@ export interface CenterAthlete {
   created_at: string
 }
 
+// ── Simulador: pizarra táctica (performance.TacticalPlay) ────────────────────
+// Coordenadas SIEMPRE normalizadas (x, y ∈ [0,1]) relativas al campo, nunca px.
+export type FichaTipo = 'jugador' | 'rival' | 'balon'
+export type TrazoTipo = 'pase' | 'conduccion' | 'mov_sin_balon' | 'bloqueo'
+
+export interface Pt {
+  x: number
+  y: number
+}
+
+export interface Ficha {
+  id: string
+  tipo: FichaTipo
+  ref?: string | number | null // id del atleta de la plantilla (solo 'jugador')
+  etiqueta: string // dorsal / número de rival / ''
+  x: number
+  y: number
+}
+
+export interface Trazo {
+  id: string
+  tipo: TrazoTipo
+  puntos: Pt[]
+}
+
+export interface EscenaFrame {
+  fichas: Ficha[]
+  trazos: Trazo[]
+}
+
+// La escena se guarda como lista de frames (keyframes) pensando en animaciones
+// futuras; hoy la UI produce un único frame (estático).
+export interface Escena {
+  version: number
+  frames: EscenaFrame[]
+}
+
+export interface TacticalPlay {
+  id: number
+  center: number
+  nombre: string
+  descripcion: string
+  formacion: string
+  campo: string
+  escena: Escena
+  registrado_por: number | null
+  registrado_por_nombre: string
+  created_at: string
+  updated_at: string
+}
+
 // ── Módulo TEST: catálogo de calculadoras (performance/calculators) ──────────
 export type TestFamilia = 'fisico' | 'tecnico' | 'tactico'
 

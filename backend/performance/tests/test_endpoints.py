@@ -15,6 +15,7 @@ from rest_framework.test import APIClient
 
 from performance.models import (
     SportsCenter, CenterMembership, CenterAthlete, PhysicalTest, TestDefinition,
+    TacticalPlay,
 )
 
 User = get_user_model()
@@ -218,6 +219,92 @@ class AthleteEndpointTests(_Base):
         res = self.client.delete(url)
         self.assertEqual(res.status_code, 204)
         self.assertFalse(CenterAthlete.objects.filter(center=self.center, athlete=self.athlete).exists())
+
+
+class SimuladorEndpointTests(_Base):
+    """Pizarra táctica: crear/listar/editar/borrar jugadas y validación de que
+    las coordenadas sean normalizadas (0..1), nunca píxeles."""
+
+    def url(self):
+        return f'/api/performance/centers/{self.center.id}/simulador/'
+
+    def detail(self, play_id):
+        return f'/api/performance/centers/{self.center.id}/simulador/{play_id}/'
+
+    ESCENA = {
+        'version': 1,
+        'frames': [{
+            'fichas': [
+                {'id': 'a', 'tipo': 'jugador', 'ref': 1, 'etiqueta': '10', 'x': 0.5, 'y': 0.6},
+                {'id': 'b', 'tipo': 'rival', 'etiqueta': '1', 'x': 0.4, 'y': 0.3},
+                {'id': 'c', 'tipo': 'balon', 'x': 0.5, 'y': 0.55},
+            ],
+            'trazos': [
+                {'id': 't1', 'tipo': 'pase', 'puntos': [{'x': 0.5, 'y': 0.6}, {'x': 0.7, 'y': 0.5}]},
+            ],
+        }],
+    }
+
+    def test_crea_jugada(self):
+        res = self.client.post(self.url(), {'nombre': 'Salida de balón', 'escena': self.ESCENA}, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        play = TacticalPlay.objects.get()
+        self.assertEqual(play.nombre, 'Salida de balón')
+        self.assertEqual(play.registrado_por, self.director)
+        self.assertEqual(len(play.escena['frames'][0]['fichas']), 3)
+
+    def test_lista_jugadas(self):
+        TacticalPlay.objects.create(center=self.center, nombre='J1', escena=self.ESCENA)
+        res = self.client.get(self.url())
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+        self.assertIn('registrado_por_nombre', res.json()[0])
+
+    def test_actualiza_escena(self):
+        play = TacticalPlay.objects.create(center=self.center, nombre='J1', escena={})
+        res = self.client.patch(self.detail(play.id), {'escena': self.ESCENA}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        play.refresh_from_db()
+        self.assertEqual(len(play.escena['frames'][0]['trazos']), 1)
+
+    def test_rechaza_coordenadas_en_pixeles(self):
+        mala = {'version': 1, 'frames': [{'fichas': [
+            {'id': 'a', 'tipo': 'jugador', 'x': 540, 'y': 320},  # píxeles, no 0..1
+        ], 'trazos': []}]}
+        res = self.client.post(self.url(), {'nombre': 'Mala', 'escena': mala}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('escena', res.json())
+
+    def test_rechaza_tipo_de_trazo_invalido(self):
+        mala = {'version': 1, 'frames': [{'fichas': [], 'trazos': [
+            {'id': 't', 'tipo': 'teletransporte', 'puntos': [{'x': 0.1, 'y': 0.1}, {'x': 0.2, 'y': 0.2}]},
+        ]}]}
+        res = self.client.post(self.url(), {'nombre': 'Mala', 'escena': mala}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_trazo_necesita_dos_puntos(self):
+        mala = {'version': 1, 'frames': [{'fichas': [], 'trazos': [
+            {'id': 't', 'tipo': 'pase', 'puntos': [{'x': 0.1, 'y': 0.1}]},
+        ]}]}
+        res = self.client.post(self.url(), {'nombre': 'Mala', 'escena': mala}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_borra_jugada(self):
+        play = TacticalPlay.objects.create(center=self.center, nombre='J1', escena=self.ESCENA)
+        res = self.client.delete(self.detail(play.id))
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(TacticalPlay.objects.filter(pk=play.id).exists())
+
+    def test_requiere_acceso_panel(self):
+        self.client.force_authenticate(self.athlete)
+        res = self.client.get(self.url())
+        self.assertEqual(res.status_code, 403)
+
+    def test_fuera_de_scope_404(self):
+        otro = SportsCenter.objects.create(nombre='Otro', slug='otro-sim')
+        play = TacticalPlay.objects.create(center=otro, nombre='Ajena', escena=self.ESCENA)
+        res = self.client.get(f'/api/performance/centers/{otro.id}/simulador/{play.id}/')
+        self.assertEqual(res.status_code, 404)
 
 
 class SeedTestsCommandTests(TestCase):

@@ -6,6 +6,7 @@ import { api } from './client'
 import type {
   CenterAthlete, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
+  TacticalPlay, Escena,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -161,6 +162,38 @@ export async function deleteMicro(
   centerId: number, planId: number, mesoId: number, microId: number,
 ): Promise<void> {
   await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}/`)
+}
+
+// ── Simulador: pizarra táctica (jugadas con coordenadas normalizadas) ─────────
+const simBase = (centerId: number) => `/performance/centers/${centerId}/simulador`
+
+export type PlayPayload = {
+  nombre: string
+  descripcion?: string
+  formacion?: string
+  campo?: string
+  escena: Escena
+}
+
+export async function listPlays(centerId: number): Promise<TacticalPlay[]> {
+  const res = await api.get<TacticalPlay[]>(`${simBase(centerId)}/`)
+  return res.data
+}
+
+export async function createPlay(centerId: number, payload: PlayPayload): Promise<TacticalPlay> {
+  const res = await api.post<TacticalPlay>(`${simBase(centerId)}/`, payload)
+  return res.data
+}
+
+export async function updatePlay(
+  centerId: number, playId: number, payload: Partial<PlayPayload>,
+): Promise<TacticalPlay> {
+  const res = await api.patch<TacticalPlay>(`${simBase(centerId)}/${playId}/`, payload)
+  return res.data
+}
+
+export async function deletePlay(centerId: number, playId: number): Promise<void> {
+  await api.delete(`${simBase(centerId)}/${playId}/`)
 }
 
 // ── Módulo PSICOLÓGICO: índice de bienestar (cálculo en servidor) ─────────────

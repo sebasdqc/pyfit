@@ -29,8 +29,17 @@ export type IconName =
   | 'close'
   | 'edit'
   | 'camera'
+  | 'simulador'
 
 const PATHS: Record<IconName, ReactNode> = {
+  simulador: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M12 4v16" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M3 9h3v6H3M21 9h-3v6h3" />
+    </>
+  ),
   camera: (
     <>
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />

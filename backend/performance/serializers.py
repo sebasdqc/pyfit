@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    TestDefinition, Mesocycle, Microcycle, WellnessCheckin,
+    TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
 )
 
 
@@ -184,3 +184,80 @@ class WellnessCheckinSerializer(serializers.ModelSerializer):
     def get_estado(self, obj):
         from .wellness import estado
         return estado(obj.indice_bienestar)
+
+
+# ─── Simulador (pizarra táctica) ──────────────────────────────────────────────
+
+FICHA_TIPOS = {'jugador', 'rival', 'balon'}
+TRAZO_TIPOS = {'pase', 'conduccion', 'mov_sin_balon', 'bloqueo'}
+
+
+def _is_norm(v):
+    """True si v es un número dentro de [0, 1] (coordenada normalizada)."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and 0.0 <= float(v) <= 1.0
+
+
+def _validate_punto(p):
+    if not isinstance(p, dict) or not _is_norm(p.get('x')) or not _is_norm(p.get('y')):
+        raise serializers.ValidationError(
+            'Cada punto debe tener x,y normalizados (0..1). No se admiten píxeles.'
+        )
+
+
+def _validate_escena(value):
+    """Valida la estructura de la escena y, sobre todo, que TODAS las coordenadas
+    estén normalizadas (0..1). Acepta {} (escena vacía)."""
+    if value in (None, {}):
+        return {'version': 1, 'frames': []}
+    if not isinstance(value, dict):
+        raise serializers.ValidationError('La escena debe ser un objeto.')
+    frames = value.get('frames', [])
+    if not isinstance(frames, list):
+        raise serializers.ValidationError('`frames` debe ser una lista.')
+    for frame in frames:
+        if not isinstance(frame, dict):
+            raise serializers.ValidationError('Cada frame debe ser un objeto.')
+        fichas = frame.get('fichas', [])
+        trazos = frame.get('trazos', [])
+        if not isinstance(fichas, list) or not isinstance(trazos, list):
+            raise serializers.ValidationError('`fichas` y `trazos` deben ser listas.')
+        for f in fichas:
+            if not isinstance(f, dict):
+                raise serializers.ValidationError('Cada ficha debe ser un objeto.')
+            if f.get('tipo') not in FICHA_TIPOS:
+                raise serializers.ValidationError(f'Tipo de ficha inválido: {f.get("tipo")!r}.')
+            _validate_punto(f)
+        for t in trazos:
+            if not isinstance(t, dict):
+                raise serializers.ValidationError('Cada trazo debe ser un objeto.')
+            if t.get('tipo') not in TRAZO_TIPOS:
+                raise serializers.ValidationError(f'Tipo de trazo inválido: {t.get("tipo")!r}.')
+            puntos = t.get('puntos')
+            if not isinstance(puntos, list) or len(puntos) < 2:
+                raise serializers.ValidationError('Un trazo necesita al menos 2 puntos.')
+            for p in puntos:
+                _validate_punto(p)
+    # Normaliza la versión por si el cliente no la manda.
+    value.setdefault('version', 1)
+    return value
+
+
+class TacticalPlaySerializer(serializers.ModelSerializer):
+    registrado_por_nombre = serializers.CharField(
+        source='registrado_por.nombre', read_only=True, default='',
+    )
+
+    class Meta:
+        model = TacticalPlay
+        fields = [
+            'id', 'center', 'nombre', 'descripcion', 'formacion', 'campo',
+            'escena', 'registrado_por', 'registrado_por_nombre',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'center', 'registrado_por', 'registrado_por_nombre',
+            'created_at', 'updated_at',
+        ]
+
+    def validate_escena(self, value):
+        return _validate_escena(value)
