@@ -23,22 +23,34 @@ import {
   SQUAD,
   type Athlete,
 } from '@/lib/mockSquad'
+import { useAuth } from '@/auth/useAuth'
+import { AthleteEditModal } from '@/components/AthleteEditModal'
+import { canEditRole, updateAthlete } from '@/lib/squadEdit'
 
 const COLOR_A = '#4f8cff' // azul (atleta A / único)
 const COLOR_B = '#ffaa32' // ámbar (atleta B en comparativa)
 
 export function PlantillaPage() {
+  const { user } = useAuth()
+  // Pueden editar: administrador, entrenador y director técnico. El backend
+  // marca is_admin=true también para el staff/superusuario, por eso se incluyen
+  // los flags (asegura que cualquier cuenta con acceso real al panel pueda editar).
+  const canEdit = canEditRole(user?.role) || !!user?.is_admin || !!user?.is_director
+
+  const [squad, setSquad] = useState<Athlete[]>(SQUAD)
   const [compare, setCompare] = useState(false)
   const [selected, setSelected] = useState<string[]>([SQUAD[0].id])
   const [query, setQuery] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return SQUAD
-    return SQUAD.filter((a) => `${a.nombre} ${a.posicion} ${a.dorsal}`.toLowerCase().includes(q))
-  }, [query])
+    if (!q) return squad
+    return squad.filter((a) => `${a.nombre} ${a.posicion} ${a.dorsal}`.toLowerCase().includes(q))
+  }, [query, squad])
 
-  const picked = selected.map((id) => SQUAD.find((a) => a.id === id)).filter(Boolean) as Athlete[]
+  const picked = selected.map((id) => squad.find((a) => a.id === id)).filter(Boolean) as Athlete[]
+  const editingAthlete = editingId ? (squad.find((a) => a.id === editingId) ?? null) : null
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -60,7 +72,7 @@ export function PlantillaPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-white">Plantilla</h1>
-          <p className="text-xs text-white/45">{SQUAD.length} atletas en el centro</p>
+          <p className="text-xs text-white/45">{squad.length} atletas en el centro</p>
         </div>
         <button
           type="button"
@@ -135,20 +147,46 @@ export function PlantillaPage() {
           <EmptyHint text={`Selecciona ${2 - picked.length} atleta${2 - picked.length === 1 ? '' : 's'} más para comparar.`} />
         )
       ) : picked[0] ? (
-        <SingleDetail a={picked[0]} />
+        <SingleDetail a={picked[0]} canEdit={canEdit} onEdit={() => setEditingId(picked[0].id)} />
       ) : (
         <EmptyHint text="Elige un atleta en los chips de arriba para ver su ficha." />
+      )}
+
+      {editingAthlete && (
+        <AthleteEditModal
+          athlete={editingAthlete}
+          onClose={() => setEditingId(null)}
+          onSave={(patch) => {
+            setSquad((prev) => updateAthlete(prev, editingAthlete.id, patch))
+            setEditingId(null)
+          }}
+        />
       )}
     </div>
   )
 }
 
 // ── Detalle individual ─────────────────────────────────────────────────────
-function SingleDetail({ a }: { a: Athlete }) {
+function SingleDetail({ a, canEdit, onEdit }: { a: Athlete; canEdit: boolean; onEdit: () => void }) {
   return (
     <>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Datos del atleta" className="lg:col-span-1">
+        <Panel
+          title="Datos del atleta"
+          className="lg:col-span-1"
+          action={
+            canEdit ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex items-center gap-1.5 rounded-lg border border-perf-border px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-perf-surface2 hover:text-white"
+              >
+                <Icon name="edit" size={13} />
+                Editar
+              </button>
+            ) : undefined
+          }
+        >
           <div className="flex items-center gap-3">
             <Avatar name={a.nombre} size={56} />
             <div className="min-w-0">
