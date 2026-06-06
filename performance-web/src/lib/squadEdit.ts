@@ -1,7 +1,8 @@
 // Lógica pura de edición de atletas (sin React, para poder testearla aislada).
 // La edición de perfiles/parámetros está permitida a admin, entrenador y
 // director técnico. updateAthlete devuelve una lista NUEVA (inmutable) con el
-// atleta saneado: valores numéricos coercionados y acotados a rangos válidos.
+// atleta saneado. RANGES es la única fuente de verdad de los rangos válidos:
+// la usan tanto el acotado (sanitizeAthlete) como la validación (validateAthlete).
 
 import type { Athlete, RadarKey } from './mockSquad'
 
@@ -19,6 +20,24 @@ export type AthletePatch = Partial<Omit<Athlete, 'radar'>> & {
 
 const RADAR_KEYS: RadarKey[] = ['velocidad', 'resistencia', 'fuerza', 'potencia', 'agilidad', 'recuperacion']
 
+// Rangos válidos [min, max] de cada campo numérico. Fuente única.
+export const RANGES = {
+  dorsal: [0, 999],
+  edad: [14, 60],
+  altura: [120, 230],
+  peso: [35, 180],
+  disponibilidad: [0, 100],
+  bienestar: [0, 10],
+  acwr: [0, 3],
+  cargaSemanal: [0, 5000],
+  minutos: [0, 100000],
+  sesiones: [0, 1000],
+  radar: [0, 100],
+} as const
+
+type NumericField = Exclude<keyof typeof RANGES, 'radar'>
+const NUMERIC_FIELDS: NumericField[] = ['dorsal', 'edad', 'altura', 'peso', 'disponibilidad', 'bienestar', 'acwr', 'cargaSemanal', 'minutos', 'sesiones']
+
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min
   return Math.min(max, Math.max(min, n))
@@ -26,23 +45,24 @@ function clamp(n: number, min: number, max: number): number {
 const round1 = (n: number) => Math.round(n * 10) / 10
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-// Sanea un atleta a rangos válidos (evita radar fuera de 0–100, edades absurdas…).
+// Sanea un atleta a rangos válidos (red de seguridad; la validación de la UI
+// ya impide guardar fuera de rango). Conserva la meta de edición.
 export function sanitizeAthlete(a: Athlete): Athlete {
   const radar = { ...a.radar }
-  for (const k of RADAR_KEYS) radar[k] = Math.round(clamp(radar[k], 0, 100))
+  for (const k of RADAR_KEYS) radar[k] = Math.round(clamp(radar[k], RANGES.radar[0], RANGES.radar[1]))
   return {
     ...a,
     nombre: (a.nombre ?? '').trim() || 'Sin nombre',
-    dorsal: Math.round(clamp(a.dorsal, 0, 999)),
-    edad: Math.round(clamp(a.edad, 14, 60)),
-    altura: Math.round(clamp(a.altura, 120, 230)),
-    peso: Math.round(clamp(a.peso, 35, 180)),
-    disponibilidad: Math.round(clamp(a.disponibilidad, 0, 100)),
-    bienestar: round1(clamp(a.bienestar, 0, 10)),
-    acwr: round2(clamp(a.acwr, 0, 3)),
-    cargaSemanal: Math.round(clamp(a.cargaSemanal, 0, 5000)),
-    minutos: Math.round(clamp(a.minutos, 0, 100000)),
-    sesiones: Math.round(clamp(a.sesiones, 0, 1000)),
+    dorsal: Math.round(clamp(a.dorsal, ...RANGES.dorsal)),
+    edad: Math.round(clamp(a.edad, ...RANGES.edad)),
+    altura: Math.round(clamp(a.altura, ...RANGES.altura)),
+    peso: Math.round(clamp(a.peso, ...RANGES.peso)),
+    disponibilidad: Math.round(clamp(a.disponibilidad, ...RANGES.disponibilidad)),
+    bienestar: round1(clamp(a.bienestar, ...RANGES.bienestar)),
+    acwr: round2(clamp(a.acwr, ...RANGES.acwr)),
+    cargaSemanal: Math.round(clamp(a.cargaSemanal, ...RANGES.cargaSemanal)),
+    minutos: Math.round(clamp(a.minutos, ...RANGES.minutos)),
+    sesiones: Math.round(clamp(a.sesiones, ...RANGES.sesiones)),
     radar,
   }
 }
@@ -52,4 +72,46 @@ export function updateAthlete(list: Athlete[], id: string, patch: AthletePatch):
   return list.map((a) =>
     a.id === id ? sanitizeAthlete({ ...a, ...patch, radar: { ...a.radar, ...(patch.radar ?? {}) } }) : a,
   )
+}
+
+// ── Validación (para resaltar campos fuera de rango antes de guardar) ────────
+export interface AthleteDraft {
+  nombre?: string
+  dorsal?: number
+  edad?: number
+  altura?: number
+  peso?: number
+  disponibilidad?: number
+  bienestar?: number
+  acwr?: number
+  cargaSemanal?: number
+  minutos?: number
+  sesiones?: number
+  radar?: Partial<Record<RadarKey, number>>
+}
+
+// Devuelve un mapa { campo: mensaje } solo con los campos inválidos. Vacío = OK.
+// Las claves del radar van por su nombre de eje (velocidad, fuerza, …).
+export function validateAthlete(v: AthleteDraft): Record<string, string> {
+  const errors: Record<string, string> = {}
+  if (!v.nombre || !v.nombre.trim()) errors.nombre = 'El nombre es obligatorio'
+
+  for (const f of NUMERIC_FIELDS) {
+    const val = v[f]
+    if (val === undefined) continue
+    const [min, max] = RANGES[f]
+    if (!Number.isFinite(val)) errors[f] = 'Valor inválido'
+    else if (val < min || val > max) errors[f] = `Debe estar entre ${min} y ${max}`
+  }
+
+  if (v.radar) {
+    const [min, max] = RANGES.radar
+    for (const k of RADAR_KEYS) {
+      const val = v.radar[k]
+      if (val === undefined) continue
+      if (!Number.isFinite(val)) errors[k] = 'Valor inválido'
+      else if (val < min || val > max) errors[k] = `Entre ${min} y ${max}`
+    }
+  }
+  return errors
 }

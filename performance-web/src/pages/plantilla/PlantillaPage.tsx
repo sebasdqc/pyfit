@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/auth/useAuth'
 import { AthleteEditModal } from '@/components/AthleteEditModal'
 import { canEditRole, updateAthlete } from '@/lib/squadEdit'
+import { loadSquad, saveSquad } from '@/lib/squadStore'
 
 const COLOR_A = '#4f8cff' // azul (atleta A / único)
 const COLOR_B = '#ffaa32' // ámbar (atleta B en comparativa)
@@ -37,7 +38,7 @@ export function PlantillaPage() {
   // los flags (asegura que cualquier cuenta con acceso real al panel pueda editar).
   const canEdit = canEditRole(user?.role) || !!user?.is_admin || !!user?.is_director
 
-  const [squad, setSquad] = useState<Athlete[]>(SQUAD)
+  const [squad, setSquad] = useState<Athlete[]>(() => loadSquad())
   const [compare, setCompare] = useState(false)
   const [selected, setSelected] = useState<string[]>([SQUAD[0].id])
   const [query, setQuery] = useState('')
@@ -157,7 +158,12 @@ export function PlantillaPage() {
           athlete={editingAthlete}
           onClose={() => setEditingId(null)}
           onSave={(patch) => {
-            setSquad((prev) => updateAthlete(prev, editingAthlete.id, patch))
+            const meta = { editadoPor: user?.nombre ?? 'Usuario', editadoEn: new Date().toISOString() }
+            setSquad((prev) => {
+              const next = updateAthlete(prev, editingAthlete.id, { ...patch, ...meta })
+              saveSquad(next) // persiste en localStorage
+              return next
+            })
             setEditingId(null)
           }}
         />
@@ -203,6 +209,13 @@ function SingleDetail({ a, canEdit, onEdit }: { a: Athlete; canEdit: boolean; on
             <Demo label="Pie hábil" value={a.pie} />
             <Demo label="Grupo" value={a.grupo} />
           </div>
+          {a.editadoEn && (
+            <p className="mt-4 flex items-center gap-1.5 border-t border-perf-border pt-3 text-[11px] text-white/35">
+              <Icon name="edit" size={11} />
+              Última edición {fmtFecha(a.editadoEn)}
+              {a.editadoPor ? ` · por ${a.editadoPor}` : ''}
+            </p>
+          )}
         </Panel>
 
         <Panel title="Perfil de rendimiento" subtitle="Escala 0–100" className="lg:col-span-2">
@@ -300,6 +313,16 @@ function RadarBlock({ athletes }: { athletes: Athlete[] }) {
 }
 
 // ── Piezas ─────────────────────────────────────────────────────────────────
+function fmtFecha(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('es-ES', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
 function Demo({ label, value }: { label: string; value: string }) {
   return (
     <div>

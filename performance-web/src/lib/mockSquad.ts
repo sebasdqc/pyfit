@@ -41,6 +41,9 @@ export interface Athlete {
   disponibilidad: number // % últimas 4 semanas
   minutos: number
   sesiones: number
+  // Registro de última edición (se setea al guardar; vacío en los de base).
+  editadoPor?: string
+  editadoEn?: string // ISO 8601
 }
 
 export const SQUAD: Athlete[] = [

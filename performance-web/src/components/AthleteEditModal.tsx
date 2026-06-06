@@ -2,10 +2,10 @@
 // (radar 0–100) y métricas de carga. Construye un patch y lo entrega a onSave;
 // el saneado/acotado de valores lo hace updateAthlete (lib/squadEdit).
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Icon } from '@/components/Icon'
 import { RADAR_AXES, type Athlete } from '@/lib/mockSquad'
-import type { AthletePatch } from '@/lib/squadEdit'
+import { validateAthlete, type AthletePatch } from '@/lib/squadEdit'
 
 type FormState = Record<string, string>
 
@@ -49,6 +49,11 @@ export function AthleteEditModal({
   const [form, setForm] = useState<FormState>(() => toForm(athlete))
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
+  // Validación en vivo: resalta los campos fuera de rango y bloquea el guardado.
+  const patch = useMemo(() => toPatch(form), [form])
+  const errors = useMemo(() => validateAthlete(patch), [patch])
+  const hasErrors = Object.keys(errors).length > 0
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -77,46 +82,52 @@ export function AthleteEditModal({
         {/* Cuerpo */}
         <div className="flex-1 overflow-y-auto px-5 py-5">
           <Section title="Datos">
-            <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} className="col-span-2" />
-            <Num label="Dorsal" value={form.dorsal} onChange={(v) => set('dorsal', v)} />
+            <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" />
+            <Num label="Dorsal" value={form.dorsal} onChange={(v) => set('dorsal', v)} error={errors.dorsal} />
             <Text label="Posición" value={form.posicion} onChange={(v) => set('posicion', v)} />
             <Select label="Estado" value={form.estado} onChange={(v) => set('estado', v)} options={[['ok', 'Disponible'], ['duda', 'En duda'], ['baja', 'No disponible']]} />
             <Text label="Nacionalidad" value={form.nacionalidad} onChange={(v) => set('nacionalidad', v)} />
-            <Num label="Edad" value={form.edad} onChange={(v) => set('edad', v)} />
-            <Num label="Altura (cm)" value={form.altura} onChange={(v) => set('altura', v)} />
-            <Num label="Peso (kg)" value={form.peso} onChange={(v) => set('peso', v)} />
+            <Num label="Edad" value={form.edad} onChange={(v) => set('edad', v)} error={errors.edad} />
+            <Num label="Altura (cm)" value={form.altura} onChange={(v) => set('altura', v)} error={errors.altura} />
+            <Num label="Peso (kg)" value={form.peso} onChange={(v) => set('peso', v)} error={errors.peso} />
             <Select label="Pie hábil" value={form.pie} onChange={(v) => set('pie', v)} options={[['Derecho', 'Derecho'], ['Izquierdo', 'Izquierdo']]} />
             <Text label="Grupo" value={form.grupo} onChange={(v) => set('grupo', v)} />
           </Section>
 
           <Section title="Rendimiento (0–100)">
             {RADAR_AXES.map((ax) => (
-              <Num key={ax.key} label={ax.label} value={form[ax.key]} onChange={(v) => set(ax.key, v)} min={0} max={100} />
+              <Num key={ax.key} label={ax.label} value={form[ax.key]} onChange={(v) => set(ax.key, v)} error={errors[ax.key]} min={0} max={100} />
             ))}
           </Section>
 
           <Section title="Carga y estado">
-            <Num label="ACWR" value={form.acwr} onChange={(v) => set('acwr', v)} step={0.01} />
-            <Num label="Bienestar (0–10)" value={form.bienestar} onChange={(v) => set('bienestar', v)} step={0.1} min={0} max={10} />
-            <Num label="Carga semanal (UA)" value={form.cargaSemanal} onChange={(v) => set('cargaSemanal', v)} />
-            <Num label="Disponibilidad (%)" value={form.disponibilidad} onChange={(v) => set('disponibilidad', v)} min={0} max={100} />
-            <Num label="Minutos" value={form.minutos} onChange={(v) => set('minutos', v)} />
-            <Num label="Sesiones" value={form.sesiones} onChange={(v) => set('sesiones', v)} />
+            <Num label="ACWR" value={form.acwr} onChange={(v) => set('acwr', v)} error={errors.acwr} step={0.01} />
+            <Num label="Bienestar (0–10)" value={form.bienestar} onChange={(v) => set('bienestar', v)} error={errors.bienestar} step={0.1} min={0} max={10} />
+            <Num label="Carga semanal (UA)" value={form.cargaSemanal} onChange={(v) => set('cargaSemanal', v)} error={errors.cargaSemanal} />
+            <Num label="Disponibilidad (%)" value={form.disponibilidad} onChange={(v) => set('disponibilidad', v)} error={errors.disponibilidad} min={0} max={100} />
+            <Num label="Minutos" value={form.minutos} onChange={(v) => set('minutos', v)} error={errors.minutos} />
+            <Num label="Sesiones" value={form.sesiones} onChange={(v) => set('sesiones', v)} error={errors.sesiones} />
           </Section>
         </div>
 
         {/* Pie */}
-        <div className="flex items-center justify-end gap-2 border-t border-perf-border px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-white/60 hover:text-white">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave(toPatch(form))}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accentDark"
-          >
-            Guardar cambios
-          </button>
+        <div className="flex items-center justify-between gap-3 border-t border-perf-border px-5 py-4">
+          <p className={`text-xs ${hasErrors ? 'text-perf-danger' : 'text-transparent'}`}>
+            Corrige los campos resaltados para guardar.
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-white/60 hover:text-white">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={hasErrors}
+              onClick={() => onSave(patch)}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Guardar cambios
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -133,27 +144,35 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-const inputClass =
-  'mt-1 w-full rounded-lg border border-perf-border bg-perf-bg px-3 py-2 text-sm text-white outline-none transition-colors focus:border-accent'
+const baseInput = 'mt-1 w-full rounded-lg border bg-perf-bg px-3 py-2 text-sm text-white outline-none transition-colors'
+const inputCls = (error?: string) =>
+  `${baseInput} ${error ? 'border-perf-danger focus:border-perf-danger' : 'border-perf-border focus:border-accent'}`
 
-function Text({ label, value, onChange, className = '' }: { label: string; value: string; onChange: (v: string) => void; className?: string }) {
+function FieldError({ error }: { error?: string }) {
+  if (!error) return null
+  return <span className="mt-1 block text-[11px] text-perf-danger">{error}</span>
+}
+
+function Text({ label, value, onChange, error, className = '' }: { label: string; value: string; onChange: (v: string) => void; error?: string; className?: string }) {
   return (
     <label className={`block ${className}`}>
       <span className="text-xs text-white/45">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} />
+      <input value={value} onChange={(e) => onChange(e.target.value)} className={inputCls(error)} />
+      <FieldError error={error} />
     </label>
   )
 }
 
 function Num({
-  label, value, onChange, min, max, step, className = '',
+  label, value, onChange, error, min, max, step, className = '',
 }: {
-  label: string; value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; className?: string
+  label: string; value: string; onChange: (v: string) => void; error?: string; min?: number; max?: number; step?: number; className?: string
 }) {
   return (
     <label className={`block ${className}`}>
       <span className="text-xs text-white/45">{label}</span>
-      <input type="number" inputMode="decimal" value={value} min={min} max={max} step={step} onChange={(e) => onChange(e.target.value)} className={inputClass} />
+      <input type="number" inputMode="decimal" value={value} min={min} max={max} step={step} onChange={(e) => onChange(e.target.value)} className={inputCls(error)} />
+      <FieldError error={error} />
     </label>
   )
 }
@@ -162,7 +181,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="block">
       <span className="text-xs text-white/45">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls()}>
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>
         ))}
