@@ -179,6 +179,15 @@ class CenterAthlete(models.Model):
         help_text='Subgrupo / categoría dentro del centro (sub-18, primer equipo…).',
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
+    foto = models.TextField(
+        blank=True,
+        help_text=(
+            'Foto del atleta como data URL (base64). La imagen se recorta y '
+            'reescala en el cliente (~256 px JPEG). Es una solución provisional '
+            'sin almacenamiento de objetos: cuando exista (DO Spaces / S3) se '
+            'cambia por un ImageField + subida con URL firmada.'
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

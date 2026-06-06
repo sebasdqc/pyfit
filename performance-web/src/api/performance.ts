@@ -33,6 +33,29 @@ export async function registerAthlete(
   return res.data
 }
 
+// Ficha individual del atleta del centro. `athleteId` es el id del vínculo
+// CenterAthlete (no el del usuario). La foto viaja en el payload como data URL.
+export async function getCenterAthlete(centerId: number, athleteId: number): Promise<CenterAthlete> {
+  const res = await api.get<CenterAthlete>(`/performance/centers/${centerId}/athletes/${athleteId}/`)
+  return res.data
+}
+
+// Edita la ficha (incluida la foto). PATCH: solo manda los campos a cambiar.
+export async function updateCenterAthlete(
+  centerId: number,
+  athleteId: number,
+  payload: Partial<Pick<CenterAthlete, 'dorsal' | 'posicion' | 'grupo' | 'estado' | 'foto'>>,
+): Promise<CenterAthlete> {
+  const res = await api.patch<CenterAthlete>(
+    `/performance/centers/${centerId}/athletes/${athleteId}/`, payload,
+  )
+  return res.data
+}
+
+export async function deleteCenterAthlete(centerId: number, athleteId: number): Promise<void> {
+  await api.delete(`/performance/centers/${centerId}/athletes/${athleteId}/`)
+}
+
 // ── Módulos (rendimiento / lesiones / test / planificacion / psicologico) ────
 // Genéricos: el backend expone un endpoint por módulo bajo el centro.
 export async function listModuleRecords<T = unknown>(

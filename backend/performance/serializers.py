@@ -47,9 +47,23 @@ class CenterAthleteSerializer(serializers.ModelSerializer):
         model = CenterAthlete
         fields = [
             'id', 'center', 'athlete', 'email', 'registrado_por',
-            'dorsal', 'posicion', 'grupo', 'estado', 'created_at',
+            'dorsal', 'posicion', 'grupo', 'estado', 'foto', 'created_at',
         ]
         read_only_fields = ['id', 'created_at', 'email', 'registrado_por']
+
+    # La foto llega como data URL (base64) ya reescalada en el cliente. Acotamos
+    # tamaño y forma para no almacenar imágenes grandes en la BD (provisional
+    # hasta que haya almacenamiento de objetos).
+    MAX_FOTO_BYTES = 700 * 1024  # ~512 KB de imagen → margen holgado en base64
+
+    def validate_foto(self, value):
+        if not value:
+            return value
+        if not value.startswith('data:image/'):
+            raise serializers.ValidationError('La foto debe ser un data URL de imagen.')
+        if len(value) > self.MAX_FOTO_BYTES:
+            raise serializers.ValidationError('La foto es demasiado grande.')
+        return value
 
 
 class PerformanceMetricSerializer(serializers.ModelSerializer):

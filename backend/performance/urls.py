@@ -23,6 +23,7 @@ urlpatterns = [
     path('centers/<int:pk>/', views.center_detail),
     path('centers/<int:pk>/staff/', views.center_staff),
     path('centers/<int:pk>/athletes/', views.center_athletes),
+    path('centers/<int:pk>/athletes/<int:athlete_pk>/', views.center_athlete_detail),
 
     # Módulos del centro (barra lateral del panel)
     path('centers/<int:pk>/rendimiento/', views.module_rendimiento),

@@ -67,6 +67,7 @@ export interface CenterAthlete {
   posicion: string
   grupo: string
   estado: 'activo' | 'lesionado' | 'baja'
+  foto: string // data URL (base64) o '' — ver CenterAthlete.foto en el backend
   created_at: string
 }
 

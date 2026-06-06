@@ -159,6 +159,67 @@ class ModuleTestRegistroTests(_Base):
         self.assertEqual(len(res.json()), 1)
 
 
+class AthleteEndpointTests(_Base):
+    """Lista, detalle, edición (incluida la foto) y baja de atletas del centro."""
+
+    def link_id(self):
+        return CenterAthlete.objects.get(center=self.center, athlete=self.athlete).id
+
+    def detail_url(self):
+        return f'/api/performance/centers/{self.center.id}/athletes/{self.link_id()}/'
+
+    FOTO = 'data:image/jpeg;base64,' + 'A' * 200
+
+    def test_lista_incluye_foto(self):
+        res = self.client.get(f'/api/performance/centers/{self.center.id}/athletes/')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('foto', res.json()[0])
+
+    def test_director_actualiza_foto(self):
+        res = self.client.patch(self.detail_url(), {'foto': self.FOTO}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        link = CenterAthlete.objects.get(pk=self.link_id())
+        self.assertEqual(link.foto, self.FOTO)
+
+    def test_director_quita_foto(self):
+        link = CenterAthlete.objects.get(pk=self.link_id())
+        link.foto = self.FOTO
+        link.save()
+        res = self.client.patch(self.detail_url(), {'foto': ''}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(CenterAthlete.objects.get(pk=self.link_id()).foto, '')
+
+    def test_foto_no_data_url_400(self):
+        res = self.client.patch(self.detail_url(), {'foto': 'http://x/y.jpg'}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('foto', res.json())
+
+    def test_foto_demasiado_grande_400(self):
+        grande = 'data:image/jpeg;base64,' + 'A' * (700 * 1024 + 10)
+        res = self.client.patch(self.detail_url(), {'foto': grande}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('foto', res.json())
+
+    def test_get_requiere_acceso_panel(self):
+        self.client.force_authenticate(self.athlete)  # atleta: sin acceso al panel
+        res = self.client.get(self.detail_url())
+        self.assertEqual(res.status_code, 403)
+
+    def test_fuera_de_scope_404(self):
+        otro = SportsCenter.objects.create(nombre='Otro', slug='otro')
+        link = CenterAthlete.objects.create(center=otro, athlete=self.athlete)
+        res = self.client.get(
+            f'/api/performance/centers/{otro.id}/athletes/{link.id}/'
+        )
+        self.assertEqual(res.status_code, 404)
+
+    def test_director_da_de_baja(self):
+        url = self.detail_url()
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(CenterAthlete.objects.filter(center=self.center, athlete=self.athlete).exists())
+
+
 class SeedTestsCommandTests(TestCase):
     def test_siembra_catalogo(self):
         out = StringIO()

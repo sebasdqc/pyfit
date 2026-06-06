@@ -209,6 +209,39 @@ def center_athletes(request, pk):
     return Response(CenterAthleteSerializer(qs, many=True).data)
 
 
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def center_athlete_detail(request, pk, athlete_pk):
+    """Ficha de un atleta del centro: consulta, edición (incluida la foto) y baja.
+
+    `athlete_pk` es el id del vínculo CenterAthlete (no el del usuario). La
+    edición y la baja exigen rol director/admin, como el alta. La foto viaja en
+    el payload como data URL (ver CenterAthleteSerializer.validate_foto).
+    """
+    center = _get_center_or_404(request.user, pk)
+    link = get_object_or_404(CenterAthlete, pk=athlete_pk, center=center)
+
+    if request.method == 'GET':
+        return Response(CenterAthleteSerializer(link).data)
+
+    if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+        return Response(
+            {'detail': 'Solo el director técnico puede editar atletas.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if request.method == 'DELETE':
+        link.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    partial = request.method == 'PATCH'
+    serializer = CenterAthleteSerializer(link, data=request.data, partial=partial)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
 # ─── Módulos (rendimiento / lesiones / test / planificación / psicológico) ────
 
 def _module_endpoint(request, pk, model, serializer_cls, owner_field):
