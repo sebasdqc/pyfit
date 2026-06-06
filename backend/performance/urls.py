@@ -13,8 +13,10 @@ urlpatterns = [
     path('tests/catalog/', views.tests_catalog),
     path('tests/compute/', views.tests_compute),
 
-    # Módulo PSICOLÓGICO: cálculo del índice de bienestar (no acotado a un centro)
+    # Módulo PSICOLÓGICO: bienestar + cuestionarios (no acotado a un centro)
     path('psicologico/wellness/compute/', views.wellness_compute),
+    path('psicologico/instruments/', views.instruments_catalog),
+    path('psicologico/instruments/score/', views.instruments_score),
 
     # Centros
     path('centers/', views.centers_view),

@@ -476,7 +476,14 @@ class Microcycle(models.Model):
 
 class PsychAssessment(CenterRecord):
     """Evaluación psicológica de un atleta (datos sensibles, acceso restringido
-    al rol de psicólogo y al director técnico)."""
+    al rol de psicólogo y al director técnico).
+
+    Dos vías:
+      • Con instrumento (cuestionarios validados): se envía `instrument` +
+        `subescalas` y el SERVIDOR calcula `resultados` (índices compuestos) desde
+        `performance.psicometria`. `puntuacion` guarda el índice principal.
+      • Manual / legado: `tipo` + `puntuacion` (un único valor).
+    """
 
     TIPO_CHOICES = [
         ('estado_animo', 'Estado de ánimo'),
@@ -488,7 +495,12 @@ class PsychAssessment(CenterRecord):
     ]
 
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otro')
-    # Puntuación normalizada del instrumento usado (escala 0–100 o 1–10 según test).
+    # Slug del instrumento (performance.psicometria). Vacío = entrada manual.
+    instrument = models.CharField(max_length=40, blank=True)
+    # Puntuaciones de subescala (entrada validada) y resultados calculados (servidor).
+    subescalas = models.JSONField(default=dict, blank=True)
+    resultados = models.JSONField(default=dict, blank=True)
+    # Índice principal (índice compuesto del instrumento o valor manual).
     puntuacion = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
     class Meta(CenterRecord.Meta):

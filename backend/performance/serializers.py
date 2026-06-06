@@ -148,7 +148,8 @@ class PsychAssessmentSerializer(serializers.ModelSerializer):
         model = PsychAssessment
         fields = [
             'id', 'center', 'athlete', 'registrado_por', 'fecha',
-            'tipo', 'puntuacion', 'notas', 'created_at',
+            'tipo', 'instrument', 'subescalas', 'resultados', 'puntuacion',
+            'notas', 'created_at',
         ]
         read_only_fields = ['id', 'created_at', 'registrado_por']
 

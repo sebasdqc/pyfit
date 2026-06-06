@@ -147,3 +147,25 @@ export async function computeWellness(
   const res = await api.post('/performance/psicologico/wellness/compute/', values)
   return res.data
 }
+
+// ── Módulo PSICOLÓGICO: cuestionarios validados (scoring en servidor) ─────────
+export interface PsychSubscale { key: string; label: string; min: number; max: number; dir: 'neg' | 'pos' }
+export interface PsychInstrument { slug: string; nombre: string; descripcion: string; subescalas: PsychSubscale[] }
+export interface PsychScore {
+  instrument: string
+  nombre: string
+  subescalas: Record<string, number>
+  resultados: { indice: number; indice_label: string; interpretacion: string }
+}
+
+export async function fetchInstruments(): Promise<PsychInstrument[]> {
+  const res = await api.get<PsychInstrument[]>('/performance/psicologico/instruments/')
+  return res.data
+}
+
+export async function scoreInstrument(
+  instrument: string, subescalas: Record<string, number>,
+): Promise<PsychScore> {
+  const res = await api.post<PsychScore>('/performance/psicologico/instruments/score/', { instrument, subescalas })
+  return res.data
+}

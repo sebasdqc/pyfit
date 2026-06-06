@@ -434,10 +434,76 @@ def microciclo_detail(request, pk, plan_id, meso_id, micro_id):
     return Response(serializer.data)
 
 
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def instruments_catalog(request):
+    """Catálogo de cuestionarios validados (slug, nombre, subescalas) para que el
+    frontend pinte cada formulario. Se sirve de `performance.psicometria`."""
+    from .psicometria import catalog
+    return Response(catalog())
+
+
+@api_view(['POST'])
+@permission_classes([IsPerformanceUser])
+def instruments_score(request):
+    """Calcula los resultados de un cuestionario SIN persistir. Body:
+    `{instrument, subescalas}`. El cálculo ocurre siempre en el servidor."""
+    from .psicometria import InstrumentError, score
+    try:
+        out = score((request.data.get('instrument') or '').strip(), request.data.get('subescalas') or {})
+    except InstrumentError as e:
+        return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(out)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_psicologico(request, pk):
-    return _module_endpoint(request, pk, PsychAssessment, PsychAssessmentSerializer, 'registrado_por')
+    """Módulo PSICOLÓGICO. GET lista; POST registra una evaluación.
+
+    Dos vías de POST:
+      • Con instrumento: `instrument` + `subescalas`. El SERVIDOR calcula los
+        resultados (nunca confía en los del cliente) y guarda el índice principal.
+      • Manual: `tipo` + `puntuacion`.
+    """
+    from .psicometria import InstrumentError, score
+    center = _get_center_or_404(request.user, pk)
+    if request.method == 'POST':
+        slug = (request.data.get('instrument') or '').strip()
+        data = {
+            'center': center.id,
+            'athlete': request.data.get('athlete'),
+            'fecha': request.data.get('fecha'),
+            'notas': request.data.get('notas', ''),
+        }
+        if slug:
+            try:
+                out = score(slug, request.data.get('subescalas') or {})
+            except InstrumentError as e:
+                return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+            data.update({
+                'tipo': 'otro',
+                'instrument': out['instrument'],
+                'subescalas': out['subescalas'],
+                'resultados': out['resultados'],
+                'puntuacion': out['resultados'].get('indice'),
+            })
+        else:
+            data.update({
+                'tipo': request.data.get('tipo', 'otro'),
+                'instrument': '',
+                'subescalas': {},
+                'resultados': {},
+                'puntuacion': request.data.get('puntuacion'),
+            })
+        serializer = PsychAssessmentSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = PsychAssessment.objects.filter(center=center)
+    return Response(PsychAssessmentSerializer(qs, many=True).data)
 
 
 # ─── Psicológico: monitoreo de bienestar (wellness check-ins) ─────────────────

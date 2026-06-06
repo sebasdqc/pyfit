@@ -5,20 +5,22 @@
 // de atleta usa la plantilla de muestra y el historial se guarda en localStorage
 // (como el módulo Test) hasta que el backend exponga atletas reales.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
+import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { SEM, type Tone } from '@/lib/tone'
 import { loadSquad } from '@/lib/squadStore'
-import { computeWellness } from '@/api/performance'
+import { computeWellness, fetchInstruments, scoreInstrument, type PsychInstrument } from '@/api/performance'
 import {
   loadWellness, saveWellness, deleteWellness,
   type SavedWellness, type WellnessEstado,
 } from '@/lib/wellnessStore'
+import { loadPsych, savePsych, deletePsych, type SavedPsych } from '@/lib/psychStore'
 
 // Las 5 subescalas (label espeja performance/wellness.py).
 const ITEMS: { name: keyof Pick<SavedWellness, 'sueno' | 'fatiga' | 'estres' | 'dolor_muscular' | 'animo'>; label: string }[] = [
@@ -46,13 +48,50 @@ const tip = {
 }
 const axisTick = { fontSize: 11, fill: 'rgba(255,255,255,0.4)' }
 
+type Squad = ReturnType<typeof loadSquad>
+
 export function PsicologicoPage() {
   const squad = useMemo(() => loadSquad(), [])
+  const [section, setSection] = useState<'bienestar' | 'cuestionarios'>('bienestar')
+
+  return (
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-white">Psicológico</h1>
+          <p className="text-xs text-white/45">
+            {section === 'bienestar'
+              ? 'Monitoreo de bienestar · índice calculado en el servidor'
+              : 'Cuestionarios validados · scoring en el servidor'}
+          </p>
+        </div>
+        <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
+          {(['bienestar', 'cuestionarios'] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSection(s)}
+              className={`rounded-md px-3.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+                section === s ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {section === 'bienestar' ? <BienestarSection squad={squad} /> : <CuestionariosSection squad={squad} />}
+    </div>
+  )
+}
+
+// ── Sección BIENESTAR (Fase A) ───────────────────────────────────────────────
+function BienestarSection({ squad }: { squad: Squad }) {
   const [all, setAll] = useState<SavedWellness[]>(() => loadWellness())
   const [tab, setTab] = useState<'equipo' | 'atleta'>('equipo')
   const [sel, setSel] = useState<string>(squad[0]?.id ?? '')
 
-  // Último check-in por atleta (para el semáforo y el ranking del equipo).
   const latestByAthlete = useMemo(() => {
     const map = new Map<string, SavedWellness>()
     for (const w of all) {
@@ -63,26 +102,20 @@ export function PsicologicoPage() {
   }, [all])
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Psicológico</h1>
-          <p className="text-xs text-white/45">Monitoreo de bienestar · índice calculado en el servidor</p>
-        </div>
-        <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
-          {(['equipo', 'atleta'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded-md px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                tab === t ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
-              }`}
-            >
-              {t === 'equipo' ? 'Equipo' : 'Por atleta'}
-            </button>
-          ))}
-        </div>
+    <>
+      <div className="flex items-center gap-0.5 self-start rounded-lg border border-perf-border bg-perf-surface p-0.5">
+        {(['equipo', 'atleta'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`rounded-md px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              tab === t ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+            }`}
+          >
+            {t === 'equipo' ? 'Equipo' : 'Por atleta'}
+          </button>
+        ))}
       </div>
 
       {tab === 'equipo' ? (
@@ -90,7 +123,7 @@ export function PsicologicoPage() {
       ) : (
         <AthleteView squad={squad} sel={sel} onSelect={setSel} all={all} setAll={setAll} />
       )}
-    </div>
+    </>
   )
 }
 
@@ -339,5 +372,218 @@ function Kpi({ label, value, tone = 'accent' }: { label: string; value: string; 
       <p className="text-xs text-white/45">{label}</p>
       <p className={`mt-1 text-xl font-bold ${SEM[tone].text}`}>{value}</p>
     </div>
+  )
+}
+
+// ── Sección CUESTIONARIOS (Fase B) ───────────────────────────────────────────
+const qInput = 'w-full rounded-lg border bg-perf-surface2 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-white/25 focus:border-accent'
+
+function CuestionariosSection({ squad }: { squad: Squad }) {
+  const [instruments, setInstruments] = useState<PsychInstrument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState('')
+  const [sel, setSel] = useState(squad[0]?.id ?? '')
+  const [slug, setSlug] = useState<string | null>(null)
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [fecha, setFecha] = useState(today())
+  const [computed, setComputed] = useState<SavedPsych['resultados'] | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [generalError, setGeneralError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState<SavedPsych[]>(() => loadPsych())
+  const [justSaved, setJustSaved] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    fetchInstruments()
+      .then((d) => { if (alive) { setInstruments(d); setLoadErr('') } })
+      .catch(() => { if (alive) setLoadErr('No se pudo cargar el catálogo de cuestionarios. Revisa tu sesión.') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+
+  const instrument = instruments.find((i) => i.slug === slug) ?? null
+  const atleta = squad.find((a) => a.id === sel) ?? squad[0]
+  const histAthlete = saved.filter((p) => p.athleteId === sel)
+
+  function buildSubescalas(): Record<string, number> {
+    const out: Record<string, number> = {}
+    if (!instrument) return out
+    for (const s of instrument.subescalas) {
+      const v = (values[s.key] ?? '').trim()
+      if (v !== '') out[s.key] = Number(v)
+    }
+    return out
+  }
+
+  function selectInstrument(i: PsychInstrument) {
+    setSlug(i.slug)
+    const init: Record<string, string> = {}
+    for (const s of i.subescalas) init[s.key] = ''
+    setValues(init); setComputed(null); setFieldErrors({}); setGeneralError(''); setJustSaved(false)
+  }
+
+  async function onCalcular() {
+    if (!instrument) return
+    setBusy(true); setFieldErrors({}); setGeneralError(''); setJustSaved(false)
+    try {
+      const r = await scoreInstrument(instrument.slug, buildSubescalas())
+      setComputed(r.resultados)
+    } catch (e) {
+      const data = (e as AxiosError<{ errors?: Record<string, string> }>).response?.data
+      setComputed(null)
+      if (data?.errors) {
+        const { __all__, ...fields } = data.errors
+        setFieldErrors(fields)
+        setGeneralError(__all__ ?? (Object.keys(fields).length ? '' : 'Revisa los datos.'))
+      } else {
+        setGeneralError('No se pudo calcular. Revisa tu conexión o tu sesión.')
+      }
+    } finally { setBusy(false) }
+  }
+
+  function onGuardar() {
+    if (!instrument || !computed) return
+    setSaved(savePsych({
+      athleteId: sel, instrument: instrument.slug, nombre: instrument.nombre,
+      fecha, subescalas: buildSubescalas(), resultados: computed,
+    }))
+    setJustSaved(true)
+  }
+
+  return (
+    <>
+      {/* Atleta */}
+      <Panel title="Atleta" subtitle={atleta?.nombre}>
+        <div className="flex flex-wrap gap-2">
+          {squad.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => setSel(a.id)}
+              className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+                a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
+              }`}
+            >
+              <Avatar name={a.nombre} size={22} />
+              <span className="whitespace-nowrap">{a.nombre}</span>
+            </button>
+          ))}
+        </div>
+      </Panel>
+
+      {/* Catálogo de instrumentos */}
+      <Panel title="Cuestionario" subtitle={loading ? 'Cargando…' : `${instruments.length} instrumentos`}>
+        {loadErr ? (
+          <p className="text-sm text-perf-danger">{loadErr}</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {instruments.map((i) => {
+              const s = i.slug === slug
+              return (
+                <button
+                  key={i.slug}
+                  type="button"
+                  onClick={() => selectInstrument(i)}
+                  className={`rounded-xl border p-3.5 text-left transition-colors ${
+                    s ? 'border-accent bg-accent/10' : 'border-perf-border bg-perf-surface2 hover:border-accent/40'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-white">{i.nombre}</p>
+                  <p className="mt-1 text-xs leading-snug text-white/45">{i.descripcion}</p>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Panel>
+
+      {/* Subescalas + resultados */}
+      {instrument && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel title={instrument.nombre} subtitle="Puntuaciones por subescala">
+            <div className="flex flex-col gap-3">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-white/55">Fecha</span>
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={`${qInput} border-perf-border [color-scheme:dark]`} />
+              </label>
+
+              {instrument.subescalas.map((s) => (
+                <label key={s.key} className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-white/55">
+                    {s.label} <span className="text-white/30">({s.min}–{s.max})</span>
+                  </span>
+                  <input
+                    type="number" inputMode="decimal" min={s.min} max={s.max}
+                    value={values[s.key] ?? ''}
+                    onChange={(e) => { setValues((v) => ({ ...v, [s.key]: e.target.value })); setJustSaved(false) }}
+                    className={`${qInput} ${fieldErrors[s.key] ? 'border-perf-danger' : 'border-perf-border'}`}
+                  />
+                  {fieldErrors[s.key] && <span className="mt-1 block text-xs text-perf-danger">{fieldErrors[s.key]}</span>}
+                </label>
+              ))}
+
+              {generalError && (
+                <p className="rounded-lg border border-perf-danger/30 bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">{generalError}</p>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button type="button" onClick={onCalcular} disabled={busy} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accentDark disabled:opacity-50">
+                  {busy ? 'Calculando…' : 'Calcular'}
+                </button>
+                <button type="button" onClick={onGuardar} disabled={!computed} className="rounded-lg border border-perf-border bg-perf-surface2 px-4 py-2 text-sm font-medium text-white/80 hover:text-white disabled:opacity-40">
+                  Guardar evaluación
+                </button>
+                {justSaved && <span className="text-xs text-perf-ok">✓ Guardado</span>}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Resultado"
+            subtitle="Calculado en el servidor"
+            action={<span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accentLight">Servidor</span>}
+          >
+            {computed ? (
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-perf-border bg-perf-surface2 p-4">
+                  <p className="text-xs text-white/45">{computed.indice_label}</p>
+                  <p className="mt-1 text-3xl font-bold text-accent">{computed.indice}</p>
+                  <p className="mt-1 text-sm text-white/65">{computed.interpretacion}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-full min-h-[140px] flex-col items-center justify-center text-center">
+                <p className="text-sm text-white/40">Completa las subescalas y pulsa <span className="text-white/70">Calcular</span>.</p>
+                <p className="mt-1 text-xs text-white/30">{instrument.descripcion}</p>
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
+
+      {/* Historial del atleta */}
+      <Panel title="Historial" subtitle={`${histAthlete.length} evaluación(es) · ${atleta?.nombre ?? ''}`}>
+        {histAthlete.length === 0 ? (
+          <p className="text-sm text-white/40">Aún no hay evaluaciones guardadas para este atleta.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-perf-border">
+            {histAthlete.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
+                <div className="min-w-[180px]">
+                  <p className="text-sm font-medium text-white">{p.nombre}</p>
+                  <p className="text-xs text-white/40">{p.fecha}</p>
+                </div>
+                <div className="flex flex-1 items-center gap-3">
+                  <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">{p.resultados.indice}</span>
+                  <span className="text-xs text-white/55">{p.resultados.indice_label} · {p.resultados.interpretacion}</span>
+                </div>
+                <button type="button" onClick={() => setSaved(deletePsych(p.id))} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+    </>
   )
 }
