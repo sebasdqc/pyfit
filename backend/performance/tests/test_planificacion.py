@@ -103,6 +103,41 @@ class PeriodizacionTests(_Base):
         res = self.client.get(f'/api/performance/centers/{self.center.id}/planificacion/{plan_ajeno.id}/')
         self.assertEqual(res.status_code, 404)
 
+    def test_plan_con_grupo(self):
+        res = self.client.post(
+            f'/api/performance/centers/{self.center.id}/planificacion/',
+            {'nombre': 'Plan Sub-18', 'grupo': 'Sub-18', 'fecha_inicio': '2026-07-01'},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()['grupo'], 'Sub-18')
+        self.assertEqual(TrainingPlan.objects.get(id=res.json()['id']).grupo, 'Sub-18')
+
+    def test_microciclo_con_fecha(self):
+        plan_id = self.crear_plan()
+        base = f'/api/performance/centers/{self.center.id}/planificacion/{plan_id}'
+        meso_id = self.client.post(f'{base}/mesociclos/', {'nombre': 'F1', 'tipo': 'competitivo'}, format='json').json()['id']
+        res = self.client.post(f'{base}/mesociclos/{meso_id}/microciclos/', {
+            'tipo': 'carga', 'carga_relativa': 70, 'fecha_inicio': '2026-07-06',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()['fecha_inicio'], '2026-07-06')
+        self.assertEqual(str(Microcycle.objects.get(id=res.json()['id']).fecha_inicio), '2026-07-06')
+
+    def test_reordenar_mesociclos_por_orden(self):
+        # Reordenar = intercambiar el `orden` de dos fases vía PATCH (el árbol las
+        # devuelve ordenadas por `orden`).
+        plan_id = self.crear_plan()
+        base = f'/api/performance/centers/{self.center.id}/planificacion/{plan_id}'
+        a = self.client.post(f'{base}/mesociclos/', {'orden': 1, 'nombre': 'A', 'tipo': 'prep_general'}, format='json').json()
+        b = self.client.post(f'{base}/mesociclos/', {'orden': 2, 'nombre': 'B', 'tipo': 'competitivo'}, format='json').json()
+
+        self.client.patch(f'{base}/mesociclos/{a["id"]}/', {'orden': 2}, format='json')
+        self.client.patch(f'{base}/mesociclos/{b["id"]}/', {'orden': 1}, format='json')
+
+        tree = self.client.get(f'{base}/').json()
+        self.assertEqual([m['nombre'] for m in tree['mesociclos']], ['B', 'A'])
+
     def test_lista_macros_con_conteos(self):
         plan_id = self.crear_plan()
         base = f'/api/performance/centers/{self.center.id}/planificacion/{plan_id}'

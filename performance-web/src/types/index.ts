@@ -122,6 +122,7 @@ export interface Microcycle {
   id: number
   mesociclo: number
   orden: number
+  fecha_inicio: string | null
   nombre: string
   tipo: MicroTipo
   carga_relativa: number
@@ -152,6 +153,7 @@ export interface TrainingPlan {
   creado_por: number | null
   nombre: string
   objetivo: string
+  grupo: string
   descripcion: string
   fecha_inicio: string
   fecha_fin: string | null

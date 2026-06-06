@@ -105,6 +105,13 @@ export async function createMeso(
   return res.data
 }
 
+export async function updateMeso(
+  centerId: number, planId: number, mesoId: number, payload: Partial<Mesocycle>,
+): Promise<Mesocycle> {
+  const res = await api.patch<Mesocycle>(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/`, payload)
+  return res.data
+}
+
 export async function deleteMeso(centerId: number, planId: number, mesoId: number): Promise<void> {
   await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/`)
 }

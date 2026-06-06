@@ -1,7 +1,8 @@
 // Módulo PLANIFICACIÓN. Planificador de periodización clásica de equipo:
 // Macrociclo (temporada) → Mesociclos (fases) → Microciclos (semanas). Todo es
-// API real, acotado al centro del usuario. La "onda de carga" dibuja la carga
-// relativa de cada semana a lo largo del macrociclo; cada semana es editable.
+// API real, acotado al centro del usuario. Permite crear/editar/reordenar fases y
+// semanas, fijar la carga relativa (onda de carga) y fechas, y asignar el plan a
+// un grupo del centro.
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -12,7 +13,8 @@ import { Panel } from '@/components/ui/Panel'
 import { useAuth } from '@/auth/useAuth'
 import {
   listPlans, createPlan, getPlanTree, deletePlan,
-  createMeso, deleteMeso, createMicro, updateMicro, deleteMicro, listCenters,
+  createMeso, updateMeso, deleteMeso,
+  createMicro, updateMicro, deleteMicro, listCenters,
 } from '@/api/performance'
 import type {
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
@@ -37,11 +39,18 @@ const MICRO_TIPO: Record<MicroTipo, { label: string; hex: string }> = {
 }
 const CARGA_OBJ: Record<CargaObjetivo, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', pico: 'Pico' }
 const NIVEL: Record<Nivel, string> = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto' }
+
 const today = () => new Date().toISOString().slice(0, 10)
+const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0))
+const shortDate = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : null)
+function addWeeks(iso: string, weeks: number): string {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + weeks * 7)
+  return d.toISOString().slice(0, 10)
+}
 
 export function PlanificacionPage() {
   const { user } = useAuth()
-  // Centros del usuario: de su membresía o, si es admin sin membresía, los listamos.
   const [centers, setCenters] = useState<{ id: number; nombre: string }[]>(
     () => (user?.centros ?? []).map((c) => ({ id: c.center_id, nombre: c.center_nombre })),
   )
@@ -63,7 +72,6 @@ export function PlanificacionPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [tree, setTree] = useState<TrainingPlanDetail | null>(null)
 
-  // Cargar macrociclos del centro.
   useEffect(() => {
     if (centerId == null) return
     setLoadingPlans(true); setPlansErr('')
@@ -74,7 +82,6 @@ export function PlanificacionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId])
 
-  // Cargar el árbol del macrociclo seleccionado.
   useEffect(() => {
     if (centerId == null || selectedId == null) { setTree(null); return }
     getPlanTree(centerId, selectedId).then(setTree).catch(() => setTree(null))
@@ -104,7 +111,6 @@ export function PlanificacionPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-      {/* Encabezado + selector de centro */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-white">Planificación</h1>
@@ -122,7 +128,6 @@ export function PlanificacionPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
-        {/* Columna de macrociclos */}
         <PlanList
           plans={plans}
           loading={loadingPlans}
@@ -133,7 +138,6 @@ export function PlanificacionPage() {
           centerId={centerId}
         />
 
-        {/* Detalle del macrociclo */}
         {tree ? (
           <PlanDetail
             centerId={centerId}
@@ -166,6 +170,7 @@ function PlanList({
   const [adding, setAdding] = useState(false)
   const [nombre, setNombre] = useState('')
   const [objetivo, setObjetivo] = useState('')
+  const [grupo, setGrupo] = useState('')
   const [inicio, setInicio] = useState(today())
   const [busy, setBusy] = useState(false)
 
@@ -173,8 +178,10 @@ function PlanList({
     if (!nombre.trim()) return
     setBusy(true)
     try {
-      const p = await createPlan(centerId, { nombre: nombre.trim(), objetivo: objetivo.trim(), fecha_inicio: inicio })
-      setNombre(''); setObjetivo(''); setInicio(today()); setAdding(false)
+      const p = await createPlan(centerId, {
+        nombre: nombre.trim(), objetivo: objetivo.trim(), grupo: grupo.trim(), fecha_inicio: inicio,
+      })
+      setNombre(''); setObjetivo(''); setGrupo(''); setInicio(today()); setAdding(false)
       onCreated(p)
     } finally { setBusy(false) }
   }
@@ -193,6 +200,7 @@ function PlanList({
         <div className="mb-3 flex flex-col gap-2 rounded-xl border border-perf-border bg-perf-surface2 p-3">
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (p. ej. Temporada 26/27)" className={inputCls} />
           <input value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Objetivo (opcional)" className={inputCls} />
+          <input value={grupo} onChange={(e) => setGrupo(e.target.value)} placeholder="Grupo (p. ej. Primer equipo, Sub-18)" className={inputCls} />
           <label className="text-xs text-white/45">Inicio
             <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className={`${inputCls} mt-1 [color-scheme:dark]`} />
           </label>
@@ -221,7 +229,7 @@ function PlanList({
                 >
                   <p className="text-sm font-medium text-white">{p.nombre}</p>
                   <p className="mt-0.5 text-xs text-white/45">
-                    {p.total_mesociclos} fase(s) · {p.total_microciclos} semana(s)
+                    {p.grupo ? `${p.grupo} · ` : ''}{p.total_mesociclos} fase(s) · {p.total_microciclos} sem.
                   </p>
                 </button>
               </li>
@@ -257,12 +265,31 @@ function PlanDetail({
     return rows
   }, [plan])
 
+  // Offset acumulado de semanas antes de cada fase (para sugerir fechas).
+  const offsets = useMemo(() => {
+    const out: number[] = []
+    let acc = 0
+    for (const m of plan.mesociclos) { out.push(acc); acc += m.microciclos.length }
+    return out
+  }, [plan])
+
+  async function moveMeso(idx: number, dir: -1 | 1) {
+    const list = plan.mesociclos
+    const j = idx + dir
+    if (j < 0 || j >= list.length) return
+    const a = list[idx], b = list[j]
+    await Promise.all([
+      updateMeso(centerId, plan.id, a.id, { orden: b.orden }),
+      updateMeso(centerId, plan.id, b.id, { orden: a.orden }),
+    ])
+    onChanged()
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Cabecera del macrociclo */}
       <Panel
         title={plan.nombre}
-        subtitle={[plan.objetivo, `Inicio ${plan.fecha_inicio}`].filter(Boolean).join(' · ')}
+        subtitle={[plan.grupo, plan.objetivo, `Inicio ${plan.fecha_inicio}`].filter(Boolean).join(' · ')}
         action={
           <button
             type="button"
@@ -273,12 +300,12 @@ function PlanDetail({
           </button>
         }
       >
-        <div className="flex flex-wrap gap-4 text-xs text-white/55">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-white/55">
+          {plan.grupo && <span className="rounded-full bg-accent/10 px-2.5 py-1 font-medium text-accentLight">{plan.grupo}</span>}
           <span>{plan.total_mesociclos} fase(s)</span>
           <span>{plan.total_microciclos} semana(s)</span>
         </div>
 
-        {/* Onda de carga */}
         {wave.length > 0 ? (
           <div className="mt-4">
             <p className="mb-1 text-xs font-medium text-white/55">Onda de carga (carga relativa por semana)</p>
@@ -305,16 +332,27 @@ function PlanDetail({
         )}
       </Panel>
 
-      {/* Fases (mesociclos) */}
-      {plan.mesociclos.map((m) => (
-        <MesoBand key={m.id} centerId={centerId} planId={plan.id} meso={m} onChanged={onChanged} />
-      ))}
-
-      {/* Añadir fase */}
-      {addingMeso ? (
-        <NewMesoForm
+      {plan.mesociclos.map((m, idx) => (
+        <MesoBand
+          key={m.id}
           centerId={centerId}
           planId={plan.id}
+          meso={m}
+          planStart={plan.fecha_inicio}
+          weekOffset={offsets[idx]}
+          canUp={idx > 0}
+          canDown={idx < plan.mesociclos.length - 1}
+          onMoveUp={() => moveMeso(idx, -1)}
+          onMoveDown={() => moveMeso(idx, 1)}
+          onChanged={onChanged}
+        />
+      ))}
+
+      {addingMeso ? (
+        <MesoForm
+          centerId={centerId}
+          planId={plan.id}
+          mode="create"
           orden={plan.mesociclos.length + 1}
           onDone={() => { setAddingMeso(false); onChanged() }}
           onCancel={() => setAddingMeso(false)}
@@ -334,15 +372,49 @@ function PlanDetail({
 
 // ── Banda de un mesociclo con sus semanas ────────────────────────────────────
 function MesoBand({
-  centerId, planId, meso, onChanged,
+  centerId, planId, meso, planStart, weekOffset, canUp, canDown, onMoveUp, onMoveDown, onChanged,
 }: {
   centerId: number
   planId: number
   meso: Mesocycle
+  planStart: string
+  weekOffset: number
+  canUp: boolean
+  canDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
   onChanged: () => void
 }) {
   const [addingMicro, setAddingMicro] = useState(false)
+  const [editing, setEditing] = useState(false)
   const t = MESO_TIPO[meso.tipo]
+
+  async function moveMicro(idx: number, dir: -1 | 1) {
+    const list = meso.microciclos
+    const j = idx + dir
+    if (j < 0 || j >= list.length) return
+    const a = list[idx], b = list[j]
+    await Promise.all([
+      updateMicro(centerId, planId, meso.id, a.id, { orden: b.orden }),
+      updateMicro(centerId, planId, meso.id, b.id, { orden: a.orden }),
+    ])
+    onChanged()
+  }
+
+  if (editing) {
+    return (
+      <MesoForm
+        centerId={centerId}
+        planId={planId}
+        mode="edit"
+        initial={meso}
+        onDone={() => { setEditing(false); onChanged() }}
+        onCancel={() => setEditing(false)}
+      />
+    )
+  }
+
+  const suggestedDate = addWeeks(planStart, weekOffset + meso.microciclos.length)
 
   return (
     <section className="overflow-hidden rounded-2xl border border-perf-border bg-perf-surface">
@@ -356,29 +428,42 @@ function MesoBand({
           </div>
           {meso.enfasis && <p className="mt-0.5 truncate text-xs text-white/45">{meso.enfasis}</p>}
         </div>
-        <div className="ml-auto flex items-center gap-3 text-xs text-white/45">
+        <div className="ml-auto flex items-center gap-2 text-xs text-white/45">
           <span>Carga {CARGA_OBJ[meso.carga_objetivo]}</span>
           <span>{meso.microciclos.length || meso.duracion_semanas} sem.</span>
-          <button
-            type="button"
+          <IconBtn onClick={onMoveUp} disabled={!canUp} title="Subir fase">▲</IconBtn>
+          <IconBtn onClick={onMoveDown} disabled={!canDown} title="Bajar fase">▼</IconBtn>
+          <IconBtn onClick={() => setEditing(true)} title="Editar fase">✎</IconBtn>
+          <IconBtn
             onClick={() => { if (confirm(`¿Eliminar la fase "${meso.nombre}" y sus semanas?`)) deleteMeso(centerId, planId, meso.id).then(onChanged) }}
-            className="text-white/35 hover:text-perf-danger"
-          >
-            ✕
-          </button>
+            title="Eliminar fase" danger
+          >✕</IconBtn>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 p-4">
-        {meso.microciclos.map((w) => (
-          <MicroCell key={w.id} centerId={centerId} planId={planId} mesoId={meso.id} micro={w} onChanged={onChanged} />
-        ))}
-        {addingMicro ? (
-          <NewMicroForm
+        {meso.microciclos.map((w, idx) => (
+          <MicroCell
+            key={w.id}
             centerId={centerId}
             planId={planId}
             mesoId={meso.id}
+            micro={w}
+            canLeft={idx > 0}
+            canRight={idx < meso.microciclos.length - 1}
+            onMoveLeft={() => moveMicro(idx, -1)}
+            onMoveRight={() => moveMicro(idx, 1)}
+            onChanged={onChanged}
+          />
+        ))}
+        {addingMicro ? (
+          <MicroForm
+            centerId={centerId}
+            planId={planId}
+            mesoId={meso.id}
+            mode="create"
             orden={meso.microciclos.length + 1}
+            suggestedDate={suggestedDate}
             onDone={() => { setAddingMicro(false); onChanged() }}
             onCancel={() => setAddingMicro(false)}
           />
@@ -386,7 +471,7 @@ function MesoBand({
           <button
             type="button"
             onClick={() => setAddingMicro(true)}
-            className="flex h-[120px] w-[104px] shrink-0 items-center justify-center rounded-xl border border-dashed border-perf-border text-xs font-medium text-white/45 transition-colors hover:border-accent/50 hover:text-white"
+            className="flex h-[156px] w-[124px] shrink-0 items-center justify-center rounded-xl border border-dashed border-perf-border text-xs font-medium text-white/45 transition-colors hover:border-accent/50 hover:text-white"
           >
             + semana
           </button>
@@ -396,33 +481,53 @@ function MesoBand({
   )
 }
 
-// ── Celda de microciclo (semana), con carga editable ─────────────────────────
+// ── Celda de microciclo (semana) ─────────────────────────────────────────────
 function MicroCell({
-  centerId, planId, mesoId, micro, onChanged,
+  centerId, planId, mesoId, micro, canLeft, canRight, onMoveLeft, onMoveRight, onChanged,
 }: {
   centerId: number
   planId: number
   mesoId: number
   micro: Microcycle
+  canLeft: boolean
+  canRight: boolean
+  onMoveLeft: () => void
+  onMoveRight: () => void
   onChanged: () => void
 }) {
   const [carga, setCarga] = useState(String(micro.carga_relativa))
+  const [editing, setEditing] = useState(false)
   const t = MICRO_TIPO[micro.tipo]
 
   async function commitCarga() {
-    const n = Math.max(0, Math.min(100, Number(carga) || 0))
+    const n = clamp(Number(carga))
     if (n === micro.carga_relativa) return
     await updateMicro(centerId, planId, mesoId, micro.id, { carga_relativa: n })
     onChanged()
   }
 
+  if (editing) {
+    return (
+      <MicroForm
+        centerId={centerId}
+        planId={planId}
+        mesoId={mesoId}
+        mode="edit"
+        initial={micro}
+        onDone={() => { setEditing(false); onChanged() }}
+        onCancel={() => setEditing(false)}
+      />
+    )
+  }
+
+  const fecha = shortDate(micro.fecha_inicio)
+
   return (
-    <div className="relative flex h-[120px] w-[104px] shrink-0 flex-col rounded-xl border border-perf-border bg-perf-surface2 p-2.5">
+    <div className="flex h-[156px] w-[124px] shrink-0 flex-col rounded-xl border border-perf-border bg-perf-surface2 p-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: t.hex }}>{t.label}</span>
-        <button type="button" onClick={() => deleteMicro(centerId, planId, mesoId, micro.id).then(onChanged)} className="text-white/30 hover:text-perf-danger" title="Quitar semana">✕</button>
+        {fecha && <span className="text-[10px] text-white/40">{fecha}</span>}
       </div>
-      {/* Barra de carga */}
       <div className="mt-2 flex flex-1 items-end">
         <div className="h-full w-full overflow-hidden rounded-md bg-perf-bg">
           <div className="w-full rounded-md transition-all" style={{ height: `${micro.carga_relativa}%`, background: t.hex, opacity: 0.55 }} />
@@ -434,41 +539,56 @@ function MicroCell({
           onChange={(e) => setCarga(e.target.value)}
           onBlur={commitCarga}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="w-12 rounded border border-perf-border bg-perf-surface px-1 py-0.5 text-center text-xs text-white outline-none focus:border-accent"
+          className="w-11 rounded border border-perf-border bg-perf-surface px-1 py-0.5 text-center text-xs text-white outline-none focus:border-accent"
         />
-        <span className="text-[10px] text-white/40">% · {NIVEL[micro.intensidad]}</span>
+        <span className="text-[10px] text-white/40">% {NIVEL[micro.intensidad]}</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between">
+        <IconBtn onClick={onMoveLeft} disabled={!canLeft} title="Mover izquierda">◀</IconBtn>
+        <IconBtn onClick={() => setEditing(true)} title="Editar semana">✎</IconBtn>
+        <IconBtn onClick={() => deleteMicro(centerId, planId, mesoId, micro.id).then(onChanged)} title="Quitar semana" danger>✕</IconBtn>
+        <IconBtn onClick={onMoveRight} disabled={!canRight} title="Mover derecha">▶</IconBtn>
       </div>
     </div>
   )
 }
 
-// ── Formularios de alta ──────────────────────────────────────────────────────
-function NewMesoForm({
-  centerId, planId, orden, onDone, onCancel,
+// ── Formulario de fase (crear / editar) ──────────────────────────────────────
+function MesoForm({
+  centerId, planId, mode, initial, orden, onDone, onCancel,
 }: {
-  centerId: number; planId: number; orden: number; onDone: () => void; onCancel: () => void
+  centerId: number
+  planId: number
+  mode: 'create' | 'edit'
+  initial?: Mesocycle
+  orden?: number
+  onDone: () => void
+  onCancel: () => void
 }) {
-  const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<MesoTipo>('prep_general')
-  const [enfasis, setEnfasis] = useState('')
-  const [carga, setCarga] = useState<CargaObjetivo>('media')
-  const [semanas, setSemanas] = useState('4')
+  const [nombre, setNombre] = useState(initial?.nombre ?? '')
+  const [tipo, setTipo] = useState<MesoTipo>(initial?.tipo ?? 'prep_general')
+  const [enfasis, setEnfasis] = useState(initial?.enfasis ?? '')
+  const [carga, setCarga] = useState<CargaObjetivo>(initial?.carga_objetivo ?? 'media')
+  const [semanas, setSemanas] = useState(String(initial?.duracion_semanas ?? 4))
   const [busy, setBusy] = useState(false)
 
   async function submit() {
     if (!nombre.trim()) return
     setBusy(true)
     try {
-      await createMeso(centerId, planId, {
-        orden, nombre: nombre.trim(), tipo, enfasis: enfasis.trim(),
+      const payload = {
+        nombre: nombre.trim(), tipo, enfasis: enfasis.trim(),
         carga_objetivo: carga, duracion_semanas: Number(semanas) || 4,
-      })
+      }
+      if (mode === 'edit' && initial) await updateMeso(centerId, planId, initial.id, payload)
+      else await createMeso(centerId, planId, { ...payload, orden: orden ?? 1 })
       onDone()
     } finally { setBusy(false) }
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-perf-border bg-perf-surface p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-accent/40 bg-perf-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-accentLight">{mode === 'edit' ? 'Editar fase' : 'Nueva fase'}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Labeled label="Nombre de la fase">
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="p. ej. Pretemporada" className={inputCls} />
@@ -494,7 +614,7 @@ function NewMesoForm({
       </div>
       <div className="flex gap-2">
         <button type="button" onClick={submit} disabled={busy || !nombre.trim()} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accentDark disabled:opacity-50">
-          {busy ? 'Añadiendo…' : 'Añadir fase'}
+          {busy ? 'Guardando…' : mode === 'edit' ? 'Guardar fase' : 'Añadir fase'}
         </button>
         <button type="button" onClick={onCancel} className="rounded-lg border border-perf-border px-4 py-2 text-sm text-white/70 hover:text-white">Cancelar</button>
       </div>
@@ -502,24 +622,36 @@ function NewMesoForm({
   )
 }
 
-function NewMicroForm({
-  centerId, planId, mesoId, orden, onDone, onCancel,
+// ── Formulario de semana (crear / editar) ────────────────────────────────────
+function MicroForm({
+  centerId, planId, mesoId, mode, initial, orden, suggestedDate, onDone, onCancel,
 }: {
-  centerId: number; planId: number; mesoId: number; orden: number; onDone: () => void; onCancel: () => void
+  centerId: number
+  planId: number
+  mesoId: number
+  mode: 'create' | 'edit'
+  initial?: Microcycle
+  orden?: number
+  suggestedDate?: string
+  onDone: () => void
+  onCancel: () => void
 }) {
-  const [tipo, setTipo] = useState<MicroTipo>('carga')
-  const [carga, setCarga] = useState('75')
-  const [volumen, setVolumen] = useState<Nivel>('medio')
-  const [intensidad, setIntensidad] = useState<Nivel>('medio')
+  const [tipo, setTipo] = useState<MicroTipo>(initial?.tipo ?? 'carga')
+  const [carga, setCarga] = useState(String(initial?.carga_relativa ?? 75))
+  const [volumen, setVolumen] = useState<Nivel>(initial?.volumen ?? 'medio')
+  const [intensidad, setIntensidad] = useState<Nivel>(initial?.intensidad ?? 'medio')
+  const [fecha, setFecha] = useState(initial?.fecha_inicio ?? suggestedDate ?? '')
   const [busy, setBusy] = useState(false)
 
   async function submit() {
     setBusy(true)
     try {
-      await createMicro(centerId, planId, mesoId, {
-        orden, tipo, carga_relativa: Math.max(0, Math.min(100, Number(carga) || 0)),
-        volumen, intensidad,
-      })
+      const payload = {
+        tipo, carga_relativa: clamp(Number(carga)), volumen, intensidad,
+        fecha_inicio: fecha || null,
+      }
+      if (mode === 'edit' && initial) await updateMicro(centerId, planId, mesoId, initial.id, payload)
+      else await createMicro(centerId, planId, mesoId, { ...payload, orden: orden ?? 1 })
       onDone()
     } finally { setBusy(false) }
   }
@@ -532,6 +664,9 @@ function NewMicroForm({
       <label className="text-[10px] text-white/45">Carga relativa %
         <input type="number" min={0} max={100} value={carga} onChange={(e) => setCarga(e.target.value)} className={`${miniInput} mt-0.5`} />
       </label>
+      <label className="text-[10px] text-white/45">Inicio de semana
+        <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={`${miniInput} mt-0.5 [color-scheme:dark]`} />
+      </label>
       <div className="grid grid-cols-2 gap-1.5">
         <select value={volumen} onChange={(e) => setVolumen(e.target.value as Nivel)} className={miniInput} title="Volumen">
           {Object.entries(NIVEL).map(([k, v]) => <option key={k} value={k}>Vol {v}</option>)}
@@ -541,7 +676,9 @@ function NewMicroForm({
         </select>
       </div>
       <div className="flex gap-1">
-        <button type="button" onClick={submit} disabled={busy} className="flex-1 rounded-md bg-accent px-2 py-1 text-xs font-medium text-white hover:bg-accentDark disabled:opacity-50">Añadir</button>
+        <button type="button" onClick={submit} disabled={busy} className="flex-1 rounded-md bg-accent px-2 py-1 text-xs font-medium text-white hover:bg-accentDark disabled:opacity-50">
+          {busy ? '…' : mode === 'edit' ? 'Guardar' : 'Añadir'}
+        </button>
         <button type="button" onClick={onCancel} className="rounded-md border border-perf-border px-2 py-1 text-xs text-white/60 hover:text-white">✕</button>
       </div>
     </div>
@@ -549,6 +686,24 @@ function NewMicroForm({
 }
 
 // ── Piezas pequeñas ──────────────────────────────────────────────────────────
+function IconBtn({
+  children, onClick, disabled, title, danger,
+}: {
+  children: ReactNode; onClick: () => void; disabled?: boolean; title: string; danger?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`rounded px-1 text-white/40 transition-colors disabled:opacity-25 ${danger ? 'hover:text-perf-danger' : 'hover:text-white'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
 function Labeled({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">

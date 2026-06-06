@@ -94,7 +94,7 @@ class MicrocycleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Microcycle
         fields = [
-            'id', 'mesociclo', 'orden', 'nombre', 'tipo',
+            'id', 'mesociclo', 'orden', 'fecha_inicio', 'nombre', 'tipo',
             'carga_relativa', 'volumen', 'intensidad', 'notas', 'created_at',
         ]
         # `mesociclo` lo fija la vista a partir de la ruta.
@@ -121,7 +121,7 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrainingPlan
         fields = [
-            'id', 'center', 'athlete', 'creado_por', 'nombre', 'objetivo',
+            'id', 'center', 'athlete', 'creado_por', 'nombre', 'objetivo', 'grupo',
             'descripcion', 'fecha_inicio', 'fecha_fin', 'created_at',
             'total_mesociclos', 'total_microciclos',
         ]

@@ -65,9 +65,9 @@ class PhysicalTestAdmin(ModelAdmin):
 
 @admin.register(TrainingPlan)
 class TrainingPlanAdmin(ModelAdmin):
-    list_display = ('nombre', 'center', 'athlete', 'fecha_inicio', 'fecha_fin')
+    list_display = ('nombre', 'center', 'grupo', 'athlete', 'fecha_inicio', 'fecha_fin')
     list_filter = ('center',)
-    search_fields = ('nombre', 'objetivo')
+    search_fields = ('nombre', 'objetivo', 'grupo')
 
 
 @admin.register(Mesocycle)

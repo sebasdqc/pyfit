@@ -363,6 +363,9 @@ class TrainingPlan(models.Model):
     )
     nombre = models.CharField(max_length=160)
     objetivo = models.CharField(max_length=200, blank=True)
+    # Grupo / categoría del centro al que se aplica el plan (p. ej. "Primer
+    # equipo", "Sub-18"). Plan de equipo si athlete es null; individual si no.
+    grupo = models.CharField(max_length=80, blank=True)
     descripcion = models.TextField(blank=True)
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField(null=True, blank=True)
@@ -448,6 +451,8 @@ class Microcycle(models.Model):
         Mesocycle, on_delete=models.CASCADE, related_name='microciclos',
     )
     orden = models.PositiveIntegerField(default=0)
+    # Fecha de inicio de la semana (opcional; ancla el microciclo al calendario).
+    fecha_inicio = models.DateField(null=True, blank=True)
     nombre = models.CharField(max_length=120, blank=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_CARGA)
     # Carga relativa de la semana (% respecto al pico del macrociclo).
