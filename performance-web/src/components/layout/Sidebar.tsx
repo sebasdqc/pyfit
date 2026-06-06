@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria' },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento' },
-  { id: 'lesiones', label: 'Lesiones', icon: 'lesiones' },
+  { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones' },
   { id: 'tests', label: 'Tests', icon: 'tests' },
   { id: 'planificacion', label: 'Planificación', icon: 'planificacion' },
   { id: 'psicologico', label: 'Psicológico', icon: 'psicologico' },
