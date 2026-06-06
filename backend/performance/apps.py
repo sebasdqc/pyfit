@@ -21,7 +21,7 @@ class PerformanceConfig(AppConfig):
         from .models import (
             SportsCenter, CenterMembership, CenterAthlete,
             PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan,
-            PsychAssessment,
+            PsychAssessment, TestDefinition,
         )
 
         auditlog.register(SportsCenter)
@@ -34,3 +34,6 @@ class PerformanceConfig(AppConfig):
         auditlog.register(PhysicalTest)
         auditlog.register(TrainingPlan)
         auditlog.register(PsychAssessment)
+        # El catálogo de tests se siembra desde el motor (seed_tests); se audita
+        # para dejar traza de altas/bajas/cambios de definición.
+        auditlog.register(TestDefinition)

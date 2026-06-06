@@ -270,17 +270,69 @@ class InjuryReport(CenterRecord):
 
 # ─── Módulo TEST ──────────────────────────────────────────────────────────────
 
-class PhysicalTest(CenterRecord):
-    """Resultado de un test físico estandarizado (Cooper, sprint, CMJ, RM…)."""
+class TestDefinition(models.Model):
+    """Espejo en BD del catálogo de calculadoras de test.
 
+    La FUENTE ÚNICA de verdad del catálogo es el REGISTRY de
+    `performance.calculators` (código); esta tabla es su reflejo persistido, que se
+    siembra con `manage.py seed_tests`. Sirve para que el admin (Unfold) y otros
+    consumidores SQL vean/auditen el catálogo y para activar o desactivar tests sin
+    tocar código. El cálculo NUNCA usa esta tabla: corre siempre contra el REGISTRY
+    en el servidor.
+    """
+
+    FAMILIA_CHOICES = [
+        ('fisico', 'Físico'),
+        ('tecnico', 'Técnico'),
+        ('tactico', 'Táctico'),
+    ]
+
+    slug = models.SlugField(max_length=60, unique=True)
+    familia = models.CharField(max_length=20, choices=FAMILIA_CHOICES)
+    nombre = models.CharField(max_length=160)
+    descripcion = models.TextField(blank=True)
+    # Esquema de inputs que el frontend renderiza (copiado del calculador).
+    input_schema = models.JSONField(default=list, blank=True)
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_test_definitions'
+        ordering = ['familia', 'slug']
+
+    def __str__(self):
+        return f'{self.nombre} ({self.slug})'
+
+
+class PhysicalTest(CenterRecord):
+    """Resultado de un test estandarizado de un atleta.
+
+    Dos vías de registro:
+      • Con calculadora (recomendada): el cliente envía `test_slug` + `inputs`
+        crudos y el SERVIDOR calcula. `inputs` guarda la entrada ya validada y
+        `resultados` la salida rica del motor; `resultado`/`unidad` quedan vacíos.
+      • Manual / legado: el cliente envía `nombre` + `resultado` (+ `unidad`), un
+        único valor numérico, sin pasar por el motor.
+    """
+
+    # Slug de la calculadora usada (performance.calculators). Vacío = entrada manual.
+    test_slug = models.SlugField(max_length=60, blank=True, db_index=True)
     nombre = models.CharField(max_length=120)
     categoria = models.CharField(max_length=80, blank=True)
-    resultado = models.DecimalField(max_digits=10, decimal_places=2)
+    # Entrada validada y salida calculada por el servidor (vía calculadora).
+    inputs = models.JSONField(default=dict, blank=True)
+    resultados = models.JSONField(default=dict, blank=True)
+    # Vía manual/legado: un único valor. Nulo en entradas con calculadora.
+    resultado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     unidad = models.CharField(max_length=20, blank=True)
 
     class Meta(CenterRecord.Meta):
         db_table = 'performance_tests'
-        indexes = [models.Index(fields=['center', 'athlete', '-fecha'])]
+        indexes = [
+            models.Index(fields=['center', 'athlete', '-fecha']),
+            models.Index(fields=['center', 'test_slug', '-fecha']),
+        ]
 
 
 # ─── Módulo PLANIFICACIÓN ─────────────────────────────────────────────────────

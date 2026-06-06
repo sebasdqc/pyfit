@@ -5,6 +5,7 @@ from rest_framework import serializers
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
+    TestDefinition,
 )
 
 
@@ -72,12 +73,19 @@ class InjuryReportSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'registrado_por']
 
 
+class TestDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TestDefinition
+        fields = ['slug', 'familia', 'nombre', 'descripcion', 'input_schema', 'activo']
+
+
 class PhysicalTestSerializer(serializers.ModelSerializer):
     class Meta:
         model = PhysicalTest
         fields = [
             'id', 'center', 'athlete', 'registrado_por', 'fecha',
-            'nombre', 'categoria', 'resultado', 'unidad', 'notas', 'created_at',
+            'test_slug', 'nombre', 'categoria', 'inputs', 'resultados',
+            'resultado', 'unidad', 'notas', 'created_at',
         ]
         read_only_fields = ['id', 'created_at', 'registrado_por']
 

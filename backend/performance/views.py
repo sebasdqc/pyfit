@@ -29,6 +29,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle
+from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
@@ -239,10 +240,103 @@ def module_lesiones(request, pk):
     return _module_endpoint(request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por')
 
 
+# ─── Módulo TEST: catálogo, cálculo en vivo y registro ────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def tests_catalog(request):
+    """Catálogo de tests disponibles (slug, familia, nombre, descripción y
+    `input_schema` que el frontend renderiza como formulario).
+
+    Se sirve del REGISTRY del motor (fuente única de verdad), no de la tabla
+    TestDefinition: así el catálogo del panel siempre refleja el código vigente.
+    Filtro opcional `?familia=fisico|tecnico|tactico`.
+    """
+    items = catalog()
+    familia = request.query_params.get('familia')
+    if familia:
+        items = [c for c in items if c['familia'] == familia]
+    return Response(items)
+
+
+@api_view(['POST'])
+@permission_classes([IsPerformanceUser])
+def tests_compute(request):
+    """Calcula los resultados de un test SIN persistir (previsualización en vivo).
+
+    Body: `{test_slug, inputs}`. El cálculo ocurre siempre en el servidor; el
+    frontend solo captura inputs crudos. Errores de validación → 400 por campo.
+    """
+    slug = (request.data.get('test_slug') or '').strip()
+    try:
+        calc = get_calculator(slug)
+        resultados = calc.run(request.data.get('inputs') or {})
+    except CalculatorError as e:
+        return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'test_slug': calc.slug,
+        'nombre': calc.nombre,
+        'familia': calc.familia,
+        'resultados': resultados,
+    })
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_test(request, pk):
-    return _module_endpoint(request, pk, PhysicalTest, PhysicalTestSerializer, 'registrado_por')
+    """Módulo TEST. GET lista los resultados del centro; POST registra uno.
+
+    Dos vías de POST:
+      • Con calculadora: enviar `test_slug` + `inputs`. El SERVIDOR valida y
+        calcula (nunca confía en resultados que mande el cliente) y persiste
+        `inputs` (entrada validada) + `resultados` (salida del motor).
+      • Manual / legado: enviar `nombre` + `resultado` (+ `unidad`), un único valor.
+    """
+    center = _get_center_or_404(request.user, pk)
+    if request.method == 'POST':
+        slug = (request.data.get('test_slug') or '').strip()
+        data = {
+            'center': center.id,
+            'athlete': request.data.get('athlete'),
+            'fecha': request.data.get('fecha'),
+            'notas': request.data.get('notas', ''),
+        }
+        if slug:
+            # Vía calculadora: el servidor recalcula desde los inputs crudos.
+            try:
+                calc = get_calculator(slug)
+                clean = calc.validate(request.data.get('inputs') or {})
+                resultados = calc.compute(clean)
+            except CalculatorError as e:
+                return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+            data.update({
+                'test_slug': calc.slug,
+                'nombre': calc.nombre,
+                'categoria': calc.familia,
+                'inputs': clean,
+                'resultados': resultados,
+                'resultado': None,
+                'unidad': '',
+            })
+        else:
+            # Vía manual: un único valor; no se aceptan blobs de cálculo del cliente.
+            data.update({
+                'test_slug': '',
+                'nombre': request.data.get('nombre', ''),
+                'categoria': request.data.get('categoria', ''),
+                'inputs': {},
+                'resultados': {},
+                'resultado': request.data.get('resultado'),
+                'unidad': request.data.get('unidad', ''),
+            })
+        serializer = PhysicalTestSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = PhysicalTest.objects.filter(center=center)
+    return Response(PhysicalTestSerializer(qs, many=True).data)
 
 
 @api_view(['GET', 'POST'])

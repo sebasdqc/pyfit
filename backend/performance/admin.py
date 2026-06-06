@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
+    TestDefinition,
 )
 
 
@@ -47,11 +48,19 @@ class InjuryReportAdmin(ModelAdmin):
     search_fields = ('athlete__email', 'zona', 'diagnostico')
 
 
+@admin.register(TestDefinition)
+class TestDefinitionAdmin(ModelAdmin):
+    list_display = ('nombre', 'slug', 'familia', 'activo', 'updated_at')
+    list_filter = ('familia', 'activo')
+    search_fields = ('nombre', 'slug')
+    readonly_fields = ('created_at', 'updated_at')
+
+
 @admin.register(PhysicalTest)
 class PhysicalTestAdmin(ModelAdmin):
-    list_display = ('athlete', 'center', 'nombre', 'resultado', 'unidad', 'fecha')
+    list_display = ('athlete', 'center', 'nombre', 'test_slug', 'resultado', 'unidad', 'fecha')
     list_filter = ('categoria', 'center')
-    search_fields = ('athlete__email', 'nombre')
+    search_fields = ('athlete__email', 'nombre', 'test_slug')
 
 
 @admin.register(TrainingPlan)

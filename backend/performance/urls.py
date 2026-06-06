@@ -9,6 +9,10 @@ urlpatterns = [
     path('auth/login/', views.performance_login),
     path('me/', views.performance_me),
 
+    # Módulo TEST: catálogo de tests y cálculo en vivo (no acotado a un centro)
+    path('tests/catalog/', views.tests_catalog),
+    path('tests/compute/', views.tests_compute),
+
     # Centros
     path('centers/', views.centers_view),
     path('centers/<int:pk>/', views.center_detail),

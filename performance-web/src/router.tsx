@@ -28,6 +28,7 @@ export const router = createBrowserRouter([
           { path: 'plantilla', element: <PlantillaPage /> },
           { path: 'rendimiento', element: <RendimientoPage /> },
           { path: 'lesiones', element: <LesionesPage /> },
+          { path: 'tests', element: <TestPage /> },
           { path: 'perfil', element: <ProfilePage /> },
           {
             path: 'centers/:centerId',

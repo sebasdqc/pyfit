@@ -3,7 +3,9 @@
 // andamiaje), pero quedan listos para cablear.
 
 import { api } from './client'
-import type { CenterAthlete, ModuleId, SportsCenter } from '@/types'
+import type {
+  CenterAthlete, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
+} from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
 export async function listCenters(): Promise<SportsCenter[]> {
@@ -46,5 +48,26 @@ export async function createModuleRecord<T = unknown>(
   payload: Record<string, unknown>,
 ): Promise<T> {
   const res = await api.post<T>(`/performance/centers/${centerId}/${modulo}/`, payload)
+  return res.data
+}
+
+// ── Módulo TEST: catálogo de calculadoras y cálculo en servidor ──────────────
+// El catálogo trae el `input_schema` con el que el frontend pinta cada formulario;
+// el cálculo SIEMPRE ocurre en el servidor (el cliente solo envía inputs crudos).
+export async function fetchTestCatalog(familia?: string): Promise<TestCatalogItem[]> {
+  const res = await api.get<TestCatalogItem[]>('/performance/tests/catalog/', {
+    params: familia ? { familia } : undefined,
+  })
+  return res.data
+}
+
+export async function computeTest(
+  test_slug: string,
+  inputs: Record<string, unknown>,
+): Promise<TestComputeResponse> {
+  const res = await api.post<TestComputeResponse>('/performance/tests/compute/', {
+    test_slug,
+    inputs,
+  })
   return res.data
 }
