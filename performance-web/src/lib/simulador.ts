@@ -6,7 +6,7 @@
 // del viewBox del SVG (px lógicos) solo para pintar, y de vuelta a normalizadas
 // al leer eventos de puntero. Así una jugada se ve igual en cualquier pantalla.
 
-import type { Pt, TrazoTipo } from '@/types'
+import type { Ficha, Pt, TrazoTipo } from '@/types'
 
 // viewBox del campo (proporción real ~105:68). El área jugable va con un margen
 // (la franja exterior verde) para que las fichas no toquen el borde del SVG.
@@ -125,4 +125,27 @@ export function newId(prefix = 'el'): string {
   _seq += 1
   const rnd = Math.random().toString(36).slice(2, 7)
   return `${prefix}_${_seq.toString(36)}${rnd}`
+}
+
+// ── Animación (interpolación entre keyframes) ────────────────────────────────
+// La escena se guarda como lista ordenada de frames (keyframes). Al reproducir
+// se desliza cada ficha desde su posición en un frame hasta la del siguiente.
+
+// Suavizado smoothstep: el movimiento arranca y frena con naturalidad (t ∈ [0,1]).
+export const easeInOut = (t: number): number => {
+  const c = clamp01(t)
+  return c * c * (3 - 2 * c)
+}
+
+// Interpola posiciones de fichas entre dos frames emparejando por id (mismo id ⇒
+// misma ficha desplazándose). Una ficha sin destino en el frame siguiente se
+// queda donde está; las nuevas aparecen al cambiar de segmento. Todo en
+// coordenadas normalizadas (0..1). t ∈ [0,1].
+export function interpolateFichas(from: Ficha[], to: Ficha[], t: number): Ficha[] {
+  const dest = new Map(to.map((f) => [f.id, f]))
+  return from.map((f) => {
+    const d = dest.get(f.id)
+    if (!d) return f
+    return { ...f, x: f.x + (d.x - f.x) * t, y: f.y + (d.y - f.y) * t }
+  })
 }

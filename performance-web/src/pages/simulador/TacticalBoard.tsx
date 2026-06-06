@@ -41,6 +41,7 @@ export function TacticalBoard({
   onErase,
   onTrazoCommit,
   onDragStart,
+  frozen = false,
 }: {
   fichas: Ficha[]
   trazos: Trazo[]
@@ -52,6 +53,7 @@ export function TacticalBoard({
   onErase: (id: string) => void
   onTrazoCommit: (tipo: TrazoTipo, puntos: Pt[]) => void
   onDragStart?: () => void
+  frozen?: boolean // durante la reproducción: sin interacción (solo se muestran las fichas animadas)
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<{ tipo: TrazoTipo; start: Pt; end: Pt } | null>(null)
@@ -63,6 +65,7 @@ export function TacticalBoard({
   }
 
   function start(e: ReactPointerEvent, fichaId?: string) {
+    if (frozen) return // reproducción en curso: tablero de solo lectura
     const pt = ptOf(e)
     svgRef.current?.setPointerCapture(e.pointerId)
     if (isStroke(tool)) {
@@ -101,7 +104,7 @@ export function TacticalBoard({
     }
   }
 
-  const cursor = isStroke(tool) ? 'crosshair' : tool === 'borrar' ? 'pointer' : 'default'
+  const cursor = frozen ? 'default' : isStroke(tool) ? 'crosshair' : tool === 'borrar' ? 'pointer' : 'default'
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-perf-border bg-perf-surface">

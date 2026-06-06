@@ -8,7 +8,7 @@
 // Nota: los jugadores salen de la plantilla MOCK (loadSquad) como el resto del
 // panel en esta fase; al haber atletas reales, basta cambiar la fuente del squad.
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
@@ -19,11 +19,12 @@ import type { Athlete } from '@/lib/mockSquad'
 import type { Escena, Ficha, Pt, TacticalPlay, Trazo, TrazoTipo } from '@/types'
 import { listCenters } from '@/api/performance'
 import { createPlay, deletePlay, listPlays, updatePlay } from '@/api/performance'
-import { TRAZO_ORDER, TRAZO_STYLES, newId } from '@/lib/simulador'
+import { TRAZO_ORDER, TRAZO_STYLES, easeInOut, interpolateFichas, newId } from '@/lib/simulador'
 import { TacticalBoard, type Tool } from './TacticalBoard'
 import { StrokePreview } from './StrokePreview'
 
 type Scene = { fichas: Ficha[]; trazos: Trazo[] }
+const emptyScene = (): Scene => ({ fichas: [], trazos: [] })
 
 export function SimuladorPage() {
   const { user } = useAuth()
@@ -46,12 +47,38 @@ export function SimuladorPage() {
     }
   }, [centers.length])
 
-  // Escena de trabajo + herramienta + selección + historial (deshacer).
-  const [fichas, setFichas] = useState<Ficha[]>([])
-  const [trazos, setTrazos] = useState<Trazo[]>([])
+  // Escena de trabajo: lista de FRAMES (keyframes) + frame activo. Se edita el
+  // frame activo; al reproducir se interpola entre frames consecutivos.
+  const [frames, setFrames] = useState<Scene[]>(() => [emptyScene()])
+  const [frameIndex, setFrameIndex] = useState(0)
   const [tool, setTool] = useState<Tool>('mover')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [past, setPast] = useState<Scene[]>([])
+  const [past, setPast] = useState<{ frames: Scene[]; frameIndex: number }[]>([])
+
+  // El frame activo es la fuente de verdad de lo que se edita y se muestra.
+  const active = frames[frameIndex] ?? emptyScene()
+  const fichas = active.fichas
+  const trazos = active.trazos
+
+  // Setters acotados al frame activo: conservan la firma de los mutadores de
+  // abajo (admiten valor o updater), por lo que no hay que tocar esa lógica.
+  function setFichas(u: Ficha[] | ((prev: Ficha[]) => Ficha[])) {
+    setFrames((fs) =>
+      fs.map((s, i) => (i === frameIndex ? { ...s, fichas: typeof u === 'function' ? u(s.fichas) : u } : s)),
+    )
+  }
+  function setTrazos(u: Trazo[] | ((prev: Trazo[]) => Trazo[])) {
+    setFrames((fs) =>
+      fs.map((s, i) => (i === frameIndex ? { ...s, trazos: typeof u === 'function' ? u(s.trazos) : u } : s)),
+    )
+  }
+
+  // Reproducción (animación entre keyframes).
+  const [playing, setPlaying] = useState(false)
+  const [playFichas, setPlayFichas] = useState<Ficha[] | null>(null) // fichas interpoladas en curso
+  const [loop, setLoop] = useState(false)
+  const [speed, setSpeed] = useState(1)
+  const rafRef = useRef<number | null>(null)
 
   // Metadatos de la jugada + jugadas guardadas (API real).
   const [nombre, setNombre] = useState('')
@@ -72,13 +99,14 @@ export function SimuladorPage() {
   }, [centerId])
 
   // ── Historial / mutaciones ────────────────────────────────────────────────
-  const snapshot = () => setPast((p) => [...p.slice(-49), { fichas, trazos }])
+  // El historial guarda toda la escena (todos los frames + el frame activo).
+  const snapshot = () => setPast((p) => [...p.slice(-49), { frames, frameIndex }])
   function undo() {
     setPast((p) => {
       if (!p.length) return p
       const prev = p[p.length - 1]
-      setFichas(prev.fichas)
-      setTrazos(prev.trazos)
+      setFrames(prev.frames)
+      setFrameIndex(Math.min(prev.frameIndex, prev.frames.length - 1))
       setSelectedId(null)
       return p.slice(0, -1)
     })
@@ -136,9 +164,99 @@ export function SimuladorPage() {
     return a ? { nombre: a.nombre, foto: a.foto, dorsal: a.dorsal } : undefined
   }
 
+  // ── Frames (keyframes) ────────────────────────────────────────────────────
+  const MAX_FRAMES = 24
+  function addFrame() {
+    if (frames.length >= MAX_FRAMES) return
+    snapshot()
+    // Duplica el frame activo (ids estables ⇒ la reproducción interpola el
+    // movimiento de cada ficha) y lo inserta justo después. El usuario mueve
+    // las fichas a sus nuevas posiciones en este frame.
+    const copy: Scene = {
+      fichas: active.fichas.map((f) => ({ ...f })),
+      trazos: active.trazos.map((t) => ({ ...t, puntos: t.puntos.map((p) => ({ ...p })) })),
+    }
+    setFrames((fs) => {
+      const next = [...fs]
+      next.splice(frameIndex + 1, 0, copy)
+      return next
+    })
+    setFrameIndex((i) => i + 1)
+    setSelectedId(null)
+  }
+  function deleteFrame() {
+    if (frames.length <= 1) return
+    snapshot()
+    setFrames((fs) => fs.filter((_, i) => i !== frameIndex))
+    setFrameIndex((i) => Math.max(0, i - 1))
+    setSelectedId(null)
+  }
+  function gotoFrame(i: number) {
+    setFrameIndex(i)
+    setSelectedId(null)
+  }
+  function moveFrame(dir: -1 | 1) {
+    const j = frameIndex + dir
+    if (j < 0 || j >= frames.length) return
+    snapshot()
+    setFrames((fs) => {
+      const next = [...fs]
+      const [item] = next.splice(frameIndex, 1)
+      next.splice(j, 0, item)
+      return next
+    })
+    setFrameIndex(j)
+  }
+
+  // ── Reproducción (animación entre keyframes) ──────────────────────────────
+  const SEG_MS = 900 // duración base de cada segmento entre dos frames
+  function stopPlayback() {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    setPlaying(false)
+    setPlayFichas(null)
+  }
+  function play() {
+    if (frames.length < 2) return
+    setSelectedId(null)
+    setPlaying(true)
+    const segMs = SEG_MS / speed
+    const segs = frames.length - 1
+    const totalMs = segMs * segs
+    const snap = frames // las posiciones no cambian durante la reproducción
+    let startTs: number | null = null
+    const step = (ts: number) => {
+      if (startTs == null) startTs = ts
+      let elapsed = ts - startTs
+      if (elapsed >= totalMs) {
+        if (loop) {
+          startTs = ts
+          elapsed = 0
+        } else {
+          setFrameIndex(segs) // termina sobre el último frame
+          stopPlayback()
+          return
+        }
+      }
+      const seg = Math.min(segs - 1, Math.floor(elapsed / segMs))
+      const t = easeInOut((elapsed - seg * segMs) / segMs)
+      setPlayFichas(interpolateFichas(snap[seg].fichas, snap[seg + 1].fichas, t))
+      rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+  }
+  function togglePlay() {
+    if (playing) stopPlayback()
+    else play()
+  }
+  // Limpia la animación al desmontar la página.
+  useEffect(() => () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current) }, [])
+
   // ── Guardar / cargar / nueva ──────────────────────────────────────────────
   function buildEscena(): Escena {
-    return { version: 1, frames: [{ fichas, trazos }] }
+    // `frames` ya es la lista de keyframes ({fichas, trazos}); el backend valida
+    // N frames con coordenadas normalizadas.
+    return { version: 1, frames }
   }
 
   async function save() {
@@ -166,9 +284,16 @@ export function SimuladorPage() {
   }
 
   function loadPlay(p: TacticalPlay) {
-    const frame = p.escena?.frames?.[0]
-    setFichas(frame?.fichas ?? [])
-    setTrazos(frame?.trazos ?? [])
+    stopPlayback()
+    // Carga TODOS los frames. Compatible con jugadas antiguas (1 frame) y con
+    // escenas vacías.
+    const fr = p.escena?.frames
+    const loaded: Scene[] =
+      Array.isArray(fr) && fr.length
+        ? fr.map((f) => ({ fichas: f.fichas ?? [], trazos: f.trazos ?? [] }))
+        : [emptyScene()]
+    setFrames(loaded)
+    setFrameIndex(0)
     setCurrentId(p.id)
     setNombre(p.nombre)
     setSelectedId(null)
@@ -176,8 +301,9 @@ export function SimuladorPage() {
     setMsg('')
   }
   function nuevaJugada() {
-    setFichas([])
-    setTrazos([])
+    stopPlayback()
+    setFrames([emptyScene()])
+    setFrameIndex(0)
     setCurrentId(null)
     setNombre('')
     setSelectedId(null)
@@ -236,8 +362,12 @@ export function SimuladorPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
         {/* Columna principal: herramientas + tablero + leyenda */}
         <div className="flex flex-col gap-3">
-          {/* Herramientas */}
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-perf-border bg-perf-surface p-2.5">
+          {/* Herramientas (inertes mientras se reproduce) */}
+          <div
+            className={`flex flex-wrap items-center gap-2 rounded-2xl border border-perf-border bg-perf-surface p-2.5 ${
+              playing ? 'pointer-events-none opacity-40' : ''
+            }`}
+          >
             <ToolBtn active={tool === 'mover'} onClick={() => setTool('mover')} label="Mover" />
             {TRAZO_ORDER.map((t) => (
               <ToolBtn
@@ -274,9 +404,81 @@ export function SimuladorPage() {
             <SmallBtn onClick={clearAll} disabled={!fichas.length && !trazos.length} label="Limpiar" />
           </div>
 
+          {/* Animación: reproducción + tira de frames (keyframes) */}
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-perf-border bg-perf-surface p-2.5">
+            <button
+              type="button"
+              onClick={togglePlay}
+              disabled={frames.length < 2}
+              title={frames.length < 2 ? 'Añade un 2.º frame para animar' : ''}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                frames.length < 2
+                  ? 'bg-perf-surface2 text-white/30'
+                  : playing
+                    ? 'bg-perf-danger text-white hover:opacity-90'
+                    : 'bg-accent text-white hover:bg-accentDark'
+              }`}
+            >
+              {playing ? '⏸ Pausar' : '▶ Reproducir'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLoop((l) => !l)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                loop
+                  ? 'border-accent bg-accent/15 text-white'
+                  : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
+              }`}
+            >
+              ⟳ Bucle
+            </button>
+
+            <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface2 p-0.5">
+              {[0.5, 1, 2].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSpeed(s)}
+                  className={`rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors ${
+                    speed === s ? 'bg-accent/20 text-white' : 'text-white/55 hover:text-white'
+                  }`}
+                >
+                  ×{s}
+                </button>
+              ))}
+            </div>
+
+            <div className="mx-1 h-6 w-px bg-perf-border" />
+
+            <span className="text-[11px] uppercase tracking-wide text-white/40">Frames</span>
+            <div className="flex flex-wrap items-center gap-1">
+              {frames.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => !playing && gotoFrame(i)}
+                  disabled={playing}
+                  className={`grid h-7 w-7 place-items-center rounded-lg border text-xs font-semibold transition-colors disabled:opacity-50 ${
+                    i === frameIndex
+                      ? 'border-accent bg-accent/15 text-white'
+                      : 'border-perf-border bg-perf-surface2 text-white/65 hover:text-white'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            <SmallBtn onClick={() => moveFrame(-1)} disabled={playing || frameIndex === 0} label="◀" />
+            <SmallBtn onClick={() => moveFrame(1)} disabled={playing || frameIndex === frames.length - 1} label="▶" />
+            <AddBtn onClick={addFrame} color="#4f8cff" label="Frame" />
+            <SmallBtn onClick={deleteFrame} disabled={playing || frames.length <= 1} label="Eliminar frame" />
+          </div>
+
           <TacticalBoard
-            fichas={fichas}
-            trazos={trazos}
+            fichas={playing && playFichas ? playFichas : fichas}
+            trazos={playing ? [] : trazos}
             tool={tool}
             selectedId={selectedId}
             getAthlete={getAthlete}
@@ -285,6 +487,7 @@ export function SimuladorPage() {
             onErase={erase}
             onTrazoCommit={commitTrazo}
             onDragStart={snapshot}
+            frozen={playing}
           />
 
           {/* Leyenda + ayuda */}
@@ -295,7 +498,9 @@ export function SimuladorPage() {
                 {TRAZO_STYLES[t].label}
               </span>
             ))}
-            <span className="text-white/35">· Arrastra las fichas (mouse o touch). Toca un trazo para seleccionarlo.</span>
+            <span className="text-white/35">
+              · Arrastra las fichas (mouse o touch). Toca un trazo para seleccionarlo. Para animar: <b className="text-white/55">+ Frame</b>, mueve las fichas y pulsa <b className="text-white/55">▶ Reproducir</b>.
+            </span>
           </div>
         </div>
 
@@ -330,7 +535,7 @@ export function SimuladorPage() {
             </div>
             {msg && <p className="mt-2 text-xs text-white/55">{msg}</p>}
             <p className="mt-3 border-t border-perf-border pt-3 text-[11px] text-white/35">
-              {fichas.filter((f) => f.tipo === 'jugador').length} jugadores ·{' '}
+              Frame {frameIndex + 1}/{frames.length} · {fichas.filter((f) => f.tipo === 'jugador').length} jugadores ·{' '}
               {fichas.filter((f) => f.tipo === 'rival').length} rivales · {trazos.length} trazos
             </p>
           </Panel>
@@ -359,6 +564,7 @@ export function SimuladorPage() {
                         <p className="truncate text-[11px] text-white/40">
                           {(p.escena?.frames?.[0]?.fichas?.length ?? 0)} fichas ·{' '}
                           {(p.escena?.frames?.[0]?.trazos?.length ?? 0)} trazos
+                          {(p.escena?.frames?.length ?? 0) > 1 ? ` · ${p.escena?.frames?.length} frames` : ''}
                         </p>
                       </button>
                       <button
