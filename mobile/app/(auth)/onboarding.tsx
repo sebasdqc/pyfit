@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
+  PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
+import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
@@ -540,6 +542,86 @@ function BodyMap({
   )
 }
 
+// ─── Duration slider ──────────────────────────────────────────────────────────
+// Discrete horizontal slider que reemplaza los cards de "tiempo disponible".
+// Mantiene los mismos `value` que las opciones originales ('20-30', '45-60', …)
+// para que el mapeo a la base de datos (parseInt → duracion_disponible /
+// duracion_minima) siga siendo idéntico.
+
+type DurOpt = { value: string; label: string; sub: string }
+
+function DurationSlider({
+  opts, value, onChange, styles,
+}: {
+  opts: DurOpt[]
+  value: string | null
+  onChange: (v: string) => void
+  styles: ReturnType<typeof makeStyles>
+}) {
+  const [trackW, setTrackW] = useState(0)
+  const steps = opts.length
+  const idx = Math.max(0, opts.findIndex(o => o.value === value))
+  const current = opts[idx] ?? opts[0]
+  const frac = steps > 1 ? idx / (steps - 1) : 0
+
+  // Refs para que el PanResponder (creado una sola vez) lea siempre el estado actual.
+  const trackWRef = useRef(trackW)
+  trackWRef.current = trackW
+  const valueRef = useRef(value)
+  valueRef.current = value
+
+  const commitFromX = useCallback((x: number) => {
+    const w = trackWRef.current
+    if (w <= 0 || steps <= 1) return
+    const f = Math.max(0, Math.min(1, x / w))
+    const newIdx = Math.round(f * (steps - 1))
+    const newVal = opts[newIdx].value
+    if (newVal !== valueRef.current) {
+      onChange(newVal)
+      Haptics.selectionAsync().catch(() => {})
+    }
+  }, [opts, steps, onChange])
+
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: e => commitFromX(e.nativeEvent.locationX),
+    onPanResponderMove: e => commitFromX(e.nativeEvent.locationX),
+  }), [commitFromX])
+
+  return (
+    <View style={styles.durSlider}>
+      <View style={styles.durValueRow}>
+        <Text style={styles.durValueLabel}>{current.label}</Text>
+        <Text style={styles.durValueSub}>{current.sub}</Text>
+      </View>
+
+      <View
+        style={styles.durTrackTouch}
+        onLayout={e => setTrackW(e.nativeEvent.layout.width)}
+        {...pan.panHandlers}>
+        <View style={styles.durTrack} />
+        <View style={[styles.durTrackFill, { width: trackW * frac }]} />
+        {opts.map((o, i) => {
+          const on = i <= idx
+          const left = trackW * (steps > 1 ? i / (steps - 1) : 0) - 4
+          return (
+            <View key={o.value} pointerEvents="none"
+              style={[styles.durTick, { left }, on && styles.durTickOn]} />
+          )
+        })}
+        <View pointerEvents="none" style={[styles.durThumb, { left: trackW * frac - 13 }]} />
+      </View>
+
+      <View style={styles.durEndsRow}>
+        <Text style={styles.durEndLabel}>{opts[0].label}</Text>
+        <Text style={styles.durEndLabel}>{opts[steps - 1].label}</Text>
+      </View>
+    </View>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
@@ -557,7 +639,7 @@ export default function OnboardingScreen() {
     ejerciciosEvitar: [], motivoLimitacion: '',
     condicionesMedicas: [], condicionOtra: '', notasMedicas: '',
     lugares: [], equipamiento: [],
-    tiempoNormal: null, tiempoOcupado: null,
+    tiempoNormal: '45-60', tiempoOcupado: '20-30',
     horarios: [], diasFijos: null,
     objetivos: [], objetivoSecundario: null, horizonteTemporal: null, motivacion: '',
     razonesAbandono: [], estiloCoaching: null, tiposEntrenamiento: [],
@@ -1661,24 +1743,12 @@ export default function OnboardingScreen() {
         <Text style={styles.tiempoSectionQ}>
           ¿Cuánto tiempo tienes en un día normal?
         </Text>
-        <View style={styles.tiempoRow}>
-          {TIEMPO_NORMAL_OPTS.map(opt => {
-            const on = data.tiempoNormal === opt.value
-            return (
-              <TouchableOpacity key={opt.value}
-                style={[styles.tiempoPill, on && styles.tiempoPillOn]}
-                onPress={() => set('tiempoNormal', opt.value)}
-                activeOpacity={0.8}>
-                <Text style={[styles.tiempoPillLabel, on && styles.tiempoPillLabelOn]}>
-                  {opt.label}
-                </Text>
-                <Text style={[styles.tiempoPillSub, on && styles.tiempoPillSubOn]}>
-                  {opt.sub}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <DurationSlider
+          opts={TIEMPO_NORMAL_OPTS}
+          value={data.tiempoNormal}
+          onChange={v => set('tiempoNormal', v)}
+          styles={styles}
+        />
 
         {/* Section: Busy day */}
         <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
@@ -1687,24 +1757,12 @@ export default function OnboardingScreen() {
         <Text style={styles.tiempoSectionNote}>
           Para rutinas de emergencia cuando el tiempo escasea.
         </Text>
-        <View style={styles.tiempoRow}>
-          {TIEMPO_OCUPADO_OPTS.map(opt => {
-            const on = data.tiempoOcupado === opt.value
-            return (
-              <TouchableOpacity key={opt.value}
-                style={[styles.tiempoPill, on && styles.tiempoPillOn]}
-                onPress={() => set('tiempoOcupado', opt.value)}
-                activeOpacity={0.8}>
-                <Text style={[styles.tiempoPillLabel, on && styles.tiempoPillLabelOn]}>
-                  {opt.label}
-                </Text>
-                <Text style={[styles.tiempoPillSub, on && styles.tiempoPillSubOn]}>
-                  {opt.sub}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <DurationSlider
+          opts={TIEMPO_OCUPADO_OPTS}
+          value={data.tiempoOcupado}
+          onChange={v => set('tiempoOcupado', v)}
+          styles={styles}
+        />
 
         {/* Section: Time of day */}
         <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
@@ -2391,7 +2449,7 @@ function makeStyles(c: Colors) {
     fieldGroup: { marginBottom: 20 },
     fieldLabel: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
-      color: c.inkMuted, letterSpacing: 1.2, marginBottom: 8,
+      color: c.inkSecondary, letterSpacing: 1.2, marginBottom: 8,
     },
     input: {
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
@@ -2588,17 +2646,33 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
       color: c.inkMuted, lineHeight: 19, marginBottom: 14,
     },
-    tiempoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-    tiempoPill: {
-      paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14,
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      alignItems: 'center', minWidth: '30%', flex: 1,
+    // Duration slider (reemplaza los cards de tiempo disponible)
+    durSlider: { marginTop: 4, marginBottom: 4 },
+    durValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 16 },
+    durValueLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: c.accent, letterSpacing: -0.5 },
+    durValueSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkSecondary, flexShrink: 1 },
+    durTrackTouch: { height: 40, justifyContent: 'center' },
+    durTrack: {
+      position: 'absolute', left: 0, right: 0, top: 17, height: 6,
+      borderRadius: 3, backgroundColor: c.inkFaint,
     },
-    tiempoPillOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
-    tiempoPillLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.inkPrimary, marginBottom: 2 },
-    tiempoPillLabelOn: { color: c.accent },
-    tiempoPillSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: c.inkMuted, textAlign: 'center' },
-    tiempoPillSubOn: { color: 'rgba(79,140,255,0.7)' },
+    durTrackFill: {
+      position: 'absolute', left: 0, top: 17, height: 6,
+      borderRadius: 3, backgroundColor: c.accent,
+    },
+    durTick: {
+      position: 'absolute', top: 16, width: 8, height: 8, borderRadius: 4,
+      backgroundColor: c.bg, borderWidth: 1.5, borderColor: c.inkFaint,
+    },
+    durTickOn: { borderColor: c.accent },
+    durThumb: {
+      position: 'absolute', top: 7, width: 26, height: 26, borderRadius: 13,
+      backgroundColor: c.accent, borderWidth: 3, borderColor: c.bg,
+      shadowColor: c.accent, shadowOpacity: 0.5, shadowRadius: 6,
+      shadowOffset: { width: 0, height: 0 }, elevation: 4,
+    },
+    durEndsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+    durEndLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.5 },
 
     // Horario cards (2-column grid)
     horarioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 },
