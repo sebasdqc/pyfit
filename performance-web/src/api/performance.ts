@@ -15,6 +15,20 @@ export async function listCenters(): Promise<SportsCenter[]> {
   return res.data
 }
 
+// Crea un centro. El backend deja al creador como director técnico del centro
+// (membresía automática), por lo que tras crearlo conviene refrescar /me/.
+export type CreateCenterPayload = {
+  nombre: string
+  slug: string
+  disciplina?: string
+  ciudad?: string
+  pais?: string
+}
+export async function createCenter(payload: CreateCenterPayload): Promise<SportsCenter> {
+  const res = await api.post<SportsCenter>('/performance/centers/', payload)
+  return res.data
+}
+
 export async function getCenter(centerId: number): Promise<SportsCenter> {
   const res = await api.get<SportsCenter>(`/performance/centers/${centerId}/`)
   return res.data

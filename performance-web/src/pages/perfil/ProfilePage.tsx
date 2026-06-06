@@ -9,6 +9,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon, type IconName } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
+import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
 import type { CenterRole, GlobalRole, ModuleId } from '@/types'
 
@@ -128,9 +129,17 @@ export function ProfilePage() {
           </div>
         </Panel>
 
-        <Panel title="Centros y permisos" subtitle="Tus roles y módulos por centro">
+        <Panel
+          title="Centros y permisos"
+          subtitle="Tus roles y módulos por centro"
+          action={
+            <CreateCenterButton className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accentDark" />
+          }
+        >
           {user.centros.length === 0 ? (
-            <p className="text-sm text-white/45">Sin centros asignados todavía.</p>
+            <p className="text-sm text-white/45">
+              Sin centros asignados todavía. Crea uno con el botón de arriba para empezar a usar los módulos.
+            </p>
           ) : (
             <ul className="flex flex-col divide-y divide-perf-border">
               {user.centros.map((c) => (

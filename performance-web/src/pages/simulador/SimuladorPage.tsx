@@ -22,6 +22,7 @@ import { createPlay, deletePlay, listPlays, updatePlay } from '@/api/performance
 import { TRAZO_ORDER, TRAZO_STYLES, easeInOut, interpolateFichas, newId } from '@/lib/simulador'
 import { TacticalBoard, type Tool } from './TacticalBoard'
 import { StrokePreview } from './StrokePreview'
+import { CreateCenterButton } from '@/components/CreateCenterModal'
 
 type Scene = { fichas: Ficha[]; trazos: Trazo[] }
 const emptyScene = (): Scene => ({ fichas: [], trazos: [] })
@@ -331,6 +332,16 @@ export function SimuladorPage() {
             ? 'Tu cuenta no tiene un centro asignado todavía.'
             : 'Selecciona un centro para empezar.'}
         </p>
+        {centers.length === 0 && (
+          <div className="mt-4">
+            <CreateCenterButton
+              onCreated={(c) => {
+                setCenters((prev) => [...prev, { id: c.id, nombre: c.nombre }])
+                setCenterId(c.id)
+              }}
+            />
+          </div>
+        )}
       </div>
     )
   }

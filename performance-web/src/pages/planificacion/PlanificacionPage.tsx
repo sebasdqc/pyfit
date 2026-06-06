@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
+import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { useAuth } from '@/auth/useAuth'
 import {
   listPlans, createPlan, getPlanTree, deletePlan,
@@ -106,6 +107,16 @@ export function PlanificacionPage() {
             ? 'Tu cuenta no tiene un centro asignado todavía.'
             : 'Selecciona un centro para empezar.'}
         </p>
+        {centers.length === 0 && (
+          <div className="mt-4">
+            <CreateCenterButton
+              onCreated={(c) => {
+                setCenters((prev) => [...prev, { id: c.id, nombre: c.nombre }])
+                setCenterId(c.id)
+              }}
+            />
+          </div>
+        )}
       </div>
     )
   }

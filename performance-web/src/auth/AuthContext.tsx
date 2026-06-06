@@ -11,6 +11,7 @@ export interface AuthContextValue {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -54,8 +55,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  // Re-lee /me/ y actualiza el usuario en sesión (p. ej. tras crear un centro,
+  // para que su membresía aparezca en `centros` en todo el panel).
+  const refreshUser = useCallback(async () => {
+    if (!getAccessToken()) return
+    const me = await fetchMe()
+    setUser(me)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
