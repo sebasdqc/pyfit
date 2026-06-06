@@ -26,6 +26,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'plantilla', element: <PlantillaPage /> },
+          { path: 'rendimiento', element: <RendimientoPage /> },
           { path: 'perfil', element: <ProfilePage /> },
           {
             path: 'centers/:centerId',
