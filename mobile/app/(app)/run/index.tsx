@@ -1,11 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   BackHandler,
-  Easing,
-  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -54,68 +51,6 @@ function MetricColumn({
   )
 }
 
-// ─── Slide to Stop ──────────────────────────────────────────────────────────
-// Mismo patrón que el SliderButton de ejecutar (PanResponder + Animated, sin
-// gesture-handler). Umbral alto (85%) porque detener termina la carrera.
-
-function SlideToStop({ onStop }: { onStop: () => void }) {
-  const pan       = useRef(new Animated.Value(0)).current
-  const trackWRef = useRef(0)
-  const [trackW, setTrackW] = useState(0)
-  const doneRef   = useRef(false)
-  const HANDLE = 56, PAD = 4
-  const maxX = Math.max(0, trackW - HANDLE - PAD * 2)
-
-  const panResponder = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => !doneRef.current,
-    onMoveShouldSetPanResponder:  () => !doneRef.current,
-    onPanResponderMove: (_, gs) => {
-      if (doneRef.current) return
-      const max = trackWRef.current - HANDLE - PAD * 2
-      if (max <= 0) return
-      pan.setValue(Math.max(0, Math.min(gs.dx, max)))
-    },
-    onPanResponderRelease: (_, gs) => {
-      if (doneRef.current) return
-      const max = trackWRef.current - HANDLE - PAD * 2
-      if (max <= 0) return
-      const x = Math.max(0, Math.min(gs.dx, max))
-      if (x >= max * 0.85) {
-        doneRef.current = true
-        Animated.timing(pan, { toValue: max, duration: 110, easing: Easing.out(Easing.ease), useNativeDriver: false })
-          .start(() => onStop())
-      } else {
-        Animated.spring(pan, { toValue: 0, useNativeDriver: false, tension: 140, friction: 9 }).start()
-      }
-    },
-  })).current
-
-  const labelOpacity = pan.interpolate({
-    inputRange: [0, Math.max(40, maxX * 0.5)],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  })
-
-  return (
-    <View
-      style={styles.slideTrack}
-      onLayout={e => { const w = e.nativeEvent.layout.width; trackWRef.current = w; setTrackW(w) }}
-    >
-      <Animated.View pointerEvents="none" style={[styles.slideLabelWrap, { opacity: labelOpacity }]}>
-        <Text style={styles.slideLabel}>DESLIZA PARA DETENER ›››</Text>
-      </Animated.View>
-      {trackW > 0 && (
-        <Animated.View
-          style={[styles.slideHandle, { transform: [{ translateX: pan }] }]}
-          {...panResponder.panHandlers}
-        >
-          <Text style={styles.slideHandleIcon}>›</Text>
-        </Animated.View>
-      )}
-    </View>
-  )
-}
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunScreen() {
@@ -131,6 +66,8 @@ export default function RunScreen() {
     backgroundActive,
     error,
     startRun,
+    pauseRun,
+    resumeRun,
     stopRun,
   } = useRunTracking()
 
@@ -182,8 +119,10 @@ export default function RunScreen() {
   // Salir con carrera activa: confirmar y detener correctamente (stopRun completa
   // la sesión y para el GPS de fondo). `run` es un tab, así que NO podemos confiar
   // en el desmontaje: hay que interceptar el botón y el back de hardware.
+  const inProgress = status === 'active' || status === 'paused'
+
   function handleExit() {
-    if (status === 'active') {
+    if (inProgress) {
       Alert.alert(
         'Detener carrera',
         '¿Terminar y guardar tu carrera?',
@@ -197,9 +136,21 @@ export default function RunScreen() {
     }
   }
 
+  // Confirmación al finalizar (antes el slider evitaba el toque accidental)
+  function handleFinish() {
+    Alert.alert(
+      'Finalizar carrera',
+      '¿Terminar y guardar tu carrera?',
+      [
+        { text: 'Continuar', style: 'cancel' },
+        { text: 'Finalizar', style: 'destructive', onPress: () => stopRun() },
+      ],
+    )
+  }
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (status === 'active') { handleExit(); return true }  // consumir, no salir
+      if (status === 'active' || status === 'paused') { handleExit(); return true }  // consumir, no salir
       return false
     })
     return () => sub.remove()
@@ -276,7 +227,12 @@ export default function RunScreen() {
             <Text style={[styles.bgBadgeText, { color: colors.inkPrimary }]}>{backgroundActive ? '📡 BG' : '📍 FG'}</Text>
           </View>
         )}
-        {status !== 'active' && <View style={styles.headerRight} />}
+        {status === 'paused' && (
+          <View style={[styles.bgBadge, styles.bgBadgeOff]}>
+            <Text style={[styles.bgBadgeText, { color: colors.inkPrimary }]}>⏸ PAUSA</Text>
+          </View>
+        )}
+        {!inProgress && <View style={styles.headerRight} />}
       </View>
 
       {/* ── Bottom metrics panel ── */}
@@ -302,7 +258,7 @@ export default function RunScreen() {
           />
         </View>
 
-        {/* Action button */}
+        {/* Action buttons */}
         <View style={styles.btnWrap}>
           {status === 'idle' && (
             <TouchableOpacity
@@ -314,8 +270,33 @@ export default function RunScreen() {
             </TouchableOpacity>
           )}
 
-          {status === 'active' && (
-            <SlideToStop onStop={stopRun} />
+          {inProgress && (
+            <View style={styles.btnRow}>
+              {status === 'active' ? (
+                <TouchableOpacity
+                  style={[styles.rowBtn, { backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.borderBright }]}
+                  onPress={pauseRun}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.actionBtnText, { color: colors.inkPrimary }]}>PAUSA</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.rowBtn, { backgroundColor: colors.green }]}
+                  onPress={resumeRun}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.actionBtnText, { color: colors.white }]}>REANUDAR</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.rowBtn, { backgroundColor: colors.red }]}
+                onPress={handleFinish}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.actionBtnText, { color: colors.white }]}>FINALIZAR</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {status === 'completed' && (
@@ -483,45 +464,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Slide to stop
-  slideTrack: {
-    height: 60,
+  // Botones en fila (pausa/reanudar + finalizar)
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
     width: '100%',
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,68,68,0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,68,68,0.45)',
-    overflow: 'hidden',
-    justifyContent: 'center',
   },
-  slideLabelWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  slideLabel: {
-    fontFamily: 'SpaceGrotesk-SemiBold',
-    fontSize: 14,
-    color: '#ff4444',
-    letterSpacing: 0.5,
-  },
-  slideHandle: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    width: 56,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#ff4444',
+  rowBtn: {
+    flex: 1,
+    borderRadius: 50,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  slideHandleIcon: {
-    color: '#ffffff',
-    fontSize: 24,
-    lineHeight: 28,
-    fontFamily: 'SpaceGrotesk-Bold',
   },
   completingWrap: {
     paddingVertical: 18,

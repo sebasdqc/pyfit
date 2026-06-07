@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-svg'
 // NOTA: `react-native-view-shot` y `expo-sharing` se cargan de forma diferida
 // (dynamic import dentro de handleShare) a propósito. `react-native-view-shot`
 // llama a TurboModuleRegistry.getEnforcing('RNViewShot') en el top-level de su
@@ -23,10 +23,10 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 // Tarjeta visual 9:16 (360 × 640) que se rasteriza a PNG para compartir en redes.
 // Tiene dos variantes — 'running' (verde) y 'gym' (púrpura).
 //
-// IMPORTANTE: por ahora TODOS los valores son placeholders hardcodeados. La prop
-// `session` se recibe pero AÚN NO se conecta a datos reales — eso se hará en una
-// fase posterior. El objetivo de este componente es dejar lista la maqueta visual
-// y el pipeline de exportación a PNG (captura de vista + share sheet del SO).
+// La variante 'running' se alimenta con datos reales de la sesión vía props
+// (título, métricas, ruta, fecha, usuario). La variante 'gym' aún usa los
+// placeholders por defecto hasta que se conecte su flujo. Cualquier prop de
+// datos omitida cae al placeholder correspondiente.
 //
 // El área capturada es ÚNICAMENTE la tarjeta (cardRef). El botón "COMPARTIR
 // RUTINA" vive fuera de ese View, por lo que nunca aparece en la imagen final.
@@ -34,11 +34,31 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 export type WorkoutSessionType = 'running' | 'gym'
 
+export interface ShareCardMetric {
+  label: string
+  value: string
+}
+
+export interface ShareCardRouteCoord {
+  latitude: number
+  longitude: number
+}
+
 export interface WorkoutShareCardProps {
   /** Determina la variante visual de la tarjeta. */
   sessionType: WorkoutSessionType
-  /** Datos de la sesión. Reservado — todavía no se conecta (placeholders). */
-  session?: unknown
+  /** Número/dato protagonista (p. ej. la distancia "5.20 km"). */
+  title?: string
+  /** Métricas a mostrar; si se omite, usa los placeholders de la variante. */
+  metrics?: ShareCardMetric[]
+  /** Traza GPS para dibujar la ruta (running). >= 2 puntos para renderizar. */
+  routeCoords?: ShareCardRouteCoord[]
+  /** Fecha formateada para el footer (p. ej. "07 JUN 2026"). */
+  dateLabel?: string
+  /** Handle del usuario para el footer (p. ej. "@sebastian"). */
+  userLabel?: string
+  /** Zyfit Score; si se omite, la fila no se renderiza. */
+  score?: string | number
 }
 
 // ─── Dimensiones fijas (ratio 9:16) ─────────────────────────────────────────
@@ -116,11 +136,75 @@ function CornerGlow({ color, corner }: { color: string; corner: 'left' | 'right'
   )
 }
 
+// ─── Ruta (polilínea SVG normalizada al área disponible) ─────────────────────
+// Se dibuja con react-native-svg (NO con react-native-maps) porque el SVG se
+// rasteriza de forma fiable en la captura a PNG. Mide su contenedor con onLayout
+// y proyecta lat/lng preservando proporción (corrección de longitud por cos lat).
+function RoutePath({ coords, color }: { coords: ShareCardRouteCoord[]; color: string }) {
+  const [size, setSize] = useState({ w: 0, h: 0 })
+
+  let points = ''
+  if (size.w > 0 && size.h > 0 && coords.length > 1) {
+    const pad = 18
+    const w = size.w - pad * 2
+    const h = size.h - pad * 2
+    const lats = coords.map(c => c.latitude)
+    const lngs = coords.map(c => c.longitude)
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
+    const midLat = (minLat + maxLat) / 2
+    const kx = Math.cos((midLat * Math.PI) / 180) || 1   // metros por grado de lng ≈ cos(lat)
+    const spanX = Math.max((maxLng - minLng) * kx, 1e-9)
+    const spanY = Math.max(maxLat - minLat, 1e-9)
+    const scale = Math.min(w / spanX, h / spanY)
+    const offX = pad + (w - spanX * scale) / 2
+    const offY = pad + (h - spanY * scale) / 2
+    points = coords
+      .map(c => {
+        const x = offX + (c.longitude - minLng) * kx * scale
+        const y = offY + (maxLat - c.latitude) * scale   // y invertido (norte arriba)
+        return `${x.toFixed(1)},${y.toFixed(1)}`
+      })
+      .join(' ')
+  }
+
+  return (
+    <View
+      style={StyleSheet.absoluteFill}
+      onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+    >
+      {points !== '' && (
+        <Svg width={size.w} height={size.h}>
+          <Polyline
+            points={points}
+            fill="none"
+            stroke={color}
+            strokeWidth={3}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </Svg>
+      )}
+    </View>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function WorkoutShareCard({ sessionType }: WorkoutShareCardProps) {
+export default function WorkoutShareCard({
+  sessionType,
+  title,
+  metrics,
+  routeCoords,
+  dateLabel,
+  userLabel,
+  score,
+}: WorkoutShareCardProps) {
   const v = VARIANTS[sessionType]
   const cardRef = useRef<View>(null)
   const [sharing, setSharing] = useState(false)
+
+  const displayMetrics = metrics && metrics.length > 0 ? metrics : v.metrics
+  const hasRoute = !!(routeCoords && routeCoords.length > 1)
 
   async function handleShare() {
     if (sharing) return
@@ -169,20 +253,22 @@ export default function WorkoutShareCard({ sessionType }: WorkoutShareCardProps)
           </View>
         </View>
 
-        {/* Título: nombre de sesión / distancia (placeholder) */}
+        {/* Título: dato protagonista (distancia en running) */}
         <View style={styles.titleBlock}>
           <Text style={[styles.kicker, { color: v.accent }]}>{v.kicker}</Text>
-          <Text style={styles.title}>— —</Text>
+          <Text style={styles.title}>{title ?? '— —'}</Text>
         </View>
 
         {/* Métricas */}
         <View style={styles.metricsRow}>
-          {v.metrics.map((m, i) => (
+          {displayMetrics.map((m, i) => (
             <View
-              key={m.label}
-              style={[styles.metric, i < v.metrics.length - 1 && styles.metricDivider]}
+              key={`${m.label}-${i}`}
+              style={[styles.metric, i < displayMetrics.length - 1 && styles.metricDivider]}
             >
-              <Text style={styles.metricValue}>{m.value}</Text>
+              <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {m.value}
+              </Text>
               <Text style={styles.metricLabel}>{m.label}</Text>
             </View>
           ))}
@@ -190,19 +276,25 @@ export default function WorkoutShareCard({ sessionType }: WorkoutShareCardProps)
 
         {/* Área grande: ruta (running) o ejercicios (gym) */}
         <View style={styles.placeholderArea}>
-          <Text style={styles.placeholderText}>{v.placeholderLabel}</Text>
+          {hasRoute ? (
+            <RoutePath coords={routeCoords!} color={v.accent} />
+          ) : (
+            <Text style={styles.placeholderText}>{v.placeholderLabel}</Text>
+          )}
         </View>
 
-        {/* Zyfit Score */}
-        <View style={styles.scoreRow}>
-          <Text style={styles.scoreLabel}>ZYFIT SCORE</Text>
-          <Text style={[styles.scoreValue, { color: v.accent }]}>--</Text>
-        </View>
+        {/* Zyfit Score (solo si se aporta) */}
+        {score != null && (
+          <View style={styles.scoreRow}>
+            <Text style={styles.scoreLabel}>ZYFIT SCORE</Text>
+            <Text style={[styles.scoreValue, { color: v.accent }]}>{String(score)}</Text>
+          </View>
+        )}
 
         {/* Footer: usuario + fecha */}
         <View style={styles.footer}>
-          <Text style={styles.footerUser}>@usuario</Text>
-          <Text style={styles.footerDate}>-- --- ----</Text>
+          <Text style={styles.footerUser}>{userLabel ?? '@usuario'}</Text>
+          <Text style={styles.footerDate}>{dateLabel ?? '-- --- ----'}</Text>
         </View>
       </View>
 

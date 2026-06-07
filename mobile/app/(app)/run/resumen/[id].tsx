@@ -19,6 +19,7 @@ import {
 } from '../../../../lib/runMetrics'
 import { useTheme } from '../../../../lib/theme'
 import { Colors } from '../../../../lib/colors'
+import { getUser } from '../../../../lib/storage'
 import WorkoutShareCard from '../../../../components/WorkoutShareCard'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,6 +27,23 @@ import WorkoutShareCard from '../../../../components/WorkoutShareCard'
 interface MetricCard {
   label: string
   value: string
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
+
+function formatShareDate(iso?: string | null): string | undefined {
+  if (!iso) return undefined
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return undefined
+  return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function handleFromUser(u: { nombre?: string; email?: string } | null): string | undefined {
+  if (!u) return undefined
+  const base = (u.nombre || u.email?.split('@')[0] || '').trim().toLowerCase().replace(/\s+/g, '')
+  return base ? `@${base}` : undefined
 }
 
 // ─── Metric Card ──────────────────────────────────────────────────────────────
@@ -49,6 +67,11 @@ export default function RunResumenScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [userLabel, setUserLabel] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    getUser().then(u => setUserLabel(handleFromUser(u))).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -237,7 +260,21 @@ export default function RunResumenScreen() {
             contentContainerStyle={styles.shareModalContent}
             showsVerticalScrollIndicator={false}
           >
-            <WorkoutShareCard sessionType="running" session={session} />
+            <WorkoutShareCard
+              sessionType="running"
+              title={formatDistance(session.total_distance_m ?? 0)}
+              metrics={[
+                { label: 'TIEMPO', value: formatDuration(session.total_duration_s ?? 0) },
+                { label: 'RITMO /KM', value: formatPace(session.avg_pace_s_per_km ?? 0).replace(' /km', '') },
+                {
+                  label: 'CALORÍAS',
+                  value: session.calories_burned != null ? `${Math.round(session.calories_burned)}` : '--',
+                },
+              ]}
+              routeCoords={polylineCoords}
+              dateLabel={formatShareDate(session.ended_at ?? session.started_at)}
+              userLabel={userLabel}
+            />
           </ScrollView>
         </View>
       </Modal>

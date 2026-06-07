@@ -731,7 +731,7 @@ export default function FeedbackScreen() {
             contentContainerStyle={styles.shareModalContent}
             showsVerticalScrollIndicator={false}
           >
-            <WorkoutShareCard sessionType="gym" session={{ id }} />
+            <WorkoutShareCard sessionType="gym" />
           </ScrollView>
         </View>
       </Modal>
