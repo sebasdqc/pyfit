@@ -34,6 +34,14 @@ function IconHistory({ color }: { color: string }) {
   )
 }
 
+function IconChat({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4V5.5z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
 function IconProfile({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -215,12 +223,20 @@ export default function AppLayout() {
         name="checkin/index"
         options={{ tabBarLabel: 'ENTRENAR' }}
       />
+      {/* Chat: placeholder sin función, ocupa el lugar que tenía Historial. */}
+      <Tabs.Screen
+        name="chat/index"
+        options={{
+          tabBarLabel: 'Chat',
+          tabBarIcon: ({ color }) => <IconChat color={color} />,
+        }}
+      />
+      {/* Historial dejó de ser un tab propio: ahora vive dentro de "Stats" como
+          un chip. La ruta se mantiene oculta (href: null) para que los deep-links
+          del dashboard ("ver sesión" / calendario semanal) sigan funcionando. */}
       <Tabs.Screen
         name="historial/index"
-        options={{
-          tabBarLabel: 'Historial',
-          tabBarIcon: ({ color }) => <IconHistory color={color} />,
-        }}
+        options={{ href: null, tabBarLabel: '' }}
       />
       {/* Perfil es un Stack anidado (app/(app)/perfil/_layout.tsx). El Tabs lo
           ve como UNA sola ruta "perfil"; sus sub-pantallas (datos-personales,

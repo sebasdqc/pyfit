@@ -26,6 +26,7 @@ import { Colors } from '../../../lib/colors'
 import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 import RadarBlock, { RadarBlockEmpty, RadarMetric } from '../../../components/RadarBlock'
 import { useTranslation } from '../../../lib/i18n'
+import HistorialView from '../historial'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -853,7 +854,7 @@ function HeatMapBlock({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function EstadisticasScreen() {
+function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
   const { colors } = useTheme()
   const { t, ta }  = useTranslation()
   const styles     = React.useMemo(() => makeStyles(colors), [colors])
@@ -1116,12 +1117,14 @@ export default function EstadisticasScreen() {
   const trend             = trendText(dias)
 
   return (
-    <View style={styles.root}>
-      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+    <View style={[styles.root, embedded && { backgroundColor: 'transparent' }]}>
+      {!embedded && (
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+      )}
 
       {/* ── Sticky Header ── */}
-      <View style={[styles.stickyHeader, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.sectionLabel}>{t('stats_header')}</Text>
+      <View style={[styles.stickyHeader, { paddingTop: embedded ? 4 : insets.top + 12 }]}>
+        {!embedded && <Text style={styles.sectionLabel}>{t('stats_header')}</Text>}
         <Text style={styles.pageTitle}>
           {semanasEntrenando}{' '}
           {semanasEntrenando === 1 ? 'semana' : 'semanas'} entrenando.
@@ -1375,6 +1378,89 @@ export default function EstadisticasScreen() {
       </Modal>
     </View>
   )
+}
+
+// ─── Host: Stats con chips ESTADÍSTICAS | HISTORIAL ───────────────────────────
+// La pantalla del tab "Stats" hospeda dos vistas: las estadísticas (sin cambios)
+// y el historial (migrado desde su antiguo tab, solo vista Lista). Cada vista se
+// renderiza en modo `embedded`: sin su propio gradiente/fondo ni eyebrow, porque
+// este host ya aporta el fondo, el gradiente y la cabecera con los chips.
+
+export default function StatsScreen() {
+  const { colors } = useTheme()
+  const { t }      = useTranslation()
+  const insets     = useSafeAreaInsets()
+  const styles     = React.useMemo(() => makeHostStyles(colors), [colors])
+
+  const [tab, setTab] = useState<'estadisticas' | 'historial'>('estadisticas')
+
+  return (
+    <View style={styles.root}>
+      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+
+      {/* ── Chips ── */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.chipRow}>
+          <TouchableOpacity
+            style={[styles.chip, tab === 'estadisticas' && styles.chipActive]}
+            onPress={() => setTab('estadisticas')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.chipText, tab === 'estadisticas' && styles.chipTextActive]}>
+              {t('stats_header')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.chip, tab === 'historial' && styles.chipActive]}
+            onPress={() => setTab('historial')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.chipText, tab === 'historial' && styles.chipTextActive]}>
+              {t('historial_header')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Vista activa ── */}
+      <View style={{ flex: 1 }}>
+        {tab === 'estadisticas'
+          ? <EstadisticasView embedded />
+          : <HistorialView embedded />}
+      </View>
+    </View>
+  )
+}
+
+function makeHostStyles(c: Colors) {
+  return StyleSheet.create({
+    root:     { flex: 1, backgroundColor: c.bg },
+    gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
+    header:   { paddingHorizontal: 20, paddingBottom: 12, zIndex: 10 },
+    chipRow: {
+      flexDirection: 'row',
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 14,
+      padding: 4,
+      gap: 4,
+    },
+    chip: {
+      flex: 1,
+      paddingVertical: 9,
+      alignItems: 'center',
+      borderRadius: 11,
+    },
+    chipActive: { backgroundColor: c.accent },
+    chipText: {
+      color: c.inkMuted,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 12,
+      letterSpacing: 0.2,
+    },
+    chipTextActive: { color: '#fff' },
+  })
 }
 
 function formatModalDate(dateStr: string, monthNames: string[]): string {

@@ -94,17 +94,6 @@ function formatDate(iso: string, monthShort: string[], weekdayShort: string[]): 
   return `${weekdayShort[d.getDay()]}, ${d.getDate()} ${monthShort[d.getMonth()]} ${d.getFullYear()}`
 }
 
-function toDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function todayStr(): string {
-  return toDateStr(new Date())
-}
-
 // These helper functions use hardcoded semantic colors that don't change between themes
 function cumplimientoColor(c: number): string {
   if (c >= 90) return '#32c896'
@@ -196,24 +185,6 @@ function groupByWeek(sessions: Session[], monthNames: string[]): { key: string; 
     }))
 }
 
-// ─── Calendar session type (Musculación / Running / Movilidad) ─────────────────
-// Cada día del calendario muestra hasta 3 puntos, uno por tipo de sesión presente
-// (deduplicado: 5 sesiones de running = 1 solo punto).
-type CalTipo = 'Musculación' | 'Running' | 'Movilidad'
-const CAL_TIPOS: CalTipo[] = ['Musculación', 'Running', 'Movilidad']
-const CAL_TIPO_COLORS: Record<CalTipo, string> = {
-  'Musculación': '#4f8cff',
-  'Running': '#ffaa32',
-  'Movilidad': '#32c896',
-}
-
-function getCalendarTipo(ia?: RespuestaIA): CalTipo {
-  const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
-  if (/running|correr|cardio|aeróbico|aerobico|trote|carrera|rodaje|kilómetro|kilometro|ritmo|resistencia cardiovascular/.test(text)) return 'Running'
-  if (/movilidad|estiramiento|estiramientos|flexibilidad|yoga|pilates|recuperación|recuperacion|soltura|foam|descanso activo|respiración|respiracion/.test(text)) return 'Movilidad'
-  return 'Musculación'
-}
-
 function inferTipoSesion(ia?: RespuestaIA): FilterTipo {
   const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
   if (/running|correr|cardio|aeróbico|aerobico|trote|kilómetro|kilómetros|ritmo|resistencia cardiovascular/.test(text)) return 'Running'
@@ -260,31 +231,6 @@ function getMostFrequent(sessions: Session[]): { tipo: string; count: number } |
     }
   }
   return best ? { tipo: best.tipo, count: best.count } : null
-}
-
-function getLast6Months(): { year: number; month: number }[] {
-  const result = []
-  const now = new Date()
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    result.push({ year: d.getFullYear(), month: d.getMonth() })
-  }
-  return result
-}
-
-function getDaysInMonth(year: number, month: number): Date[] {
-  const days: Date[] = []
-  const d = new Date(year, month, 1)
-  while (d.getMonth() === month) {
-    days.push(new Date(d))
-    d.setDate(d.getDate() + 1)
-  }
-  return days
-}
-
-// getDay() returns 0=Sun ... 6=Sat. We want 0=Mon ... 6=Sun
-function mondayBasedDayIndex(d: Date): number {
-  return (d.getDay() + 6) % 7
 }
 
 // ─── Session Detail Modal ─────────────────────────────────────────────────────
@@ -846,218 +792,6 @@ function ListView({
   )
 }
 
-// ─── Calendar View ────────────────────────────────────────────────────────────
-
-function CalendarView({
-  sessions,
-  onSelectDay,
-}: {
-  sessions: Session[]
-  onSelectDay: (daySessions: Session[]) => void
-}) {
-  const { colors } = useTheme()
-  const { t, ta } = useTranslation()
-  const calStyles = useMemo(() => makeCalStyles(colors), [colors])
-
-  const sessionsByDate = new Map<string, Session[]>()
-  for (const s of sessions) {
-    if (!sessionsByDate.has(s.fecha)) sessionsByDate.set(s.fecha, [])
-    sessionsByDate.get(s.fecha)!.push(s)
-  }
-
-  const today = todayStr()
-  const months = getLast6Months()
-
-  // Use i18n arrays
-  const MONTH_NAMES_I18N = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ]
-  const DAY_COLS = ta('historial_days_abbr')
-
-  return (
-    <>
-      {/* Legend — tipos de sesión */}
-      <View style={calStyles.legend}>
-        {CAL_TIPOS.map(tipo => (
-          <View key={tipo} style={calStyles.legendItem}>
-            <View style={[calStyles.legendDot, { backgroundColor: CAL_TIPO_COLORS[tipo] }]} />
-            <Text style={calStyles.legendLabel}>{tipo}</Text>
-          </View>
-        ))}
-      </View>
-
-      {months.map(({ year, month }) => {
-        const days = getDaysInMonth(year, month)
-        const firstOffset = mondayBasedDayIndex(days[0])
-        const totalCells = firstOffset + days.length
-        const rows = Math.ceil(totalCells / 7)
-
-        return (
-          <View key={`${year}-${month}`} style={calStyles.monthBlock}>
-            <Text style={calStyles.monthTitle}>
-              {MONTH_NAMES_I18N[month]} {year}
-            </Text>
-            {/* Weekday headers */}
-            <View style={calStyles.weekHeader}>
-              {DAY_COLS.map((d, idx) => (
-                <Text key={idx} style={calStyles.weekHeaderCell}>{d}</Text>
-              ))}
-            </View>
-            {/* Day grid */}
-            {Array.from({ length: rows }, (_, row) => (
-              <View key={row} style={calStyles.weekRow}>
-                {Array.from({ length: 7 }, (_, col) => {
-                  const cellIndex = row * 7 + col
-                  const dayIndex = cellIndex - firstOffset
-                  if (dayIndex < 0 || dayIndex >= days.length) {
-                    return <View key={col} style={calStyles.dayCell} />
-                  }
-                  const day = days[dayIndex]
-                  const dateStr = toDateStr(day)
-                  const daySessions = sessionsByDate.get(dateStr)
-                  const isToday = dateStr === today
-                  const isFuture = dateStr > today
-
-                  // Tipos distintos presentes en el día (deduplicados), en orden fijo
-                  const tiposDia = daySessions?.length
-                    ? CAL_TIPOS.filter(tipo =>
-                        daySessions.some(s => getCalendarTipo(s.respuesta_ia) === tipo))
-                    : []
-
-                  return (
-                    <TouchableOpacity
-                      key={col}
-                      style={[
-                        calStyles.dayCell,
-                        isToday && calStyles.dayCellToday,
-                        isFuture && !daySessions && calStyles.dayCellFuture,
-                      ]}
-                      onPress={() => {
-                        if (daySessions?.length) onSelectDay(daySessions)
-                      }}
-                      activeOpacity={daySessions?.length ? 0.7 : 1}
-                    >
-                      <Text style={[
-                        calStyles.dayNum,
-                        isToday && { color: colors.inkPrimary, fontFamily: 'SpaceGrotesk-Bold' },
-                        isFuture && !daySessions && { color: colors.inkFaint },
-                      ]}>
-                        {day.getDate()}
-                      </Text>
-                      {tiposDia.length > 0 && (
-                        <View style={calStyles.dayDotsRow}>
-                          {tiposDia.map(tipo => (
-                            <View
-                              key={tipo}
-                              style={[calStyles.dayDot, { backgroundColor: CAL_TIPO_COLORS[tipo] }]}
-                            />
-                          ))}
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            ))}
-          </View>
-        )
-      })}
-    </>
-  )
-}
-
-function makeCalStyles(c: Colors) {
-  return StyleSheet.create({
-    legend: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 14,
-      padding: 12,
-      marginBottom: 16,
-    },
-    legendItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-    },
-    legendDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    legendLabel: {
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 0.3,
-    },
-    monthBlock: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 18,
-      padding: 14,
-      marginBottom: 16,
-    },
-    monthTitle: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      letterSpacing: -0.3,
-      marginBottom: 12,
-    },
-    weekHeader: {
-      flexDirection: 'row',
-      marginBottom: 4,
-    },
-    weekHeaderCell: {
-      flex: 1,
-      textAlign: 'center',
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 9,
-      letterSpacing: 0.3,
-      paddingBottom: 6,
-    },
-    weekRow: {
-      flexDirection: 'row',
-    },
-    dayCell: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 5,
-      gap: 3,
-      borderRadius: 8,
-    },
-    dayCellToday: {
-      backgroundColor: 'rgba(79,140,255,0.35)',
-    },
-    dayCellFuture: {
-      opacity: 0.4,
-    },
-    dayNum: {
-      color: c.inkSecondary,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
-    },
-    dayDotsRow: {
-      flexDirection: 'row',
-      gap: 2,
-      alignItems: 'center',
-    },
-    dayDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 3,
-    },
-  })
-}
-
 // ─── Day Sessions Modal ───────────────────────────────────────────────────────
 
 function DayModal({
@@ -1186,7 +920,7 @@ function SummaryBlock({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function HistorialScreen() {
+export default function HistorialScreen({ embedded = false }: { embedded?: boolean } = {}) {
   const { colors } = useTheme()
   const { t, ta } = useTranslation()
   const styles   = useMemo(() => makeStyles(colors), [colors])
@@ -1199,8 +933,7 @@ export default function HistorialScreen() {
   const { fecha: paramFecha, ts: paramTs } = useLocalSearchParams<{ fecha?: string; ts?: string }>()
   const lastDeepLinkKey = useRef<string | null>(null)
 
-  // ── View & data ────────────────────────────────────────────────────────────
-  const [view,       setView]       = useState<'lista' | 'calendario'>('lista')
+  // ── Data ───────────────────────────────────────────────────────────────────
   const [sessions,   setSessions]   = useState<Session[]>([])
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -1323,18 +1056,15 @@ export default function HistorialScreen() {
     setSessionModalVisible(true)
   }
 
-  function openDay(ds: Session[]) {
-    if (ds.length === 1) openSession(ds[0])
-    else { setDaySessions(ds); setDayModalVisible(true) }
-  }
-
   return (
-    <View style={styles.root}>
-      <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+    <View style={[styles.root, embedded && { backgroundColor: 'transparent' }]}>
+      {!embedded && (
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+      )}
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 24 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: embedded ? 8 : insets.top + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={300}
@@ -1349,7 +1079,7 @@ export default function HistorialScreen() {
         }
       >
         {/* ── Header ── */}
-        <Text style={styles.sectionLabel}>{t('historial_header')}</Text>
+        {!embedded && <Text style={styles.sectionLabel}>{t('historial_header')}</Text>}
         <View style={styles.headerRow}>
           <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
             {loading ? '...' : `${sessions.length} ${t('historial_sessions_suffix')}.`}
@@ -1410,27 +1140,7 @@ export default function HistorialScreen() {
           <SummaryBlock sessions={sessions} styles={styles} colors={colors} />
         )}
 
-        {/* ── View toggle ── */}
-        {!loading && !error && (
-          <View style={styles.toggleRow}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, view === 'lista' && styles.toggleBtnActive]}
-              onPress={() => setView('lista')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>{t('historial_view_list')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleBtn, view === 'calendario' && styles.toggleBtnActive]}
-              onPress={() => setView('calendario')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>{t('historial_view_calendar')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── Content ── */}
+        {/* ── Content (solo vista Lista) ── */}
         {loading ? (
           <View style={styles.loadingBox}>
             <Text style={styles.loadingText}>{t('historial_loading')}</Text>
@@ -1442,7 +1152,7 @@ export default function HistorialScreen() {
               <Text style={styles.retryText}>Reintentar</Text>
             </TouchableOpacity>
           </View>
-        ) : view === 'lista' ? (
+        ) : (
           <ListView
             weeks={visibleWeeks}
             hasFilters={hasFilters}
@@ -1450,8 +1160,6 @@ export default function HistorialScreen() {
             isLoadingMore={isLoadingMore}
             onSelectSession={openSession}
           />
-        ) : (
-          <CalendarView sessions={filteredSessions} onSelectDay={openDay} />
         )}
 
         <View style={{ height: 40 }} />
