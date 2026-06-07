@@ -551,7 +551,8 @@ def _format_exercise_pool(grouped):
 def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
     """
     Formats the enriched exercise pool (from AdaptiveEngineService) for the LLM.
-    Groups by patron_movimiento sorted by priority; limits to 50 exercises.
+    Groups by patron_movimiento sorted by priority; limits to 30 exercises.
+    Fase 4: una línea compacta por ejercicio con la prescripción ya calculada.
     """
     if not pool:
         return 'No hay ejercicios disponibles con los filtros aplicados para esta sesión.'
@@ -591,13 +592,12 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
             break
     selected = selected[:30]
 
-    PROG_ICONS = {
-        'incrementar': '↑ puede progresar',
-        'mantener':    '→ mantener',
-        'reducir':     '↓ reducir carga',
-        'consolidar':  '⏸ consolidar (>7d sin hacer)',
-    }
+    PROG = {'incrementar': '↑', 'mantener': '→', 'reducir': '↓', 'consolidar': '⏸'}
 
+    # Fase 4 — Una línea compacta por ejercicio:
+    #   • nombre · músculo · REPS @RPE RIR DESC · progresión · carga previa
+    # Se omiten descripción y coaching_cues (el LLM redacta el cue) y los metadatos
+    # de filtrado (TN/CF/tiempo) que ya cumplieron su función en el motor.
     lines: list[str] = []
     current_patron = None
 
@@ -605,45 +605,37 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
         pat = ex['patron_movimiento']
         if pat != current_patron:
             current_patron = pat
-            label = PATRON_LABELS_LARGO.get(pat, pat.upper())
+            label = PATRON_LABELS_CORTO.get(pat, pat).upper()
             if pat in evitar_set:
-                label += ' ⚠️ [PATRÓN RECIENTE — incluir solo si no hay alternativas]'
+                label += ' [reciente — solo si no hay alternativa]'
             lines.append(f'\n{label}')
 
-        mp = ', '.join(ex['musculos_primarios']) or '—'
-        ms = ', '.join(ex['musculos_secundarios'][:2]) if ex['musculos_secundarios'] else '—'
-        tl = f"TN:{ex['technical_level']}/5 " if ex['technical_level'] else ''
-        sf = f"CF:{ex['systemic_fatigue']}/5 " if ex['systemic_fatigue'] else ''
-        ts = ex['total_set_seconds']
-        tiempo = f"~{ts // 60}:{ts % 60:02d}min/set"
+        seg = [f'• {ex["nombre"]}']
+        if ex.get('musculos_primarios'):
+            seg.append(ex['musculos_primarios'][0])
 
-        if ex['primera_vez']:
-            prog_txt = ' | 🆕 primera vez — comenzar RPE 6-7'
-        elif ex['progresion']:
-            prog_txt = f' | {PROG_ICONS.get(ex["progresion"], "")}'
-            if ex['rpe_referencia']:
-                prog_txt += f' (RPEhist:{ex["rpe_referencia"]:.1f})'
-        else:
-            prog_txt = ''
-
-        lines.append(f'  • {ex["nombre"]}')
-        lines.append(f'    Músculos: {mp} | Secund: {ms}')
-        lines.append(f'    {tl}{sf}{tiempo}{prog_txt}')
         if ex.get('reps_objetivo'):
-            _lo, _hi = ex['reps_objetivo']
-            _reps_txt = f'{_lo}-{_hi}' if _lo != _hi else f'{_lo}'
-            lines.append(
-                f'    ▸ PRESCRITO: {_reps_txt} reps | descanso {ex["descanso_objetivo_s"]}s '
-                f'| RPE {ex["rpe_objetivo"]} (RIR {ex["rir_objetivo"]})'
+            lo, hi = ex['reps_objetivo']
+            reps_txt = f'{lo}-{hi}' if lo != hi else f'{lo}'
+            seg.append(
+                f'{reps_txt} reps @RPE{ex["rpe_objetivo"]} RIR{ex["rir_objetivo"]} '
+                f'desc{ex["descanso_objetivo_s"]}s'
             )
-        if ex.get('carga_previa'):
-            lines.append(f'    Última carga registrada: {ex["carga_previa"]} — progresa desde aquí si el RPE lo permite')
+        else:
+            seg.append('calentamiento/movilidad')
 
-        cues = ex.get('coaching_cues', [])
-        if cues:
-            lines.append(f'    Cue: {"; ".join(cues[:2])}')
-        if ex['requires_warning']:
-            lines.append(f'    ⚠️ ADVERTENCIA: {ex["warning_text"]}')
+        if ex.get('primera_vez'):
+            seg.append('🆕')
+        elif ex.get('progresion'):
+            p = PROG.get(ex['progresion'], '')
+            if ex.get('rpe_referencia'):
+                p += f'{ex["rpe_referencia"]:.1f}'
+            if p:
+                seg.append(p)
+        if ex.get('carga_previa'):
+            seg.append(f'prev {ex["carga_previa"]}')
+
+        lines.append('  ' + ' · '.join(seg))
 
     return '\n'.join(lines)
 
@@ -880,6 +872,7 @@ FASE DEL CICLO MENSTRUAL:
 
 BANCO DE EJERCICIOS VALIDADOS:
 Los siguientes ejercicios han sido pre-filtrados para esta sesión: cumplen con los implementos disponibles y NO tienen contraindicaciones absolutas con las lesiones activas ni el dolor reportado hoy.
+Formato de cada línea: • ejercicio · músculo principal · REPS @RPE RIR DESC (YA prescritos por el sistema) · progresión (↑ subir / → mantener / ↓ bajar / 🆕 primera vez) · prev = última carga registrada.
 
 {exercise_pool_text}
 
@@ -1154,11 +1147,11 @@ def generate_session(request):
     prompt = build_prompt(ctx)
 
     try:
-        # max_tokens=3500: la salida real es ~2k-3k tokens; con el pool acotado a
-        # 30, prompt(~6.3k) + 3500 ≈ 9.8k, holgado bajo el límite de 12k TPM de
-        # Groq (free tier). Subir el tier elimina el límite y permite volver a 4096.
+        # Fase 4: con el banco comprimido (1 línea/ejercicio) y los valores ya
+        # prescritos, el LLM razona menos y produce salida más corta. max_tokens=3000
+        # deja margen contra truncado y mantiene prompt+salida bajo el 12k TPM de Groq.
         sesion_generada, _groq_usage = _call_groq(
-            prompt, max_tokens=3500, user_id=user.id, return_usage=True,
+            prompt, max_tokens=3000, user_id=user.id, return_usage=True,
         )
     except json.JSONDecodeError:
         logger.exception('Groq returned invalid JSON for user %s', user.id)
@@ -1548,7 +1541,7 @@ def session_ajustar(request, pk):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=4096, user_id=user.id)
+        sesion_generada = _call_groq(prompt, max_tokens=3000, user_id=user.id)
     except json.JSONDecodeError:
         logger.exception('Groq invalid JSON in ajustar for user %s', user.id)
         return Response(

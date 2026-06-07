@@ -4,6 +4,7 @@ from django.test import SimpleTestCase
 
 from ai_workout import training_science as ts
 from ai_workout.adaptive_engine import AdaptiveEngineService, _MIN_FOCUS_POOL
+from ai_workout.views import _format_exercise_pool_enriched
 
 
 def _ex(nombre, patron, primarios, secundarios=None):
@@ -296,3 +297,30 @@ class PrescribeTests(SimpleTestCase):
             error_risk=None, nivel='intermedio', rpe_target=7, fatiga='alto',
         )['descanso_s']
         self.assertEqual(fat, base + ts.REST_FATIGUE_BONUS_S)
+
+
+class FormatPoolCompactTests(SimpleTestCase):
+    def _entry(self, nombre, **kw):
+        e = {
+            'nombre': nombre, 'patron_movimiento': 'empuje_horizontal',
+            'es_compuesto': True, 'musculos_primarios': ['Pectoral mayor (porción esternal)'],
+            'musculos_secundarios': [], 'technical_level': 3, 'systemic_fatigue': 3,
+            'total_set_seconds': 180, 'primera_vez': False, 'progresion': 'mantener',
+            'rpe_referencia': 7.0, 'veces_realizado': 5, 'carga_previa': None,
+            'coaching_cues': ['un cue muy largo de técnica'], 'description': 'descripción larga',
+            'requires_warning': False, 'warning_text': None,
+            'reps_objetivo': (6, 10), 'descanso_objetivo_s': 180, 'rpe_objetivo': 8, 'rir_objetivo': 2,
+        }
+        e.update(kw)
+        return e
+
+    def test_one_line_per_exercise_without_cues_or_description(self):
+        pool = [self._entry('Press banca'), self._entry('Press inclinado')]
+        out = _format_exercise_pool_enriched(pool, {'priorizados': [], 'evitar': [], 'razon_evitar': {}})
+        bullets = [l for l in out.splitlines() if l.strip().startswith('•')]
+        self.assertEqual(len(bullets), 2)            # exactamente 1 línea por ejercicio
+        self.assertNotIn('Músculos:', out)           # metadatos de filtrado fuera
+        self.assertNotIn('Cue:', out)                # cues fuera
+        self.assertNotIn('descripción larga', out)   # descripción fuera
+        self.assertIn('@RPE8', out)                  # prescripción presente
+        self.assertIn('RIR2', out)
