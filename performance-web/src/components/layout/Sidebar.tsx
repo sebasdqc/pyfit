@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
+  { id: 'calendario', label: 'Calendario', icon: 'calendario', to: '/calendario' },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
   { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones', moduleId: 'lesiones' },

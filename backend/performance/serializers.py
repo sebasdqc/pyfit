@@ -6,6 +6,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
+    CalendarEvent,
 )
 
 
@@ -286,3 +287,36 @@ class TacticalPlaySerializer(serializers.ModelSerializer):
 
     def validate_escena(self, value):
         return _validate_escena(value)
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    """Evento del calendario del centro. El nombre del autor se resuelve con el
+    mismo helper que el resto del panel (no depende de un Profile)."""
+
+    registrado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'id', 'center', 'tipo', 'titulo', 'descripcion',
+            'fecha_inicio', 'fecha_fin', 'hora_inicio', 'todo_el_dia',
+            'ubicacion', 'grupo', 'rival', 'localia',
+            'registrado_por', 'registrado_por_nombre', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'center', 'registrado_por', 'registrado_por_nombre',
+            'created_at', 'updated_at',
+        ]
+
+    def get_registrado_por_nombre(self, obj):
+        return _display_name(obj.registrado_por)
+
+    def validate(self, attrs):
+        # fecha_fin (si viene) no puede ser anterior a fecha_inicio.
+        inicio = attrs.get('fecha_inicio') or getattr(self.instance, 'fecha_inicio', None)
+        fin = attrs.get('fecha_fin', getattr(self.instance, 'fecha_fin', None))
+        if fin and inicio and fin < inicio:
+            raise serializers.ValidationError(
+                {'fecha_fin': 'La fecha de fin no puede ser anterior a la de inicio.'}
+            )
+        return attrs

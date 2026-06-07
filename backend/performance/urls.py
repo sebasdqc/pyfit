@@ -37,6 +37,10 @@ urlpatterns = [
     path('centers/<int:pk>/simulador/', views.center_plays),
     path('centers/<int:pk>/simulador/<int:play_id>/', views.play_detail),
 
+    # Calendario — temporadas, torneos, partidos y eventos del centro
+    path('centers/<int:pk>/calendario/', views.center_events),
+    path('centers/<int:pk>/calendario/<int:event_id>/', views.event_detail),
+
     # Planificación — periodización (macrociclo → mesociclos → microciclos)
     path('centers/<int:pk>/planificacion/<int:plan_id>/', views.plan_detail),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/', views.plan_mesociclos),

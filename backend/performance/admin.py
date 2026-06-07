@@ -7,6 +7,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
+    CalendarEvent,
 )
 
 
@@ -104,3 +105,12 @@ class TacticalPlayAdmin(ModelAdmin):
     list_filter = ('center', 'campo')
     search_fields = ('nombre', 'descripcion', 'center__nombre')
     autocomplete_fields = ('center', 'registrado_por')
+
+
+@admin.register(CalendarEvent)
+class CalendarEventAdmin(ModelAdmin):
+    list_display = ('titulo', 'center', 'tipo', 'fecha_inicio', 'fecha_fin', 'grupo', 'rival', 'registrado_por')
+    list_filter = ('tipo', 'center')
+    search_fields = ('titulo', 'descripcion', 'rival', 'center__nombre')
+    autocomplete_fields = ('center', 'registrado_por')
+    date_hierarchy = 'fecha_inicio'

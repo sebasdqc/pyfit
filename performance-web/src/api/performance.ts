@@ -6,7 +6,7 @@ import { api } from './client'
 import type {
   CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
-  TacticalPlay, Escena, WellnessRecord,
+  TacticalPlay, Escena, WellnessRecord, CalendarEvent,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -237,6 +237,39 @@ export async function updatePlay(
 
 export async function deletePlay(centerId: number, playId: number): Promise<void> {
   await api.delete(`${simBase(centerId)}/${playId}/`)
+}
+
+// ── Calendario: temporadas, torneos, partidos y eventos del centro ────────────
+const calBase = (centerId: number) => `/performance/centers/${centerId}/calendario`
+
+// Campos editables del evento (el resto los pone el servidor).
+export type EventPayload = Partial<
+  Pick<
+    CalendarEvent,
+    | 'tipo' | 'titulo' | 'descripcion' | 'fecha_inicio' | 'fecha_fin'
+    | 'hora_inicio' | 'todo_el_dia' | 'ubicacion' | 'grupo' | 'rival' | 'localia'
+  >
+> & { titulo: string; fecha_inicio: string; tipo: CalendarEvent['tipo'] }
+
+export async function listEvents(centerId: number): Promise<CalendarEvent[]> {
+  const res = await api.get<CalendarEvent[]>(`${calBase(centerId)}/`)
+  return res.data
+}
+
+export async function createEvent(centerId: number, payload: EventPayload): Promise<CalendarEvent> {
+  const res = await api.post<CalendarEvent>(`${calBase(centerId)}/`, payload)
+  return res.data
+}
+
+export async function updateEvent(
+  centerId: number, eventId: number, payload: Partial<EventPayload>,
+): Promise<CalendarEvent> {
+  const res = await api.patch<CalendarEvent>(`${calBase(centerId)}/${eventId}/`, payload)
+  return res.data
+}
+
+export async function deleteEvent(centerId: number, eventId: number): Promise<void> {
+  await api.delete(`${calBase(centerId)}/${eventId}/`)
 }
 
 // ── Módulo PSICOLÓGICO: check-ins de bienestar por atleta (API real) ─────────

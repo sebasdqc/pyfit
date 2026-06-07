@@ -16,6 +16,7 @@ import { PlanificacionPage } from '@/pages/planificacion/PlanificacionPage'
 import { PsicologicoPage } from '@/pages/psicologico/PsicologicoPage'
 import { SimuladorPage } from '@/pages/simulador/SimuladorPage'
 import { EquipoPage } from '@/pages/equipo/EquipoPage'
+import { CalendarioPage } from '@/pages/calendario/CalendarioPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'plantilla', element: <PlantillaPage /> },
           { path: 'equipo', element: <EquipoPage /> },
+          { path: 'calendario', element: <CalendarioPage /> },
           { path: 'rendimiento', element: <RendimientoPage /> },
           { path: 'lesiones', element: <LesionesPage /> },
           { path: 'tests', element: <TestPage /> },
@@ -45,6 +47,7 @@ export const router = createBrowserRouter([
               { path: 'planificacion', element: <PlanificacionPage /> },
               { path: 'psicologico', element: <PsicologicoPage /> },
               { path: 'simulador', element: <SimuladorPage /> },
+              { path: 'calendario', element: <CalendarioPage /> },
             ],
           },
         ],

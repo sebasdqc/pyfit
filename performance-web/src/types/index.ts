@@ -155,6 +155,39 @@ export interface TacticalPlay {
   updated_at: string
 }
 
+// ── Módulo CALENDARIO: temporadas, torneos, partidos y eventos del centro ─────
+export type EventTipo =
+  | 'temporada'
+  | 'torneo'
+  | 'concentracion'
+  | 'partido'
+  | 'entrenamiento'
+  | 'evaluacion'
+  | 'descanso'
+  | 'otro'
+
+export type LocaliaTipo = 'local' | 'visita' | 'neutral' | ''
+
+export interface CalendarEvent {
+  id: number
+  center: number
+  tipo: EventTipo
+  titulo: string
+  descripcion: string
+  fecha_inicio: string // YYYY-MM-DD
+  fecha_fin: string | null // null = evento de un día
+  hora_inicio: string | null // HH:MM:SS | null
+  todo_el_dia: boolean
+  ubicacion: string
+  grupo: string
+  rival: string
+  localia: LocaliaTipo
+  registrado_por: number | null
+  registrado_por_nombre: string
+  created_at: string
+  updated_at: string
+}
+
 // ── Módulo TEST: catálogo de calculadoras (performance/calculators) ──────────
 export type TestFamilia = 'fisico' | 'tecnico' | 'tactico'
 

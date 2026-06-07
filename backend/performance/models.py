@@ -608,3 +608,93 @@ class TacticalPlay(models.Model):
 
     def __str__(self):
         return f'{self.nombre} @ {self.center_id}'
+
+
+# ─── Módulo CALENDARIO ────────────────────────────────────────────────────────
+
+class CalendarEvent(models.Model):
+    """Evento del CALENDARIO del centro: la línea de tiempo de la temporada.
+
+    Cubre tanto "contenedores" largos —que enmarcan el trabajo del año—
+      • temporada      (rango largo: pretemporada → fin de la liga)
+      • torneo         (una copa / competición concreta)
+      • concentracion  (stage / gira)
+    como eventos puntuales del día a día
+      • partido        (con rival y, opcionalmente, hora y localía)
+      • entrenamiento
+      • evaluacion     (día de tests físicos / médicos)
+      • descanso       (día libre / recuperación)
+      • otro
+
+    No hereda de CenterRecord: su sujeto es el centro o un GRUPO (no un atleta) y
+    tiene rango de fechas en vez de una fecha puntual. Un evento de un solo día
+    deja `fecha_fin` en null (se interpreta = fecha_inicio).
+    """
+
+    TIPO_TEMPORADA = 'temporada'
+    TIPO_TORNEO = 'torneo'
+    TIPO_CONCENTRACION = 'concentracion'
+    TIPO_PARTIDO = 'partido'
+    TIPO_ENTRENAMIENTO = 'entrenamiento'
+    TIPO_EVALUACION = 'evaluacion'
+    TIPO_DESCANSO = 'descanso'
+    TIPO_OTRO = 'otro'
+    TIPO_CHOICES = [
+        (TIPO_TEMPORADA, 'Temporada'),
+        (TIPO_TORNEO, 'Torneo'),
+        (TIPO_CONCENTRACION, 'Concentración'),
+        (TIPO_PARTIDO, 'Partido'),
+        (TIPO_ENTRENAMIENTO, 'Entrenamiento'),
+        (TIPO_EVALUACION, 'Evaluación'),
+        (TIPO_DESCANSO, 'Descanso'),
+        (TIPO_OTRO, 'Otro'),
+    ]
+
+    # Localía del partido (solo aplica a tipo=partido; informativo para los demás).
+    LOCALIA_LOCAL = 'local'
+    LOCALIA_VISITA = 'visita'
+    LOCALIA_NEUTRAL = 'neutral'
+    LOCALIA_CHOICES = [
+        (LOCALIA_LOCAL, 'Local'),
+        (LOCALIA_VISITA, 'Visitante'),
+        (LOCALIA_NEUTRAL, 'Cancha neutral'),
+    ]
+
+    center = models.ForeignKey(
+        SportsCenter, on_delete=models.CASCADE, related_name='eventos',
+    )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='eventos_registrados',
+    )
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_OTRO)
+    titulo = models.CharField(max_length=160)
+    descripcion = models.TextField(blank=True)
+    fecha_inicio = models.DateField()
+    # null = evento de un solo día (se interpreta igual a fecha_inicio).
+    fecha_fin = models.DateField(null=True, blank=True)
+    # Hora de inicio (opcional). Si todo_el_dia, se ignora en la UI.
+    hora_inicio = models.TimeField(null=True, blank=True)
+    todo_el_dia = models.BooleanField(default=True)
+    ubicacion = models.CharField(max_length=160, blank=True)
+    # Categoría / equipo del centro al que aplica el evento (p. ej. "Sub-18").
+    grupo = models.CharField(max_length=80, blank=True)
+    # Solo para partidos: rival y localía.
+    rival = models.CharField(max_length=120, blank=True)
+    localia = models.CharField(max_length=10, choices=LOCALIA_CHOICES, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_calendar_events'
+        ordering = ['fecha_inicio', 'hora_inicio']
+        indexes = [models.Index(fields=['center', 'fecha_inicio'])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=models.F('fecha_inicio')),
+                name='calendarevent_fin_after_inicio',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.titulo} ({self.fecha_inicio})'

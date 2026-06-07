@@ -34,7 +34,7 @@ from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
+    Mesocycle, Microcycle, WellnessCheckin, TacticalPlay, CalendarEvent,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -44,7 +44,7 @@ from .serializers import (
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
     MesocycleSerializer, MicrocycleSerializer, WellnessCheckinSerializer,
-    TacticalPlaySerializer,
+    TacticalPlaySerializer, CalendarEventSerializer,
 )
 
 User = get_user_model()
@@ -700,6 +700,61 @@ def play_detail(request, pk, play_id):
         return Response(status=status.HTTP_204_NO_CONTENT)
     partial = request.method == 'PATCH'
     serializer = TacticalPlaySerializer(play, data=request.data, partial=partial)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+# ─── Calendario (temporadas, torneos, partidos, eventos) ──────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def center_events(request, pk):
+    """Lista / crea eventos del calendario del centro.
+
+    GET admite un filtro de rango opcional con ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    que devuelve los eventos que SOLAPAN ese rango (un evento abarca desde
+    fecha_inicio hasta fecha_fin, o solo fecha_inicio si fecha_fin es null).
+
+    Cualquier usuario con acceso al panel y al centro puede gestionar el
+    calendario (es una herramienta del cuerpo técnico, no un alta administrativa).
+    """
+    center = _get_center_or_404(request.user, pk)
+    if request.method == 'POST':
+        serializer = CalendarEventSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(center=center, registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = center.eventos.select_related('registrado_por').all()
+    desde = request.query_params.get('desde')
+    hasta = request.query_params.get('hasta')
+    if desde or hasta:
+        from django.db.models import F
+        from django.db.models.functions import Coalesce
+        qs = qs.annotate(_fin=Coalesce('fecha_fin', F('fecha_inicio')))
+        if hasta:
+            qs = qs.filter(fecha_inicio__lte=hasta)
+        if desde:
+            qs = qs.filter(_fin__gte=desde)
+    return Response(CalendarEventSerializer(qs, many=True).data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def event_detail(request, pk, event_id):
+    """Consulta, actualiza o elimina un evento del calendario del centro."""
+    center = _get_center_or_404(request.user, pk)
+    event = get_object_or_404(CalendarEvent, pk=event_id, center=center)
+    if request.method == 'GET':
+        return Response(CalendarEventSerializer(event).data)
+    if request.method == 'DELETE':
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == 'PATCH'
+    serializer = CalendarEventSerializer(event, data=request.data, partial=partial)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()

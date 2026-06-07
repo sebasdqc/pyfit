@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 
 from performance.models import (
     SportsCenter, CenterMembership, CenterAthlete, PhysicalTest, TestDefinition,
-    TacticalPlay,
+    TacticalPlay, CalendarEvent,
 )
 
 User = get_user_model()
@@ -354,6 +354,78 @@ class MePatchTests(_Base):
         self.client.force_authenticate(self.athlete)
         res = self.client.patch(self.URL, {'nombre': 'Hacker'}, format='json')
         self.assertEqual(res.status_code, 403)
+
+
+class CalendarEndpointTests(_Base):
+    """Calendario del centro: crear/listar/editar/borrar eventos, filtro por
+    rango (solapamiento) y validación de fechas."""
+
+    def url(self):
+        return f'/api/performance/centers/{self.center.id}/calendario/'
+
+    def detail(self, event_id):
+        return f'/api/performance/centers/{self.center.id}/calendario/{event_id}/'
+
+    def test_crea_partido(self):
+        res = self.client.post(self.url(), {
+            'tipo': 'partido', 'titulo': 'vs Rival FC', 'fecha_inicio': '2026-08-10',
+            'rival': 'Rival FC', 'localia': 'local', 'hora_inicio': '18:00', 'todo_el_dia': False,
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        ev = CalendarEvent.objects.get()
+        self.assertEqual(ev.tipo, 'partido')
+        self.assertEqual(ev.rival, 'Rival FC')
+        self.assertEqual(ev.registrado_por, self.director)
+        self.assertEqual(ev.center, self.center)
+
+    def test_crea_temporada_con_rango(self):
+        res = self.client.post(self.url(), {
+            'tipo': 'temporada', 'titulo': 'Temporada 2026/27',
+            'fecha_inicio': '2026-07-01', 'fecha_fin': '2027-05-30',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertIn('registrado_por_nombre', res.json())
+
+    def test_rechaza_fin_antes_de_inicio(self):
+        res = self.client.post(self.url(), {
+            'tipo': 'torneo', 'titulo': 'Copa', 'fecha_inicio': '2026-08-10', 'fecha_fin': '2026-08-01',
+        }, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('fecha_fin', res.json())
+
+    def test_filtra_por_rango_solapamiento(self):
+        CalendarEvent.objects.create(center=self.center, tipo='partido', titulo='Julio', fecha_inicio='2026-07-15')
+        CalendarEvent.objects.create(center=self.center, tipo='partido', titulo='Septiembre', fecha_inicio='2026-09-15')
+        # Temporada larga que solapa agosto aunque empiece en julio.
+        CalendarEvent.objects.create(
+            center=self.center, tipo='temporada', titulo='Temporada',
+            fecha_inicio='2026-07-01', fecha_fin='2027-05-30',
+        )
+        res = self.client.get(self.url() + '?desde=2026-08-01&hasta=2026-08-31')
+        self.assertEqual(res.status_code, 200)
+        titulos = {e['titulo'] for e in res.json()}
+        self.assertEqual(titulos, {'Temporada'})  # solo la que solapa agosto
+
+    def test_edita_y_borra(self):
+        ev = CalendarEvent.objects.create(center=self.center, tipo='otro', titulo='X', fecha_inicio='2026-08-10')
+        res = self.client.patch(self.detail(ev.id), {'titulo': 'Reunión técnica'}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        ev.refresh_from_db()
+        self.assertEqual(ev.titulo, 'Reunión técnica')
+        res = self.client.delete(self.detail(ev.id))
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(CalendarEvent.objects.filter(pk=ev.id).exists())
+
+    def test_requiere_acceso_panel(self):
+        self.client.force_authenticate(self.athlete)
+        res = self.client.get(self.url())
+        self.assertEqual(res.status_code, 403)
+
+    def test_fuera_de_scope_404(self):
+        otro = SportsCenter.objects.create(nombre='Otro', slug='otro-cal')
+        ev = CalendarEvent.objects.create(center=otro, tipo='otro', titulo='Ajeno', fecha_inicio='2026-08-10')
+        res = self.client.get(f'/api/performance/centers/{otro.id}/calendario/{ev.id}/')
+        self.assertEqual(res.status_code, 404)
 
 
 class SeedTestsCommandTests(TestCase):

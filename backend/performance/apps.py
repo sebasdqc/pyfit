@@ -22,7 +22,7 @@ class PerformanceConfig(AppConfig):
             SportsCenter, CenterMembership, CenterAthlete,
             PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan,
             PsychAssessment, TestDefinition, Mesocycle, Microcycle, WellnessCheckin,
-            TacticalPlay,
+            TacticalPlay, CalendarEvent,
         )
 
         auditlog.register(SportsCenter)
@@ -40,6 +40,8 @@ class PerformanceConfig(AppConfig):
         auditlog.register(WellnessCheckin)
         # Jugadas de la pizarra táctica (módulo Simulador).
         auditlog.register(TacticalPlay)
+        # Eventos del calendario del centro (temporadas, torneos, partidos…).
+        auditlog.register(CalendarEvent)
         # El catálogo de tests se siembra desde el motor (seed_tests); se audita
         # para dejar traza de altas/bajas/cambios de definición.
         auditlog.register(TestDefinition)

@@ -12,6 +12,7 @@ export type IconName =
   | 'tests'
   | 'monitoreo'
   | 'planificacion'
+  | 'calendario'
   | 'psicologico'
   | 'reportes'
   | 'ajustes'
@@ -94,6 +95,13 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   monitoreo: <path d="M3 12h3l2 5 4-12 3 9 1.5-2H21" />,
+  calendario: (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+    </>
+  ),
   planificacion: (
     <>
       <rect x="3" y="4" width="18" height="18" rx="2" />
