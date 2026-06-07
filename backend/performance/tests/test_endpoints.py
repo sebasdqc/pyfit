@@ -324,6 +324,38 @@ class SimuladorEndpointTests(_Base):
         self.assertEqual(res.status_code, 404)
 
 
+class MePatchTests(_Base):
+    """PATCH /me/ — el propio usuario actualiza su nombre visible y se refleja en
+    el payload (saludo "Hola, X", avatares) y en Profile."""
+
+    URL = '/api/performance/me/'
+
+    def test_actualiza_nombre(self):
+        res = self.client.patch(self.URL, {'nombre': 'Sebastián Cordero'}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()['nombre'], 'Sebastián Cordero')
+        self.director.refresh_from_db()
+        self.assertEqual(self.director.first_name, 'Sebastián Cordero')
+        self.assertEqual(self.director.last_name, '')
+        from users.models import Profile
+        self.assertEqual(Profile.objects.get(user=self.director).nombre, 'Sebastián Cordero')
+
+    def test_recorta_espacios(self):
+        res = self.client.patch(self.URL, {'nombre': '  Ana  '}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()['nombre'], 'Ana')
+
+    def test_rechaza_nombre_vacio(self):
+        res = self.client.patch(self.URL, {'nombre': '   '}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('nombre', res.json())
+
+    def test_requiere_acceso_panel(self):
+        self.client.force_authenticate(self.athlete)
+        res = self.client.patch(self.URL, {'nombre': 'Hacker'}, format='json')
+        self.assertEqual(res.status_code, 403)
+
+
 class SeedTestsCommandTests(TestCase):
     def test_siembra_catalogo(self):
         out = StringIO()

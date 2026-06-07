@@ -4,6 +4,7 @@
 // oscura muy sutil. Responsive: etiquetas en escritorio, solo íconos en tablet,
 // y drawer lateral en móvil (controlado por AppLayout).
 
+import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Icon, type IconName } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
@@ -22,10 +23,14 @@ interface NavItem {
   // la membresía del usuario en el centro activo).
   moduleId?: ModuleId
   soon?: boolean // destino del roadmap aún no construido → se marca "Pronto"
+  // Si tiene hijos, el ítem es un grupo colapsable (sin ruta propia); los hijos
+  // son los enlaces reales y heredan el mismo gating por módulo.
+  children?: NavItem[]
 }
 
 // Navegación del portal. Dashboard ya está cableado; el resto son destinos
-// previstos (pendientes de ruteo) — se muestran como ítems del menú.
+// previstos (pendientes de ruteo) — se muestran como ítems del menú. "Monitoreo"
+// agrupa los módulos de seguimiento del atleta: Físicos (tests) y Psicológico.
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'plantilla', label: 'Plantilla', icon: 'plantilla', to: '/plantilla' },
@@ -33,9 +38,16 @@ const NAV: NavItem[] = [
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
   { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones', moduleId: 'lesiones' },
-  { id: 'tests', label: 'Tests', icon: 'tests', to: '/tests', moduleId: 'test' },
+  {
+    id: 'monitoreo',
+    label: 'Monitoreo',
+    icon: 'monitoreo',
+    children: [
+      { id: 'fisicos', label: 'Físicos', icon: 'tests', to: '/tests', moduleId: 'test' },
+      { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
+    ],
+  },
   { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
-  { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
   { id: 'simulador', label: 'Simulador', icon: 'simulador', to: '/simulador' },
   { id: 'reportes', label: 'Reportes', icon: 'reportes', soon: true },
   { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
@@ -60,8 +72,15 @@ export function Sidebar({
   const { pathname } = useLocation()
 
   // Gating fino: oculta los módulos que la membresía del usuario no incluye en
-  // el centro activo (admin/director ven todos).
-  const nav = NAV.filter((item) => !item.moduleId || canSeeModule(item.moduleId))
+  // el centro activo (admin/director ven todos). En los grupos se podan los hijos
+  // ocultos y, si no queda ninguno visible, se oculta el grupo entero.
+  const nav = NAV.map((item) =>
+    item.children
+      ? { ...item, children: item.children.filter((c) => !c.moduleId || canSeeModule(c.moduleId)) }
+      : item,
+  ).filter((item) =>
+    item.children ? item.children.length > 0 : !item.moduleId || canSeeModule(item.moduleId),
+  )
 
   return (
     <aside
@@ -83,14 +102,15 @@ export function Sidebar({
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
         <ul className="flex flex-col gap-1">
-          {nav.map((item) => {
-            const active = item.to ? pathname.startsWith(item.to) : false
-            return (
+          {nav.map((item) =>
+            item.children ? (
+              <NavGroup key={item.id} item={item} onNavigate={onNavigate} />
+            ) : (
               <li key={item.id}>
-                <NavItemRow item={item} active={active} onNavigate={onNavigate} />
+                <NavItemRow item={item} active={item.to ? pathname.startsWith(item.to) : false} onNavigate={onNavigate} />
               </li>
-            )
-          })}
+            ),
+          )}
         </ul>
       </nav>
 
@@ -168,5 +188,72 @@ function NavItemRow({
     >
       {inner}
     </button>
+  )
+}
+
+// Grupo colapsable (p. ej. "Monitoreo"). El encabezado no navega: solo abre o
+// cierra la lista de hijos. Se abre solo cuando navegas a uno de sus hijos.
+function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+  const { pathname } = useLocation()
+  const children = item.children ?? []
+  const childActive = children.some((c) => (c.to ? pathname.startsWith(c.to) : false))
+  const [open, setOpen] = useState(childActive)
+
+  // Si navegas a un hijo (p. ej. por enlace directo), mantén el grupo abierto.
+  useEffect(() => {
+    if (childActive) setOpen(true)
+  }, [childActive])
+
+  const headBase =
+    'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors md:justify-center md:px-0 lg:justify-start lg:px-3'
+  const headState = childActive
+    ? 'text-white'
+    : 'text-white/55 hover:bg-white/[0.04] hover:text-white/90'
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`${headBase} ${headState}`}
+        title={item.label}
+        aria-expanded={open}
+      >
+        <Icon name={item.icon} size={19} className={childActive ? 'text-accent' : ''} />
+        <span className="md:hidden lg:inline">{item.label}</span>
+        <Icon
+          name="chevronDown"
+          size={15}
+          className={`ml-auto hidden text-white/35 transition-transform lg:inline ${open ? '' : '-rotate-90'}`}
+        />
+      </button>
+
+      {open && (
+        <ul className="mt-1 flex flex-col gap-1">
+          {children.map((child) => {
+            const active = child.to ? pathname.startsWith(child.to) : false
+            return (
+              <li key={child.id}>
+                <NavLink
+                  to={child.to!}
+                  onClick={onNavigate}
+                  className={[
+                    'group relative flex items-center gap-3 rounded-xl py-2 text-sm transition-colors',
+                    'pl-9 pr-3 md:justify-center md:px-0 lg:justify-start lg:pl-9 lg:pr-3',
+                    active ? 'bg-accent/10 text-white' : 'text-white/55 hover:bg-white/[0.04] hover:text-white/90',
+                  ].join(' ')}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
+                  )}
+                  <Icon name={child.icon} size={17} className={active ? 'text-accent' : ''} />
+                  <span className="md:hidden lg:inline">{child.label}</span>
+                </NavLink>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </li>
   )
 }

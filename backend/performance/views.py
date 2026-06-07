@@ -136,11 +136,31 @@ def performance_login(request):
     })
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsPerformanceUser])
 def performance_me(request):
-    """Identidad del usuario en el panel: rol global, centros y módulos visibles."""
-    return Response(_user_payload(request.user))
+    """Identidad del usuario en el panel: rol global, centros y módulos visibles.
+
+    PATCH deja que el propio usuario actualice su nombre visible. Se guarda en
+    `first_name` (sin `last_name`), igual que `_resolve_or_create_user`, de modo
+    que `_user_payload` lo lea de `get_full_name()` y se refleje en todo el panel
+    (saludo "Hola, X", avatares, perfil). Mantiene `Profile.nombre` consistente.
+    """
+    user = request.user
+    if request.method == 'PATCH':
+        if 'nombre' in request.data:
+            nombre = (request.data.get('nombre') or '').strip()
+            if not nombre:
+                return Response(
+                    {'nombre': 'El nombre no puede estar vacío.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.first_name = nombre
+            user.last_name = ''
+            user.save(update_fields=['first_name', 'last_name'])
+            from users.models import Profile
+            Profile.objects.update_or_create(user=user, defaults={'nombre': nombre})
+    return Response(_user_payload(user))
 
 
 def _user_payload(user):

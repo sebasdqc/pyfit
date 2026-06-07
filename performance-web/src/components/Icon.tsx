@@ -10,6 +10,7 @@ export type IconName =
   | 'rendimiento'
   | 'lesiones'
   | 'tests'
+  | 'monitoreo'
   | 'planificacion'
   | 'psicologico'
   | 'reportes'
@@ -92,6 +93,7 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M12 11v3l2 2" />
     </>
   ),
+  monitoreo: <path d="M3 12h3l2 5 4-12 3 9 1.5-2H21" />,
   planificacion: (
     <>
       <rect x="3" y="4" width="18" height="18" rx="2" />

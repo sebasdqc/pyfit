@@ -1,7 +1,8 @@
-// Perfil del usuario del panel (director técnico / staff). Primera versión para
-// iterar: cabecera de identidad + 4 bloques —datos de la cuenta, centros y
-// permisos (datos reales del usuario), seguridad y preferencias. Las ediciones
-// y la contraseña aún no se persisten en la API (esta fase).
+// Perfil del usuario del panel (director técnico / staff): cabecera de identidad
+// + 4 bloques —datos de la cuenta, centros y permisos (datos reales del usuario),
+// seguridad y preferencias. El NOMBRE se persiste en la API (PATCH /performance/me/)
+// y se refleja en todo el panel; el correo es de solo lectura (identidad de login)
+// y el resto de preferencias/contraseña aún no se persisten (esta fase).
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { Panel } from '@/components/ui/Panel'
@@ -9,6 +10,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon, type IconName } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
+import { updateMe } from '@/api/auth'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
 import type { CenterRole, GlobalRole, ModuleId } from '@/types'
@@ -30,18 +32,47 @@ const CENTER_ROLE_LABEL: Record<CenterRole, string> = {
 const MODULE_LABEL: Record<string, string> = Object.fromEntries(MODULES.map((m) => [m.id, m.label]))
 
 export function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
 
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ nombre: '', email: '', telefono: '', idioma: 'es' })
   const [prefs, setPrefs] = useState({ emailAlerts: true, weekly: true, criticas: true })
   const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) setForm((f) => ({ ...f, nombre: user.nombre, email: user.email }))
   }, [user])
 
   if (!user) return null
+
+  // Guarda el nombre en el backend y refresca la sesión, de modo que el cambio
+  // se refleje al instante en el saludo "Hola, X" y en los avatares del panel.
+  async function handleSave() {
+    const nombre = form.nombre.trim()
+    if (!nombre) {
+      setSaveError('El nombre no puede estar vacío.')
+      return
+    }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await updateMe({ nombre })
+      await refreshUser()
+      setEditing(false)
+    } catch {
+      setSaveError('No se pudo guardar. Inténtalo de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function cancelEdit() {
+    setForm((f) => ({ ...f, nombre: user!.nombre, email: user!.email }))
+    setSaveError(null)
+    setEditing(false)
+  }
 
   const totalModulos = new Set(user.centros.flatMap((c) => c.modulos)).size
 
@@ -83,17 +114,19 @@ export function ProfilePage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/55 hover:text-white"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/55 hover:text-white disabled:opacity-40"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
-                  className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accentDark"
+                  onClick={handleSave}
+                  disabled={saving || !form.nombre.trim()}
+                  className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accentDark disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Guardar
+                  {saving ? 'Guardando…' : 'Guardar'}
                 </button>
               </div>
             ) : (
@@ -108,8 +141,13 @@ export function ProfilePage() {
           }
         >
           <div className="flex flex-col gap-4">
+            {saveError && (
+              <p className="rounded-lg border border-perf-danger/30 bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">
+                {saveError}
+              </p>
+            )}
             <Field label="Nombre completo" value={form.nombre} editing={editing} onChange={(v) => setForm({ ...form, nombre: v })} />
-            <Field label="Correo electrónico" value={form.email} type="email" editing={editing} onChange={(v) => setForm({ ...form, email: v })} />
+            <Field label="Correo electrónico" value={form.email} type="email" editing={false} onChange={(v) => setForm({ ...form, email: v })} />
             <Field label="Teléfono" value={form.telefono} type="tel" placeholder="—" editing={editing} onChange={(v) => setForm({ ...form, telefono: v })} />
             <div>
               <label className="text-xs text-white/45">Idioma</label>

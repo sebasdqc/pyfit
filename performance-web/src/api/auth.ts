@@ -12,3 +12,10 @@ export async function fetchMe(): Promise<AuthUser> {
   const res = await api.get<AuthUser>('/performance/me/')
   return res.data
 }
+
+// Actualiza datos del propio usuario (hoy: el nombre visible) y devuelve el
+// payload ya actualizado para refrescar la sesión en todo el panel.
+export async function updateMe(payload: { nombre?: string }): Promise<AuthUser> {
+  const res = await api.patch<AuthUser>('/performance/me/', payload)
+  return res.data
+}
