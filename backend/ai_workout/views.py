@@ -31,6 +31,7 @@ def _get_local_date(request) -> date:
             pass
     return date.today()
 from ai_workout.adaptive_engine import AdaptiveEngineService
+from ai_workout import training_science as ts
 
 logger = logging.getLogger(__name__)
 
@@ -628,6 +629,13 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
         lines.append(f'  • {ex["nombre"]}')
         lines.append(f'    Músculos: {mp} | Secund: {ms}')
         lines.append(f'    {tl}{sf}{tiempo}{prog_txt}')
+        if ex.get('reps_objetivo'):
+            _lo, _hi = ex['reps_objetivo']
+            _reps_txt = f'{_lo}-{_hi}' if _lo != _hi else f'{_lo}'
+            lines.append(
+                f'    ▸ PRESCRITO: {_reps_txt} reps | descanso {ex["descanso_objetivo_s"]}s '
+                f'| RPE {ex["rpe_objetivo"]} (RIR {ex["rir_objetivo"]})'
+            )
         if ex.get('carga_previa'):
             lines.append(f'    Última carga registrada: {ex["carga_previa"]} — progresa desde aquí si el RPE lo permite')
 
@@ -746,12 +754,38 @@ def build_prompt(ctx):
         if deload_session else ''
     )
 
+    # Presupuesto de volumen semanal (Fase 2): tope DURO de series por grupo muscular.
+    # Se muestran solo los grupos del foco de hoy y los que están cerca/encima del MRV,
+    # para no inflar el prompt con los 13 grupos.
+    volume_budget = session_meta.get('volume_budget') or {}
+    focus_vgs = ts.volume_groups_for_foco(ctx.get('foco_entrenamiento')) or set()
+    relevantes = {
+        vg: b for vg, b in volume_budget.items()
+        if vg in focus_vgs or b['restante'] <= 6
+    }
+    volumen_directiva = ''
+    if relevantes:
+        en_curso, maxed = [], []
+        for vg, b in sorted(relevantes.items(), key=lambda kv: kv[1]['restante']):
+            label = ts.vg_label(vg)
+            if b['restante'] <= 0:
+                maxed.append(label)
+            else:
+                en_curso.append(f"{label}: quedan {b['restante']} series (semana {b['hechas']}/{b['mrv']})")
+        _vol_lines = []
+        if en_curso:
+            _vol_lines.append('- Volumen semanal restante por grupo (NO superar el restante): ' + '; '.join(en_curso))
+        if maxed:
+            _vol_lines.append('- Grupos YA en el máximo semanal (NO añadir volumen directo): ' + ', '.join(maxed))
+        volumen_directiva = '\n' + '\n'.join(_vol_lines)
+
     directivas_block = f"""
 DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
 - Máximo de sets en el bloque principal: {max_sets} (NO superar este límite bajo ninguna circunstancia)
 - RPE objetivo: {ctx['rpe_target']}/10 → el atleta termina cada serie con {10 - int(ctx['rpe_target'])} reps en reserva (RIR)
 - Patrones priorizados hoy: {priorizados_txt}
-- Patrones a evitar si existen alternativas: {evitar_txt}{deload_directiva}
+- Patrones a evitar si existen alternativas: {evitar_txt}
+- Para cada ejercicio del banco, usa los valores PRESCRITOS que trae (reps, descanso, RPE/RIR); NO los recalcules ni los superes — el sistema ya los ajustó por objetivo, periodización, nivel y seguridad.{volumen_directiva}{deload_directiva}
 """
 
     # Consideraciones médicas declaradas en el onboarding — restricción de seguridad.
@@ -1057,6 +1091,9 @@ def generate_session(request):
         exercise_pool_enriched, session_meta = engine.enrich_with_load(
             exercise_pool_enriched,
             deload_session=is_deload_session,
+            rpe_target=rpe_target,
+            fatiga=fatiga,
+            periodizacion=periodizacion,
         )
         exercise_pool_legacy = {}
     else:
@@ -1450,6 +1487,9 @@ def session_ajustar(request, pk):
         exercise_pool_enriched, session_meta = engine.enrich_with_load(
             exercise_pool_enriched,
             deload_session=is_deload_session,
+            rpe_target=nuevo_rpe,
+            fatiga=fatiga,
+            periodizacion=periodizacion,
         )
         exercise_pool_legacy = {}
     else:

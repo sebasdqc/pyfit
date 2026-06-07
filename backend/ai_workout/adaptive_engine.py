@@ -10,6 +10,7 @@ import logging
 from datetime import date, timedelta
 
 from workouts.models import Exercise, EquipmentItem, ContraindicationCategory, UserExerciseProfile, TrainingCycle
+from ai_workout import training_science as ts
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,9 @@ ZONA_A_BODY_ZONE: dict[str, str] = {
 
 # Maps nivel del perfil → techo de technical_level permitido
 NIVEL_MAP: dict[str, int] = {'principiante': 2, 'intermedio': 3, 'avanzado': 5}
+
+# Mínimo de ejercicios tras el filtro duro de foco antes de relajar a secundarios.
+_MIN_FOCUS_POOL = 8
 
 CORE_PATTERNS = frozenset({'core_antiextension', 'core_antirrotacion', 'core_antiflexion'})
 EMPUJE_PATTERNS = frozenset({'empuje_horizontal', 'empuje_vertical'})
@@ -390,18 +394,12 @@ class AdaptiveEngineService:
             skip = False
 
             if has_contraindication_data:
+                # Decisión de producto: CUALQUIER contraindicación (leve o grave)
+                # sobre una zona lesionada o con dolor hoy EXCLUYE el ejercicio.
                 for ec in ex.contraindication_links.all():
-                    cc = ec.contraindication
-                    if cc.body_zone in body_zones:
-                        if cc.severity == 'grave':
-                            skip = True
-                            break
-                        if not requires_warning:
-                            requires_warning = True
-                            warning_text = (
-                                ec.notes
-                                or f'Precaución: puede afectar la zona {cc.body_zone}'
-                            )
+                    if ec.contraindication.body_zone in body_zones:
+                        skip = True
+                        break
             else:
                 # JSONField fallback for contraindications
                 injury_zones = self._get_injury_zones()
@@ -460,11 +458,23 @@ class AdaptiveEngineService:
             set_dur  = ex.set_duration_seconds  or 45
             rest_def = ex.rest_seconds_default  or 90
 
+            equipo_cats = (
+                [el.equipment.category for el in ex.equipment_links.all() if el.is_required]
+                if has_equipment_data else []
+            )
+            peso_libre = ts.is_free_weight(
+                equipment_categories=equipo_cats,
+                equipamiento_names=ex.equipamiento,
+                nombre=ex.nombre,
+            )
+
             pool.append({
                 'id':                   ex.id,
                 'nombre':               ex.nombre,
                 'patron_movimiento':    ex.patron_movimiento,
                 'es_compuesto':         ex.es_compuesto,
+                'peso_libre':           peso_libre,
+                'error_risk':           ex.error_risk,
                 'bilateral':            ex.bilateral,
                 'dificultad':           ex.dificultad,
                 'technical_level':      ex.technical_level,
@@ -485,7 +495,7 @@ class AdaptiveEngineService:
             })
 
         logger.debug('adaptive_engine paso3 user=%s pool=%d', self.user.id, len(pool))
-        return pool
+        return self._apply_focus_filter(pool)
 
     def _get_exercise_pool_jsonfield(self) -> list[dict]:
         """
@@ -532,11 +542,17 @@ class AdaptiveEngineService:
             set_dur  = ex.set_duration_seconds  or 45
             rest_def = ex.rest_seconds_default  or 90
 
+            peso_libre = ts.is_free_weight(
+                equipamiento_names=ex.equipamiento, nombre=ex.nombre,
+            )
+
             pool.append({
                 'id':                   ex.id,
                 'nombre':               ex.nombre,
                 'patron_movimiento':    ex.patron_movimiento,
                 'es_compuesto':         ex.es_compuesto,
+                'peso_libre':           peso_libre,
+                'error_risk':           ex.error_risk,
                 'bilateral':            ex.bilateral,
                 'dificultad':           ex.dificultad,
                 'technical_level':      ex.technical_level,
@@ -557,7 +573,50 @@ class AdaptiveEngineService:
             })
 
         logger.debug('adaptive_engine paso3 jsonfield_fallback user=%s pool=%d', self.user.id, len(pool))
-        return pool
+        return self._apply_focus_filter(pool)
+
+    # ─── Paso 3b — Filtro duro por grupo muscular elegido ─────────────────────
+
+    def _apply_focus_filter(self, pool: list[dict]) -> list[dict]:
+        """Filtro DURO por el grupo muscular elegido en el check-in.
+
+        - Mantiene SIEMPRE patrones de calentamiento/vuelta a la calma
+          (movilidad, cardio), que se necesitan en cualquier sesión.
+        - Excluye el trabajo de fuerza cuyo grupo de volumen PRIMARIO no está en
+          el foco elegido. Si quedan demasiado pocos, relaja incluyendo ejercicios
+          cuyo músculo SECUNDARIO sí cae en el foco.
+        - Foco vacío o de modalidad ('completo'/'fuerza'/…) → sin filtro."""
+        allowed = ts.volume_groups_for_foco(getattr(self.checkin, 'foco_entrenamiento', None))
+        if not allowed:
+            return pool
+
+        keep: list[dict] = []
+        relax_candidates: list[dict] = []
+        for ex in pool:
+            if ex.get('patron_movimiento') in ts.ALWAYS_KEEP_PATTERNS:
+                keep.append(ex)
+                continue
+            primary_vg = ts.primary_volume_group(ex.get('musculos_primarios'))
+            if primary_vg in allowed:
+                keep.append(ex)
+                continue
+            sec_vgs = {ts.volume_group_for_muscle(m) for m in (ex.get('musculos_secundarios') or [])}
+            if sec_vgs & allowed:
+                relax_candidates.append(ex)
+
+        if len(keep) < _MIN_FOCUS_POOL and relax_candidates:
+            falta = _MIN_FOCUS_POOL - len(keep)
+            keep.extend(relax_candidates[:falta])
+            logger.info(
+                'focus_filter relajado a secundarios user=%s foco=%s +%d',
+                self.user.id, sorted(allowed), min(falta, len(relax_candidates)),
+            )
+
+        logger.debug(
+            'focus_filter user=%s foco=%s in=%d out=%d',
+            self.user.id, sorted(allowed), len(pool), len(keep),
+        )
+        return keep
 
     # ─── Paso 4 ───────────────────────────────────────────────────────────────
 
@@ -763,15 +822,82 @@ class AdaptiveEngineService:
             f'{hard_block}{next_flag}'
         )
 
+    # ─── Paso 2 — Presupuesto de volumen semanal por grupo muscular ───────────
+
+    def get_weekly_volume_budget(self, nivel: str | None = None) -> dict:
+        """Series ya entrenadas esta semana ISO por grupo de volumen y presupuesto
+        restante contra el MRV (techo semanal duro). Failure-safe: ante cualquier
+        error devuelve {} para no romper la generación.
+
+        Devuelve {grupo_volumen: {hechas, mav, mrv, restante}}."""
+        from workouts.models import SessionExercise
+        try:
+            nivel = nivel or getattr(self.perfil, 'nivel', None) or 'intermedio'
+            hoy = date.today()
+            inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes ISO
+
+            rows = list(
+                SessionExercise.objects
+                .filter(session__user=self.user, session__fecha__gte=inicio_semana)
+                .values('nombre', 'series')
+            )
+            if not rows:
+                return {}
+
+            nombres = {r['nombre'] for r in rows}
+            vg_by_nombre: dict = {}
+            for ex in (Exercise.objects.filter(nombre__in=nombres)
+                       .prefetch_related('muscles__muscle')):
+                # El calentamiento/movilidad no suma volumen de entrenamiento.
+                if ex.patron_movimiento in ts.NON_STRENGTH_PATTERNS:
+                    vg_by_nombre[ex.nombre] = (set(), set())
+                    continue
+                muscles = list(ex.muscles.all())
+                if muscles:
+                    prim = [em.muscle.name for em in muscles if em.role == 'primario']
+                    sec  = [em.muscle.name for em in muscles if em.role == 'secundario']
+                else:  # fallback JSONField
+                    prim = list(ex.musculos_primarios or [])
+                    sec  = list(ex.musculos_secundarios or [])
+                vg_by_nombre[ex.nombre] = (
+                    {ts.volume_group_for_muscle(m) for m in prim},
+                    {ts.volume_group_for_muscle(m) for m in sec},
+                )
+
+            done = ts.aggregate_done_sets(rows, vg_by_nombre)
+            return ts.weekly_budget(done, nivel)
+        except Exception:
+            logger.exception(
+                'get_weekly_volume_budget failed user=%s', getattr(self.user, 'id', '?'),
+            )
+            return {}
+
     # ─── Paso 5 ───────────────────────────────────────────────────────────────
 
-    def enrich_with_load(self, pool: list[dict], deload_session: bool = False) -> tuple[list[dict], dict]:
+    def enrich_with_load(
+        self,
+        pool: list[dict],
+        deload_session: bool = False,
+        *,
+        rpe_target: float | None = None,
+        fatiga: str | None = None,
+        periodizacion: dict | None = None,
+    ) -> tuple[list[dict], dict]:
         """
-        Enriquece el pool con datos de progresión RPE-based desde UserExerciseProfile.
+        Enriquece el pool con datos de progresión RPE-based desde UserExerciseProfile
+        y, si se pasa `rpe_target`, con la PRESCRIPCIÓN determinística por ejercicio
+        (reps, descanso, RPE, RIR) — Fase 3.
         Devuelve (enriched_pool, session_meta).
         """
         hoy = date.today()
         nombres = [ex['nombre'] for ex in pool]
+
+        nivel = getattr(self.perfil, 'nivel', None) or 'intermedio'
+        estado_animo = getattr(self.checkin, 'estado_animo', None)
+        try:
+            rpe_bias = float(self.user.adaptation_profile.rpe_bias or 0)
+        except Exception:
+            rpe_bias = 0.0
 
         profiles_map = {
             uep.exercise_nombre: uep
@@ -827,13 +953,32 @@ class AdaptiveEngineService:
                 else:
                     progresion = 'mantener'
 
+            presc = None
+            if rpe_target is not None:
+                presc = ts.prescribe_exercise(
+                    es_compuesto=ex.get('es_compuesto', True),
+                    peso_libre=ex.get('peso_libre', False),
+                    patron=ex.get('patron_movimiento', ''),
+                    error_risk=ex.get('error_risk'),
+                    nivel=nivel,
+                    rpe_target=rpe_target,
+                    fatiga=fatiga,
+                    estado_animo=estado_animo,
+                    periodizacion=periodizacion,
+                    rpe_bias=rpe_bias,
+                )
+
             enriched.append({
                 **ex,
-                'primera_vez':     primera_vez,
-                'progresion':      progresion,
-                'rpe_referencia':  rpe_referencia,
-                'veces_realizado': veces_realizado,
-                'carga_previa':    carga_previa.get(ex['nombre']),
+                'primera_vez':       primera_vez,
+                'progresion':        progresion,
+                'rpe_referencia':    rpe_referencia,
+                'veces_realizado':   veces_realizado,
+                'carga_previa':      carga_previa.get(ex['nombre']),
+                'reps_objetivo':     presc['reps'] if presc else None,
+                'descanso_objetivo_s': presc['descanso_s'] if presc else None,
+                'rpe_objetivo':      presc['rpe'] if presc else None,
+                'rir_objetivo':      presc['rir'] if presc else None,
             })
 
         # Estimar sets disponibles
@@ -849,10 +994,11 @@ class AdaptiveEngineService:
         session_meta = {
             'deload_session':  deload_session,
             'max_sets_sesion': max_sets,
+            'volume_budget':   self.get_weekly_volume_budget(),
         }
 
         logger.debug(
-            'adaptive_engine paso5 user=%s pool=%d max_sets=%d deload=%s',
-            self.user.id, len(enriched), max_sets, deload_session,
+            'adaptive_engine paso5 user=%s pool=%d max_sets=%d deload=%s budget=%d',
+            self.user.id, len(enriched), max_sets, deload_session, len(session_meta['volume_budget']),
         )
         return enriched, session_meta
