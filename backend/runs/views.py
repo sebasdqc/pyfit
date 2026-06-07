@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -14,8 +15,15 @@ from .serializers import (
 )
 
 
+class RunSessionPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class RunSessionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = RunSessionPagination
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

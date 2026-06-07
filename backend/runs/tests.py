@@ -1,13 +1,37 @@
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from users.models import Profile
 from .models import RunSession, RunPoint
-from .serializers import haversine_distance
+from .serializers import haversine_distance, downsample_points
 
 User = get_user_model()
+
+
+def brute_force_best_pace(points):
+    """Referencia O(n²) del mejor pace en 1 km. Usa la misma distancia
+    acumulada que producción para que la comparación `>= 1000` sea idéntica
+    (sin discrepancias de coma flotante en el borde)."""
+    n = len(points)
+    cum = [0.0] * n
+    for k in range(1, n):
+        cum[k] = cum[k - 1] + haversine_distance(
+            points[k - 1].lat, points[k - 1].lng, points[k].lat, points[k].lng
+        )
+    best = float('inf')
+    for i in range(n):
+        for j in range(i + 1, n):
+            if cum[j] - cum[i] >= 1000:
+                t = (points[j].timestamp - points[i].timestamp).total_seconds()
+                if t < best:
+                    best = t
+                break
+    return int(best) if best != float('inf') else 0
 
 
 def make_user(email='runner@test.com'):
@@ -44,6 +68,19 @@ class HaversineTests(TestCase):
         self.assertAlmostEqual(d, 111.2, delta=1)
 
 
+class DownsampleTests(TestCase):
+    def test_returns_all_when_under_max(self):
+        pts = list(range(50))
+        self.assertEqual(downsample_points(pts, 500), pts)
+
+    def test_caps_and_preserves_endpoints(self):
+        pts = list(range(1000))
+        out = downsample_points(pts, 100)
+        self.assertEqual(len(out), 100)
+        self.assertEqual(out[0], 0)
+        self.assertEqual(out[-1], 999)
+
+
 class RunSessionAPITests(TestCase):
     def setUp(self):
         self.user = make_user()
@@ -65,7 +102,20 @@ class RunSessionAPITests(TestCase):
         RunSession.objects.create(user=self.user, started_at=NOW, status='active')
         res = self.client.get('/api/runs/')
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.data), 1)
+        # Respuesta paginada: { count, next, previous, results }
+        self.assertEqual(res.data['count'], 1)
+        self.assertEqual(len(res.data['results']), 1)
+
+    def test_list_is_paginated(self):
+        for i in range(25):
+            RunSession.objects.create(
+                user=self.user, started_at=NOW + timedelta(minutes=i), status='active',
+            )
+        res = self.client.get('/api/runs/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['count'], 25)
+        self.assertEqual(len(res.data['results']), 20)  # page_size
+        self.assertIsNotNone(res.data['next'])
 
     def test_unauthenticated_returns_401(self):
         res = APIClient().get('/api/runs/')
@@ -73,22 +123,21 @@ class RunSessionAPITests(TestCase):
 
     def test_complete_session_calculates_metrics(self):
         session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
-        # Add GPS points ~100 m apart, accuracy <= 20 m
-        t = NOW
+        # GPS points ~16.7 m apart cada 5 s (~3.3 m/s), accuracy <= 20 m
         points = []
         for i in range(5):
             points.append(RunPoint(
                 session=session,
-                lat=40.4168 + i * 0.0009,   # ~100 m steps north
+                lat=40.4168 + i * 0.00015,
                 lng=-3.7038,
                 altitude_m=600.0,
                 accuracy_m=10.0,
-                timestamp=t + timedelta(seconds=i * 60),
-                speed_m_s=1.6,
+                timestamp=NOW + timedelta(seconds=i * 5),
+                speed_m_s=3.3,
             ))
         RunPoint.objects.bulk_create(points)
 
-        ended = NOW + timedelta(minutes=4)
+        ended = NOW + timedelta(seconds=20)
         res = self.client.patch(f'/api/runs/{session.pk}/', {
             'status': 'completed',
             'ended_at': iso(ended),
@@ -98,6 +147,120 @@ class RunSessionAPITests(TestCase):
         self.assertEqual(session.status, 'completed')
         self.assertGreater(session.total_distance_m, 0)
         self.assertGreater(session.avg_pace_s_per_km, 0)
+
+    def test_moving_duration_excludes_pauses(self):
+        """La duración cuenta tiempo en movimiento, no el reloj de pared:
+        un gap grande de GPS (pausa) no debe sumarse."""
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        # 5 puntos cada 3 s, una pausa de 120 s, y 5 puntos más cada 3 s.
+        offsets = [0, 3, 6, 9, 12, 132, 135, 138, 141, 144]
+        points = []
+        for i, off in enumerate(offsets):
+            points.append(RunPoint(
+                session=session,
+                lat=40.4168 + i * 0.0001,
+                lng=-3.7038,
+                altitude_m=600.0,
+                accuracy_m=10.0,
+                timestamp=NOW + timedelta(seconds=off),
+                speed_m_s=3.0,
+            ))
+        RunPoint.objects.bulk_create(points)
+
+        ended = NOW + timedelta(seconds=144)
+        res = self.client.patch(f'/api/runs/{session.pk}/', {
+            'status': 'completed',
+            'ended_at': iso(ended),
+        }, format='json')
+        self.assertEqual(res.status_code, 200)
+        session.refresh_from_db()
+        # 8 deltas de 3 s en movimiento; el gap de 120 s (pausa) se descarta.
+        self.assertEqual(session.total_duration_s, 24)
+        self.assertLess(session.total_duration_s, 144)
+
+    def test_best_pace_matches_bruteforce(self):
+        """El mejor pace O(n) debe coincidir con el cálculo O(n²) de referencia."""
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        # ~2.4 km con un tramo rápido en medio (paso variable, 5 s entre puntos).
+        steps = ([0.00045] * 10 + [0.0009] * 5 + [0.00045] * 10)  # ~50 m y ~100 m
+        lat = 40.4168
+        points = [RunPoint(
+            session=session, lat=lat, lng=-3.7038, altitude_m=600.0,
+            accuracy_m=10.0, timestamp=NOW, speed_m_s=3.0,
+        )]
+        for i, step in enumerate(steps):
+            lat += step
+            points.append(RunPoint(
+                session=session, lat=lat, lng=-3.7038, altitude_m=600.0,
+                accuracy_m=10.0, timestamp=NOW + timedelta(seconds=(i + 1) * 5),
+                speed_m_s=3.0,
+            ))
+        RunPoint.objects.bulk_create(points)
+
+        ended = NOW + timedelta(seconds=len(steps) * 5)
+        self.client.patch(f'/api/runs/{session.pk}/', {
+            'status': 'completed', 'ended_at': iso(ended),
+        }, format='json')
+        session.refresh_from_db()
+
+        stored = list(session.points.order_by('timestamp'))
+        self.assertEqual(session.best_pace_s_per_km, brute_force_best_pace(stored))
+        self.assertGreater(session.best_pace_s_per_km, 0)
+
+    def test_calories_uses_profile_weight(self):
+        Profile.objects.create(user=self.user, nombre='Runner', peso=Decimal('80.0'))
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        points = [RunPoint(
+            session=session, lat=40.4168 + i * 0.00015, lng=-3.7038,
+            altitude_m=600.0, accuracy_m=10.0,
+            timestamp=NOW + timedelta(seconds=i * 5), speed_m_s=3.3,
+        ) for i in range(10)]
+        RunPoint.objects.bulk_create(points)
+
+        self.client.patch(f'/api/runs/{session.pk}/', {
+            'status': 'completed', 'ended_at': iso(NOW + timedelta(seconds=45)),
+        }, format='json')
+        session.refresh_from_db()
+
+        minutes = session.total_duration_s / 60
+        speed = session.total_distance_m / minutes
+        expected = round((0.2 * speed + 3.5) * 80.0 * minutes * 5 / 1000, 1)
+        self.assertGreater(session.calories_burned, 0)
+        self.assertAlmostEqual(session.calories_burned, expected, places=1)
+
+    def test_elevation_gain_filters_gps_noise(self):
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        # Oscilación < 3 m (ruido) + una subida real de 10 m.
+        altitudes = [100, 101, 100, 102, 100, 110]
+        points = [RunPoint(
+            session=session, lat=40.4168 + i * 0.0001, lng=-3.7038,
+            altitude_m=float(alt), accuracy_m=10.0,
+            timestamp=NOW + timedelta(seconds=i * 5), speed_m_s=3.0,
+        ) for i, alt in enumerate(altitudes)]
+        RunPoint.objects.bulk_create(points)
+
+        self.client.patch(f'/api/runs/{session.pk}/', {
+            'status': 'completed', 'ended_at': iso(NOW + timedelta(seconds=25)),
+        }, format='json')
+        session.refresh_from_db()
+        # Solo cuenta la subida real (10 m); el método naïve daría 13 m.
+        self.assertAlmostEqual(session.elevation_gain_m, 10.0, places=1)
+
+    def test_detail_downsamples_points(self):
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        points = [RunPoint(
+            session=session, lat=40.0 + i * 0.0001, lng=-3.0,
+            accuracy_m=10.0, timestamp=NOW + timedelta(seconds=i), speed_m_s=2.0,
+        ) for i in range(600)]
+        RunPoint.objects.bulk_create(points)
+
+        res = self.client.get(f'/api/runs/{session.pk}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertLessEqual(len(res.data['points']), 500)
+        self.assertGreater(len(res.data['points']), 0)
+
+        full = self.client.get(f'/api/runs/{session.pk}/?full=1')
+        self.assertEqual(len(full.data['points']), 600)
 
     def test_complete_without_ended_at_returns_400(self):
         session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
@@ -143,6 +306,7 @@ class RunPointsAPITests(TestCase):
 
     def test_add_points_to_completed_session_returns_400(self):
         self.session.status = 'completed'
+        self.session.ended_at = NOW + timedelta(minutes=10)
         self.session.save()
         payload = {'points': [
             {'lat': 40.4168, 'lng': -3.7038, 'altitude_m': 600, 'accuracy_m': 10,
@@ -165,3 +329,45 @@ class RunPointsAPITests(TestCase):
         ]}
         res = self.client.post(f'/api/runs/{other_session.pk}/points/', payload, format='json')
         self.assertEqual(res.status_code, 404)
+
+
+class RunSessionConstraintTests(TestCase):
+    def setUp(self):
+        self.user = make_user('constraints@test.com')
+
+    def test_ended_before_started_is_rejected(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user,
+                    started_at=NOW,
+                    ended_at=NOW - timedelta(hours=1),
+                    status='active',
+                )
+
+    def test_completed_without_ended_at_is_rejected(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user,
+                    started_at=NOW,
+                    status='completed',
+                )
+
+    def test_valid_completed_session_is_allowed(self):
+        session = RunSession.objects.create(
+            user=self.user,
+            started_at=NOW,
+            ended_at=NOW + timedelta(minutes=30),
+            status='completed',
+        )
+        self.assertEqual(session.status, 'completed')
+
+    def test_complete_with_ended_before_started_returns_400(self):
+        client = auth_client(self.user)
+        session = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        res = client.patch(f'/api/runs/{session.pk}/', {
+            'status': 'completed',
+            'ended_at': iso(NOW - timedelta(hours=1)),
+        }, format='json')
+        self.assertEqual(res.status_code, 400)

@@ -51,6 +51,24 @@ class RunSession(models.Model):
             models.Index(fields=['user', 'status']),
             models.Index(fields=['user', 'session_type']),
         ]
+        constraints = [
+            # ended_at, si existe, nunca puede ser anterior a started_at.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(ended_at__isnull=True)
+                    | models.Q(ended_at__gte=models.F('started_at'))
+                ),
+                name='run_ended_after_started',
+            ),
+            # Una sesión completada siempre debe tener ended_at.
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(status='completed')
+                    | models.Q(ended_at__isnull=False)
+                ),
+                name='run_completed_has_ended_at',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} — {self.session_type} — {self.started_at:%Y-%m-%d %H:%M}"
