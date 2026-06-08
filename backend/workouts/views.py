@@ -1599,15 +1599,15 @@ def _generar_adn_entrenamiento(user):
 
     contexto = '\n'.join(f'- {l}' for l in ctx_lines)
 
-    prompt = f"""Eres el entrenador IA de una app de fitness adaptativa. Con los siguientes datos del atleta, escribe UN párrafo corto que describe su perfil de entrenamiento. Máximo 3 oraciones.
+    prompt = f"""Eres el entrenador IA de una app de fitness adaptativa. Con los siguientes datos del atleta, escribe UN párrafo breve que describe su perfil de entrenamiento. Máximo 2 oraciones.
 
 Datos analizados:
 {contexto}
 
 Reglas:
-- Máximo 3 oraciones. Texto fluido, no lista.
+- Máximo 2 oraciones. Texto fluido, no lista. Conciso.
 - Cada oración refiere un dato concreto del contexto.
-- Estructura guía: "Entrenas mejor los [día]. Tu rendimiento es más alto en [tipo]. Operas principalmente en intensidad [rango]."
+- Estructura guía: "Entrenas mejor los [día]. Operas principalmente en intensidad [rango]."
 - En español. Tono directo y personal. Sin emojis.
 - No menciones "la app", "el sistema" ni "los datos muestran".
 - Responde ÚNICAMENTE con el texto del párrafo, sin comillas ni prefijos."""
@@ -1619,7 +1619,7 @@ Reglas:
         resp = client.chat.completions.create(
             model='llama-3.3-70b-versatile',
             messages=[{'role': 'user', 'content': prompt}],
-            max_tokens=120,
+            max_tokens=85,
             temperature=0.65,
         )
         texto = resp.choices[0].message.content.strip().strip('"').strip("'")

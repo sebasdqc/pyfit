@@ -146,8 +146,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 >
                   <Defs>
                     <RadialGradient id="trainGlow" cx="50%" cy="50%" r="50%">
-                      <Stop offset="0%" stopColor={colors.accent} stopOpacity={0.55} />
-                      <Stop offset="50%" stopColor={colors.accent} stopOpacity={0.22} />
+                      <Stop offset="0%" stopColor={colors.accent} stopOpacity={0.46} />
+                      <Stop offset="50%" stopColor={colors.accent} stopOpacity={0.17} />
                       <Stop offset="100%" stopColor={colors.accent} stopOpacity={0} />
                     </RadialGradient>
                   </Defs>
@@ -267,7 +267,7 @@ export default function AppLayout() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const CENTER_BTN = 58    // diámetro del botón flotante ENTRENAR
-const CENTER_GLOW = 110  // diámetro del halo brillante detrás del botón
+const CENTER_GLOW = 98   // diámetro del halo brillante detrás del botón
 
 const styles = StyleSheet.create({
   tabBar: {
@@ -331,11 +331,11 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.85,
-        shadowRadius: 14,
+        shadowOpacity: 0.68,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 12,
+        elevation: 10,
       },
     }),
   },

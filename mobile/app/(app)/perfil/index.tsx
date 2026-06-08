@@ -171,7 +171,7 @@ const DEFAULT: Profile = {
 
 export default function PerfilScreen() {
   const { colors, palette, setPalette } = useTheme()
-  const { t, lang, setLang } = useTranslation()
+  const { t, lang } = useTranslation()
   const [showPalettePicker, setShowPalettePicker] = useState(false)
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
@@ -442,7 +442,7 @@ export default function PerfilScreen() {
       {/* ── TOP-RIGHT CONTROLS — language + theme, outside ScrollView ── */}
       <View style={[styles.topControls, { top: insets.top + 28 }]}>
 
-        {/* Language toggle pill */}
+        {/* Language toggle pill — oculto temporalmente; se reactivará más adelante.
         <TouchableOpacity
           style={styles.langToggle}
           onPress={() => setLang(lang === 'es' ? 'en' : 'es')}
@@ -452,6 +452,7 @@ export default function PerfilScreen() {
             {lang.toUpperCase()}
           </Text>
         </TouchableOpacity>
+        */}
 
         {/* Theme toggle + dropdown */}
         <View style={styles.themeButtonWrap}>
@@ -512,25 +513,25 @@ function makeStyles(c: Colors) {
       marginBottom: 2,
     },
     avatarImage: {
-      width: 80, height: 80, borderRadius: 40,
+      width: 104, height: 104, borderRadius: 52,
       borderWidth: 2, borderColor: c.accentLight,
     },
     avatarCircle: {
-      width: 80, height: 80, borderRadius: 40,
+      width: 104, height: 104, borderRadius: 52,
       backgroundColor: c.accentDark,
       borderWidth: 2, borderColor: c.accentLight,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.5 },
+    avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 36, letterSpacing: -0.5 },
     avatarEditBadge: {
       position: 'absolute',
       bottom: 0, right: 0,
-      width: 26, height: 26, borderRadius: 13,
+      width: 30, height: 30, borderRadius: 15,
       backgroundColor: c.accentDark,
       borderWidth: 2, borderColor: c.bg,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarEditIcon: { fontSize: 12, lineHeight: 16 },
+    avatarEditIcon: { fontSize: 14, lineHeight: 18 },
     nombre: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, letterSpacing: -0.7 },
     nivelPill: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
