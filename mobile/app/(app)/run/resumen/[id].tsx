@@ -219,13 +219,13 @@ export default function RunResumenScreen() {
           ))}
         </View>
 
-        {/* CTA */}
+        {/* CTA → feedback de la carrera, luego dashboard */}
         <TouchableOpacity
           style={[styles.doneBtn, { backgroundColor: colors.accent }]}
-          onPress={() => router.replace('/(app)/dashboard')}
+          onPress={() => router.replace(`/(app)/run/feedback/${session.id}`)}
           activeOpacity={0.85}
         >
-          <Text style={[styles.doneBtnText, { color: colors.white }]}>Listo</Text>
+          <Text style={[styles.doneBtnText, { color: colors.white }]}>Continuar</Text>
         </TouchableOpacity>
 
         {/* Compartir en redes sociales */}

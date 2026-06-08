@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
+from django.utils import timezone
+
 from .models import RunSession, RunPoint
 from .serializers import (
     RunSessionCreateSerializer,
@@ -12,6 +14,7 @@ from .serializers import (
     RunSessionDetailSerializer,
     RunSessionListSerializer,
     RunPointSerializer,
+    RunFeedbackSerializer,
 )
 
 
@@ -68,4 +71,23 @@ def add_run_points(request, pk):
         ])
         return Response({'saved': len(serializer.validated_data)}, status=status.HTTP_201_CREATED)
 
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_feedback(request, pk):
+    """Registra el feedback post-carrera sobre la RunSession.
+
+    Body (todos opcionales): { rpe_real, rating, cumplimiento, molestias[], feedback_notas }
+    Idempotente: vuelve a enviar sobreescribe el feedback previo.
+    """
+    session = get_object_or_404(RunSession, pk=pk, user=request.user)
+    serializer = RunFeedbackSerializer(session, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save(feedback_at=timezone.now())
+        return Response(
+            RunSessionDetailSerializer(session, context={'request': request}).data,
+            status=status.HTTP_200_OK,
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

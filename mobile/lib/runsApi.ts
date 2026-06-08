@@ -36,6 +36,21 @@ export interface RunSession {
   calories_burned?: number
   avg_heart_rate?: number | null
   points?: RunPointApi[]
+  // Feedback post-carrera (null mientras no se haya registrado).
+  rpe_real?: number | null
+  rating?: number | null
+  cumplimiento?: number | null
+  molestias?: string[]
+  feedback_notas?: string | null
+  feedback_at?: string | null
+}
+
+export interface RunFeedbackInput {
+  rpe_real?: number
+  rating?: number
+  cumplimiento?: number
+  molestias?: string[]
+  feedback_notas?: string | null
 }
 
 /**
@@ -88,4 +103,15 @@ export async function completeRunSession(
  */
 export async function getRunSession(sessionId: number): Promise<RunSession> {
   return apiGet(`/api/runs/${sessionId}/`)
+}
+
+/**
+ * Registra el feedback post-carrera sobre la RunSession.
+ * Idempotente en el backend (reenviar sobreescribe).
+ */
+export async function sendRunFeedback(
+  sessionId: number,
+  feedback: RunFeedbackInput,
+): Promise<RunSession> {
+  return apiPost(`/api/runs/${sessionId}/feedback/`, feedback)
 }

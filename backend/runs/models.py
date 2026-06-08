@@ -42,6 +42,15 @@ class RunSession(models.Model):
     elevation_gain_m = models.FloatField(default=0)
     avg_heart_rate = models.IntegerField(null=True, blank=True)  # preparado para HR monitor
 
+    # ── Feedback post-sesión (paralelo al SessionFeedback de las sesiones de gym) ──
+    # Nulos = sesión sin feedback todavía. `feedback_at` marca cuándo se registró.
+    rpe_real = models.IntegerField(null=True, blank=True)        # esfuerzo percibido 1-10
+    rating = models.IntegerField(null=True, blank=True)          # valoración general 1-5
+    cumplimiento = models.IntegerField(null=True, blank=True)    # 0-100
+    molestias = models.JSONField(default=list, blank=True)       # zonas con molestia post-sesión
+    feedback_notas = models.TextField(null=True, blank=True)
+    feedback_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

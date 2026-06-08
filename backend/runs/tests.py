@@ -371,3 +371,54 @@ class RunSessionConstraintTests(TestCase):
             'ended_at': iso(NOW - timedelta(hours=1)),
         }, format='json')
         self.assertEqual(res.status_code, 400)
+
+
+class RunFeedbackEndpointTests(TestCase):
+    def setUp(self):
+        self.user = make_user()
+        self.client = auth_client(self.user)
+        self.session = RunSession.objects.create(
+            user=self.user, started_at=NOW, ended_at=NOW + timedelta(minutes=30),
+            status='completed',
+        )
+
+    def test_post_feedback_saves_all_fields(self):
+        res = self.client.post(f'/api/runs/{self.session.pk}/feedback/', {
+            'rpe_real': 8, 'rating': 4, 'cumplimiento': 80,
+            'molestias': ['Rodilla'], 'feedback_notas': 'buena sesión',
+        }, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.rpe_real, 8)
+        self.assertEqual(self.session.rating, 4)
+        self.assertEqual(self.session.cumplimiento, 80)
+        self.assertEqual(self.session.molestias, ['Rodilla'])
+        self.assertEqual(self.session.feedback_notas, 'buena sesión')
+        self.assertIsNotNone(self.session.feedback_at)
+        # El detalle expone el feedback guardado.
+        self.assertEqual(res.data['rpe_real'], 8)
+
+    def test_partial_feedback_is_allowed(self):
+        res = self.client.post(f'/api/runs/{self.session.pk}/feedback/', {'rating': 5}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.rating, 5)
+
+    def test_out_of_range_values_rejected(self):
+        for payload in ({'rpe_real': 99}, {'rating': 9}, {'cumplimiento': 250}):
+            res = self.client.post(f'/api/runs/{self.session.pk}/feedback/', payload, format='json')
+            self.assertEqual(res.status_code, 400, payload)
+
+    def test_molestias_must_be_string_list(self):
+        res = self.client.post(f'/api/runs/{self.session.pk}/feedback/', {'molestias': [1, 2]}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_other_user_cannot_submit_feedback(self):
+        other = make_user('intruder@test.com')
+        res = auth_client(other).post(
+            f'/api/runs/{self.session.pk}/feedback/', {'rating': 3}, format='json')
+        self.assertEqual(res.status_code, 404)
+
+    def test_unauthenticated_rejected(self):
+        res = APIClient().post(f'/api/runs/{self.session.pk}/feedback/', {'rating': 3}, format='json')
+        self.assertIn(res.status_code, (401, 403))

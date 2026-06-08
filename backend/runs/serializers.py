@@ -192,6 +192,39 @@ class RunSessionUpdateSerializer(serializers.ModelSerializer):
         return int(best) if best != float('inf') else 0
 
 
+class RunFeedbackSerializer(serializers.ModelSerializer):
+    """Valida y persiste el feedback post-carrera sobre la propia RunSession.
+
+    Paralelo al feedback de las sesiones de gym (rpe_real, rating, cumplimiento,
+    molestias, notas). Todos los campos son opcionales: la pantalla puede enviar
+    solo lo que el usuario completó."""
+    class Meta:
+        model = RunSession
+        fields = ['rpe_real', 'rating', 'cumplimiento', 'molestias', 'feedback_notas']
+
+    def validate_rpe_real(self, v):
+        if v is not None and not (1 <= v <= 10):
+            raise serializers.ValidationError("rpe_real debe estar entre 1 y 10.")
+        return v
+
+    def validate_rating(self, v):
+        if v is not None and not (1 <= v <= 5):
+            raise serializers.ValidationError("rating debe estar entre 1 y 5.")
+        return v
+
+    def validate_cumplimiento(self, v):
+        if v is not None and not (0 <= v <= 100):
+            raise serializers.ValidationError("cumplimiento debe estar entre 0 y 100.")
+        return v
+
+    def validate_molestias(self, v):
+        if v is None:
+            return []
+        if not isinstance(v, list) or not all(isinstance(z, str) for z in v):
+            raise serializers.ValidationError("molestias debe ser una lista de strings.")
+        return v
+
+
 class RunSessionDetailSerializer(serializers.ModelSerializer):
     points = serializers.SerializerMethodField()
 
@@ -201,7 +234,8 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
             'id', 'started_at', 'ended_at', 'status', 'session_type',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
             'best_pace_s_per_km', 'calories_burned', 'elevation_gain_m',
-            'avg_heart_rate', 'points', 'created_at'
+            'avg_heart_rate', 'points', 'created_at',
+            'rpe_real', 'rating', 'cumplimiento', 'molestias', 'feedback_notas', 'feedback_at',
         ]
 
     def get_points(self, obj):
