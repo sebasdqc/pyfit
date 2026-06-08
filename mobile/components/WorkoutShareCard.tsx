@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react'
+import React, { forwardRef, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import Svg, { Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-svg'
@@ -21,15 +23,19 @@ import Svg, { Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-sv
 // WorkoutShareCard
 //
 // Tarjeta visual 9:16 (360 × 640) que se rasteriza a PNG para compartir en redes.
-// Tiene dos variantes — 'running' (verde) y 'gym' (púrpura).
+// Tiene dos variantes de CONTENIDO — 'running' y 'gym' — y, sobre cada una, un
+// CARRUSEL de variantes de COLOR (misma información, distinto acento). En esta
+// primera iteración los colores son: el de la variante (verde en running) + azul
+// cielo + rosado. El usuario desliza para elegir el color y comparte el visible.
 //
 // La variante 'running' se alimenta con datos reales de la sesión vía props
 // (título, métricas, ruta, fecha, usuario). La variante 'gym' aún usa los
 // placeholders por defecto hasta que se conecte su flujo. Cualquier prop de
 // datos omitida cae al placeholder correspondiente.
 //
-// El área capturada es ÚNICAMENTE la tarjeta (cardRef). El botón "COMPARTIR
-// RUTINA" vive fuera de ese View, por lo que nunca aparece en la imagen final.
+// El área capturada es ÚNICAMENTE la tarjeta visible (su cardRef). El botón
+// "COMPARTIR RUTINA" y los puntos del carrusel viven fuera de ese View, por lo
+// que nunca aparecen en la imagen final.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type WorkoutSessionType = 'running' | 'gym'
@@ -79,6 +85,21 @@ const CARD = {
   border: 'rgba(255,255,255,0.08)',
 }
 
+// ─── Opciones de color del carrusel ──────────────────────────────────────────
+// `accent` pinta todo lo coloreado de la tarjeta (glow, kicker, ruta, score,
+// punto del logo y botón). `btnText` es el color de texto legible sobre el botón.
+interface ColorOption {
+  key: string
+  accent: string
+  btnText: string
+}
+// Los 2 colores NUEVOS de esta iteración (el primero del carrusel es el de la
+// variante: verde en running). Se anteponen en `buildColorOptions`.
+const EXTRA_COLORS: ColorOption[] = [
+  { key: 'sky',  accent: '#5AC8FA', btnText: '#05293B' }, // azul cielo
+  { key: 'pink', accent: '#FF73B3', btnText: '#3A0A20' }, // rosado
+]
+
 // ─── Configuración por variante ──────────────────────────────────────────────
 interface VariantConfig {
   accent: string
@@ -122,16 +143,19 @@ const VARIANTS: Record<WorkoutSessionType, VariantConfig> = {
 // ─── Glow de esquina (RadialGradient SVG) ────────────────────────────────────
 function CornerGlow({ color, corner }: { color: string; corner: 'left' | 'right' }) {
   const cx = corner === 'left' ? '0%' : '100%'
+  // El id del gradiente incluye el color para que cada tarjeta del carrusel use
+  // su propio gradiente (ids duplicados en SVG comparten definición).
+  const gid = `cornerGlow-${color.replace('#', '')}`
   return (
     <Svg style={StyleSheet.absoluteFill} width={CARD_W} height={CARD_H} pointerEvents="none">
       <Defs>
-        <RadialGradient id="cornerGlow" cx={cx} cy="0%" rx="80%" ry="55%">
+        <RadialGradient id={gid} cx={cx} cy="0%" rx="80%" ry="55%">
           <Stop offset="0%" stopColor={color} stopOpacity={0.38} />
           <Stop offset="50%" stopColor={color} stopOpacity={0.1} />
           <Stop offset="100%" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Rect x={0} y={0} width={CARD_W} height={CARD_H} fill="url(#cornerGlow)" />
+      <Rect x={0} y={0} width={CARD_W} height={CARD_H} fill={`url(#${gid})`} />
     </Svg>
   )
 }
@@ -189,6 +213,87 @@ function RoutePath({ coords, color }: { coords: ShareCardRouteCoord[]; color: st
   )
 }
 
+// ─── Cara capturable de la tarjeta (una por color del carrusel) ──────────────
+// Es el View que se rasteriza a PNG. El `ref` apunta a este View (lo usa
+// captureRef). Recibe el `accent` del color elegido; el resto de props es la
+// MISMA información para todas las caras del carrusel.
+interface ShareCardFaceProps {
+  accent: string
+  kicker: string
+  glowCorner: 'left' | 'right'
+  title?: string
+  metrics: ShareCardMetric[]
+  routeCoords?: ShareCardRouteCoord[]
+  placeholderLabel: string
+  score?: string | number
+  userLabel?: string
+  dateLabel?: string
+}
+
+const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFace(
+  { accent, kicker, glowCorner, title, metrics, routeCoords, placeholderLabel, score, userLabel, dateLabel },
+  ref,
+) {
+  const hasRoute = !!(routeCoords && routeCoords.length > 1)
+  return (
+    <View ref={ref} collapsable={false} style={styles.card}>
+      <CornerGlow color={accent} corner={glowCorner} />
+
+      {/* Header: logo Zyfit + punto de color */}
+      <View style={styles.header}>
+        <View style={styles.logoRow}>
+          <Text style={styles.logoText}>Zyfit</Text>
+          <View style={[styles.logoDot, { backgroundColor: accent }]} />
+        </View>
+      </View>
+
+      {/* Título: dato protagonista (distancia en running) */}
+      <View style={styles.titleBlock}>
+        <Text style={[styles.kicker, { color: accent }]}>{kicker}</Text>
+        <Text style={styles.title}>{title ?? '— —'}</Text>
+      </View>
+
+      {/* Métricas */}
+      <View style={styles.metricsRow}>
+        {metrics.map((m, i) => (
+          <View
+            key={`${m.label}-${i}`}
+            style={[styles.metric, i < metrics.length - 1 && styles.metricDivider]}
+          >
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {m.value}
+            </Text>
+            <Text style={styles.metricLabel}>{m.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Área grande: ruta (running) o ejercicios (gym) */}
+      <View style={styles.placeholderArea}>
+        {hasRoute ? (
+          <RoutePath coords={routeCoords!} color={accent} />
+        ) : (
+          <Text style={styles.placeholderText}>{placeholderLabel}</Text>
+        )}
+      </View>
+
+      {/* Zyfit Score (solo si se aporta) */}
+      {score != null && (
+        <View style={styles.scoreRow}>
+          <Text style={styles.scoreLabel}>ZYFIT SCORE</Text>
+          <Text style={[styles.scoreValue, { color: accent }]}>{String(score)}</Text>
+        </View>
+      )}
+
+      {/* Footer: usuario + fecha */}
+      <View style={styles.footer}>
+        <Text style={styles.footerUser}>{userLabel ?? '@usuario'}</Text>
+        <Text style={styles.footerDate}>{dateLabel ?? '-- --- ----'}</Text>
+      </View>
+    </View>
+  )
+})
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function WorkoutShareCard({
   sessionType,
@@ -200,22 +305,34 @@ export default function WorkoutShareCard({
   score,
 }: WorkoutShareCardProps) {
   const v = VARIANTS[sessionType]
-  const cardRef = useRef<View>(null)
+  const { width: screenW } = useWindowDimensions()
+
+  // Carrusel de colores: el de la variante primero, luego los nuevos (azul/rosa).
+  const colorOptions: ColorOption[] = [
+    { key: 'default', accent: v.accent, btnText: v.btnText },
+    ...EXTRA_COLORS,
+  ]
+
+  // Un ref por cada cara para capturar SOLO la visible.
+  const cardRefs = useRef<(View | null)[]>([])
+  const [activeIndex, setActiveIndex] = useState(0)
   const [sharing, setSharing] = useState(false)
 
   const displayMetrics = metrics && metrics.length > 0 ? metrics : v.metrics
-  const hasRoute = !!(routeCoords && routeCoords.length > 1)
+  const active = colorOptions[activeIndex] ?? colorOptions[0]
 
   async function handleShare() {
     if (sharing) return
+    const node = cardRefs.current[activeIndex]
+    if (!node) return
     setSharing(true)
     try {
       // Carga diferida del módulo nativo (ver nota arriba).
       const { captureRef } = await import('react-native-view-shot')
       const Sharing = await import('expo-sharing')
 
-      // 1) Rasterizar la tarjeta a un PNG temporal a densidad nativa.
-      const uri = await captureRef(cardRef, {
+      // 1) Rasterizar la tarjeta VISIBLE a un PNG temporal a densidad nativa.
+      const uri = await captureRef(node, {
         format: 'png',
         quality: 1,
         result: 'tmpfile',
@@ -241,74 +358,63 @@ export default function WorkoutShareCard({
 
   return (
     <View style={styles.wrapper}>
-      {/* ── Tarjeta capturable (360 × 640) ── */}
-      <View ref={cardRef} collapsable={false} style={styles.card}>
-        <CornerGlow color={v.accent} corner={v.glowCorner} />
-
-        {/* Header: logo Zyfit + punto verde */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <Text style={styles.logoText}>Zyfit</Text>
-            <View style={styles.logoDot} />
+      {/* ── Carrusel horizontal paginado (una cara por color) ── */}
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={{ width: screenW }}
+        onMomentumScrollEnd={e => {
+          const i = Math.round(e.nativeEvent.contentOffset.x / screenW)
+          setActiveIndex(Math.max(0, Math.min(colorOptions.length - 1, i)))
+        }}
+      >
+        {colorOptions.map((opt, i) => (
+          <View key={opt.key} style={[styles.page, { width: screenW }]}>
+            <ShareCardFace
+              ref={el => { cardRefs.current[i] = el }}
+              accent={opt.accent}
+              kicker={v.kicker}
+              glowCorner={v.glowCorner}
+              title={title}
+              metrics={displayMetrics}
+              routeCoords={routeCoords}
+              placeholderLabel={v.placeholderLabel}
+              score={score}
+              userLabel={userLabel}
+              dateLabel={dateLabel}
+            />
           </View>
-        </View>
+        ))}
+      </ScrollView>
 
-        {/* Título: dato protagonista (distancia en running) */}
-        <View style={styles.titleBlock}>
-          <Text style={[styles.kicker, { color: v.accent }]}>{v.kicker}</Text>
-          <Text style={styles.title}>{title ?? '— —'}</Text>
-        </View>
-
-        {/* Métricas */}
-        <View style={styles.metricsRow}>
-          {displayMetrics.map((m, i) => (
+      {/* ── Puntos del carrusel (cada uno con su color) ── */}
+      <View style={styles.dotsRow}>
+        {colorOptions.map((opt, i) => {
+          const on = i === activeIndex
+          return (
             <View
-              key={`${m.label}-${i}`}
-              style={[styles.metric, i < displayMetrics.length - 1 && styles.metricDivider]}
-            >
-              <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {m.value}
-              </Text>
-              <Text style={styles.metricLabel}>{m.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Área grande: ruta (running) o ejercicios (gym) */}
-        <View style={styles.placeholderArea}>
-          {hasRoute ? (
-            <RoutePath coords={routeCoords!} color={v.accent} />
-          ) : (
-            <Text style={styles.placeholderText}>{v.placeholderLabel}</Text>
-          )}
-        </View>
-
-        {/* Zyfit Score (solo si se aporta) */}
-        {score != null && (
-          <View style={styles.scoreRow}>
-            <Text style={styles.scoreLabel}>ZYFIT SCORE</Text>
-            <Text style={[styles.scoreValue, { color: v.accent }]}>{String(score)}</Text>
-          </View>
-        )}
-
-        {/* Footer: usuario + fecha */}
-        <View style={styles.footer}>
-          <Text style={styles.footerUser}>{userLabel ?? '@usuario'}</Text>
-          <Text style={styles.footerDate}>{dateLabel ?? '-- --- ----'}</Text>
-        </View>
+              key={opt.key}
+              style={[
+                styles.dot,
+                { backgroundColor: opt.accent, opacity: on ? 1 : 0.4, width: on ? 22 : 7 },
+              ]}
+            />
+          )
+        })}
       </View>
 
-      {/* ── Botón fuera del área capturada ── */}
+      {/* ── Botón fuera del área capturada (color de la cara activa) ── */}
       <TouchableOpacity
-        style={[styles.shareBtn, { backgroundColor: v.accent }]}
+        style={[styles.shareBtn, { backgroundColor: active.accent }]}
         onPress={handleShare}
         disabled={sharing}
         activeOpacity={0.85}
       >
         {sharing ? (
-          <ActivityIndicator color={v.btnText} />
+          <ActivityIndicator color={active.btnText} />
         ) : (
-          <Text style={[styles.shareBtnText, { color: v.btnText }]}>COMPARTIR RUTINA</Text>
+          <Text style={[styles.shareBtnText, { color: active.btnText }]}>COMPARTIR RUTINA</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -320,6 +426,24 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
     gap: 16,
+  },
+
+  // Página del carrusel (centra la tarjeta en el ancho de pantalla)
+  page: {
+    height: CARD_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Puntos del carrusel
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  dot: {
+    height: 7,
+    borderRadius: 4,
   },
 
   // Tarjeta
@@ -353,7 +477,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: CARD.green,
     marginLeft: 3,
     marginBottom: 4,
   },
