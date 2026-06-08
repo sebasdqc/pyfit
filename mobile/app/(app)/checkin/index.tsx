@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Alert, View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, TextInput,
+  StyleSheet, ActivityIndicator, TextInput, Animated, PanResponder,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Rect, Circle, Ellipse } from 'react-native-svg'
@@ -58,12 +59,48 @@ const TIEMPO_OPTS = [
 ]
 type TiempoDispo = typeof TIEMPO_OPTS[number]['id']
 
+// Disciplinas del check-in, agrupadas por categoría. `cat` es solo la cabecera
+// visible (CARDIOVASCULAR / FUERZA / MOVILIDAD); `path` define el comportamiento
+// del flujo —idéntico al de antes—: 'running' → paso GPS, 'musculacion' → grupo
+// muscular, 'libre' → flujo genérico. `foco` es el token que consume el backend
+// para categorizar la sesión (serio=Fuerza, descargar=Cardio, moverme=Movilidad),
+// por lo que la estructura de `foco_entrenamiento` NO cambia.
+const CAT_CARDIO = { cat: 'CARDIOVASCULAR' as const, path: 'running'     as const, foco: 'descargar', color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)' }
+const CAT_FUERZA = { cat: 'FUERZA'         as const, path: 'musculacion' as const, foco: 'serio',     color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)' }
+const CAT_MOVIL  = { cat: 'MOVILIDAD'      as const, path: 'libre'       as const, foco: 'moverme',   color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.45)' }
+
 const DISCIPLINA_OPTS = [
-  { id: 'musculacion' as const, label: 'Musculación',        sub: 'Fuerza e hipertrofia',              foco: 'serio',    color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',  border: 'rgba(79,140,255,0.45)'  },
-  { id: 'running'     as const, label: 'Running',            sub: 'Trabajo aeróbico y resistencia',    foco: 'descargar', color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)'  },
-  { id: 'libre'       as const, label: 'Entrenamiento Libre', sub: 'Sin estructura fija, fluye contigo', foco: 'moverme', color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.45)'  },
+  { id: 'running'      as const, label: 'Running',              sub: 'Trabajo aeróbico en ruta',        ...CAT_CARDIO },
+  { id: 'ciclismo'     as const, label: 'Ciclismo',             sub: 'Resistencia sobre la bici',       ...CAT_CARDIO },
+  { id: 'trail'        as const, label: 'Trail',                sub: 'Carrera en montaña o sendero',    ...CAT_CARDIO },
+  { id: 'natacion'     as const, label: 'Natación',             sub: 'Trabajo aeróbico en el agua',     ...CAT_CARDIO },
+  { id: 'gym'          as const, label: 'Gym',                  sub: 'Fuerza e hipertrofia con cargas', ...CAT_FUERZA },
+  { id: 'casa'         as const, label: 'En casa',              sub: 'Fuerza con poco material',        ...CAT_FUERZA },
+  { id: 'calistenia'   as const, label: 'Calistenia',          sub: 'Fuerza con tu propio peso',       ...CAT_FUERZA },
+  { id: 'stretching'   as const, label: 'Stretching',          sub: 'Estiramientos y flexibilidad',    ...CAT_MOVIL  },
+  { id: 'yoga'         as const, label: 'Yoga',                 sub: 'Movilidad y respiración',         ...CAT_MOVIL  },
+  { id: 'recuperacion' as const, label: 'Recuperación activa', sub: 'Movimiento suave para recuperar', ...CAT_MOVIL  },
 ]
 type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
+type DisciplinaCat = typeof DISCIPLINA_OPTS[number]['cat']
+
+// Tarjetas de la primera pantalla (d4): SOLO las 3 categorías. Al tocar una, la
+// card parpadea 2 veces y se avanza a d4_sub, que muestra sus subdisciplinas.
+const CATEGORIA_OPTS = [
+  { cat: 'CARDIOVASCULAR' as const, label: 'Cardiovascular', sub: 'Resistencia y trabajo aeróbico',    color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)' },
+  { cat: 'FUERZA'         as const, label: 'Fuerza',         sub: 'Fuerza, hipertrofia y potencia',    color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)' },
+  { cat: 'MOVILIDAD'      as const, label: 'Movilidad',      sub: 'Flexibilidad, yoga y recuperación', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.45)' },
+]
+
+// Para disciplinas al aire libre / agua, "¿dónde entrenas hoy?" se reduce a 2
+// entornos simples (sin lugares guardados ni implementos). La elección se guarda
+// en `notas` y `location` queda en null: la estructura de datos no cambia.
+const ENTORNO_OPTS: Record<string, { id: string; label: string; icon: string }[]> = {
+  running:  [{ id: 'exteriores', label: 'Exteriores', icon: '🌳' }, { id: 'interiores', label: 'Interiores', icon: '🏠' }],
+  ciclismo: [{ id: 'exteriores', label: 'Exteriores', icon: '🌳' }, { id: 'interiores', label: 'Interiores', icon: '🏠' }],
+  trail:    [{ id: 'exteriores', label: 'Exteriores', icon: '🌳' }, { id: 'interiores', label: 'Interiores', icon: '🏠' }],
+  natacion: [{ id: 'aguas_abiertas', label: 'Aguas abiertas', icon: '🌊' }, { id: 'piscina', label: 'Piscina', icon: '🏊' }],
+}
 
 const GRUPO_MUSCULAR_OPTS = [
   { id: 'empujes'      as const, label: 'Empujes',   sub: 'Pecho, Hombro y Tríceps',  color: '#4f8cff', bg: 'rgba(79,140,255,0.1)',  border: 'rgba(79,140,255,0.45)'  },
@@ -103,13 +140,15 @@ const ZONE_DOTS: Record<string, [number, number]> = {
   tobillo_izq: [73, 278], tobillo_der: [107, 278],
 }
 
-const SCREENS = ['d4', 'd4b_running', 'd1', 'd_sueno', 'd2', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
+// Flujo: d4 (categoría) → d4_sub (disciplina) → [d4b_running solo cardio] →
+// d_estado (cuerpo+cabeza+sueño en una pantalla con sliders) → d3 → d5 → …
+const SCREENS = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd3', 'd5', 'd5b_grupo', 'd6_procesando', 'd7_resumen'] as const
 type ScreenId = typeof SCREENS[number]
 
 // Ordered interactive steps per disciplina path (drives progress bar)
-const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4b_running', 'd1', 'd_sueno', 'd2', 'd3', 'd5']
-const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd1', 'd_sueno', 'd2', 'd3', 'd5', 'd5b_grupo']
-const SEQ_OTHER:       ScreenId[] = ['d4', 'd1', 'd_sueno', 'd2', 'd3', 'd5']
+const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd3', 'd5']
+const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5', 'd5b_grupo']
+const SEQ_OTHER:       ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5']
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
@@ -211,6 +250,79 @@ function formatDate(lang: string): string {
   return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
 }
 
+// ─── Point slider ─────────────────────────────────────────────────────────────
+// Slider horizontal de N puntos discretos (mismo patrón que el DurationSlider del
+// onboarding, sin libs nativas → 100% Expo Go). Al arrastrar el thumb sobre cada
+// punto cambia `value` y se muestra el mensaje (label/sub) de esa opción. Conserva
+// exactamente los mismos ids que los cards originales, así el mapeo a la BD no cambia.
+type SliderOpt = { id: string; label: string; sub?: string; color: string }
+
+function PointSlider({
+  opts, value, onChange, styles,
+}: {
+  opts: readonly SliderOpt[]
+  value: string | null
+  onChange: (id: string) => void
+  styles: ReturnType<typeof makeStyles>
+}) {
+  const [trackW, setTrackW] = useState(0)
+  const steps = opts.length
+  const idx = Math.max(0, opts.findIndex(o => o.id === value))
+  const current = opts[idx] ?? opts[0]
+  const frac = steps > 1 ? idx / (steps - 1) : 0
+  const accent = current.color
+
+  const trackWRef = useRef(trackW); trackWRef.current = trackW
+  const valueRef = useRef(value); valueRef.current = value
+
+  const commitFromX = useCallback((x: number) => {
+    const w = trackWRef.current
+    if (w <= 0 || steps <= 1) return
+    const f = Math.max(0, Math.min(1, x / w))
+    const newIdx = Math.round(f * (steps - 1))
+    const newId = opts[newIdx].id
+    if (newId !== valueRef.current) {
+      onChange(newId)
+      Haptics.selectionAsync().catch(() => {})
+    }
+  }, [opts, steps, onChange])
+
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: e => commitFromX(e.nativeEvent.locationX),
+    onPanResponderMove: e => commitFromX(e.nativeEvent.locationX),
+  }), [commitFromX])
+
+  return (
+    <View style={styles.psSlider}>
+      <View style={styles.psValueRow}>
+        <Text style={[styles.psValueLabel, { color: accent }]}>{current.label}</Text>
+        {current.sub ? <Text style={styles.psValueSub}>{current.sub}</Text> : null}
+      </View>
+
+      <View
+        style={styles.psTrackTouch}
+        onLayout={e => setTrackW(e.nativeEvent.layout.width)}
+        {...pan.panHandlers}>
+        <View style={styles.psTrack} />
+        <View style={[styles.psTrackFill, { width: trackW * frac, backgroundColor: accent, opacity: 0.65 }]} />
+        {opts.map((o, i) => {
+          const on = i <= idx
+          const left = trackW * (steps > 1 ? i / (steps - 1) : 0) - 4
+          return (
+            <View key={o.id} pointerEvents="none"
+              style={[styles.psTick, { left }, on && { borderColor: accent }]} />
+          )
+        })}
+        <View pointerEvents="none"
+          style={[styles.psThumb, { left: trackW * frac - 12, backgroundColor: accent, shadowColor: accent, opacity: 0.82 }]} />
+      </View>
+    </View>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckinScreen() {
@@ -294,14 +406,23 @@ export default function CheckinScreen() {
   }
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [estadoFisico, setEstadoFisico] = useState<EstadoFisico | null>(null)
-  const [calidadSueno, setCalidadSueno] = useState<CalidadSueno | null>(null)
+  // Los 3 estados que ahora son sliders arrancan en su punto central (valor por
+  // defecto), no en null: el slider siempre tiene posición y Continuar está activo.
+  const [estadoFisico, setEstadoFisico] = useState<EstadoFisico | null>('bien')
+  const [calidadSueno, setCalidadSueno] = useState<CalidadSueno | null>('bien')
   const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
-  const [estadoMental, setEstadoMental] = useState<EstadoMental | null>(null)
+  const [estadoMental, setEstadoMental] = useState<EstadoMental | null>('normal')
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
+  const [categoria, setCategoria] = useState<DisciplinaCat | null>(null)
   const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
+  // Entorno simple (exteriores/interiores · aguas abiertas/piscina) para cardio
+  // al aire libre; reemplaza la selección de lugar guardado en esas disciplinas.
+  const [entornoCardio, setEntornoCardio] = useState<string | null>(null)
   const [grupoMuscular, setGrupoMuscular] = useState<GrupoMuscular | null>(null)
   const [runningMode, setRunningMode] = useState<'libre' | 'inteligente' | null>(null)
+  // Animación de "parpadeo x2" de la card de categoría antes de avanzar a d4_sub.
+  const [pendingCat, setPendingCat] = useState<DisciplinaCat | null>(null)
+  const flashAnim = useRef(new Animated.Value(1)).current
 
   // ── Nav state ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
@@ -314,29 +435,34 @@ export default function CheckinScreen() {
   const currentScreen = SCREENS[screenIndex]
   const selectedLocation = locations.find(l => l.id === locationId)
   const isGimnasio = selectedLocation?.tipo?.toLowerCase() === 'gimnasio'
-  const showGrupoMuscular = disciplina === 'musculacion'
+  // El flujo (GPS / grupo muscular / genérico) se decide por la CATEGORÍA de la
+  // disciplina elegida, no por su id concreto. Así Ciclismo/Trail/Natación heredan
+  // el flujo de Running, y En casa/Calistenia el de Gym, sin tocar el ruteo.
+  const discPath = useMemo(
+    () => DISCIPLINA_OPTS.find(d => d.id === disciplina)?.path ?? null,
+    [disciplina],
+  )
+  const showGrupoMuscular = discPath === 'musculacion'
 
-  // Progress bar: pick the right sequence based on disciplina
+  // Progress bar: pick the right sequence based on the disciplina's path
   const interactiveSeq: ScreenId[] = useMemo(() => {
-    if (disciplina === 'running')     return SEQ_RUNNING
-    if (disciplina === 'musculacion') return SEQ_MUSCULACION
+    if (discPath === 'running')     return SEQ_RUNNING
+    if (discPath === 'musculacion') return SEQ_MUSCULACION
     return SEQ_OTHER
-  }, [disciplina])
+  }, [discPath])
 
   const nInteractive = interactiveSeq.length
   const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
   const isInteractive = interactiveStep > 0                                       // show header/footer
-  const showFooterBtn = isInteractive && currentScreen !== 'd4b_running'         // d4b navigates inline
+  // d4b_running navega inline; d4 (categoría) avanza solo al tocar (parpadeo) → sin footer.
+  const showFooterBtn = isInteractive && currentScreen !== 'd4b_running' && currentScreen !== 'd4'
   const isLastInteractive = showFooterBtn && interactiveStep === nInteractive
 
   const canContinue = showFooterBtn && !submitting && (
-    currentScreen === 'd4'       ? !!disciplina :
-    currentScreen === 'd1'       ? !!estadoFisico :
-    currentScreen === 'd_sueno'  ? !!calidadSueno :
-    currentScreen === 'd2'       ? !!estadoMental :
-    currentScreen === 'd3'       ? !!tiempoDispo :
+    currentScreen === 'd4_sub'    ? !!disciplina :
+    currentScreen === 'd3'        ? !!tiempoDispo :
     currentScreen === 'd5b_grupo' ? !!grupoMuscular :
-    true  // d5 ubicación is optional
+    true  // d_estado (sliders con valor por defecto) y d5 (ubicación) no bloquean
   )
 
   function toggleZona(id: string) {
@@ -344,20 +470,38 @@ export default function CheckinScreen() {
   }
 
   function validate(): string | null {
-    if (currentScreen === 'd4'        && !disciplina)    return 'Indica qué quieres entrenar hoy.'
-    if (currentScreen === 'd1'        && !estadoFisico)  return 'Indica cómo está tu cuerpo hoy.'
-    if (currentScreen === 'd_sueno'   && !calidadSueno)  return 'Indica cuánto dormiste anoche.'
-    if (currentScreen === 'd2'        && !estadoMental)  return 'Indica cómo está tu cabeza hoy.'
+    if (currentScreen === 'd4_sub'    && !disciplina)    return 'Elige tu disciplina de hoy.'
     if (currentScreen === 'd3'        && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
     if (currentScreen === 'd5b_grupo' && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
     return null
   }
 
+  // Tocar una categoría en d4: parpadea 2 veces y avanza a d4_sub. Resetea la
+  // subdisciplina para que d4_sub arranque sin selección al cambiar de categoría.
+  function pickCategoria(cat: DisciplinaCat) {
+    if (pendingCat) return
+    setCategoria(cat)
+    setDisciplina(null)
+    setEntornoCardio(null)
+    setError('')
+    flashAnim.setValue(1)
+    setPendingCat(cat)
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 0.25, duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1,    duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0.25, duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1,    duration: 110, useNativeDriver: true }),
+    ]).start(() => {
+      setPendingCat(null)
+      setScreenIndex(SCREENS.indexOf('d4_sub'))
+    })
+  }
+
   function goBack() {
     if (screenIndex === 0) { router.back(); return }
-    // From d1: go back to d4b_running if running, else to d4
-    if (currentScreen === 'd1') {
-      setScreenIndex(disciplina === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d4'))
+    // Desde el estado combinado: volver al paso GPS (cardio) o a la subdisciplina.
+    if (currentScreen === 'd_estado') {
+      setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d4_sub'))
       return
     }
     setScreenIndex(i => i - 1)
@@ -368,9 +512,9 @@ export default function CheckinScreen() {
     if (err) { setError(err); return }
     setError('')
 
-    // D4 → route by disciplina
-    if (currentScreen === 'd4') {
-      setScreenIndex(disciplina === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d1'))
+    // d4_sub → cardio abre el paso GPS; el resto va al estado combinado
+    if (currentScreen === 'd4_sub') {
+      setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
       return
     }
 
@@ -392,19 +536,24 @@ export default function CheckinScreen() {
       const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
       const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
       const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
+      // Disciplinas con entorno simple (running/ciclismo/trail/natación): no usan
+      // un lugar guardado → location va null y el entorno se anota en `notas`.
+      const entornoList = disciplina ? ENTORNO_OPTS[disciplina] : undefined
+      const entornoLabel = entornoList?.find(o => o.id === entornoCardio)?.label ?? null
       const focos: string[] = []
       if (discOpt) { focos.push(discOpt.foco); focos.push(discOpt.id) }
       if (grupoOpt && showGrupoMuscular) focos.push(grupoOpt.id)
       const notasParts: string[] = []
       if (discOpt) notasParts.push(`Disciplina: ${discOpt.label}`)
       if (grupoOpt && showGrupoMuscular) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
+      if (entornoLabel) notasParts.push(`Entorno: ${entornoLabel}`)
       await apiPost('/api/checkins/', {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
         estado_fisico: estadoFisico ? FISICO_TO_NUM[estadoFisico] : null,
         calidad_sueno: SUENO_OPTS.find(s => s.id === calidadSueno)?.horas ?? 7,
         hrv: null,
-        location: locationId,
+        location: entornoList ? null : locationId,
         duracion_disponible: tiempoOpt?.minutos ?? 45,
         dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
         notas: notasParts.length > 0 ? notasParts.join('. ') : null,
@@ -417,7 +566,7 @@ export default function CheckinScreen() {
       submittingRef.current = false
       setSubmitting(false)
     }
-  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, calidadSueno, locationId])
+  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, calidadSueno, locationId, entornoCardio])
 
   // ── D5 processing orchestration ───────────────────────────────────────────
 
@@ -484,23 +633,33 @@ export default function CheckinScreen() {
 
   // ── Dimension renders ─────────────────────────────────────────────────────
 
-  function renderD1() {
+  // Subdisciplinas de la categoría elegida (pantalla d4_sub).
+  function renderSubDisciplina() {
+    const opts = DISCIPLINA_OPTS.filter(o => o.cat === categoria)
+    const catLabel = CATEGORIA_OPTS.find(c => c.cat === categoria)?.label ?? ''
     return (
       <>
-        <Text style={styles.eyebrow}>{t('checkin_dim1_eyebrow')}</Text>
-        <Text style={styles.question}>{t('checkin_dim1_question')}</Text>
-        <Text style={styles.questionSub}>{t('checkin_dim1_sub')}</Text>
+        <Text style={styles.eyebrow}>{t('checkin_dim4_eyebrow')}</Text>
+        <Text style={styles.question}>{catLabel}</Text>
+        <Text style={styles.questionSub}>Elige tu disciplina de hoy.</Text>
 
         <View style={styles.optionsWrap}>
-          {ESTADO_FISICO_OPTS.map(opt => {
-            const on = estadoFisico === opt.id
+          {opts.map(opt => {
+            const on = disciplina === opt.id
             return (
               <TouchableOpacity key={opt.id}
                 style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setEstadoFisico(opt.id); setError('') }}
+                onPress={() => { setDisciplina(opt.id); setEntornoCardio(null); setError('') }}
                 activeOpacity={0.82}>
                 <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
+                <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
+                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
+                    {opt.sub}
+                  </Text>
+                </View>
                 <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
                   {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
                 </View>
@@ -508,7 +667,31 @@ export default function CheckinScreen() {
             )
           })}
         </View>
+      </>
+    )
+  }
 
+  // Cuerpo + Cabeza + Horas de sueño en una sola pantalla (d_estado), cada uno con
+  // un slider de 4 puntos. Reemplaza las antiguas d1 / d2 / d_sueno. Los valores
+  // (estadoFisico, estadoMental, calidadSueno) y su mapeo a la BD no cambian.
+  function renderEstado() {
+    return (
+      <>
+        <Text style={styles.eyebrow}>TU ESTADO DE HOY</Text>
+        <Text style={styles.question}>¿Cómo llegas hoy?</Text>
+        <Text style={styles.questionSub}>Mueve cada control hasta cómo te sientes.</Text>
+
+        <View style={styles.estadoSliderBlock}>
+          <Text style={styles.estadoSliderLabel}>CUERPO</Text>
+          <PointSlider
+            opts={ESTADO_FISICO_OPTS}
+            value={estadoFisico}
+            onChange={v => { setEstadoFisico(v as EstadoFisico); setError('') }}
+            styles={styles}
+          />
+        </View>
+
+        {/* Mapa corporal — solo si el cuerpo está en "molestia" (igual que antes). */}
         {estadoFisico === 'molestia' && (
           <View style={styles.zonaSection}>
             <View style={styles.zonaDivider} />
@@ -545,61 +728,25 @@ export default function CheckinScreen() {
             )}
           </View>
         )}
-      </>
-    )
-  }
 
-  function renderDSueno() {
-    return (
-      <>
-        <Text style={styles.eyebrow}>RECUPERACIÓN</Text>
-        <Text style={styles.question}>¿Cuánto dormiste anoche?</Text>
-        <Text style={styles.questionSub}>El sueño condiciona tu recuperación y la carga que toleras hoy.</Text>
-
-        <View style={styles.optionsWrap}>
-          {SUENO_OPTS.map(opt => {
-            const on = calidadSueno === opt.id
-            return (
-              <TouchableOpacity key={opt.id}
-                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setCalidadSueno(opt.id); setError('') }}
-                activeOpacity={0.82}>
-                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label} · {opt.sub}</Text>
-                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
-                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
+        <View style={styles.estadoSliderBlock}>
+          <Text style={styles.estadoSliderLabel}>CABEZA</Text>
+          <PointSlider
+            opts={ESTADO_MENTAL_OPTS}
+            value={estadoMental}
+            onChange={v => { setEstadoMental(v as EstadoMental); setError('') }}
+            styles={styles}
+          />
         </View>
-      </>
-    )
-  }
 
-  function renderD2() {
-    return (
-      <>
-        <Text style={styles.eyebrow}>{t('checkin_dim2_eyebrow')}</Text>
-        <Text style={styles.question}>{t('checkin_dim2_question')}</Text>
-        <Text style={styles.questionSub}>{t('checkin_dim2_sub')}</Text>
-
-        <View style={styles.optionsWrap}>
-          {ESTADO_MENTAL_OPTS.map(opt => {
-            const on = estadoMental === opt.id
-            return (
-              <TouchableOpacity key={opt.id}
-                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setEstadoMental(opt.id); setError('') }}
-                activeOpacity={0.82}>
-                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
-                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
-                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
+        <View style={styles.estadoSliderBlock}>
+          <Text style={styles.estadoSliderLabel}>HORAS DE SUEÑO</Text>
+          <PointSlider
+            opts={SUENO_OPTS}
+            value={calidadSueno}
+            onChange={v => { setCalidadSueno(v as CalidadSueno); setError('') }}
+            styles={styles}
+          />
         </View>
       </>
     )
@@ -659,26 +806,27 @@ export default function CheckinScreen() {
         ) : null}
 
         <View style={styles.optionsWrap}>
-          {DISCIPLINA_OPTS.map(opt => {
-            const on = disciplina === opt.id
+          {CATEGORIA_OPTS.map(opt => {
+            const flashing = pendingCat === opt.cat
             return (
-              <TouchableOpacity key={opt.id}
-                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setDisciplina(opt.id); setError('') }}
-                activeOpacity={0.82}>
-                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
-                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
-                    {opt.label}
-                  </Text>
-                  <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
-                    {opt.sub}
-                  </Text>
-                </View>
-                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
-                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
-                </View>
-              </TouchableOpacity>
+              <Animated.View key={opt.cat} style={flashing ? { opacity: flashAnim } : undefined}>
+                <TouchableOpacity
+                  style={[styles.estadoCard, flashing && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                  onPress={() => pickCategoria(opt.cat)}
+                  disabled={!!pendingCat}
+                  activeOpacity={0.82}>
+                  <View style={[styles.estadoBar, { backgroundColor: flashing ? opt.color : 'transparent' }]} />
+                  <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
+                    <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, flashing && { color: opt.color }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.intencionNota, flashing && { color: opt.color, opacity: 0.75 }]}>
+                      {opt.sub}
+                    </Text>
+                  </View>
+                  <Text style={[styles.catChevron, { color: flashing ? opt.color : colors.inkMuted }]}>→</Text>
+                </TouchableOpacity>
+              </Animated.View>
             )
           })}
         </View>
@@ -726,7 +874,7 @@ export default function CheckinScreen() {
                 }
                 setRunningMode('libre')
                 setError('')
-                setScreenIndex(SCREENS.indexOf('d1'))
+                setScreenIndex(SCREENS.indexOf('d_estado'))
               }}
               activeOpacity={0.82}
             >
@@ -768,13 +916,41 @@ export default function CheckinScreen() {
   }
 
   function renderD5() {
+    // Disciplinas al aire libre / agua → selector de entorno (2 opciones); el
+    // resto mantiene la lista de lugares guardados con implementos.
+    const entornoOpts = disciplina ? ENTORNO_OPTS[disciplina] : undefined
     return (
       <>
         <Text style={styles.eyebrow}>{t('checkin_dim5_eyebrow')}</Text>
         <Text style={styles.question}>{t('checkin_dim5_question')}</Text>
         <Text style={styles.questionSub}>{t('checkin_dim5_sub')}</Text>
 
-        {locations.length > 0 && (
+        {entornoOpts && (
+          <View style={styles.optionsWrap}>
+            {entornoOpts.map(opt => {
+              const on = entornoCardio === opt.id
+              return (
+                <TouchableOpacity key={opt.id}
+                  style={[styles.estadoCard, on && { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: 'rgba(79,140,255,0.45)', borderWidth: 1.5 }]}
+                  onPress={() => { setEntornoCardio(on ? null : opt.id); setError('') }}
+                  activeOpacity={0.82}>
+                  <View style={[styles.estadoBar, { backgroundColor: on ? colors.accent : 'transparent' }]} />
+                  <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Text style={{ fontSize: 22 }}>{opt.icon}</Text>
+                    <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: colors.accent }]}>
+                      {opt.label}
+                    </Text>
+                  </View>
+                  <View style={[styles.estadoRadio, on && { borderColor: colors.accent }]}>
+                    {on && <View style={[styles.estadoRadioDot, { backgroundColor: colors.accent }]} />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        )}
+
+        {!entornoOpts && locations.length > 0 && (
           <View style={[styles.optionsWrap, { marginBottom: 12 }]}>
             {locations.map(loc => {
               const on = locationId === loc.id
@@ -807,7 +983,7 @@ export default function CheckinScreen() {
           </View>
         )}
 
-        {addingLoc ? (
+        {!entornoOpts && (addingLoc ? (
           <View style={styles.addLocForm}>
             <Text style={styles.addLocLabel}>NOMBRE</Text>
             <TextInput
@@ -874,7 +1050,7 @@ export default function CheckinScreen() {
             activeOpacity={0.7}>
             <Text style={styles.addLocBtnText}>+ Agregar lugar de entrenamiento</Text>
           </TouchableOpacity>
-        )}
+        ))}
 
         <Text style={styles.tiempoNote}>
           La selección de ubicación es opcional — puedes continuar sin elegir.
@@ -919,7 +1095,7 @@ export default function CheckinScreen() {
   }
 
   function renderD6() {
-    const isRunning = disciplina === 'running'
+    const isRunning = discPath === 'running'
     return (
       <View style={styles.procesandoWrap}>
         <ActivityIndicator color={isRunning ? '#ff8c42' : colors.accent} size="large" />
@@ -992,7 +1168,7 @@ export default function CheckinScreen() {
 
         {/* CTA */}
         <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
-          {disciplina === 'running' ? (
+          {discPath === 'running' ? (
             <TouchableOpacity
               style={styles.nextWrap}
               onPress={() => router.replace('/(app)/run')}
@@ -1086,10 +1262,9 @@ export default function CheckinScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
         { currentScreen === 'd4'          ? renderD4()
+        : currentScreen === 'd4_sub'      ? renderSubDisciplina()
         : currentScreen === 'd4b_running' ? renderD4b()
-        : currentScreen === 'd1'          ? renderD1()
-        : currentScreen === 'd_sueno'     ? renderDSueno()
-        : currentScreen === 'd2'          ? renderD2()
+        : currentScreen === 'd_estado'    ? renderEstado()
         : currentScreen === 'd3'          ? renderD3()
         : currentScreen === 'd5b_grupo'   ? renderD5b()
         : renderD5() }
@@ -1175,6 +1350,46 @@ function makeStyles(c: Colors) {
     coachNoticeName: { fontFamily: 'SpaceGrotesk-SemiBold', color: c.accent },
 
     optionsWrap: { gap: 10 },
+
+    // Chevron de las tarjetas de categoría (d4) — indica que avanzan al tocar.
+    catChevron: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      paddingHorizontal: 18,
+    },
+
+    // Pantalla de estado combinado (d_estado): bloque por slider.
+    estadoSliderBlock: { marginBottom: 26 },
+    estadoSliderLabel: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 10, color: c.inkMuted,
+      letterSpacing: 2, textTransform: 'uppercase',
+      marginBottom: 10,
+    },
+
+    // Slider discreto de N puntos (PointSlider).
+    psSlider: { marginTop: 2, marginBottom: 2 },
+    psValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
+    psValueLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.4 },
+    psValueSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkSecondary, flexShrink: 1 },
+    psTrackTouch: { height: 40, justifyContent: 'center' },
+    psTrack: {
+      position: 'absolute', left: 0, right: 0, top: 18, height: 3,
+      borderRadius: 2, backgroundColor: c.inkFaint,
+    },
+    psTrackFill: {
+      position: 'absolute', left: 0, top: 18, height: 3, borderRadius: 2,
+    },
+    psTick: {
+      position: 'absolute', top: 16, width: 7, height: 7, borderRadius: 3.5,
+      backgroundColor: c.bg, borderWidth: 1.5, borderColor: c.inkFaint,
+    },
+    psThumb: {
+      position: 'absolute', top: 8, width: 24, height: 24, borderRadius: 12,
+      borderWidth: 2, borderColor: c.bg,
+      shadowOpacity: 0.18, shadowRadius: 2.5,
+      shadowOffset: { width: 0, height: 0 }, elevation: 2,
+    },
+
     estadoCard: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
