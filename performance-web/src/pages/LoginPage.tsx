@@ -13,7 +13,7 @@ import { useAuth } from '@/auth/useAuth'
 
 // Assets servidos desde performance-web/public/ (raíz «/»): no son URLs externas
 // ni van embebidos en el código. Si el fondo no carga, cae a bg-perf-bg.
-const BG_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
+const BG_IMAGE = '/FVF.jpg'
 const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
 // Enlaces externos del equipo Zyfit. La única propiedad web pública verificada
