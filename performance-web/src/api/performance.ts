@@ -7,6 +7,7 @@ import type {
   CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
   TacticalPlay, Escena, WellnessRecord, CalendarEvent,
+  InjuryReport, PhysicalTestRecord, PsychRecord,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -117,6 +118,90 @@ export async function createModuleRecord<T = unknown>(
 ): Promise<T> {
   const res = await api.post<T>(`/performance/centers/${centerId}/${modulo}/`, payload)
   return res.data
+}
+
+// ── Módulo LESIONES: partes médicos con ubicación en el mapa corporal ────────
+// `athlete` = id de USUARIO real. El servidor deriva `dias_baja`.
+const injBase = (centerId: number) => `/performance/centers/${centerId}/lesiones`
+
+export type InjuryPayload = {
+  athlete: number
+  fecha: string
+  zona: string
+  tipo: InjuryReport['tipo']
+  severidad: InjuryReport['severidad']
+  estado: InjuryReport['estado']
+  vista: InjuryReport['vista']
+  zona_x: number
+  zona_y: number
+  mecanismo?: string
+  diagnostico?: string
+  tratamiento?: string
+  fecha_alta_estimada?: string | null
+  notas?: string
+}
+
+export async function listInjuries(centerId: number): Promise<InjuryReport[]> {
+  const res = await api.get<InjuryReport[]>(`${injBase(centerId)}/`)
+  return res.data
+}
+
+export async function createInjury(centerId: number, payload: InjuryPayload): Promise<InjuryReport> {
+  const res = await api.post<InjuryReport>(`${injBase(centerId)}/`, payload)
+  return res.data
+}
+
+export async function updateInjury(
+  centerId: number, injuryId: number, payload: Partial<InjuryPayload>,
+): Promise<InjuryReport> {
+  const res = await api.patch<InjuryReport>(`${injBase(centerId)}/${injuryId}/`, payload)
+  return res.data
+}
+
+export async function deleteInjury(centerId: number, injuryId: number): Promise<void> {
+  await api.delete(`${injBase(centerId)}/${injuryId}/`)
+}
+
+// ── Módulo TEST: historial persistido por atleta (POST recalcula en servidor) ─
+export async function listTests(centerId: number): Promise<PhysicalTestRecord[]> {
+  const res = await api.get<PhysicalTestRecord[]>(`/performance/centers/${centerId}/test/`)
+  return res.data
+}
+
+export type SaveTestPayload = {
+  athlete: number // id de USUARIO real
+  fecha: string
+  test_slug: string
+  inputs: Record<string, unknown>
+}
+export async function saveTestRecord(centerId: number, payload: SaveTestPayload): Promise<PhysicalTestRecord> {
+  const res = await api.post<PhysicalTestRecord>(`/performance/centers/${centerId}/test/`, payload)
+  return res.data
+}
+
+export async function deleteTestRecord(centerId: number, recordId: number): Promise<void> {
+  await api.delete(`/performance/centers/${centerId}/test/${recordId}/`)
+}
+
+// ── Módulo PSICOLÓGICO: historial de cuestionarios (POST recalcula en servidor) ─
+export async function listPsych(centerId: number): Promise<PsychRecord[]> {
+  const res = await api.get<PsychRecord[]>(`/performance/centers/${centerId}/psicologico/`)
+  return res.data
+}
+
+export type SavePsychPayload = {
+  athlete: number // id de USUARIO real
+  fecha: string
+  instrument: string
+  subescalas: Record<string, number>
+}
+export async function savePsychRecord(centerId: number, payload: SavePsychPayload): Promise<PsychRecord> {
+  const res = await api.post<PsychRecord>(`/performance/centers/${centerId}/psicologico/`, payload)
+  return res.data
+}
+
+export async function deletePsychRecord(centerId: number, recordId: number): Promise<void> {
+  await api.delete(`/performance/centers/${centerId}/psicologico/${recordId}/`)
 }
 
 // ── Módulo TEST: catálogo de calculadoras y cálculo en servidor ──────────────

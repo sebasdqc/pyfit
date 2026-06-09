@@ -51,3 +51,33 @@ def user_centers(user):
         user.centros_dirigidos.values_list('id', flat=True)
     )
     return ids
+
+
+def can_access_module(user, center, modulo) -> bool:
+    """¿Puede este usuario ver `modulo` DENTRO de `center`?
+
+    Cierra el gating fino que antes solo aplicaba la barra lateral del frontend
+    (un staff podía leer/escribir un módulo ajeno cambiando la URL). La regla:
+
+      - admin/staff de producto  → ve todos los módulos en cualquier centro.
+      - director principal del centro → ve todos (gestiona el centro completo).
+      - resto del staff → solo los módulos de su pertenencia (whitelist
+        `CenterMembership.modulos`, sembrada por rol en save()).
+
+    Esto protege en particular el módulo PSICOLÓGICO (datos de salud sensibles):
+    por defecto solo el psicólogo y el director técnico lo tienen en su whitelist,
+    así que ningún otro rol puede leer evaluaciones psicológicas.
+
+    El alcance por centro (¿pertenece a ESTE centro?) se valida aparte con los
+    helpers de scope de las vistas; aquí se asume que `center` ya está en scope.
+    """
+    if user.is_admin or user.is_staff:
+        return True
+    if getattr(center, 'director_principal_id', None) == user.id:
+        return True
+    membership = (
+        CenterMembership.objects
+        .filter(center=center, user=user, activo=True)
+        .first()
+    )
+    return bool(membership and membership.puede_ver(modulo))

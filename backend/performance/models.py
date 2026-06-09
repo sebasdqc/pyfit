@@ -255,7 +255,14 @@ class PerformanceMetric(CenterRecord):
 # ─── Módulo LESIONES ──────────────────────────────────────────────────────────
 
 class InjuryReport(CenterRecord):
-    """Parte de lesión gestionado por el área médica / fisioterapia del centro."""
+    """Parte de lesión gestionado por el área médica / fisioterapia del centro.
+
+    Lleva los datos clínicos del parte (zona, tipo de tejido, severidad, estado,
+    tratamiento, alta estimada) y la ubicación sobre el MAPA CORPORAL del panel:
+    `vista` (frente/espalda) + `zona_x`/`zona_y`, coordenadas sobre el maniquí de
+    viewBox 200×415 que se fijan pulsando el sitio de la lesión en la UI. Así el
+    mapa de lesiones se dibuja con datos reales, no con coordenadas inventadas.
+    """
 
     SEVERIDAD_CHOICES = [
         ('leve', 'Leve'), ('moderada', 'Moderada'), ('grave', 'Grave'),
@@ -265,13 +272,35 @@ class InjuryReport(CenterRecord):
         ('recuperacion', 'En recuperación'),
         ('alta', 'Alta'),
     ]
+    # Tipo de tejido lesionado (relevante clínicamente y para el color/ícono).
+    TIPO_CHOICES = [
+        ('muscular', 'Muscular'),
+        ('articular', 'Articular'),
+        ('ligamentosa', 'Ligamentosa'),
+        ('tendinosa', 'Tendinosa'),
+        ('osea', 'Ósea'),
+    ]
+    VISTA_CHOICES = [('frente', 'Frente'), ('espalda', 'Espalda')]
 
     zona = models.CharField(max_length=80)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='muscular')
     diagnostico = models.CharField(max_length=200, blank=True)
+    mecanismo = models.CharField(
+        max_length=120, blank=True,
+        help_text='Mecanismo lesional (sprint, contacto, sobrecarga, esguince…).',
+    )
     severidad = models.CharField(max_length=20, choices=SEVERIDAD_CHOICES, default='leve')
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='activa')
     tratamiento = models.TextField(blank=True)
     fecha_alta_estimada = models.DateField(null=True, blank=True)
+    # Ubicación en el mapa corporal del panel (maniquí de viewBox 200×415).
+    vista = models.CharField(max_length=10, choices=VISTA_CHOICES, default='frente')
+    zona_x = models.PositiveSmallIntegerField(
+        default=100, validators=[MinValueValidator(0), MaxValueValidator(200)],
+    )
+    zona_y = models.PositiveSmallIntegerField(
+        default=200, validators=[MinValueValidator(0), MaxValueValidator(415)],
+    )
 
     class Meta(CenterRecord.Meta):
         db_table = 'performance_injury_reports'

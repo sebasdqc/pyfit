@@ -19,9 +19,10 @@ import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { useSquad } from '@/centers/useSquad'
 import type { Athlete } from '@/lib/mockSquad'
-import type { WellnessRecord } from '@/types'
+import type { PsychRecord, WellnessRecord } from '@/types'
 import {
   computeWellness, fetchInstruments, scoreInstrument, listWellness, createWellness,
+  listPsych, savePsychRecord, deletePsychRecord,
   type PsychInstrument,
 } from '@/api/performance'
 import {
@@ -29,6 +30,26 @@ import {
   type SavedWellness, type WellnessEstado,
 } from '@/lib/wellnessStore'
 import { loadPsych, savePsych, deletePsych, type SavedPsych } from '@/lib/psychStore'
+
+// Evaluación del servidor → forma del historial. `athlete` (id de usuario) se
+// traduce al id del vínculo; `nameBySlug` resuelve el nombre legible del
+// cuestionario (el servidor solo guarda el slug). Descarta atletas fuera del roster.
+function fromServerPsych(
+  r: PsychRecord, userToLink: Map<number, string>, nameBySlug: Map<string, string>,
+): SavedPsych | null {
+  const athleteId = userToLink.get(r.athlete)
+  if (!athleteId) return null
+  return {
+    id: String(r.id),
+    athleteId,
+    instrument: r.instrument,
+    nombre: nameBySlug.get(r.instrument) ?? r.instrument,
+    fecha: r.fecha,
+    subescalas: r.subescalas,
+    resultados: r.resultados,
+    guardadoEn: r.created_at,
+  }
+}
 
 // Las 5 subescalas (label espeja performance/wellness.py).
 const ITEMS: { name: keyof Pick<SavedWellness, 'sueno' | 'fatiga' | 'estres' | 'dolor_muscular' | 'animo'>; label: string }[] = [
@@ -119,7 +140,7 @@ export function PsicologicoPage() {
       ) : section === 'bienestar' ? (
         <BienestarSection squad={squad} isRealRoster={isRealRoster} centerId={centerId} />
       ) : (
-        <CuestionariosSection squad={squad} />
+        <CuestionariosSection squad={squad} isRealRoster={isRealRoster} centerId={centerId} />
       )}
     </div>
   )
@@ -496,7 +517,13 @@ function Kpi({ label, value, tone = 'accent' }: { label: string; value: string; 
 // ── Sección CUESTIONARIOS (Fase B) ───────────────────────────────────────────
 const qInput = 'w-full rounded-lg border bg-perf-surface2 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-white/25 focus:border-accent'
 
-function CuestionariosSection({ squad }: { squad: Squad }) {
+function CuestionariosSection({
+  squad, isRealRoster, centerId,
+}: {
+  squad: Squad
+  isRealRoster: boolean
+  centerId: number | null
+}) {
   const [instruments, setInstruments] = useState<PsychInstrument[]>([])
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState('')
@@ -508,7 +535,8 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [generalError, setGeneralError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [saved, setSaved] = useState<SavedPsych[]>(() => loadPsych())
+  // Roster real → historial del servidor (compartido); demo → localStorage.
+  const [saved, setSaved] = useState<SavedPsych[]>(() => (isRealRoster ? [] : loadPsych()))
   const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
@@ -519,6 +547,28 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [])
+
+  // Historial real del servidor (solo evaluaciones con instrumento; el nombre se
+  // resuelve del catálogo). Depende de `instruments` para etiquetar bien las filas.
+  useEffect(() => {
+    if (!isRealRoster || centerId == null) return
+    let alive = true
+    const userToLink = new Map<number, string>()
+    for (const a of squad) if (a.userId != null) userToLink.set(a.userId, a.id)
+    const nameBySlug = new Map(instruments.map((i) => [i.slug, i.nombre]))
+    listPsych(centerId)
+      .then((recs) => {
+        if (!alive) return
+        setSaved(
+          recs
+            .filter((r) => r.instrument)
+            .map((r) => fromServerPsych(r, userToLink, nameBySlug))
+            .filter(Boolean) as SavedPsych[],
+        )
+      })
+      .catch(() => { if (alive) setSaved([]) })
+    return () => { alive = false }
+  }, [isRealRoster, centerId, squad, instruments])
 
   const instrument = instruments.find((i) => i.slug === slug) ?? null
   const atleta = squad.find((a) => a.id === sel) ?? squad[0]
@@ -560,13 +610,41 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
     } finally { setBusy(false) }
   }
 
-  function onGuardar() {
+  async function onGuardar() {
     if (!instrument || !computed) return
+    // Roster real → persistir en el servidor (recalcula el scoring desde subescalas).
+    if (isRealRoster && centerId != null && atleta?.userId != null) {
+      try {
+        const r = await savePsychRecord(centerId, {
+          athlete: atleta.userId, fecha, instrument: instrument.slug, subescalas: buildSubescalas(),
+        })
+        const vm = fromServerPsych(
+          r, new Map([[r.athlete, atleta.id]]), new Map([[instrument.slug, instrument.nombre]]),
+        )
+        if (vm) setSaved((prev) => [vm, ...prev])
+        setJustSaved(true)
+      } catch {
+        setGeneralError('No se pudo guardar la evaluación. Revisa tu conexión.')
+      }
+      return
+    }
+    // Demo → localStorage.
     setSaved(savePsych({
       athleteId: sel, instrument: instrument.slug, nombre: instrument.nombre,
       fecha, subescalas: buildSubescalas(), resultados: computed,
     }))
     setJustSaved(true)
+  }
+
+  async function onDelete(id: string) {
+    if (isRealRoster && centerId != null) {
+      try {
+        await deletePsychRecord(centerId, Number(id))
+        setSaved((prev) => prev.filter((p) => p.id !== id))
+      } catch { /* sin red: se deja el registro */ }
+      return
+    }
+    setSaved(deletePsych(id))
   }
 
   return (
@@ -701,7 +779,7 @@ function CuestionariosSection({ squad }: { squad: Squad }) {
                   <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">{p.resultados.indice}</span>
                   <span className="text-xs text-white/55">{p.resultados.indice_label} · {p.resultados.interpretacion}</span>
                 </div>
-                <button type="button" onClick={() => setSaved(deletePsych(p.id))} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
+                <button type="button" onClick={() => onDelete(p.id)} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
               </div>
             ))}
           </div>

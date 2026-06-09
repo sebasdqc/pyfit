@@ -91,6 +91,70 @@ export interface WellnessRecord {
   created_at: string
 }
 
+// ── Módulo LESIONES (performance.InjuryReport) ───────────────────────────────
+// `athlete` = id de USUARIO (no el del vínculo CenterAthlete). `zona_x`/`zona_y`
+// son coordenadas sobre el maniquí del mapa corporal (viewBox 200×415).
+export type InjurySeveridad = 'leve' | 'moderada' | 'grave'
+export type InjuryEstadoApi = 'activa' | 'recuperacion' | 'alta'
+export type InjuryTipo = 'muscular' | 'articular' | 'ligamentosa' | 'tendinosa' | 'osea'
+export type InjuryVista = 'frente' | 'espalda'
+
+export interface InjuryReport {
+  id: number
+  center: number
+  athlete: number
+  registrado_por: number | null
+  fecha: string // YYYY-MM-DD
+  zona: string
+  tipo: InjuryTipo
+  diagnostico: string
+  mecanismo: string
+  severidad: InjurySeveridad
+  estado: InjuryEstadoApi
+  tratamiento: string
+  fecha_alta_estimada: string | null
+  vista: InjuryVista
+  zona_x: number
+  zona_y: number
+  dias_baja: number // derivado en el servidor
+  notas: string
+  created_at: string
+}
+
+// Registro persistido de un test (performance.PhysicalTest). `categoria` = familia.
+export interface PhysicalTestRecord {
+  id: number
+  center: number
+  athlete: number
+  registrado_por: number | null
+  fecha: string
+  test_slug: string
+  nombre: string
+  categoria: string
+  inputs: Record<string, unknown>
+  resultados: Record<string, unknown>
+  resultado: string | null
+  unidad: string
+  notas: string
+  created_at: string
+}
+
+// Registro persistido de una evaluación psicológica (performance.PsychAssessment).
+export interface PsychRecord {
+  id: number
+  center: number
+  athlete: number
+  registrado_por: number | null
+  fecha: string
+  tipo: string
+  instrument: string // slug del cuestionario
+  subescalas: Record<string, number>
+  resultados: { indice: number; indice_label: string; interpretacion: string } & Record<string, unknown>
+  puntuacion: string | null
+  notas: string
+  created_at: string
+}
+
 // Miembro del staff de un centro (performance.CenterMembership).
 export interface CenterStaff {
   id: number

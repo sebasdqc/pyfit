@@ -15,9 +15,30 @@ import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SEM } from '@/lib/tone'
 import { ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
 import { useSquad } from '@/centers/useSquad'
-import { fetchTestCatalog, computeTest } from '@/api/performance'
+import {
+  fetchTestCatalog, computeTest, listTests, saveTestRecord, deleteTestRecord,
+} from '@/api/performance'
 import { loadTests, saveTest, deleteTest, type SavedTest } from '@/lib/testStore'
-import type { TestCatalogItem, TestFamilia, TestSchemaField } from '@/types'
+import type { PhysicalTestRecord, TestCatalogItem, TestFamilia, TestSchemaField } from '@/types'
+
+// Registro del servidor → modelo del historial. `athlete` (id de usuario) se
+// traduce al id del vínculo (athleteId) con el que trabaja la UI; descarta los
+// que ya no estén en la plantilla.
+function fromServerTest(r: PhysicalTestRecord, userToLink: Map<number, string>): SavedTest | null {
+  const athleteId = userToLink.get(r.athlete)
+  if (!athleteId) return null
+  return {
+    id: String(r.id),
+    athleteId,
+    slug: r.test_slug,
+    nombre: r.nombre,
+    familia: r.categoria,
+    fecha: r.fecha,
+    inputs: r.inputs,
+    resultados: r.resultados,
+    guardadoEn: r.created_at,
+  }
+}
 
 // ── Etiquetas y orden de familias ───────────────────────────────────────────
 const FAMILIAS: { id: TestFamilia; label: string }[] = [
@@ -73,7 +94,7 @@ function buildInputs(schema: TestSchemaField[], values: Values): Record<string, 
 }
 
 export function TestPage() {
-  const { athletes: squad, loading: squadLoading, isRealRoster } = useSquad()
+  const { athletes: squad, loading: squadLoading, isRealRoster, centerId } = useSquad()
   const [catalog, setCatalog] = useState<TestCatalogItem[]>([])
   const [loadErr, setLoadErr] = useState('')
   const [loading, setLoading] = useState(true)
@@ -93,7 +114,8 @@ export function TestPage() {
   const [computing, setComputing] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [generalError, setGeneralError] = useState('')
-  const [saved, setSaved] = useState<SavedTest[]>(() => loadTests())
+  // Roster real → historial del servidor (compartido); demo → localStorage.
+  const [saved, setSaved] = useState<SavedTest[]>(() => (isRealRoster ? [] : loadTests()))
   const [justSaved, setJustSaved] = useState(false)
 
   // Cargar el catálogo (API real).
@@ -105,6 +127,21 @@ export function TestPage() {
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [])
+
+  // Historial real del servidor para el roster real (se comparte entre dispositivos).
+  useEffect(() => {
+    if (!isRealRoster || centerId == null) return
+    let alive = true
+    const userToLink = new Map<number, string>()
+    for (const a of squad) if (a.userId != null) userToLink.set(a.userId, a.id)
+    listTests(centerId)
+      .then((recs) => {
+        if (!alive) return
+        setSaved(recs.map((r) => fromServerTest(r, userToLink)).filter(Boolean) as SavedTest[])
+      })
+      .catch(() => { if (alive) setSaved([]) })
+    return () => { alive = false }
+  }, [isRealRoster, centerId, squad])
 
   const test = catalog.find((t) => t.slug === slug) ?? null
   const visibles = familia === 'todos' ? catalog : catalog.filter((t) => t.familia === familia)
@@ -146,8 +183,24 @@ export function TestPage() {
     }
   }
 
-  function onGuardar() {
+  async function onGuardar() {
     if (!test || !computed || !athlete) return
+    // Roster real → persistir en el servidor (recalcula desde los inputs crudos).
+    if (isRealRoster && centerId != null && athlete.userId != null) {
+      try {
+        const r = await saveTestRecord(centerId, {
+          athlete: athlete.userId, fecha, test_slug: test.slug,
+          inputs: buildInputs(test.input_schema, values),
+        })
+        const vm = fromServerTest(r, new Map([[r.athlete, athlete.id]]))
+        if (vm) setSaved((prev) => [vm, ...prev])
+        setJustSaved(true)
+      } catch {
+        setGeneralError('No se pudo guardar el resultado. Revisa tu conexión.')
+      }
+      return
+    }
+    // Demo → localStorage.
     const next = saveTest({
       athleteId: athlete.id,
       slug: test.slug,
@@ -161,7 +214,14 @@ export function TestPage() {
     setJustSaved(true)
   }
 
-  function onDelete(id: string) {
+  async function onDelete(id: string) {
+    if (isRealRoster && centerId != null) {
+      try {
+        await deleteTestRecord(centerId, Number(id))
+        setSaved((prev) => prev.filter((s) => s.id !== id))
+      } catch { /* sin red: se deja el registro */ }
+      return
+    }
     setSaved(deleteTest(id))
   }
 

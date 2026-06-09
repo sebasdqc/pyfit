@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 
 from performance.models import (
     SportsCenter, CenterMembership, CenterAthlete, PhysicalTest, TestDefinition,
-    TacticalPlay, CalendarEvent,
+    TacticalPlay, CalendarEvent, InjuryReport, PsychAssessment,
 )
 
 User = get_user_model()
@@ -426,6 +426,210 @@ class CalendarEndpointTests(_Base):
         ev = CalendarEvent.objects.create(center=otro, tipo='otro', titulo='Ajeno', fecha_inicio='2026-08-10')
         res = self.client.get(f'/api/performance/centers/{otro.id}/calendario/{ev.id}/')
         self.assertEqual(res.status_code, 404)
+
+
+class ModuleGatingTests(_Base):
+    """Gating fino server-side: cada miembro de staff solo accede a los módulos de
+    su pertenencia, no solo en el sidebar (antes podía entrar por URL a cualquiera).
+
+    Caso sensible: el módulo PSICOLÓGICO (datos de salud) queda restringido a
+    psicólogo + director, nunca al resto del staff.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Fisio: su rol siembra modulos=['lesiones']. Cuenta sin rol B2B global;
+        # el acceso al panel se lo da la membresía activa.
+        self.fisio = User.objects.create_user(
+            username='fisio@x.com', email='fisio@x.com', password='x', role='athlete',
+        )
+        CenterMembership.objects.create(
+            center=self.center, user=self.fisio, rol=CenterMembership.ROL_FISIO,
+        )
+        # Psicólogo: su rol siembra modulos=['psicologico'].
+        self.psico = User.objects.create_user(
+            username='psico@x.com', email='psico@x.com', password='x', role='athlete',
+        )
+        CenterMembership.objects.create(
+            center=self.center, user=self.psico, rol=CenterMembership.ROL_PSICOLOGO,
+        )
+
+    def mod_url(self, modulo):
+        return f'/api/performance/centers/{self.center.id}/{modulo}/'
+
+    # ── El fisio solo ve su módulo ───────────────────────────────────────────
+    def test_fisio_accede_a_lesiones(self):
+        self.client.force_authenticate(self.fisio)
+        res = self.client.get(self.mod_url('lesiones'))
+        self.assertEqual(res.status_code, 200)
+
+    def test_fisio_no_accede_a_psicologico(self):
+        # El agujero principal: datos de salud mental visibles a cualquier staff.
+        self.client.force_authenticate(self.fisio)
+        res = self.client.get(self.mod_url('psicologico'))
+        self.assertEqual(res.status_code, 403)
+
+    def test_fisio_no_accede_a_wellness(self):
+        self.client.force_authenticate(self.fisio)
+        res = self.client.get(self.mod_url('psicologico') + 'wellness/')
+        self.assertEqual(res.status_code, 403)
+
+    def test_fisio_no_accede_a_rendimiento_test_ni_planificacion(self):
+        self.client.force_authenticate(self.fisio)
+        for modulo in ('rendimiento', 'test', 'planificacion'):
+            res = self.client.get(self.mod_url(modulo))
+            self.assertEqual(res.status_code, 403, f'{modulo} debería estar vetado al fisio')
+
+    # ── El psicólogo solo ve psicológico ─────────────────────────────────────
+    def test_psicologo_accede_a_psicologico(self):
+        self.client.force_authenticate(self.psico)
+        res = self.client.get(self.mod_url('psicologico'))
+        self.assertEqual(res.status_code, 200)
+
+    def test_psicologo_no_accede_a_lesiones(self):
+        self.client.force_authenticate(self.psico)
+        res = self.client.get(self.mod_url('lesiones'))
+        self.assertEqual(res.status_code, 403)
+
+    # ── El director ve todos los módulos ─────────────────────────────────────
+    def test_director_ve_todos_los_modulos(self):
+        # self.client ya está autenticado como director en _Base.
+        for modulo in ('rendimiento', 'lesiones', 'test', 'planificacion', 'psicologico'):
+            res = self.client.get(self.mod_url(modulo))
+            self.assertEqual(res.status_code, 200, f'el director debería ver {modulo}')
+        res = self.client.get(self.mod_url('psicologico') + 'wellness/')
+        self.assertEqual(res.status_code, 200)
+
+    # ── El admin de producto ve todo en cualquier centro ─────────────────────
+    def test_admin_ve_todo_sin_membresia(self):
+        admin = User.objects.create_user(
+            username='admin@x.com', email='admin@x.com', password='x', is_staff=True,
+        )
+        self.client.force_authenticate(admin)
+        for modulo in ('rendimiento', 'lesiones', 'test', 'planificacion', 'psicologico'):
+            res = self.client.get(self.mod_url(modulo))
+            self.assertEqual(res.status_code, 200, f'el admin debería ver {modulo}')
+
+    # ── El gating del módulo no se salta el scope de centro ───────────────────
+    def test_fuera_de_scope_sigue_404(self):
+        # Aunque el módulo esté permitido por rol, un centro ajeno responde 404.
+        otro = SportsCenter.objects.create(nombre='Otro', slug='otro-gating')
+        self.client.force_authenticate(self.fisio)
+        res = self.client.get(f'/api/performance/centers/{otro.id}/lesiones/')
+        self.assertEqual(res.status_code, 404)
+
+    # ── Simulador y Calendario NO están gateados (herramientas del cuerpo técnico)
+    def test_simulador_y_calendario_abiertos_a_cualquier_staff(self):
+        self.client.force_authenticate(self.fisio)
+        self.assertEqual(self.client.get(f'/api/performance/centers/{self.center.id}/simulador/').status_code, 200)
+        self.assertEqual(self.client.get(f'/api/performance/centers/{self.center.id}/calendario/').status_code, 200)
+
+
+class InjuryEndpointTests(_Base):
+    """Módulo LESIONES cableado a datos reales: alta del parte con ubicación en el
+    mapa corporal, detalle, dar de alta (edición) y borrado."""
+
+    def url(self):
+        return f'/api/performance/centers/{self.center.id}/lesiones/'
+
+    def detail(self, rec_id):
+        return f'/api/performance/centers/{self.center.id}/lesiones/{rec_id}/'
+
+    def test_crea_parte_con_mapa_corporal(self):
+        res = self.client.post(self.url(), {
+            'athlete': self.athlete.id, 'fecha': '2026-06-01',
+            'zona': 'Isquiotibial izq.', 'tipo': 'muscular', 'severidad': 'grave',
+            'estado': 'activa', 'mecanismo': 'Sprint',
+            'vista': 'espalda', 'zona_x': 85, 'zona_y': 250,
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.content)
+        obj = InjuryReport.objects.get()
+        self.assertEqual(obj.zona, 'Isquiotibial izq.')
+        self.assertEqual(obj.vista, 'espalda')
+        self.assertEqual(obj.zona_x, 85)
+        self.assertEqual(obj.registrado_por, self.director)
+        # dias_baja lo deriva el servidor (lesión activa → > 0).
+        self.assertGreaterEqual(res.json()['dias_baja'], 1)
+
+    def test_coordenada_fuera_de_rango_400(self):
+        res = self.client.post(self.url(), {
+            'athlete': self.athlete.id, 'fecha': '2026-06-01', 'zona': 'X',
+            'vista': 'frente', 'zona_x': 999, 'zona_y': 10,  # x > 200
+        }, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_dar_de_alta_via_patch(self):
+        inj = InjuryReport.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1),
+            zona='Tobillo', estado='activa',
+        )
+        res = self.client.patch(self.detail(inj.id), {'estado': 'alta'}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        inj.refresh_from_db()
+        self.assertEqual(inj.estado, 'alta')
+        self.assertEqual(res.json()['dias_baja'], 0)  # con alta, 0
+
+    def test_borra_parte(self):
+        inj = InjuryReport.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1), zona='Z',
+        )
+        res = self.client.delete(self.detail(inj.id))
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(InjuryReport.objects.filter(pk=inj.id).exists())
+
+    def test_detalle_fuera_de_scope_404(self):
+        otro = SportsCenter.objects.create(nombre='Otro', slug='otro-inj')
+        inj = InjuryReport.objects.create(
+            center=otro, athlete=self.athlete, fecha=date(2026, 6, 1), zona='Z',
+        )
+        res = self.client.get(f'/api/performance/centers/{otro.id}/lesiones/{inj.id}/')
+        self.assertEqual(res.status_code, 404)
+
+
+class ModuleRecordDeleteTests(_Base):
+    """Borrado de registros de Test y Psicológico (no editables: el cálculo lo hace
+    el servidor) y respeto del gating fino en los endpoints de detalle."""
+
+    def test_borra_resultado_de_test(self):
+        t = PhysicalTest.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1),
+            nombre='Cooper', resultado=2800,
+        )
+        url = f'/api/performance/centers/{self.center.id}/test/{t.id}/'
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertFalse(PhysicalTest.objects.filter(pk=t.id).exists())
+
+    def test_test_no_editable_405(self):
+        t = PhysicalTest.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1),
+            nombre='Cooper', resultado=2800,
+        )
+        url = f'/api/performance/centers/{self.center.id}/test/{t.id}/'
+        res = self.client.patch(url, {'resultado': 9999}, format='json')
+        self.assertEqual(res.status_code, 405)
+
+    def test_borra_evaluacion_psicologica(self):
+        p = PsychAssessment.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1),
+            tipo='otro', puntuacion=50,
+        )
+        url = f'/api/performance/centers/{self.center.id}/psicologico/{p.id}/'
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertFalse(PsychAssessment.objects.filter(pk=p.id).exists())
+
+    def test_gating_aplica_en_detalle(self):
+        # Un fisio (modulos=['lesiones']) no puede borrar una evaluación psicológica.
+        fisio = User.objects.create_user(
+            username='fis2@x.com', email='fis2@x.com', password='x', role='athlete',
+        )
+        CenterMembership.objects.create(center=self.center, user=fisio, rol=CenterMembership.ROL_FISIO)
+        p = PsychAssessment.objects.create(
+            center=self.center, athlete=self.athlete, fecha=date(2026, 6, 1), tipo='otro', puntuacion=50,
+        )
+        self.client.force_authenticate(fisio)
+        url = f'/api/performance/centers/{self.center.id}/psicologico/{p.id}/'
+        self.assertEqual(self.client.delete(url).status_code, 403)
+        self.assertTrue(PsychAssessment.objects.filter(pk=p.id).exists())
 
 
 class SeedTestsCommandTests(TestCase):

@@ -25,6 +25,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -38,7 +39,7 @@ from .models import (
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
-from .permissions import IsPerformanceUser, IsDirectorOrAdmin, user_centers
+from .permissions import IsPerformanceUser, IsDirectorOrAdmin, user_centers, can_access_module
 from .serializers import (
     SportsCenterSerializer, CenterMembershipSerializer, CenterAthleteSerializer,
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
@@ -63,6 +64,17 @@ def _get_center_or_404(user, pk):
         from django.http import Http404
         raise Http404
     return center
+
+
+def _assert_module(user, center, modulo):
+    """Gating fino server-side: 403 si el usuario no tiene `modulo` en este centro.
+
+    El scope (¿pertenece al centro?) ya se validó con _get_center_or_404; esto
+    añade la capa de "¿qué módulos de este centro puede ver?" según su rol/whitelist
+    (antes solo lo aplicaba el sidebar del frontend). Ver permissions.can_access_module.
+    """
+    if not can_access_module(user, center, modulo):
+        raise PermissionDenied('No tienes acceso a este módulo en este centro.')
 
 
 def _resolve_or_create_user(email, nombre, password=None, *, require_password=False):
@@ -326,13 +338,15 @@ def center_athlete_detail(request, pk, athlete_pk):
 
 # ─── Módulos (rendimiento / lesiones / test / planificación / psicológico) ────
 
-def _module_endpoint(request, pk, model, serializer_cls, owner_field):
+def _module_endpoint(request, pk, model, serializer_cls, owner_field, modulo):
     """Lista/crea registros de un módulo, siempre acotados al centro.
 
     owner_field: nombre del FK que guarda al staff autor ('registrado_por' o
     'creado_por'), inyectado en la creación a partir del usuario autenticado.
+    modulo: id de módulo que el usuario debe tener habilitado en el centro.
     """
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, modulo)
     if request.method == 'POST':
         data = {**request.data, 'center': center.id}
         serializer = serializer_cls(data=data)
@@ -345,16 +359,50 @@ def _module_endpoint(request, pk, model, serializer_cls, owner_field):
     return Response(serializer_cls(qs, many=True).data)
 
 
+def _module_detail(request, pk, record_id, model, serializer_cls, modulo, *, editable=True):
+    """Consulta / edita / borra un registro de un módulo, acotado al centro.
+
+    Comparte el gating fino y el scope con la lista. `editable=False` deja solo
+    GET/DELETE (sin PATCH): es el caso de Test y Psicológico, donde los resultados
+    los calcula el servidor y no deben poder reescribirse desde el cliente.
+    """
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, modulo)
+    obj = get_object_or_404(model, pk=record_id, center=center)
+    if request.method == 'GET':
+        return Response(serializer_cls(obj).data)
+    if request.method == 'DELETE':
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    if not editable:
+        return Response(
+            {'detail': 'Este registro no admite edición (el cálculo lo hace el servidor).'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+    serializer = serializer_cls(obj, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_rendimiento(request, pk):
-    return _module_endpoint(request, pk, PerformanceMetric, PerformanceMetricSerializer, 'registrado_por')
+    return _module_endpoint(request, pk, PerformanceMetric, PerformanceMetricSerializer, 'registrado_por', MODULE_RENDIMIENTO)
 
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_lesiones(request, pk):
-    return _module_endpoint(request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por')
+    return _module_endpoint(request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por', MODULE_LESIONES)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def lesiones_detail(request, pk, record_id):
+    """Parte de lesión: consulta, edición (p. ej. dar de alta) y borrado."""
+    return _module_detail(request, pk, record_id, InjuryReport, InjuryReportSerializer, MODULE_LESIONES)
 
 
 # ─── Módulo TEST: catálogo, cálculo en vivo y registro ────────────────────────
@@ -410,6 +458,7 @@ def module_test(request, pk):
       • Manual / legado: enviar `nombre` + `resultado` (+ `unidad`), un único valor.
     """
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_TEST)
     if request.method == 'POST':
         slug = (request.data.get('test_slug') or '').strip()
         data = {
@@ -456,10 +505,17 @@ def module_test(request, pk):
     return Response(PhysicalTestSerializer(qs, many=True).data)
 
 
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def test_detail(request, pk, record_id):
+    """Resultado de test: consulta o borrado. No editable (lo calcula el servidor)."""
+    return _module_detail(request, pk, record_id, PhysicalTest, PhysicalTestSerializer, MODULE_TEST, editable=False)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_planificacion(request, pk):
-    return _module_endpoint(request, pk, TrainingPlan, TrainingPlanSerializer, 'creado_por')
+    return _module_endpoint(request, pk, TrainingPlan, TrainingPlanSerializer, 'creado_por', MODULE_PLANIFICACION)
 
 
 # ─── Planificación: periodización (macrociclo → mesociclos → microciclos) ─────
@@ -476,6 +532,7 @@ def _get_plan_or_404(center, plan_id):
 def plan_detail(request, pk, plan_id):
     """Árbol completo del macrociclo (fases + semanas), o lo elimina."""
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
     plan = _get_plan_or_404(center, plan_id)
     if request.method == 'DELETE':
         plan.delete()
@@ -488,6 +545,7 @@ def plan_detail(request, pk, plan_id):
 def plan_mesociclos(request, pk, plan_id):
     """Lista / crea las fases (mesociclos) de un macrociclo."""
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
     plan = _get_plan_or_404(center, plan_id)
     if request.method == 'POST':
         serializer = MesocycleSerializer(data=request.data)
@@ -503,6 +561,7 @@ def plan_mesociclos(request, pk, plan_id):
 def mesociclo_detail(request, pk, plan_id, meso_id):
     """Actualiza o elimina una fase del macrociclo."""
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
     plan = _get_plan_or_404(center, plan_id)
     meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
     if request.method == 'DELETE':
@@ -520,6 +579,7 @@ def mesociclo_detail(request, pk, plan_id, meso_id):
 def meso_microciclos(request, pk, plan_id, meso_id):
     """Lista / crea las semanas (microciclos) de una fase."""
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
     plan = _get_plan_or_404(center, plan_id)
     meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
     if request.method == 'POST':
@@ -536,6 +596,7 @@ def meso_microciclos(request, pk, plan_id, meso_id):
 def microciclo_detail(request, pk, plan_id, meso_id, micro_id):
     """Actualiza o elimina una semana de una fase."""
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
     plan = _get_plan_or_404(center, plan_id)
     meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
     micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
@@ -583,6 +644,7 @@ def module_psicologico(request, pk):
     """
     from .psicometria import InstrumentError, score
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PSICOLOGICO)
     if request.method == 'POST':
         slug = (request.data.get('instrument') or '').strip()
         data = {
@@ -621,6 +683,13 @@ def module_psicologico(request, pk):
     return Response(PsychAssessmentSerializer(qs, many=True).data)
 
 
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def psicologico_detail(request, pk, record_id):
+    """Evaluación psicológica: consulta o borrado. No editable (scoring en servidor)."""
+    return _module_detail(request, pk, record_id, PsychAssessment, PsychAssessmentSerializer, MODULE_PSICOLOGICO, editable=False)
+
+
 # ─── Psicológico: monitoreo de bienestar (wellness check-ins) ─────────────────
 
 @api_view(['GET', 'POST'])
@@ -630,6 +699,7 @@ def psicologico_wellness(request, pk):
     bienestar lo calcula el servidor al guardar. Filtro opcional `?athlete=<id>`.
     """
     center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PSICOLOGICO)
     if request.method == 'POST':
         data = {**request.data, 'center': center.id}
         serializer = WellnessCheckinSerializer(data=data)

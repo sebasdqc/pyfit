@@ -103,14 +103,24 @@ class PerformanceMetricSerializer(serializers.ModelSerializer):
 
 
 class InjuryReportSerializer(serializers.ModelSerializer):
+    # Días de baja transcurridos desde la fecha de la lesión (0 si ya tiene alta).
+    dias_baja = serializers.SerializerMethodField()
+
     class Meta:
         model = InjuryReport
         fields = [
             'id', 'center', 'athlete', 'registrado_por', 'fecha',
-            'zona', 'diagnostico', 'severidad', 'estado', 'tratamiento',
-            'fecha_alta_estimada', 'notas', 'created_at',
+            'zona', 'tipo', 'diagnostico', 'mecanismo', 'severidad', 'estado',
+            'tratamiento', 'fecha_alta_estimada', 'vista', 'zona_x', 'zona_y',
+            'dias_baja', 'notas', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'registrado_por']
+        read_only_fields = ['id', 'created_at', 'registrado_por', 'dias_baja']
+
+    def get_dias_baja(self, obj):
+        if obj.estado == 'alta' or not obj.fecha:
+            return 0
+        from datetime import date
+        return max(0, (date.today() - obj.fecha).days)
 
 
 class TestDefinitionSerializer(serializers.ModelSerializer):

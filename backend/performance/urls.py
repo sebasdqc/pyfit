@@ -28,10 +28,14 @@ urlpatterns = [
     # Módulos del centro (barra lateral del panel)
     path('centers/<int:pk>/rendimiento/', views.module_rendimiento),
     path('centers/<int:pk>/lesiones/', views.module_lesiones),
+    path('centers/<int:pk>/lesiones/<int:record_id>/', views.lesiones_detail),
     path('centers/<int:pk>/test/', views.module_test),
+    path('centers/<int:pk>/test/<int:record_id>/', views.test_detail),
     path('centers/<int:pk>/planificacion/', views.module_planificacion),
     path('centers/<int:pk>/psicologico/', views.module_psicologico),
+    # `wellness/` antes que `<int:record_id>/` (el converter int no captura "wellness").
     path('centers/<int:pk>/psicologico/wellness/', views.psicologico_wellness),
+    path('centers/<int:pk>/psicologico/<int:record_id>/', views.psicologico_detail),
 
     # Simulador — pizarra táctica (jugadas con coordenadas normalizadas)
     path('centers/<int:pk>/simulador/', views.center_plays),

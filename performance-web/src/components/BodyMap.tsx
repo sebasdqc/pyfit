@@ -52,27 +52,55 @@ export function BodyMap({
   injuries,
   selectedId,
   onSelect,
+  onPlace,
+  pending,
 }: {
   vista: Vista
   injuries: Injury[]
   selectedId: string | null
   onSelect: (id: string) => void
+  // Modo "ubicar": al pulsar el maniquí, devuelve las coordenadas del viewBox
+  // (200×415). `pending` pinta el marcador provisional mientras se elige el sitio.
+  onPlace?: (x: number, y: number) => void
+  pending?: { x: number; y: number } | null
 }) {
   const visibles = injuries.filter((i) => i.vista === vista && i.estado !== 'alta')
 
+  function handleClick(e: React.MouseEvent<SVGSVGElement>) {
+    if (!onPlace) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 200)
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 415)
+    onPlace(Math.max(0, Math.min(200, x)), Math.max(0, Math.min(415, y)))
+  }
+
   return (
-    <svg viewBox="0 0 200 415" className="mx-auto h-[440px] w-auto select-none">
+    <svg
+      viewBox="0 0 200 415"
+      onClick={handleClick}
+      className={`mx-auto h-[440px] w-auto select-none ${onPlace ? 'cursor-crosshair' : ''}`}
+    >
       <Figure vista={vista} />
       {visibles.map((inj) => {
         const sel = inj.id === selectedId
         const hex = SEV_HEX[inj.severidad]
         return (
-          <g key={inj.id} className="cursor-pointer" onClick={() => onSelect(inj.id)}>
+          <g
+            key={inj.id}
+            className="cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); onSelect(inj.id) }}
+          >
             {sel && <circle cx={inj.x} cy={inj.y} r={13} fill="none" stroke={hex} strokeWidth={1.5} opacity={0.55} />}
             <circle cx={inj.x} cy={inj.y} r={sel ? 7 : 6} fill={hex} stroke="#0a0e1a" strokeWidth={2} />
           </g>
         )
       })}
+      {pending && (
+        <g className="pointer-events-none">
+          <circle cx={pending.x} cy={pending.y} r={12} fill="none" stroke="#4f8cff" strokeWidth={1.5} opacity={0.6} />
+          <circle cx={pending.x} cy={pending.y} r={6} fill="#4f8cff" stroke="#0a0e1a" strokeWidth={2} />
+        </g>
+      )}
     </svg>
   )
 }
