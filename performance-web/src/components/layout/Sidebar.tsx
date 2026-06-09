@@ -50,7 +50,7 @@ const NAV: NavItem[] = [
   },
   { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
   { id: 'simulador', label: 'Simulador', icon: 'simulador', to: '/simulador' },
-  { id: 'reportes', label: 'Reportes', icon: 'reportes', soon: true },
+  { id: 'reportes', label: 'Reportes', icon: 'reportes', to: '/reportes' },
   { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
 ]
 

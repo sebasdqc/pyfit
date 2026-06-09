@@ -17,6 +17,7 @@ import { PsicologicoPage } from '@/pages/psicologico/PsicologicoPage'
 import { SimuladorPage } from '@/pages/simulador/SimuladorPage'
 import { EquipoPage } from '@/pages/equipo/EquipoPage'
 import { CalendarioPage } from '@/pages/calendario/CalendarioPage'
+import { ReportesPage } from '@/pages/reportes/ReportesPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: 'planificacion', element: <PlanificacionPage /> },
           { path: 'psicologico', element: <PsicologicoPage /> },
           { path: 'simulador', element: <SimuladorPage /> },
+          { path: 'reportes', element: <ReportesPage /> },
           { path: 'perfil', element: <ProfilePage /> },
           {
             path: 'centers/:centerId',
