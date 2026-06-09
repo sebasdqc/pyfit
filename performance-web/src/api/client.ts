@@ -45,7 +45,12 @@ let refreshing: Promise<string | null> | null = null
 
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken()
-  if (!refresh) return null
+  // Sin refresh token no se puede renovar: limpia también el access para que la
+  // rehidratación no vuelva a pedir /me/ con un token muerto (causa de recarga infinita).
+  if (!refresh) {
+    clearTokens()
+    return null
+  }
   try {
     // Usa axios "crudo" para no recursar por este mismo interceptor.
     const res = await axios.post(`${API_URL}/api/auth/refresh/`, { refresh })
@@ -71,8 +76,13 @@ api.interceptors.response.use(
         original.headers = { ...original.headers, Authorization: `Bearer ${access}` }
         return api(original)
       }
-      // Refresh falló: sesión muerta. Redirige al login.
-      if (typeof window !== 'undefined') window.location.href = '/login'
+      // Refresh falló: sesión muerta. Limpia tokens SIEMPRE (si quedara un access
+      // sin refresh, la rehidratación volvería a pedir /me/ → 401 → recarga infinita)
+      // y redirige solo si no estamos ya en /login (evita el bucle de recarga).
+      clearTokens()
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },
