@@ -168,34 +168,40 @@ function AtletasTab({ centerId }: { centerId: number }) {
       ) : (
         <ul className="flex flex-col divide-y divide-perf-border">
           {list.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <Avatar name={a.nombre || a.email} src={a.foto || null} size={40} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white/90">
-                  {a.nombre || a.email}
-                  {a.dorsal && <span className="ml-2 text-xs text-white/40">#{a.dorsal}</span>}
-                </p>
-                <p className="truncate text-xs text-white/45">
-                  {[a.posicion, a.grupo].filter(Boolean).join(' · ') || a.email}
-                </p>
+            <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 first:pt-0 last:pb-0">
+              {/* Identidad: ocupa toda la 1ª línea en móvil (basis-full), comparte fila en sm+ */}
+              <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-auto">
+                <Avatar name={a.nombre || a.email} src={a.foto || null} size={40} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white/90">
+                    {a.nombre || a.email}
+                    {a.dorsal && <span className="ml-2 text-xs text-white/40">#{a.dorsal}</span>}
+                  </p>
+                  <p className="truncate text-xs text-white/45">
+                    {[a.posicion, a.grupo].filter(Boolean).join(' · ') || a.email}
+                  </p>
+                </div>
               </div>
-              {!a.cuenta_activa && (
-                <span className="hidden shrink-0 rounded-full bg-perf-warn/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-perf-warn sm:inline">
-                  Invitación pendiente
+              {/* Acciones: en móvil bajan a una 2ª línea indentada bajo el nombre */}
+              <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
+                {!a.cuenta_activa && (
+                  <span className="hidden shrink-0 rounded-full bg-perf-warn/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-perf-warn sm:inline">
+                    Invitación pendiente
+                  </span>
+                )}
+                {!a.cuenta_activa && <InviteButton email={a.email} />}
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${ESTADO_STYLE[a.estado]}`}>
+                  {a.estado}
                 </span>
-              )}
-              {!a.cuenta_activa && <InviteButton email={a.email} />}
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${ESTADO_STYLE[a.estado]}`}>
-                {a.estado}
-              </span>
-              <button
-                type="button"
-                onClick={() => remove(a)}
-                className="shrink-0 rounded-lg p-1.5 text-white/35 transition-colors hover:bg-white/[0.06] hover:text-perf-danger"
-                aria-label="Dar de baja"
-              >
-                <Icon name="close" size={15} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => remove(a)}
+                  className="shrink-0 rounded-lg p-1.5 text-white/35 transition-colors hover:bg-white/[0.06] hover:text-perf-danger"
+                  aria-label="Dar de baja"
+                >
+                  <Icon name="close" size={15} />
+                </button>
+              </div>
             </li>
           ))}
         </ul>

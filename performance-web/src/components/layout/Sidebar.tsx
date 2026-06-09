@@ -92,12 +92,23 @@ export function Sidebar({
         mobileOpen ? 'translate-x-0' : '-translate-x-[120%] md:translate-x-0',
       ].join(' ')}
     >
-      {/* Logo + vertical */}
-      <div className="flex items-center gap-2.5 px-5 pt-6 pb-5 md:justify-center md:px-0 lg:justify-start lg:px-5">
-        <img src={LOGO} alt="Zyfit" className="h-5 w-auto" />
-        <span className="text-[9px] font-medium uppercase tracking-[0.24em] text-white/45 md:hidden lg:inline">
-          Performance
-        </span>
+      {/* Logo + vertical (+ cerrar en móvil) */}
+      <div className="flex items-center justify-between gap-2.5 px-5 pt-6 pb-5 md:justify-center md:px-0 lg:justify-start lg:px-5">
+        <div className="flex items-center gap-2.5">
+          <img src={LOGO} alt="Zyfit" className="h-5 w-auto" />
+          <span className="text-[9px] font-medium uppercase tracking-[0.24em] text-white/45 md:hidden lg:inline">
+            Performance
+          </span>
+        </div>
+        {/* Solo en móvil: cierra el drawer (en md+ la sidebar es fija). */}
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white md:hidden"
+          aria-label="Cerrar menú"
+        >
+          <Icon name="close" size={18} />
+        </button>
       </div>
 
       {/* Navegación */}

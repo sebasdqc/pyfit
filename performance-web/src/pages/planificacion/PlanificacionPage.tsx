@@ -445,9 +445,9 @@ function MesoBand({
           </div>
           {meso.enfasis && <p className="mt-0.5 truncate text-xs text-white/45">{meso.enfasis}</p>}
         </div>
-        <div className="ml-auto flex items-center gap-2 text-xs text-white/45">
-          <span>Carga {CARGA_OBJ[meso.carga_objetivo]}</span>
-          <span>{meso.microciclos.length || meso.duracion_semanas} sem.</span>
+        <div className="ml-auto flex shrink-0 items-center gap-2 text-xs text-white/45">
+          <span className="hidden sm:inline">Carga {CARGA_OBJ[meso.carga_objetivo]}</span>
+          <span className="hidden sm:inline">{meso.microciclos.length || meso.duracion_semanas} sem.</span>
           <IconBtn onClick={onMoveUp} disabled={!canUp} title="Subir fase">▲</IconBtn>
           <IconBtn onClick={onMoveDown} disabled={!canDown} title="Bajar fase">▼</IconBtn>
           <IconBtn onClick={() => setEditing(true)} title="Editar fase">✎</IconBtn>

@@ -67,26 +67,27 @@ function CenterSwitcher() {
   if (centers.length === 0) return null
   const label = activeCenter?.center_nombre ?? 'Centro'
 
-  // Un único centro: chip estático (sin desplegable).
+  // Un único centro: chip estático (sin desplegable). Visible también en móvil
+  // para no perder el contexto de qué centro se está gestionando.
   if (centers.length === 1) {
     return (
-      <div className="hidden items-center gap-2 rounded-lg border border-perf-border bg-perf-surface px-3 py-2 sm:flex">
-        <Icon name="shield" size={15} className="text-accent" />
-        <span className="max-w-[160px] truncate text-xs font-medium text-white/85">{label}</span>
+      <div className="flex items-center gap-2 rounded-lg border border-perf-border bg-perf-surface px-2.5 py-2 sm:px-3">
+        <Icon name="shield" size={15} className="shrink-0 text-accent" />
+        <span className="max-w-[88px] truncate text-xs font-medium text-white/85 sm:max-w-[160px]">{label}</span>
       </div>
     )
   }
 
   return (
-    <div ref={ref} className="relative hidden sm:block">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border border-perf-border bg-perf-surface px-3 py-2 transition-colors hover:bg-perf-surface2"
+        className="flex items-center gap-2 rounded-lg border border-perf-border bg-perf-surface px-2.5 py-2 transition-colors hover:bg-perf-surface2 sm:px-3"
       >
-        <Icon name="shield" size={15} className="text-accent" />
-        <span className="max-w-[160px] truncate text-xs font-medium text-white/85">{label}</span>
-        <Icon name="chevronDown" size={14} className="text-white/45" />
+        <Icon name="shield" size={15} className="shrink-0 text-accent" />
+        <span className="max-w-[88px] truncate text-xs font-medium text-white/85 sm:max-w-[160px]">{label}</span>
+        <Icon name="chevronDown" size={14} className="shrink-0 text-white/45" />
       </button>
 
       {open && (
