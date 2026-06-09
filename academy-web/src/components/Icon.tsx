@@ -1,0 +1,152 @@
+// Set de íconos de línea (inline SVG, sin librería). Usan `currentColor`, así que
+// el color se controla con clases de texto (text-accent, text-brand, …).
+
+import type { ReactNode, SVGProps } from 'react'
+
+export type IconName =
+  | 'catalog'
+  | 'learning'
+  | 'certificate'
+  | 'instructor'
+  | 'profile'
+  | 'menu'
+  | 'close'
+  | 'chevronDown'
+  | 'chevronRight'
+  | 'chevronLeft'
+  | 'search'
+  | 'play'
+  | 'doc'
+  | 'quiz'
+  | 'clock'
+  | 'users'
+  | 'layers'
+  | 'check'
+  | 'logout'
+  | 'plus'
+  | 'mail'
+  | 'lock'
+  | 'star'
+  | 'arrowRight'
+
+const PATHS: Record<IconName, ReactNode> = {
+  catalog: (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+    </>
+  ),
+  learning: (
+    <>
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+      <path d="M6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5" />
+    </>
+  ),
+  certificate: (
+    <>
+      <circle cx="12" cy="9" r="6" />
+      <path d="m8.5 13.5-1.5 7 5-3 5 3-1.5-7" />
+    </>
+  ),
+  instructor: (
+    <>
+      <path d="M2 3h20v14H2z" />
+      <path d="M8 21h8M12 17v4" />
+    </>
+  ),
+  profile: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+    </>
+  ),
+  menu: <path d="M3 6h18M3 12h18M3 18h18" />,
+  close: <path d="M18 6 6 18M6 6l12 12" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
+  chevronLeft: <path d="m15 18-6-6 6-6" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  play: <path d="M6 4v16l13-8z" />,
+  doc: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M8 13h8M8 17h6" />
+    </>
+  ),
+  quiz: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  users: (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 12 9 5 9-5M3 17l9 5 9-5" />
+    </>
+  ),
+  check: <path d="m5 12 5 5 9-11" />,
+  logout: (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5M21 12H9" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
+  star: <path d="m12 3 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18l-5.9 3 1.2-6.5L2.5 9.9 9 9z" />,
+  arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+}
+
+export function Icon({
+  name,
+  size = 20,
+  ...props
+}: { name: IconName; size?: number } & Omit<SVGProps<SVGSVGElement>, 'name'>) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      {PATHS[name]}
+    </svg>
+  )
+}

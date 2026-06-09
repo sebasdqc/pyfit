@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-surface-soft font-sans text-ink antialiased;
+  }
+  /* El acento de selección sigue la marca CONMEBOL. */
+  ::selection {
+    background-color: rgba(0, 102, 179, 0.18);
+  }
+}
+
+@layer components {
+  /* Card base del producto: blanca, borde sutil, sombra suave. */
+  .za-card {
+    @apply rounded-2xl border border-surface-border bg-white shadow-card;
+  }
+  /* Etiqueta tipo "tag" en mayúsculas, tracking amplio (estética institucional). */
+  .za-eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.22em] text-accent;
+  }
+  /* Campo de formulario base (inputs y selects de modales/formularios). */
+  .input {
+    @apply h-11 w-full rounded-xl border border-surface-border bg-surface-soft px-3.5 text-[15px] text-ink outline-none transition-colors focus:border-accent focus:bg-white;
+  }
+}
