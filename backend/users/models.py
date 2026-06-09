@@ -53,6 +53,12 @@ class User(AbstractUser):
     # el login de coach devuelve el aviso de "activación pendiente". No tiene
     # ningún efecto sobre los atletas (siempre False para ellos).
     coach_activo = models.BooleanField(default=False)
+    # Acceso de AUTORÍA en la vertical e-learning "Zyfit Academy": un instructor
+    # crea y publica cursos. Es aditivo (default False) y no afecta a nadie: los
+    # estudiantes (cualquier cuenta activa) se inscriben SIN este flag (ver la
+    # propiedad `academy_acceso`). El admin de producto (is_admin/is_staff) también
+    # puede crear cursos sin necesitar este flag.
+    academy_instructor = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -103,6 +109,19 @@ class User(AbstractUser):
         except LookupError:
             return False
         return Membership.objects.filter(user=self, activo=True).exists()
+
+    @property
+    def academy_acceso(self) -> bool:
+        """Acceso a la plataforma e-learning "Zyfit Academy".
+
+        Hoy es ABIERTO a cualquier cuenta activa: entra como ESTUDIANTE (navega el
+        catálogo publicado, se inscribe, completa lecciones, rinde quizzes y obtiene
+        certificados). La AUTORÍA de cursos (crear/publicar) la habilita aparte el
+        flag `academy_instructor` (más is_admin / is_staff). Si en el futuro se
+        quiere cerrar la academia a una población concreta, basta endurecer esta
+        propiedad (p. ej. exigir `academy_instructor` o una inscripción/whitelist),
+        igual que hace `performance_acceso` con la vertical B2B."""
+        return bool(self.is_active)
 
 
 class Profile(models.Model):

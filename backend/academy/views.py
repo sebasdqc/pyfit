@@ -1,0 +1,476 @@
+"""Endpoints de Zyfit Academy (plataforma e-learning).
+
+Montados bajo /api/academy/ en pyfit/urls.py. Resumen de la API:
+
+    POST /auth/login/                              login de la academia
+    GET/PATCH /me/                                 identidad + flags + resumen
+
+    # Catálogo y AUTORÍA (instructor / admin)
+    GET/POST            /courses/                  catálogo / crear curso
+    GET/PUT/PATCH/DELETE /courses/<id>/            detalle / editar / borrar
+    GET/POST            /courses/<id>/modules/
+    PUT/PATCH/DELETE     /courses/<id>/modules/<mid>/
+    GET/POST            /courses/<id>/modules/<mid>/lessons/
+    GET/PUT/PATCH/DELETE /courses/<id>/modules/<mid>/lessons/<lid>/
+    GET/PUT              /lessons/<lid>/quiz/        upsert del quiz de una lección
+    GET/POST            /quizzes/<qid>/questions/
+    PUT/PATCH/DELETE     /quizzes/<qid>/questions/<question_id>/
+
+    # APRENDIZAJE (estudiante)
+    POST /courses/<id>/enroll/                      inscribirse
+    GET  /courses/<id>/enrollments/                 inscritos del curso (instructor)
+    GET  /enrollments/                              mis matrículas
+    GET  /enrollments/<eid>/                        mi matrícula (árbol + progreso)
+    POST /enrollments/<eid>/lessons/<lid>/complete/ marcar lección completada
+    POST /enrollments/<eid>/quizzes/<qid>/attempt/  rendir un quiz (calificado servidor)
+    GET  /enrollments/<eid>/certificate/            certificado (si emitido)
+    GET  /certificates/verify/<codigo>/             verificar un certificado
+
+El scope (¿este recurso es visible/editable para este usuario?) se resuelve en
+las vistas con helpers, igual que en Zyfit Performance. El "scoring" (calificar
+quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
+"""
+
+from django.contrib.auth import get_user_model
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from pyfit.throttles import LoginRateThrottle
+from . import grading
+from .models import (
+    Course, Module, Lesson, Quiz, Question,
+    Enrollment, LessonProgress, QuizAttempt, Certificate,
+)
+from .permissions import IsAcademyUser, can_edit_course, is_author
+from .serializers import (
+    CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
+    QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
+    QuizAttemptSerializer, CertificateSerializer,
+)
+
+User = get_user_model()
+
+
+# ─── Helpers de scope ─────────────────────────────────────────────────────────
+
+def _course_for_read(user, pk):
+    """Curso visible para el usuario: publicado (cualquiera) o propio/admin."""
+    course = get_object_or_404(Course, pk=pk)
+    if course.publicado or can_edit_course(user, course):
+        return course
+    raise Http404
+
+
+def _course_for_edit(user, pk):
+    """Curso que el usuario puede editar, o 403/404 si no."""
+    course = get_object_or_404(Course, pk=pk)
+    if not can_edit_course(user, course):
+        raise PermissionDenied('No puedes editar este curso.')
+    return course
+
+
+def _author_context(user, course):
+    """Contexto para serializar: incluye la clave de respuestas solo al autor."""
+    return {'include_answers': can_edit_course(user, course)}
+
+
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def academy_login(request):
+    """Login de la academia. Acepta las mismas credenciales que el resto del
+    backend y exige `academy_acceso` (hoy: cualquier cuenta activa). Una cuenta
+    inactiva recibe 403 sin revelar el motivo."""
+    email = request.data.get('email', '').lower().strip()
+    password = request.data.get('password', '')
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+    if not user.check_password(password):
+        return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+    if not user.academy_acceso:
+        return Response(
+            {'detail': 'Esta cuenta no tiene acceso a Zyfit Academy.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': _user_payload(user),
+    })
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAcademyUser])
+def academy_me(request):
+    """Identidad del usuario en la academia: rol, flags y resumen. PATCH deja al
+    propio usuario actualizar su nombre visible (igual que el panel Performance)."""
+    user = request.user
+    if request.method == 'PATCH' and 'nombre' in request.data:
+        nombre = (request.data.get('nombre') or '').strip()
+        if not nombre:
+            return Response({'nombre': 'El nombre no puede estar vacío.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        user.first_name = nombre
+        user.last_name = ''
+        user.save(update_fields=['first_name', 'last_name'])
+        from users.models import Profile
+        Profile.objects.update_or_create(user=user, defaults={'nombre': nombre})
+    return Response(_user_payload(user))
+
+
+def _user_payload(user):
+    """Resumen del usuario para la futura web de la academia."""
+    es_admin = user.is_admin or user.is_staff
+    return {
+        'id': user.id,
+        'email': user.email,
+        'nombre': (user.get_full_name() or user.first_name or user.email.split('@')[0]),
+        'role': user.role,
+        'is_admin': es_admin,
+        'is_instructor': bool(user.academy_instructor or es_admin),
+        'puede_crear_cursos': is_author(user),
+        'total_inscripciones': Enrollment.objects.filter(student=user).count(),
+        'total_cursos_creados': Course.objects.filter(instructor=user).count(),
+    }
+
+
+# ─── Cursos (catálogo + autoría) ──────────────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAcademyUser])
+def courses_view(request):
+    """GET lista el catálogo; POST crea un curso (instructor/admin).
+
+    GET admite filtros: `?mine=1` (mis cursos, incluye no publicados si soy autor),
+    `?categoria=`, `?nivel=`, `?q=` (búsqueda en título/resumen).
+    """
+    if request.method == 'POST':
+        if not is_author(request.user):
+            return Response({'detail': 'Solo un instructor o admin puede crear cursos.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        serializer = CourseSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        course = serializer.save(instructor=request.user)
+        return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
+
+    qs = Course.objects.all()
+    if request.query_params.get('mine') and is_author(request.user):
+        qs = qs.filter(instructor=request.user)
+    else:
+        # Catálogo: solo publicados (el autor ve los suyos con ?mine=1).
+        qs = qs.filter(publicado=True)
+    categoria = request.query_params.get('categoria')
+    nivel = request.query_params.get('nivel')
+    q = request.query_params.get('q')
+    if categoria:
+        qs = qs.filter(categoria=categoria)
+    if nivel:
+        qs = qs.filter(nivel=nivel)
+    if q:
+        from django.db.models import Q
+        qs = qs.filter(Q(titulo__icontains=q) | Q(resumen__icontains=q))
+    return Response(CourseSerializer(qs, many=True).data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAcademyUser])
+def course_detail(request, pk):
+    """Detalle del curso (árbol completo). Editar/borrar: solo autor/admin."""
+    if request.method == 'GET':
+        course = _course_for_read(request.user, pk)
+        return Response(CourseDetailSerializer(course, context=_author_context(request.user, course)).data)
+
+    course = _course_for_edit(request.user, pk)
+    if request.method == 'DELETE':
+        course.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = CourseSerializer(course, data=request.data, partial=request.method == 'PATCH')
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(CourseDetailSerializer(course, context=_author_context(request.user, course)).data)
+
+
+# ─── Módulos ──────────────────────────────────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAcademyUser])
+def course_modules(request, pk):
+    """Lista (lectura) o crea (autor) módulos de un curso."""
+    if request.method == 'POST':
+        course = _course_for_edit(request.user, pk)
+        serializer = ModuleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(course=course)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    course = _course_for_read(request.user, pk)
+    return Response(ModuleSerializer(course.modulos.all(), many=True,
+                                     context=_author_context(request.user, course)).data)
+
+
+@api_view(['PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAcademyUser])
+def module_detail(request, pk, module_id):
+    """Edita o elimina un módulo de un curso (autor/admin)."""
+    course = _course_for_edit(request.user, pk)
+    module = get_object_or_404(Module, pk=module_id, course=course)
+    if request.method == 'DELETE':
+        module.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = ModuleSerializer(module, data=request.data, partial=request.method == 'PATCH')
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+# ─── Lecciones ────────────────────────────────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAcademyUser])
+def module_lessons(request, pk, module_id):
+    """Lista (lectura) o crea (autor) lecciones de un módulo."""
+    if request.method == 'POST':
+        course = _course_for_edit(request.user, pk)
+        module = get_object_or_404(Module, pk=module_id, course=course)
+        serializer = LessonSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(module=module)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    course = _course_for_read(request.user, pk)
+    module = get_object_or_404(Module, pk=module_id, course=course)
+    return Response(LessonSerializer(module.lecciones.all(), many=True,
+                                     context=_author_context(request.user, course)).data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAcademyUser])
+def lesson_detail(request, pk, module_id, lesson_id):
+    """Consulta (lectura), edita o elimina una lección (autor/admin para mutar)."""
+    if request.method == 'GET':
+        course = _course_for_read(request.user, pk)
+        module = get_object_or_404(Module, pk=module_id, course=course)
+        lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
+        return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
+
+    course = _course_for_edit(request.user, pk)
+    module = get_object_or_404(Module, pk=module_id, course=course)
+    lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
+    if request.method == 'DELETE':
+        lesson.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = LessonSerializer(lesson, data=request.data, partial=request.method == 'PATCH')
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
+
+
+# ─── Quiz y preguntas ─────────────────────────────────────────────────────────
+
+def _lesson_course(lesson):
+    return lesson.module.course
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAcademyUser])
+def lesson_quiz(request, lesson_id):
+    """GET el quiz de una lección (sin clave si es estudiante); PUT lo crea/actualiza
+    (autor). El quiz es 1:1 con la lección; PUT hace upsert."""
+    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    course = _lesson_course(lesson)
+
+    if request.method == 'GET':
+        # Lectura: visible si el curso es legible para el usuario.
+        if not (course.publicado or can_edit_course(request.user, course)):
+            raise Http404
+        quiz = getattr(lesson, 'quiz', None)
+        if not quiz:
+            return Response({'detail': 'Esta lección no tiene quiz.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(QuizSerializer(quiz, context=_author_context(request.user, course)).data)
+
+    # PUT (autor): upsert.
+    if not can_edit_course(request.user, course):
+        raise PermissionDenied('No puedes editar este curso.')
+    quiz = getattr(lesson, 'quiz', None)
+    serializer = QuizSerializer(quiz, data=request.data, partial=quiz is not None)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save(lesson=lesson)
+    return Response(serializer.data, status=status.HTTP_200_OK if quiz else status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAcademyUser])
+def quiz_questions(request, quiz_id):
+    """Lista (lectura) o crea (autor) preguntas de un quiz."""
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    course = _lesson_course(quiz.lesson)
+
+    if request.method == 'POST':
+        if not can_edit_course(request.user, course):
+            raise PermissionDenied('No puedes editar este curso.')
+        serializer = QuestionSerializer(data=request.data,
+                                        context={'include_answers': True})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(quiz=quiz)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    if not (course.publicado or can_edit_course(request.user, course)):
+        raise Http404
+    return Response(QuestionSerializer(quiz.preguntas.all(), many=True,
+                                       context=_author_context(request.user, course)).data)
+
+
+@api_view(['PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAcademyUser])
+def question_detail(request, quiz_id, question_id):
+    """Edita o elimina una pregunta de un quiz (autor/admin)."""
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    course = _lesson_course(quiz.lesson)
+    if not can_edit_course(request.user, course):
+        raise PermissionDenied('No puedes editar este curso.')
+    question = get_object_or_404(Question, pk=question_id, quiz=quiz)
+    if request.method == 'DELETE':
+        question.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = QuestionSerializer(question, data=request.data, partial=request.method == 'PATCH',
+                                    context={'include_answers': True})
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+# ─── Inscripción ──────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def course_enroll(request, pk):
+    """Inscribe al usuario autenticado en un curso publicado (idempotente)."""
+    course = _course_for_read(request.user, pk)
+    if not course.publicado and not can_edit_course(request.user, course):
+        return Response({'detail': 'El curso no está disponible.'}, status=status.HTTP_400_BAD_REQUEST)
+    enrollment, _created = Enrollment.objects.get_or_create(student=request.user, course=course)
+    grading.recompute_progress(enrollment)
+    return Response(
+        EnrollmentSerializer(enrollment).data,
+        status=status.HTTP_201_CREATED if _created else status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def course_enrollments(request, pk):
+    """Inscritos de un curso (solo autor/admin): quién está y su progreso."""
+    course = _course_for_edit(request.user, pk)
+    qs = course.enrollments.select_related('student').all()
+    return Response(EnrollmentSerializer(qs, many=True).data)
+
+
+# ─── Aprendizaje (matrículas del estudiante) ──────────────────────────────────
+
+def _my_enrollment_or_404(user, enrollment_id):
+    """Matrícula del propio estudiante (o accesible por el autor/admin del curso)."""
+    enrollment = get_object_or_404(Enrollment, pk=enrollment_id)
+    if enrollment.student_id == user.id or can_edit_course(user, enrollment.course):
+        return enrollment
+    raise Http404
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def my_enrollments(request):
+    """Mis matrículas (mis cursos en curso / completados)."""
+    qs = Enrollment.objects.filter(student=request.user).select_related('course')
+    return Response(EnrollmentSerializer(qs, many=True).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def enrollment_detail(request, enrollment_id):
+    """Matrícula con el árbol del curso, lecciones completadas e intentos."""
+    enrollment = _my_enrollment_or_404(request.user, enrollment_id)
+    return Response(EnrollmentDetailSerializer(enrollment).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def lesson_complete(request, enrollment_id, lesson_id):
+    """Marca una lección como completada dentro de la matrícula y recalcula el
+    progreso (el estudiante solo opera sobre su propia matrícula)."""
+    enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
+    lesson = get_object_or_404(Lesson, pk=lesson_id, module__course=enrollment.course)
+    LessonProgress.objects.get_or_create(
+        enrollment=enrollment, lesson=lesson, defaults={'completado': True},
+    )
+    pct = grading.recompute_progress(enrollment)
+    return Response({'progreso': pct, 'estado': enrollment.estado})
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def quiz_attempt(request, enrollment_id, quiz_id):
+    """Rinde un quiz: el SERVIDOR califica las respuestas crudas, guarda el intento
+    y, si aprueba, marca la lección del quiz como completada y recalcula el progreso.
+    Body: `{respuestas: {question_id: [opcion_ids]}}`."""
+    enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
+    quiz = get_object_or_404(Quiz, pk=quiz_id, lesson__module__course=enrollment.course)
+
+    resultado = grading.grade_attempt(quiz, request.data.get('respuestas') or {})
+    attempt = QuizAttempt.objects.create(
+        enrollment=enrollment, quiz=quiz,
+        respuestas=request.data.get('respuestas') or {},
+        detalle=resultado['detalle'],
+        puntaje=resultado['puntaje'],
+        aprobado=resultado['aprobado'],
+    )
+    # Al aprobar, la lección del quiz queda completada (cuenta para el progreso).
+    if resultado['aprobado']:
+        LessonProgress.objects.get_or_create(
+            enrollment=enrollment, lesson=quiz.lesson, defaults={'completado': True},
+        )
+    pct = grading.recompute_progress(enrollment)
+    data = QuizAttemptSerializer(attempt).data
+    data['progreso'] = pct
+    data['estado'] = enrollment.estado
+    return Response(data, status=status.HTTP_201_CREATED)
+
+
+# ─── Certificados ─────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def enrollment_certificate(request, enrollment_id):
+    """Certificado de una matrícula (si ya se emitió por haberla completado)."""
+    enrollment = _my_enrollment_or_404(request.user, enrollment_id)
+    cert = getattr(enrollment, 'certificado', None)
+    if not cert:
+        return Response({'detail': 'Aún no hay certificado para esta matrícula.'},
+                        status=status.HTTP_404_NOT_FOUND)
+    return Response(CertificateSerializer(cert).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def certificate_verify(request, codigo):
+    """Verifica un certificado por su código: devuelve curso + estudiante + fecha."""
+    cert = get_object_or_404(Certificate, codigo=codigo.upper())
+    return Response(CertificateSerializer(cert).data)

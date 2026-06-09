@@ -65,6 +65,8 @@ INSTALLED_APPS = [
     'devices',
     # Vertical B2B "Zyfit Performance" (panel web para centros deportivos).
     'performance',
+    # Vertical e-learning "Zyfit Academy" (cursos en línea: web propia, próximamente).
+    'academy',
     # Celery beat schedule almacenado en Django DB
     'django_celery_beat',
 ]
@@ -405,6 +407,15 @@ UNFOLD = {
                 'separator': True,
                 'items': [
                     {'title': 'Integraciones', 'icon': 'watch', 'link': reverse_lazy('admin:devices_deviceintegration_changelist')},
+                ],
+            },
+            {
+                'title':     'Academia',
+                'separator': True,
+                'items': [
+                    {'title': 'Cursos',        'icon': 'school',        'link': reverse_lazy('admin:academy_course_changelist')},
+                    {'title': 'Matrículas',    'icon': 'how_to_reg',    'link': reverse_lazy('admin:academy_enrollment_changelist')},
+                    {'title': 'Certificados',  'icon': 'workspace_premium', 'link': reverse_lazy('admin:academy_certificate_changelist')},
                 ],
             },
             {
