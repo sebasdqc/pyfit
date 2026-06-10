@@ -8,6 +8,13 @@
 
 import type { Ficha, Pt, TrazoTipo } from '@/types'
 
+// Tipo de cancha de la pizarra. Se persiste en el campo `campo` de TacticalPlay:
+// el futsal usa 'futsal'; el fútbol 11 conserva 'completo' (valor por defecto del
+// backend) para no romper las jugadas ya guardadas.
+export type Cancha = 'futbol' | 'futsal'
+export const canchaToCampo = (c: Cancha): string => (c === 'futsal' ? 'futsal' : 'completo')
+export const campoToCancha = (campo?: string): Cancha => (campo === 'futsal' ? 'futsal' : 'futbol')
+
 // viewBox del campo (proporción real ~105:68). El área jugable va con un margen
 // (la franja exterior verde) para que las fichas no toquen el borde del SVG.
 export const VB_W = 1050

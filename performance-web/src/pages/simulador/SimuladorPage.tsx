@@ -19,7 +19,10 @@ import type { Athlete } from '@/lib/mockSquad'
 import type { Escena, Ficha, Pt, TacticalPlay, Trazo, TrazoTipo } from '@/types'
 import { listCenters } from '@/api/performance'
 import { createPlay, deletePlay, listPlays, updatePlay } from '@/api/performance'
-import { TRAZO_ORDER, TRAZO_STYLES, easeInOut, interpolateFichas, newId } from '@/lib/simulador'
+import {
+  TRAZO_ORDER, TRAZO_STYLES, easeInOut, interpolateFichas, newId,
+  canchaToCampo, campoToCancha, type Cancha,
+} from '@/lib/simulador'
 import { TacticalBoard, type Tool } from './TacticalBoard'
 import { StrokePreview } from './StrokePreview'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
@@ -55,6 +58,9 @@ export function SimuladorPage() {
   const [tool, setTool] = useState<Tool>('mover')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [past, setPast] = useState<{ frames: Scene[]; frameIndex: number }[]>([])
+  // Tipo de cancha de fondo (se persiste en `campo`). Se conserva al crear una
+  // jugada nueva; al cargar una guardada se ajusta a la suya.
+  const [cancha, setCancha] = useState<Cancha>('futbol')
 
   // El frame activo es la fuente de verdad de lo que se edita y se muestra.
   const active = frames[frameIndex] ?? emptyScene()
@@ -266,7 +272,7 @@ export function SimuladorPage() {
     setSaving(true)
     setMsg('')
     try {
-      const payload = { nombre: name, escena: buildEscena() }
+      const payload = { nombre: name, campo: canchaToCampo(cancha), escena: buildEscena() }
       const saved = currentId
         ? await updatePlay(centerId, currentId, payload)
         : await createPlay(centerId, payload)
@@ -295,6 +301,7 @@ export function SimuladorPage() {
         : [emptyScene()]
     setFrames(loaded)
     setFrameIndex(0)
+    setCancha(campoToCancha(p.campo))
     setCurrentId(p.id)
     setNombre(p.nombre)
     setSelectedId(null)
@@ -354,20 +361,38 @@ export function SimuladorPage() {
           <h1 className="text-xl font-semibold tracking-tight text-white">Simulador</h1>
           <p className="text-xs text-white/45">Pizarra táctica · coloca fichas y dibuja la jugada</p>
         </div>
-        {centers.length > 1 && (
-          <select
-            value={centerId}
-            onChange={(e) => {
-              setCenterId(Number(e.target.value))
-              nuevaJugada()
-            }}
-            className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
-          >
-            {centers.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+        <div className="flex items-center gap-2">
+          {/* Tipo de cancha: fútbol 11 o futsal */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
+            {(['futbol', 'futsal'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCancha(c)}
+                title={c === 'futbol' ? 'Campo de fútbol 11' : 'Cancha de futsal'}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  cancha === c ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+                }`}
+              >
+                {c === 'futbol' ? 'Fútbol' : 'Futsal'}
+              </button>
             ))}
-          </select>
-        )}
+          </div>
+          {centers.length > 1 && (
+            <select
+              value={centerId}
+              onChange={(e) => {
+                setCenterId(Number(e.target.value))
+                nuevaJugada()
+              }}
+              className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
+            >
+              {centers.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
@@ -499,6 +524,7 @@ export function SimuladorPage() {
             onTrazoCommit={commitTrazo}
             onDragStart={snapshot}
             frozen={playing}
+            cancha={cancha}
           />
 
           {/* Leyenda + ayuda */}
@@ -571,7 +597,14 @@ export function SimuladorPage() {
                       }`}
                     >
                       <button type="button" onClick={() => loadPlay(p)} className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-sm font-medium text-white">{p.nombre}</p>
+                        <p className="flex items-center gap-1.5 truncate text-sm font-medium text-white">
+                          <span className="truncate">{p.nombre}</span>
+                          {p.campo === 'futsal' && (
+                            <span className="shrink-0 rounded border border-perf-border px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/45">
+                              Futsal
+                            </span>
+                          )}
+                        </p>
                         <p className="truncate text-[11px] text-white/40">
                           {(p.escena?.frames?.[0]?.fichas?.length ?? 0)} fichas ·{' '}
                           {(p.escena?.frames?.[0]?.trazos?.length ?? 0)} trazos

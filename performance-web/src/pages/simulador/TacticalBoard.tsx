@@ -10,9 +10,10 @@ import type { Ficha, Pt, Trazo, TrazoTipo } from '@/types'
 import {
   R_BALL, R_PLAYER, STROKE_W, HIT_W, VB_H, VB_W,
   TRAZO_ORDER, TRAZO_STYLES, arrowHead, blockCap, dist, linePath, midPoint,
-  toNorm, toPx, wavyPath,
+  toNorm, toPx, wavyPath, type Cancha,
 } from '@/lib/simulador'
 import { PitchMarkings } from './PitchMarkings'
+import { FutsalMarkings } from './FutsalMarkings'
 
 export type Tool = 'mover' | 'borrar' | TrazoTipo
 
@@ -42,6 +43,7 @@ export function TacticalBoard({
   onTrazoCommit,
   onDragStart,
   frozen = false,
+  cancha = 'futbol',
 }: {
   fichas: Ficha[]
   trazos: Trazo[]
@@ -54,6 +56,7 @@ export function TacticalBoard({
   onTrazoCommit: (tipo: TrazoTipo, puntos: Pt[]) => void
   onDragStart?: () => void
   frozen?: boolean // durante la reproducción: sin interacción (solo se muestran las fichas animadas)
+  cancha?: Cancha // tipo de cancha de fondo (fútbol 11 o futsal)
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<{ tipo: TrazoTipo; start: Pt; end: Pt } | null>(null)
@@ -123,7 +126,7 @@ export function TacticalBoard({
           </filter>
         </defs>
 
-        <PitchMarkings />
+        {cancha === 'futsal' ? <FutsalMarkings /> : <PitchMarkings />}
 
         {/* Capa de captura para el fondo (dibujar / deseleccionar) */}
         <rect
