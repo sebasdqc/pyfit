@@ -55,7 +55,7 @@ export function ProfilePage() {
       </section>
 
       {/* Métricas */}
-      <section className="grid grid-cols-2 gap-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Stat icon="learning" value={user.total_inscripciones} label="Inscripciones" />
         <Stat icon="instructor" value={user.total_cursos_creados} label="Cursos creados" />
       </section>

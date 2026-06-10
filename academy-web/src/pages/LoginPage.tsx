@@ -35,7 +35,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-white">
+    <div className="flex min-h-[100dvh] w-full bg-white">
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
         {/* Ráfaga decorativa de emblemas (muy tenue) */}
@@ -121,7 +121,7 @@ export function LoginPage() {
           </form>
 
           <p className="mt-8 text-center text-xs text-ink-muted">
-            Marca visual basada en el manual CONMEBOL · placeholder de iteración inicial
+            © {new Date().getFullYear()} {BRAND.name} · {BRAND.product}
           </p>
         </div>
       </main>
@@ -147,16 +147,21 @@ function Field({
   autoComplete: string
   icon: ReactNode
 }) {
+  const [show, setShow] = useState(false)
+  const isPassword = type === 'password'
+  const inputType = isPassword && show ? 'text' : type
   return (
     <div className="relative">
       <input
         id={id}
-        type={type}
+        type={inputType}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         placeholder=" "
-        className="peer h-14 w-full rounded-xl border border-surface-border bg-surface-soft px-4 pr-12 pt-2 text-[15px] text-ink outline-none transition-colors placeholder:text-transparent focus:border-accent focus:bg-white"
+        className={`peer h-14 w-full rounded-xl border border-surface-border bg-surface-soft px-4 pt-2 text-[15px] text-ink transition-colors placeholder:text-transparent focus:border-accent focus:bg-white ${
+          isPassword ? 'pr-20' : 'pr-12'
+        }`}
       />
       <label
         htmlFor={id}
@@ -164,7 +169,19 @@ function Field({
       >
         {label}
       </label>
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>
+      {isPassword ? (
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-pressed={show}
+          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
+        >
+          {show ? 'Ocultar' : 'Mostrar'}
+        </button>
+      ) : (
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>
+      )}
     </div>
   )
 }

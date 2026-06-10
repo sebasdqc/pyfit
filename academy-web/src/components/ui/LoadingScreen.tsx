@@ -6,7 +6,7 @@ import { Spinner } from './Spinner'
 
 export function LoadingScreen({ message = 'Preparando tu academia…' }: { message?: string }) {
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-brand to-brand-deep">
+    <div className="relative flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-brand to-brand-deep">
       <div className="relative z-10 flex flex-col items-center gap-8">
         <BrandLockup size={40} tone="dark" showTagline />
         <Spinner size={48} className="[&_.stroke-surface-border]:stroke-white/15 [&_.stroke-accent]:stroke-white" />

@@ -11,10 +11,10 @@
 export function Emblem({ size = 40, tone = 'light' }: { size?: number; tone?: 'light' | 'dark' }) {
   const navy = tone === 'dark' ? '#ffffff' : '#1a3e72'
   const blue = tone === 'dark' ? '#7ab6ff' : '#0066b3'
-  const cap = tone === 'dark' ? '#ffffff' : '#ffffff'
+  const cap = '#ffffff' // el birrete es blanco en ambos tonos
 
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
       {/* Ráfaga de segmentos (evoca el balón del emblema CONMEBOL) */}
       {Array.from({ length: 12 }).map((_, i) => {
         const a = (i * 30 * Math.PI) / 180

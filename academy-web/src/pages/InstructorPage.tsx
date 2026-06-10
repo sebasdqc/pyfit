@@ -210,7 +210,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
               className="input"
             />
           </Labeled>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Labeled label="Categoría">
               <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="input">
                 {CATEGORIAS.map((c) => (
@@ -232,7 +232,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
           </div>
 
           {/* Ejes de la formación CONMEBOL Evolución */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Labeled label="Disciplina">
               <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} className="input">
                 {DISCIPLINAS.map((d) => (
@@ -253,7 +253,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
               </select>
             </Labeled>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Labeled label="Modalidad">
               <select value={modalidad} onChange={(e) => setModalidad(e.target.value)} className="input">
                 {MODALIDADES.map((m) => (

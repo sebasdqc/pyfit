@@ -78,12 +78,38 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
         <p className="text-lg font-bold text-ink">{nombre}</p>
         <p className="mt-3 text-xs uppercase tracking-wide text-ink-muted">completó el curso</p>
         <p className="text-base font-semibold text-brand">{titulo}</p>
-        <div className="mt-5 flex items-center justify-between border-t border-surface-border pt-3">
-          <span className="font-mono text-xs text-ink-muted">{codigo}</span>
-          <span className="text-xs italic text-ink-soft">{BRAND.name} {BRAND.product}</span>
+        <div className="mt-5 flex items-center justify-between gap-2 border-t border-surface-border pt-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-mono text-xs text-ink-muted">{codigo}</span>
+            <CopyCodeButton codigo={codigo} />
+          </div>
+          <span className="shrink-0 text-xs italic text-ink-soft">{BRAND.name} {BRAND.product}</span>
         </div>
       </div>
     </div>
+  )
+}
+
+function CopyCodeButton({ codigo }: { codigo: string }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(codigo)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={`Copiar código ${codigo}`}
+      className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/10"
+    >
+      {copied ? 'Copiado ✓' : 'Copiar'}
+    </button>
   )
 }
 

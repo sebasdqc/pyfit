@@ -40,7 +40,11 @@ export function MyLearningPage() {
           <Spinner size={40} />
         </div>
       ) : error ? (
-        <EmptyState icon="learning" title="No se pudo cargar tu progreso" />
+        <EmptyState
+          icon="learning"
+          title="No se pudo cargar tu progreso"
+          description="Revisa tu conexión e inténtalo de nuevo."
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon="learning"

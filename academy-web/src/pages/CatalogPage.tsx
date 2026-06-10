@@ -123,8 +123,12 @@ export function CatalogPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon="catalog"
-          title="Sin cursos por ahora"
-          description="Aún no hay cursos publicados que coincidan con tu búsqueda."
+          title={q.trim() ? 'Sin resultados' : 'Sin cursos por ahora'}
+          description={
+            q.trim()
+              ? `No encontramos cursos que coincidan con “${q.trim()}”.`
+              : 'Aún no hay cursos publicados con estos filtros.'
+          }
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

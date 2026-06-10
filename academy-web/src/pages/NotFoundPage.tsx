@@ -3,11 +3,11 @@ import { BrandLockup } from '@/components/Emblem'
 
 export function NotFoundPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-b from-brand to-brand-deep px-6 text-center">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-gradient-to-b from-brand to-brand-deep px-6 text-center">
       <BrandLockup size={36} tone="dark" />
       <div>
-        <p className="text-6xl font-bold text-white">404</p>
-        <p className="mt-2 text-white/65">No encontramos esta página.</p>
+        <p className="text-6xl font-bold text-white" aria-hidden>404</p>
+        <h1 className="mt-2 text-white/65">No encontramos esta página.</h1>
       </div>
       <Link
         to="/catalogo"
