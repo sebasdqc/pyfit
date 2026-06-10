@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
+import { Icon } from '@/components/Icon'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { useAuth } from '@/auth/useAuth'
 import {
@@ -73,6 +74,9 @@ export function PlanificacionPage() {
   const [loadingPlans, setLoadingPlans] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [tree, setTree] = useState<TrainingPlanDetail | null>(null)
+  // Modo de la vista: 'ver' (por defecto, solo lectura, profesional) u 'editar'
+  // (revela los controles de alta/edición/reordenado).
+  const [edit, setEdit] = useState(false)
 
   useEffect(() => {
     if (centerId == null) return
@@ -128,15 +132,40 @@ export function PlanificacionPage() {
           <h1 className="text-xl font-semibold tracking-tight text-white">Planificación</h1>
           <p className="text-xs text-white/45">Periodización: macrociclo → mesociclos → microciclos</p>
         </div>
-        {centers.length > 1 && (
-          <select
-            value={centerId}
-            onChange={(e) => { setCenterId(Number(e.target.value)); setSelectedId(null); setTree(null) }}
-            className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
-          >
-            {centers.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Modo Visualización / Edición */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
+            <button
+              type="button"
+              onClick={() => setEdit(false)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                !edit ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+              }`}
+            >
+              <Icon name="eye" size={14} />
+              Visualización
+            </button>
+            <button
+              type="button"
+              onClick={() => setEdit(true)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                edit ? 'bg-accent text-white' : 'text-white/55 hover:text-white'
+              }`}
+            >
+              <Icon name="edit" size={14} />
+              Edición
+            </button>
+          </div>
+          {centers.length > 1 && (
+            <select
+              value={centerId}
+              onChange={(e) => { setCenterId(Number(e.target.value)); setSelectedId(null); setTree(null) }}
+              className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
+            >
+              {centers.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
@@ -148,18 +177,24 @@ export function PlanificacionPage() {
           onSelect={setSelectedId}
           onCreated={async (p) => { await refreshPlans(); setSelectedId(p.id) }}
           centerId={centerId}
+          edit={edit}
         />
 
         {tree ? (
           <PlanDetail
             centerId={centerId}
             plan={tree}
+            edit={edit}
             onChanged={async () => { await refreshTree(); await refreshPlans() }}
             onDeleted={async () => { setSelectedId(null); setTree(null); await refreshPlans() }}
           />
         ) : (
           <Panel title="Macrociclo">
-            <p className="text-sm text-white/40">Selecciona o crea un macrociclo para planificar su periodización.</p>
+            <p className="text-sm text-white/40">
+              {edit
+                ? 'Selecciona o crea un macrociclo para planificar su periodización.'
+                : 'Selecciona un macrociclo para ver su periodización.'}
+            </p>
           </Panel>
         )}
       </div>
@@ -169,7 +204,7 @@ export function PlanificacionPage() {
 
 // ── Lista de macrociclos + alta ──────────────────────────────────────────────
 function PlanList({
-  plans, loading, error, selectedId, onSelect, onCreated, centerId,
+  plans, loading, error, selectedId, onSelect, onCreated, centerId, edit,
 }: {
   plans: TrainingPlan[]
   loading: boolean
@@ -178,6 +213,7 @@ function PlanList({
   onSelect: (id: number) => void
   onCreated: (p: TrainingPlan) => void
   centerId: number
+  edit: boolean
 }) {
   const [adding, setAdding] = useState(false)
   const [nombre, setNombre] = useState('')
@@ -203,12 +239,14 @@ function PlanList({
       title="Macrociclos"
       subtitle={loading ? 'Cargando…' : `${plans.length} plan(es)`}
       action={
-        <button type="button" onClick={() => setAdding((v) => !v)} className="text-xs font-medium text-accentLight hover:text-accent">
-          {adding ? 'Cancelar' : '+ Nuevo'}
-        </button>
+        edit ? (
+          <button type="button" onClick={() => setAdding((v) => !v)} className="text-xs font-medium text-accentLight hover:text-accent">
+            {adding ? 'Cancelar' : '+ Nuevo'}
+          </button>
+        ) : undefined
       }
     >
-      {adding && (
+      {edit && adding && (
         <div className="mb-3 flex flex-col gap-2 rounded-xl border border-perf-border bg-perf-surface2 p-3">
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (p. ej. Temporada 26/27)" className={inputCls} />
           <input value={objetivo} onChange={(e) => setObjetivo(e.target.value)} placeholder="Objetivo (opcional)" className={inputCls} />
@@ -230,7 +268,9 @@ function PlanList({
           Cargando macrociclos…
         </div>
       ) : plans.length === 0 ? (
-        <p className="text-sm text-white/40">Aún no hay macrociclos. Crea el primero.</p>
+        <p className="text-sm text-white/40">
+          {edit ? 'Aún no hay macrociclos. Crea el primero.' : 'Aún no hay macrociclos. Activa el modo edición para crear uno.'}
+        </p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {plans.map((p) => {
@@ -260,14 +300,17 @@ function PlanList({
 
 // ── Detalle del macrociclo: onda de carga + fases ────────────────────────────
 function PlanDetail({
-  centerId, plan, onChanged, onDeleted,
+  centerId, plan, edit, onChanged, onDeleted,
 }: {
   centerId: number
   plan: TrainingPlanDetail
+  edit: boolean
   onChanged: () => void
   onDeleted: () => void
 }) {
   const [addingMeso, setAddingMeso] = useState(false)
+  const totalWeeks = plan.mesociclos.reduce((acc, m) => acc + m.microciclos.length, 0)
+  const finEstimado = totalWeeks ? addWeeks(plan.fecha_inicio, totalWeeks) : null
 
   // Onda de carga: todos los microciclos en orden, con su fase.
   const wave = useMemo(() => {
@@ -306,21 +349,26 @@ function PlanDetail({
     <div className="flex flex-col gap-4">
       <Panel
         title={plan.nombre}
-        subtitle={[plan.grupo, plan.objetivo, `Inicio ${plan.fecha_inicio}`].filter(Boolean).join(' · ')}
+        subtitle={[plan.objetivo, `Inicio ${plan.fecha_inicio}`].filter(Boolean).join(' · ')}
         action={
-          <button
-            type="button"
-            onClick={() => { if (confirm('¿Eliminar este macrociclo y toda su periodización?')) deletePlan(centerId, plan.id).then(onDeleted) }}
-            className="text-xs text-white/40 hover:text-perf-danger"
-          >
-            Eliminar
-          </button>
+          edit ? (
+            <button
+              type="button"
+              onClick={() => { if (confirm('¿Eliminar este macrociclo y toda su periodización?')) deletePlan(centerId, plan.id).then(onDeleted) }}
+              className="text-xs text-white/40 hover:text-perf-danger"
+            >
+              Eliminar
+            </button>
+          ) : undefined
         }
       >
-        <div className="flex flex-wrap items-center gap-3 text-xs text-white/55">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs text-white/55">
           {plan.grupo && <span className="rounded-full bg-accent/10 px-2.5 py-1 font-medium text-accentLight">{plan.grupo}</span>}
-          <span>{plan.total_mesociclos} fase(s)</span>
-          <span>{plan.total_microciclos} semana(s)</span>
+          <span className="rounded-full border border-perf-border px-2.5 py-1">{plan.total_mesociclos} fase(s)</span>
+          <span className="rounded-full border border-perf-border px-2.5 py-1">{plan.total_microciclos} semana(s)</span>
+          <span className="rounded-full border border-perf-border px-2.5 py-1">
+            {shortDate(plan.fecha_inicio)} → {finEstimado ? shortDate(finEstimado) : '—'}
+          </span>
         </div>
 
         {wave.length > 0 ? (
@@ -345,7 +393,11 @@ function PlanDetail({
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-xs text-white/35">Añade fases y semanas para ver la onda de carga.</p>
+          <p className="mt-4 text-xs text-white/35">
+            {edit
+              ? 'Añade fases y semanas para ver la onda de carga.'
+              : 'Este macrociclo aún no tiene fases. Activa el modo edición para planificarlo.'}
+          </p>
         )}
       </Panel>
 
@@ -357,6 +409,7 @@ function PlanDetail({
           meso={m}
           planStart={plan.fecha_inicio}
           weekOffset={offsets[idx]}
+          edit={edit}
           canUp={idx > 0}
           canDown={idx < plan.mesociclos.length - 1}
           onMoveUp={() => moveMeso(idx, -1)}
@@ -365,7 +418,7 @@ function PlanDetail({
         />
       ))}
 
-      {addingMeso ? (
+      {edit && (addingMeso ? (
         <MesoForm
           centerId={centerId}
           planId={plan.id}
@@ -382,20 +435,21 @@ function PlanDetail({
         >
           + Añadir fase (mesociclo)
         </button>
-      )}
+      ))}
     </div>
   )
 }
 
 // ── Banda de un mesociclo con sus semanas ────────────────────────────────────
 function MesoBand({
-  centerId, planId, meso, planStart, weekOffset, canUp, canDown, onMoveUp, onMoveDown, onChanged,
+  centerId, planId, meso, planStart, weekOffset, edit, canUp, canDown, onMoveUp, onMoveDown, onChanged,
 }: {
   centerId: number
   planId: number
   meso: Mesocycle
   planStart: string
   weekOffset: number
+  edit: boolean
   canUp: boolean
   canDown: boolean
   onMoveUp: () => void
@@ -405,6 +459,8 @@ function MesoBand({
   const [addingMicro, setAddingMicro] = useState(false)
   const [editing, setEditing] = useState(false)
   const t = MESO_TIPO[meso.tipo]
+  const weeks = meso.microciclos.length || meso.duracion_semanas
+  const fechaRango = `${shortDate(addWeeks(planStart, weekOffset))} – ${shortDate(addWeeks(planStart, weekOffset + weeks))}`
 
   async function moveMicro(idx: number, dir: -1 | 1) {
     const list = meso.microciclos
@@ -418,7 +474,7 @@ function MesoBand({
     onChanged()
   }
 
-  if (editing) {
+  if (editing && edit) {
     return (
       <MesoForm
         centerId={centerId}
@@ -445,16 +501,21 @@ function MesoBand({
           </div>
           {meso.enfasis && <p className="mt-0.5 truncate text-xs text-white/45">{meso.enfasis}</p>}
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2 text-xs text-white/45">
+        <div className="ml-auto flex shrink-0 items-center gap-2.5 text-xs text-white/45">
+          <span className="hidden md:inline">{fechaRango}</span>
           <span className="hidden sm:inline">Carga {CARGA_OBJ[meso.carga_objetivo]}</span>
-          <span className="hidden sm:inline">{meso.microciclos.length || meso.duracion_semanas} sem.</span>
-          <IconBtn onClick={onMoveUp} disabled={!canUp} title="Subir fase">▲</IconBtn>
-          <IconBtn onClick={onMoveDown} disabled={!canDown} title="Bajar fase">▼</IconBtn>
-          <IconBtn onClick={() => setEditing(true)} title="Editar fase">✎</IconBtn>
-          <IconBtn
-            onClick={() => { if (confirm(`¿Eliminar la fase "${meso.nombre}" y sus semanas?`)) deleteMeso(centerId, planId, meso.id).then(onChanged) }}
-            title="Eliminar fase" danger
-          >✕</IconBtn>
+          <span>{weeks} sem.</span>
+          {edit && (
+            <span className="flex items-center gap-1.5 border-l border-perf-border pl-2.5">
+              <IconBtn onClick={onMoveUp} disabled={!canUp} title="Subir fase">▲</IconBtn>
+              <IconBtn onClick={onMoveDown} disabled={!canDown} title="Bajar fase">▼</IconBtn>
+              <IconBtn onClick={() => setEditing(true)} title="Editar fase">✎</IconBtn>
+              <IconBtn
+                onClick={() => { if (confirm(`¿Eliminar la fase "${meso.nombre}" y sus semanas?`)) deleteMeso(centerId, planId, meso.id).then(onChanged) }}
+                title="Eliminar fase" danger
+              >✕</IconBtn>
+            </span>
+          )}
         </div>
       </div>
 
@@ -466,6 +527,8 @@ function MesoBand({
             planId={planId}
             mesoId={meso.id}
             micro={w}
+            weekNum={weekOffset + idx + 1}
+            edit={edit}
             canLeft={idx > 0}
             canRight={idx < meso.microciclos.length - 1}
             onMoveLeft={() => moveMicro(idx, -1)}
@@ -473,7 +536,7 @@ function MesoBand({
             onChanged={onChanged}
           />
         ))}
-        {addingMicro ? (
+        {edit && (addingMicro ? (
           <MicroForm
             centerId={centerId}
             planId={planId}
@@ -492,6 +555,9 @@ function MesoBand({
           >
             + semana
           </button>
+        ))}
+        {!edit && meso.microciclos.length === 0 && (
+          <p className="py-6 text-xs text-white/35">Sin semanas planificadas en esta fase.</p>
         )}
       </div>
     </section>
@@ -500,12 +566,14 @@ function MesoBand({
 
 // ── Celda de microciclo (semana) ─────────────────────────────────────────────
 function MicroCell({
-  centerId, planId, mesoId, micro, canLeft, canRight, onMoveLeft, onMoveRight, onChanged,
+  centerId, planId, mesoId, micro, weekNum, edit, canLeft, canRight, onMoveLeft, onMoveRight, onChanged,
 }: {
   centerId: number
   planId: number
   mesoId: number
   micro: Microcycle
+  weekNum: number
+  edit: boolean
   canLeft: boolean
   canRight: boolean
   onMoveLeft: () => void
@@ -515,6 +583,7 @@ function MicroCell({
   const [carga, setCarga] = useState(String(micro.carga_relativa))
   const [editing, setEditing] = useState(false)
   const t = MICRO_TIPO[micro.tipo]
+  const fecha = shortDate(micro.fecha_inicio)
 
   async function commitCarga() {
     const n = clamp(Number(carga))
@@ -523,7 +592,7 @@ function MicroCell({
     onChanged()
   }
 
-  if (editing) {
+  if (editing && edit) {
     return (
       <MicroForm
         centerId={centerId}
@@ -537,8 +606,32 @@ function MicroCell({
     )
   }
 
-  const fecha = shortDate(micro.fecha_inicio)
+  // Modo Visualización: tarjeta de solo lectura, limpia y profesional.
+  if (!edit) {
+    return (
+      <div className="flex h-[156px] w-[124px] shrink-0 flex-col rounded-xl border border-perf-border bg-perf-surface2 p-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: t.hex }}>{t.label}</span>
+          <span className="text-[10px] text-white/35">S{weekNum}</span>
+        </div>
+        <div className="mt-2 flex flex-1 items-end">
+          <div className="h-full w-full overflow-hidden rounded-md bg-perf-bg">
+            <div className="w-full rounded-md transition-all" style={{ height: `${micro.carga_relativa}%`, background: t.hex, opacity: 0.55 }} />
+          </div>
+        </div>
+        <div className="mt-2 flex items-baseline gap-1">
+          <span className="text-base font-bold text-white">{micro.carga_relativa}</span>
+          <span className="text-[10px] text-white/40">% carga</span>
+        </div>
+        <div className="mt-0.5 flex items-center justify-between text-[10px] text-white/45">
+          <span>Vol {NIVEL[micro.volumen]} · Int {NIVEL[micro.intensidad]}</span>
+        </div>
+        {fecha && <span className="mt-0.5 text-[10px] text-white/35">{fecha}</span>}
+      </div>
+    )
+  }
 
+  // Modo Edición: carga editable inline + reordenar / editar / quitar.
   return (
     <div className="flex h-[156px] w-[124px] shrink-0 flex-col rounded-xl border border-perf-border bg-perf-surface2 p-2.5">
       <div className="flex items-center justify-between">
