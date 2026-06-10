@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { Badge } from './Badge'
-import { NIVEL_LABEL } from '@/lib/constants'
+import { DISCIPLINA_LABEL, LICENCIA_LABEL, NIVEL_LABEL } from '@/lib/constants'
 import type { Course } from '@/types'
 
 export function CourseCard({ course, to }: { course: Course; to: string }) {
@@ -32,11 +32,19 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
             Borrador
           </span>
         )}
+        {course.licencia && (
+          <span className="absolute right-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+            {LICENCIA_LABEL[course.licencia] ?? `Licencia ${course.licencia}`}
+          </span>
+        )}
       </div>
 
       {/* Cuerpo */}
       <div className="p-4">
         <div className="flex flex-wrap items-center gap-2">
+          {course.disciplina && course.disciplina !== 'general' && (
+            <Badge tone="brand">{DISCIPLINA_LABEL[course.disciplina] ?? course.disciplina}</Badge>
+          )}
           {course.categoria && <Badge tone="accent">{course.categoria}</Badge>}
           <Badge tone="neutral">{NIVEL_LABEL[course.nivel] ?? course.nivel}</Badge>
         </div>
@@ -56,10 +64,16 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
           <span className="inline-flex items-center gap-1">
             <Icon name="doc" size={14} /> {course.total_lecciones} lec.
           </span>
-          {course.duracion_estimada_min > 0 && (
+          {course.carga_horaria_h > 0 ? (
             <span className="inline-flex items-center gap-1">
-              <Icon name="clock" size={14} /> {course.duracion_estimada_min} min
+              <Icon name="clock" size={14} /> {course.carga_horaria_h} h
             </span>
+          ) : (
+            course.duracion_estimada_min > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Icon name="clock" size={14} /> {course.duracion_estimada_min} min
+              </span>
+            )
           )}
         </div>
       </div>

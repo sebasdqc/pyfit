@@ -67,6 +67,59 @@ QUESTION_TIPO_CHOICES = [
 ]
 
 
+# ─── Adaptación CONMEBOL Evolución (formación de entrenadores) ─────────────────
+#
+# Zyfit Academy se usa también como plataforma de la formación de entrenadores
+# estilo CONMEBOL Evolución (ver formacion-conmebol.md). Esos cursos no son solo
+# "principiante/intermedio/avanzado": llevan tres ejes propios del sistema de
+# Licencias CONMEBOL — disciplina, nivel de licencia y modalidad — además de la
+# carga horaria (el sistema cuenta en HORAS, no en minutos) y si el curso acredita
+# horas de actualización para renovar la licencia (mín. 20 h cada 3 años).
+
+# Disciplina del curso. 'general' = curso de Academy no ligado a una disciplina
+# federada (p. ej. el de fuerza); el resto replica las disciplinas CONMEBOL.
+DISCIPLINA_GENERAL = 'general'
+DISCIPLINA_FUTBOL = 'futbol'
+DISCIPLINA_FUTSAL = 'futsal'
+DISCIPLINA_FUTBOL_PLAYA = 'futbol_playa'
+DISCIPLINA_ARQUEROS = 'arqueros'
+DISCIPLINA_PREP_FISICA = 'preparacion_fisica'
+DISCIPLINA_CHOICES = [
+    (DISCIPLINA_GENERAL, 'General'),
+    (DISCIPLINA_FUTBOL, 'Fútbol'),
+    (DISCIPLINA_FUTSAL, 'Futsal'),
+    (DISCIPLINA_FUTBOL_PLAYA, 'Fútbol Playa'),
+    (DISCIPLINA_ARQUEROS, 'Entrenadores de Arqueros'),
+    (DISCIPLINA_PREP_FISICA, 'Preparación Física'),
+]
+
+# Nivel de licencia CONMEBOL. Vacío ('') = curso corto / taller sin licencia
+# (la mayoría de la oferta Evolución Educación); C → B → A → PRO es el itinerario
+# escalonado y obligatorio en orden de las Licencias de Entrenador.
+LICENCIA_NINGUNA = ''
+LICENCIA_C = 'C'
+LICENCIA_B = 'B'
+LICENCIA_A = 'A'
+LICENCIA_PRO = 'PRO'
+LICENCIA_CHOICES = [
+    (LICENCIA_NINGUNA, 'Sin licencia (curso/taller)'),
+    (LICENCIA_C, 'Licencia C'),
+    (LICENCIA_B, 'Licencia B'),
+    (LICENCIA_A, 'Licencia A'),
+    (LICENCIA_PRO, 'Licencia PRO'),
+]
+
+# Modalidad de cursado.
+MODALIDAD_PRESENCIAL = 'presencial'
+MODALIDAD_VIRTUAL = 'virtual'
+MODALIDAD_SEMIPRESENCIAL = 'semipresencial'
+MODALIDAD_CHOICES = [
+    (MODALIDAD_PRESENCIAL, 'Presencial'),
+    (MODALIDAD_VIRTUAL, 'Virtual'),
+    (MODALIDAD_SEMIPRESENCIAL, 'Semipresencial (blended)'),
+]
+
+
 class Course(models.Model):
     """Curso — entidad raíz de la academia.
 
@@ -91,6 +144,29 @@ class Course(models.Model):
         help_text='Temática del curso (entrenamiento, nutrición, salud, movilidad…).',
     )
     nivel = models.CharField(max_length=20, choices=NIVEL_CHOICES, default=NIVEL_PRINCIPIANTE)
+
+    # ── Ejes de la formación CONMEBOL Evolución (ver bloque de catálogos arriba) ──
+    # Son aditivos: un curso "normal" de Academy queda con disciplina=general,
+    # licencia='' (sin licencia) y modalidad=virtual, sin cambiar su significado.
+    disciplina = models.CharField(
+        max_length=24, choices=DISCIPLINA_CHOICES, default=DISCIPLINA_GENERAL,
+        help_text='Disciplina federada del curso (fútbol, futsal, arqueros…) o "general".',
+    )
+    licencia = models.CharField(
+        max_length=4, choices=LICENCIA_CHOICES, blank=True, default=LICENCIA_NINGUNA,
+        help_text='Nivel de Licencia CONMEBOL que otorga (C/B/A/PRO). Vacío si es un curso/taller sin licencia.',
+    )
+    modalidad = models.CharField(
+        max_length=16, choices=MODALIDAD_CHOICES, default=MODALIDAD_VIRTUAL,
+    )
+    # El sistema CONMEBOL cuenta la formación en HORAS (p. ej. 140 h en Licencia C).
+    # Es independiente de `duracion_estimada_min` (estimación de consumo de la web).
+    carga_horaria_h = models.PositiveIntegerField(
+        default=0, help_text='Carga horaria oficial del curso, en horas.',
+    )
+    # Si el curso acredita horas para renovar una licencia (mín. 20 h cada 3 años).
+    acredita_renovacion = models.BooleanField(default=False)
+
     # Portada como data URL (base64). Vía provisional sin object storage, igual que
     # las fotos del panel Performance; se sustituirá por DO Spaces cuando exista.
     portada = models.TextField(blank=True)
@@ -105,6 +181,7 @@ class Course(models.Model):
         indexes = [
             models.Index(fields=['publicado', '-created_at']),
             models.Index(fields=['categoria']),
+            models.Index(fields=['disciplina', 'licencia']),
         ]
 
     def __str__(self):

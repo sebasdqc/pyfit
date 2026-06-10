@@ -26,8 +26,9 @@ class QuestionInline(TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(ModelAdmin):
-    list_display = ('titulo', 'slug', 'instructor', 'categoria', 'nivel', 'publicado', 'created_at')
-    list_filter = ('publicado', 'nivel', 'categoria')
+    list_display = ('titulo', 'slug', 'instructor', 'disciplina', 'licencia',
+                    'modalidad', 'carga_horaria_h', 'publicado', 'created_at')
+    list_filter = ('publicado', 'disciplina', 'licencia', 'modalidad', 'nivel', 'categoria')
     search_fields = ('titulo', 'slug', 'resumen', 'instructor__email')
     prepopulated_fields = {'slug': ('titulo',)}
     autocomplete_fields = ('instructor',)

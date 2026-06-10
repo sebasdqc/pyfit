@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Emblem } from '@/components/Emblem'
-import { CATEGORIAS, NIVELES } from '@/lib/constants'
+import { CATEGORIAS, DISCIPLINAS, LICENCIAS, NIVELES } from '@/lib/constants'
 import type { Course } from '@/types'
 
 export function CatalogPage() {
@@ -18,19 +18,26 @@ export function CatalogPage() {
   const [q, setQ] = useState('')
   const [categoria, setCategoria] = useState('')
   const [nivel, setNivel] = useState('')
+  const [disciplina, setDisciplina] = useState('')
+  const [licencia, setLicencia] = useState('')
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setError(false)
-    listCourses({ categoria: categoria || undefined, nivel: nivel || undefined })
+    listCourses({
+      categoria: categoria || undefined,
+      nivel: nivel || undefined,
+      disciplina: disciplina || undefined,
+      licencia: licencia || undefined,
+    })
       .then((data) => active && setCourses(data))
       .catch(() => active && setError(true))
       .finally(() => active && setLoading(false))
     return () => {
       active = false
     }
-  }, [categoria, nivel])
+  }, [categoria, nivel, disciplina, licencia])
 
   // La búsqueda por texto se filtra en cliente sobre lo ya cargado (rápida).
   const visible = useMemo(() => {
@@ -60,7 +67,7 @@ export function CatalogPage() {
       </section>
 
       {/* Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative flex-1">
           <Icon name="search" size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
           <input
@@ -70,6 +77,20 @@ export function CatalogPage() {
             className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink outline-none transition-colors focus:border-accent"
           />
         </div>
+        <Select value={disciplina} onChange={setDisciplina} placeholder="Disciplina">
+          {DISCIPLINAS.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.label}
+            </option>
+          ))}
+        </Select>
+        <Select value={licencia} onChange={setLicencia} placeholder="Licencia">
+          {LICENCIAS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </Select>
         <Select value={categoria} onChange={setCategoria} placeholder="Categoría">
           {CATEGORIAS.map((c) => (
             <option key={c} value={c}>

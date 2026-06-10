@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Icon, type IconName } from '@/components/Icon'
 import { Emblem } from '@/components/Emblem'
-import { NIVEL_LABEL } from '@/lib/constants'
+import { DISCIPLINA_LABEL, LICENCIA_LABEL, MODALIDAD_LABEL, NIVEL_LABEL } from '@/lib/constants'
 import type { CourseDetail, Enrollment, Lesson } from '@/types'
 
 const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
@@ -103,6 +103,16 @@ export function CourseDetailPage() {
         </div>
         <div className="relative z-10 max-w-2xl">
           <div className="flex flex-wrap items-center gap-2">
+            {course.licencia && (
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                {LICENCIA_LABEL[course.licencia] ?? `Licencia ${course.licencia}`}
+              </span>
+            )}
+            {course.disciplina && course.disciplina !== 'general' && (
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
+                {DISCIPLINA_LABEL[course.disciplina] ?? course.disciplina}
+              </span>
+            )}
             {course.categoria && (
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
                 {course.categoria}
@@ -122,12 +132,28 @@ export function CourseDetailPage() {
             <span className="inline-flex items-center gap-1.5">
               <Icon name="doc" size={15} /> {totalLecciones} lecciones
             </span>
-            {course.duracion_estimada_min > 0 && (
+            {course.modalidad && (
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="clock" size={15} /> {course.duracion_estimada_min} min
+                <Icon name="play" size={15} /> {MODALIDAD_LABEL[course.modalidad] ?? course.modalidad}
               </span>
             )}
+            {course.carga_horaria_h > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="clock" size={15} /> {course.carga_horaria_h} horas
+              </span>
+            ) : (
+              course.duracion_estimada_min > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon name="clock" size={15} /> {course.duracion_estimada_min} min
+                </span>
+              )
+            )}
           </div>
+          {course.acredita_renovacion && (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/80">
+              <Icon name="check" size={14} /> Acredita horas de actualización para renovar la licencia
+            </p>
+          )}
         </div>
       </section>
 

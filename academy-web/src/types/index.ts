@@ -3,6 +3,11 @@
 
 export type GlobalRole = 'athlete' | 'coach' | 'director_tecnico' | 'admin'
 export type Nivel = 'principiante' | 'intermedio' | 'avanzado'
+// Ejes de la formación CONMEBOL Evolución (ver lib/constants.ts).
+export type Disciplina =
+  | 'general' | 'futbol' | 'futsal' | 'futbol_playa' | 'arqueros' | 'preparacion_fisica'
+export type Licencia = '' | 'C' | 'B' | 'A' | 'PRO'
+export type Modalidad = 'presencial' | 'virtual' | 'semipresencial'
 export type LessonTipo = 'video' | 'texto' | 'quiz'
 export type QuestionTipo = 'opcion_unica' | 'opcion_multiple' | 'verdadero_falso'
 export type EnrollmentEstado = 'activa' | 'completada' | 'cancelada'
@@ -38,6 +43,12 @@ export interface Course {
   descripcion: string
   categoria: string
   nivel: Nivel
+  // Ejes de la formación CONMEBOL Evolución.
+  disciplina: Disciplina
+  licencia: Licencia
+  modalidad: Modalidad
+  carga_horaria_h: number // carga horaria oficial, en horas (0 si no aplica)
+  acredita_renovacion: boolean // acredita horas para renovar la licencia (≥20h/3 años)
   portada: string // data URL, URL http(s) o '' (placeholder en UI)
   duracion_estimada_min: number
   publicado: boolean

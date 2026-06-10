@@ -12,6 +12,8 @@ export interface CourseFilters {
   mine?: boolean
   categoria?: string
   nivel?: string
+  disciplina?: string
+  licencia?: string
   q?: string
 }
 
@@ -20,6 +22,8 @@ export async function listCourses(filters: CourseFilters = {}): Promise<Course[]
   if (filters.mine) params.mine = '1'
   if (filters.categoria) params.categoria = filters.categoria
   if (filters.nivel) params.nivel = filters.nivel
+  if (filters.disciplina) params.disciplina = filters.disciplina
+  if (filters.licencia) params.licencia = filters.licencia
   if (filters.q) params.q = filters.q
   const res = await api.get<Course[]>('/academy/courses/', { params })
   return res.data
@@ -37,6 +41,11 @@ export interface CreateCoursePayload {
   descripcion?: string
   categoria?: string
   nivel?: string
+  disciplina?: string
+  licencia?: string
+  modalidad?: string
+  carga_horaria_h?: number
+  acredita_renovacion?: boolean
   duracion_estimada_min?: number
   publicado?: boolean
 }

@@ -112,7 +112,9 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             'id', 'instructor', 'instructor_nombre', 'titulo', 'slug', 'resumen',
-            'descripcion', 'categoria', 'nivel', 'portada', 'duracion_estimada_min',
+            'descripcion', 'categoria', 'nivel',
+            'disciplina', 'licencia', 'modalidad', 'carga_horaria_h', 'acredita_renovacion',
+            'portada', 'duracion_estimada_min',
             'publicado', 'total_modulos', 'total_lecciones', 'total_inscritos',
             'created_at', 'updated_at',
         ]

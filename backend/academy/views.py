@@ -153,7 +153,8 @@ def courses_view(request):
     """GET lista el catálogo; POST crea un curso (instructor/admin).
 
     GET admite filtros: `?mine=1` (mis cursos, incluye no publicados si soy autor),
-    `?categoria=`, `?nivel=`, `?q=` (búsqueda en título/resumen).
+    `?categoria=`, `?nivel=`, `?disciplina=`, `?licencia=`, `?q=` (búsqueda en
+    título/resumen).
     """
     if request.method == 'POST':
         if not is_author(request.user):
@@ -173,11 +174,17 @@ def courses_view(request):
         qs = qs.filter(publicado=True)
     categoria = request.query_params.get('categoria')
     nivel = request.query_params.get('nivel')
+    disciplina = request.query_params.get('disciplina')
+    licencia = request.query_params.get('licencia')
     q = request.query_params.get('q')
     if categoria:
         qs = qs.filter(categoria=categoria)
     if nivel:
         qs = qs.filter(nivel=nivel)
+    if disciplina:
+        qs = qs.filter(disciplina=disciplina)
+    if licencia:
+        qs = qs.filter(licencia=licencia)
     if q:
         from django.db.models import Q
         qs = qs.filter(Q(titulo__icontains=q) | Q(resumen__icontains=q))
