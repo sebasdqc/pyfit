@@ -3,7 +3,7 @@
 // (módulos, lecciones, quizzes) se profundizará en próximas iteraciones.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { createCourse, listCourses } from '@/api/academy'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -107,7 +107,15 @@ export function InstructorPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
-            <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
+            <div key={c.id} className="flex flex-col gap-2">
+              <CourseCard course={c} to={`/cursos/${c.id}`} />
+              <Link
+                to={`/instructor/cursos/${c.id}/entregas`}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+              >
+                <Icon name="upload" size={15} /> Revisar entregas
+              </Link>
+            </div>
           ))}
         </div>
       )}

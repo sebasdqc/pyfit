@@ -33,6 +33,11 @@ urlpatterns = [
     path('enrollments/<int:enrollment_id>/quizzes/<int:quiz_id>/attempt/', views.quiz_attempt),
     path('enrollments/<int:enrollment_id>/certificate/', views.enrollment_certificate),
 
+    # Entregables del Programa Evolución 360° (hitos con revisión del instructor)
+    path('enrollments/<int:enrollment_id>/lessons/<int:lesson_id>/submission/', views.lesson_submission),
+    path('courses/<int:pk>/submissions/', views.course_submissions),
+    path('submissions/<int:submission_id>/review/', views.submission_review),
+
     # Verificación pública de certificados (por código)
     path('certificates/verify/<str:codigo>/', views.certificate_verify),
 ]

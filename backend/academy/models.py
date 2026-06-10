@@ -18,7 +18,14 @@ Jerarquía del aprendizaje (consumo):
     Enrollment                  ← matrícula de un estudiante en un curso
       ├── LessonProgress        ← lección marcada como completada
       ├── QuizAttempt           ← intento de quiz (CALIFICADO EN EL SERVIDOR)
+      ├── Submission            ← entrega de un "entregable" (revisa el instructor)
+      ├── EarnedBadge           ← insignia de competencia otorgada (servidor)
       └── Certificate           ← certificado emitido al completar (1:1)
+
+Programa Evolución 360° (propuesta de innovación académica, modalidad híbrida):
+los cursos pueden mezclar lecciones sincrónicas (en_vivo), asincrónicas (video /
+texto / quiz), presenciales (practica) y entregables con revisión del instructor;
+CourseBadge define el "Check-list de Competencias" (hitos → insignias).
 
 Principios (heredados del resto del backend y de Zyfit Performance):
   • El rol global (instructor / admin) vive en users.User; CUALQUIER cuenta
@@ -47,13 +54,38 @@ NIVEL_CHOICES = [
 ]
 
 # Tipo de lección. Una lección "quiz" lleva asociado un Quiz (OneToOne).
+#
+# Los tres últimos tipos vienen del "Programa Evolución 360°" (modalidad híbrida
+# de la propuesta de innovación académica, ver Propuesta_Evolucion_360.md):
+#   • en_vivo    — sesión virtual SINCRÓNICA (ponencia en vivo con fecha y enlace).
+#   • practica   — actividad PRESENCIAL inmersiva (aplicación en cancha).
+#   • entregable — tarea que el estudiante sube y el INSTRUCTOR revisa/aprueba
+#                  (la lección solo se completa cuando la entrega es aprobada).
 LESSON_VIDEO = 'video'
 LESSON_TEXTO = 'texto'
 LESSON_QUIZ = 'quiz'
+LESSON_EN_VIVO = 'en_vivo'
+LESSON_PRACTICA = 'practica'
+LESSON_ENTREGABLE = 'entregable'
 LESSON_TIPO_CHOICES = [
     (LESSON_VIDEO, 'Video'),
     (LESSON_TEXTO, 'Texto'),
     (LESSON_QUIZ, 'Quiz'),
+    (LESSON_EN_VIVO, 'Sesión en vivo'),
+    (LESSON_PRACTICA, 'Práctica presencial'),
+    (LESSON_ENTREGABLE, 'Entregable'),
+]
+
+# Qué sube el estudiante en una lección tipo "entregable" (hitos del check-list
+# de competencias del Programa 360°): un análisis escrito, un video corto (URL)
+# o una planificación de práctica.
+ENTREGABLE_TEXTO = 'texto'
+ENTREGABLE_VIDEO = 'video'
+ENTREGABLE_PLANIFICACION = 'planificacion'
+ENTREGABLE_TIPO_CHOICES = [
+    (ENTREGABLE_TEXTO, 'Análisis escrito'),
+    (ENTREGABLE_VIDEO, 'Video (URL)'),
+    (ENTREGABLE_PLANIFICACION, 'Planificación'),
 ]
 
 # Tipo de pregunta de un quiz.
@@ -221,6 +253,14 @@ class Lesson(models.Model):
     contenido = models.TextField(blank=True)
     video_url = models.URLField(blank=True)
     duracion_min = models.PositiveIntegerField(default=0)
+    # ── Programa Evolución 360° ──
+    # Lecciones "en_vivo": fecha/hora de la sesión sincrónica (el enlace de la
+    # reunión va en `video_url`, que ya existe).
+    fecha_en_vivo = models.DateTimeField(null=True, blank=True)
+    # Lecciones "entregable": qué debe subir el estudiante. Vacío en el resto.
+    entregable_tipo = models.CharField(
+        max_length=16, choices=ENTREGABLE_TIPO_CHOICES, blank=True, default='',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -262,6 +302,9 @@ class Question(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='preguntas')
     orden = models.PositiveIntegerField(default=0)
     enunciado = models.TextField()
+    # Video-Quiz Interactivo (Programa 360°): clip de juego que acompaña a la
+    # pregunta — el estudiante ve la situación y responde la lectura de juego.
+    video_url = models.URLField(blank=True)
     tipo = models.CharField(max_length=20, choices=QUESTION_TIPO_CHOICES, default=Q_OPCION_UNICA)
     opciones = models.JSONField(default=list, blank=True)
     respuestas_correctas = models.JSONField(default=list, blank=True)
@@ -360,6 +403,96 @@ class QuizAttempt(models.Model):
 
     def __str__(self):
         return f'{self.enrollment_id} · quiz {self.quiz_id} = {self.puntaje}%'
+
+
+class Submission(models.Model):
+    """Entrega de un estudiante para una lección tipo "entregable" (Programa 360°).
+
+    El estudiante sube su análisis/planificación (`texto`) o la URL de su video
+    (`video_url`) y queda `enviada`; el instructor la revisa y la marca como
+    `aprobada` (completa la lección y dispara insignias) o `rechazada` (con
+    `feedback`, el estudiante puede reenviar). Un par (matrícula, lección) tiene
+    una única entrega viva: reenviar la actualiza y vuelve a `enviada`.
+    """
+
+    ESTADO_ENVIADA = 'enviada'
+    ESTADO_APROBADA = 'aprobada'
+    ESTADO_RECHAZADA = 'rechazada'
+    ESTADO_CHOICES = [
+        (ESTADO_ENVIADA, 'Enviada (en revisión)'),
+        (ESTADO_APROBADA, 'Aprobada'),
+        (ESTADO_RECHAZADA, 'Rechazada'),
+    ]
+
+    enrollment = models.ForeignKey(
+        Enrollment, on_delete=models.CASCADE, related_name='entregas',
+    )
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='entregas')
+    texto = models.TextField(blank=True)
+    video_url = models.URLField(blank=True)
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default=ESTADO_ENVIADA)
+    feedback = models.TextField(blank=True, help_text='Comentario del instructor al revisar.')
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    revisado_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'academy_submissions'
+        unique_together = [['enrollment', 'lesson']]
+        ordering = ['-updated_at']
+        indexes = [models.Index(fields=['lesson', 'estado'])]
+
+    def __str__(self):
+        return f'{self.enrollment_id} · lesson {self.lesson_id} ({self.estado})'
+
+
+class CourseBadge(models.Model):
+    """Insignia del "Check-list de Competencias" de un curso (Programa 360°).
+
+    Cada insignia es un hito ligado a una lección: cuando esa lección queda
+    completada (p. ej. la entrega fue aprobada), el servidor la otorga
+    (EarnedBadge). El hito final del check-list es el Certificado, que ya emite
+    `grading.recompute_progress` al completar el curso.
+    """
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='insignias')
+    orden = models.PositiveIntegerField(default=0)
+    nombre = models.CharField(max_length=80)
+    icono = models.CharField(max_length=8, blank=True, help_text='Emoji de la insignia.')
+    descripcion = models.CharField(max_length=200, blank=True)
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name='insignias',
+        help_text='Lección cuyo completado otorga la insignia.',
+    )
+
+    class Meta:
+        db_table = 'academy_course_badges'
+        ordering = ['course', 'orden']
+
+    def __str__(self):
+        return f'{self.icono} {self.nombre}'.strip()
+
+
+class EarnedBadge(models.Model):
+    """Insignia otorgada a una matrícula (la otorga SIEMPRE el servidor)."""
+
+    enrollment = models.ForeignKey(
+        Enrollment, on_delete=models.CASCADE, related_name='insignias_obtenidas',
+    )
+    badge = models.ForeignKey(CourseBadge, on_delete=models.CASCADE, related_name='+')
+    otorgada_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_earned_badges'
+        unique_together = [['enrollment', 'badge']]
+        ordering = ['otorgada_at']
+
+    def __str__(self):
+        return f'{self.enrollment_id} · {self.badge_id}'
 
 
 class Certificate(models.Model):

@@ -1,14 +1,20 @@
 // Temario lateral del reproductor: módulos → lecciones, con ícono por tipo,
 // duración, marca de completada y resaltado de la lección actual. Click navega.
+// Si el curso define insignias (Programa 360°), muestra el Check-list de
+// Competencias bajo el encabezado.
 
 import { Icon, type IconName } from '@/components/Icon'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { CompetencyChecklist } from '@/components/player/CompetencyChecklist'
 import type { CourseDetail, LessonTipo } from '@/types'
 
 const LESSON_ICON: Record<LessonTipo, IconName> = {
   video: 'play',
   texto: 'doc',
   quiz: 'quiz',
+  en_vivo: 'live',
+  practica: 'pitch',
+  entregable: 'upload',
 }
 
 export function CourseOutline({
@@ -16,12 +22,16 @@ export function CourseOutline({
   completed,
   currentLessonId,
   progreso,
+  earnedBadges,
+  certEmitido,
   onSelect,
 }: {
   course: CourseDetail
   completed: Set<number>
   currentLessonId: number | null
   progreso: number
+  earnedBadges: Set<number>
+  certEmitido: boolean
   onSelect: (lessonId: number) => void
 }) {
   const totalLecciones = course.modulos.reduce((n, m) => n + m.lecciones.length, 0)
@@ -39,6 +49,13 @@ export function CourseOutline({
           {hechas} de {totalLecciones} lecciones completadas
         </p>
       </div>
+
+      <CompetencyChecklist
+        insignias={course.insignias}
+        earned={earnedBadges}
+        certEmitido={certEmitido}
+        onGoToLesson={onSelect}
+      />
 
       <nav className="flex-1 overflow-y-auto p-3">
         {course.modulos.map((m, mi) => (

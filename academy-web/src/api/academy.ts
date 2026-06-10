@@ -4,6 +4,7 @@
 import { api } from './client'
 import type {
   Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, QuizAttempt,
+  Submission, SubmissionEstado,
 } from '@/types'
 
 // ── Catálogo / cursos ─────────────────────────────────────────────────────────
@@ -98,6 +99,48 @@ export async function submitQuizAttempt(
     `/academy/enrollments/${enrollmentId}/quizzes/${quizId}/attempt/`,
     { respuestas },
   )
+  return res.data
+}
+
+// ── Entregables del Programa Evolución 360° ──────────────────────────────────
+
+// Envía (o reenvía, si fue rechazada / sigue en revisión) mi entrega de una
+// lección entregable. El estado y la revisión los gestiona el servidor.
+export async function submitDeliverable(
+  enrollmentId: number,
+  lessonId: number,
+  payload: { texto?: string; video_url?: string },
+): Promise<Submission> {
+  const res = await api.post<Submission>(
+    `/academy/enrollments/${enrollmentId}/lessons/${lessonId}/submission/`,
+    payload,
+  )
+  return res.data
+}
+
+// Bandeja de entregas de un curso (solo autor/admin).
+export async function listCourseSubmissions(
+  courseId: number,
+  estado?: SubmissionEstado,
+): Promise<Submission[]> {
+  const res = await api.get<Submission[]>(`/academy/courses/${courseId}/submissions/`, {
+    params: estado ? { estado } : {},
+  })
+  return res.data
+}
+
+// Revisión del instructor. Al aprobar, el servidor completa la lección,
+// recalcula progreso e insignias y devuelve la entrega actualizada.
+export interface ReviewResult extends Submission {
+  progreso: number
+  estado_matricula: string
+}
+
+export async function reviewSubmission(
+  submissionId: number,
+  payload: { estado: 'aprobada' | 'rechazada'; feedback?: string },
+): Promise<ReviewResult> {
+  const res = await api.post<ReviewResult>(`/academy/submissions/${submissionId}/review/`, payload)
   return res.data
 }
 

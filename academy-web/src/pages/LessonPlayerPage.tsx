@@ -14,11 +14,26 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { CourseOutline } from '@/components/player/CourseOutline'
 import { QuizLesson } from '@/components/player/QuizLesson'
+import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { toEmbedUrl } from '@/lib/videoEmbed'
-import type { EnrollmentDetail, Lesson, LessonTipo } from '@/types'
+import type { EnrollmentDetail, Lesson, LessonTipo, Submission } from '@/types'
 
-const TYPE_LABEL: Record<LessonTipo, string> = { video: 'Video', texto: 'Lectura', quiz: 'Evaluación' }
-const TYPE_ICON: Record<LessonTipo, IconName> = { video: 'play', texto: 'doc', quiz: 'quiz' }
+const TYPE_LABEL: Record<LessonTipo, string> = {
+  video: 'Video',
+  texto: 'Lectura',
+  quiz: 'Evaluación',
+  en_vivo: 'Sesión en vivo',
+  practica: 'Práctica presencial',
+  entregable: 'Entregable',
+}
+const TYPE_ICON: Record<LessonTipo, IconName> = {
+  video: 'play',
+  texto: 'doc',
+  quiz: 'quiz',
+  en_vivo: 'live',
+  practica: 'pitch',
+  entregable: 'upload',
+}
 
 export function LessonPlayerPage() {
   const { enrollmentId } = useParams()
@@ -32,6 +47,8 @@ export function LessonPlayerPage() {
   const [progreso, setProgreso] = useState(0)
   const [estado, setEstado] = useState('activa')
   const [certCode, setCertCode] = useState<string | null>(null)
+  const [entregas, setEntregas] = useState<Submission[]>([])
+  const [earnedBadges, setEarnedBadges] = useState<Set<number>>(new Set())
   const [currentId, setCurrentId] = useState<number | null>(null)
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [marking, setMarking] = useState(false)
@@ -60,6 +77,8 @@ export function LessonPlayerPage() {
         setProgreso(e.progreso)
         setEstado(e.estado)
         setCertCode(e.certificado)
+        setEntregas(e.entregas)
+        setEarnedBadges(new Set(e.insignias_obtenidas.map((b) => b.badge)))
         // Lección inicial: la primera no completada, o la primera del curso.
         const flat = e.curso.modulos.flatMap((m) => m.lecciones)
         const firstPending = flat.find((l) => !done.has(l.id))
@@ -141,6 +160,12 @@ export function LessonPlayerPage() {
     applyProgress(r.progreso, r.estado, r.aprobado && current ? current.lesson.id : undefined)
   }
 
+  function onSubmitted(s: Submission) {
+    // Reemplaza (o agrega) mi entrega de esa lección; queda "enviada" hasta que
+    // el instructor la revise (la aprobación llega del servidor al recargar).
+    setEntregas((prev) => [s, ...prev.filter((x) => x.lesson !== s.lesson)])
+  }
+
   function goTo(lessonId: number) {
     setCurrentId(lessonId)
     setOutlineOpen(false)
@@ -179,7 +204,15 @@ export function LessonPlayerPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Temario (fijo en desktop, drawer en móvil) */}
         <aside className="hidden w-80 shrink-0 border-r border-surface-border bg-white lg:block">
-          <CourseOutline course={enr.curso} completed={completed} currentLessonId={current?.lesson.id ?? null} progreso={progreso} onSelect={goTo} />
+          <CourseOutline
+            course={enr.curso}
+            completed={completed}
+            currentLessonId={current?.lesson.id ?? null}
+            progreso={progreso}
+            earnedBadges={earnedBadges}
+            certEmitido={!!certCode || estado === 'completada'}
+            onSelect={goTo}
+          />
         </aside>
         {outlineOpen && (
           <>
@@ -193,7 +226,15 @@ export function LessonPlayerPage() {
               tabIndex={-1}
               className="fixed left-0 top-0 z-50 h-full w-80 max-w-[85%] bg-white shadow-cardHover lg:hidden"
             >
-              <CourseOutline course={enr.curso} completed={completed} currentLessonId={current?.lesson.id ?? null} progreso={progreso} onSelect={goTo} />
+              <CourseOutline
+                course={enr.curso}
+                completed={completed}
+                currentLessonId={current?.lesson.id ?? null}
+                progreso={progreso}
+                earnedBadges={earnedBadges}
+                certEmitido={!!certCode || estado === 'completada'}
+                onSelect={goTo}
+              />
             </aside>
           </>
         )}
@@ -229,7 +270,14 @@ export function LessonPlayerPage() {
                 </div>
 
                 <div className="mt-6">
-                  <LessonBody lesson={current.lesson} enrollmentId={id} intentos={enr.intentos} onQuizGraded={onQuizGraded} />
+                  <LessonBody
+                    lesson={current.lesson}
+                    enrollmentId={id}
+                    intentos={enr.intentos}
+                    entregas={entregas}
+                    onQuizGraded={onQuizGraded}
+                    onSubmitted={onSubmitted}
+                  />
                 </div>
 
                 {markError && (
@@ -249,8 +297,9 @@ export function LessonPlayerPage() {
                   </button>
 
                   <div className="flex items-center gap-3">
-                    {/* Video / texto: marcar como completada. Quiz: se completa al aprobar. */}
-                    {current.lesson.tipo !== 'quiz' && !isDone && (
+                    {/* Video/texto/en vivo/práctica: marcar como completada. El quiz se
+                        completa al aprobar y el entregable cuando el instructor aprueba. */}
+                    {current.lesson.tipo !== 'quiz' && current.lesson.tipo !== 'entregable' && !isDone && (
                       <button
                         onClick={markComplete}
                         disabled={marking}
@@ -283,13 +332,43 @@ function LessonBody({
   lesson,
   enrollmentId,
   intentos,
+  entregas,
   onQuizGraded,
+  onSubmitted,
 }: {
   lesson: Lesson
   enrollmentId: number
   intentos: EnrollmentDetail['intentos']
+  entregas: Submission[]
   onQuizGraded: (r: AttemptResult) => void
+  onSubmitted: (s: Submission) => void
 }) {
+  if (lesson.tipo === 'en_vivo') {
+    return <LiveSessionBody lesson={lesson} />
+  }
+
+  if (lesson.tipo === 'practica') {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm text-brand">
+          <Icon name="pitch" size={20} className="shrink-0" />
+          <p>
+            Actividad presencial en cancha: aplica lo aprendido y márcala como completada al
+            finalizar tu asistencia.
+          </p>
+        </div>
+        {lesson.contenido && <TextBody text={lesson.contenido} />}
+      </div>
+    )
+  }
+
+  if (lesson.tipo === 'entregable') {
+    const mia = entregas.find((s) => s.lesson === lesson.id) ?? null
+    return (
+      <DeliverableLesson enrollmentId={enrollmentId} lesson={lesson} submission={mia} onSubmitted={onSubmitted} />
+    )
+  }
+
   if (lesson.tipo === 'video') {
     const embed = toEmbedUrl(lesson.video_url)
     return (
@@ -344,6 +423,48 @@ function LessonBody({
   ) : (
     <div className="rounded-xl border border-dashed border-surface-border p-8 text-center text-sm text-ink-muted">
       Esta lección aún no tiene contenido.
+    </div>
+  )
+}
+
+// Sesión virtual sincrónica (Programa 360°): fecha/hora y enlace de la reunión
+// (los publica el instructor); el contenido describe la agenda.
+function LiveSessionBody({ lesson }: { lesson: Lesson }) {
+  const fecha = lesson.fecha_en_vivo ? new Date(lesson.fecha_en_vivo) : null
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-xl border border-accent/25 bg-accent/5 p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent">
+            <Icon name="live" size={22} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">Sesión sincrónica en vivo</p>
+            <p className="text-sm text-ink-soft">
+              {fecha
+                ? fecha.toLocaleString('es', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'Fecha y hora por confirmar por tu instructor.'}
+            </p>
+          </div>
+          {lesson.video_url && (
+            <a
+              href={lesson.video_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
+            >
+              <Icon name="play" size={15} /> Unirse a la sesión
+            </a>
+          )}
+        </div>
+      </div>
+      {lesson.contenido && <TextBody text={lesson.contenido} />}
     </div>
   )
 }

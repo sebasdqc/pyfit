@@ -8,9 +8,13 @@ export type Disciplina =
   | 'general' | 'futbol' | 'futsal' | 'futbol_playa' | 'arqueros' | 'preparacion_fisica'
 export type Licencia = '' | 'C' | 'B' | 'A' | 'PRO'
 export type Modalidad = 'presencial' | 'virtual' | 'semipresencial'
-export type LessonTipo = 'video' | 'texto' | 'quiz'
+// Los tres últimos tipos son del Programa Evolución 360° (modalidad híbrida):
+// sesión sincrónica en vivo, práctica presencial y entregable con revisión.
+export type LessonTipo = 'video' | 'texto' | 'quiz' | 'en_vivo' | 'practica' | 'entregable'
+export type EntregableTipo = '' | 'texto' | 'video' | 'planificacion'
 export type QuestionTipo = 'opcion_unica' | 'opcion_multiple' | 'verdadero_falso'
 export type EnrollmentEstado = 'activa' | 'completada' | 'cancelada'
+export type SubmissionEstado = 'enviada' | 'aprobada' | 'rechazada'
 
 // Payload de /api/academy/me/ y del login.
 export interface AuthUser {
@@ -64,6 +68,7 @@ export interface QuizQuestion {
   quiz: number
   orden: number
   enunciado: string
+  video_url: string // Video-Quiz Interactivo: clip de juego de la pregunta ('' si no hay)
   tipo: QuestionTipo
   opciones: { id: string; texto: string }[]
   puntos: number
@@ -87,8 +92,10 @@ export interface Lesson {
   titulo: string
   tipo: LessonTipo
   contenido: string
-  video_url: string
+  video_url: string // video de la lección o enlace de la reunión (en_vivo)
   duracion_min: number
+  fecha_en_vivo: string | null // fecha/hora de la sesión sincrónica (en_vivo)
+  entregable_tipo: EntregableTipo // qué sube el estudiante (solo tipo entregable)
   quiz: Quiz | null
   created_at: string
 }
@@ -103,8 +110,21 @@ export interface Module {
   created_at: string
 }
 
+// Insignia del Check-list de Competencias (Programa 360°): hito ligado a la
+// lección que la otorga al completarse (las otorga SIEMPRE el servidor).
+export interface CourseBadge {
+  id: number
+  course: number
+  orden: number
+  nombre: string
+  icono: string // emoji
+  descripcion: string
+  lesson: number
+}
+
 export interface CourseDetail extends Course {
   modulos: Module[]
+  insignias: CourseBadge[]
 }
 
 // ── Aprendizaje ───────────────────────────────────────────────────────────────
@@ -134,10 +154,37 @@ export interface Enrollment {
   completado_at: string | null
 }
 
+// Entrega de un "entregable" (Programa 360°). El estudiante envía texto o la URL
+// de su video; estado/feedback/revisión los escribe el servidor.
+export interface Submission {
+  id: number
+  enrollment: number
+  lesson: number
+  leccion_titulo: string
+  entregable_tipo: EntregableTipo
+  estudiante_nombre: string
+  texto: string
+  video_url: string
+  estado: SubmissionEstado
+  feedback: string
+  revisado_por: number | null
+  revisado_por_nombre: string
+  revisado_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EarnedBadgeEntry {
+  badge: number // id de la CourseBadge
+  otorgada_at: string
+}
+
 export interface EnrollmentDetail extends Enrollment {
   curso: CourseDetail
   lecciones_completadas: number[]
   intentos: QuizAttempt[]
+  entregas: Submission[]
+  insignias_obtenidas: EarnedBadgeEntry[]
 }
 
 export interface Certificate {

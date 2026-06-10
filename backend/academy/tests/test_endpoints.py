@@ -5,11 +5,14 @@ lo que importa aquí es el permiso de acceso/autoría y la lógica de las vistas
 del scoring del servidor)."""
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from academy import grading
 from academy.models import (
     Course, Module, Lesson, Quiz, Question, Enrollment, Certificate,
+    Submission, CourseBadge, EarnedBadge, LessonProgress,
 )
 
 User = get_user_model()
@@ -231,3 +234,193 @@ class LearningFlowTests(_Base):
         res = self.client.get(f'/api/academy/courses/{course.id}/enrollments/')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
+
+
+# ─── Programa Evolución 360°: entregables, revisión e insignias ────────────────
+
+class Evolucion360Tests(_Base):
+    """Flujo del Programa 360°: el entregable lo aprueba el instructor (no es
+    autocompletable), la aprobación completa la lección y otorga la insignia, y
+    el certificado solo llega con todo el check-list cerrado."""
+
+    def _course_360(self):
+        """Curso mínimo 360°: texto + entregable de texto (con insignia) +
+        entregable de video (con insignia)."""
+        course = self._course(slug='programa-360')
+        m = Module.objects.create(course=course, orden=1, titulo='Fase única')
+        texto = Lesson.objects.create(module=m, orden=1, titulo='Lectura', tipo='texto')
+        analisis = Lesson.objects.create(
+            module=m, orden=2, titulo='Análisis de caso', tipo='entregable',
+            entregable_tipo='texto',
+        )
+        video = Lesson.objects.create(
+            module=m, orden=3, titulo='Diario de Estrategia', tipo='entregable',
+            entregable_tipo='video',
+        )
+        b1 = CourseBadge.objects.create(
+            course=course, orden=1, nombre='Insignia de Aplicador', icono='🎯', lesson=analisis,
+        )
+        b2 = CourseBadge.objects.create(
+            course=course, orden=2, nombre='Insignia de Analista', icono='🎥', lesson=video,
+        )
+        return course, texto, analisis, video, b1, b2
+
+    def test_entregable_no_autocompletable(self):
+        course, _texto, analisis, *_ = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+        self.client.force_authenticate(self.student)
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/complete/')
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(LessonProgress.objects.filter(enrollment=enr, lesson=analisis).exists())
+
+    def test_entrega_validacion_por_tipo(self):
+        course, _texto, analisis, video, *_ = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+        self.client.force_authenticate(self.student)
+        # Entregable de texto sin texto → 400.
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/',
+            {'texto': '  '}, format='json')
+        self.assertEqual(res.status_code, 400)
+        # Entregable de video sin URL http(s) → 400.
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{video.id}/submission/',
+            {'video_url': 'mi-video'}, format='json')
+        self.assertEqual(res.status_code, 400)
+        # Una lección que no es entregable no acepta entregas.
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{_texto.id}/submission/',
+            {'texto': 'hola'}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_flujo_aprobacion_otorga_insignia(self):
+        course, _texto, analisis, _video, b1, _b2 = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+
+        # El estudiante envía su análisis.
+        self.client.force_authenticate(self.student)
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/',
+            {'texto': 'Contexto, problema, alternativas y decisión.'}, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()['estado'], 'enviada')
+        sub_id = res.json()['id']
+
+        # El instructor la ve en la bandeja del curso y la aprueba.
+        self.client.force_authenticate(self.instructor)
+        res = self.client.get(f'/api/academy/courses/{course.id}/submissions/?estado=enviada')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+        res = self.client.post(f'/api/academy/submissions/{sub_id}/review/',
+                               {'estado': 'aprobada', 'feedback': 'Buen análisis.'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['estado'], 'aprobada')
+
+        # La lección quedó completada y la insignia otorgada (lado servidor).
+        self.assertTrue(LessonProgress.objects.filter(enrollment=enr, lesson=analisis).exists())
+        self.assertTrue(EarnedBadge.objects.filter(enrollment=enr, badge=b1).exists())
+
+        # El detalle de la matrícula expone entregas e insignias al estudiante.
+        self.client.force_authenticate(self.student)
+        res = self.client.get(f'/api/academy/enrollments/{enr.id}/')
+        data = res.json()
+        self.assertEqual(len(data['entregas']), 1)
+        self.assertEqual(data['entregas'][0]['estado'], 'aprobada')
+        self.assertEqual([i['badge'] for i in data['insignias_obtenidas']], [b1.id])
+        self.assertEqual(len(data['curso']['insignias']), 2)
+
+        # Una entrega aprobada queda cerrada (no se reenvía).
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/',
+            {'texto': 'otro'}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_rechazo_con_feedback_y_reenvio(self):
+        course, _texto, analisis, *_ = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+        self.client.force_authenticate(self.student)
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/',
+            {'texto': 'v1'}, format='json')
+        sub_id = res.json()['id']
+
+        self.client.force_authenticate(self.instructor)
+        self.client.post(f'/api/academy/submissions/{sub_id}/review/',
+                         {'estado': 'rechazada', 'feedback': 'Falta la causa táctica.'},
+                         format='json')
+        self.assertFalse(LessonProgress.objects.filter(enrollment=enr, lesson=analisis).exists())
+
+        # El estudiante ve el feedback y reenvía: vuelve a 'enviada'.
+        self.client.force_authenticate(self.student)
+        res = self.client.get(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/')
+        self.assertEqual(res.json()['estado'], 'rechazada')
+        self.assertEqual(res.json()['feedback'], 'Falta la causa táctica.')
+        res = self.client.post(
+            f'/api/academy/enrollments/{enr.id}/lessons/{analisis.id}/submission/',
+            {'texto': 'v2 con causa táctica'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['estado'], 'enviada')
+        self.assertEqual(Submission.objects.filter(enrollment=enr).count(), 1)
+
+    def test_estudiante_no_revisa_entregas(self):
+        course, _texto, analisis, *_ = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+        sub = Submission.objects.create(enrollment=enr, lesson=analisis, texto='x')
+        self.client.force_authenticate(self.student)
+        res = self.client.post(f'/api/academy/submissions/{sub.id}/review/',
+                               {'estado': 'aprobada'}, format='json')
+        self.assertEqual(res.status_code, 403)
+        res = self.client.get(f'/api/academy/courses/{course.id}/submissions/')
+        self.assertEqual(res.status_code, 403)
+
+    def test_checklist_completo_emite_certificado(self):
+        course, texto, analisis, video, b1, b2 = self._course_360()
+        enr = Enrollment.objects.create(student=self.student, course=course)
+        self.client.force_authenticate(self.student)
+        self.client.post(f'/api/academy/enrollments/{enr.id}/lessons/{texto.id}/complete/')
+        for lesson, payload in ((analisis, {'texto': 'análisis'}),
+                                (video, {'video_url': 'https://youtu.be/x'})):
+            res = self.client.post(
+                f'/api/academy/enrollments/{enr.id}/lessons/{lesson.id}/submission/',
+                payload, format='json')
+            sub_id = res.json()['id']
+            self.client.force_authenticate(self.instructor)
+            self.client.post(f'/api/academy/submissions/{sub_id}/review/',
+                             {'estado': 'aprobada'}, format='json')
+            self.client.force_authenticate(self.student)
+
+        enr.refresh_from_db()
+        self.assertEqual(enr.progreso, 100)
+        self.assertEqual(enr.estado, 'completada')
+        self.assertTrue(Certificate.objects.filter(enrollment=enr).exists())
+        self.assertEqual(EarnedBadge.objects.filter(enrollment=enr).count(), 2)
+
+
+class Seed360Tests(TestCase):
+    """El seed del Programa 360° crea el curso publicado con sus 5 fases, 3
+    insignias y quizzes consistentes (cada clave califica 100%)."""
+
+    def test_seed_es_consistente_e_idempotente(self):
+        call_command('seed_evolucion_360')
+        course = Course.objects.get(slug='programa-evolucion-360-del-clic-a-la-cancha')
+        self.assertTrue(course.publicado)
+        self.assertEqual(course.modulos.count(), 5)
+        self.assertEqual(course.insignias.count(), 3)
+        # Cada insignia apunta a una lección entregable del propio curso.
+        for badge in course.insignias.all():
+            self.assertEqual(badge.lesson.tipo, 'entregable')
+            self.assertEqual(badge.lesson.module.course_id, course.id)
+        # Hay lecciones de los tres tipos nuevos del 360°.
+        tipos = set(Lesson.objects.filter(module__course=course).values_list('tipo', flat=True))
+        self.assertTrue({'en_vivo', 'practica', 'entregable'} <= tipos)
+        # Cada quiz da 100% respondido con su propia clave.
+        for quiz in Quiz.objects.filter(lesson__module__course=course):
+            clave = {str(p.id): p.respuestas_correctas for p in quiz.preguntas.all()}
+            resultado = grading.grade_attempt(quiz, clave)
+            self.assertEqual(resultado['puntaje'], 100, quiz.titulo)
+        # Idempotente: correrlo de nuevo no duplica.
+        call_command('seed_evolucion_360')
+        self.assertEqual(
+            Course.objects.filter(slug='programa-evolucion-360-del-clic-a-la-cancha').count(), 1)

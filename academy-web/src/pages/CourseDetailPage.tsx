@@ -19,11 +19,17 @@ const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
   video: 'play',
   texto: 'doc',
   quiz: 'quiz',
+  en_vivo: 'live',
+  practica: 'pitch',
+  entregable: 'upload',
 }
 const LESSON_LABEL: Record<Lesson['tipo'], string> = {
   video: 'Video',
   texto: 'Lectura',
   quiz: 'Evaluación',
+  en_vivo: 'Sesión en vivo',
+  practica: 'Práctica presencial',
+  entregable: 'Entregable',
 }
 
 export function CourseDetailPage() {
@@ -170,6 +176,47 @@ export function CourseDetailPage() {
               <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
                 {course.descripcion}
               </p>
+            </section>
+          )}
+
+          {/* Check-list de Competencias (Programa 360°): hitos con insignia + certificado */}
+          {course.insignias.length > 0 && (
+            <section className="za-card p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
+                Check-list de competencias
+              </h2>
+              <p className="mt-2 text-sm text-ink-soft">
+                Este programa se evalúa por hitos: cada entrega aprobada por tu instructor
+                desbloquea una insignia, y la evaluación final emite tu Certificado Digital.
+              </p>
+              <ol className="mt-4 flex flex-col gap-3">
+                {[...course.insignias]
+                  .sort((a, b) => a.orden - b.orden)
+                  .map((b, i) => (
+                    <li key={b.id} className="flex items-start gap-3">
+                      <span aria-hidden className="text-xl leading-none">{b.icono || '🏅'}</span>
+                      <span>
+                        <span className="block text-sm font-semibold text-ink">
+                          Hito {i + 1} · {b.nombre}
+                        </span>
+                        {b.descripcion && (
+                          <span className="block text-sm text-ink-soft">{b.descripcion}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                <li className="flex items-start gap-3">
+                  <span aria-hidden className="text-xl leading-none">🎓</span>
+                  <span>
+                    <span className="block text-sm font-semibold text-ink">
+                      Hito final · Certificado Digital
+                    </span>
+                    <span className="block text-sm text-ink-soft">
+                      Completa todas las lecciones y aprueba las evaluaciones para emitirlo.
+                    </span>
+                  </span>
+                </li>
+              </ol>
             </section>
           )}
 

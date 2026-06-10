@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { submitQuizAttempt, type AttemptResult } from '@/api/academy'
 import { Icon } from '@/components/Icon'
+import { toEmbedUrl } from '@/lib/videoEmbed'
 import type { Quiz } from '@/types'
 
 export function QuizLesson({
@@ -110,6 +111,8 @@ export function QuizLesson({
             <p className="mb-2 mt-1 pl-5 text-xs text-ink-muted">
               {multiple ? 'Selecciona todas las correctas' : 'Selecciona una'} · {q.puntos} pt{q.puntos !== 1 ? 's' : ''}
             </p>
+            {/* Video-Quiz Interactivo (Programa 360°): clip de juego de la pregunta */}
+            {q.video_url && <QuestionClip url={q.video_url} titulo={`Clip de la pregunta ${i + 1}`} />}
             <div className="flex flex-col gap-2 pl-5">
               {q.opciones.map((opt) => {
                 const checked = sel.includes(opt.id)
@@ -192,5 +195,32 @@ export function QuizLesson({
         </>
       )}
     </div>
+  )
+}
+
+function QuestionClip({ url, titulo }: { url: string; titulo: string }) {
+  const embed = toEmbedUrl(url)
+  if (embed) {
+    return (
+      <div className="mb-3 ml-5 aspect-video max-w-md overflow-hidden rounded-lg border border-surface-border bg-black">
+        <iframe
+          src={embed}
+          title={titulo}
+          className="h-full w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    )
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="mb-3 ml-5 inline-flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-dark"
+    >
+      <Icon name="play" size={15} /> Ver el clip de la situación de juego
+    </a>
   )
 }

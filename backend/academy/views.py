@@ -26,6 +26,11 @@ Montados bajo /api/academy/ en pyfit/urls.py. Resumen de la API:
     GET  /enrollments/<eid>/certificate/            certificado (si emitido)
     GET  /certificates/verify/<codigo>/             verificar un certificado
 
+    # ENTREGABLES del Programa Evolución 360° (hitos con revisión del instructor)
+    GET/POST /enrollments/<eid>/lessons/<lid>/submission/  mi entrega (ver / enviar)
+    GET  /courses/<id>/submissions/                 entregas del curso (instructor)
+    POST /submissions/<sid>/review/                 aprobar/rechazar una entrega
+
 El scope (¿este recurso es visible/editable para este usuario?) se resuelve en
 las vistas con helpers, igual que en Zyfit Performance. El "scoring" (calificar
 quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
@@ -34,6 +39,7 @@ quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import PermissionDenied
@@ -45,13 +51,13 @@ from pyfit.throttles import LoginRateThrottle
 from . import grading
 from .models import (
     Course, Module, Lesson, Quiz, Question,
-    Enrollment, LessonProgress, QuizAttempt, Certificate,
+    Enrollment, LessonProgress, QuizAttempt, Certificate, Submission,
 )
 from .permissions import IsAcademyUser, can_edit_course, is_author
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
     QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
-    QuizAttemptSerializer, CertificateSerializer,
+    QuizAttemptSerializer, CertificateSerializer, SubmissionSerializer,
 )
 
 User = get_user_model()
@@ -422,9 +428,16 @@ def enrollment_detail(request, enrollment_id):
 @permission_classes([IsAcademyUser])
 def lesson_complete(request, enrollment_id, lesson_id):
     """Marca una lección como completada dentro de la matrícula y recalcula el
-    progreso (el estudiante solo opera sobre su propia matrícula)."""
+    progreso (el estudiante solo opera sobre su propia matrícula). Una lección
+    "entregable" NO se puede autocompletar: la completa el instructor al aprobar
+    la entrega (submission_review)."""
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
     lesson = get_object_or_404(Lesson, pk=lesson_id, module__course=enrollment.course)
+    if lesson.tipo == 'entregable':
+        return Response(
+            {'detail': 'Esta lección se completa cuando el instructor aprueba tu entrega.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     LessonProgress.objects.get_or_create(
         enrollment=enrollment, lesson=lesson, defaults={'completado': True},
     )
@@ -459,6 +472,120 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     data['progreso'] = pct
     data['estado'] = enrollment.estado
     return Response(data, status=status.HTTP_201_CREATED)
+
+
+# ─── Entregables del Programa Evolución 360° ──────────────────────────────────
+
+def _validar_entrega(lesson, texto, video_url):
+    """Valida el contenido de una entrega según el tipo de entregable de la
+    lección. Devuelve un mensaje de error o None si es válida."""
+    if lesson.tipo != 'entregable':
+        return 'Esta lección no es un entregable.'
+    if lesson.entregable_tipo == 'video':
+        if not (video_url.startswith('http://') or video_url.startswith('https://')):
+            return 'Este entregable requiere la URL de tu video (http/https).'
+    elif not texto.strip():
+        return 'Este entregable requiere un texto (tu análisis o planificación).'
+    return None
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAcademyUser])
+def lesson_submission(request, enrollment_id, lesson_id):
+    """Mi entrega para una lección entregable.
+
+    GET devuelve la entrega (404 si aún no envié nada). POST la crea o, si fue
+    rechazada o sigue en revisión, la reemplaza y vuelve a 'enviada'. Una entrega
+    aprobada queda cerrada. Body: `{texto, video_url}` según el tipo.
+    """
+    enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
+    lesson = get_object_or_404(Lesson, pk=lesson_id, module__course=enrollment.course)
+    submission = Submission.objects.filter(enrollment=enrollment, lesson=lesson).first()
+
+    if request.method == 'GET':
+        if not submission:
+            return Response({'detail': 'Aún no has enviado esta entrega.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response(SubmissionSerializer(submission).data)
+
+    texto = (request.data.get('texto') or '').strip()
+    video_url = (request.data.get('video_url') or '').strip()
+    error = _validar_entrega(lesson, texto, video_url)
+    if error:
+        return Response({'detail': error}, status=status.HTTP_400_BAD_REQUEST)
+    if submission and submission.estado == Submission.ESTADO_APROBADA:
+        return Response({'detail': 'Esta entrega ya fue aprobada.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    if submission:
+        submission.texto = texto
+        submission.video_url = video_url
+        submission.estado = Submission.ESTADO_ENVIADA
+        submission.save(update_fields=['texto', 'video_url', 'estado', 'updated_at'])
+        created = False
+    else:
+        submission = Submission.objects.create(
+            enrollment=enrollment, lesson=lesson, texto=texto, video_url=video_url,
+        )
+        created = True
+    return Response(SubmissionSerializer(submission).data,
+                    status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def course_submissions(request, pk):
+    """Entregas de un curso para revisión (solo autor/admin). Filtro `?estado=`
+    (enviada/aprobada/rechazada); por defecto las pendientes primero."""
+    course = _course_for_edit(request.user, pk)
+    qs = (Submission.objects
+          .filter(enrollment__course=course)
+          .select_related('enrollment__student', 'lesson', 'revisado_por'))
+    estado = request.query_params.get('estado')
+    if estado:
+        qs = qs.filter(estado=estado)
+    return Response(SubmissionSerializer(qs, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def submission_review(request, submission_id):
+    """Revisión del instructor: `{estado: aprobada|rechazada, feedback}`.
+
+    Al aprobar, la lección del entregable queda completada y el servidor
+    recalcula progreso, insignias y (si procede) certificado. Al rechazar, la
+    entrega vuelve al estudiante con el feedback para reenviar."""
+    submission = get_object_or_404(
+        Submission.objects.select_related('enrollment__course', 'lesson'), pk=submission_id,
+    )
+    if not can_edit_course(request.user, submission.enrollment.course):
+        raise PermissionDenied('No puedes revisar entregas de este curso.')
+
+    estado = request.data.get('estado')
+    if estado not in (Submission.ESTADO_APROBADA, Submission.ESTADO_RECHAZADA):
+        return Response({'estado': "Debe ser 'aprobada' o 'rechazada'."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    submission.estado = estado
+    submission.feedback = (request.data.get('feedback') or '').strip()
+    submission.revisado_por = request.user
+    submission.revisado_at = timezone.now()
+    submission.save(update_fields=['estado', 'feedback', 'revisado_por', 'revisado_at', 'updated_at'])
+
+    enrollment = submission.enrollment
+    if estado == Submission.ESTADO_APROBADA:
+        LessonProgress.objects.get_or_create(
+            enrollment=enrollment, lesson=submission.lesson, defaults={'completado': True},
+        )
+    else:
+        # Si se revierte una aprobación previa, la lección deja de contar.
+        LessonProgress.objects.filter(enrollment=enrollment, lesson=submission.lesson).delete()
+    grading.recompute_progress(enrollment)
+
+    data = SubmissionSerializer(submission).data
+    data['progreso'] = enrollment.progreso
+    data['estado_matricula'] = enrollment.estado
+    return Response(data)
 
 
 # ─── Certificados ─────────────────────────────────────────────────────────────

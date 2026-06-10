@@ -11,6 +11,7 @@ from rest_framework import serializers
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
+    Submission, CourseBadge,
 )
 
 
@@ -31,7 +32,7 @@ class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = [
-            'id', 'quiz', 'orden', 'enunciado', 'tipo',
+            'id', 'quiz', 'orden', 'enunciado', 'video_url', 'tipo',
             'opciones', 'respuestas_correctas', 'puntos',
         ]
         read_only_fields = ['id', 'quiz']
@@ -78,7 +79,8 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = [
             'id', 'module', 'orden', 'titulo', 'tipo',
-            'contenido', 'video_url', 'duracion_min', 'quiz', 'created_at',
+            'contenido', 'video_url', 'duracion_min',
+            'fecha_en_vivo', 'entregable_tipo', 'quiz', 'created_at',
         ]
         read_only_fields = ['id', 'module', 'created_at']
 
@@ -96,6 +98,17 @@ class ModuleSerializer(serializers.ModelSerializer):
         model = Module
         fields = ['id', 'course', 'orden', 'titulo', 'descripcion', 'lecciones', 'created_at']
         read_only_fields = ['id', 'course', 'created_at']
+
+
+# ─── Insignias (Check-list de Competencias del Programa 360°) ─────────────────
+
+class CourseBadgeSerializer(serializers.ModelSerializer):
+    """Definición de una insignia del curso (hito → lección que la otorga)."""
+
+    class Meta:
+        model = CourseBadge
+        fields = ['id', 'course', 'orden', 'nombre', 'icono', 'descripcion', 'lesson']
+        read_only_fields = ['id', 'course']
 
 
 # ─── Cursos ───────────────────────────────────────────────────────────────────
@@ -146,12 +159,13 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class CourseDetailSerializer(CourseSerializer):
-    """Curso con su árbol completo (módulos → lecciones → quiz)."""
+    """Curso con su árbol completo (módulos → lecciones → quiz) e insignias."""
 
     modulos = ModuleSerializer(many=True, read_only=True)
+    insignias = CourseBadgeSerializer(many=True, read_only=True)
 
     class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + ['modulos']
+        fields = CourseSerializer.Meta.fields + ['modulos', 'insignias']
 
 
 # ─── Aprendizaje (matrículas / progreso / intentos / certificados) ────────────
@@ -167,6 +181,32 @@ class CertificateSerializer(serializers.ModelSerializer):
 
     def get_estudiante_nombre(self, obj):
         return _display_name(obj.enrollment.student)
+
+
+class SubmissionSerializer(serializers.ModelSerializer):
+    """Entrega de un "entregable". El estudiante solo envía `texto`/`video_url`
+    (lo gestiona la vista); estado, feedback y revisión los escribe el servidor."""
+
+    estudiante_nombre = serializers.SerializerMethodField()
+    leccion_titulo = serializers.CharField(source='lesson.titulo', read_only=True)
+    entregable_tipo = serializers.CharField(source='lesson.entregable_tipo', read_only=True)
+    revisado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = [
+            'id', 'enrollment', 'lesson', 'leccion_titulo', 'entregable_tipo',
+            'estudiante_nombre', 'texto', 'video_url', 'estado', 'feedback',
+            'revisado_por', 'revisado_por_nombre', 'revisado_at',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_estudiante_nombre(self, obj):
+        return _display_name(obj.enrollment.student)
+
+    def get_revisado_por_nombre(self, obj):
+        return _display_name(obj.revisado_por)
 
 
 class QuizAttemptSerializer(serializers.ModelSerializer):
@@ -215,9 +255,13 @@ class EnrollmentDetailSerializer(EnrollmentSerializer):
     curso = serializers.SerializerMethodField()
     lecciones_completadas = serializers.SerializerMethodField()
     intentos = QuizAttemptSerializer(many=True, read_only=True)
+    entregas = SubmissionSerializer(many=True, read_only=True)
+    insignias_obtenidas = serializers.SerializerMethodField()
 
     class Meta(EnrollmentSerializer.Meta):
-        fields = EnrollmentSerializer.Meta.fields + ['curso', 'lecciones_completadas', 'intentos']
+        fields = EnrollmentSerializer.Meta.fields + [
+            'curso', 'lecciones_completadas', 'intentos', 'entregas', 'insignias_obtenidas',
+        ]
 
     def get_curso(self, obj):
         # Estudiante: nunca incluir la clave de respuestas.
@@ -227,3 +271,9 @@ class EnrollmentDetailSerializer(EnrollmentSerializer):
         return list(
             obj.lecciones_progreso.filter(completado=True).values_list('lesson_id', flat=True)
         )
+
+    def get_insignias_obtenidas(self, obj):
+        return [
+            {'badge': e.badge_id, 'otorgada_at': e.otorgada_at}
+            for e in obj.insignias_obtenidas.all()
+        ]

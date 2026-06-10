@@ -1,9 +1,11 @@
 """Lógica de scoring de Zyfit Academy — SIEMPRE en el servidor.
 
-Reúne las tres operaciones que el cliente nunca debe calcular por su cuenta:
+Reúne las operaciones que el cliente nunca debe calcular por su cuenta:
   • `grade_attempt`     — califica un intento de quiz contra la clave de respuestas.
   • `recompute_progress`— recalcula el % de avance de una matrícula y, si procede,
-                          la marca como completada y emite el certificado.
+                          la marca como completada y emite el certificado. También
+                          otorga las insignias de competencia cuyos hitos (lecciones)
+                          ya estén completados (Programa Evolución 360°).
   • `issue_certificate` — emite (idempotente) el certificado de una matrícula.
 
 Se mantiene como módulo aparte (igual que `performance.wellness` / los
@@ -15,7 +17,9 @@ import secrets
 
 from django.utils import timezone
 
-from .models import Certificate, Lesson, LessonProgress, Question, QuizAttempt
+from .models import (
+    Certificate, CourseBadge, EarnedBadge, Lesson, LessonProgress, Question, QuizAttempt,
+)
 
 
 def _norm_ids(values):
@@ -72,13 +76,32 @@ def _quizzes_aprobados(enrollment) -> bool:
     return quiz_ids.issubset(aprobados)
 
 
+def award_badges(enrollment):
+    """Otorga (idempotente) las insignias del curso cuyos hitos —lecciones— ya
+    están completados en esta matrícula. Es el único camino por el que se gana
+    una insignia: el cliente nunca las escribe."""
+    hechas = set(
+        enrollment.lecciones_progreso.filter(completado=True).values_list('lesson_id', flat=True)
+    )
+    if not hechas:
+        return
+    pendientes = CourseBadge.objects.filter(
+        course=enrollment.course, lesson_id__in=hechas,
+    ).exclude(id__in=enrollment.insignias_obtenidas.values_list('badge_id', flat=True))
+    for badge in pendientes:
+        EarnedBadge.objects.get_or_create(enrollment=enrollment, badge=badge)
+
+
 def recompute_progress(enrollment) -> int:
     """Recalcula el % de avance de una matrícula a partir de las lecciones
     completadas y, si llegó al 100% con todos los quizzes aprobados, la marca como
-    completada y emite el certificado. Devuelve el % resultante."""
+    completada y emite el certificado. Otorga además las insignias de los hitos
+    ya completados. Devuelve el % resultante."""
     total = Lesson.objects.filter(module__course=enrollment.course).count()
     hechas = enrollment.lecciones_progreso.filter(completado=True).count()
     pct = round(100 * hechas / total) if total else 0
+
+    award_badges(enrollment)
 
     completo = pct >= 100 and total > 0 and _quizzes_aprobados(enrollment)
     enrollment.progreso = pct

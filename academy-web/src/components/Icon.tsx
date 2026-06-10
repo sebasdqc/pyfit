@@ -28,6 +28,9 @@ export type IconName =
   | 'lock'
   | 'star'
   | 'arrowRight'
+  | 'live'
+  | 'pitch'
+  | 'upload'
 
 const PATHS: Record<IconName, ReactNode> = {
   catalog: (
@@ -126,6 +129,29 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   star: <path d="m12 3 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18l-5.9 3 1.2-6.5L2.5 9.9 9 9z" />,
   arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+  // Sesión sincrónica en vivo (Programa 360°): punto emisor con ondas.
+  live: (
+    <>
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4" />
+      <path d="M5 19a10 10 0 0 1 0-14M19 5a10 10 0 0 1 0 14" />
+    </>
+  ),
+  // Práctica presencial: cancha con línea media y círculo central.
+  pitch: (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2" />
+      <path d="M12 5v14" />
+      <circle cx="12" cy="12" r="2.6" />
+    </>
+  ),
+  // Entregable: subir un archivo/contenido.
+  upload: (
+    <>
+      <path d="M12 16V4M7 9l5-5 5 5" />
+      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </>
+  ),
 }
 
 export function Icon({

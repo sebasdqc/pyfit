@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
+    Submission, CourseBadge, EarnedBadge,
 )
 
 
@@ -90,3 +91,23 @@ class CertificateAdmin(ModelAdmin):
     list_display = ('codigo', 'enrollment', 'emitido_at')
     search_fields = ('codigo', 'enrollment__student__email', 'enrollment__course__titulo')
     readonly_fields = ('codigo', 'emitido_at')
+
+
+@admin.register(Submission)
+class SubmissionAdmin(ModelAdmin):
+    list_display = ('enrollment', 'lesson', 'estado', 'revisado_por', 'updated_at')
+    list_filter = ('estado',)
+    search_fields = ('enrollment__student__email', 'lesson__titulo')
+
+
+@admin.register(CourseBadge)
+class CourseBadgeAdmin(ModelAdmin):
+    list_display = ('__str__', 'course', 'orden', 'lesson')
+    list_filter = ('course',)
+    search_fields = ('nombre', 'course__titulo')
+
+
+@admin.register(EarnedBadge)
+class EarnedBadgeAdmin(ModelAdmin):
+    list_display = ('enrollment', 'badge', 'otorgada_at')
+    search_fields = ('enrollment__student__email', 'badge__nombre')

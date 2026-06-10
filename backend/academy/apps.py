@@ -21,6 +21,7 @@ class AcademyConfig(AppConfig):
         from .models import (
             Course, Module, Lesson, Quiz, Question,
             Enrollment, LessonProgress, QuizAttempt, Certificate,
+            Submission, CourseBadge, EarnedBadge,
         )
 
         auditlog.register(Course)
@@ -32,3 +33,6 @@ class AcademyConfig(AppConfig):
         auditlog.register(LessonProgress)
         auditlog.register(QuizAttempt)
         auditlog.register(Certificate)
+        auditlog.register(Submission)
+        auditlog.register(CourseBadge)
+        auditlog.register(EarnedBadge)
