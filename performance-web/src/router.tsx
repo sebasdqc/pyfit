@@ -18,6 +18,7 @@ import { SimuladorPage } from '@/pages/simulador/SimuladorPage'
 import { EquipoPage } from '@/pages/equipo/EquipoPage'
 import { CalendarioPage } from '@/pages/calendario/CalendarioPage'
 import { ReportesPage } from '@/pages/reportes/ReportesPage'
+import { GpsPage } from '@/pages/gps/GpsPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           { path: 'rendimiento', element: <RendimientoPage /> },
           { path: 'lesiones', element: <LesionesPage /> },
           { path: 'tests', element: <TestPage /> },
+          { path: 'gps', element: <GpsPage /> },
           { path: 'planificacion', element: <PlanificacionPage /> },
           { path: 'psicologico', element: <PsicologicoPage /> },
           { path: 'simulador', element: <SimuladorPage /> },
@@ -46,6 +48,7 @@ export const router = createBrowserRouter([
               { path: 'rendimiento', element: <RendimientoPage /> },
               { path: 'lesiones', element: <LesionesPage /> },
               { path: 'test', element: <TestPage /> },
+              { path: 'gps', element: <GpsPage /> },
               { path: 'planificacion', element: <PlanificacionPage /> },
               { path: 'psicologico', element: <PsicologicoPage /> },
               { path: 'simulador', element: <SimuladorPage /> },
