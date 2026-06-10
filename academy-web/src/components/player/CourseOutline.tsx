@@ -55,6 +55,7 @@ export function CourseOutline({
                     <button
                       type="button"
                       onClick={() => onSelect(l.id)}
+                      aria-current={active ? 'true' : undefined}
                       className={[
                         'group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
                         active ? 'bg-accent/10 text-brand' : 'text-ink-soft hover:bg-surface-soft',
@@ -71,6 +72,7 @@ export function CourseOutline({
                         ].join(' ')}
                       >
                         {done ? <Icon name="check" size={12} /> : <Icon name={LESSON_ICON[l.tipo]} size={11} />}
+                        <span className="sr-only">{done ? 'Completada' : 'No completada'}.</span>
                       </span>
                       <span className={`flex-1 line-clamp-2 ${active ? 'font-medium' : ''}`}>{l.titulo}</span>
                       {l.duracion_min > 0 && (

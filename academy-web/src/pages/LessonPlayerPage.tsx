@@ -349,9 +349,19 @@ function LessonBody({
 }
 
 function TextBody({ text }: { text: string }) {
+  // El contenido es texto plano: lo dividimos en párrafos reales por dobles
+  // saltos de línea para dar estructura (en lugar de un único <p>), conservando
+  // los saltos simples dentro de cada párrafo. Ancho de lectura cómodo.
+  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
   return (
     <div className="rounded-xl border border-surface-border bg-white p-6">
-      <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-soft">{text}</p>
+      <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
+        {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
+          <p key={i} className="whitespace-pre-line">
+            {p}
+          </p>
+        ))}
+      </div>
     </div>
   )
 }

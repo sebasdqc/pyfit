@@ -191,7 +191,12 @@ export function CourseDetailPage() {
           <div className="za-card overflow-hidden">
             <div className="flex h-32 items-center justify-center bg-gradient-to-br from-brand to-brand-deep">
               {course.portada ? (
-                <img src={course.portada} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={course.portada}
+                  alt={`Portada de ${course.titulo}`}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <Emblem size={56} tone="dark" />
               )}
@@ -267,6 +272,8 @@ function ModuleBlock({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={`module-panel-${index}`}
         className="flex w-full items-center gap-3 bg-surface-soft px-4 py-3 text-left transition-colors hover:bg-surface-border/40"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-white">
@@ -279,7 +286,7 @@ function ModuleBlock({
         <Icon name="chevronDown" size={18} className={`text-ink-muted transition-transform ${open ? '' : '-rotate-90'}`} />
       </button>
       {open && (
-        <div className="divide-y divide-surface-border">
+        <div id={`module-panel-${index}`} className="divide-y divide-surface-border">
           {descripcion && <p className="px-4 py-3 text-sm text-ink-soft">{descripcion}</p>}
           {lecciones.map((l) => (
             <div key={l.id} className="flex items-center gap-3 px-4 py-3">

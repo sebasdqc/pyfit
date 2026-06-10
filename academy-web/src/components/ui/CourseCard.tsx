@@ -19,7 +19,12 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
       {/* Portada */}
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-brand to-brand-deep">
         {hasPortada ? (
-          <img src={course.portada} alt="" className="h-full w-full object-cover" />
+          <img
+            src={course.portada}
+            alt={`Portada del curso ${course.titulo}`}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="opacity-25 transition-opacity group-hover:opacity-40">

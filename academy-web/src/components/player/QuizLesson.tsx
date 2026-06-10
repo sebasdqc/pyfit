@@ -85,12 +85,27 @@ export function QuizLesson({
         const cardBorder =
           graded === true ? 'border-ok/40 bg-ok/5' : graded === false ? 'border-danger/40 bg-danger/5' : 'border-surface-border'
         return (
-          <div key={q.id} className={`rounded-xl border p-4 ${cardBorder}`}>
+          <div
+            key={q.id}
+            role="group"
+            aria-labelledby={`q-${q.id}-label`}
+            className={`rounded-xl border p-4 ${cardBorder}`}
+          >
             <div className="flex items-start gap-2">
-              <span className="text-sm font-semibold text-ink-muted">{i + 1}.</span>
-              <p className="flex-1 text-[15px] font-medium text-ink">{q.enunciado}</p>
-              {graded === true && <Icon name="check" size={18} className="shrink-0 text-ok" />}
-              {graded === false && <Icon name="close" size={18} className="shrink-0 text-danger" />}
+              <span aria-hidden className="text-sm font-semibold text-ink-muted">{i + 1}.</span>
+              <p id={`q-${q.id}-label`} className="flex-1 text-[15px] font-medium text-ink">{q.enunciado}</p>
+              {graded === true && (
+                <>
+                  <Icon name="check" size={18} className="shrink-0 text-ok" />
+                  <span className="sr-only">Respuesta correcta.</span>
+                </>
+              )}
+              {graded === false && (
+                <>
+                  <Icon name="close" size={18} className="shrink-0 text-danger" />
+                  <span className="sr-only">Respuesta incorrecta.</span>
+                </>
+              )}
             </div>
             <p className="mb-2 mt-1 pl-5 text-xs text-ink-muted">
               {multiple ? 'Selecciona todas las correctas' : 'Selecciona una'} · {q.puntos} pt{q.puntos !== 1 ? 's' : ''}
