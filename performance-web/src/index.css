@@ -2,5 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* El styling fino del panel queda fuera del alcance de este andamiaje.
-   Tailwind está cableado y listo para usarse. */
+@layer base {
+  /* Foco visible global para navegación por teclado (WCAG 2.4.7). Un único
+     anillo de acento azul para todos los controles del panel; el outline sigue
+     el border-radius del elemento en navegadores modernos. Solo con teclado. */
+  :focus-visible {
+    outline: 2px solid #4f8cff; /* accent Zyfit Performance */
+    outline-offset: 2px;
+  }
+  /* Sin anillo cuando el foco NO viene del teclado (clic/touch). */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* Respeta la preferencia de "movimiento reducido" del sistema (mejores prácticas
+   de accesibilidad): neutraliza spinners, pulsos, transiciones y auto-scroll en
+   todo el panel de una sola vez. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

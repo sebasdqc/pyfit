@@ -76,7 +76,7 @@ export function MyLearningPage() {
                   </Badge>
                 </div>
                 <div className="mt-4">
-                  <ProgressBar value={e.progreso} />
+                  <ProgressBar value={e.progreso} label={`Progreso de ${e.curso_titulo}`} />
                 </div>
                 {e.certificado && (
                   <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-ok">

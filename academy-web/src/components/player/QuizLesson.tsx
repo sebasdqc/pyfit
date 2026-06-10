@@ -23,6 +23,7 @@ export function QuizLesson({
   const [answers, setAnswers] = useState<Record<number, string[]>>({})
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(false)
 
   const preguntas = [...quiz.preguntas].sort((a, b) => a.orden - b.orden)
   const allAnswered = preguntas.every((q) => (answers[q.id]?.length ?? 0) > 0)
@@ -40,11 +41,15 @@ export function QuizLesson({
   }
 
   async function submit() {
+    if (submitting) return
     setSubmitting(true)
+    setSubmitError(false)
     try {
       const r = await submitQuizAttempt(enrollmentId, quiz.id, answers)
       setResult(r)
       onGraded(r)
+    } catch {
+      setSubmitError(true)
     } finally {
       setSubmitting(false)
     }
@@ -53,6 +58,7 @@ export function QuizLesson({
   function retry() {
     setResult(null)
     setAnswers({})
+    setSubmitError(false)
   }
 
   return (
@@ -121,6 +127,7 @@ export function QuizLesson({
       {/* Resultado / acciones */}
       {result ? (
         <div
+          role="status"
           className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
             result.aprobado ? 'border-ok/40 bg-ok/5' : 'border-danger/40 bg-danger/5'
           }`}
@@ -154,13 +161,20 @@ export function QuizLesson({
           )}
         </div>
       ) : (
-        <button
-          onClick={submit}
-          disabled={!allAnswered || submitting}
-          className="h-12 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
-        >
-          {submitting ? 'Calificando…' : allAnswered ? 'Enviar respuestas' : 'Responde todas las preguntas'}
-        </button>
+        <>
+          {submitError && (
+            <p role="alert" className="text-sm text-danger">
+              No se pudieron enviar tus respuestas. Revisa tu conexión e inténtalo de nuevo.
+            </p>
+          )}
+          <button
+            onClick={submit}
+            disabled={!allAnswered || submitting}
+            className="h-12 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+          >
+            {submitting ? 'Calificando…' : allAnswered ? 'Enviar respuestas' : 'Responde todas las preguntas'}
+          </button>
+        </>
       )}
     </div>
   )

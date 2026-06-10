@@ -74,7 +74,9 @@ export function CatalogPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar cursos…"
-            className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink outline-none transition-colors focus:border-accent"
+            type="search"
+            aria-label="Buscar cursos"
+            className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
         <Select value={disciplina} onChange={setDisciplina} placeholder="Disciplina">
@@ -151,7 +153,8 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-white pl-4 pr-9 text-sm text-ink outline-none transition-colors focus:border-accent sm:w-44"
+        aria-label={placeholder}
+        className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-white pl-4 pr-9 text-sm text-ink transition-colors focus:border-accent sm:w-44"
       >
         <option value="">{placeholder}: todas</option>
         {children}

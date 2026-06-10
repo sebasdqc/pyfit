@@ -3,9 +3,10 @@
 // según su tipo (video / texto / quiz), marca el progreso contra el servidor,
 // permite navegar entre lecciones y muestra el certificado al completar.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { completeLesson, getCertificate, getEnrollment, type AttemptResult } from '@/api/academy'
+import { useDialogA11y } from '@/lib/useDialogA11y'
 import { Emblem } from '@/components/Emblem'
 import { Icon, type IconName } from '@/components/Icon'
 import { Spinner } from '@/components/ui/Spinner'
@@ -34,6 +35,8 @@ export function LessonPlayerPage() {
   const [currentId, setCurrentId] = useState<number | null>(null)
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [marking, setMarking] = useState(false)
+  const [markError, setMarkError] = useState(false)
+  const outlineRef = useRef<HTMLElement>(null)
 
   // Lecciones aplanadas en orden (con el título de su módulo para el encabezado).
   const lessons = useMemo(
@@ -78,6 +81,10 @@ export function LessonPlayerPage() {
     }
   }, [estado, certCode, id])
 
+  // Drawer del temario (móvil): foco atrapado, cierre con Escape y scroll-lock.
+  const closeOutline = useCallback(() => setOutlineOpen(false), [])
+  useDialogA11y(outlineRef, { onClose: closeOutline, open: outlineOpen })
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-soft">
@@ -117,10 +124,13 @@ export function LessonPlayerPage() {
   async function markComplete() {
     if (!current) return
     setMarking(true)
+    setMarkError(false)
     try {
       const r = await completeLesson(id, current.lesson.id)
       applyProgress(r.progreso, r.estado, current.lesson.id)
       if (next) setCurrentId(next.lesson.id)
+    } catch {
+      setMarkError(true)
     } finally {
       setMarking(false)
     }
@@ -158,6 +168,8 @@ export function LessonPlayerPage() {
         {/* Toggle del temario en móvil */}
         <button
           onClick={() => setOutlineOpen((v) => !v)}
+          aria-expanded={outlineOpen}
+          aria-controls="course-outline-drawer"
           className="flex h-9 items-center gap-1.5 rounded-lg border border-surface-border px-3 text-sm text-ink-soft hover:bg-surface-soft lg:hidden"
         >
           <Icon name="layers" size={16} /> Temario
@@ -172,7 +184,15 @@ export function LessonPlayerPage() {
         {outlineOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-brand-deep/40 lg:hidden" onClick={() => setOutlineOpen(false)} aria-hidden />
-            <aside className="fixed left-0 top-0 z-50 h-full w-80 max-w-[85%] bg-white shadow-cardHover lg:hidden">
+            <aside
+              ref={outlineRef}
+              id="course-outline-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Temario del curso"
+              tabIndex={-1}
+              className="fixed left-0 top-0 z-50 h-full w-80 max-w-[85%] bg-white shadow-cardHover lg:hidden"
+            >
               <CourseOutline course={enr.curso} completed={completed} currentLessonId={current?.lesson.id ?? null} progreso={progreso} onSelect={goTo} />
             </aside>
           </>
@@ -211,6 +231,12 @@ export function LessonPlayerPage() {
                 <div className="mt-6">
                   <LessonBody lesson={current.lesson} enrollmentId={id} intentos={enr.intentos} onQuizGraded={onQuizGraded} />
                 </div>
+
+                {markError && (
+                  <p role="alert" className="mt-4 text-sm text-danger">
+                    No se pudo guardar tu progreso. Revisa tu conexión e inténtalo de nuevo.
+                  </p>
+                )}
 
                 {/* Pie de navegación */}
                 <div className="mt-10 flex flex-col gap-3 border-t border-surface-border pt-5 sm:flex-row sm:items-center sm:justify-between">

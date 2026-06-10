@@ -13,6 +13,7 @@ export function ProfilePage() {
   const [nombre, setNombre] = useState(user?.nombre ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   if (!user) return null
   const dirty = nombre.trim() !== '' && nombre.trim() !== user.nombre
@@ -20,10 +21,13 @@ export function ProfilePage() {
   async function handleSave() {
     setSaving(true)
     setSaved(false)
+    setSaveError(false)
     try {
       await updateMe({ nombre: nombre.trim() })
       await refreshUser()
       setSaved(true)
+    } catch {
+      setSaveError(true)
     } finally {
       setSaving(false)
     }
@@ -64,7 +68,16 @@ export function ProfilePage() {
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
               Nombre visible
             </span>
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="input" />
+            <input
+              value={nombre}
+              autoComplete="name"
+              onChange={(e) => {
+                setNombre(e.target.value)
+                setSaved(false)
+                setSaveError(false)
+              }}
+              className="input"
+            />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
@@ -82,8 +95,13 @@ export function ProfilePage() {
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
             {saved && !dirty && (
-              <span className="inline-flex items-center gap-1.5 text-sm text-ok">
+              <span role="status" className="inline-flex items-center gap-1.5 text-sm text-ok">
                 <Icon name="check" size={16} /> Guardado
+              </span>
+            )}
+            {saveError && (
+              <span role="alert" className="inline-flex items-center gap-1.5 text-sm text-danger">
+                <Icon name="close" size={16} /> No se pudo guardar.
               </span>
             )}
           </div>

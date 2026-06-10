@@ -22,8 +22,10 @@ export default {
         ink: {
           DEFAULT: '#1a3e72', // texto principal (navy)
           soft: '#475569',
-          muted: '#7b8aa0',
-          faint: '#aab4c5',
+          // muted oscurecido de #7b8aa0 a #647189 para cumplir contraste WCAG AA
+          // (~4.9:1 sobre blanco) sin perder el carácter "tenue/secundario".
+          muted: '#647189',
+          faint: '#aab4c5', // solo decorativo (íconos/placeholders), no para texto
         },
         surface: {
           DEFAULT: '#ffffff',

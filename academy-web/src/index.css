@@ -14,6 +14,18 @@
   ::selection {
     background-color: rgba(0, 102, 179, 0.18);
   }
+
+  /* Foco visible global para navegación por teclado (WCAG 2.4.7). Un único
+     anillo de marca para todos los controles; el outline sigue el border-radius
+     del elemento en navegadores modernos. Solo aparece con foco de teclado. */
+  :focus-visible {
+    outline: 2px solid #0066b3; /* accent CONMEBOL */
+    outline-offset: 2px;
+  }
+  /* Sin anillo cuando el foco NO viene del teclado (clic/touch). */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 @layer components {
@@ -25,8 +37,23 @@
   .za-eyebrow {
     @apply text-[11px] font-medium uppercase tracking-[0.22em] text-accent;
   }
-  /* Campo de formulario base (inputs y selects de modales/formularios). */
+  /* Campo de formulario base (inputs y selects de modales/formularios).
+     Sin `outline-none`: así el foco de teclado muestra el anillo global. */
   .input {
-    @apply h-11 w-full rounded-xl border border-surface-border bg-surface-soft px-3.5 text-[15px] text-ink outline-none transition-colors focus:border-accent focus:bg-white;
+    @apply h-11 w-full rounded-xl border border-surface-border bg-surface-soft px-3.5 text-[15px] text-ink transition-colors focus:border-accent focus:bg-white;
+  }
+}
+
+/* Respeta la preferencia de "movimiento reducido" del sistema (mejores prácticas
+   de accesibilidad). Neutraliza spinners, pulsos, transiciones y auto-scroll
+   en toda la app de una sola vez. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

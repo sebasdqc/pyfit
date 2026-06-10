@@ -36,6 +36,7 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
+  const [enrollError, setEnrollError] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -56,11 +57,14 @@ export function CourseDetailPage() {
 
   async function handleEnroll() {
     setEnrolling(true)
+    setEnrollError(false)
     try {
       const e = await enroll(id)
       setEnrollment(e)
       // Tras inscribirse, entra directo al reproductor.
       navigate(`/aprender/${e.id}`)
+    } catch {
+      setEnrollError(true)
     } finally {
       setEnrolling(false)
     }
@@ -199,7 +203,7 @@ export function CourseDetailPage() {
                     {enrollment.estado === 'completada' ? 'Completado' : 'Inscrito'}
                   </Badge>
                   <div className="mt-4">
-                    <ProgressBar value={enrollment.progreso} />
+                    <ProgressBar value={enrollment.progreso} label={`Progreso de ${course.titulo}`} />
                   </div>
                   <button
                     onClick={() => navigate(`/aprender/${enrollment.id}`)}
@@ -220,6 +224,11 @@ export function CourseDetailPage() {
                   >
                     {enrolling ? 'Inscribiendo…' : 'Inscribirme'}
                   </button>
+                  {enrollError && (
+                    <p role="alert" className="mt-2 text-xs text-danger">
+                      No se pudo completar la inscripción. Inténtalo de nuevo.
+                    </p>
+                  )}
                 </>
               )}
               <ul className="mt-5 flex flex-col gap-2.5 text-sm text-ink-soft">
@@ -277,7 +286,7 @@ function ModuleBlock({
               <Icon name={LESSON_ICON[l.tipo]} size={17} className="shrink-0 text-accent" />
               <span className="flex-1 text-sm text-ink">{l.titulo}</span>
               <span className="text-xs text-ink-muted">{LESSON_LABEL[l.tipo]}</span>
-              {l.duracion_min > 0 && <span className="text-xs text-ink-faint">{l.duracion_min} min</span>}
+              {l.duracion_min > 0 && <span className="text-xs text-ink-muted">{l.duracion_min} min</span>}
             </div>
           ))}
           {lecciones.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">Sin lecciones aún.</p>}

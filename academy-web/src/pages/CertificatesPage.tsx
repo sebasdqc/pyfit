@@ -90,7 +90,7 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
 function Verifier() {
   const [codigo, setCodigo] = useState('')
   const [result, setResult] = useState<Certificate | null>(null)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'notfound' | 'error'>('idle')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -101,8 +101,10 @@ function Verifier() {
       const cert = await verifyCertificate(codigo.trim())
       setResult(cert)
       setStatus('idle')
-    } catch {
-      setStatus('notfound')
+    } catch (err) {
+      // 404 → el código no existe; cualquier otro fallo (red/servidor) → error.
+      const code = (err as { response?: { status?: number } })?.response?.status
+      setStatus(code === 404 ? 'notfound' : 'error')
     }
   }
 
@@ -115,7 +117,8 @@ function Verifier() {
           value={codigo}
           onChange={(e) => setCodigo(e.target.value)}
           placeholder="ZA-XXXXXXXX"
-          className="h-11 flex-1 rounded-xl border border-surface-border bg-surface-soft px-4 font-mono text-sm uppercase text-ink outline-none focus:border-accent focus:bg-white"
+          aria-label="Código de certificado"
+          className="h-11 flex-1 rounded-xl border border-surface-border bg-surface-soft px-4 font-mono text-sm uppercase text-ink focus:border-accent focus:bg-white"
         />
         <button
           type="submit"
@@ -124,22 +127,29 @@ function Verifier() {
           <Icon name="search" size={16} /> Verificar
         </button>
       </form>
-      {status === 'loading' && <p className="mt-3 text-sm text-ink-muted">Verificando…</p>}
-      {status === 'notfound' && (
-        <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-danger">
-          <Icon name="close" size={15} /> No se encontró un certificado con ese código.
-        </p>
-      )}
-      {result && (
-        <div className="mt-3 rounded-xl border border-ok/30 bg-ok/5 p-4">
-          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-ok">
-            <Icon name="check" size={16} /> Certificado válido
+      <div aria-live="polite">
+        {status === 'loading' && <p className="mt-3 text-sm text-ink-muted">Verificando…</p>}
+        {status === 'notfound' && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-danger">
+            <Icon name="close" size={15} /> No se encontró un certificado con ese código.
           </p>
-          <p className="mt-1 text-sm text-ink">
-            <span className="font-medium">{result.estudiante_nombre}</span> · {result.curso_titulo}
+        )}
+        {status === 'error' && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-danger">
+            <Icon name="close" size={15} /> No se pudo verificar ahora. Revisa tu conexión e inténtalo de nuevo.
           </p>
-        </div>
-      )}
+        )}
+        {result && (
+          <div className="mt-3 rounded-xl border border-ok/30 bg-ok/5 p-4">
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-ok">
+              <Icon name="check" size={16} /> Certificado válido
+            </p>
+            <p className="mt-1 text-sm text-ink">
+              <span className="font-medium">{result.estudiante_nombre}</span> · {result.curso_titulo}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

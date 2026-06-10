@@ -3,8 +3,9 @@
 // del centro, así que tras crearlo refrescamos /me/ para que su membresía
 // aparezca en `centros` en todo el panel. Solo se ofrece a director/admin.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Icon } from '@/components/Icon'
+import { Dialog } from '@/components/ui/Dialog'
 import { useAuth } from '@/auth/useAuth'
 import { createCenter } from '@/api/performance'
 import type { SportsCenter } from '@/types'
@@ -53,14 +54,6 @@ export function CreateCenterModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   // El slug sigue al nombre mientras el usuario no lo edite a mano.
   function onNombre(v: string) {
     setNombre(v)
@@ -92,15 +85,15 @@ export function CreateCenterModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
-      <div
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog
+      onClose={onClose}
+      labelledBy="create-center-title"
+      className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]"
+    >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-perf-border px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-white">Crear centro</h2>
+            <h2 id="create-center-title" className="text-sm font-semibold text-white">Crear centro</h2>
             <p className="text-xs text-white/45">Serás su director técnico</p>
           </div>
           <button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Cerrar">
@@ -113,7 +106,7 @@ export function CreateCenterModal({
           <label className="block">
             <span className="text-xs text-white/45">Nombre del centro</span>
             <input
-              autoFocus
+              data-autofocus
               value={nombre}
               onChange={(e) => onNombre(e.target.value)}
               placeholder="p. ej. CD Águilas"
@@ -156,7 +149,7 @@ export function CreateCenterModal({
             </label>
           </div>
 
-          {error && <p className="rounded-lg bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">{error}</p>}
+          {error && <p role="alert" className="rounded-lg bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">{error}</p>}
         </div>
 
         {/* Pie */}
@@ -177,8 +170,7 @@ export function CreateCenterModal({
             {saving ? 'Creando…' : 'Crear centro'}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }
 

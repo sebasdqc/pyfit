@@ -8,6 +8,7 @@ import { createCourse, listCourses } from '@/api/academy'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
+import { Dialog } from '@/components/ui/Dialog'
 import { Icon } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
 import { CATEGORIAS, DISCIPLINAS, LICENCIAS, MODALIDADES, NIVELES } from '@/lib/constants'
@@ -27,13 +28,18 @@ export function InstructorPage() {
   const { user } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
 
   function reload() {
     setLoading(true)
+    setLoadError(false)
     listCourses({ mine: true })
       .then(setCourses)
-      .catch(() => setCourses([]))
+      .catch(() => {
+        setCourses([])
+        setLoadError(true)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -70,6 +76,20 @@ export function InstructorPage() {
         <div className="flex justify-center py-20">
           <Spinner size={40} />
         </div>
+      ) : loadError ? (
+        <EmptyState
+          icon="instructor"
+          title="No se pudieron cargar tus cursos"
+          description="Revisa tu conexión e inténtalo de nuevo."
+          action={
+            <button
+              onClick={reload}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
+            >
+              Reintentar
+            </button>
+          }
+        />
       ) : courses.length === 0 ? (
         <EmptyState
           icon="instructor"
@@ -149,14 +169,14 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/40 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog
+      onClose={onClose}
+      labelledBy="create-course-title"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+    >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">Crear curso</h2>
-          <button onClick={onClose} className="text-ink-muted hover:text-ink" aria-label="Cerrar">
+          <h2 id="create-course-title" className="text-lg font-semibold text-ink">Crear curso</h2>
+          <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink" aria-label="Cerrar">
             <Icon name="close" size={20} />
           </button>
         </div>
@@ -168,7 +188,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ej. Fundamentos de Fuerza"
               className="input"
-              autoFocus
+              data-autofocus
             />
           </Labeled>
           <Labeled label="Identificador (slug)">
@@ -273,7 +293,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
             Publicar de inmediato (visible en el catálogo)
           </label>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-danger" role="alert">{error}</p>}
 
           <div className="mt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm font-medium text-ink-soft hover:bg-surface-soft">
@@ -288,8 +308,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Dialog>
   )
 }
 

@@ -67,14 +67,14 @@ export function CourseOutline({
                       <span
                         className={[
                           'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                          done ? 'border-ok bg-ok text-white' : 'border-surface-border text-ink-faint',
+                          done ? 'border-ok bg-ok text-white' : 'border-surface-border text-ink-muted',
                         ].join(' ')}
                       >
                         {done ? <Icon name="check" size={12} /> : <Icon name={LESSON_ICON[l.tipo]} size={11} />}
                       </span>
                       <span className={`flex-1 line-clamp-2 ${active ? 'font-medium' : ''}`}>{l.titulo}</span>
                       {l.duracion_min > 0 && (
-                        <span className="shrink-0 text-[11px] text-ink-faint">{l.duracion_min}m</span>
+                        <span className="shrink-0 text-[11px] text-ink-muted">{l.duracion_min}m</span>
                       )}
                     </button>
                   </li>

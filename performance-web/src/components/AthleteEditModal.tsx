@@ -2,8 +2,9 @@
 // (radar 0–100) y métricas de carga. Construye un patch y lo entrega a onSave;
 // el saneado/acotado de valores lo hace updateAthlete (lib/squadEdit).
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Icon } from '@/components/Icon'
+import { Dialog } from '@/components/ui/Dialog'
 import { Avatar } from '@/components/ui/Avatar'
 import { RADAR_AXES, type Athlete } from '@/lib/mockSquad'
 import { validateAthlete, type AthletePatch } from '@/lib/squadEdit'
@@ -75,24 +76,16 @@ export function AthleteEditModal({
   const errors = useMemo(() => validateAthlete(patch), [patch])
   const hasErrors = Object.keys(errors).length > 0
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog
+      onClose={onClose}
+      labelledBy="edit-athlete-title"
+      className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]"
+    >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-perf-border px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-white">Editar atleta</h2>
+            <h2 id="edit-athlete-title" className="text-sm font-semibold text-white">Editar atleta</h2>
             <p className="text-xs text-white/45">{athlete.nombre}</p>
           </div>
           <button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Cerrar">
@@ -138,7 +131,7 @@ export function AthleteEditModal({
           </div>
 
           <Section title="Datos">
-            <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" />
+            <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" autoFocus />
             <Num label="Dorsal" value={form.dorsal} onChange={(v) => set('dorsal', v)} error={errors.dorsal} />
             <Text label="Posición" value={form.posicion} onChange={(v) => set('posicion', v)} />
             <Select label="Estado" value={form.estado} onChange={(v) => set('estado', v)} options={[['ok', 'Disponible'], ['duda', 'En duda'], ['baja', 'No disponible']]} />
@@ -168,7 +161,7 @@ export function AthleteEditModal({
 
         {/* Pie */}
         <div className="flex items-center justify-between gap-3 border-t border-perf-border px-5 py-4">
-          <p className={`text-xs ${hasErrors ? 'text-perf-danger' : 'text-transparent'}`}>
+          <p className={`text-xs text-perf-danger ${hasErrors ? '' : 'invisible'}`}>
             Corrige los campos resaltados para guardar.
           </p>
           <div className="flex items-center gap-2">
@@ -185,8 +178,7 @@ export function AthleteEditModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }
 
@@ -209,11 +201,11 @@ function FieldError({ error }: { error?: string }) {
   return <span className="mt-1 block text-[11px] text-perf-danger">{error}</span>
 }
 
-function Text({ label, value, onChange, error, className = '' }: { label: string; value: string; onChange: (v: string) => void; error?: string; className?: string }) {
+function Text({ label, value, onChange, error, className = '', autoFocus = false }: { label: string; value: string; onChange: (v: string) => void; error?: string; className?: string; autoFocus?: boolean }) {
   return (
     <label className={`block ${className}`}>
       <span className="text-xs text-white/45">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className={inputCls(error)} />
+      <input {...(autoFocus ? { 'data-autofocus': true } : {})} value={value} onChange={(e) => onChange(e.target.value)} className={inputCls(error)} />
       <FieldError error={error} />
     </label>
   )
