@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/LoginPage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
+import { LessonPlayerPage } from '@/pages/LessonPlayerPage'
 import { MyLearningPage } from '@/pages/MyLearningPage'
 import { InstructorPage } from '@/pages/InstructorPage'
 import { CertificatesPage } from '@/pages/CertificatesPage'
@@ -17,6 +18,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      // Reproductor a pantalla completa (modo enfoque): fuera de AppLayout.
+      { path: 'aprender/:enrollmentId', element: <LessonPlayerPage /> },
       {
         element: <AppLayout />,
         children: [

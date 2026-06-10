@@ -59,6 +59,8 @@ export function CourseDetailPage() {
     try {
       const e = await enroll(id)
       setEnrollment(e)
+      // Tras inscribirse, entra directo al reproductor.
+      navigate(`/aprender/${e.id}`)
     } finally {
       setEnrolling(false)
     }
@@ -174,7 +176,7 @@ export function CourseDetailPage() {
                     <ProgressBar value={enrollment.progreso} />
                   </div>
                   <button
-                    onClick={() => navigate('/aprendizaje')}
+                    onClick={() => navigate(`/aprender/${enrollment.id}`)}
                     className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
                   >
                     Continuar aprendiendo <Icon name="arrowRight" size={16} />

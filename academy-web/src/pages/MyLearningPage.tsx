@@ -60,7 +60,7 @@ export function MyLearningPage() {
           {items.map((e) => (
             <Link
               key={e.id}
-              to={`/cursos/${e.course}`}
+              to={`/aprender/${e.id}`}
               className="group za-card flex gap-4 p-4 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
             >
               <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep">
