@@ -393,8 +393,21 @@ function LessonBody({
             <Icon name="play" size={18} /> Abrir el video en una pestaña nueva
           </a>
         ) : (
-          <div className="rounded-xl border border-dashed border-surface-border p-8 text-center text-sm text-ink-muted">
-            Esta lección de video aún no tiene URL.
+          /* Placeholder: la lección es de video pero el instructor aún no anexó
+             la URL. El alumno puede seguir con el material de apoyo y marcarla
+             como completada con normalidad. */
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-brand-deep p-6 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white">
+              <Icon name="play" size={24} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-white">Video en producción</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-white/60">
+                {lesson.contenido
+                  ? 'Tu instructor lo publicará pronto. Mientras tanto, repasa el material de apoyo de la lección.'
+                  : 'Tu instructor lo publicará pronto. Vuelve a esta lección más tarde.'}
+              </p>
+            </div>
           </div>
         )}
         {lesson.contenido && <TextBody text={lesson.contenido} />}

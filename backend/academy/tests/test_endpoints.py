@@ -133,6 +133,62 @@ class CourseTests(_Base):
         self.assertEqual(res.status_code, 404)
 
 
+# ─── Lecciones de video: anexar el video desde la autoría ─────────────────────
+
+class LessonVideoTests(_Base):
+    """El instructor anexa/edita la URL del video de una lección vía PATCH (es lo
+    que usa la pantalla "Contenido" de la web); un tercero no puede."""
+
+    def _leccion_video(self):
+        course = self._course()
+        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        lesson = Lesson.objects.create(
+            module=m, orden=1, titulo='Clase magistral', tipo='video',
+        )
+        return course, m, lesson
+
+    def test_autor_anexa_video(self):
+        course, m, lesson = self._leccion_video()
+        self.client.force_authenticate(self.instructor)
+        res = self.client.patch(
+            f'/api/academy/courses/{course.id}/modules/{m.id}/lessons/{lesson.id}/',
+            {'video_url': 'https://youtu.be/dQw4w9WgXcQ'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['video_url'], 'https://youtu.be/dQw4w9WgXcQ')
+        lesson.refresh_from_db()
+        self.assertEqual(lesson.video_url, 'https://youtu.be/dQw4w9WgXcQ')
+
+    def test_url_invalida_400(self):
+        course, m, lesson = self._leccion_video()
+        self.client.force_authenticate(self.instructor)
+        res = self.client.patch(
+            f'/api/academy/courses/{course.id}/modules/{m.id}/lessons/{lesson.id}/',
+            {'video_url': 'no-es-una-url'}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_tercero_no_anexa_video(self):
+        course, m, lesson = self._leccion_video()
+        self.client.force_authenticate(self.otro_instructor)
+        res = self.client.patch(
+            f'/api/academy/courses/{course.id}/modules/{m.id}/lessons/{lesson.id}/',
+            {'video_url': 'https://youtu.be/x'}, format='json')
+        self.assertEqual(res.status_code, 403)
+        lesson.refresh_from_db()
+        self.assertEqual(lesson.video_url, '')
+
+    def test_convertir_lectura_a_video(self):
+        course = self._course()
+        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        lesson = Lesson.objects.create(module=m, orden=1, titulo='Lectura', tipo='texto')
+        self.client.force_authenticate(self.instructor)
+        res = self.client.patch(
+            f'/api/academy/courses/{course.id}/modules/{m.id}/lessons/{lesson.id}/',
+            {'tipo': 'video', 'video_url': 'https://vimeo.com/123'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        lesson.refresh_from_db()
+        self.assertEqual((lesson.tipo, lesson.video_url), ('video', 'https://vimeo.com/123'))
+
+
 # ─── Quiz: la clave de respuestas no se filtra al estudiante ──────────────────
 
 class QuizSecurityTests(_Base):
@@ -396,6 +452,48 @@ class Evolucion360Tests(_Base):
         self.assertEqual(enr.estado, 'completada')
         self.assertTrue(Certificate.objects.filter(enrollment=enr).exists())
         self.assertEqual(EarnedBadge.objects.filter(enrollment=enr).count(), 2)
+
+
+class SeedConmebolTests(TestCase):
+    """El seed CONMEBOL marca como video las lecciones conceptuales/tácticas
+    (sin URL → placeholder en la web) y, al re-ejecutarse sobre un curso ya
+    sembrado, sincroniza el tipado sin duplicar ni tocar quizzes ni URLs que el
+    instructor ya haya anexado."""
+
+    def test_lecciones_de_video_y_sync_idempotente(self):
+        call_command('seed_conmebol_evolucion')
+        futbol = Course.objects.get(slug='conmebol-evolucion-licencia-c-futbol')
+        futsal = Course.objects.get(slug='conmebol-evolucion-licencia-c-futsal')
+
+        videos = Lesson.objects.filter(module__course__in=[futbol, futsal], tipo='video')
+        self.assertEqual(videos.count(), 7)
+        # Placeholder deliberado: sin URL hasta que el instructor la anexe.
+        self.assertFalse(videos.exclude(video_url='').exists())
+
+        # Simular el estado previo en prod (sembrado como texto) + una URL ya
+        # anexada por el instructor en otra lección de video.
+        v1, v2 = videos[0], videos[1]
+        Lesson.objects.filter(pk=v1.pk).update(tipo='texto')
+        Lesson.objects.filter(pk=v2.pk).update(video_url='https://youtu.be/anexado')
+        quizzes_antes = Quiz.objects.filter(lesson__module__course=futbol).count()
+
+        call_command('seed_conmebol_evolucion')
+        v1.refresh_from_db()
+        v2.refresh_from_db()
+        # Retipa la lección regresada a texto y respeta la URL ya anexada.
+        self.assertEqual(v1.tipo, 'video')
+        self.assertEqual((v2.tipo, v2.video_url), ('video', 'https://youtu.be/anexado'))
+        # Sin duplicados ni cambios estructurales.
+        self.assertEqual(Course.objects.filter(slug=futbol.slug).count(), 1)
+        self.assertEqual(Quiz.objects.filter(lesson__module__course=futbol).count(),
+                         quizzes_antes)
+
+    def test_quizzes_consistentes(self):
+        call_command('seed_conmebol_evolucion')
+        for quiz in Quiz.objects.filter(
+                lesson__module__course__slug__startswith='conmebol-evolucion'):
+            clave = {str(p.id): p.respuestas_correctas for p in quiz.preguntas.all()}
+            self.assertEqual(grading.grade_attempt(quiz, clave)['puntaje'], 100, quiz.titulo)
 
 
 class Seed360Tests(TestCase):

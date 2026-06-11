@@ -14,8 +14,18 @@ pertenecen a la CONMEBOL.
 
     python manage.py seed_conmebol_evolucion [--instructor-email correo@dominio]
 
-Idempotente por slug: cada curso se omite si ya existe (no duplica). NO se ejecuta
-en el arranque (no está en entrypoint.sh): es una herramienta de siembra manual.
+Idempotente por slug: si un curso ya existe NO se duplica; en su lugar se
+sincronizan el `tipo` y la `video_url` de sus lecciones contra este banco
+(match conservador por orden + título; las lecciones quiz no se tocan, y el
+progreso de los estudiantes no se ve afectado). Así, re-ejecutar el comando en
+producción aplica cambios de tipado (p. ej. lecciones que pasan a ser de video)
+sin reconstruir nada. NO se ejecuta en el arranque (no está en entrypoint.sh):
+es una herramienta de siembra manual.
+
+Las lecciones conceptuales/tácticas se declaran `tipo: 'video'` SIN `video_url`:
+la web muestra un placeholder de "video en producción" (el material de texto
+queda debajo como apoyo) y el instructor anexa la URL real desde la pantalla
+"Contenido" de su curso cuando el video exista.
 """
 
 from django.contrib.auth import get_user_model
@@ -30,8 +40,15 @@ User = get_user_model()
 # ── Banco de cursos (estructura declarativa que el builder materializa) ─────────
 #
 # Cada curso: campos de Course + 'modulos' → cada módulo con 'lecciones' →
-# cada lección de tipo 'texto' (contenido) o 'quiz' (con 'quiz': {...}).
+# cada lección de tipo 'texto'/'video' (contenido) o 'quiz' (con 'quiz': {...}).
 # En un quiz, cada pregunta declara opciones [{id,texto}] y `correctas` (ids).
+#
+# Tipado de lecciones: las clases conceptuales (la "masterclass" que abre cada
+# eje) y las tácticas (donde se muestran jugadas y situaciones de juego) son de
+# tipo 'video'; las normativas/de referencia (reglamento, etapas, salud) quedan
+# como lectura. Un 'video' sin 'video_url' es un placeholder deliberado: la web
+# muestra "video en producción" con el texto de apoyo debajo, y la URL real se
+# anexa después desde la pantalla "Contenido" del instructor (sin links muertos).
 
 VF = [{'id': 'v', 'texto': 'Verdadero'}, {'id': 'f', 'texto': 'Falso'}]
 
@@ -66,7 +83,7 @@ CURSOS = [
                                'licencias y quién lo dicta, valida y renueva.',
                 'lecciones': [
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'CONMEBOL Evolución: el ecosistema de formación',
                         'contenido': (
                             'La CONMEBOL concentra su oferta formativa bajo el programa **CONMEBOL '
@@ -212,7 +229,7 @@ CURSOS = [
                         ),
                     },
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'El ADN sudamericano',
                         'contenido': (
                             'El **"ADN sudamericano"** es el núcleo conceptual de la formación: '
@@ -292,7 +309,7 @@ CURSOS = [
                                'modelo de juego propio.',
                 'lecciones': [
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'Fases del juego y transiciones',
                         'contenido': (
                             'El juego se organiza en cuatro **momentos** que se suceden de forma '
@@ -306,7 +323,7 @@ CURSOS = [
                         ),
                     },
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'Principios tácticos ofensivos y defensivos',
                         'contenido': (
                             '**Principios ofensivos:** penetración, cobertura ofensiva, movilidad, '
@@ -575,7 +592,7 @@ CURSOS = [
                 'descripcion': 'Qué hace único al futsal y por qué exige decisiones más rápidas.',
                 'lecciones': [
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'Qué hace único al futsal',
                         'contenido': (
                             'La **lógica interna del futsal** parte de su contexto: **espacio '
@@ -605,7 +622,7 @@ CURSOS = [
                 'descripcion': 'La estructura del juego de futsal y los principios que lo ordenan.',
                 'lecciones': [
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'Los seis momentos del juego',
                         'contenido': (
                             'El juego de futsal se estructura en **seis momentos**:\n\n'
@@ -620,7 +637,7 @@ CURSOS = [
                         ),
                     },
                     {
-                        'tipo': 'texto',
+                        'tipo': 'video',
                         'titulo': 'Principios tácticos y el rol del pívot',
                         'contenido': (
                             '**Principios tácticos ofensivos:** penetración, cobertura ofensiva, '
@@ -715,18 +732,22 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         instructor = self._resolve_instructor(opts.get('instructor_email'))
 
-        creados = 0
+        creados = sincronizadas = 0
         for data in CURSOS:
-            if Course.objects.filter(slug=data['slug']).exists():
+            course = Course.objects.filter(slug=data['slug']).first()
+            if course:
+                n = self._sync_lessons(data, course)
+                sincronizadas += n
                 self.stdout.write(self.style.WARNING(
-                    f'• "{data["slug"]}" ya existe — se omite.'))
+                    f'• "{data["slug"]}" ya existe — {n} lección(es) sincronizada(s).'))
                 continue
             self._create_course(data, instructor)
             creados += 1
 
         autor = instructor.email if instructor else 'sin instructor'
         self.stdout.write(self.style.SUCCESS(
-            f'Listo: {creados} curso(s) CONMEBOL Evolución creado(s) (autor={autor}).'
+            f'Listo: {creados} curso(s) creado(s), {sincronizadas} lección(es) '
+            f'sincronizada(s) (autor={autor}).'
         ))
 
     @transaction.atomic
@@ -755,12 +776,44 @@ class Command(BaseCommand):
                 lesson = Lesson.objects.create(
                     module=module, orden=l_idx, titulo=lec['titulo'],
                     tipo=lec['tipo'], contenido=lec.get('contenido', ''),
+                    video_url=lec.get('video_url', ''),
                 )
                 if lec['tipo'] == 'quiz':
                     self._create_quiz(lesson, lec['quiz'])
 
         self.stdout.write(self.style.SUCCESS(
             f'✓ "{course.titulo}" (slug={course.slug}, {course.modulos.count()} módulos).'))
+
+    @transaction.atomic
+    def _sync_lessons(self, data, course):
+        """Sincroniza `tipo` y `video_url` de las lecciones de un curso ya
+        sembrado contra el banco. Match conservador por (orden de módulo, orden
+        de lección, título): si la estructura cambió, esa lección se omite. Las
+        lecciones quiz (en BD o en el banco) no se tocan, y nunca se crean ni
+        borran lecciones — solo se retipa contenido propio, así el progreso de
+        los estudiantes queda intacto."""
+        actualizadas = 0
+        for m_idx, m in enumerate(data['modulos'], start=1):
+            module = course.modulos.filter(orden=m_idx, titulo=m['titulo']).first()
+            if not module:
+                continue
+            for l_idx, lec in enumerate(m['lecciones'], start=1):
+                lesson = module.lecciones.filter(orden=l_idx, titulo=lec['titulo']).first()
+                if not lesson or 'quiz' in (lesson.tipo, lec['tipo']):
+                    continue
+                tipo = lec['tipo']
+                video_url = lec.get('video_url', '')
+                # Una URL ya anexada por el instructor no se pisa con el
+                # placeholder vacío del banco.
+                if not video_url:
+                    video_url = lesson.video_url
+                if (lesson.tipo, lesson.video_url) == (tipo, video_url):
+                    continue
+                lesson.tipo = tipo
+                lesson.video_url = video_url
+                lesson.save(update_fields=['tipo', 'video_url'])
+                actualizadas += 1
+        return actualizadas
 
     def _create_quiz(self, lesson, qdata):
         quiz = Quiz.objects.create(

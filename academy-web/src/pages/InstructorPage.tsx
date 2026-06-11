@@ -109,12 +109,20 @@ export function InstructorPage() {
           {courses.map((c) => (
             <div key={c.id} className="flex flex-col gap-2">
               <CourseCard course={c} to={`/cursos/${c.id}`} />
-              <Link
-                to={`/instructor/cursos/${c.id}/entregas`}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
-              >
-                <Icon name="upload" size={15} /> Revisar entregas
-              </Link>
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  to={`/instructor/cursos/${c.id}/contenido`}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                >
+                  <Icon name="play" size={15} /> Videos
+                </Link>
+                <Link
+                  to={`/instructor/cursos/${c.id}/entregas`}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                >
+                  <Icon name="upload" size={15} /> Entregas
+                </Link>
+              </div>
             </div>
           ))}
         </div>

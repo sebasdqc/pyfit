@@ -3,8 +3,8 @@
 
 import { api } from './client'
 import type {
-  Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, QuizAttempt,
-  Submission, SubmissionEstado,
+  Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, Lesson,
+  LessonTipo, QuizAttempt, Submission, SubmissionEstado,
 } from '@/types'
 
 // ── Catálogo / cursos ─────────────────────────────────────────────────────────
@@ -58,6 +58,29 @@ export async function createCourse(payload: CreateCoursePayload): Promise<Course
 
 export async function updateCourse(id: number, payload: Partial<CreateCoursePayload>): Promise<CourseDetail> {
   const res = await api.patch<CourseDetail>(`/academy/courses/${id}/`, payload)
+  return res.data
+}
+
+// Edición puntual de una lección (autor/admin). Lo usa la pantalla "Contenido"
+// del instructor para anexar/quitar el video de una lección o retiparla.
+export interface UpdateLessonPayload {
+  tipo?: LessonTipo
+  video_url?: string
+  titulo?: string
+  contenido?: string
+  duracion_min?: number
+}
+
+export async function updateLesson(
+  courseId: number,
+  moduleId: number,
+  lessonId: number,
+  payload: UpdateLessonPayload,
+): Promise<Lesson> {
+  const res = await api.patch<Lesson>(
+    `/academy/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/`,
+    payload,
+  )
   return res.data
 }
 
