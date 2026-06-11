@@ -43,11 +43,14 @@ function fromServerTest(r: PhysicalTestRecord, userToLink: Map<number, string>):
 // ── Etiquetas y orden de familias ───────────────────────────────────────────
 const FAMILIAS: { id: TestFamilia; label: string }[] = [
   { id: 'fisico', label: 'Físico' },
+  { id: 'carga', label: 'Carga interna' },
+  { id: 'prevencion', label: 'Prevención' },
   { id: 'tecnico', label: 'Técnico' },
   { id: 'tactico', label: 'Táctico' },
 ]
 const FAMILIA_LABEL: Record<TestFamilia, string> = {
-  fisico: 'Físico', tecnico: 'Técnico', tactico: 'Táctico',
+  fisico: 'Físico', carga: 'Carga interna', prevencion: 'Prevención',
+  tecnico: 'Técnico', tactico: 'Táctico',
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -239,7 +242,7 @@ export function TestPage() {
           </p>
         </div>
         {/* Filtro por familia */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
+        <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-perf-border bg-perf-surface p-0.5">
           {(['todos', ...FAMILIAS.map((f) => f.id)] as const).map((id) => (
             <button
               key={id}

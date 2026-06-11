@@ -253,7 +253,7 @@ export interface CalendarEvent {
 }
 
 // ── Módulo TEST: catálogo de calculadoras (performance/calculators) ──────────
-export type TestFamilia = 'fisico' | 'tecnico' | 'tactico'
+export type TestFamilia = 'fisico' | 'tecnico' | 'tactico' | 'carga' | 'prevencion'
 
 // Sub-campo de un input compuesto (p. ej. cada fila de componentes del GPAI).
 export interface TestSchemaSubField {

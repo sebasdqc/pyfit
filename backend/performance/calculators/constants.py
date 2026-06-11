@@ -30,6 +30,91 @@ SAYERS_ALTURA = 60.7
 SAYERS_MASA = 45.3
 SAYERS_CONST = 2055.0
 
+# Squat Jump (SJ): misma derivación de altura por tiempo de vuelo que el CMJ
+# (h = g·t²/8); sin contramovimiento. La diferencia CMJ − SJ estima el aporte del
+# ciclo estiramiento-acortamiento (índice elástico), pero requiere ambos saltos.
+
+# Yo-Yo Intermittent Recovery Test LEVEL 2 (IR2)
+# Mismo shuttle de 2×20 m = 40 m, pero arranca más rápido y con mayor componente
+# anaeróbico (Krustrup et al. 2006). VO2máx estimado — Bangsbo et al. (2008):
+#   VO2máx (ml/min/kg) = distancia(m) × 0.0136 + 45.3
+YOYO_IR2_SHUTTLE_M = 40.0
+BANGSBO_IR2_SLOPE = 0.0136
+BANGSBO_IR2_INTERCEPT = 45.3
+
+# 30-15 Intermittent Fitness Test (30-15 IFT) — Buchheit (2008).
+# VIFT = velocidad de la última etapa completada (km/h). Estima VO2máx y, sobre
+# todo, individualiza la velocidad de referencia del HIIT (≈ VIFT).
+#   VO2máx (ml/kg/min) = 28.3 − 2.15·G − 0.741·A − 0.0357·W
+#                        + 0.0586·A·VIFT + 1.03·VIFT
+#   G = sexo (hombre = 1, mujer = 2); A = edad (años); W = peso (kg).
+IFT_VO2_CONST = 28.3
+IFT_VO2_SEXO = -2.15
+IFT_VO2_EDAD = -0.741
+IFT_VO2_PESO = -0.0357
+IFT_VO2_EDAD_VIFT = 0.0586
+IFT_VO2_VIFT = 1.03
+
+# RAST (Running Anaerobic Sprint Test) — Draper & Whyte (1997).
+# 6 sprints máximos de 35 m con 10 s de recuperación.
+#   Potencia de cada sprint (W) = masa(kg) × distancia²(m²) ÷ tiempo³(s³)
+#   Potencia pico = máx; media = suma/n; Índice de Fatiga (W/s) =
+#     (potencia pico − potencia mínima) ÷ tiempo total de los sprints.
+RAST_DISTANCIA_M = 35.0
+
+# Reactive Strength Index (RSI) a partir del Drop Jump:
+#   RSI = altura del salto (m) ÷ tiempo de contacto con el suelo (s)
+# Mide la capacidad reactiva/pliométrica (ciclo estiramiento-acortamiento rápido).
+
+# COD Deficit — aísla la capacidad de cambiar de dirección de la velocidad lineal:
+#   COD deficit (s) = tiempo 505 − tiempo del tramo lineal de 10 m
+#   COD deficit (%) = (tiempo 505 ÷ tiempo 10 m − 1) × 100
+# Nota: fiabilidad limitada en jóvenes (CV alto); usar como guía, no corte fino.
+
+# ── CARGA INTERNA (sRPE → monotonía → strain → ACWR) ──────────────────────────
+# Método de Foster (session-RPE). Validado ampliamente (Haddad et al. 2017).
+#   sRPE (UA) = RPE (0–10, CR-10 de Borg) × duración de la sesión (min)
+#   Carga semanal = Σ de las cargas diarias (UA) de la semana
+#   Monotonía = media de la carga diaria ÷ desviación estándar de la carga diaria
+#   Strain = carga semanal total × monotonía
+RPE_MAX = 10.0
+MONOTONIA_ALERTA = 2.0   # monotonía > 2.0 = riesgo (Foster 1998)
+
+# Edwards TRIMP (Training Impulse por zonas de FC) — REQUIERE monitor de FC.
+#   TRIMP (UA) = Σ tiempo en cada zona (min) × factor de zona
+#   5 zonas por %FCmáx: Z1 50–60, Z2 60–70, Z3 70–80, Z4 80–90, Z5 90–100.
+#   Factores: Z1×1, Z2×2, Z3×3, Z4×4, Z5×5.
+# En deportes intermitentes (fútbol/futsal) el % de tiempo por encima del 85–90 %
+# FCmáx es la métrica dosis-respuesta clave. En FUTSAL es prioritaria: los jugadores
+# pasan ~83 % del tiempo por encima del 85 % FCmáx (Barbero-Álvarez et al.).
+EDWARDS_FACTORES = (1, 2, 3, 4, 5)
+
+# ACWR (Acute:Chronic Workload Ratio) — relación carga aguda (7 d) ÷ crónica (28 d).
+# Dos modelos: media móvil (RA) y media móvil exponencial (EWMA, más sensible al
+# riesgo; Williams et al. 2017). λ = 2 ÷ (N + 1).
+ACWR_VENTANA_AGUDA = 7
+ACWR_VENTANA_CRONICA = 28
+# Zonas (benchmarks de gestión de carga, NO predicción causal de lesión):
+ACWR_INFRACARGA = 0.8    # < 0.8  → infracarga / destraining
+ACWR_OPTIMA_MAX = 1.3    # 0.8–1.3 → sweet spot (riesgo más bajo)
+ACWR_PRECAUCION_MAX = 1.5  # 1.3–1.5 → precaución
+ACWR_RIESGO_ALTO = 2.0   # > 2.0  → riesgo relativo muy elevado
+
+# ── PREVENCIÓN / RETURN-TO-PLAY ───────────────────────────────────────────────
+# Nordic Hamstring — asimetría de fuerza excéntrica entre piernas (NordBord y
+# similares). Umbral de asimetría relevante igual que en el resto del panel.
+ASIMETRIA_NORDIC_UMBRAL_PCT = 10.0
+# Limb Symmetry Index (LSI) en baterías de hop tests / fuerza:
+#   LSI = (rendimiento pierna lesionada ÷ pierna sana) × 100
+#   Criterio RTP clásico: LSI ≥ 90 %. Cautela: puede sobreestimar la recuperación
+#   (la pierna sana se debilita en la rehab); muchos exigen 95–100 % y comparación
+#   con valores pre-lesión.
+LSI_UMBRAL_RTP_PCT = 90.0
+# Deshidratación por cambio de masa corporal (sin hardware, báscula):
+#   % deshidratación = (peso pre − peso post) ÷ peso pre × 100
+#   Pérdida > 2 % del peso corporal = umbral de afectación del rendimiento.
+DESHIDRATACION_ALERTA_PCT = 2.0
+
 # ── TÉCNICOS ──────────────────────────────────────────────────────────────────
 
 # Loughborough Soccer Passing Test (LSPT) — matriz de penalización (segundos).

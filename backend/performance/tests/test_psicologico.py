@@ -106,6 +106,16 @@ class WellnessCheckinTests(_Base):
 # ── Fase B: cuestionarios validados (instrumentos) ───────────────────────────
 
 class InstrumentScoringTests(SimpleTestCase):
+    def test_brums_tmd_iceberg(self):
+        # TMD = (4+2+3+5+2) − 12 = 4 ; vigor 12 ≥ negativas/5 (16/5=3.2) → iceberg.
+        out = score('brums', {'tension': 4, 'depresion': 2, 'colera': 3, 'vigor': 12, 'fatiga': 5, 'confusion': 2})
+        self.assertEqual(out['resultados']['indice'], 4.0)
+        self.assertEqual(out['resultados']['interpretacion'], 'Perfil iceberg: vigor dominante')
+
+    def test_brums_fuera_de_rango(self):
+        with self.assertRaises(InstrumentError):
+            score('brums', {'tension': 20, 'depresion': 2, 'colera': 3, 'vigor': 12, 'fatiga': 5, 'confusion': 2})
+
     def test_poms_tmd(self):
         # TMD = (10+8+6+9+5) − 30 + 100 = 108
         out = score('poms', {'tension': 10, 'depresion': 8, 'colera': 6, 'vigor': 30, 'fatiga': 9, 'confusion': 5})
@@ -130,7 +140,7 @@ class InstrumentEndpointTests(_Base):
         res = self.client.get('/api/performance/psicologico/instruments/')
         self.assertEqual(res.status_code, 200)
         slugs = {i['slug'] for i in res.json()}
-        self.assertEqual(slugs, {'poms', 'restq-sport', 'csai-2', 'abq'})
+        self.assertEqual(slugs, {'brums', 'poms', 'restq-sport', 'csai-2', 'abq'})
 
     def test_score_sin_persistir(self):
         res = self.client.post('/api/performance/psicologico/instruments/score/', {

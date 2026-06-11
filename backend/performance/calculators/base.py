@@ -20,7 +20,12 @@ from __future__ import annotations
 FAMILIA_FISICO = 'fisico'
 FAMILIA_TECNICO = 'tecnico'
 FAMILIA_TACTICO = 'tactico'
-FAMILIAS = (FAMILIA_FISICO, FAMILIA_TECNICO, FAMILIA_TACTICO)
+FAMILIA_CARGA = 'carga'          # carga interna (sRPE → monotonía → strain → ACWR)
+FAMILIA_PREVENCION = 'prevencion'  # prevención de lesiones y return-to-play
+FAMILIAS = (
+    FAMILIA_FISICO, FAMILIA_TECNICO, FAMILIA_TACTICO,
+    FAMILIA_CARGA, FAMILIA_PREVENCION,
+)
 
 
 class CalculatorError(Exception):

@@ -25,6 +25,20 @@ class InstrumentError(Exception):
 
 # ── Scorers (calculan los índices compuestos a partir de las subescalas) ───────
 
+def _brums(v):
+    # Brunel Mood Scale (Terry et al.): 6 subescalas 0–16. Alteración Total del
+    # Estado de Ánimo (TMD) = Σ negativas − vigor (rango −16…64).
+    neg = v['tension'] + v['depresion'] + v['colera'] + v['fatiga'] + v['confusion']
+    tmd = round(neg - v['vigor'], 1)
+    return {
+        'indice': tmd,
+        'indice_label': 'Alteración total del ánimo (TMD)',
+        # Perfil "iceberg": vigor por encima de las subescalas negativas → buen estado.
+        'interpretacion': 'Perfil iceberg: vigor dominante' if v['vigor'] >= neg / 5
+        else 'Estado de ánimo alterado',
+    }
+
+
 def _poms(v):
     # Alteración Total del Estado de Ánimo (TMD) = Σ negativas − vigor (+100).
     neg = v['tension'] + v['depresion'] + v['colera'] + v['fatiga'] + v['confusion']
@@ -73,6 +87,19 @@ def _abq(v):
 # ── Catálogo de instrumentos ──────────────────────────────────────────────────
 # `dir`: 'neg' (mayor = peor) / 'pos' (mayor = mejor) — solo informativo para la UI.
 INSTRUMENTS = {
+    'brums': {
+        'nombre': 'Estado de ánimo (BRUMS)',
+        'descripcion': '6 subescalas (0–16) en 2–3 min; calcula la Alteración Total del Estado de Ánimo (TMD).',
+        'subescalas': [
+            {'key': 'tension', 'label': 'Tensión', 'min': 0, 'max': 16, 'dir': 'neg'},
+            {'key': 'depresion', 'label': 'Depresión', 'min': 0, 'max': 16, 'dir': 'neg'},
+            {'key': 'colera', 'label': 'Cólera', 'min': 0, 'max': 16, 'dir': 'neg'},
+            {'key': 'vigor', 'label': 'Vigor', 'min': 0, 'max': 16, 'dir': 'pos'},
+            {'key': 'fatiga', 'label': 'Fatiga', 'min': 0, 'max': 16, 'dir': 'neg'},
+            {'key': 'confusion', 'label': 'Confusión', 'min': 0, 'max': 16, 'dir': 'neg'},
+        ],
+        'scorer': _brums,
+    },
     'poms': {
         'nombre': 'Perfil de estados de ánimo (POMS)',
         'descripcion': '6 subescalas de ánimo; calcula la Alteración Total del Estado de Ánimo (TMD).',

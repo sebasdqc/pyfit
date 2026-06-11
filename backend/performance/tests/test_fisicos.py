@@ -12,7 +12,10 @@ from performance.calculators import REGISTRY, CalculatorError, get_calculator
 
 class RegistryTests(SimpleTestCase):
     def test_familia1_registrada(self):
-        for slug in ('yoyo-ir1', 'sprint-lineal', 'test-505', 'rsa', 'cmj'):
+        for slug in (
+            'yoyo-ir1', 'yoyo-ir2', 'ift-30-15', 'sprint-lineal', 'sprint-splits',
+            'test-505', 'cod-deficit', 'rsa', 'rast', 'cmj', 'squat-jump', 'drop-jump', 'broad-jump',
+        ):
             self.assertIn(slug, REGISTRY, f'{slug} no está registrado')
 
 
@@ -119,3 +122,111 @@ class CMJTests(SimpleTestCase):
     def test_sin_altura_ni_tiempo(self):
         with self.assertRaises(CalculatorError):
             self.calc().run({'masa_kg': 75})
+
+
+class YoYoIR2Tests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('yoyo-ir2'))
+
+    def test_distancia_y_vo2max(self):
+        # 25 shuttles × 40 m = 1000 m → VO2máx = 1000×0.0136 + 45.3 = 58.9
+        out = self.calc().run({'shuttles': 25})
+        self.assertEqual(out['distancia_m'], 1000.0)
+        self.assertAlmostEqual(out['vo2max_ml_min_kg'], 58.9, places=2)
+
+
+class IFT3015Tests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('ift-30-15'))
+
+    def test_vo2max_buchheit(self):
+        # 28.3 −2.15·1 −0.741·22 −0.0357·75 +0.0586·22·19 +1.03·19 = 51.24
+        out = self.calc().run({'vift': 19.0, 'sexo': 1, 'edad': 22, 'peso_kg': 75})
+        self.assertAlmostEqual(out['vo2max_ml_min_kg'], 51.24, places=2)
+        self.assertEqual(out['velocidad_hiit_kmh'], 19.0)
+
+    def test_vift_sin_antropometria(self):
+        out = self.calc().run({'vift': 18.0})
+        self.assertIsNone(out['vo2max_ml_min_kg'])
+        self.assertEqual(out['vift_kmh'], 18.0)
+
+    def test_falta_vift(self):
+        with self.assertRaises(CalculatorError):
+            self.calc().run({'sexo': 1})
+
+
+class RASTTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('rast'))
+
+    def test_potencias_e_indice_fatiga(self):
+        # P_pico = 75×35²/5³ = 735 W ; relativa = 735/75 = 9.8 W/kg
+        out = self.calc().run({'masa_kg': 75, 'tiempos': [5.0, 5.1, 5.3, 5.5, 5.6, 5.8]})
+        self.assertEqual(out['n_sprints'], 6)
+        self.assertAlmostEqual(out['potencia_pico_w'], 735.0, places=2)
+        self.assertAlmostEqual(out['potencia_pico_relativa_w_kg'], 9.8, places=2)
+        self.assertGreater(out['indice_fatiga_w_s'], 0)
+
+    def test_tiempo_cero(self):
+        with self.assertRaises(CalculatorError):
+            self.calc().run({'masa_kg': 75, 'tiempos': [5.0, 0]})
+
+
+class SprintSplitsTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('sprint-splits'))
+
+    def test_velocidades_por_tramo(self):
+        out = self.calc().run({'t10': 1.8, 't20': 3.1, 't30': 4.2})
+        self.assertAlmostEqual(out['velocidad_0_10_ms'], 5.56, places=2)
+        # Volante 20–30 m: (30−20)/(4.2−3.1) = 9.09 m/s
+        self.assertAlmostEqual(out['velocidad_volante_ms'], 9.09, places=2)
+        self.assertEqual(out['distancia_medida_m'], 30)
+
+    def test_solo_10m(self):
+        out = self.calc().run({'t10': 1.7})
+        self.assertAlmostEqual(out['velocidad_0_10_ms'], 5.88, places=2)
+        self.assertEqual(out['distancia_medida_m'], 10)
+
+    def test_parciales_no_crecientes(self):
+        with self.assertRaises(CalculatorError):
+            self.calc().run({'t10': 2.0, 't20': 1.9})
+
+
+class CODDeficitTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('cod-deficit'))
+
+    def test_deficit(self):
+        out = self.calc().run({'tiempo_505': 2.4, 'tiempo_10m': 1.8})
+        self.assertAlmostEqual(out['cod_deficit_s'], 0.6, places=2)
+        self.assertAlmostEqual(out['cod_deficit_pct'], 33.33, places=2)
+
+    def test_505_menor_que_10m(self):
+        with self.assertRaises(CalculatorError):
+            self.calc().run({'tiempo_505': 1.5, 'tiempo_10m': 1.8})
+
+
+class SquatJumpTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('squat-jump'))
+
+    def test_potencia_sayers(self):
+        out = self.calc().run({'altura_cm': 40, 'masa_kg': 75})
+        self.assertAlmostEqual(out['potencia_w'], 3770.5, places=2)
+
+
+class DropJumpTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('drop-jump'))
+
+    def test_rsi(self):
+        # RSI = 0.40 m / 0.20 s = 2.0
+        out = self.calc().run({'altura_cm': 40, 'tiempo_contacto_s': 0.2})
+        self.assertAlmostEqual(out['rsi'], 2.0, places=2)
+
+    def test_contacto_cero(self):
+        with self.assertRaises(CalculatorError):
+            self.calc().run({'altura_cm': 40, 'tiempo_contacto_s': 0})
+
+
+class BroadJumpTests(SimpleTestCase):
+    calc = staticmethod(lambda: get_calculator('broad-jump'))
+
+    def test_distancia_y_ratio(self):
+        out = self.calc().run({'distancia_cm': 240, 'talla_cm': 178})
+        self.assertEqual(out['distancia_m'], 2.4)
+        self.assertAlmostEqual(out['ratio_distancia_talla'], 1.35, places=2)
