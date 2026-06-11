@@ -12,12 +12,12 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const nombre = (user?.nombre ?? '').split(/\s+/)[0] || 'Estudiante'
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-surface-border bg-surface-soft/85 px-4 py-3.5 backdrop-blur-sm sm:px-6">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-surface-border bg-surface-soft/85 px-5 py-3.5 backdrop-blur-sm sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onMenu}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-border bg-white text-ink-soft hover:text-ink md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-border bg-white text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink md:hidden"
           aria-label="Abrir menú"
         >
           <Icon name="menu" size={18} />

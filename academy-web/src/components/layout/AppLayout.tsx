@@ -24,7 +24,7 @@ export function AppLayout() {
 
       <div className="min-h-screen md:pl-[104px] lg:pl-[272px]">
         <Topbar onMenu={() => setMobileOpen(true)} />
-        <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
+        <main className="mx-auto max-w-6xl px-5 pb-16 pt-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>

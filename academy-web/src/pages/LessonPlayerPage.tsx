@@ -174,10 +174,10 @@ export function LessonPlayerPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface-soft">
       {/* Barra superior del reproductor */}
-      <header className="flex items-center gap-3 border-b border-surface-border bg-white px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-surface-border bg-white px-3 py-3 sm:gap-3 sm:px-5">
         <button
           onClick={() => navigate('/aprendizaje')}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft hover:bg-surface-soft hover:text-ink"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
           aria-label="Salir del reproductor"
           title="Salir"
         >
@@ -195,7 +195,7 @@ export function LessonPlayerPage() {
           onClick={() => setOutlineOpen((v) => !v)}
           aria-expanded={outlineOpen}
           aria-controls="course-outline-drawer"
-          className="flex h-9 items-center gap-1.5 rounded-lg border border-surface-border px-3 text-sm text-ink-soft hover:bg-surface-soft lg:hidden"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-surface-border px-3 text-sm text-ink-soft transition-colors hover:bg-surface-soft lg:hidden"
         >
           <Icon name="layers" size={16} /> Temario
         </button>
@@ -241,7 +241,7 @@ export function LessonPlayerPage() {
 
         {/* Contenido de la lección */}
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
+          <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
             {/* Banner de curso completado */}
             {estado === 'completada' && (
               <CompletionBanner certCode={certCode} onVerCertificados={() => navigate('/certificados')} />
@@ -291,7 +291,7 @@ export function LessonPlayerPage() {
                   <button
                     onClick={() => prev && goTo(prev.lesson.id)}
                     disabled={!prev}
-                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft hover:bg-white disabled:opacity-40"
+                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-white disabled:opacity-40"
                   >
                     <Icon name="chevronLeft" size={16} /> Anterior
                   </button>
@@ -303,7 +303,7 @@ export function LessonPlayerPage() {
                       <button
                         onClick={markComplete}
                         disabled={marking}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ok px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ok px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
                       >
                         <Icon name="check" size={16} /> {marking ? 'Guardando…' : 'Marcar como completada'}
                       </button>
@@ -311,7 +311,7 @@ export function LessonPlayerPage() {
                     <button
                       onClick={() => next && goTo(next.lesson.id)}
                       disabled={!next}
-                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-40"
+                      className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-40 sm:flex-none"
                     >
                       Siguiente <Icon name="chevronRight" size={16} />
                     </button>

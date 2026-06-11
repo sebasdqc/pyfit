@@ -51,7 +51,7 @@ export function CatalogPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-7 sm:p-9">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
         <div className="pointer-events-none absolute -right-10 -top-12 opacity-[0.08]">
           <Emblem size={260} tone="dark" />
         </div>

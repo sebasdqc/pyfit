@@ -6,6 +6,11 @@
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* Evita el "auto-zoom" del texto en iOS al girar el teléfono. */
+    -webkit-text-size-adjust: 100%;
+    /* Quita el destello gris al tocar controles en móvil (lo sustituimos por un
+       feedback propio más abajo). */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-surface-soft font-sans text-ink antialiased;
@@ -55,5 +60,17 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Feedback táctil en dispositivos sin hover (móvil/tablet): un leve atenuado al
+   pulsar cualquier control, ya que ahí no existe el estado :hover. En escritorio
+   no aplica (se conservan los hover). */
+@media (hover: none) {
+  a:active,
+  button:not(:disabled):active,
+  [role='button']:not([aria-disabled='true']):active,
+  label:active {
+    opacity: 0.72;
   }
 }

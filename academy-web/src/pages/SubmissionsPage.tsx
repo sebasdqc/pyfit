@@ -92,7 +92,7 @@ export function SubmissionsPage() {
       </div>
 
       {/* Tabs por estado */}
-      <div role="tablist" aria-label="Estado de las entregas" className="flex gap-2">
+      <div role="tablist" aria-label="Estado de las entregas" className="flex flex-wrap gap-2">
         {TABS.map((t) => {
           const count = subs.filter((s) => s.estado === t.id).length
           const active = tab === t.id
