@@ -8,6 +8,7 @@ import type {
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
   TacticalPlay, Escena, WellnessRecord, CalendarEvent,
   InjuryReport, PhysicalTestRecord, PsychRecord,
+  CargaTeamRow, CargaAthleteResponse, CargaRecord,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -202,6 +203,38 @@ export async function savePsychRecord(centerId: number, payload: SavePsychPayloa
 
 export async function deletePsychRecord(centerId: number, recordId: number): Promise<void> {
   await api.delete(`/performance/centers/${centerId}/psicologico/${recordId}/`)
+}
+
+// ── Módulo CARGA INTERNA: sRPE diario + ACWR/monotonía (cálculo en servidor) ──
+// Persiste sobre PerformanceMetric (tipo='carga'); el servidor agrega y computa.
+const cargaBase = (centerId: number) => `/performance/centers/${centerId}/carga`
+
+export async function listCargaTeam(centerId: number): Promise<CargaTeamRow[]> {
+  const res = await api.get<CargaTeamRow[]>(`${cargaBase(centerId)}/`)
+  return res.data
+}
+
+export async function getCargaAthlete(centerId: number, athleteUserId: number): Promise<CargaAthleteResponse> {
+  const res = await api.get<CargaAthleteResponse>(`${cargaBase(centerId)}/`, {
+    params: { athlete: athleteUserId },
+  })
+  return res.data
+}
+
+export type CargaPayload = {
+  athlete: number // id de USUARIO real
+  fecha: string
+  rpe: number
+  duracion_min: number
+  notas?: string
+}
+export async function createCarga(centerId: number, payload: CargaPayload): Promise<CargaRecord> {
+  const res = await api.post<CargaRecord>(`${cargaBase(centerId)}/`, payload)
+  return res.data
+}
+
+export async function deleteCarga(centerId: number, recordId: number): Promise<void> {
+  await api.delete(`${cargaBase(centerId)}/${recordId}/`)
 }
 
 // ── Módulo TEST: catálogo de calculadoras y cálculo en servidor ──────────────

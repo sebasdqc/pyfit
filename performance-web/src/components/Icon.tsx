@@ -34,10 +34,12 @@ export type IconName =
   | 'simulador'
   | 'gps'
   | 'eye'
+  | 'carga'
   | 'check'
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="m5 12 5 5 9-11" />,
+  carga: <path d="M13 2 4 14h7l-1 8 10-12h-7l1-8Z" />,
   eye: (
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />

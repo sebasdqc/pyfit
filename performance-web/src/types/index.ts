@@ -139,6 +139,44 @@ export interface PhysicalTestRecord {
   created_at: string
 }
 
+// ── Módulo CARGA INTERNA (sRPE → ACWR) — sobre PerformanceMetric, sin modelo nuevo.
+// Las métricas (ACWR RA/EWMA, monotonía, strain, zona) las calcula el SERVIDOR
+// (performance.carga_service, que delega en las calculadoras). `athlete` = id de USUARIO.
+export interface CargaMetrics {
+  dias_con_datos: number
+  suficiente: boolean // ≥ 7 días de registro → ACWR con sentido
+  carga_serie: number[] // carga diaria continua (UA), más antigua → hoy
+  carga_semanal_ua: number
+  carga_aguda_ua?: number
+  carga_cronica_ua?: number
+  acwr_ra: number | null
+  acwr_ewma: number | null
+  zona: string // Infracarga | Óptima (sweet spot) | Precaución | Zona de peligro | Riesgo alto | Acumulando datos
+  riesgo_alerta: boolean
+  monotonia: number | null
+  strain_ua: number | null
+  monotonia_alerta?: boolean
+}
+
+export interface CargaTeamRow extends CargaMetrics {
+  athlete: number
+}
+
+export interface CargaRecord {
+  id: number
+  athlete: number
+  fecha: string
+  carga_ua: number
+  metrica: string
+  notas: string
+}
+
+export interface CargaAthleteResponse {
+  athlete: number
+  metricas: CargaMetrics | null
+  registros: CargaRecord[]
+}
+
 // Registro persistido de una evaluación psicológica (performance.PsychAssessment).
 export interface PsychRecord {
   id: number

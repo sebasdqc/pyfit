@@ -398,6 +398,101 @@ def module_lesiones(request, pk):
     return _module_endpoint(request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por', MODULE_LESIONES)
 
 
+# ─── Módulo CARGA INTERNA (sRPE → ACWR) — reutiliza PerformanceMetric ──────────
+# No tiene modelo propio: el sRPE diario se guarda como PerformanceMetric(tipo='carga')
+# y el cálculo (ACWR, monotonía, strain) lo hace el servidor (performance.carga_service,
+# que delega en las calculadoras). Gateado por el módulo Rendimiento (preparador físico).
+
+CARGA_TIPO = 'carga'
+
+
+def _carga_row(metric):
+    """Registro de sesión sRPE para el frontend (valor = carga en UA)."""
+    return {
+        'id': metric.id,
+        'athlete': metric.athlete_id,
+        'fecha': str(metric.fecha),
+        'carga_ua': float(metric.valor),
+        'metrica': metric.metrica,
+        'notas': metric.notas,
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def carga_view(request, pk):
+    """Carga interna del centro.
+
+    GET            → vista de equipo: ACWR/monotonía/zona por atleta con registros.
+    GET ?athlete=  → vista por atleta: serie diaria, métricas y lista de registros.
+    POST           → registra una sesión sRPE (RPE × duración) y la persiste.
+    """
+    from collections import defaultdict
+    from datetime import date
+
+    from .carga_service import athlete_carga
+
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_RENDIMIENTO)
+
+    if request.method == 'POST':
+        try:
+            athlete_id = int(request.data.get('athlete'))
+            rpe = float(request.data.get('rpe'))
+            dur = float(request.data.get('duracion_min'))
+        except (TypeError, ValueError):
+            return Response(
+                {'detail': 'Indica atleta, RPE (0–10) y duración (min).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not (0 <= rpe <= 10) or dur <= 0:
+            return Response(
+                {'detail': 'El RPE debe estar entre 0 y 10 y la duración ser mayor que 0.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        fecha = request.data.get('fecha') or date.today().isoformat()
+        metric = PerformanceMetric.objects.create(
+            center=center, athlete_id=athlete_id, registrado_por=request.user,
+            fecha=fecha, tipo=CARGA_TIPO, metrica=f'sRPE {rpe:g}×{dur:g}min',
+            valor=round(rpe * dur, 2), unidad='UA', notas=request.data.get('notas', ''),
+        )
+        return Response(_carga_row(metric), status=status.HTTP_201_CREATED)
+
+    qs = PerformanceMetric.objects.filter(center=center, tipo=CARGA_TIPO)
+    today = date.today()
+    athlete = request.query_params.get('athlete')
+    if athlete:
+        recs = list(qs.filter(athlete=athlete).order_by('fecha', 'created_at'))
+        loads = [(r.fecha, float(r.valor)) for r in recs]
+        return Response({
+            'athlete': int(athlete),
+            'metricas': athlete_carga(loads, today),
+            'registros': [_carga_row(r) for r in recs],
+        })
+
+    # Vista de equipo: una fila por atleta con datos.
+    por_atleta = defaultdict(list)
+    for r in qs.only('athlete', 'fecha', 'valor'):
+        por_atleta[r.athlete_id].append((r.fecha, float(r.valor)))
+    filas = []
+    for aid, loads in por_atleta.items():
+        m = athlete_carga(loads, today)
+        if m:
+            filas.append({'athlete': aid, **m})
+    return Response(filas)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsPerformanceUser])
+def carga_detail(request, pk, record_id):
+    """Elimina un registro de sesión sRPE del centro (acotado a tipo='carga')."""
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_RENDIMIENTO)
+    obj = get_object_or_404(PerformanceMetric, pk=record_id, center=center, tipo=CARGA_TIPO)
+    obj.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsPerformanceUser])
 def lesiones_detail(request, pk, record_id):

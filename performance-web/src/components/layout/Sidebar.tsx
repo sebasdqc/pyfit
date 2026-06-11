@@ -45,6 +45,7 @@ const NAV: NavItem[] = [
     icon: 'monitoreo',
     children: [
       { id: 'fisicos', label: 'Físicos', icon: 'tests', to: '/tests', moduleId: 'test' },
+      { id: 'carga', label: 'Carga interna', icon: 'carga', to: '/carga', moduleId: 'rendimiento' },
       { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
       { id: 'gps', label: 'GPS y Tecnología', icon: 'gps', to: '/gps' },
     ],

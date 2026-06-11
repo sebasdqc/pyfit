@@ -27,6 +27,9 @@ urlpatterns = [
 
     # Módulos del centro (barra lateral del panel)
     path('centers/<int:pk>/rendimiento/', views.module_rendimiento),
+    # Carga interna (sRPE → ACWR). Reutiliza PerformanceMetric; gateado por Rendimiento.
+    path('centers/<int:pk>/carga/', views.carga_view),
+    path('centers/<int:pk>/carga/<int:record_id>/', views.carga_detail),
     path('centers/<int:pk>/lesiones/', views.module_lesiones),
     path('centers/<int:pk>/lesiones/<int:record_id>/', views.lesiones_detail),
     path('centers/<int:pk>/test/', views.module_test),
