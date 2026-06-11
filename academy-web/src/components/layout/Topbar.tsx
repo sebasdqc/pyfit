@@ -12,7 +12,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const nombre = (user?.nombre ?? '').split(/\s+/)[0] || 'Estudiante'
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-surface-border bg-surface-soft/85 px-5 py-3.5 backdrop-blur-sm sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-surface-border bg-surface-soft/85 px-6 py-3.5 backdrop-blur-sm sm:px-8 lg:px-10">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"

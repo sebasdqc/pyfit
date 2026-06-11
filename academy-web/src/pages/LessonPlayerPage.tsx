@@ -174,7 +174,7 @@ export function LessonPlayerPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface-soft">
       {/* Barra superior del reproductor */}
-      <header className="flex items-center gap-2 border-b border-surface-border bg-white px-3 py-3 sm:gap-3 sm:px-5">
+      <header className="flex items-center gap-2 border-b border-surface-border bg-white px-4 py-3 sm:gap-3 sm:px-6">
         <button
           onClick={() => navigate('/aprendizaje')}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
@@ -241,7 +241,7 @@ export function LessonPlayerPage() {
 
         {/* Contenido de la lección */}
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
+          <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8">
             {/* Banner de curso completado */}
             {estado === 'completada' && (
               <CompletionBanner certCode={certCode} onVerCertificados={() => navigate('/certificados')} />
