@@ -152,6 +152,54 @@ MODALIDAD_CHOICES = [
 ]
 
 
+class Tenant(models.Model):
+    """Organización cliente de la plataforma white-label.
+
+    Cada tenant tiene su propio subdominio (o dominio custom) y configuración de
+    branding (logo, colores, tipografía). Los cursos se asocian a un tenant; un
+    catálogo sin tenant (NULL) es el catálogo raíz de Zyfit.
+
+    `branding` almacena solo los valores que sobreescriben los defaults de Zyfit
+    (parcial). El endpoint público `/api/academy/tenant/config/` aplica el merge.
+    """
+
+    nombre = models.CharField(max_length=120)
+    slug = models.SlugField(unique=True)
+    # Subdominio gestionado por Zyfit (p. ej. "conmebol.zyfit.app").
+    dominio = models.CharField(max_length=253, unique=True)
+    # Dominio propio del cliente (p. ej. "evolución.conmebol.com"). Vacío = sin custom.
+    dominio_custom = models.CharField(max_length=253, blank=True)
+    activo = models.BooleanField(default=True)
+    # Solo los valores que difieren de los defaults. Estructura:
+    # {
+    #   "nombre_plataforma": "CONMEBOL Evolución",
+    #   "logo_url":          "https://...",
+    #   "favicon_url":       "https://...",
+    #   "color_brand":       "#1a3e72",       ← hex
+    #   "color_brand_dark":  "#13294d",
+    #   "color_brand_deep":  "#0c1a30",
+    #   "color_accent":      "#0066b3",
+    #   "color_accent_light":"#2a82d6",
+    #   "color_accent_dark": "#004a87",
+    #   "color_ok":          "#1f9d6b",
+    #   "color_warn":        "#e08a00",
+    #   "color_danger":      "#d64545",
+    #   "fuente":            "Ubuntu",        ← nombre de Google Font
+    #   "tagline":           "Cree en grande",
+    #   "tema":              "light"          ← o "dark"
+    # }
+    branding = models.JSONField(default=dict, blank=True)
+    # Ajustes de comportamiento del tenant (registro libre, idiomas, etc.).
+    settings = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_tenants'
+
+    def __str__(self):
+        return self.nombre
+
+
 class Course(models.Model):
     """Curso — entidad raíz de la academia.
 
@@ -165,6 +213,12 @@ class Course(models.Model):
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='cursos_academy',
+    )
+    # Tenant al que pertenece el curso. NULL = catálogo raíz Zyfit (solo visible
+    # desde el dominio base; no se mezcla con los catálogos de otros tenants).
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cursos',
     )
     titulo = models.CharField(max_length=180)
     # Identificador legible para rutas / URL del curso (p. ej. 'fuerza-base').

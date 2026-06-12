@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Variables de tema (default: identidad CONMEBOL/Zyfit Academy) ───────────
+   brand/accent/ok/warn/danger como canales RGB ("R G B") para que los
+   modificadores de opacidad de Tailwind funcionen (bg-brand/10, etc.).
+   El TenantProvider los sobreescribe en runtime para white-label. */
+:root {
+  /* brand (#1a3e72 → 26 62 114) */
+  --color-brand:        26 62 114;
+  --color-brand-dark:   19 41 77;
+  --color-brand-deep:   12 26 48;
+  /* accent (#0066b3 → 0 102 179) */
+  --color-accent:       0 102 179;
+  --color-accent-light: 42 130 214;
+  --color-accent-dark:  0 74 135;
+  /* semánticos */
+  --color-ok:     31 157 107;
+  --color-warn:   224 138  0;
+  --color-danger: 214  69 69;
+  /* ink (texto — no necesita opacidad, hex directo) */
+  --color-ink:          #1a3e72;
+  --color-ink-soft:     #475569;
+  --color-ink-muted:    #647189;
+  --color-ink-faint:    #aab4c5;
+  /* surface */
+  --color-surface:        #ffffff;
+  --color-surface-soft:   #f4f7fc;
+  --color-surface-border: #e3e9f2;
+  /* tipografía */
+  --font-sans: 'Ubuntu';
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -15,16 +45,14 @@
   body {
     @apply bg-surface-soft font-sans text-ink antialiased;
   }
-  /* El acento de selección sigue la marca CONMEBOL. */
+  /* El acento de selección sigue la marca del tenant activo. */
   ::selection {
-    background-color: rgba(0, 102, 179, 0.18);
+    background-color: rgb(var(--color-accent) / 0.18);
   }
 
-  /* Foco visible global para navegación por teclado (WCAG 2.4.7). Un único
-     anillo de marca para todos los controles; el outline sigue el border-radius
-     del elemento en navegadores modernos. Solo aparece con foco de teclado. */
+  /* Foco visible global para navegación por teclado (WCAG 2.4.7). */
   :focus-visible {
-    outline: 2px solid #0066b3; /* accent CONMEBOL */
+    outline: 2px solid rgb(var(--color-accent));
     outline-offset: 2px;
   }
   /* Sin anillo cuando el foco NO viene del teclado (clic/touch). */

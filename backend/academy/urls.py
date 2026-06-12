@@ -5,6 +5,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Config pública del tenant (sin auth — llamada antes del login para el branding)
+    path('tenant/config/', views.tenant_config),
+
     # Auth
     path('auth/login/', views.academy_login),
     path('me/', views.academy_me),

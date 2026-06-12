@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
-    Submission, CourseBadge, EarnedBadge,
+    Submission, CourseBadge, EarnedBadge, Tenant,
 )
 
 
@@ -25,11 +25,18 @@ class QuestionInline(TabularInline):
     extra = 0
 
 
+@admin.register(Tenant)
+class TenantAdmin(ModelAdmin):
+    list_display = ('nombre', 'slug', 'dominio', 'dominio_custom', 'activo', 'created_at')
+    list_filter = ('activo',)
+    search_fields = ('nombre', 'slug', 'dominio')
+
+
 @admin.register(Course)
 class CourseAdmin(ModelAdmin):
-    list_display = ('titulo', 'slug', 'instructor', 'disciplina', 'licencia',
+    list_display = ('titulo', 'slug', 'tenant', 'instructor', 'disciplina', 'licencia',
                     'modalidad', 'carga_horaria_h', 'publicado', 'created_at')
-    list_filter = ('publicado', 'disciplina', 'licencia', 'modalidad', 'nivel', 'categoria')
+    list_filter = ('publicado', 'tenant', 'disciplina', 'licencia', 'modalidad', 'nivel', 'categoria')
     search_fields = ('titulo', 'slug', 'resumen', 'instructor__email')
     prepopulated_fields = {'slug': ('titulo',)}
     autocomplete_fields = ('instructor',)

@@ -1,6 +1,29 @@
 // Tipos compartidos de la web de Academy. Espejan las respuestas del backend
 // Django (academy/serializers.py + academy/views._user_payload).
 
+// ── White-label / tenant ──────────────────────────────────────────────────────
+
+export interface TenantConfig {
+  slug?: string
+  nombre_plataforma: string
+  // Colores en hex (#rrggbb). El frontend los convierte a canales RGB al
+  // aplicarlos como CSS variables para soportar los modificadores de opacidad.
+  color_brand:        string
+  color_brand_dark:   string
+  color_brand_deep:   string
+  color_accent:       string
+  color_accent_light: string
+  color_accent_dark:  string
+  color_ok:     string
+  color_warn:   string
+  color_danger: string
+  fuente:      string
+  tagline:     string
+  logo_url:    string
+  favicon_url: string
+  tema:        'light' | 'dark'
+}
+
 export type GlobalRole = 'athlete' | 'coach' | 'director_tecnico' | 'admin'
 export type Nivel = 'principiante' | 'intermedio' | 'avanzado'
 // Ejes de la formación CONMEBOL Evolución (ver lib/constants.ts).

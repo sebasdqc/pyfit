@@ -1,48 +1,46 @@
 /** @type {import('tailwindcss').Config} */
-// Identidad de Zyfit Academy basada en el MANUAL DE MARCA CONMEBOL:
-//  · Azul oficial del símbolo  #1a3e72 (RGB 26/62/114) → `brand`.
-//  · Azul flat para fondos      #0066b3 (RGB 0/102/179) → `accent`.
-//  · Fondos oficiales: blanco y azul → tema CLARO institucional (a diferencia
-//    del panel Performance, que es oscuro). Tipografía digital oficial: Ubuntu.
+// Colores definidos como CSS variables para soportar white-label multi-tenant.
+// Los valores por defecto (CONMEBOL) se fijan en :root en index.css; el
+// TenantProvider los sobreescribe en runtime según la config del tenant activo.
+//
+// brand/accent/ok/warn/danger usan canales RGB ("R G B") para que los
+// modificadores de opacidad de Tailwind funcionen: bg-brand/10, bg-accent/5, etc.
+// ink/surface se mantienen como hex: no tienen modificadores de opacidad en el UI.
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#1a3e72', // azul CONMEBOL (símbolo)
-          dark: '#13294d',
-          deep: '#0c1a30', // navy profundo para gradientes / hero
+          DEFAULT: 'rgb(var(--color-brand) / <alpha-value>)',
+          dark:    'rgb(var(--color-brand-dark) / <alpha-value>)',
+          deep:    'rgb(var(--color-brand-deep) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#0066b3', // azul flat CONMEBOL (interacción)
-          light: '#2a82d6',
-          dark: '#004a87',
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          light:   'rgb(var(--color-accent-light) / <alpha-value>)',
+          dark:    'rgb(var(--color-accent-dark) / <alpha-value>)',
         },
         ink: {
-          DEFAULT: '#1a3e72', // texto principal (navy)
-          soft: '#475569',
-          // muted oscurecido de #7b8aa0 a #647189 para cumplir contraste WCAG AA
-          // (~4.9:1 sobre blanco) sin perder el carácter "tenue/secundario".
-          muted: '#647189',
-          faint: '#aab4c5', // solo decorativo (íconos/placeholders), no para texto
+          DEFAULT: 'var(--color-ink)',
+          soft:    'var(--color-ink-soft)',
+          muted:   'var(--color-ink-muted)',
+          faint:   'var(--color-ink-faint)',
         },
         surface: {
-          DEFAULT: '#ffffff',
-          soft: '#f4f7fc', // fondo general muy claro
-          border: '#e3e9f2',
+          DEFAULT: 'var(--color-surface)',
+          soft:    'var(--color-surface-soft)',
+          border:  'var(--color-surface-border)',
         },
-        // Sistema semántico (estados de progreso / alertas).
-        ok: '#1f9d6b',
-        warn: '#e08a00',
-        danger: '#d64545',
+        ok:     'rgb(var(--color-ok) / <alpha-value>)',
+        warn:   'rgb(var(--color-warn) / <alpha-value>)',
+        danger: 'rgb(var(--color-danger) / <alpha-value>)',
       },
       fontFamily: {
-        // Ubuntu: tipografía oficial CONMEBOL para plataformas digitales (Google Fonts).
-        sans: ['Ubuntu', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 1px 2px rgba(16,40,80,0.04), 0 8px 24px rgba(16,40,80,0.06)',
+        card:      '0 1px 2px rgba(16,40,80,0.04), 0 8px 24px rgba(16,40,80,0.06)',
         cardHover: '0 4px 10px rgba(16,40,80,0.08), 0 16px 40px rgba(16,40,80,0.12)',
       },
     },

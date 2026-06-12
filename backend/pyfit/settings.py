@@ -75,6 +75,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    # Resuelve el tenant de Academy por Host header → request.tenant.
+    'academy.middleware.TenantMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -135,7 +137,45 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Subida de medios (hoy: fotos de atletas del panel Performance).
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# ── Object storage (DO Spaces / S3) — OPCIONAL, gateado por entorno ───────────
+# Si no hay credenciales, USE_SPACES=False y las fotos siguen guardándose como
+# hasta ahora (data URL base64 en la BD): desplegar este código NO cambia el
+# comportamiento hasta que se configuren las variables SPACES_*.
+SPACES_KEY = os.environ.get('SPACES_KEY', '').strip()
+SPACES_SECRET = os.environ.get('SPACES_SECRET', '').strip()
+SPACES_BUCKET = os.environ.get('SPACES_BUCKET', '').strip()
+SPACES_REGION = os.environ.get('SPACES_REGION', 'nyc3').strip()
+SPACES_ENDPOINT = os.environ.get(
+    'SPACES_ENDPOINT', f'https://{SPACES_REGION}.digitaloceanspaces.com',
+).strip()
+USE_SPACES = bool(SPACES_KEY and SPACES_SECRET and SPACES_BUCKET)
+
+# Django 5 usa el dict STORAGES (no STATICFILES_STORAGE/DEFAULT_FILE_STORAGE).
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+
+if USE_SPACES:
+    # django-storages (backend S3) apuntando al endpoint de DigitalOcean Spaces.
+    AWS_ACCESS_KEY_ID = SPACES_KEY
+    AWS_SECRET_ACCESS_KEY = SPACES_SECRET
+    AWS_STORAGE_BUCKET_NAME = SPACES_BUCKET
+    AWS_S3_REGION_NAME = SPACES_REGION
+    AWS_S3_ENDPOINT_URL = SPACES_ENDPOINT
+    AWS_DEFAULT_ACL = 'private'              # objetos privados → se sirven por URL firmada
+    AWS_QUERYSTRING_AUTH = True              # .url devuelve URL firmada (caduca)
+    AWS_QUERYSTRING_EXPIRE = int(os.environ.get('SPACES_URL_TTL', '3600'))
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_LOCATION = os.environ.get('SPACES_LOCATION', 'media')
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3.S3Storage'}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
@@ -229,6 +269,16 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# ─── Google Sign-In ───────────────────────────────────────────────────────────
+# Audiencias (client IDs) aceptadas al verificar el id_token de Google que envía
+# la app. Debe incluir el **Web client ID** (que la SDK nativa usa como
+# `webClientId` y que firma el `idToken`) y, por seguridad, también se pueden
+# listar el iOS/Android client ID. Coma-separado, p. ej.:
+#   GOOGLE_OAUTH_CLIENT_IDS=1234-web.apps.googleusercontent.com,5678-ios.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_IDS = [
+    c.strip() for c in os.environ.get('GOOGLE_OAUTH_CLIENT_IDS', '').split(',') if c.strip()
+]
 
 # ─── Garmin Connect OAuth 2.0 ─────────────────────────────────────────────────
 GARMIN_CLIENT_ID     = os.environ.get('GARMIN_CLIENT_ID', '')

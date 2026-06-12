@@ -51,7 +51,7 @@ from pyfit.throttles import LoginRateThrottle
 from . import grading
 from .models import (
     Course, Module, Lesson, Quiz, Question,
-    Enrollment, LessonProgress, QuizAttempt, Certificate, Submission,
+    Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant,
 )
 from .permissions import IsAcademyUser, can_edit_course, is_author
 from .serializers import (
@@ -63,19 +63,40 @@ from .serializers import (
 User = get_user_model()
 
 
+# ─── Branding por defecto (fallback cuando no hay tenant) ─────────────────────
+
+_DEFAULT_BRANDING = {
+    'nombre_plataforma': 'Zyfit Academy',
+    'color_brand':       '#1a3e72',
+    'color_brand_dark':  '#13294d',
+    'color_brand_deep':  '#0c1a30',
+    'color_accent':      '#0066b3',
+    'color_accent_light':'#2a82d6',
+    'color_accent_dark': '#004a87',
+    'color_ok':          '#1f9d6b',
+    'color_warn':        '#e08a00',
+    'color_danger':      '#d64545',
+    'fuente':            'Ubuntu',
+    'tagline':           '',
+    'logo_url':          '',
+    'favicon_url':       '',
+    'tema':              'light',
+}
+
+
 # ─── Helpers de scope ─────────────────────────────────────────────────────────
 
-def _course_for_read(user, pk):
-    """Curso visible para el usuario: publicado (cualquiera) o propio/admin."""
-    course = get_object_or_404(Course, pk=pk)
+def _course_for_read(user, pk, tenant=None):
+    """Curso visible para el usuario dentro del tenant activo."""
+    course = get_object_or_404(Course, pk=pk, tenant=tenant)
     if course.publicado or can_edit_course(user, course):
         return course
     raise Http404
 
 
-def _course_for_edit(user, pk):
-    """Curso que el usuario puede editar, o 403/404 si no."""
-    course = get_object_or_404(Course, pk=pk)
+def _course_for_edit(user, pk, tenant=None):
+    """Curso editable por el usuario dentro del tenant activo, o 403/404."""
+    course = get_object_or_404(Course, pk=pk, tenant=tenant)
     if not can_edit_course(user, course):
         raise PermissionDenied('No puedes editar este curso.')
     return course
@@ -84,6 +105,25 @@ def _course_for_edit(user, pk):
 def _author_context(user, course):
     """Contexto para serializar: incluye la clave de respuestas solo al autor."""
     return {'include_answers': can_edit_course(user, course)}
+
+
+# ─── Config pública del tenant (sin auth) ─────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tenant_config(request):
+    """Devuelve el branding del tenant resuelto por dominio.
+
+    Sin autenticación: el frontend lo llama antes del login para aplicar los
+    colores, logo y tipografía correctos. Si el dominio no es de ningún tenant
+    registrado, devuelve los defaults de Zyfit Academy.
+    """
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        data = {**_DEFAULT_BRANDING, **tenant.branding, 'slug': tenant.slug}
+    else:
+        data = dict(_DEFAULT_BRANDING)
+    return Response(data)
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -162,6 +202,8 @@ def courses_view(request):
     `?categoria=`, `?nivel=`, `?disciplina=`, `?licencia=`, `?q=` (búsqueda en
     título/resumen).
     """
+    tenant = getattr(request, 'tenant', None)
+
     if request.method == 'POST':
         if not is_author(request.user):
             return Response({'detail': 'Solo un instructor o admin puede crear cursos.'},
@@ -169,10 +211,10 @@ def courses_view(request):
         serializer = CourseSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        course = serializer.save(instructor=request.user)
+        course = serializer.save(instructor=request.user, tenant=tenant)
         return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
 
-    qs = Course.objects.all()
+    qs = Course.objects.filter(tenant=tenant)
     if request.query_params.get('mine') and is_author(request.user):
         qs = qs.filter(instructor=request.user)
     else:
@@ -201,11 +243,12 @@ def courses_view(request):
 @permission_classes([IsAcademyUser])
 def course_detail(request, pk):
     """Detalle del curso (árbol completo). Editar/borrar: solo autor/admin."""
+    tenant = getattr(request, 'tenant', None)
     if request.method == 'GET':
-        course = _course_for_read(request.user, pk)
+        course = _course_for_read(request.user, pk, tenant)
         return Response(CourseDetailSerializer(course, context=_author_context(request.user, course)).data)
 
-    course = _course_for_edit(request.user, pk)
+    course = _course_for_edit(request.user, pk, tenant)
     if request.method == 'DELETE':
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -222,15 +265,16 @@ def course_detail(request, pk):
 @permission_classes([IsAcademyUser])
 def course_modules(request, pk):
     """Lista (lectura) o crea (autor) módulos de un curso."""
+    tenant = getattr(request, 'tenant', None)
     if request.method == 'POST':
-        course = _course_for_edit(request.user, pk)
+        course = _course_for_edit(request.user, pk, tenant)
         serializer = ModuleSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save(course=course)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    course = _course_for_read(request.user, pk)
+    course = _course_for_read(request.user, pk, tenant)
     return Response(ModuleSerializer(course.modulos.all(), many=True,
                                      context=_author_context(request.user, course)).data)
 
@@ -239,7 +283,7 @@ def course_modules(request, pk):
 @permission_classes([IsAcademyUser])
 def module_detail(request, pk, module_id):
     """Edita o elimina un módulo de un curso (autor/admin)."""
-    course = _course_for_edit(request.user, pk)
+    course = _course_for_edit(request.user, pk, getattr(request, 'tenant', None))
     module = get_object_or_404(Module, pk=module_id, course=course)
     if request.method == 'DELETE':
         module.delete()
@@ -257,8 +301,9 @@ def module_detail(request, pk, module_id):
 @permission_classes([IsAcademyUser])
 def module_lessons(request, pk, module_id):
     """Lista (lectura) o crea (autor) lecciones de un módulo."""
+    tenant = getattr(request, 'tenant', None)
     if request.method == 'POST':
-        course = _course_for_edit(request.user, pk)
+        course = _course_for_edit(request.user, pk, tenant)
         module = get_object_or_404(Module, pk=module_id, course=course)
         serializer = LessonSerializer(data=request.data)
         if not serializer.is_valid():
@@ -266,7 +311,7 @@ def module_lessons(request, pk, module_id):
         serializer.save(module=module)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    course = _course_for_read(request.user, pk)
+    course = _course_for_read(request.user, pk, tenant)
     module = get_object_or_404(Module, pk=module_id, course=course)
     return Response(LessonSerializer(module.lecciones.all(), many=True,
                                      context=_author_context(request.user, course)).data)
@@ -276,13 +321,14 @@ def module_lessons(request, pk, module_id):
 @permission_classes([IsAcademyUser])
 def lesson_detail(request, pk, module_id, lesson_id):
     """Consulta (lectura), edita o elimina una lección (autor/admin para mutar)."""
+    tenant = getattr(request, 'tenant', None)
     if request.method == 'GET':
-        course = _course_for_read(request.user, pk)
+        course = _course_for_read(request.user, pk, tenant)
         module = get_object_or_404(Module, pk=module_id, course=course)
         lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
         return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
 
-    course = _course_for_edit(request.user, pk)
+    course = _course_for_edit(request.user, pk, tenant)
     module = get_object_or_404(Module, pk=module_id, course=course)
     lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
     if request.method == 'DELETE':
@@ -378,7 +424,7 @@ def question_detail(request, quiz_id, question_id):
 @permission_classes([IsAcademyUser])
 def course_enroll(request, pk):
     """Inscribe al usuario autenticado en un curso publicado (idempotente)."""
-    course = _course_for_read(request.user, pk)
+    course = _course_for_read(request.user, pk, getattr(request, 'tenant', None))
     if not course.publicado and not can_edit_course(request.user, course):
         return Response({'detail': 'El curso no está disponible.'}, status=status.HTTP_400_BAD_REQUEST)
     enrollment, _created = Enrollment.objects.get_or_create(student=request.user, course=course)
@@ -393,7 +439,7 @@ def course_enroll(request, pk):
 @permission_classes([IsAcademyUser])
 def course_enrollments(request, pk):
     """Inscritos de un curso (solo autor/admin): quién está y su progreso."""
-    course = _course_for_edit(request.user, pk)
+    course = _course_for_edit(request.user, pk, getattr(request, 'tenant', None))
     qs = course.enrollments.select_related('student').all()
     return Response(EnrollmentSerializer(qs, many=True).data)
 
@@ -537,7 +583,7 @@ def lesson_submission(request, enrollment_id, lesson_id):
 def course_submissions(request, pk):
     """Entregas de un curso para revisión (solo autor/admin). Filtro `?estado=`
     (enviada/aprobada/rechazada); por defecto las pendientes primero."""
-    course = _course_for_edit(request.user, pk)
+    course = _course_for_edit(request.user, pk, getattr(request, 'tenant', None))
     qs = (Submission.objects
           .filter(enrollment__course=course)
           .select_related('enrollment__student', 'lesson', 'revisado_por'))

@@ -1,14 +1,18 @@
-// Raíz de la app: provider de autenticación + router. (La academia no usa
-// React Query; las pantallas piden datos con el cliente axios y useState/useEffect.)
+// Raíz de la app: TenantProvider carga el branding del dominio activo antes del
+// login, AuthProvider gestiona la sesión JWT, RouterProvider la navegación.
+// (La academia no usa React Query; las pantallas usan axios + useState/useEffect.)
 
 import { RouterProvider } from 'react-router-dom'
+import { TenantProvider } from '@/tenant/TenantContext'
 import { AuthProvider } from '@/auth/AuthContext'
 import { router } from '@/router'
 
 export function App() {
   return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <TenantProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </TenantProvider>
   )
 }
