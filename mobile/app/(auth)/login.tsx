@@ -15,13 +15,13 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg'
 import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
-import { login, register } from '../../lib/auth'
+import { login, register, googleLogin } from '../../lib/auth'
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
@@ -42,12 +42,24 @@ function PyFitLogo() {
 
 // ─── Social button ────────────────────────────────────────────────────────────
 
-function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function SocialButton({
+  icon, label, onPress, loading = false, disabled = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  onPress?: () => void
+  loading?: boolean
+  disabled?: boolean
+}) {
   const { colors } = useTheme()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   return (
-    <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
-      {icon}
+    <TouchableOpacity
+      style={[styles.socialBtn, (disabled || loading) && { opacity: 0.6 }]}
+      activeOpacity={0.7}
+      onPress={onPress}
+      disabled={disabled || loading || !onPress}>
+      {loading ? <ActivityIndicator size="small" color={colors.inkPrimary} /> : icon}
       <Text style={styles.socialBtnText}>{label}</Text>
     </TouchableOpacity>
   )
@@ -179,11 +191,40 @@ export default function LoginScreen() {
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
-  const [tab, setTab] = useState<'login' | 'register'>('login')
+  const { initialTab } = useLocalSearchParams<{ initialTab?: string }>()
+  const [tab, setTab] = useState<'login' | 'register'>(
+    initialTab === 'register' ? 'register' : 'login',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  async function handleGoogle() {
+    if (loading || googleLoading) return
+    setError('')
+    setGoogleLoading(true)
+    try {
+      const res = await googleLogin()
+      if (res.status === 'ok') {
+        if (res.user?.onboarding_completo) {
+          router.replace('/(app)/dashboard')
+        } else {
+          // Cuenta nueva (o sin onboarding) → arrancamos el flujo de bienvenida.
+          router.replace('/(auth)/onboarding-intro' as any)
+        }
+      } else if (res.status === 'cancelled') {
+        // El usuario cerró la hoja de Google: silencioso, sin error.
+      } else if (res.status === 'unavailable') {
+        setError(t('login_google_unavailable'))
+      } else {
+        setError(t('login_google_error'))
+      }
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!email.trim() || !password.trim()) {
@@ -348,7 +389,8 @@ export default function LoginScreen() {
 
             {/* Social buttons */}
             <View style={styles.socialRow}>
-              <SocialButton icon={<GoogleIcon />} label="Google" />
+              <SocialButton icon={<GoogleIcon />} label="Google"
+                onPress={handleGoogle} loading={googleLoading} disabled={loading} />
               <SocialButton icon={<AppleIcon />} label="Apple" />
             </View>
 

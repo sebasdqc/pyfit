@@ -20,6 +20,7 @@ import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, type CoachConfig } from '../../../lib/coachApi'
+import EvidenciaCard, { type ResumenData, type ResumenDecision, type ResumenEvidencia } from '../../../components/EvidenciaCard'
 
 // Video de fondo de la pantalla de generación (baja opacidad). Vive solo mientras
 // la pantalla de carga está montada, así que dura lo que dura la generación.
@@ -82,11 +83,11 @@ interface SesionResponse {
   sesion: Sesion
 }
 
-// ─── Resumen types + helper ───────────────────────────────────────────────────
+// ─── Resumen type aliases (defined in EvidenciaCard, re-used here) ───────────
 
-interface Decision { icon: string; text: string }
-interface Evidencia { text: string; reference: string }
-interface Resumen { decisiones: Decision[]; evidencia: Evidencia }
+type Decision = ResumenDecision
+type Evidencia = ResumenEvidencia
+type Resumen = ResumenData
 
 interface AlternativaEjercicio {
   nombre:            string
@@ -101,13 +102,6 @@ interface AlternativaEjercicio {
 interface SubTarget {
   ejercicio:   Ejercicio
   faseNombre:  string
-}
-
-function toParrafo(decisiones: Decision[]): string {
-  return decisiones.map(d => {
-    const t = d.text.trim()
-    return /[.!?]$/.test(t) ? t : t + '.'
-  }).join(' ')
 }
 
 // ─── Date helper ──────────────────────────────────────────────────────────────
@@ -295,59 +289,7 @@ function LoadingScreen({ apiDone, onReady }: { apiDone: boolean; onReady: () => 
   )
 }
 
-// ─── Justification Card ───────────────────────────────────────────────────────
-
-function JustificacionCard({ resumen, loading }: { resumen: Resumen | null; loading: boolean }) {
-  const { colors } = useTheme()
-  const [expanded, setExpanded] = React.useState(false)
-  if (!loading && !resumen) return null
-
-  return (
-    <View style={{ borderLeftWidth: 3, borderLeftColor: '#4f8cff', borderWidth: 1, borderColor: colors.borderDefault, backgroundColor: 'rgba(79,140,255,0.05)', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: colors.accentLight, letterSpacing: 1.8, textTransform: 'uppercase' }}>✦  POR QUÉ ESTA RUTINA</Text>
-      </View>
-
-      {loading && !resumen ? (
-        <View style={{ gap: 8 }}>
-          {(['100%', '88%', '94%'] as const).map((w, i) => (
-            <View key={i} style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: w }} />
-          ))}
-          <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
-          <View style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: '80%' }} />
-          <View style={{ height: 12, backgroundColor: colors.cardBg, borderRadius: 4, width: '55%', marginTop: 4 }} />
-        </View>
-      ) : resumen ? (
-        <>
-          <Text
-            numberOfLines={expanded ? undefined : 3}
-            style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: colors.inkSecondary, lineHeight: 23 }}
-          >
-            {toParrafo(resumen.decisiones)}
-          </Text>
-
-          {expanded && (
-            <>
-              <View style={{ height: 1, backgroundColor: colors.borderDefault, marginVertical: 14 }} />
-              <Text style={{ fontFamily: 'InstrumentSerif-Italic', fontSize: 13, color: colors.inkMuted, lineHeight: 20, marginBottom: 6 }}>{resumen.evidencia.text}</Text>
-              <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.inkFaint, letterSpacing: 0.5 }}>{resumen.evidencia.reference}</Text>
-            </>
-          )}
-
-          <TouchableOpacity
-            onPress={() => setExpanded(e => !e)}
-            activeOpacity={0.7}
-            style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-          >
-            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: colors.accent, letterSpacing: 0.8 }}>
-              {expanded ? 'VER MENOS ↑' : 'VER MÁS ↓'}
-            </Text>
-          </TouchableOpacity>
-        </>
-      ) : null}
-    </View>
-  )
-}
+// JustificacionCard lives in components/EvidenciaCard.tsx — imported above.
 
 // ─── Param Card ───────────────────────────────────────────────────────────────
 
@@ -1474,7 +1416,7 @@ export default function GenerateScreen() {
             </View>
 
             {/* Justification card */}
-            <JustificacionCard resumen={resumen} loading={resumenLoading} />
+            <EvidenciaCard resumen={resumen} loading={resumenLoading} />
 
             {/* Parameters grid */}
             <View style={styles.paramsSection}>

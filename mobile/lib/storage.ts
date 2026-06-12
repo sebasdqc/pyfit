@@ -68,3 +68,16 @@ export async function saveCoachTokens(access: string, refresh: string) {
   await SecureStore.setItemAsync(COACH_ACCESS_KEY, access)
   await SecureStore.setItemAsync(COACH_REFRESH_KEY, refresh)
 }
+
+// ─── Onboarding slider (first-launch value screens) ───────────────────────────
+
+const SLIDER_SEEN_KEY = 'slider_seen'
+
+export async function getSliderSeen(): Promise<boolean> {
+  const val = await SecureStore.getItemAsync(SLIDER_SEEN_KEY)
+  return val === '1'
+}
+
+export async function setSliderSeen(): Promise<void> {
+  await SecureStore.setItemAsync(SLIDER_SEEN_KEY, '1')
+}
