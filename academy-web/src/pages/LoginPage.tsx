@@ -1,20 +1,21 @@
-// Login de Zyfit Academy. Pantalla a viewport completo dividida: panel izquierdo
-// navy CONMEBOL (gradiente oficial + emblema + tagline "Cree en grande") y panel
-// derecho blanco con el formulario. Identidad CONMEBOL: navy #1a3e72 + azul #0066b3,
-// tipografía Ubuntu. La lógica de autenticación consume /api/academy/auth/login/.
+// Login de Zyfit Academy — pantalla a viewport completo.
+// Panel izquierdo: branding del tenant activo (logo, nombre, tagline, colores CSS).
+// Panel derecho blanco: formulario de acceso.
+// La lógica de autenticación consume /api/academy/auth/login/.
 
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
-import { BRAND } from '@/lib/constants'
+import { useTenant } from '@/tenant/TenantContext'
 
 const CONTACT_HREF = 'https://pyfit.app'
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const tenant = useTenant()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -57,11 +58,13 @@ export function LoginPage() {
             Cursos, evaluaciones y certificaciones para llevar tu conocimiento del
             juego al siguiente nivel.
           </p>
-          <p className="mt-10 text-2xl font-light italic text-white/80">“{BRAND.tagline}.”</p>
+          {tenant.tagline && (
+            <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
+          )}
         </div>
 
         <p className="relative z-10 text-xs text-white/40">
-          © {new Date().getFullYear()} {BRAND.name} {BRAND.product}
+          © {new Date().getFullYear()} {tenant.nombre_plataforma}
         </p>
       </aside>
 
@@ -121,7 +124,7 @@ export function LoginPage() {
           </form>
 
           <p className="mt-8 text-center text-xs text-ink-muted">
-            © {new Date().getFullYear()} {BRAND.name} · {BRAND.product}
+            © {new Date().getFullYear()} {tenant.nombre_plataforma}
           </p>
         </div>
       </main>
