@@ -89,6 +89,9 @@ export default function DatosPersonalesScreen() {
   const [fullProfile, setFullProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const savedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [nombre, setNombre] = useState('')
   const [pais, setPais] = useState('')
@@ -97,6 +100,12 @@ export default function DatosPersonalesScreen() {
   const [nivelEstres, setNivelEstres] = useState('')
   const [tipoTrabajo, setTipoTrabajo] = useState('')
   const [experiencia, setExperiencia] = useState('')
+
+  // Helpers que marcan el formulario como modificado
+  const mark = (setter: (v: string) => void) => (v: string) => { setter(v); setIsDirty(true) }
+  const markChip = (setter: (v: string) => void) => (v: string) => { setter(v); setIsDirty(true) }
+
+  React.useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current) }, [])
 
   const [showCountryPicker, setShowCountryPicker] = useState(false)
   const [countryQuery, setCountryQuery] = useState('')
@@ -141,7 +150,9 @@ export default function DatosPersonalesScreen() {
         tipo_trabajo: tipoTrabajo,
         experiencia_deportiva: experiencia,
       })
-      router.back()
+      setIsDirty(false)
+      setSaved(true)
+      savedTimer.current = setTimeout(() => { setSaved(false); router.back() }, 1400)
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar')
     } finally { setSaving(false) }
@@ -154,7 +165,22 @@ export default function DatosPersonalesScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isDirty) {
+              Alert.alert(
+                'Cambios sin guardar',
+                '¿Salir sin guardar los cambios?',
+                [
+                  { text: 'Seguir editando', style: 'cancel' },
+                  { text: 'Salir', style: 'destructive', onPress: () => router.back() },
+                ]
+              )
+              return
+            }
+            router.back()
+          }}
+          style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
@@ -189,7 +215,7 @@ export default function DatosPersonalesScreen() {
 
               <ReadOnlyField label="CORREO" value={fullProfile?.email ?? ''} styles={styles} />
 
-              <GlassInput label="NOMBRE" value={nombre} onChangeText={setNombre}
+              <GlassInput label="NOMBRE" value={nombre} onChangeText={mark(setNombre)}
                 placeholder="Tu nombre" styles={styles} />
 
               {/* País — selector buscable (mismo catálogo que el onboarding) */}
@@ -219,7 +245,7 @@ export default function DatosPersonalesScreen() {
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
                 {ESTRES.map(({ k, l }) => (
                   <Chip key={k} label={l} active={nivelEstres === k}
-                    onPress={() => setNivelEstres(k)} styles={styles} />
+                    onPress={() => markChip(setNivelEstres)(k)} styles={styles} />
                 ))}
               </View>
 
@@ -227,18 +253,24 @@ export default function DatosPersonalesScreen() {
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
                 {TRABAJOS.map(({ k, l }) => (
                   <Chip key={k} label={l} active={tipoTrabajo === k}
-                    onPress={() => setTipoTrabajo(k)} styles={styles} />
+                    onPress={() => markChip(setTipoTrabajo)(k)} styles={styles} />
                 ))}
               </View>
 
               <GlassInput label="EXPERIENCIA DEPORTIVA" value={experiencia}
-                onChangeText={setExperiencia}
+                onChangeText={mark(setExperiencia)}
                 placeholder="Ej: 5 años de fútbol, crossfit... (opcional)"
                 multiline styles={styles} />
 
+              {saved && (
+                <View style={styles.savedToast}>
+                  <Text style={styles.savedToastText}>✓ Guardado</Text>
+                </View>
+              )}
+
               <TouchableOpacity
-                style={[styles.saveBtn, saving && { opacity: 0.5 }]}
-                onPress={save} disabled={saving} activeOpacity={0.85}>
+                style={[styles.saveBtn, (saving || saved) && { opacity: 0.5 }]}
+                onPress={save} disabled={saving || saved} activeOpacity={0.85}>
                 <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
               </TouchableOpacity>
             </>
@@ -352,5 +384,10 @@ function makeStyles(c: Colors) {
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
     saveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
+    savedToast: {
+      backgroundColor: 'rgba(50,200,150,0.15)', borderWidth: 1, borderColor: 'rgba(50,200,150,0.4)',
+      borderRadius: 10, paddingVertical: 9, alignItems: 'center', marginTop: 8, marginBottom: 4,
+    },
+    savedToastText: { color: '#32c896', fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
   })
 }

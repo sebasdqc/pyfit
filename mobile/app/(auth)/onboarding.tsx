@@ -796,9 +796,26 @@ export default function OnboardingScreen() {
       // Borra la cuenta + todos sus datos asociados (cascada en el backend).
       await apiDelete('/api/auth/account/')
     } catch {
-      // Si el borrado falla (red caída, etc.) igual cerramos sesión local para
-      // no dejar al usuario atrapado en el onboarding; la cuenta incompleta
-      // podrá depurarse después.
+      // El borrado falló (red caída, error del servidor). Avisar al usuario para
+      // que no intente registrarse de nuevo con el mismo email sin soporte.
+      setCancelling(false)
+      Alert.alert(
+        'No pudimos eliminar tu cuenta',
+        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a soporte@zyfit.app para que la eliminemos manualmente.',
+        [
+          {
+            text: 'Salir de todas formas',
+            style: 'destructive',
+            onPress: async () => {
+              await clearTokens()
+              await clearUser()
+              router.replace('/(auth)/login')
+            },
+          },
+          { text: 'Cancelar', style: 'cancel' },
+        ]
+      )
+      return
     }
     await clearTokens()
     await clearUser()

@@ -254,18 +254,36 @@ export default function CoachInicio() {
 
         {/* Métricas rápidas */}
         <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{activos}</Text>
-            <Text style={styles.metricLabel}>Atletas activos</Text>
-            <Text style={styles.metricNote}>{atencionHoy} necesitan atención hoy</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{adherencia}%</Text>
-            <Text style={styles.metricLabel}>Adherencia semanal</Text>
-            <Text style={[styles.metricNote, { color: subio ? P.green : P.red }]}>
-              {subio ? '▲' : '▼'} {Math.abs(adherenciaDelta)}% vs semana anterior
-            </Text>
-          </View>
+          {metrics === null ? (
+            <>
+              <View style={styles.metricCard}>
+                <View style={styles.skeletonLg} />
+                <View style={[styles.skeletonSm, { marginTop: 8 }]} />
+                <View style={[styles.skeletonXs, { marginTop: 12 }]} />
+              </View>
+              <View style={styles.metricCard}>
+                <View style={styles.skeletonLg} />
+                <View style={[styles.skeletonSm, { marginTop: 8 }]} />
+                <View style={[styles.skeletonXs, { marginTop: 12 }]} />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>{activos}</Text>
+                <Text style={styles.metricLabel}>Atletas activos</Text>
+                <Text style={styles.metricNote}>{atencionHoy} necesitan atención hoy</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>{adherencia}%</Text>
+                <Text style={styles.metricLabel}>Adherencia semanal</Text>
+                <Text style={[styles.metricNote, { color: adherenciaDelta > 0 ? P.green : adherenciaDelta < 0 ? P.red : P.purpleMid }]}>
+                  {adherenciaDelta > 0 ? '▲' : adherenciaDelta < 0 ? '▼' : '—'}{' '}
+                  {adherenciaDelta !== 0 ? `${Math.abs(adherenciaDelta)}% vs semana anterior` : 'igual que la semana anterior'}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Filtros + toggle de vista */}
@@ -440,6 +458,9 @@ const styles = StyleSheet.create({
     color: P.purpleMid,
     marginTop: 10,
   },
+  skeletonLg: { height: 34, borderRadius: 6, backgroundColor: P.purpleFaint, width: '60%' },
+  skeletonSm: { height: 13, borderRadius: 4, backgroundColor: P.purpleFaint, width: '80%' },
+  skeletonXs: { height: 11, borderRadius: 4, backgroundColor: P.purpleFaint, width: '70%' },
 
   // Controles
   controlsRow: {
