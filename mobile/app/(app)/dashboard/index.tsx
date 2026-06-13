@@ -151,6 +151,7 @@ interface CTAData {
   titulo: string
   descripcion: string
   sesion_hoy_id: number | null
+  run_sesion_hoy_id?: number | null  // RunSession (carrera libre), modelo separado de Session
 }
 
 interface MetricaData {
@@ -1014,9 +1015,13 @@ function CTACard({
       // Sesión generada sin terminar → retomar la ejecución
       router.push(`/(app)/ejecutar/${cta.sesion_hoy_id}` as any)
     } else if (cta.estado === 'B') {
-      // Abrir la sesión de hoy en el historial (estado B = ya entrenó hoy).
-      // `ts` fuerza la reapertura del detalle aunque el tab siga montado.
-      router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr(), ts: String(Date.now()) } } as any)
+      if (cta.run_sesion_hoy_id != null) {
+        // RunSession (carrera libre) → ir al resumen de la carrera
+        router.push(`/(app)/run/resumen/${cta.run_sesion_hoy_id}` as any)
+      } else {
+        // Sesión gym/IA → historial del día
+        router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr(), ts: String(Date.now()) } } as any)
+      }
     } else {
       router.push('/(app)/checkin')
     }
@@ -1024,6 +1029,7 @@ function CTACard({
 
   const btnLabel =
     cta.estado === 'E' ? 'Continuar entrenamiento' :
+    cta.estado === 'B' && cta.run_sesion_hoy_id != null ? 'Ver resumen de tu carrera' :
     cta.estado === 'B' ? 'Ver resumen de tu sesión' :
     cta.estado === 'C' ? 'Iniciar recuperación activa' :
     cta.estado === 'D' ? 'Comenzar mi primer entrenamiento' :

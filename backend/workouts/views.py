@@ -940,6 +940,24 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
         key = str(s.fecha)
         sesiones_map.setdefault(key, []).append(s)
 
+    # Carreras libres completadas esta semana — RunSession es un modelo aparte.
+    # Solo se añaden al mapa si ese día no tiene ya una Session de gym/IA.
+    run_dates: set[str] = set()
+    try:
+        from runs.models import RunSession as RunSessionModel
+        for r in RunSessionModel.objects.filter(
+            user=user,
+            started_at__date__gte=lunes,
+            started_at__date__lte=domingo,
+            status='completed',
+        ):
+            key = str(r.started_at.date())
+            run_dates.add(key)
+            if key not in sesiones_map:
+                sesiones_map[key] = []   # marca el día sin Session objects
+    except Exception:
+        pass
+
     # Count unique days trained up to and including today (not total sessions)
     sesiones_hasta_hoy = sum(
         1 for i in range(hoy.weekday() + 1)
@@ -959,17 +977,24 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
 
         if dia < hoy:
             if fecha_str in sesiones_map:
-                # Use the last session of the day for display type
-                s = sesiones_map[fecha_str][-1]
-                tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
+                sessions_dia = sesiones_map[fecha_str]
+                if sessions_dia:
+                    s = sessions_dia[-1]
+                    tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
+                else:
+                    tipo = 'Running'  # día de run sin Session de gym
                 detalle.append({'fecha': fecha_str, 'dia_abbr': abbr, 'estado': 'entrenado', 'tipo_sesion': tipo, 'is_today': False})
             else:
                 detalle.append({'fecha': fecha_str, 'dia_abbr': abbr, 'estado': 'vacio', 'tipo_sesion': None, 'is_today': False})
 
         elif is_today:
             if fecha_str in sesiones_map:
-                s = sesiones_map[fecha_str][-1]
-                tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
+                sessions_dia = sesiones_map[fecha_str]
+                if sessions_dia:
+                    s = sessions_dia[-1]
+                    tipo = _tipo_corto(s.respuesta_ia.get('titulo', '') if s.respuesta_ia else '')
+                else:
+                    tipo = 'Running'
                 detalle.append({'fecha': fecha_str, 'dia_abbr': abbr, 'estado': 'entrenado', 'tipo_sesion': tipo, 'is_today': True})
             else:
                 tipo = _tipo_corto(cta_titulo) if cta_titulo else None
@@ -1196,6 +1221,32 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
             'descripcion': desc,
             'sesion_hoy_id': sesion_hoy.id,
         }
+
+    # Carrera libre completada hoy — RunSession es un modelo separado de Session.
+    # Si no hay Session gym/IA pero sí un RunSession completado, el usuario ya entrenó.
+    try:
+        from runs.models import RunSession as RunSessionModel
+        run_hoy = (RunSessionModel.objects
+                   .filter(user=user, started_at__date=hoy, status='completed')
+                   .order_by('-started_at').first())
+        if run_hoy:
+            desc_parts = []
+            if run_hoy.total_distance_m:
+                km = round(run_hoy.total_distance_m / 1000, 1)
+                desc_parts.append(f'{km} km')
+            if run_hoy.total_duration_s:
+                desc_parts.append(f'{run_hoy.total_duration_s // 60} min')
+            return {
+                'estado': 'B',
+                'pill_label': 'Ya entrenaste hoy',
+                'pill_color': 'neutral',
+                'titulo': 'Sesión de Running',
+                'descripcion': ' · '.join(desc_parts) if desc_parts else 'Carrera completada',
+                'sesion_hoy_id': None,
+                'run_sesion_hoy_id': run_hoy.id,
+            }
+    except Exception:
+        pass
 
     # Estado C — descanso sugerido (fatiga alta)
     if fatiga_pct >= 80:

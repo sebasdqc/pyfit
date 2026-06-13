@@ -146,7 +146,7 @@ const SCREENS = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd3', 'd5', 'd5b_gru
 type ScreenId = typeof SCREENS[number]
 
 // Ordered interactive steps per disciplina path (drives progress bar)
-const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd3', 'd5']
+const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd5']
 const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5', 'd5b_grupo']
 const SEQ_OTHER:       ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5']
 
@@ -422,6 +422,8 @@ export default function CheckinScreen() {
   const [runningMode, setRunningMode] = useState<'libre' | 'inteligente' | null>(null)
   // Animación de "parpadeo x2" de la card de categoría antes de avanzar a d4_sub.
   const [pendingCat, setPendingCat] = useState<DisciplinaCat | null>(null)
+  // Idem para la disciplina concreta en d4_sub.
+  const [pendingDisc, setPendingDisc] = useState<TipoDisciplina | null>(null)
   const flashAnim = useRef(new Animated.Value(1)).current
 
   // ── Nav state ─────────────────────────────────────────────────────────────
@@ -454,12 +456,11 @@ export default function CheckinScreen() {
   const nInteractive = interactiveSeq.length
   const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
   const isInteractive = interactiveStep > 0                                       // show header/footer
-  // d4b_running navega inline; d4 (categoría) avanza solo al tocar (parpadeo) → sin footer.
-  const showFooterBtn = isInteractive && currentScreen !== 'd4b_running' && currentScreen !== 'd4'
+  // d4b_running navega inline; d4 y d4_sub avanzan al tocar (parpadeo) → sin footer.
+  const showFooterBtn = isInteractive && currentScreen !== 'd4b_running' && currentScreen !== 'd4' && currentScreen !== 'd4_sub'
   const isLastInteractive = showFooterBtn && interactiveStep === nInteractive
 
   const canContinue = showFooterBtn && !submitting && (
-    currentScreen === 'd4_sub'    ? !!disciplina :
     currentScreen === 'd3'        ? !!tiempoDispo :
     currentScreen === 'd5b_grupo' ? !!grupoMuscular :
     true  // d_estado (sliders con valor por defecto) y d5 (ubicación) no bloquean
@@ -470,7 +471,6 @@ export default function CheckinScreen() {
   }
 
   function validate(): string | null {
-    if (currentScreen === 'd4_sub'    && !disciplina)    return 'Elige tu disciplina de hoy.'
     if (currentScreen === 'd3'        && !tiempoDispo)   return 'Indica cuánto tiempo tienes hoy.'
     if (currentScreen === 'd5b_grupo' && !grupoMuscular) return 'Elige el grupo muscular a trabajar hoy.'
     return null
@@ -497,6 +497,26 @@ export default function CheckinScreen() {
     })
   }
 
+  // Tocar una disciplina en d4_sub: parpadea 2 veces y avanza al siguiente paso.
+  function pickDisciplina(id: TipoDisciplina) {
+    if (pendingDisc) return
+    setDisciplina(id)
+    setEntornoCardio(null)
+    setError('')
+    flashAnim.setValue(1)
+    setPendingDisc(id)
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 0.25, duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1,    duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0.25, duration: 110, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1,    duration: 110, useNativeDriver: true }),
+    ]).start(() => {
+      const path = DISCIPLINA_OPTS.find(d => d.id === id)?.path ?? null
+      setPendingDisc(null)
+      setScreenIndex(path === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
+    })
+  }
+
   function goBack() {
     if (screenIndex === 0) { router.back(); return }
     // Desde el estado combinado: volver al paso GPS (cardio) o a la subdisciplina.
@@ -515,6 +535,12 @@ export default function CheckinScreen() {
     // d4_sub → cardio abre el paso GPS; el resto va al estado combinado
     if (currentScreen === 'd4_sub') {
       setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
+      return
+    }
+
+    // d_estado → cardio no pregunta tiempo disponible
+    if (currentScreen === 'd_estado' && discPath === 'running') {
+      setScreenIndex(SCREENS.indexOf('d5'))
       return
     }
 
@@ -554,7 +580,7 @@ export default function CheckinScreen() {
         calidad_sueno: SUENO_OPTS.find(s => s.id === calidadSueno)?.horas ?? 7,
         hrv: null,
         location: entornoList ? null : locationId,
-        duracion_disponible: tiempoOpt?.minutos ?? 45,
+        duracion_disponible: tiempoOpt?.minutos ?? (DISCIPLINA_OPTS.find(d => d.id === disciplina)?.path === 'running' ? 60 : 45),
         dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
         notas: notasParts.length > 0 ? notasParts.join('. ') : null,
       })
@@ -634,6 +660,7 @@ export default function CheckinScreen() {
   // ── Dimension renders ─────────────────────────────────────────────────────
 
   // Subdisciplinas de la categoría elegida (pantalla d4_sub).
+  // Al tocar una disciplina parpadea 2 veces y avanza automáticamente.
   function renderSubDisciplina() {
     const opts = DISCIPLINA_OPTS.filter(o => o.cat === categoria)
     const catLabel = CATEGORIA_OPTS.find(c => c.cat === categoria)?.label ?? ''
@@ -645,25 +672,26 @@ export default function CheckinScreen() {
 
         <View style={styles.optionsWrap}>
           {opts.map(opt => {
-            const on = disciplina === opt.id
+            const flashing = pendingDisc === opt.id
             return (
-              <TouchableOpacity key={opt.id}
-                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setDisciplina(opt.id); setEntornoCardio(null); setError('') }}
-                activeOpacity={0.82}>
-                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
-                  <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, on && { color: opt.color }]}>
-                    {opt.label}
-                  </Text>
-                  <Text style={[styles.intencionNota, on && { color: opt.color, opacity: 0.75 }]}>
-                    {opt.sub}
-                  </Text>
-                </View>
-                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
-                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
-                </View>
-              </TouchableOpacity>
+              <Animated.View key={opt.id} style={flashing ? { opacity: flashAnim } : undefined}>
+                <TouchableOpacity
+                  style={[styles.estadoCard, flashing && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                  onPress={() => pickDisciplina(opt.id)}
+                  disabled={!!pendingDisc}
+                  activeOpacity={0.82}>
+                  <View style={[styles.estadoBar, { backgroundColor: flashing ? opt.color : 'transparent' }]} />
+                  <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
+                    <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, flashing && { color: opt.color }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.intencionNota, flashing && { color: opt.color, opacity: 0.75 }]}>
+                      {opt.sub}
+                    </Text>
+                  </View>
+                  <Text style={[styles.catChevron, { color: flashing ? opt.color : colors.inkMuted }]}>→</Text>
+                </TouchableOpacity>
+              </Animated.View>
             )
           })}
         </View>
@@ -1103,7 +1131,7 @@ export default function CheckinScreen() {
           {isRunning ? 'Guardando tu\ncheck-in...' : 'Construyendo tu\nentrenamiento de hoy...'}
         </Text>
         <Text style={styles.procesandoSub}>
-          {isRunning ? 'Preparando tu sesión de running' : 'Analizando tus 5 dimensiones'}
+          {isRunning ? 'Preparando tu sesión de running' : 'Calibrando tu sesión...'}
         </Text>
       </View>
     )
