@@ -473,11 +473,22 @@ export default function FeedbackScreen() {
         notas: notas.trim() || null,
         molestias: zonasMolestia,   // FBK-1: persistir zonas de molestia post-sesión
       })
+      router.replace('/(app)/dashboard')
     } catch {
-      // Non-blocking: navigate anyway but log the error
-      console.warn('[feedback] POST failed — feedback not saved')
+      submittingRef.current = false
+      Alert.alert(
+        t('feedback_save_error_title') || 'No pudimos guardar tu feedback',
+        t('feedback_save_error_msg') || 'Hubo un problema al conectar con el servidor.',
+        [
+          { text: t('feedback_retry') || 'Reintentar', onPress: handleListo },
+          {
+            text: t('feedback_skip_anyway') || 'Saltar de todos modos',
+            style: 'destructive',
+            onPress: () => router.replace('/(app)/dashboard'),
+          },
+        ]
+      )
     }
-    router.replace('/(app)/dashboard')
   }
 
   function handleCompartir() {

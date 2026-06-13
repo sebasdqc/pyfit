@@ -1124,6 +1124,22 @@ export default function CheckinScreen() {
 
   function renderD6() {
     const isRunning = discPath === 'running'
+    if (error) {
+      return (
+        <View style={styles.procesandoWrap}>
+          <Text style={styles.procesandoErrorTitle}>Algo salió mal</Text>
+          <Text style={styles.procesandoErrorSub}>{error}</Text>
+          <TouchableOpacity
+            style={styles.procesandoRetryBtn}
+            onPress={() => { setError(''); setCheckinSaved(false); setProcesandoTimer(true); handleSubmit() }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Intentar de nuevo">
+            <Text style={styles.procesandoRetryText}>Intentar de nuevo</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
     return (
       <View style={styles.procesandoWrap}>
         <ActivityIndicator color={isRunning ? '#ff8c42' : colors.accent} size="large" />
@@ -1534,6 +1550,21 @@ function makeStyles(c: Colors) {
     procesandoSub: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
       color: c.inkMuted, letterSpacing: 1.5, textAlign: 'center',
+    },
+    procesandoErrorTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
+      color: c.red, letterSpacing: -0.4, textAlign: 'center', marginBottom: 12,
+    },
+    procesandoErrorSub: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+      color: c.inkSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 22,
+    },
+    procesandoRetryBtn: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32,
+    },
+    procesandoRetryText: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary,
     },
 
     // D6 — Resumen

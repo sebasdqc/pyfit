@@ -66,6 +66,83 @@ def login_view(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([LoginRateThrottle])
+def google_login(request):
+    """Inicio de sesión con Google (SDK nativo en la app).
+
+    La app obtiene un `id_token` de Google con la SDK nativa y lo envía aquí.
+    Verificamos firma + audiencia del token contra settings.GOOGLE_OAUTH_CLIENT_IDS
+    y buscamos-o-creamos el usuario por email, devolviendo el MISMO par JWT que el
+    login normal. Una cuenta creada por Google no tiene contraseña usable
+    (set_unusable_password): solo entra por Google hasta que use "olvidé mi
+    contraseña" para fijar una.
+    """
+    token = (request.data.get('id_token') or '').strip()
+    if not token:
+        return Response({'error': 'Falta el id_token de Google'}, status=status.HTTP_400_BAD_REQUEST)
+
+    audiences = getattr(settings, 'GOOGLE_OAUTH_CLIENT_IDS', [])
+    if not audiences:
+        logger.error('Google login invocado pero GOOGLE_OAUTH_CLIENT_IDS no está configurado')
+        return Response({'error': 'Inicio con Google no disponible'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        # Sin `audience`, verify_oauth2_token valida firma, emisor y expiración
+        # pero NO la audiencia: la chequeamos a mano contra la lista de client IDs
+        # aceptados (Web/iOS/Android del mismo proyecto de Google Cloud).
+        idinfo = google_id_token.verify_oauth2_token(token, google_requests.Request())
+    except Exception:
+        logger.warning('Google login: id_token inválido', exc_info=True)
+        return Response({'error': 'Token de Google inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    if idinfo.get('aud') not in audiences:
+        return Response({'error': 'Token de Google inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+    if idinfo.get('iss') not in ('accounts.google.com', 'https://accounts.google.com'):
+        return Response({'error': 'Token de Google inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    email = (idinfo.get('email') or '').lower().strip()
+    if not email or not idinfo.get('email_verified'):
+        return Response({'error': 'La cuenta de Google no tiene un email verificado'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    nombre_google = (idinfo.get('name') or idinfo.get('given_name') or '').strip()
+    nombre_default = nombre_google or email.split('@')[0]
+
+    user, created = User.objects.get_or_create(email=email, defaults={'username': email})
+    if created:
+        # Sin contraseña usable: la cuenta solo entra por Google hasta que el
+        # usuario fije una con el flujo de "olvidé mi contraseña".
+        user.set_unusable_password()
+        user.save(update_fields=['password'])
+        Profile.objects.create(user=user, nombre=nombre_default)
+    elif not getattr(user, 'profile', None):
+        # Cuenta preexistente sin Profile (estado raro): lo creamos para no romper.
+        Profile.objects.create(user=user, nombre=nombre_default)
+
+    if not user.is_active:
+        return Response({'error': 'Cuenta inactiva'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    refresh = RefreshToken.for_user(user)
+    profile = getattr(user, 'profile', None)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'nombre': profile.nombre if profile else '',
+            'onboarding_completo': bool(profile and profile.is_onboarding_complete),
+            'is_staff': user.is_staff,
+            'role': user.role,
+        },
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def coach_login_view(request):
     """Login del portal de entrenador.
 
@@ -244,7 +321,9 @@ def profile_view(request):
 @permission_classes([IsAuthenticated])
 def upload_avatar(request):
     """POST /api/profile/avatar/ — recibe base64 dataURI y lo guarda en el perfil."""
-    import base64, imghdr
+    import base64
+    from io import BytesIO
+    from PIL import Image
 
     avatar_data = request.data.get('avatar', '')
     if not avatar_data:
@@ -270,8 +349,14 @@ def upload_avatar(request):
     if b'<svg' in snippet or b'<?xml' in snippet or b'<!doctype' in snippet:
         return Response({'error': 'Tipo de imagen no permitido'}, status=400)
 
-    # imghdr detecta el tipo real a partir de los magic bytes
-    fmt = imghdr.what(None, h=raw_bytes)
+    # Validar magic bytes con Pillow (compatible con Python 3.13+, reemplaza imghdr)
+    try:
+        img = Image.open(BytesIO(raw_bytes))
+        img.verify()
+        fmt = img.format.lower() if img.format else ''
+    except Exception:
+        return Response({'error': 'El archivo no es una imagen válida'}, status=400)
+
     if fmt not in ('jpeg', 'png', 'gif', 'webp'):
         return Response({'error': 'Solo se admiten JPEG, PNG, GIF o WebP'}, status=400)
 
