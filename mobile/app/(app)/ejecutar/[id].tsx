@@ -235,7 +235,10 @@ function SerieRatingPicker({
 }) {
   return (
     <View style={[ratingStyles.wrap, { backgroundColor: colors.glassBg, borderColor: colors.borderDefault }]}>
-      <Text style={[ratingStyles.question, { color: colors.inkMuted }]}>¿CÓMO ESTUVO LA SERIE?</Text>
+      <View style={ratingStyles.headerRow}>
+        <Text style={[ratingStyles.question, { color: colors.inkMuted }]}>¿CÓMO ESTUVO LA SERIE?</Text>
+        <Text style={[ratingStyles.optional, { color: colors.inkFaint }]}>opcional</Text>
+      </View>
       <View style={ratingStyles.row}>
         {DIFICULTAD_OPTS.map(opt => {
           const selected = value === opt.value
@@ -244,6 +247,7 @@ function SerieRatingPicker({
               key={opt.value}
               onPress={() => onChange(opt.value)}
               activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               style={[
                 ratingStyles.btn,
                 { borderColor: colors.borderDefault },
@@ -276,12 +280,24 @@ const ratingStyles = StyleSheet.create({
     paddingHorizontal: 10,
     gap: 12,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   question: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 9,
     letterSpacing: 2,
     textTransform: 'uppercase',
     textAlign: 'center',
+  },
+  optional: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 9,
+    letterSpacing: 1,
+    fontStyle: 'italic',
   },
   row: {
     flexDirection: 'row',

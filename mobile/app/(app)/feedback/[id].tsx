@@ -442,7 +442,8 @@ export default function FeedbackScreen() {
 
   function selectSensacion(sid: string) {
     setSensacion(sid)
-    if (sid !== 'molestia') setZonasMolestia([])
+    // No limpiar zonasMolestia al cambiar de sensación — si el usuario vuelve a
+    // "molestia" recupera las zonas que ya había marcado sin tener que re-seleccionar.
   }
 
   function toggleZona(zona: string) {
@@ -471,7 +472,7 @@ export default function FeedbackScreen() {
       await apiPost(`/api/sessions/${id}/feedback/`, {
         rpe_real: rpeChoice ?? 7, cumplimiento, rating,
         notas: notas.trim() || null,
-        molestias: zonasMolestia,   // FBK-1: persistir zonas de molestia post-sesión
+        molestias: sensacion === 'molestia' ? zonasMolestia : [],
       })
       router.replace('/(app)/dashboard')
     } catch {

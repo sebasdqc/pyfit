@@ -1022,18 +1022,24 @@ function makeAjStyles(c: Colors) {
 function FaseBlock({
   fase,
   defaultExpanded,
+  expandedRef,
   modifiedKeys,
   onSustituir,
 }: {
   fase:            Fase
   defaultExpanded: boolean
+  expandedRef:     React.MutableRefObject<Record<string, boolean>>
   modifiedKeys:    Set<string>
   onSustituir:     (ejercicio: Ejercicio, faseNombre: string) => void
 }) {
   const { colors } = useTheme()
   const blkSt = useMemo(() => makeBlkStyles(colors), [colors])
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const chevronAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current
+  // Inicializa desde el ref si existe (restaura estado tras desmontaje), si no usa defaultExpanded
+  const initExpanded = fase.nombre in expandedRef.current
+    ? expandedRef.current[fase.nombre]
+    : defaultExpanded
+  const [expanded, setExpanded] = useState(initExpanded)
+  const chevronAnim = useRef(new Animated.Value(initExpanded ? 1 : 0)).current
 
   const faseKey   = fase.nombre as keyof typeof FASES
   const faseStyle = FASES[faseKey] ?? { color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', label: fase.nombre.toUpperCase() }
@@ -1043,6 +1049,7 @@ function FaseBlock({
   function toggle() {
     const next = !expanded
     setExpanded(next)
+    expandedRef.current[fase.nombre] = next
     Animated.spring(chevronAnim, { toValue: next ? 1 : 0, tension: 120, friction: 10, useNativeDriver: true }).start()
   }
 
@@ -1181,6 +1188,8 @@ export default function GenerateScreen() {
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
   const [ajusteVisible,  setAjusteVisible]  = useState(false)
   const [coachNombre,    setCoachNombre]    = useState<string | null>(null)
+  // Persiste el estado expand/collapse de cada fase entre desmontajes (ej. rotación, vuelta atrás)
+  const faseExpandedRef = useRef<Record<string, boolean>>({})
   // Config del coach (controla el gating de IA). null = aún sin resolver. Failure-safe:
   // si falla la red asumimos IA permitida para no bloquear el camino crítico.
   const [coachConfig,    setCoachConfig]    = useState<CoachConfig | null>(null)
@@ -1489,6 +1498,7 @@ export default function GenerateScreen() {
                   key={idx}
                   fase={fase}
                   defaultExpanded={fase.nombre === 'principal'}
+                  expandedRef={faseExpandedRef}
                   modifiedKeys={modifiedKeys}
                   onSustituir={(ej, fn) => setSubTarget({ ejercicio: ej, faseNombre: fn })}
                 />
