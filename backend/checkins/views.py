@@ -9,7 +9,7 @@ from .serializers import CheckinSerializer
 
 def _get_local_date(request) -> date:
     """
-    Devuelve la fecha local del dispositivo del cliente (header X-Local-Date).
+    Devuelve la fecha local del dispositivo (header X-Local-Date) para lecturas.
     Si el header no está presente o es inválido, cae back a date.today() (UTC).
 
     Esto es necesario porque date.today() en el servidor devuelve la fecha UTC,
@@ -25,6 +25,25 @@ def _get_local_date(request) -> date:
     return date.today()
 
 
+def _get_write_date(request) -> date:
+    """
+    Devuelve la fecha para operaciones de escritura.
+    Acepta X-Local-Date solo si está dentro de ±1 día de date.today() para
+    manejar diferencias de zona horaria, pero rechaza fechas arbitrarias del
+    pasado o futuro que permitirían inflar rachas y adherencia artificialmente.
+    """
+    server_today = date.today()
+    header = request.headers.get('X-Local-Date', '').strip()
+    if header:
+        try:
+            client_date = date.fromisoformat(header)
+            if abs((client_date - server_today).days) <= 1:
+                return client_date
+        except ValueError:
+            pass
+    return server_today
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def today_checkin(request):
@@ -38,7 +57,7 @@ def today_checkin(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_checkin(request):
-    hoy = _get_local_date(request)
+    hoy = _get_write_date(request)
     data = {**request.data, 'fecha': str(hoy)}
     # Evita acumular check-ins duplicados del mismo día: si ya existe uno hoy se
     # actualiza en lugar de crear otro (el último estado del día es el válido).

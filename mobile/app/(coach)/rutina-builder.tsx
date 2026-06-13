@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  FlatList,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -20,8 +21,13 @@ import {
   fetchAtletaRutina,
   saveAtletaRutina,
   deleteAtletaRutina,
+  fetchExerciseCatalog,
+  searchExercises,
+  createCustomExercise,
   type RutinaEjercicio,
   type CoachRutina,
+  type EjercicioCatalog,
+  type EjercicioCatalogItem,
 } from '../../lib/coachApi'
 
 // ─── Fases canónicas (mismas que el resto de la app) ─────────────────────────────
@@ -54,6 +60,34 @@ function buildDias(): { iso: string; label: string }[] {
   })
 }
 
+// ─── Tipos del formulario de ejercicio personalizado ────────────────────────
+
+interface CustomForm {
+  nombre: string
+  patron: string
+  dificultad: string
+  esCompuesto: boolean
+  musculosPrim: string[]
+  musculosSec: string[]
+  equipamiento: string[]
+  contraindicaciones: string[]
+  errorRisk: number | null
+  spaceRequired: string | null
+}
+
+const customFormVacio = (nombre = ''): CustomForm => ({
+  nombre,
+  patron: '',
+  dificultad: 'intermedio',
+  esCompuesto: true,
+  musculosPrim: [],
+  musculosSec: [],
+  equipamiento: [],
+  contraindicaciones: [],
+  errorRisk: null,
+  spaceRequired: null,
+})
+
 // Ejercicio vacío para el editor.
 const ejVacio = (): RutinaEjercicio => ({
   nombre: '', series: 3, repeticiones: '8-10', descanso_segundos: 90, rpe_sugerido: null, notas: '',
@@ -84,16 +118,46 @@ export default function RutinaBuilder() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<'borrador' | 'publicar' | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [msgIsError, setMsgIsError] = useState(false)
+  const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Editor de ejercicio (modal)
   const [editor, setEditor] = useState<{ fase: number; idx: number | null; draft: RutinaEjercicio } | null>(null)
 
+  // Catálogo de ejercicios (para búsqueda + formulario personalizado)
+  const [catalog, setCatalog] = useState<EjercicioCatalog | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<EjercicioCatalogItem[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Paso del modal: 'search' | 'params' | 'custom'
+  // search = buscar en catálogo; custom = form de ejercicio personalizado
+  const [editorStep, setEditorStep] = useState<'search' | 'custom'>('search')
+  const [customForm, setCustomForm] = useState<CustomForm>(customFormVacio())
+  const [customSaving, setCustomSaving] = useState(false)
+  // Dropdown abierto dentro del form personalizado
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+
   const total = fases.reduce((s, f) => s + f.ejercicios.length, 0)
+
+  // Muestra un mensaje de éxito (se auto-limpia a los 4 s) o error (persiste).
+  const showMsg = useCallback((text: string | null, isError = false) => {
+    if (msgTimer.current) clearTimeout(msgTimer.current)
+    setMsg(text)
+    setMsgIsError(isError)
+    if (text && !isError) {
+      msgTimer.current = setTimeout(() => setMsg(null), 4000)
+    }
+  }, [])
+
+  // Limpiar timer al desmontar
+  useEffect(() => () => { if (msgTimer.current) clearTimeout(msgTimer.current) }, [])
 
   // Carga la rutina de una fecha → puebla el formulario (o lo deja vacío).
   const cargar = useCallback(async (iso: string) => {
     if (!params.id) return
-    setLoading(true); setMsg(null)
+    setLoading(true); showMsg(null)
     try {
       const { rutina } = await fetchAtletaRutina(params.id, iso)
       if (rutina) {
@@ -117,13 +181,36 @@ export default function RutinaBuilder() {
         setFases(fasesVacias()); setEstado(null); setBloqueada(false)
       }
     } catch (e: any) {
-      setMsg(e?.message || 'No se pudo cargar la rutina.')
+      showMsg(e?.message || 'No se pudo cargar la rutina.', true)
     } finally {
       setLoading(false)
     }
   }, [params.id])
 
   useEffect(() => { cargar(fecha) }, [fecha, cargar])
+
+  // Carga el catálogo de dropdowns al montar
+  useEffect(() => {
+    fetchExerciseCatalog().then(setCatalog).catch(() => {})
+  }, [])
+
+  // Búsqueda con debounce de 350ms
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    if (searchQuery.length < 2) { setSearchResults([]); return }
+    setSearchLoading(true)
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const { results } = await searchExercises(searchQuery)
+        setSearchResults(results)
+      } catch {
+        setSearchResults([])
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 350)
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current) }
+  }, [searchQuery])
 
   function buildPayload(publicar: boolean) {
     return {
@@ -142,15 +229,15 @@ export default function RutinaBuilder() {
 
   async function guardar(publicar: boolean) {
     if (!params.id || saving) return
-    if (publicar && !titulo.trim()) { setMsg('Ponle un título a la sesión para publicarla.'); return }
-    if (publicar && total === 0) { setMsg('Agrega al menos un ejercicio para publicar.'); return }
-    setSaving(publicar ? 'publicar' : 'borrador'); setMsg(null)
+    if (publicar && !titulo.trim()) { showMsg('Ponle un título a la sesión para publicarla.', true); return }
+    if (publicar && total === 0) { showMsg('Agrega al menos un ejercicio para publicar.', true); return }
+    setSaving(publicar ? 'publicar' : 'borrador'); showMsg(null)
     try {
       const { rutina } = await saveAtletaRutina(params.id, buildPayload(publicar))
       setEstado(rutina.estado); setBloqueada(rutina.bloqueada)
-      setMsg(publicar ? '✅ Publicada · el atleta la verá en su sesión de ese día.' : 'Borrador guardado.')
+      showMsg(publicar ? '✅ Publicada · el atleta la verá en su sesión de ese día.' : '✅ Borrador guardado.')
     } catch (e: any) {
-      setMsg(e?.message || 'No se pudo guardar.')
+      showMsg(e?.message || 'No se pudo guardar.', true)
     } finally {
       setSaving(null)
     }
@@ -169,7 +256,7 @@ export default function RutinaBuilder() {
       await deleteAtletaRutina(params.id, fecha)
       setTitulo(''); setObjetivo(''); setDuracion('45'); setRpe('7'); setNota('')
       setFases(fasesVacias()); setEstado(null); setBloqueada(false)
-      setMsg('Rutina eliminada.')
+      showMsg('✅ Rutina eliminada.')
     } catch (e: any) {
       Alert.alert('No se pudo quitar', e?.message || 'Intenta de nuevo.')
     } finally {
@@ -182,6 +269,58 @@ export default function RutinaBuilder() {
     if (bloqueada) return
     const draft = idx === null ? ejVacio() : { ...fases[faseIdx].ejercicios[idx] }
     setEditor({ fase: faseIdx, idx, draft })
+    // Al editar uno existente: ir directo al step de params con el nombre pre-llenado.
+    // Al agregar nuevo: empezar en búsqueda.
+    if (idx !== null) {
+      setEditorStep('search')
+      setSearchQuery(draft.nombre)
+    } else {
+      setEditorStep('search')
+      setSearchQuery('')
+      setSearchResults([])
+    }
+    setCustomForm(customFormVacio(idx !== null ? draft.nombre : ''))
+    setOpenDropdown(null)
+  }
+
+  // Seleccionar un ejercicio del catálogo: pre-llenar el nombre y cerrar búsqueda
+  function seleccionarDelCatalogo(item: EjercicioCatalogItem) {
+    if (!editor) return
+    setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: item.nombre } }))
+    setEditorStep('search')
+    setSearchQuery(item.nombre)
+    setSearchResults([])
+  }
+
+  async function guardarEjercicioPersonalizado() {
+    if (!editor || !customForm.nombre.trim() || !customForm.patron || customSaving) return
+    setCustomSaving(true)
+    try {
+      const { ejercicio, warning } = await createCustomExercise({
+        nombre: customForm.nombre.trim(),
+        patron_movimiento: customForm.patron,
+        dificultad: customForm.dificultad,
+        es_compuesto: customForm.esCompuesto,
+        musculos_primarios: customForm.musculosPrim,
+        musculos_secundarios: customForm.musculosSec,
+        equipamiento: customForm.equipamiento,
+        contraindicaciones: customForm.contraindicaciones,
+        error_risk: customForm.errorRisk,
+        space_required: customForm.spaceRequired,
+        analizar_con_ia: true,
+      })
+      if (warning) {
+        Alert.alert('Ejercicio existente', warning)
+      }
+      // Usar el nombre canónico del ejercicio creado/encontrado
+      setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: ejercicio.nombre } }))
+      setEditorStep('search')
+      setSearchQuery(ejercicio.nombre)
+    } catch (e: any) {
+      Alert.alert('No se pudo crear', e?.message || 'Intenta de nuevo.')
+    } finally {
+      setCustomSaving(false)
+    }
   }
   function guardarEjercicio() {
     if (!editor) return
@@ -327,7 +466,11 @@ export default function RutinaBuilder() {
             <TextInput style={[styles.input, styles.inputMulti]} value={nota} onChangeText={setNota} editable={!readOnly}
               placeholder="Ej: Sube la carga ~5% si el RPE queda bajo." placeholderTextColor={P.purpleFaint} multiline maxLength={600} />
 
-            {!!msg && <Text style={styles.msg}>{msg}</Text>}
+            {!!msg && (
+              <Text style={[styles.msg, msgIsError ? styles.msgError : styles.msgSuccess]}>
+                {msg}
+              </Text>
+            )}
 
             {/* Acciones */}
             {!readOnly && (
@@ -353,21 +496,61 @@ export default function RutinaBuilder() {
         </KeyboardAvoidingView>
       )}
 
-      {/* Editor de ejercicio */}
+      {/* ─── Modal de ejercicio: búsqueda + params + ejercicio personalizado ── */}
       <Modal visible={!!editor} transparent animationType="fade" onRequestClose={() => setEditor(null)}>
         <Pressable style={styles.backdrop} onPress={() => setEditor(null)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
             <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
               <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>{editor?.idx === null ? 'Nuevo ejercicio' : 'Editar ejercicio'}</Text>
 
-              {e && (
-                <>
-                  <Text style={styles.fieldLabel}>EJERCICIO</Text>
-                  <TextInput style={styles.input} value={e.nombre} autoFocus
-                    onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: v } }))}
-                    placeholder="Ej: Press banca" placeholderTextColor={P.purpleFaint} maxLength={200} />
+              {/* ── STEP: búsqueda + parámetros del ejercicio ── */}
+              {editorStep === 'search' && e && (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  <Text style={styles.sheetTitle}>{editor?.idx === null ? 'Nuevo ejercicio' : 'Editar ejercicio'}</Text>
 
+                  {/* Nombre / búsqueda */}
+                  <Text style={styles.fieldLabel}>BUSCAR O ESCRIBIR NOMBRE</Text>
+                  <TextInput
+                    style={styles.input} value={searchQuery} autoFocus
+                    onChangeText={(v) => {
+                      setSearchQuery(v)
+                      setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: v } }))
+                    }}
+                    placeholder="Ej: Press banca" placeholderTextColor={P.purpleFaint} maxLength={200}
+                  />
+
+                  {/* Resultados de búsqueda */}
+                  {searchLoading && <ActivityIndicator color={P.purpleMid} style={{ marginBottom: 8 }} />}
+                  {!searchLoading && searchQuery.length >= 2 && searchResults.map((item) => (
+                    <TouchableOpacity key={item.id} style={styles.searchResult} activeOpacity={0.75}
+                      onPress={() => seleccionarDelCatalogo(item)}>
+                      <Text style={styles.searchResultNombre} numberOfLines={1}>{item.nombre}</Text>
+                      <Text style={styles.searchResultMeta} numberOfLines={1}>
+                        {item.patron_label} · {item.dificultad}
+                        {item.musculos_primarios.length > 0 ? ` · ${item.musculos_primarios.slice(0, 2).join(', ')}` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  {/* Sin resultados → invitar a crear */}
+                  {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
+                    <View style={styles.noResultsBox}>
+                      <Text style={styles.noResultsText}>
+                        "{searchQuery.length > 30 ? searchQuery.slice(0, 30) + '…' : searchQuery}" no está en el catálogo.
+                      </Text>
+                      <TouchableOpacity style={styles.createCustomBtn} activeOpacity={0.85}
+                        onPress={() => {
+                          setCustomForm(customFormVacio(searchQuery.trim()))
+                          setEditorStep('custom')
+                        }}>
+                        <Text style={styles.createCustomBtnText}>+ Crear ejercicio personalizado</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Separador */}
+                  <View style={styles.divider} />
+
+                  {/* Parámetros del ejercicio en la rutina */}
                   <View style={styles.row2}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.fieldLabel}>SERIES</Text>
@@ -390,8 +573,8 @@ export default function RutinaBuilder() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.fieldLabel}>RPE (OPC.)</Text>
-                      <TextInput style={styles.input} value={e.rpe_sugerido != null ? String(e.rpe_sugerido) : ''} keyboardType="decimal-pad" maxLength={4}
-                        placeholder="—" placeholderTextColor={P.purpleFaint}
+                      <TextInput style={styles.input} value={e.rpe_sugerido != null ? String(e.rpe_sugerido) : ''}
+                        keyboardType="decimal-pad" maxLength={4} placeholder="—" placeholderTextColor={P.purpleFaint}
                         onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, rpe_sugerido: v.trim() ? parseFloat(v) : null } }))} />
                     </View>
                   </View>
@@ -401,11 +584,222 @@ export default function RutinaBuilder() {
                     onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, notas: v } }))}
                     placeholder="Ej: Controla la fase excéntrica" placeholderTextColor={P.purpleFaint} />
 
-                  <TouchableOpacity style={[styles.btnPrimary, { marginTop: 10 }, !e.nombre.trim() && { opacity: 0.5 }]}
+                  <TouchableOpacity
+                    style={[styles.btnPrimary, { marginTop: 10 }, !e.nombre.trim() && { opacity: 0.5 }]}
                     activeOpacity={0.85} disabled={!e.nombre.trim()} onPress={guardarEjercicio}>
                     <Text style={styles.btnPrimaryText}>{editor?.idx === null ? 'Agregar' : 'Guardar'}</Text>
                   </TouchableOpacity>
-                </>
+                  <View style={{ height: 8 }} />
+                </ScrollView>
+              )}
+
+              {/* ── STEP: formulario de ejercicio personalizado ── */}
+              {editorStep === 'custom' && catalog && (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  {/* Header con botón de volver */}
+                  <View style={styles.customHeader}>
+                    <TouchableOpacity onPress={() => setEditorStep('search')} hitSlop={8}>
+                      <Text style={styles.customBack}>← Volver</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.sheetTitle} numberOfLines={1}>Ejercicio personalizado</Text>
+                  </View>
+
+                  {/* Nombre */}
+                  <Text style={styles.fieldLabel}>NOMBRE DEL EJERCICIO *</Text>
+                  <TextInput style={styles.input} value={customForm.nombre} maxLength={200}
+                    onChangeText={(v) => setCustomForm((p) => ({ ...p, nombre: v }))}
+                    placeholder="Ej: Sentadilla búlgara con mancuernas" placeholderTextColor={P.purpleFaint} />
+
+                  {/* Patrón de movimiento */}
+                  <Text style={styles.fieldLabel}>PATRÓN DE MOVIMIENTO *</Text>
+                  <TouchableOpacity style={[styles.dropdownBtn, !customForm.patron && styles.dropdownBtnEmpty]}
+                    activeOpacity={0.8} onPress={() => setOpenDropdown(openDropdown === 'patron' ? null : 'patron')}>
+                    <Text style={[styles.dropdownBtnText, !customForm.patron && { color: P.purpleFaint }]}>
+                      {customForm.patron
+                        ? (catalog.patron_movimiento.find((p) => p.value === customForm.patron)?.label ?? customForm.patron)
+                        : 'Seleccionar patrón...'}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>{openDropdown === 'patron' ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {openDropdown === 'patron' && (
+                    <View style={styles.dropdownList}>
+                      {catalog.patron_movimiento.map((opt) => (
+                        <TouchableOpacity key={opt.value} style={[styles.dropdownItem, customForm.patron === opt.value && styles.dropdownItemSelected]}
+                          activeOpacity={0.75} onPress={() => { setCustomForm((p) => ({ ...p, patron: opt.value })); setOpenDropdown(null) }}>
+                          <Text style={[styles.dropdownItemText, customForm.patron === opt.value && styles.dropdownItemTextSelected]}>{opt.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Dificultad */}
+                  <Text style={styles.fieldLabel}>DIFICULTAD</Text>
+                  <View style={styles.chipRow}>
+                    {catalog.dificultad.map((opt) => {
+                      const sel = customForm.dificultad === opt.value
+                      return (
+                        <TouchableOpacity key={opt.value} style={[styles.chip, sel && styles.chipSelected]}
+                          activeOpacity={0.75} onPress={() => setCustomForm((p) => ({ ...p, dificultad: opt.value }))}>
+                          <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{opt.label}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Tipo */}
+                  <Text style={styles.fieldLabel}>TIPO DE EJERCICIO</Text>
+                  <View style={styles.chipRow}>
+                    {[{ value: true, label: 'Compuesto' }, { value: false, label: 'Aislamiento' }].map((opt) => {
+                      const sel = customForm.esCompuesto === opt.value
+                      return (
+                        <TouchableOpacity key={String(opt.value)} style={[styles.chip, sel && styles.chipSelected]}
+                          activeOpacity={0.75} onPress={() => setCustomForm((p) => ({ ...p, esCompuesto: opt.value }))}>
+                          <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{opt.label}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Músculos primarios */}
+                  <Text style={styles.fieldLabel}>MÚSCULOS PRIMARIOS</Text>
+                  {catalog.musculos.map((grupo) => (
+                    <View key={grupo.grupo}>
+                      <Text style={styles.grupoLabel}>{grupo.grupo}</Text>
+                      <View style={styles.chipWrap}>
+                        {grupo.items.map((m) => {
+                          const sel = customForm.musculosPrim.includes(m)
+                          return (
+                            <TouchableOpacity key={m} style={[styles.chip, sel && styles.chipSelected]}
+                              activeOpacity={0.75}
+                              onPress={() => setCustomForm((p) => ({
+                                ...p,
+                                musculosPrim: sel ? p.musculosPrim.filter((x) => x !== m) : [...p.musculosPrim, m],
+                              }))}>
+                              <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{m}</Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                      </View>
+                    </View>
+                  ))}
+
+                  {/* Músculos secundarios */}
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>MÚSCULOS SECUNDARIOS</Text>
+                  {catalog.musculos.map((grupo) => (
+                    <View key={grupo.grupo + '_sec'}>
+                      <Text style={styles.grupoLabel}>{grupo.grupo}</Text>
+                      <View style={styles.chipWrap}>
+                        {grupo.items.map((m) => {
+                          const sel = customForm.musculosSec.includes(m)
+                          return (
+                            <TouchableOpacity key={m} style={[styles.chip, sel && styles.chipSelected]}
+                              activeOpacity={0.75}
+                              onPress={() => setCustomForm((p) => ({
+                                ...p,
+                                musculosSec: sel ? p.musculosSec.filter((x) => x !== m) : [...p.musculosSec, m],
+                              }))}>
+                              <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{m}</Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                      </View>
+                    </View>
+                  ))}
+
+                  {/* Equipamiento */}
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>EQUIPAMIENTO</Text>
+                  <View style={styles.chipWrap}>
+                    {catalog.equipamiento.map((eq) => {
+                      const sel = customForm.equipamiento.includes(eq)
+                      return (
+                        <TouchableOpacity key={eq} style={[styles.chip, sel && styles.chipSelected]}
+                          activeOpacity={0.75}
+                          onPress={() => setCustomForm((p) => ({
+                            ...p,
+                            equipamiento: sel ? p.equipamiento.filter((x) => x !== eq) : [...p.equipamiento, eq],
+                          }))}>
+                          <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{eq}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Contraindicaciones */}
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>CONTRAINDICACIONES (ZONAS DE LESIÓN)</Text>
+                  <Text style={styles.fieldHint}>Zonas del cuerpo donde este ejercicio puede ser problemático.</Text>
+                  <View style={styles.chipWrap}>
+                    {catalog.contraindicaciones.map((c) => {
+                      const sel = customForm.contraindicaciones.includes(c)
+                      return (
+                        <TouchableOpacity key={c} style={[styles.chip, sel && styles.chipDanger]}
+                          activeOpacity={0.75}
+                          onPress={() => setCustomForm((p) => ({
+                            ...p,
+                            contraindicaciones: sel ? p.contraindicaciones.filter((x) => x !== c) : [...p.contraindicaciones, c],
+                          }))}>
+                          <Text style={[styles.chipText, sel && styles.chipTextDanger]}>{c}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Riesgo de error técnico */}
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>RIESGO DE ERROR TÉCNICO</Text>
+                  <Text style={styles.fieldHint}>¿Qué tan fácil es ejecutarlo mal? (1 = muy simple, 5 = técnica compleja)</Text>
+                  <TouchableOpacity style={[styles.dropdownBtn, customForm.errorRisk == null && styles.dropdownBtnEmpty]}
+                    activeOpacity={0.8} onPress={() => setOpenDropdown(openDropdown === 'errorRisk' ? null : 'errorRisk')}>
+                    <Text style={[styles.dropdownBtnText, customForm.errorRisk == null && { color: P.purpleFaint }]}>
+                      {customForm.errorRisk != null
+                        ? (catalog.error_risk.find((r) => r.value === customForm.errorRisk)?.label ?? String(customForm.errorRisk))
+                        : 'Seleccionar nivel...'}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>{openDropdown === 'errorRisk' ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {openDropdown === 'errorRisk' && (
+                    <View style={styles.dropdownList}>
+                      {catalog.error_risk.map((opt) => (
+                        <TouchableOpacity key={opt.value} style={[styles.dropdownItem, customForm.errorRisk === opt.value && styles.dropdownItemSelected]}
+                          activeOpacity={0.75} onPress={() => { setCustomForm((p) => ({ ...p, errorRisk: opt.value })); setOpenDropdown(null) }}>
+                          <Text style={[styles.dropdownItemText, customForm.errorRisk === opt.value && styles.dropdownItemTextSelected]}>{opt.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Espacio requerido */}
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>ESPACIO REQUERIDO</Text>
+                  <View style={styles.chipRow}>
+                    {catalog.space_required.map((opt) => {
+                      const sel = customForm.spaceRequired === opt.value
+                      return (
+                        <TouchableOpacity key={opt.value} style={[styles.chip, sel && styles.chipSelected]}
+                          activeOpacity={0.75} onPress={() => setCustomForm((p) => ({ ...p, spaceRequired: sel ? null : opt.value }))}>
+                          <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{opt.label}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  {/* Botón guardar */}
+                  <View style={[styles.actions, { marginTop: 18 }]}>
+                    <TouchableOpacity style={[styles.btnSecond, { flex: 0.45 }]} activeOpacity={0.85}
+                      onPress={() => setEditorStep('search')}>
+                      <Text style={styles.btnSecondText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.btnPrimary, { flex: 1 }, (!customForm.nombre.trim() || !customForm.patron || customSaving) && { opacity: 0.5 }]}
+                      activeOpacity={0.85}
+                      disabled={!customForm.nombre.trim() || !customForm.patron || customSaving}
+                      onPress={guardarEjercicioPersonalizado}>
+                      {customSaving
+                        ? <ActivityIndicator color={P.white} />
+                        : <Text style={styles.btnPrimaryText}>Analizar con IA y guardar</Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.iaHint}>Groq analizará el ejercicio y completará los campos técnicos automáticamente.</Text>
+                  <View style={{ height: 12 }} />
+                </ScrollView>
               )}
             </Pressable>
           </KeyboardAvoidingView>
@@ -469,7 +863,9 @@ const styles = StyleSheet.create({
   },
   addEjText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: P.purpleMid },
 
-  msg: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleSoft, textAlign: 'center', marginTop: 14 },
+  msg: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, textAlign: 'center', marginTop: 14 },
+  msgSuccess: { color: P.green },
+  msgError: { color: P.red },
 
   // Acciones
   actions: { flexDirection: 'row', gap: 12, marginTop: 18 },
@@ -482,7 +878,60 @@ const styles = StyleSheet.create({
 
   // Modal editor
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: P.cardBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: P.border, paddingHorizontal: 20, paddingTop: 12 },
+  sheet: { backgroundColor: P.cardBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: P.border, paddingHorizontal: 20, paddingTop: 12, maxHeight: '90%' },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: P.borderBright, marginBottom: 14 },
   sheetTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: P.ink, marginBottom: 8 },
+
+  // Búsqueda de ejercicios
+  searchResult: {
+    backgroundColor: P.inputBg, borderWidth: 1, borderColor: P.border, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10, marginBottom: 6,
+  },
+  searchResultNombre: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: P.ink },
+  searchResultMeta: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: P.purpleFaint, marginTop: 2 },
+  noResultsBox: { marginBottom: 10 },
+  noResultsText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleFaint, marginBottom: 8 },
+  createCustomBtn: {
+    borderWidth: 1, borderColor: P.purple, borderRadius: 10,
+    paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center',
+  },
+  createCustomBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, color: P.purpleMid },
+  divider: { height: 1, backgroundColor: P.border, marginVertical: 12 },
+
+  // Formulario personalizado
+  customHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  customBack: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: P.purpleMid },
+  grupoLabel: { fontFamily: 'JetBrainsMono-Medium', fontSize: 9, color: P.purpleMid, letterSpacing: 1, textTransform: 'uppercase', marginTop: 6, marginBottom: 4 },
+  chipRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 8, marginBottom: 12 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: P.border, backgroundColor: P.inputBg,
+  },
+  chipSelected: { backgroundColor: P.purple, borderColor: P.purple },
+  chipDanger: { backgroundColor: 'rgba(255,68,68,0.18)', borderColor: 'rgba(255,68,68,0.5)' },
+  chipText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: P.purpleSoft },
+  chipTextSelected: { color: P.white, fontFamily: 'SpaceGrotesk-Medium' },
+  chipTextDanger: { color: '#ff6666', fontFamily: 'SpaceGrotesk-Medium' },
+  fieldHint: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: P.purpleFaint, marginBottom: 8, marginTop: -4 },
+
+  // Dropdown single-select
+  dropdownBtn: {
+    backgroundColor: P.inputBg, borderWidth: 1, borderColor: P.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  dropdownBtnEmpty: { borderColor: P.border },
+  dropdownBtnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: P.ink, flex: 1 },
+  dropdownArrow: { fontSize: 10, color: P.purpleFaint, marginLeft: 8 },
+  dropdownList: {
+    backgroundColor: P.cardBg, borderWidth: 1, borderColor: P.border, borderRadius: 12,
+    marginBottom: 12, overflow: 'hidden',
+  },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: P.border },
+  dropdownItemSelected: { backgroundColor: 'rgba(150,128,255,0.15)' },
+  dropdownItemText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: P.ink },
+  dropdownItemTextSelected: { color: P.purpleMid, fontFamily: 'SpaceGrotesk-Medium' },
+
+  iaHint: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, color: P.purpleFaint, textAlign: 'center', marginTop: 8 },
 })

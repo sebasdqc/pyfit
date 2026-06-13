@@ -34,6 +34,7 @@ class DailyCheckin(models.Model):
 
     class Meta:
         db_table = 'daily_checkin'
+        unique_together = [('user', 'fecha')]
         indexes = [
             models.Index(fields=['user', '-fecha']),
         ]

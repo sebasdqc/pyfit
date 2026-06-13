@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Platform, View } from 'react-native'
+import { Platform, StyleSheet, Text, View } from 'react-native'
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { I18nProvider } from '../lib/i18n'
 import { initSentry, withSentryWrap } from '../lib/sentry'
 import AppleHealthService from '../lib/appleHealth'
 import { getAccessToken } from '../lib/storage'
+import { useNetworkStatus } from '../lib/useNetworkStatus'
 // El task de background GPS DEBE importarse aquí (nivel de módulo del entry point)
 // para que TaskManager.defineTask() quede registrado antes de cualquier render,
 // incluso si el usuario nunca abre la pantalla de Run.
@@ -59,13 +60,39 @@ SplashScreen.preventAutoHideAsync()
 
 function ThemedApp() {
   const { isDark } = useTheme()
+  const { isOffline } = useNetworkStatus()
+  const insets = useSafeAreaInsets()
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Slot />
+      {isOffline && (
+        <View style={[styles.offlineBanner, { top: insets.top }]}>
+          <Text style={styles.offlineText}>Sin conexión · los datos pueden estar desactualizados</Text>
+        </View>
+      )}
     </>
   )
 }
+
+const styles = StyleSheet.create({
+  offlineBanner: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,68,68,0.92)',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  offlineText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    color: '#fff',
+    letterSpacing: 0.4,
+  },
+})
 
 function RootLayout() {
   const [ready, setReady] = useState(false)
