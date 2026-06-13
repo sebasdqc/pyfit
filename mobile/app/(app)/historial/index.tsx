@@ -1069,7 +1069,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
 
   function handleScroll({ nativeEvent }: any) {
     const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250) {
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250 - insets.bottom) {
       loadMore()
     }
   }

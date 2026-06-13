@@ -1240,8 +1240,10 @@ function makeStyles(c: Colors) {
       borderBottomColor: c.borderDefault,
     },
     navBtn: {
-      paddingVertical: 6,
-      paddingHorizontal: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      minHeight: 44,
+      justifyContent: 'center',
     },
     navBtnDisabled: {
       opacity: 0.3,

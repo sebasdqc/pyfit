@@ -182,8 +182,10 @@ export default function PerfilScreen() {
   const [statsLoading, setStatsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [coachUnread, setCoachUnread] = useState(0)
+  const [loadError, setLoadError] = useState(false)
 
   const fetchAll = useCallback(async () => {
+    setLoadError(false)
     try {
       const [profileRes, statsRes, unreadRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
@@ -193,13 +195,15 @@ export default function PerfilScreen() {
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
         setProfile({ ...DEFAULT, ...d, locations: d.locations ?? [] })
+      } else {
+        setLoadError(true)
       }
       if (statsRes.status === 'fulfilled') {
         setProfileStats(statsRes.value)
       }
       setCoachUnread(unreadRes.status === 'fulfilled' ? (unreadRes.value?.no_leidos ?? 0) : 0)
     } catch {
-      // fail silently
+      setLoadError(true)
     } finally {
       setLoading(false)
       setStatsLoading(false)
@@ -299,6 +303,19 @@ export default function PerfilScreen() {
             </View>
           </TouchableOpacity>
           <Text style={styles.nombre}>{loading ? '...' : (profile.nombre || 'Usuario')}</Text>
+          {loadError && !loading && (
+            <TouchableOpacity
+              onPress={() => { setLoading(true); setStatsLoading(true); fetchAll() }}
+              style={{ marginTop: 6, paddingVertical: 5, paddingHorizontal: 14,
+                borderRadius: 10, borderWidth: 1,
+                borderColor: 'rgba(255,68,68,0.4)', backgroundColor: 'rgba(255,68,68,0.08)' }}
+              accessibilityRole="button"
+            >
+              <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff6b6b' }}>
+                No se pudo cargar el perfil · ↺ Reintentar
+              </Text>
+            </TouchableOpacity>
+          )}
           <View style={styles.nivelPill}>
             <Text style={styles.nivelPillText}>{nivel}</Text>
             {!statsLoading && (profileStats?.semanas_activas ?? 0) > 0 && (
