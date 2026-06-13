@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -87,9 +88,21 @@ export default function RunScreen() {
           if (!cancelled) {
             setDeviceLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
           }
+        } else {
+          // Permiso denegado — mostrar Alert accionable con acceso directo a Ajustes
+          if (!cancelled) {
+            Alert.alert(
+              'GPS no disponible',
+              'Free Run necesita acceso a tu ubicación para registrar la carrera. Actívalo en Ajustes.',
+              [
+                { text: 'Más tarde', style: 'cancel' },
+                { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+              ]
+            )
+          }
         }
       } catch {
-        // Permission denied or error — map will render without centering
+        // Error de hardware — el mapa renderiza sin centrar
       } finally {
         if (!cancelled) setLocationReady(true)
       }

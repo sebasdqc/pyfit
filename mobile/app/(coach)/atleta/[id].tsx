@@ -259,7 +259,14 @@ export default function CoachAtletaDetalle() {
         {tab === 'perfil' && (
           <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
             {loadingDet ? (
-              <View style={styles.loadingWrap}><ActivityIndicator color={P.purpleMid} /></View>
+              <View style={styles.metricsGrid}>
+                {[0, 1, 2, 3].map(i => (
+                  <View key={i} style={styles.metricCard}>
+                    <View style={styles.skeletonLg} />
+                    <View style={[styles.skeletonSm, { marginTop: 10 }]} />
+                  </View>
+                ))}
+              </View>
             ) : errDet ? (
               <Text style={styles.emptyText}>{errDet}</Text>
             ) : (
@@ -512,6 +519,8 @@ const styles = StyleSheet.create({
   metricValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: P.ink, letterSpacing: -0.6 },
   metricExtra: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11 },
   metricLabel: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: P.purpleSoft, marginTop: 6 },
+  skeletonLg: { height: 28, borderRadius: 6, backgroundColor: 'rgba(150,128,255,0.12)', width: '65%' },
+  skeletonSm: { height: 11, borderRadius: 4, backgroundColor: 'rgba(150,128,255,0.08)', width: '80%' },
 
   // Perfil — toggles
   toggleRow: {
