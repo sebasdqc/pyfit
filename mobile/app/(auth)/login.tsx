@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import {
+  Alert,
   View,
   Text,
   Image,
@@ -201,6 +202,14 @@ export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
+  function handleApple() {
+    Alert.alert(
+      'Próximamente',
+      'El inicio de sesión con Apple estará disponible en la próxima actualización.',
+      [{ text: 'Entendido' }]
+    )
+  }
+
   async function handleGoogle() {
     if (loading || googleLoading) return
     setError('')
@@ -391,7 +400,7 @@ export default function LoginScreen() {
             <View style={styles.socialRow}>
               <SocialButton icon={<GoogleIcon />} label="Google"
                 onPress={handleGoogle} loading={googleLoading} disabled={loading} />
-              <SocialButton icon={<AppleIcon />} label="Apple" />
+              <SocialButton icon={<AppleIcon />} label="Apple" onPress={handleApple} disabled={loading || googleLoading} />
             </View>
 
             <Text style={styles.disclaimer}>

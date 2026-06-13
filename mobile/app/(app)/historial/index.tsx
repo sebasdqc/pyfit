@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TextInput,
   Animated,
+  ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -251,18 +252,27 @@ function SessionModal({
   // HIS-1: el listado trae respuesta_ia RECORTADA (solo nombres). Al abrir el
   // detalle se hace fetch de la sesión completa (series/reps/notas + nota).
   const [fullIa, setFullIa] = useState<RespuestaIA | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState(false)
+
+  function fetchDetail(sessionId: number) {
+    setDetailLoading(true)
+    setDetailError(false)
+    let cancel = false
+    apiGet(`/api/sessions/${sessionId}/`)
+      .then((d: any) => { if (!cancel) { setFullIa(d?.respuesta_ia ?? null); setDetailLoading(false) } })
+      .catch(() => { if (!cancel) { setDetailError(true); setDetailLoading(false) } })
+    return () => { cancel = true }
+  }
+
   useEffect(() => {
-    if (!visible || !session) { setFullIa(null); return }
+    if (!visible || !session) { setFullIa(null); setDetailLoading(false); setDetailError(false); return }
     const yaCompleto = !!session.respuesta_ia?.fases?.some(
       f => f.ejercicios?.some(e => (e as any).series != null)
     )
     if (yaCompleto) { setFullIa(session.respuesta_ia); return }
-    let cancel = false
     setFullIa(null)
-    apiGet(`/api/sessions/${session.id}/`)
-      .then((d: any) => { if (!cancel) setFullIa(d?.respuesta_ia ?? null) })
-      .catch(() => { if (!cancel) setFullIa(null) })
-    return () => { cancel = true }
+    return fetchDetail(session.id)
   }, [visible, session])
 
   const monthShort = ta('historial_months')
@@ -317,6 +327,27 @@ function SessionModal({
                 </View>
               )}
             </View>
+
+            {/* Indicador de carga del detalle completo */}
+            {detailLoading && (
+              <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                <ActivityIndicator color={colors.accent} size="small" />
+              </View>
+            )}
+            {detailError && !detailLoading && (
+              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.inkMuted }}>
+                  No se pudo cargar el detalle completo
+                </Text>
+                <TouchableOpacity
+                  onPress={() => session && fetchDetail(session.id)}
+                  style={{ marginTop: 6 }}
+                  accessibilityRole="button"
+                >
+                  <Text style={{ color: colors.accent, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 12 }}>↺ Reintentar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Nota del entrenador */}
             {ia?.nota_del_entrenador ? (

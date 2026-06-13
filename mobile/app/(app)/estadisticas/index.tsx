@@ -881,6 +881,7 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
 
   // ── Block 3 state ─────────────────────────────────────────────────────────
   const [cuerpoData, setCuerpoData] = useState<CuerpoData | null>(null)
+  const [cuerpoError, setCuerpoError] = useState(false)
 
   // ── Block 4 state ─────────────────────────────────────────────────────────
   const [ejerciciosData, setEjerciciosData] = useState<EjercicioTop[] | null>(null)
@@ -948,11 +949,13 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
   }, [])
 
   const fetchCuerpo = useCallback(async (isInitial = false) => {
+    setCuerpoError(false)
     try {
       const res: CuerpoData = await apiGet('/api/stats/cuerpo-contexto/')
       setCuerpoData(res)
     } catch (e: any) {
       if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
+      else setCuerpoError(true)
     }
   }, [])
 
@@ -1215,7 +1218,20 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
         <View style={styles.card}>
           {!cuerpoData ? (
             <View style={[styles.chartCenter, { height: 80 }]}>
-              <Text style={styles.emptyText}>{t('stats_loading')}</Text>
+              {cuerpoError ? (
+                <>
+                  <Text style={styles.emptyText}>No se pudieron cargar los datos</Text>
+                  <TouchableOpacity
+                    onPress={() => fetchCuerpo()}
+                    style={{ marginTop: 10 }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={{ color: colors.accent, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13 }}>↺ Reintentar</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <ActivityIndicator color={colors.accent} size="small" />
+              )}
             </View>
           ) : (
             <>
