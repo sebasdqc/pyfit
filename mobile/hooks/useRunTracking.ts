@@ -27,14 +27,15 @@ export interface GpsCoordinate {
 }
 
 export interface UseRunTrackingReturn {
-  sessionId:        number | null
-  status:           RunStatus
-  coordinates:      GpsCoordinate[]
-  totalDistance:    number   // metros
-  currentPace:      number   // segundos por km (0 = desconocido)
-  elapsedSeconds:   number
-  backgroundActive: boolean  // true cuando el background GPS está corriendo
-  error:            string | null
+  sessionId:           number | null
+  status:              RunStatus
+  coordinates:         GpsCoordinate[]
+  totalDistance:       number   // metros
+  currentPace:         number   // segundos por km (0 = desconocido)
+  elapsedSeconds:      number
+  totalElevationGain:  number   // metros acumulados de subida
+  backgroundActive:    boolean  // true cuando el background GPS está corriendo
+  error:               string | null
   startRun:  () => Promise<void>
   pauseRun:  () => Promise<void>
   resumeRun: () => Promise<void>
@@ -44,29 +45,32 @@ export interface UseRunTrackingReturn {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useRunTracking(): UseRunTrackingReturn {
-  const [sessionId,        setSessionId]        = useState<number | null>(null)
-  const [status,           setStatus]           = useState<RunStatus>('idle')
-  const [coordinates,      setCoordinates]      = useState<GpsCoordinate[]>([])
-  const [totalDistance,    setTotalDistance]    = useState(0)
-  const [currentPace,      setCurrentPace]      = useState(0)
-  const [elapsedSeconds,   setElapsedSeconds]   = useState(0)
-  const [backgroundActive, setBackgroundActive] = useState(false)
-  const [error,            setError]            = useState<string | null>(null)
+  const [sessionId,           setSessionId]           = useState<number | null>(null)
+  const [status,              setStatus]              = useState<RunStatus>('idle')
+  const [coordinates,         setCoordinates]         = useState<GpsCoordinate[]>([])
+  const [totalDistance,       setTotalDistance]       = useState(0)
+  const [currentPace,         setCurrentPace]         = useState(0)
+  const [elapsedSeconds,      setElapsedSeconds]      = useState(0)
+  const [totalElevationGain,  setTotalElevationGain]  = useState(0)
+  const [backgroundActive,    setBackgroundActive]    = useState(false)
+  const [error,               setError]               = useState<string | null>(null)
 
   // Refs para intervals y datos acumulados
-  const timerRef             = useRef<ReturnType<typeof setInterval> | null>(null)
-  const batchRef             = useRef<ReturnType<typeof setInterval> | null>(null)
-  const drainRef             = useRef<ReturnType<typeof setInterval> | null>(null)
-  const locationSubRef       = useRef<Location.LocationSubscription | null>(null)
-  const pendingPointsRef     = useRef<GpsCoordinate[]>([])
-  const sessionIdRef         = useRef<number | null>(null)
-  const coordinatesRef       = useRef<GpsCoordinate[]>([])
-  const totalDistanceRef     = useRef(0)
-  const startingRef          = useRef(false)   // guard de reentrada para startRun
-  const stoppingRef          = useRef(false)   // guard de reentrada para stopRun
-  const statusRef            = useRef<RunStatus>('idle')  // status legible dentro de callbacks
-  const accumulatedSecondsRef = useRef(0)       // segundos ACTIVOS acumulados (sin pausas)
-  const segmentStartRef      = useRef(0)        // epoch ms del inicio del segmento activo actual
+  const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null)
+  const batchRef              = useRef<ReturnType<typeof setInterval> | null>(null)
+  const drainRef              = useRef<ReturnType<typeof setInterval> | null>(null)
+  const locationSubRef        = useRef<Location.LocationSubscription | null>(null)
+  const pendingPointsRef      = useRef<GpsCoordinate[]>([])
+  const sessionIdRef          = useRef<number | null>(null)
+  const coordinatesRef        = useRef<GpsCoordinate[]>([])
+  const totalDistanceRef      = useRef(0)
+  const totalElevationGainRef = useRef(0)
+  const lastAltitudeRef       = useRef<number | null>(null)
+  const startingRef           = useRef(false)   // guard de reentrada para startRun
+  const stoppingRef           = useRef(false)   // guard de reentrada para stopRun
+  const statusRef             = useRef<RunStatus>('idle')  // status legible dentro de callbacks
+  const accumulatedSecondsRef = useRef(0)        // segundos ACTIVOS acumulados (sin pausas)
+  const segmentStartRef       = useRef(0)        // epoch ms del inicio del segmento activo actual
 
   // Mantener statusRef en sync con el estado para los guards de pause/resume
   useEffect(() => { statusRef.current = status }, [status])
@@ -99,6 +103,19 @@ export function useRunTracking(): UseRunTrackingReturn {
     coordinatesRef.current = [...prev, point]
     setCoordinates([...coordinatesRef.current])
     setCurrentPace(calculateCurrentPace(coordinatesRef.current, 5))
+
+    // Elevation gain: only accumulate rises > 1.5 m to filter GPS altitude noise
+    if (point.altitude !== null) {
+      if (lastAltitudeRef.current !== null) {
+        const rise = point.altitude - lastAltitudeRef.current
+        if (rise > 1.5) {
+          totalElevationGainRef.current += rise
+          setTotalElevationGain(totalElevationGainRef.current)
+        }
+      }
+      lastAltitudeRef.current = point.altitude
+    }
+
     pendingPointsRef.current.push(point)
   }, [])
 
@@ -200,11 +217,14 @@ export function useRunTracking(): UseRunTrackingReturn {
       // Reset state
       coordinatesRef.current = []
       totalDistanceRef.current = 0
+      totalElevationGainRef.current = 0
+      lastAltitudeRef.current = null
       pendingPointsRef.current = []
       setCoordinates([])
       setTotalDistance(0)
       setCurrentPace(0)
       setElapsedSeconds(0)
+      setTotalElevationGain(0)
       statusRef.current = 'active'
       setStatus('active')
 
@@ -287,6 +307,7 @@ export function useRunTracking(): UseRunTrackingReturn {
     totalDistance,
     currentPace,
     elapsedSeconds,
+    totalElevationGain,
     backgroundActive,
     error,
     startRun,

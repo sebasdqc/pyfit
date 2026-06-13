@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   BackHandler,
   Linking,
   StyleSheet,
@@ -14,16 +15,23 @@ import * as Location from 'expo-location'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
-import { formatDistance, formatDuration, formatPace } from '../../../lib/runMetrics'
+import {
+  estimateCalories,
+  formatCalories,
+  formatDistance,
+  formatDuration,
+  formatElevation,
+  formatPace,
+  formatSpeed,
+} from '../../../lib/runMetrics'
+import { apiGet } from '../../../lib/api'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 
-// ─── Back Arrow Icon (inline SVG-free) ───────────────────────────────────────
+// ─── Back Arrow ───────────────────────────────────────────────────────────────
 
 function BackArrow({ color }: { color: string }) {
-  return (
-    <Text style={{ color, fontSize: 22, lineHeight: 26 }}>{'‹'}</Text>
-  )
+  return <Text style={{ color, fontSize: 22, lineHeight: 26 }}>{'‹'}</Text>
 }
 
 // ─── Metric Column ────────────────────────────────────────────────────────────
@@ -31,25 +39,57 @@ function BackArrow({ color }: { color: string }) {
 function MetricColumn({
   label,
   value,
+  valueColor,
+  small,
+  onPress,
   colors,
 }: {
   label: string
   value: string
+  valueColor?: string
+  small?: boolean
+  onPress?: () => void
   colors: Colors
 }) {
-  return (
+  const content = (
     <View style={styles.metricCol}>
       <Text
-        style={[styles.metricValue, { color: colors.inkPrimary }]}
+        style={[
+          small ? styles.metricValueSm : styles.metricValue,
+          { color: valueColor ?? colors.inkPrimary },
+        ]}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.6}
       >
         {value}
       </Text>
-      <Text style={[styles.metricLabel, { color: colors.inkMuted }]} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.metricLabel, { color: colors.inkMuted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      {onPress && (
+        <Text style={[styles.metricHint, { color: colors.accent }]}>toca</Text>
+      )}
     </View>
   )
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.metricColTouch}>
+        {content}
+      </TouchableOpacity>
+    )
+  }
+  return content
+}
+
+// ─── RPE color ────────────────────────────────────────────────────────────────
+
+function rpeColor(rpe: number, colors: Colors): string {
+  if (rpe <= 0) return colors.inkMuted
+  if (rpe <= 4) return colors.green
+  if (rpe <= 7) return colors.orange
+  return colors.red
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -64,6 +104,7 @@ export default function RunScreen() {
     totalDistance,
     currentPace,
     elapsedSeconds,
+    totalElevationGain,
     backgroundActive,
     error,
     startRun,
@@ -72,24 +113,54 @@ export default function RunScreen() {
     stopRun,
   } = useRunTracking()
 
+  const [isIndoor, setIsIndoor] = useState(false)
   const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationReady, setLocationReady] = useState(false)
+  const [userWeightKg, setUserWeightKg] = useState(70)
+  const [rpe, setRpe] = useState(0)
 
-  // Fetch real device location on mount so map centers correctly before run starts
+  // Indoor pulse animation
+  const pulseAnim = useRef(new Animated.Value(1)).current
   useEffect(() => {
+    if (!isIndoor || status !== 'active') return
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 900, useNativeDriver: true }),
+      ])
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [isIndoor, status, pulseAnim])
+
+  // Fetch user weight for calorie estimation
+  useEffect(() => {
+    apiGet('/api/profile/')
+      .then((p: any) => {
+        const w = parseFloat(p?.peso)
+        if (w > 0) setUserWeightKg(w)
+      })
+      .catch(() => {})
+  }, [])
+
+  // GPS fetch — skip entirely for indoor mode
+  useEffect(() => {
+    if (isIndoor) {
+      setLocationReady(true)
+      setDeviceLocation(null)
+      return
+    }
     let cancelled = false
+    setLocationReady(false)
     async function fetchLocation() {
       try {
         const { status: perm } = await Location.requestForegroundPermissionsAsync()
         if (perm === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          })
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
           if (!cancelled) {
             setDeviceLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
           }
         } else {
-          // Permiso denegado — mostrar Alert accionable con acceso directo a Ajustes
           if (!cancelled) {
             Alert.alert(
               'GPS no disponible',
@@ -102,14 +173,14 @@ export default function RunScreen() {
           }
         }
       } catch {
-        // Error de hardware — el mapa renderiza sin centrar
+        // error de hardware — el mapa renderiza sin centrar
       } finally {
         if (!cancelled) setLocationReady(true)
       }
     }
     fetchLocation()
     return () => { cancelled = true }
-  }, [])
+  }, [isIndoor])
 
   // Navigate to summary when run completes
   useEffect(() => {
@@ -122,23 +193,20 @@ export default function RunScreen() {
     }
   }, [status, sessionId])
 
-  // Show GPS/start errors (not stop errors — those navigate away)
+  // Show GPS/start errors
   useEffect(() => {
     if (error && status !== 'completed') {
       Alert.alert('Error', error)
     }
   }, [error, status])
 
-  // Salir con carrera activa: confirmar y detener correctamente (stopRun completa
-  // la sesión y para el GPS de fondo). `run` es un tab, así que NO podemos confiar
-  // en el desmontaje: hay que interceptar el botón y el back de hardware.
   const inProgress = status === 'active' || status === 'paused'
 
   function handleExit() {
     if (inProgress) {
       Alert.alert(
-        'Detener carrera',
-        '¿Terminar y guardar tu carrera?',
+        'Detener entrenamiento',
+        '¿Terminar y guardar?',
         [
           { text: 'Continuar', style: 'cancel' },
           { text: 'Detener', style: 'destructive', onPress: () => stopRun() },
@@ -149,11 +217,10 @@ export default function RunScreen() {
     }
   }
 
-  // Confirmación al finalizar (antes el slider evitaba el toque accidental)
   function handleFinish() {
     Alert.alert(
-      'Finalizar carrera',
-      '¿Terminar y guardar tu carrera?',
+      'Finalizar entrenamiento',
+      '¿Terminar y guardar?',
       [
         { text: 'Continuar', style: 'cancel' },
         { text: 'Finalizar', style: 'destructive', onPress: () => stopRun() },
@@ -161,67 +228,87 @@ export default function RunScreen() {
     )
   }
 
+  function handleRpeTap() {
+    if (status !== 'active') return
+    Alert.alert(
+      'Esfuerzo percibido (RPE)',
+      '¿Qué tan duro estás trabajando?',
+      [
+        { text: '😴  1-2 — Muy fácil',  onPress: () => setRpe(2)  },
+        { text: '🙂  3-4 — Fácil',      onPress: () => setRpe(4)  },
+        { text: '😐  5-6 — Moderado',   onPress: () => setRpe(6)  },
+        { text: '😤  7-8 — Duro',       onPress: () => setRpe(8)  },
+        { text: '🔥  9-10 — Máximo',    onPress: () => setRpe(10) },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    )
+  }
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (status === 'active' || status === 'paused') { handleExit(); return true }  // consumir, no salir
+      if (status === 'active' || status === 'paused') { handleExit(); return true }
       return false
     })
     return () => sub.remove()
-    // handleExit cierra sobre status/stopRun de este render; re-suscribe al cambiar status
   }, [status])
 
-  // Map region: prefer live run coordinates → pre-fetched device location → null (don't render yet)
-  const activeCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
-  const centerCoord = activeCoord ?? deviceLocation
-
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const activeCoord   = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
+  const centerCoord   = activeCoord ?? deviceLocation
   const initialRegion = centerCoord
-    ? {
-        latitude: centerCoord.latitude,
-        longitude: centerCoord.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }
+    ? { latitude: centerCoord.latitude, longitude: centerCoord.longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 }
     : null
-
-  const polylineCoords = coordinates.map(c => ({
-    latitude: c.latitude,
-    longitude: c.longitude,
-  }))
-
-  const lastCoord = coordinates.length > 0 ? coordinates[coordinates.length - 1] : null
+  const polylineCoords = coordinates.map(c => ({ latitude: c.latitude, longitude: c.longitude }))
+  const caloriesEstimated = estimateCalories(elapsedSeconds, userWeightKg, isIndoor)
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      {/* ── Full screen map — only render once we know the device location ── */}
-      {!locationReady && (
-        <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>Obteniendo ubicación...</Text>
+
+      {/* ── Map / Indoor background ── */}
+      {isIndoor ? (
+        // Indoor: dark background with centered large timer
+        <View style={[styles.indoorBg, { backgroundColor: colors.bg }]}>
+          <Animated.View style={[styles.indoorTimerWrap, { transform: [{ scale: pulseAnim }] }]}>
+            <Text style={[styles.indoorTimerLabel, { color: colors.inkMuted }]}>TIEMPO</Text>
+            <Text style={[styles.indoorTimerValue, { color: colors.inkPrimary }]}>
+              {formatDuration(elapsedSeconds)}
+            </Text>
+          </Animated.View>
+          <View style={[styles.indoorBadge, { borderColor: colors.accent + '44', backgroundColor: colors.accent + '11' }]}>
+            <Text style={[styles.indoorBadgeText, { color: colors.accent }]}>🏋️  INTERIOR</Text>
+          </View>
         </View>
-      )}
-      {locationReady && initialRegion && (
-        <MapView
-          style={StyleSheet.absoluteFillObject}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={initialRegion}
-          showsUserLocation
-          followsUserLocation={status !== 'completed'}
-          mapType="standard"
-          customMapStyle={isDark ? darkMapStyle : []}
-        >
-          {polylineCoords.length > 1 && (
-            <Polyline
-              coordinates={polylineCoords}
-              strokeColor={colors.accent}
-              strokeWidth={4}
-            />
+      ) : (
+        <>
+          {!locationReady && (
+            <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>Obteniendo ubicación...</Text>
+            </View>
           )}
-        </MapView>
-      )}
-      {locationReady && !initialRegion && (
-        <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
-          <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>No se pudo obtener la ubicación.{'\n'}Activa el GPS e intenta de nuevo.</Text>
-        </View>
+          {locationReady && initialRegion && (
+            <MapView
+              style={StyleSheet.absoluteFillObject}
+              provider={PROVIDER_DEFAULT}
+              initialRegion={initialRegion}
+              showsUserLocation
+              followsUserLocation={status !== 'completed'}
+              mapType="standard"
+              customMapStyle={isDark ? darkMapStyle : []}
+            >
+              {polylineCoords.length > 1 && (
+                <Polyline coordinates={polylineCoords} strokeColor={colors.accent} strokeWidth={4} />
+              )}
+            </MapView>
+          )}
+          {locationReady && !initialRegion && (
+            <View style={[styles.mapLoading, { backgroundColor: colors.bg }]}>
+              <Text style={[styles.mapLoadingText, { color: colors.inkMuted }]}>
+                No se pudo obtener la ubicación.{'\n'}Activa el GPS e intenta de nuevo.
+              </Text>
+            </View>
+          )}
+        </>
       )}
 
       {/* ── Header overlay ── */}
@@ -234,10 +321,11 @@ export default function RunScreen() {
           <BackArrow color={colors.inkPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.inkPrimary }]}>FREE RUN</Text>
-        {/* Indicador de background GPS activo */}
         {status === 'active' && (
           <View style={[styles.bgBadge, backgroundActive ? styles.bgBadgeOn : styles.bgBadgeOff]}>
-            <Text style={[styles.bgBadgeText, { color: colors.inkPrimary }]}>{backgroundActive ? '📡 BG' : '📍 FG'}</Text>
+            <Text style={[styles.bgBadgeText, { color: colors.inkPrimary }]}>
+              {isIndoor ? '🏋️ INT' : backgroundActive ? '📡 BG' : '📍 FG'}
+            </Text>
           </View>
         )}
         {status === 'paused' && (
@@ -248,28 +336,81 @@ export default function RunScreen() {
         {!inProgress && <View style={styles.headerRight} />}
       </View>
 
-      {/* ── Bottom metrics panel ── */}
+      {/* ── Bottom panel ── */}
       <View style={[styles.panel, { paddingBottom: insets.bottom + 20, backgroundColor: colors.sheetBg, borderTopColor: colors.borderDefault }]}>
-        {/* Metrics row */}
-        <View style={styles.metricsRow}>
-          <MetricColumn
-            label="DISTANCIA"
-            value={formatDistance(totalDistance)}
-            colors={colors}
-          />
-          <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
-          <MetricColumn
-            label="TIEMPO"
-            value={formatDuration(elapsedSeconds)}
-            colors={colors}
-          />
-          <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
-          <MetricColumn
-            label="RITMO"
-            value={formatPace(currentPace)}
-            colors={colors}
-          />
-        </View>
+
+        {/* Mode toggle — only when idle */}
+        {status === 'idle' && (
+          <View style={styles.modeRow}>
+            <TouchableOpacity
+              style={[
+                styles.modeBtn,
+                !isIndoor && { backgroundColor: colors.accent + '22', borderColor: colors.accent },
+                isIndoor  && { backgroundColor: 'transparent', borderColor: colors.borderDefault },
+              ]}
+              onPress={() => setIsIndoor(false)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.modeBtnText, { color: !isIndoor ? colors.accent : colors.inkMuted }]}>
+                🌿  EXTERIOR
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modeBtn,
+                isIndoor  && { backgroundColor: colors.accent + '22', borderColor: colors.accent },
+                !isIndoor && { backgroundColor: 'transparent', borderColor: colors.borderDefault },
+              ]}
+              onPress={() => setIsIndoor(true)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.modeBtnText, { color: isIndoor ? colors.accent : colors.inkMuted }]}>
+                🏋️  INTERIOR
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── OUTDOOR metrics ── */}
+        {!isIndoor && (
+          <>
+            {/* Row 1: primary */}
+            <View style={styles.metricsRow}>
+              <MetricColumn label="DISTANCIA" value={formatDistance(totalDistance)} colors={colors} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+              <MetricColumn label="TIEMPO"    value={formatDuration(elapsedSeconds)} colors={colors} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+              <MetricColumn label="RITMO"     value={formatPace(currentPace)}        colors={colors} />
+            </View>
+            {/* Row 2: secondary (always visible so layout doesn't jump) */}
+            <View style={[styles.metricsRow, styles.metricsRowSm]}>
+              <MetricColumn label="VELOCIDAD"  value={formatSpeed(currentPace)}               small colors={colors} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+              <MetricColumn label="CALORÍAS"   value={formatCalories(caloriesEstimated)}      small colors={colors} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+              <MetricColumn label="DESNIVEL +" value={formatElevation(totalElevationGain)}    small colors={colors} />
+            </View>
+          </>
+        )}
+
+        {/* ── INDOOR metrics ── */}
+        {isIndoor && (
+          <View style={styles.metricsRow}>
+            <MetricColumn label="TIEMPO"    value={formatDuration(elapsedSeconds)}  colors={colors} />
+            <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+            <MetricColumn label="CALORÍAS"  value={formatCalories(caloriesEstimated)} colors={colors} />
+            <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+            <MetricColumn label="FC (bpm)"  value="--"                             colors={colors} />
+            <View style={[styles.metricDivider, { backgroundColor: colors.borderDefault }]} />
+            <MetricColumn
+              label="RPE"
+              value={rpe > 0 ? `${rpe}/10` : '--'}
+              valueColor={rpeColor(rpe, colors)}
+              onPress={status === 'active' ? handleRpeTap : undefined}
+              colors={colors}
+            />
+          </View>
+        )}
 
         {/* Action buttons */}
         <View style={styles.btnWrap}>
@@ -326,32 +467,14 @@ export default function RunScreen() {
 // ─── Dark map style ───────────────────────────────────────────────────────────
 
 const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#0a0a0a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0a' }] },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#1f2937' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#111827' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0f172a' }],
-  },
-  {
-    featureType: 'poi',
-    stylers: [{ visibility: 'off' }],
-  },
-  {
-    featureType: 'transit',
-    stylers: [{ visibility: 'off' }],
-  },
+  { elementType: 'geometry',            stylers: [{ color: '#0a0a0a' }] },
+  { elementType: 'labels.text.fill',    stylers: [{ color: '#6b7280' }] },
+  { elementType: 'labels.text.stroke',  stylers: [{ color: '#0a0a0a' }] },
+  { featureType: 'road', elementType: 'geometry',        stylers: [{ color: '#1f2937' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#111827' }] },
+  { featureType: 'water', elementType: 'geometry',       stylers: [{ color: '#0f172a' }] },
+  { featureType: 'poi',     stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ]
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -362,17 +485,52 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
 
+  // Indoor background
+  indoorBg: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  indoorTimerWrap: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  indoorTimerLabel: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
+  indoorTimerValue: {
+    fontFamily: 'SpaceGrotesk-Bold',
+    fontSize: 64,
+    letterSpacing: -2,
+    lineHeight: 70,
+  },
+  indoorBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  indoorBadgeText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+
+  // Map loading
   mapLoading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0a0a0a',
     gap: 12,
   },
   mapLoadingText: {
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
     paddingHorizontal: 32,
   },
@@ -395,22 +553,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 13,
-    color: '#ffffff',
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
-  headerRight: {
-    width: 40,
-  },
+  headerRight: { width: 40 },
 
   // Bottom panel
   panel: {
@@ -422,48 +575,84 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 24,
+    paddingTop: 20,
     paddingHorizontal: 24,
+  },
+
+  // Mode toggle
+  modeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 50,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeBtnText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 
   // Metrics
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 14,
+  },
+  metricsRowSm: {
+    marginBottom: 16,
   },
   metricCol: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
+  },
+  metricColTouch: {
+    flex: 1,
   },
   metricValue: {
     fontFamily: 'SpaceGrotesk-Bold',
-    fontSize: 23,
-    color: '#ffffff',
+    fontSize: 22,
     letterSpacing: -0.5,
-    lineHeight: 28,
+    lineHeight: 27,
+    textAlign: 'center',
+  },
+  metricValueSm: {
+    fontFamily: 'SpaceGrotesk-SemiBold',
+    fontSize: 15,
+    letterSpacing: -0.3,
+    lineHeight: 20,
     textAlign: 'center',
   },
   metricLabel: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 9,
-    color: 'rgba(255,255,255,0.45)',
     letterSpacing: 1.0,
     textTransform: 'uppercase',
-    marginTop: 5,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  metricHint: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 8,
+    letterSpacing: 0.5,
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
   metricDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 36,
   },
 
   // Buttons
-  btnWrap: {
-    width: '100%',
-  },
+  btnWrap: { width: '100%' },
   actionBtn: {
     borderRadius: 50,
     paddingVertical: 18,
@@ -473,11 +662,8 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontFamily: 'SpaceGrotesk-Bold',
     fontSize: 17,
-    color: '#ffffff',
     letterSpacing: 1,
   },
-
-  // Botones en fila (pausa/reanudar + finalizar)
   btnRow: {
     flexDirection: 'row',
     gap: 12,
@@ -497,10 +683,9 @@ const styles = StyleSheet.create({
   completingText: {
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
   },
 
-  // Background GPS indicator badge
+  // Background GPS badge
   bgBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -518,7 +703,6 @@ const styles = StyleSheet.create({
   bgBadgeText: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 10,
-    color: '#ffffff',
     letterSpacing: 1,
   },
 })

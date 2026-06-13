@@ -109,3 +109,32 @@ export function calculateCurrentPace(
   // seconds per km
   return (durationSec / totalDistance) * 1000
 }
+
+/** Format pace (sec/km) as speed in km/h. */
+export function formatSpeed(secondsPerKm: number): string {
+  if (!isFinite(secondsPerKm) || secondsPerKm <= 0) return '--'
+  return `${(3600 / secondsPerKm).toFixed(1)} km/h`
+}
+
+/**
+ * Estimate calories burned (kcal).
+ * Uses MET method: outdoor running ≈ 9.8 MET, indoor cardio ≈ 7.0 MET.
+ */
+export function estimateCalories(
+  elapsedSeconds: number,
+  weightKg: number,
+  isIndoor: boolean,
+): number {
+  const MET = isIndoor ? 7.0 : 9.8
+  return Math.round(MET * weightKg * (elapsedSeconds / 3600))
+}
+
+/** Format kcal as "XXX kcal". */
+export function formatCalories(kcal: number): string {
+  return `${Math.max(0, kcal)} kcal`
+}
+
+/** Format accumulated elevation gain in meters as "+XX m". */
+export function formatElevation(meters: number): string {
+  return `+${Math.round(Math.max(0, meters))} m`
+}
