@@ -116,12 +116,10 @@ def _athlete_card(athlete, hoy, ahora) -> dict:
     last_session = athlete.sessions.order_by('-fecha', '-created_at').first()
     last_checkin = athlete.checkins.order_by('-fecha').first()
 
-    # Días desde la última actividad (sesión o check-in). 999 = sin actividad.
-    fechas = [d for d in (
-        last_session.fecha if last_session else None,
-        last_checkin.fecha if last_checkin else None,
-    ) if d is not None]
-    dias_inactivo = (hoy - max(fechas)).days if fechas else 999
+    # Días desde la última sesión real. 999 = sin sesiones.
+    # Se usa solo la fecha de sesión (no checkin) para no inflar la recencia
+    # de atletas que se conectan pero no entrenan.
+    dias_inactivo = (hoy - last_session.fecha).days if last_session else 999
 
     # Consistencia
     esperadas = dias_semana * 4
@@ -137,7 +135,8 @@ def _athlete_card(athlete, hoy, ahora) -> dict:
     recencia = _clamp(100 - max(0, dias_inactivo - 1) * 11) if dias_inactivo < 999 else 0
 
     # Zyfit Score
-    adher_score = adherencia if adherencia is not None else consistencia
+    # Sin feedback en 28d → adherencia efectiva = 0 (no inflar con consistencia).
+    adher_score = adherencia if adherencia is not None else 0
     score = _clamp(0.45 * consistencia + 0.40 * adher_score + 0.15 * recencia)
 
     # Estado de la rutina / actividad
@@ -648,14 +647,8 @@ def coach_atleta_rutina(request, pk):
     publicar = bool(body.get('publicar'))
     contenido = _normalizar_contenido(body)
 
-    a, _ = CoachAssignedSession.objects.select_related('session', 'session__feedback').get_or_create(
-        coach=request.user, athlete=athlete, fecha=fecha,
-        defaults={'estado': CoachAssignedSession.ESTADO_BORRADOR},
-    )
-    if _session_bloqueada(a.session):
-        return Response({'error': 'El atleta ya empezó esta sesión; no se puede editar.'},
-                        status=status.HTTP_409_CONFLICT)
-
+    # Validar ANTES de crear/modificar cualquier fila en la BD para evitar
+    # borradores fantasma con contenido vacío cuando publicar=True falla.
     if publicar:
         total_ej = sum(len(f['ejercicios']) for f in contenido['fases'])
         if not contenido['titulo']:
@@ -664,6 +657,14 @@ def coach_atleta_rutina(request, pk):
         if total_ej == 0:
             return Response({'error': 'Agrega al menos un ejercicio para publicarla.'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+    a, _ = CoachAssignedSession.objects.select_related('session', 'session__feedback').get_or_create(
+        coach=request.user, athlete=athlete, fecha=fecha,
+        defaults={'estado': CoachAssignedSession.ESTADO_BORRADOR},
+    )
+    if _session_bloqueada(a.session):
+        return Response({'error': 'El atleta ya empezó esta sesión; no se puede editar.'},
+                        status=status.HTTP_409_CONFLICT)
 
     a.titulo = contenido['titulo']
     a.contenido = contenido

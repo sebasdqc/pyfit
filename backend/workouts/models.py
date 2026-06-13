@@ -58,6 +58,12 @@ class Exercise(models.Model):
     rest_seconds_default = models.SmallIntegerField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     coaching_cues = models.JSONField(default=list)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='exercises_created',
+    )
 
     class Meta:
         db_table = 'exercises'

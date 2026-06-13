@@ -182,12 +182,17 @@ class CenterAthlete(models.Model):
     foto = models.TextField(
         blank=True,
         help_text=(
-            'Foto del atleta como data URL (base64). La imagen se recorta y '
-            'reescala en el cliente (~256 px JPEG). Es una solución provisional '
-            'sin almacenamiento de objetos: cuando exista (DO Spaces / S3) se '
-            'cambia por un ImageField + subida con URL firmada.'
+            'Foto del atleta como data URL (base64). Vía LEGADA / fallback: se usa '
+            'solo cuando DO Spaces no está configurado (USE_SPACES=False). Con Spaces '
+            'activo, la foto vive en `foto_img` y este campo queda vacío. Se conserva '
+            'para no perder fotos antiguas en filas ya existentes.'
         ),
     )
+    # Foto en object storage (DO Spaces / S3) cuando está configurado. El serializer
+    # decodifica el data URL que envía el cliente y lo sube aquí; `.url` devuelve la
+    # URL firmada. FileField (no ImageField) para no exigir Pillow: el tipo de imagen
+    # ya se valida en el serializer a partir del data URL.
+    foto_img = models.FileField(upload_to='athletes/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

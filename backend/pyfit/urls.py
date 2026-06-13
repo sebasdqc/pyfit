@@ -9,6 +9,7 @@ from users import admin_views as admin_api_views
 from users import coach_views
 from checkins import views as checkin_views
 from workouts import views as workout_views
+from workouts import exercise_views
 from ai_workout import views as ai_views
 from devices.urls import garmin_urlpatterns, apple_health_urlpatterns
 
@@ -58,6 +59,7 @@ urlpatterns = [
     # Auth
     path('api/auth/register/', user_views.register),
     path('api/auth/login/', user_views.login_view),
+    path('api/auth/google/', user_views.google_login),
     path('api/auth/coach/login/', user_views.coach_login_view),
     path('api/auth/refresh/', TokenRefreshView.as_view()),
     path('api/auth/logout/', user_views.logout_view),
@@ -99,6 +101,11 @@ urlpatterns = [
     # AI extras
     path('api/ejercicio-demo/', ai_views.ejercicio_demo),
     path('api/ejercicios/regenerar/', ai_views.regenerar_ejercicio),
+
+    # Exercise catalog (coaches)
+    path('api/exercises/catalog/', exercise_views.exercise_catalog),
+    path('api/exercises/search/', exercise_views.exercise_search),
+    path('api/exercises/create/', exercise_views.exercise_create),
 
     # Stats
     path('api/stats/reset-insight/', workout_views.reset_insight_cache),

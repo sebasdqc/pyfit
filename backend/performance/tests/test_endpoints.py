@@ -10,7 +10,7 @@ from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from performance.models import (
@@ -245,6 +245,59 @@ class AthleteEndpointTests(_Base):
         res = self.client.get(f'/api/performance/centers/{self.center.id}/athletes/')
         fila = next(a for a in res.json() if a['athlete'] == pend.id)
         self.assertFalse(fila['cuenta_activa'])
+
+
+@override_settings(
+    USE_SPACES=True,
+    STORAGES={
+        'default': {
+            'BACKEND': 'django.core.files.storage.InMemoryStorage',
+            'OPTIONS': {'base_url': '/media/'},
+        },
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
+)
+class AthleteFotoSpacesTests(_Base):
+    """Con object storage activo (USE_SPACES=True), la foto se sube a almacenamiento
+    de objetos (foto_img) en vez de guardarse como base64 en la BD. Aquí se simula
+    Spaces con InMemoryStorage (no toca disco ni necesita credenciales)."""
+
+    # PNG 1×1 transparente como data URL base64.
+    PNG = (
+        'data:image/png;base64,'
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+    )
+
+    def link_id(self):
+        return CenterAthlete.objects.get(center=self.center, athlete=self.athlete).id
+
+    def detail_url(self):
+        return f'/api/performance/centers/{self.center.id}/athletes/{self.link_id()}/'
+
+    def test_sube_foto_a_object_storage(self):
+        res = self.client.patch(self.detail_url(), {'foto': self.PNG}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        link = CenterAthlete.objects.get(pk=self.link_id())
+        # Fue a foto_img (object storage), NO al base64 legado.
+        self.assertTrue(link.foto_img.name.startswith('athletes/'))
+        self.assertEqual(link.foto, '')
+        # La API devuelve una URL, no un data URL.
+        foto = res.json()['foto']
+        self.assertFalse(foto.startswith('data:'))
+        self.assertIn(link.foto_img.name.rsplit('/', 1)[-1], foto)
+
+    def test_quita_foto_borra_de_storage(self):
+        self.client.patch(self.detail_url(), {'foto': self.PNG}, format='json')
+        self.assertTrue(CenterAthlete.objects.get(pk=self.link_id()).foto_img.name)
+        res = self.client.patch(self.detail_url(), {'foto': ''}, format='json')
+        self.assertEqual(res.status_code, 200, res.content)
+        link = CenterAthlete.objects.get(pk=self.link_id())
+        self.assertFalse(link.foto_img.name)
+        self.assertEqual(res.json()['foto'], '')
+
+    def test_foto_invalida_sigue_validandose(self):
+        res = self.client.patch(self.detail_url(), {'foto': 'http://x/y.jpg'}, format='json')
+        self.assertEqual(res.status_code, 400)
 
 
 class SimuladorEndpointTests(_Base):
