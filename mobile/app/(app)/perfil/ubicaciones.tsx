@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert,
-  StyleSheet, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -50,6 +50,7 @@ export default function UbicacionesScreen() {
   const [adding, setAdding] = useState(false)
   const [newLoc, setNewLoc] = useState<Location>(EMPTY_LOC)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   function loadLocations() {
     apiGet('/api/locations/').then(setLocations).catch(() => {}).finally(() => setLoading(false))
@@ -92,11 +93,14 @@ export default function UbicacionesScreen() {
       {
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
+          setDeletingId(id)
           try {
             await apiDelete(`/api/locations/${id}/`)
             loadLocations()
           } catch (e: any) {
             Alert.alert('Error', e.message ?? 'No se pudo eliminar')
+          } finally {
+            setDeletingId(null)
           }
         },
       },
@@ -143,8 +147,15 @@ export default function UbicacionesScreen() {
                       <Text style={styles.locNombre}>{loc.nombre}</Text>
                       <Text style={styles.locTipo}>{capitalizeFirst(loc.tipo)}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => deleteLocation(loc.id!, loc.nombre)} activeOpacity={0.7}>
-                      <Text style={styles.locDelete}>Eliminar</Text>
+                    <TouchableOpacity
+                      onPress={() => deleteLocation(loc.id!, loc.nombre)}
+                      disabled={deletingId === loc.id}
+                      activeOpacity={0.7}
+                    >
+                      {deletingId === loc.id
+                        ? <ActivityIndicator color={colors.red} size="small" />
+                        : <Text style={styles.locDelete}>Eliminar</Text>
+                      }
                     </TouchableOpacity>
                   </View>
                   {loc.implementos?.length > 0 && (
@@ -193,9 +204,12 @@ export default function UbicacionesScreen() {
                       onPress={() => { setAdding(false); setNewLoc(EMPTY_LOC) }} activeOpacity={0.7}>
                       <Text style={[styles.saveBtnText, { color: colors.inkSecondary }]}>Cancelar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.saveBtn, { flex: 1 }, saving && { opacity: 0.5 }]}
+                    <TouchableOpacity style={[styles.saveBtn, { flex: 1 }, saving && { opacity: 0.6 }]}
                       onPress={saveNew} disabled={saving} activeOpacity={0.85}>
-                      <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar'}</Text>
+                      {saving
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <Text style={styles.saveBtnText}>Guardar</Text>
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>

@@ -258,12 +258,13 @@ function formatDate(lang: string): string {
 type SliderOpt = { id: string; label: string; sub?: string; color: string }
 
 function PointSlider({
-  opts, value, onChange, styles,
+  opts, value, onChange, styles, label = '',
 }: {
   opts: readonly SliderOpt[]
   value: string | null
   onChange: (id: string) => void
   styles: ReturnType<typeof makeStyles>
+  label?: string
 }) {
   const [trackW, setTrackW] = useState(0)
   const steps = opts.length
@@ -296,7 +297,21 @@ function PointSlider({
   }), [commitFromX])
 
   return (
-    <View style={styles.psSlider}>
+    <View
+      style={styles.psSlider}
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel={label}
+      accessibilityValue={{ now: idx, min: 0, max: steps - 1, text: current.label }}
+      accessibilityActions={[
+        { name: 'increment', label: 'Incrementar' },
+        { name: 'decrement', label: 'Decrementar' },
+      ]}
+      onAccessibilityAction={({ nativeEvent: { actionName } }) => {
+        if (actionName === 'increment' && idx < steps - 1) onChange(opts[idx + 1].id)
+        if (actionName === 'decrement' && idx > 0) onChange(opts[idx - 1].id)
+      }}
+    >
       <View style={styles.psValueRow}>
         <Text style={[styles.psValueLabel, { color: accent }]}>{current.label}</Text>
         {current.sub ? <Text style={styles.psValueSub}>{current.sub}</Text> : null}
@@ -716,6 +731,7 @@ export default function CheckinScreen() {
             value={estadoFisico}
             onChange={v => { setEstadoFisico(v as EstadoFisico); setError('') }}
             styles={styles}
+            label="Estado físico de hoy"
           />
         </View>
 
@@ -764,6 +780,7 @@ export default function CheckinScreen() {
             value={estadoMental}
             onChange={v => { setEstadoMental(v as EstadoMental); setError('') }}
             styles={styles}
+            label="Estado mental de hoy"
           />
         </View>
 
@@ -774,6 +791,7 @@ export default function CheckinScreen() {
             value={calidadSueno}
             onChange={v => { setCalidadSueno(v as CalidadSueno); setError('') }}
             styles={styles}
+            label="Horas de sueño anoche"
           />
         </View>
       </>

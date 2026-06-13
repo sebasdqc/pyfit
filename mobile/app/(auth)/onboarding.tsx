@@ -1109,9 +1109,14 @@ export default function OnboardingScreen() {
             </View>
           </View>
           <TextInput style={styles.input}
-            placeholder={data.alturaUnit === 'cm' ? 'ej. 175' : 'ej. 5.9'}
+            placeholder={data.alturaUnit === 'cm' ? 'ej. 175' : 'ej. 5.75'}
             placeholderTextColor={colors.inkMuted} value={data.altura}
             onChangeText={v => set('altura', v.replace(',', '.'))} keyboardType="decimal-pad" />
+          {data.alturaUnit === 'ft' && (
+            <Text style={styles.inputHint}>
+              Formato decimal: 5.75 = 5′9″  ·  6.0 = 6′0″  ·  5.5 = 5′6″
+            </Text>
+          )}
         </View>
       </ScrollView>
     )
@@ -2476,6 +2481,7 @@ function makeStyles(c: Colors) {
     inputTouch: { justifyContent: 'center' },
     inputText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary },
     inputPlaceholder: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
+    inputHint: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.3, marginTop: 6 },
 
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
