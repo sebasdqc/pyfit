@@ -22,6 +22,7 @@ urlpatterns = [
     path('centers/', views.centers_view),
     path('centers/<int:pk>/', views.center_detail),
     path('centers/<int:pk>/staff/', views.center_staff),
+    path('centers/<int:pk>/staff/<int:membership_pk>/', views.center_staff_detail),
     path('centers/<int:pk>/athletes/', views.center_athletes),
     path('centers/<int:pk>/athletes/<int:athlete_pk>/', views.center_athlete_detail),
 

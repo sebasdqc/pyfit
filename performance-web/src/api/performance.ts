@@ -50,6 +50,10 @@ export async function createStaff(centerId: number, payload: StaffPayload): Prom
   return res.data
 }
 
+export async function deleteStaff(centerId: number, membershipId: number): Promise<void> {
+  await api.delete(`/performance/centers/${centerId}/staff/${membershipId}/`)
+}
+
 // ── Atletas (los registra el director técnico) ───────────────────────────────
 export async function listCenterAthletes(centerId: number): Promise<CenterAthlete[]> {
   const res = await api.get<CenterAthlete[]>(`/performance/centers/${centerId}/athletes/`)

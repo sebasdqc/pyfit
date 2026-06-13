@@ -14,8 +14,9 @@ import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
 import {
   listCenterAthletes, createCenterAthlete, deleteCenterAthlete,
-  listStaff, createStaff,
+  listStaff, createStaff, deleteStaff,
 } from '@/api/performance'
+import { Dialog } from '@/components/ui/Dialog'
 import type { CenterAthlete, CenterRole, CenterStaff } from '@/types'
 
 const CENTER_ROLE_LABEL: Record<CenterRole, string> = {
@@ -225,11 +226,26 @@ function AtletasTab({ centerId }: { centerId: number }) {
 function StaffTab({ centerId }: { centerId: number }) {
   const [list, setList] = useState<CenterStaff[] | null>(null)
   const [open, setOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   useEffect(() => {
     setList(null)
     listStaff(centerId).then(setList).catch(() => setList([]))
   }, [centerId])
+
+  async function removeStaff(s: CenterStaff) {
+    if (!confirm(`¿Eliminar a ${s.nombre || s.email} del centro?`)) return
+    setDeletingId(s.id)
+    try {
+      await deleteStaff(centerId, s.id)
+      setList((prev) => prev?.filter((x) => x.id !== s.id) ?? null)
+    } catch (e) {
+      const data = (e as { response?: { data?: { detail?: string } } })?.response?.data
+      alert(data?.detail ?? 'No se pudo eliminar el miembro del equipo.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <Panel
@@ -276,6 +292,15 @@ function StaffTab({ centerId }: { centerId: number }) {
                   ))}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => removeStaff(s)}
+                disabled={deletingId === s.id}
+                className="shrink-0 rounded-lg p-1.5 text-white/35 transition-colors hover:bg-white/[0.06] hover:text-perf-danger disabled:opacity-40"
+                aria-label="Eliminar del centro"
+              >
+                {deletingId === s.id ? <Spinner size={15} /> : <Icon name="close" size={15} />}
+              </button>
             </li>
           ))}
         </ul>
@@ -473,45 +498,35 @@ function ModalShell({
   title: string; subtitle: string; onClose: () => void; onSubmit: () => void
   saving: boolean; canSave: boolean; cta: string; error: string; children: ReactNode
 }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
+  const titleId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-perf-border px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-white">{title}</h2>
-            <p className="text-xs text-white/45">{subtitle}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Cerrar">
-            <Icon name="close" size={20} />
-          </button>
+    <Dialog onClose={onClose} labelledBy={titleId} className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-perf-border bg-perf-surface shadow-[0_24px_70px_rgba(0,0,0,0.6)]">
+      <div className="flex items-center justify-between border-b border-perf-border px-5 py-4">
+        <div>
+          <h2 id={titleId} className="text-sm font-semibold text-white">{title}</h2>
+          <p className="text-xs text-white/45">{subtitle}</p>
         </div>
-        <div className="flex flex-col gap-4 overflow-y-auto px-5 py-5">
-          {children}
-          {error && <p className="rounded-lg bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">{error}</p>}
-        </div>
-        <div className="flex items-center justify-end gap-2 border-t border-perf-border px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-medium text-white/60 hover:text-white">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!canSave}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {saving ? 'Guardando…' : cta}
-          </button>
-        </div>
+        <button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Cerrar">
+          <Icon name="close" size={20} />
+        </button>
       </div>
-    </div>
+      <div className="flex flex-col gap-4 overflow-y-auto px-5 py-5">
+        {children}
+        {error && <p className="rounded-lg bg-perf-danger/10 px-3 py-2 text-xs text-perf-danger">{error}</p>}
+      </div>
+      <div className="flex items-center justify-end gap-2 border-t border-perf-border px-5 py-4">
+        <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-medium text-white/60 hover:text-white">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSave}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving ? 'Guardando…' : cta}
+        </button>
+      </div>
+    </Dialog>
   )
 }

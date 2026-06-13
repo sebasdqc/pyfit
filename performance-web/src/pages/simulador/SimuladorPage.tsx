@@ -13,11 +13,10 @@ import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
-import { useAuth } from '@/auth/useAuth'
 import { useSquad } from '@/centers/useSquad'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 import type { Athlete } from '@/lib/mockSquad'
 import type { Escena, Ficha, Pt, TacticalPlay, Trazo, TrazoTipo } from '@/types'
-import { listCenters } from '@/api/performance'
 import { createPlay, deletePlay, listPlays, updatePlay } from '@/api/performance'
 import {
   TRAZO_ORDER, TRAZO_STYLES, easeInOut, interpolateFichas, newId,
@@ -31,25 +30,8 @@ type Scene = { fichas: Ficha[]; trazos: Trazo[] }
 const emptyScene = (): Scene => ({ fichas: [], trazos: [] })
 
 export function SimuladorPage() {
-  const { user } = useAuth()
   const { athletes: squad } = useSquad()
-
-  // Resolución del centro (igual que Planificación).
-  const [centers, setCenters] = useState<{ id: number; nombre: string }[]>(
-    () => (user?.centros ?? []).map((c) => ({ id: c.center_id, nombre: c.center_nombre })),
-  )
-  const [centerId, setCenterId] = useState<number | null>(user?.centros?.[0]?.center_id ?? null)
-  useEffect(() => {
-    if (centers.length === 0) {
-      listCenters()
-        .then((cs) => {
-          const mapped = cs.map((c) => ({ id: c.id, nombre: c.nombre }))
-          setCenters(mapped)
-          setCenterId((prev) => prev ?? mapped[0]?.id ?? null)
-        })
-        .catch(() => {})
-    }
-  }, [centers.length])
+  const { activeCenterId: centerId, centers, setActiveCenterId } = useActiveCenter()
 
   // Escena de trabajo: lista de FRAMES (keyframes) + frame activo. Se edita el
   // frame activo; al reproducir se interpola entre frames consecutivos.
@@ -98,6 +80,14 @@ export function SimuladorPage() {
 
   useEffect(() => {
     if (centerId == null) return
+    // Limpiar la jugada activa al cambiar de centro para no mostrar datos del centro anterior.
+    setFrames([emptyScene()])
+    setFrameIndex(0)
+    setCurrentId(null)
+    setNombre('')
+    setSelectedId(null)
+    setPast([])
+    setMsg('')
     setLoadingPlays(true)
     listPlays(centerId)
       .then(setPlays)
@@ -341,12 +331,7 @@ export function SimuladorPage() {
         </p>
         {centers.length === 0 && (
           <div className="mt-4">
-            <CreateCenterButton
-              onCreated={(c) => {
-                setCenters((prev) => [...prev, { id: c.id, nombre: c.nombre }])
-                setCenterId(c.id)
-              }}
-            />
+            <CreateCenterButton onCreated={(c) => setActiveCenterId(c.id)} />
           </div>
         )}
       </div>
@@ -378,20 +363,6 @@ export function SimuladorPage() {
               </button>
             ))}
           </div>
-          {centers.length > 1 && (
-            <select
-              value={centerId}
-              onChange={(e) => {
-                setCenterId(Number(e.target.value))
-                nuevaJugada()
-              }}
-              className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
-            >
-              {centers.map((c) => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 

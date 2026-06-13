@@ -268,6 +268,29 @@ def center_staff(request, pk):
     return Response(CenterMembershipSerializer(qs, many=True).data)
 
 
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def center_staff_detail(request, pk, membership_pk):
+    center = _get_center_or_404(request.user, pk)
+    try:
+        membership = center.memberships.select_related('user').get(id=membership_pk)
+    except CenterMembership.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(CenterMembershipSerializer(membership).data)
+
+    if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+        return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+    if center.director_principal_id and membership.user_id == center.director_principal_id:
+        return Response(
+            {'detail': 'No se puede eliminar al director principal del centro.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    membership.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # ─── Atletas del centro (Paso 2: los registra el director) ────────────────────
 
 @api_view(['GET', 'POST'])

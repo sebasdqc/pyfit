@@ -13,11 +13,11 @@ import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
-import { useAuth } from '@/auth/useAuth'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 import {
   listPlans, createPlan, getPlanTree, deletePlan,
   createMeso, updateMeso, deleteMeso,
-  createMicro, updateMicro, deleteMicro, listCenters,
+  createMicro, updateMicro, deleteMicro,
 } from '@/api/performance'
 import type {
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
@@ -53,21 +53,7 @@ function addWeeks(iso: string, weeks: number): string {
 }
 
 export function PlanificacionPage() {
-  const { user } = useAuth()
-  const [centers, setCenters] = useState<{ id: number; nombre: string }[]>(
-    () => (user?.centros ?? []).map((c) => ({ id: c.center_id, nombre: c.center_nombre })),
-  )
-  const [centerId, setCenterId] = useState<number | null>(user?.centros?.[0]?.center_id ?? null)
-
-  useEffect(() => {
-    if (centers.length === 0) {
-      listCenters().then((cs) => {
-        const mapped = cs.map((c) => ({ id: c.id, nombre: c.nombre }))
-        setCenters(mapped)
-        setCenterId((prev) => prev ?? mapped[0]?.id ?? null)
-      }).catch(() => { /* sin centros visibles */ })
-    }
-  }, [centers.length])
+  const { activeCenterId: centerId, centers, setActiveCenterId } = useActiveCenter()
 
   const [plans, setPlans] = useState<TrainingPlan[]>([])
   const [plansErr, setPlansErr] = useState('')
@@ -113,12 +99,7 @@ export function PlanificacionPage() {
         </p>
         {centers.length === 0 && (
           <div className="mt-4">
-            <CreateCenterButton
-              onCreated={(c) => {
-                setCenters((prev) => [...prev, { id: c.id, nombre: c.nombre }])
-                setCenterId(c.id)
-              }}
-            />
+            <CreateCenterButton onCreated={(c) => setActiveCenterId(c.id)} />
           </div>
         )}
       </div>
@@ -156,15 +137,6 @@ export function PlanificacionPage() {
               Edición
             </button>
           </div>
-          {centers.length > 1 && (
-            <select
-              value={centerId}
-              onChange={(e) => { setCenterId(Number(e.target.value)); setSelectedId(null); setTree(null) }}
-              className="rounded-lg border border-perf-border bg-perf-surface px-3 py-1.5 text-sm text-white outline-none focus:border-accent"
-            >
-              {centers.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          )}
         </div>
       </div>
 

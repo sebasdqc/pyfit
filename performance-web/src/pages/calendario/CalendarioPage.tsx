@@ -169,10 +169,11 @@ export function CalendarioPage() {
                     </div>
                     {/* Bandas de rango (temporada / torneo / concentración) */}
                     {bars.map((e) => (
-                      <span
+                      <button
                         key={e.id}
+                        type="button"
                         title={`${TIPO_META[e.tipo].label}: ${e.titulo}`}
-                        className="truncate rounded px-1 py-0.5 text-[10px] font-medium text-white/90"
+                        className="truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white/90"
                         style={{ backgroundColor: TIPO_META[e.tipo].hex + '33', borderLeft: `2px solid ${TIPO_META[e.tipo].hex}` }}
                         onClick={(ev) => {
                           ev.stopPropagation()
@@ -180,14 +181,15 @@ export function CalendarioPage() {
                         }}
                       >
                         {e.titulo}
-                      </span>
+                      </button>
                     ))}
                     {/* Eventos puntuales */}
                     {chips.slice(0, MAX_CHIPS).map((e) => (
-                      <span
+                      <button
                         key={e.id}
+                        type="button"
                         title={e.titulo}
-                        className="flex items-center gap-1 truncate text-[10px] text-white/80"
+                        className="flex w-full items-center gap-1 truncate text-left text-[10px] text-white/80"
                         onClick={(ev) => {
                           ev.stopPropagation()
                           setModal({ mode: 'edit', event: e })
@@ -195,7 +197,7 @@ export function CalendarioPage() {
                       >
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TIPO_META[e.tipo].hex }} />
                         <span className="truncate">{formatHora(e) && `${formatHora(e)} `}{e.titulo}</span>
-                      </span>
+                      </button>
                     ))}
                     {chips.length > MAX_CHIPS && (
                       <span className="text-[10px] text-white/40">+{chips.length - MAX_CHIPS} más</span>
