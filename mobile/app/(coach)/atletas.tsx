@@ -62,6 +62,20 @@ export default function CoachAtletas() {
     }
   }
 
+  function confirmarToggleEstado(a: AtletaGestion) {
+    const pausando = a.estado === 'activo'
+    Alert.alert(
+      pausando ? `Pausar a ${a.nombre}` : `Reactivar a ${a.nombre}`,
+      pausando
+        ? 'El atleta no recibirá nuevas rutinas ni directivas mientras esté pausado. Su historial se conserva.'
+        : 'El atleta volverá a recibir rutinas y directivas normalmente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: pausando ? 'Pausar' : 'Reactivar', onPress: () => toggleEstado(a) },
+      ],
+    )
+  }
+
   function confirmarDesvincular(a: AtletaGestion) {
     Alert.alert(
       `Desvincular a ${a.nombre}`,
@@ -167,7 +181,7 @@ export default function CoachAtletas() {
                     style={[styles.actionBtn, styles.actionPause]}
                     activeOpacity={0.8}
                     disabled={enOp}
-                    onPress={() => toggleEstado(a)}
+                    onPress={() => confirmarToggleEstado(a)}
                   >
                     {enOp ? (
                       <ActivityIndicator size="small" color={P.purpleMid} />

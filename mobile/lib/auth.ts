@@ -16,6 +16,69 @@ export async function register(email: string, password: string) {
   return data.user
 }
 
+// ─── Google Sign-In ───────────────────────────────────────────────────────────
+
+export type GoogleLoginResult =
+  | { status: 'ok'; user: any }      // sesión iniciada (cuenta nueva o existente)
+  | { status: 'cancelled' }          // el usuario cerró la hoja de Google
+  | { status: 'unavailable' }        // módulo/credenciales no configurados o sin Play Services
+  | { status: 'error' }              // red / token inválido / fallo inesperado
+
+let _googleConfigured = false
+
+/**
+ * Inicio de sesión con Google usando la SDK nativa
+ * (@react-native-google-signin/google-signin). Obtiene un `idToken` firmado por
+ * Google y lo canjea en el backend (`POST /api/auth/google/`) por el mismo par
+ * JWT que el login normal; luego guarda tokens + usuario igual que login/register.
+ *
+ * El módulo nativo se carga con `require` perezoso para que, si un build no lo
+ * incluye, solo falle este flujo y NO la importación de auth.ts (de la que
+ * dependen login/register).
+ */
+export async function googleLogin(): Promise<GoogleLoginResult> {
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+  if (!webClientId) return { status: 'unavailable' }
+
+  let GoogleSignin: any
+  let statusCodes: any
+  try {
+    ;({ GoogleSignin, statusCodes } = require('@react-native-google-signin/google-signin'))
+  } catch {
+    return { status: 'unavailable' }
+  }
+
+  try {
+    if (!_googleConfigured) {
+      GoogleSignin.configure({
+        webClientId,                                              // firma el idToken → audiencia que valida el backend
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // opcional; iOS también usa el iosUrlScheme del plugin
+        offlineAccess: false,
+      })
+      _googleConfigured = true
+    }
+
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+    const response: any = await GoogleSignin.signIn()
+
+    // v13+: signIn() devuelve { type: 'cancelled' } | { type: 'success', data: { idToken, ... } }.
+    // Toleramos también formas antiguas donde idToken viene en la raíz.
+    if (response?.type === 'cancelled') return { status: 'cancelled' }
+    const idToken = response?.data?.idToken ?? response?.idToken
+    if (!idToken) return { status: 'error' }
+
+    const data = await apiPost('/api/auth/google/', { id_token: idToken }, false)
+    await saveTokens(data.access, data.refresh)
+    await saveUser(data.user)
+    return { status: 'ok', user: data.user }
+  } catch (e: any) {
+    const code = e?.code
+    if (statusCodes && code === statusCodes.SIGN_IN_CANCELLED) return { status: 'cancelled' }
+    if (statusCodes && code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) return { status: 'unavailable' }
+    return { status: 'error' }
+  }
+}
+
 export type CoachLoginResult =
   | { status: 'ok'; user: any }      // coach con acceso activado
   | { status: 'pending' }            // credenciales válidas pero acceso de coach no activado

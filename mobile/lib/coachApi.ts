@@ -344,3 +344,74 @@ export function desvincularMiCoach(): Promise<null> {
 export function fetchAssignedToday(): Promise<{ sesion_id: number | null; titulo?: string }> {
   return apiGet('/api/sessions/assigned-today/')
 }
+
+// ── Catálogo de ejercicios (coach crea ejercicios personalizados) ─────────────
+
+export interface EjercicioCatalogItem {
+  id: number
+  nombre: string
+  patron: string
+  patron_label: string
+  dificultad: 'principiante' | 'intermedio' | 'avanzado'
+  musculos_primarios: string[]
+  equipamiento: string[]
+}
+
+export interface EjercicioCatalog {
+  patron_movimiento: { value: string; label: string }[]
+  dificultad: { value: string; label: string }[]
+  space_required: { value: string; label: string }[]
+  error_risk: { value: number; label: string }[]
+  technical_level: { value: number; label: string }[]
+  systemic_fatigue: { value: number; label: string }[]
+  musculos: { grupo: string; items: string[] }[]
+  equipamiento: string[]
+  contraindicaciones: string[]
+}
+
+export interface CustomEjercicioPayload {
+  nombre: string
+  patron_movimiento: string
+  dificultad: string
+  es_compuesto: boolean
+  musculos_primarios: string[]
+  musculos_secundarios: string[]
+  equipamiento: string[]
+  contraindicaciones: string[]
+  error_risk: number | null
+  space_required: string | null
+  analizar_con_ia: boolean
+}
+
+export interface CreatedEjercicio {
+  id: number
+  nombre: string
+  patron: string
+  patron_label: string
+  dificultad: string
+  es_compuesto: boolean
+  musculos_primarios: string[]
+  musculos_secundarios: string[]
+  equipamiento: string[]
+  contraindicaciones: string[]
+  coaching_cues: string[]
+  description: string
+  creado_por_coach: boolean
+}
+
+/** Opciones de dropdowns para el formulario de ejercicio personalizado. */
+export function fetchExerciseCatalog(): Promise<EjercicioCatalog> {
+  return apiGet('/api/exercises/catalog/')
+}
+
+/** Búsqueda de ejercicios por nombre (mínimo 2 chars). */
+export function searchExercises(q: string): Promise<{ results: EjercicioCatalogItem[] }> {
+  return coachRequest('GET', `/api/exercises/search/?q=${encodeURIComponent(q)}`)
+}
+
+/** Crea un ejercicio personalizado. Si analizar_con_ia=true, Groq lo enriquece. */
+export function createCustomExercise(
+  payload: CustomEjercicioPayload,
+): Promise<{ ejercicio: CreatedEjercicio; enriquecido: boolean; warning?: string }> {
+  return coachRequest('POST', '/api/exercises/create/', payload)
+}

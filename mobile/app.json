@@ -70,7 +70,13 @@
         }
       ],
       "@sentry/react-native/expo",
-      "expo-video"
+      "expo-video",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REEMPLAZAR_CON_TU_IOS_CLIENT_ID_INVERTIDO"
+        }
+      ]
     ],
     "extra": {
       "router": {
