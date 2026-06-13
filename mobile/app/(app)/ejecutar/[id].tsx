@@ -888,8 +888,9 @@ export default function EjecutarScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', gap: 14 }]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+        <ActivityIndicator color={colors.accent} size="large" />
         <Text style={styles.loadingText}>{t('ejecutar_loading')}</Text>
       </View>
     )

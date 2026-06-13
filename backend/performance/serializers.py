@@ -54,6 +54,54 @@ class CenterMembershipSerializer(serializers.ModelSerializer):
         return _display_name(obj.user)
 
 
+def _store_athlete_foto(instance, data_url):
+    """Aplica el cambio de foto de un CenterAthlete.
+
+    - '' (vacío)  → quita la foto (de Spaces y del campo legado).
+    - data URL    → si DO Spaces está configurado (settings.USE_SPACES) y es base64,
+                    lo decodifica y lo SUBE a Spaces (`foto_img`), dejando `foto`
+                    vacío. Si no, cae al comportamiento actual: guarda el data URL
+                    como base64 en `foto` (sin necesidad de infraestructura).
+    """
+    from django.conf import settings
+
+    # Quitar la foto
+    if not data_url:
+        if instance.foto_img:
+            instance.foto_img.delete(save=False)
+        instance.foto = ''
+        instance.save(update_fields=['foto', 'foto_img'])
+        return
+
+    # Subir a Spaces (si está configurado y el data URL es base64)
+    if getattr(settings, 'USE_SPACES', False) and ';base64,' in data_url:
+        import base64 as _b64
+        import uuid
+        from django.core.files.base import ContentFile
+
+        header, b64 = data_url.split(';base64,', 1)
+        ext = header.rsplit('/', 1)[-1].split('+')[0].lower() or 'jpg'
+        if ext == 'jpeg':
+            ext = 'jpg'
+        try:
+            content = ContentFile(_b64.b64decode(b64))
+        except Exception:
+            content = None
+        if content is not None:
+            if instance.foto_img:
+                instance.foto_img.delete(save=False)
+            instance.foto_img.save(f'{uuid.uuid4().hex}.{ext}', content, save=False)
+            instance.foto = ''  # limpia el base64 legado si lo hubiera
+            instance.save(update_fields=['foto', 'foto_img'])
+            return
+
+    # Fallback (sin Spaces): comportamiento actual — base64 en la BD.
+    if instance.foto_img:
+        instance.foto_img.delete(save=False)
+    instance.foto = data_url
+    instance.save(update_fields=['foto', 'foto_img'])
+
+
 class CenterAthleteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='athlete.email', read_only=True)
     nombre = serializers.SerializerMethodField()
@@ -61,6 +109,10 @@ class CenterAthleteSerializer(serializers.ModelSerializer):
     # dan de alta sin contraseña usable (la reclaman en la app de consumo); este
     # flag deja ver en el panel quién ya activó su cuenta y quién sigue pendiente.
     cuenta_activa = serializers.SerializerMethodField()
+    # `foto`: en lectura devuelve la URL del objeto en Spaces (o el base64 legado
+    # de filas antiguas); en escritura acepta un data URL (se sube a Spaces) o ''
+    # para quitarla. Se enruta en create/update; nunca se escribe directo al modelo.
+    foto = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = CenterAthlete
@@ -77,9 +129,8 @@ class CenterAthleteSerializer(serializers.ModelSerializer):
         u = obj.athlete
         return bool(u and u.is_active and u.has_usable_password())
 
-    # La foto llega como data URL (base64) ya reescalada en el cliente. Acotamos
-    # tamaño y forma para no almacenar imágenes grandes en la BD (provisional
-    # hasta que haya almacenamiento de objetos).
+    # La foto llega como data URL (base64) ya reescalada en el cliente (~256 px).
+    # Acotamos tamaño y forma antes de subirla/guardarla.
     MAX_FOTO_BYTES = 700 * 1024  # ~512 KB de imagen → margen holgado en base64
 
     def validate_foto(self, value):
@@ -89,7 +140,59 @@ class CenterAthleteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('La foto debe ser un data URL de imagen.')
         if len(value) > self.MAX_FOTO_BYTES:
             raise serializers.ValidationError('La foto es demasiado grande.')
+
+        # Decodificar y validar magic bytes (mismo patrón que upload_avatar).
+        import base64
+        from io import BytesIO
+        from PIL import Image
+
+        try:
+            _, b64part = value.split(',', 1)
+            raw_bytes = base64.b64decode(b64part)
+        except Exception:
+            raise serializers.ValidationError('El base64 de la foto es inválido.')
+
+        snippet = raw_bytes[:1024].lower()
+        if b'<svg' in snippet or b'<?xml' in snippet or b'<!doctype' in snippet:
+            raise serializers.ValidationError('Tipo de imagen no permitido.')
+
+        try:
+            img = Image.open(BytesIO(raw_bytes))
+            img.verify()
+            fmt = img.format.lower() if img.format else ''
+        except Exception:
+            raise serializers.ValidationError('El archivo no es una imagen válida.')
+
+        if fmt not in ('jpeg', 'png', 'gif', 'webp'):
+            raise serializers.ValidationError('Solo se admiten JPEG, PNG, GIF o WebP.')
+
         return value
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Lectura: prioriza la URL del objeto en Spaces; si no, el base64 legado.
+        if instance.foto_img:
+            try:
+                data['foto'] = instance.foto_img.url
+            except Exception:
+                data['foto'] = ''
+        else:
+            data['foto'] = instance.foto or ''
+        return data
+
+    def create(self, validated_data):
+        foto = validated_data.pop('foto', None)
+        instance = super().create(validated_data)
+        if foto is not None:
+            _store_athlete_foto(instance, foto)
+        return instance
+
+    def update(self, instance, validated_data):
+        foto = validated_data.pop('foto', None)
+        instance = super().update(instance, validated_data)
+        if foto is not None:
+            _store_athlete_foto(instance, foto)
+        return instance
 
 
 class PerformanceMetricSerializer(serializers.ModelSerializer):

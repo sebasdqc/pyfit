@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
-  PanResponder,
+  PanResponder, BackHandler,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -989,6 +989,15 @@ export default function OnboardingScreen() {
     const t = setTimeout(() => setScreenIndex(i => i + 1), 700)
     return () => clearTimeout(t)
   }, [saveComplete, currentScreen])
+
+  // Bloquear el back físico de Android mientras se guarda el perfil. Sin esto,
+  // un back mid-save retrocede al paso anterior con la petición todavía en vuelo
+  // y al completarse intenta avanzar desde un screenIndex incorrecto.
+  useEffect(() => {
+    if (currentScreen !== 'b6_procesando') return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true)
+    return () => sub.remove()
+  }, [currentScreen])
 
   // ── Lesion modal handlers ──────────────────────────────────────────────────
 
