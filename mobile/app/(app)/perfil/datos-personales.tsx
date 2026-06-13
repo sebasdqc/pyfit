@@ -231,12 +231,12 @@ export default function DatosPersonalesScreen() {
 
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="PESO (kg)" value={peso} onChangeText={setPeso}
+                  <GlassInput label="PESO (kg)" value={peso} onChangeText={mark(setPeso)}
                     placeholder="70" keyboardType="decimal-pad" styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="ALTURA (cm)" value={altura} onChangeText={setAltura}
+                  <GlassInput label="ALTURA (cm)" value={altura} onChangeText={mark(setAltura)}
                     placeholder="175" keyboardType="numeric" styles={styles} />
                 </View>
               </View>

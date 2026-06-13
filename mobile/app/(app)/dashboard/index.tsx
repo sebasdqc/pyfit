@@ -1209,8 +1209,11 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<FullSession[]>([])
+  const [sessionsError, setSessionsError] = useState(false)
+  const [unreadNotifs, setUnreadNotifs] = useState(0)
 
   const fetchSessions = useCallback(async () => {
+    setSessionsError(false)
     try {
       // El calendario deslizable cubre ±26 semanas y no hay sesiones futuras:
       // basta una ventana de ~200 días hacia atrás. Acota el payload vs traer todo.
@@ -1219,7 +1222,7 @@ export default function DashboardScreen() {
       const d = await apiGet(`/api/sessions/?desde=${localDateStr(desde)}`)
       setSessions(Array.isArray(d) ? d : (d.results ?? []))
     } catch {
-      // silently ignore — sessions are non-critical for dashboard render
+      setSessionsError(true)
     }
   }, [])
 
@@ -1251,6 +1254,15 @@ export default function DashboardScreen() {
       const cancelled = { current: false }
       fetchDashboard(cancelled)
       fetchSessions()
+      // Conteo de notificaciones no leídas para el badge de la campana.
+      // Fire-and-forget: si falla no rompe el dashboard.
+      apiGet('/api/notificaciones/')
+        .then((d: any) => {
+          if (cancelled.current) return
+          const list = Array.isArray(d) ? d : (d.results ?? [])
+          setUnreadNotifs(list.filter((n: any) => !n.leida).length)
+        })
+        .catch(() => {})
       return () => { cancelled.current = true }
     }, [fetchDashboard, fetchSessions])
   )
@@ -1326,10 +1338,19 @@ export default function DashboardScreen() {
             {/* Bell */}
             <TouchableOpacity
               style={styles.bellBtn}
-              onPress={() => router.push('/(app)/notificaciones')}
+              onPress={() => { setUnreadNotifs(0); router.push('/(app)/notificaciones') }}
               activeOpacity={0.7}
+              accessibilityLabel={unreadNotifs > 0 ? `${unreadNotifs} notificaciones sin leer` : 'Notificaciones'}
+              accessibilityRole="button"
             >
               <BellIcon />
+              {unreadNotifs > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadNotifs > 9 ? '9+' : String(unreadNotifs)}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1355,6 +1376,21 @@ export default function DashboardScreen() {
             colors={colors}
             styles={styles}
           />
+        )}
+
+        {sessionsError && (
+          <TouchableOpacity
+            onPress={fetchSessions}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              gap: 6, paddingVertical: 6, marginTop: -8, marginBottom: 4 }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+              color: colors.inkMuted, letterSpacing: 0.3 }}>
+              No se pudo cargar el historial · ↺ Reintentar
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* ── ZONA 2 — Card CTA principal ── */}
@@ -1472,6 +1508,26 @@ function makeStyles(c: Colors) {
       borderWidth: 1,
       borderColor: c.borderDefault,
       flexShrink: 0,
+    },
+    bellBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      minWidth: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: c.red,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 3,
+      borderWidth: 1.5,
+      borderColor: c.bg,
+    },
+    bellBadgeText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      color: '#fff',
+      lineHeight: 12,
     },
     z1Date: {
       // eliminado — ya no se muestra la fecha en el header
