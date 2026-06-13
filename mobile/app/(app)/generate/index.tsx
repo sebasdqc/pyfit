@@ -1319,6 +1319,21 @@ export default function GenerateScreen() {
     router.push(`/(app)/feedback/${sesionId}`)
   }, [sesionId])
 
+  const handleCancelar = useCallback(() => {
+    if (!sesion) {
+      router.replace('/(app)/dashboard')
+      return
+    }
+    Alert.alert(
+      'Descartar rutina',
+      'Puedes volver a generarla en cualquier momento desde el check-in.',
+      [
+        { text: 'Quedarse aquí', style: 'cancel' },
+        { text: 'Descartar', style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },
+      ]
+    )
+  }, [sesion])
+
   const handleAjusteResult = useCallback((nuevaSesion: Sesion) => {
     setSesion(nuevaSesion)
     setModifiedKeys(new Set())
@@ -1400,6 +1415,19 @@ export default function GenerateScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* Top nav — botón de salida */}
+            <View style={styles.topNav}>
+              <TouchableOpacity
+                style={styles.topNavBack}
+                onPress={handleCancelar}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Descartar rutina y volver"
+              >
+                <Text style={styles.topNavBackText}>←</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Header */}
             <View style={styles.sessionHeader}>
               <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
@@ -1519,6 +1547,24 @@ function makeStyles(c: Colors) {
       left:     0,
       right:    0,
       height:   400,
+    },
+
+    // Top nav (back button)
+    topNav: {
+      flexDirection:  'row',
+      alignItems:     'center',
+      paddingBottom:  8,
+    },
+    topNavBack: {
+      paddingVertical:   10,
+      paddingHorizontal: 4,
+      marginRight:       8,
+    },
+    topNavBackText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize:   22,
+      color:      c.inkMuted,
+      lineHeight: 26,
     },
 
     // Error

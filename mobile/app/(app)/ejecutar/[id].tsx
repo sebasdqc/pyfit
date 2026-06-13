@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
@@ -596,6 +597,27 @@ export default function EjecutarScreen() {
       }
     }
     if (id) fetchSession()
+
+    // Recuperar log persistido si la app fue matada a mitad de sesión
+    async function recoverLog() {
+      if (!id) return
+      try {
+        const saved = await AsyncStorage.getItem(`@pyfit/series_log_${id}`)
+        if (!saved) return
+        const recovered: Record<number, Array<{ peso: string; reps: string; dificultad?: number }>> = JSON.parse(saved)
+        seriesLogRef.current = recovered
+        // Reconstruir el conteo de series desde el log recuperado
+        const counts: Record<number, number> = {}
+        for (const [key, entries] of Object.entries(recovered)) {
+          if (Array.isArray(entries)) counts[Number(key)] = entries.filter(Boolean).length
+        }
+        seriesCompletadasRef.current = counts
+        setSeriesCompletadas(counts)
+      } catch {
+        // ignorar errores de recuperación — no bloquear la sesión
+      }
+    }
+    recoverLog()
   }, [id])
 
   // ── Fetch nivel del usuario ──────────────────────────────────────────────────
@@ -657,6 +679,12 @@ export default function EjecutarScreen() {
         reps: currentRepsRef.current,
         ...(serieRatingRef.current !== null ? { dificultad: serieRatingRef.current } : {}),
       }
+      // Checkpoint anti-kill: persistir en AsyncStorage para que si iOS mata la app
+      // se pueda recuperar el progreso al volver a abrir la sesión.
+      AsyncStorage.setItem(
+        `@pyfit/series_log_${id}`,
+        JSON.stringify(seriesLogRef.current)
+      ).catch(() => {})
     }
 
     // Reset inputs
@@ -762,9 +790,13 @@ export default function EjecutarScreen() {
       })
       .filter(e => e.series.length > 0)
     if (log.length > 0) {
-      apiPost(`/api/sessions/${id}/series-log/`, { log }).catch((err) => {
-        console.warn('[series-log] POST failed — training data not saved remotely:', err?.message)
-      })
+      apiPost(`/api/sessions/${id}/series-log/`, { log })
+        .then(() => AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {}))
+        .catch((err) => {
+          console.warn('[series-log] POST failed — training data not saved remotely:', err?.message)
+        })
+    } else {
+      AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {})
     }
   }, [flatList, id])
 

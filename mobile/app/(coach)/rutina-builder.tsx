@@ -117,6 +117,7 @@ export default function RutinaBuilder() {
   const [bloqueada, setBloqueada] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<'borrador' | 'publicar' | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [msgIsError, setMsgIsError] = useState(false)
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -180,6 +181,7 @@ export default function RutinaBuilder() {
         setTitulo(''); setObjetivo(''); setDuracion('45'); setRpe('7'); setNota('')
         setFases(fasesVacias()); setEstado(null); setBloqueada(false)
       }
+      setIsDirty(false)
     } catch (e: any) {
       showMsg(e?.message || 'No se pudo cargar la rutina.', true)
     } finally {
@@ -235,6 +237,7 @@ export default function RutinaBuilder() {
     try {
       const { rutina } = await saveAtletaRutina(params.id, buildPayload(publicar))
       setEstado(rutina.estado); setBloqueada(rutina.bloqueada)
+      setIsDirty(false)
       showMsg(publicar ? '✅ Publicada · el atleta la verá en su sesión de ese día.' : '✅ Borrador guardado.')
     } catch (e: any) {
       showMsg(e?.message || 'No se pudo guardar.', true)
@@ -333,9 +336,11 @@ export default function RutinaBuilder() {
       else list[editor.idx] = ej
       return next
     })
+    setIsDirty(true)
     setEditor(null)
   }
   function borrarEjercicio(faseIdx: number, idx: number) {
+    setIsDirty(true)
     setFases((prev) => {
       const next = prev.map((f) => ({ ...f, ejercicios: [...f.ejercicios] }))
       next[faseIdx].ejercicios.splice(idx, 1)
@@ -377,7 +382,20 @@ export default function RutinaBuilder() {
         {dias.map((d) => {
           const active = d.iso === fecha
           return (
-            <TouchableOpacity key={d.iso} style={[styles.diaChip, active && styles.diaChipActive]} activeOpacity={0.8} onPress={() => setFecha(d.iso)}>
+            <TouchableOpacity key={d.iso} style={[styles.diaChip, active && styles.diaChipActive]} activeOpacity={0.8} onPress={() => {
+                if (isDirty && !readOnly && d.iso !== fecha) {
+                  Alert.alert(
+                    'Cambios sin guardar',
+                    '¿Descartar los cambios de este día y cambiar de fecha?',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Descartar', style: 'destructive', onPress: () => { setIsDirty(false); setFecha(d.iso) } },
+                    ]
+                  )
+                  return
+                }
+                setFecha(d.iso)
+              }}>
               <Text style={[styles.diaChipText, { color: active ? P.white : P.purpleSoft }]}>{d.label}</Text>
             </TouchableOpacity>
           )
@@ -397,22 +415,22 @@ export default function RutinaBuilder() {
 
             {/* Meta */}
             <Text style={styles.fieldLabel}>TÍTULO</Text>
-            <TextInput style={styles.input} value={titulo} onChangeText={setTitulo} editable={!readOnly}
+            <TextInput style={styles.input} value={titulo} onChangeText={v => { setTitulo(v); setIsDirty(true) }} editable={!readOnly}
               placeholder="Ej: Empuje pesado" placeholderTextColor={P.purpleFaint} maxLength={200} />
 
             <Text style={styles.fieldLabel}>OBJETIVO</Text>
-            <TextInput style={styles.input} value={objetivo} onChangeText={setObjetivo} editable={!readOnly}
+            <TextInput style={styles.input} value={objetivo} onChangeText={v => { setObjetivo(v); setIsDirty(true) }} editable={!readOnly}
               placeholder="Ej: Fuerza de tren superior" placeholderTextColor={P.purpleFaint} maxLength={200} />
 
             <View style={styles.row2}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>DURACIÓN (MIN)</Text>
-                <TextInput style={styles.input} value={duracion} onChangeText={setDuracion} editable={!readOnly}
+                <TextInput style={styles.input} value={duracion} onChangeText={v => { setDuracion(v); setIsDirty(true) }} editable={!readOnly}
                   keyboardType="number-pad" maxLength={3} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>RPE OBJETIVO</Text>
-                <TextInput style={styles.input} value={rpe} onChangeText={setRpe} editable={!readOnly}
+                <TextInput style={styles.input} value={rpe} onChangeText={v => { setRpe(v); setIsDirty(true) }} editable={!readOnly}
                   keyboardType="decimal-pad" maxLength={4} />
               </View>
             </View>
@@ -463,7 +481,7 @@ export default function RutinaBuilder() {
 
             {/* Nota */}
             <Text style={styles.fieldLabel}>NOTA DEL ENTRENADOR</Text>
-            <TextInput style={[styles.input, styles.inputMulti]} value={nota} onChangeText={setNota} editable={!readOnly}
+            <TextInput style={[styles.input, styles.inputMulti]} value={nota} onChangeText={v => { setNota(v); setIsDirty(true) }} editable={!readOnly}
               placeholder="Ej: Sube la carga ~5% si el RPE queda bajo." placeholderTextColor={P.purpleFaint} multiline maxLength={600} />
 
             {!!msg && (
