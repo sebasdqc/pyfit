@@ -5,8 +5,9 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Avg, Count, Q
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
+from pyfit.throttles import SessionResumenRateThrottle
 from rest_framework.response import Response
 from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle
 
@@ -177,6 +178,7 @@ def session_iniciar(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([SessionResumenRateThrottle])
 def session_resumen(request, pk):
     try:
         session = request.user.sessions.get(pk=pk)

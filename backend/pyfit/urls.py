@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
+from pyfit.throttles import RefreshRateThrottle
 from users import views as user_views
 from users import admin_views as admin_api_views
 from users import coach_views
@@ -61,7 +62,7 @@ urlpatterns = [
     path('api/auth/login/', user_views.login_view),
     path('api/auth/google/', user_views.google_login),
     path('api/auth/coach/login/', user_views.coach_login_view),
-    path('api/auth/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/refresh/', TokenRefreshView.as_view(throttle_classes=[RefreshRateThrottle])),
     path('api/auth/logout/', user_views.logout_view),
     path('api/auth/account/', user_views.delete_account),
     path('api/auth/reset-password/', user_views.reset_password),

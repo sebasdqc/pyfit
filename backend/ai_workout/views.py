@@ -30,7 +30,7 @@ def _get_local_date(request) -> date:
         except ValueError:
             pass
     return date.today()
-from ai_workout.adaptive_engine import AdaptiveEngineService
+from ai_workout.adaptive_engine import AdaptiveEngineService, DOLOR_KEYWORDS
 from ai_workout import training_science as ts
 
 logger = logging.getLogger(__name__)
@@ -325,21 +325,7 @@ def _get_exercise_pool(user, location, dolor_hoy=''):
         user.injuries.filter(activa=True).values_list('zona', flat=True)
     )
 
-    # Parse dolor_hoy for zone keywords
-    DOLOR_KEYWORDS = {
-        'rodilla': 'rodilla',
-        'lumbar': 'lumbar',
-        'espalda': 'lumbar',
-        'hombro': 'hombro',
-        'cuello': 'cuello',
-        'cadera': 'cadera',
-        'tobillo': 'tobillo',
-        'muñeca': 'muñeca',
-        'codo': 'codo',
-        'pecho': 'hombro',
-        'abdomen': 'lumbar',
-        'muslo': 'cadera',
-    }
+    # Parse dolor_hoy for zone keywords (DOLOR_KEYWORDS importado de adaptive_engine)
     if dolor_hoy:
         dolor_lower = dolor_hoy.lower()
         for kw, zona in DOLOR_KEYWORDS.items():
@@ -581,16 +567,26 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
         if p in by_patron:
             patron_order.append(p)
 
-    # Collect up to 30 exercises. El pool es el "menú" del que el LLM elige ~15;
-    # 30 da variedad de sobra. Antes era 50, pero con perfiles ricos el prompt
-    # llegaba a ~9.3k tokens y, sumado a max_tokens, excedía el límite de 12k
-    # TPM de Groq (HTTP 413 → la generación fallaba siempre).
-    selected: list[dict] = []
+    # Colectar hasta 30 ejercicios. Movilidad/cardio (calentamiento + vuelta a
+    # la calma) reservan sus slots PRIMERO para no quedar expulsados cuando un
+    # foco dominante (ej: piernas con 20+ ejercicios) monopolice el límite.
+    # Patrones de fuerza: máx 8 cada uno para garantizar variedad entre patrones.
+    _AK = ts.ALWAYS_KEEP_PATTERNS  # {'movilidad', 'cardio'}
+    always_keep_exs: list[dict] = []
     for pat in patron_order:
-        selected.extend(by_patron.get(pat, []))
-        if len(selected) >= 30:
+        if pat in _AK:
+            always_keep_exs.extend(by_patron.get(pat, [])[:3])
+
+    strength_slots = 30 - len(always_keep_exs)
+    strength_exs: list[dict] = []
+    for pat in patron_order:
+        if pat in _AK:
+            continue
+        strength_exs.extend(by_patron.get(pat, [])[:8])
+        if len(strength_exs) >= strength_slots:
             break
-    selected = selected[:30]
+
+    selected = always_keep_exs + strength_exs[:strength_slots]
 
     PROG = {'incrementar': '↑', 'mantener': '→', 'reducir': '↓', 'consolidar': '⏸'}
 
@@ -1179,7 +1175,10 @@ def generate_session(request):
 
     # GEN-3: red de seguridad — descarta ejercicios contraindicados que el LLM haya
     # elegido fuera del pool ya filtrado (lesiones activas / dolor de hoy).
-    _drop_contraindicated_exercises(sesion_generada, engine._get_injury_zones(), user.id)
+    _drop_contraindicated_exercises(
+        sesion_generada, engine._get_injury_zones(), user.id,
+        body_zones=engine._get_body_zones(),
+    )
 
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
 
@@ -1218,12 +1217,16 @@ def generate_session(request):
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
 
 
-def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id):
+def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id, body_zones=None):
     """Red de seguridad final: quita de la sesión generada los ejercicios del
     catálogo cuyas contraindicaciones chocan con lesiones activas o el dolor de hoy.
     El LLM debe elegir solo del pool ya filtrado, pero si se desvía a un ejercicio
     contraindicado del catálogo, lo eliminamos antes de persistir. Devuelve cuántos
-    se descartaron."""
+    se descartaron.
+
+    Cuando `body_zones` está disponible (tablas normalizadas) verifica via
+    ExerciseContraindication; si no, recae en el JSONField legacy.
+    """
     if not injury_zones or not isinstance(sesion_generada, dict):
         return 0
     nombres = [
@@ -1234,16 +1237,33 @@ def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id):
     ]
     if not nombres:
         return 0
-    contra_por_nombre = {
-        e.nombre.lower(): set(e.contraindicaciones or [])
-        for e in Exercise.objects.filter(nombre__in=nombres)
-    }
+
+    if body_zones:
+        exercises = (
+            Exercise.objects
+            .filter(nombre__in=nombres)
+            .prefetch_related('contraindication_links__contraindication')
+        )
+        contra_por_nombre: dict = {}
+        for e in exercises:
+            zones = {ec.contraindication.body_zone for ec in e.contraindication_links.all()}
+            if not zones:
+                zones = set(e.contraindicaciones or [])
+            contra_por_nombre[e.nombre.lower()] = zones
+        check_zones = body_zones
+    else:
+        contra_por_nombre = {
+            e.nombre.lower(): set(e.contraindicaciones or [])
+            for e in Exercise.objects.filter(nombre__in=nombres)
+        }
+        check_zones = injury_zones
+
     dropped = 0
     for fase in sesion_generada.get('fases', []) or []:
         keep = []
         for ej in (fase.get('ejercicios', []) or []):
             nombre = str(ej.get('nombre', '')).strip()
-            if contra_por_nombre.get(nombre.lower(), set()) & injury_zones:
+            if contra_por_nombre.get(nombre.lower(), set()) & check_zones:
                 dropped += 1
                 logger.warning(
                     'generate: ejercicio contraindicado descartado "%s" (lesiones=%s) user=%s',
@@ -1291,6 +1311,41 @@ def _persist_session_exercises(sesion, sesion_generada):
 
 # ─── Regenerar ejercicio ──────────────────────────────────────────────────────
 
+def _catalog_alternatives(nombre_original: str, implementos: list, lesion_zones: list) -> list[str]:
+    """
+    Devuelve hasta 15 nombres del catálogo como alternativas al ejercicio dado.
+    Filtra por: mismo patrón de movimiento, implementos disponibles, sin
+    contraindicaciones con las lesiones activas.
+    Si el original no está en el catálogo, devuelve alternativas de todos los patrones.
+    Usa el JSONField legacy (mismo formato que location.implementos).
+    """
+    patron = None
+    try:
+        row = Exercise.objects.filter(nombre__iexact=nombre_original).values('patron_movimiento').first()
+        if row:
+            patron = row['patron_movimiento']
+    except Exception:
+        pass
+
+    qs = Exercise.objects.filter(activo=True).exclude(nombre__iexact=nombre_original)
+    if patron:
+        qs = qs.filter(patron_movimiento=patron)
+
+    impl_set = set(implementos)
+    lesion_set = set(lesion_zones)
+    alternatives: list[str] = []
+    for ex in qs.order_by('nombre')[:80]:
+        eq_set = set(ex.equipamiento or [])
+        if eq_set and not eq_set.issubset(impl_set):
+            continue
+        if set(ex.contraindicaciones or []) & lesion_set:
+            continue
+        alternatives.append(ex.nombre)
+        if len(alternatives) >= 15:
+            break
+    return alternatives
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([RegenerarEjercicioRateThrottle])
@@ -1333,6 +1388,19 @@ def regenerar_ejercicio(request):
     impl_texto   = ', '.join(implementos) if implementos else 'peso corporal / sin equipamiento'
     lesion_texto = ', '.join(lesiones) if lesiones else 'ninguna'
 
+    # Filtrar el catálogo real para restringir las opciones del LLM
+    catalog = _catalog_alternatives(nombre_ejercicio, implementos, lesiones)
+    if catalog:
+        catalog_block = (
+            'BANCO DE EJERCICIOS VÁLIDOS (SOLO puedes elegir de esta lista):\n'
+            + '\n'.join(f'  - {n}' for n in catalog)
+        )
+    else:
+        catalog_block = (
+            'No hay alternativas en el catálogo con el equipamiento disponible — '
+            'puedes proponer un ejercicio que cumpla con el equipamiento listado.'
+        )
+
     prompt = f"""Eres un entrenador personal de élite. Un usuario quiere sustituir un ejercicio de su sesión.
 
 Ejercicio a sustituir: {nombre_ejercicio}
@@ -1341,11 +1409,12 @@ Motivo de la sustitución: {motivo_texto}
 Equipamiento disponible: {impl_texto}
 Lesiones activas del usuario: {lesion_texto}
 
+{catalog_block}
+
 Genera exactamente 2 ejercicios alternativos que:
-1. Sean ejecutables con el equipamiento disponible
+1. Provengan del banco de ejercicios válidos listado arriba
 2. Trabajen el mismo grupo muscular o patrón de movimiento que el original
-3. Respeten las lesiones activas
-4. Sean distintos entre sí
+3. Sean distintos entre sí
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional:
 {{
@@ -1404,6 +1473,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional:
 def session_ajustar(request, pk):
     """Re-generate an existing session with duration and/or RPE overrides."""
     from types import SimpleNamespace
+    _gen_t0 = _time.monotonic()
 
     try:
         session = (
@@ -1457,6 +1527,12 @@ def session_ajustar(request, pk):
 
     sesiones_recientes = user.sessions.filter(created_at__date__gte=hoy - timedelta(days=14))
     fatiga = calcular_fatiga(sesiones_recientes)
+
+    # Datos de dispositivo (Garmin / Apple Health) — igual que en generate_session
+    if checkin:
+        checkin_hrv, calidad_sueno_efectiva, device_context = process_device_data(user, checkin)
+    else:
+        checkin_hrv, calidad_sueno_efectiva, device_context = None, 7, None
 
     # Build a checkin-like object for AdaptiveEngineService when checkin is None
     checkin_for_engine = checkin or SimpleNamespace(
@@ -1514,9 +1590,10 @@ def session_ajustar(request, pk):
         'rm_press_banca':       perfil.rm_press_banca,
         'rm_press_hombro':      perfil.rm_press_hombro,
         'estado_animo':         checkin.estado_animo if checkin else 3,
-        'calidad_sueno':        checkin.calidad_sueno if checkin else 7,
-        'hrv':                  checkin.hrv if checkin else None,
+        'calidad_sueno':        calidad_sueno_efectiva,
+        'hrv':                  checkin_hrv,
         'notas':                checkin.notas if checkin else None,
+        'garmin_context':       device_context,
         'fatiga':               fatiga,
         'rpe_target':           nuevo_rpe,
         'duracion':             nueva_duracion,
@@ -1541,7 +1618,9 @@ def session_ajustar(request, pk):
     prompt = build_prompt(ctx)
 
     try:
-        sesion_generada = _call_groq(prompt, max_tokens=3000, user_id=user.id)
+        sesion_generada, _groq_usage = _call_groq(
+            prompt, max_tokens=3000, user_id=user.id, return_usage=True,
+        )
     except json.JSONDecodeError:
         logger.exception('Groq invalid JSON in ajustar for user %s', user.id)
         return Response(
@@ -1561,7 +1640,10 @@ def session_ajustar(request, pk):
             status=status.HTTP_502_BAD_GATEWAY,
         )
 
-    _drop_contraindicated_exercises(sesion_generada, engine._get_injury_zones(), user.id)
+    _drop_contraindicated_exercises(
+        sesion_generada, engine._get_injury_zones(), user.id,
+        body_zones=engine._get_body_zones(),
+    )
 
     with transaction.atomic():
         session.respuesta_ia         = sesion_generada
@@ -1570,9 +1652,13 @@ def session_ajustar(request, pk):
         session.sustituciones        = None
         session.decisiones           = sesion_generada.get('decisions_log')
         session.evidencia            = None
+        session.generacion_ms        = int((_time.monotonic() - _gen_t0) * 1000)
+        session.tokens_in            = _groq_usage.get('tokens_in')
+        session.tokens_out           = _groq_usage.get('tokens_out')
         session.save(update_fields=[
             'respuesta_ia', 'duracion_planificada', 'rpe_target',
             'sustituciones', 'decisiones', 'evidencia',
+            'generacion_ms', 'tokens_in', 'tokens_out',
         ])
         session.exercises.all().delete()
         _persist_session_exercises(session, sesion_generada)

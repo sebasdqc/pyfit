@@ -58,3 +58,28 @@ class CoachVincularRateThrottle(UserRateThrottle):
     """20 intentos por hora por usuario — frena el barrido de códigos de coach
     (el atleta está autenticado, así que el límite es por cuenta)."""
     scope = 'coach_vincular'
+
+
+class RefreshRateThrottle(AnonRateThrottle):
+    """20 refreshes por minuto por IP — impide el volcado masivo de tokens de acceso
+    desde un refresh token robado antes de que se detecte el compromiso."""
+    scope = 'token_refresh'
+
+
+class SessionResumenRateThrottle(UserRateThrottle):
+    """20 resúmenes por hora por usuario — protege el gasto en Groq API.
+    session_resumen llama a Groq en cada cache-miss; sin throttle un usuario
+    puede forzar misses en sesiones distintas para disparar costes."""
+    scope = 'session_resumen'
+
+
+class ImpersonateRateThrottle(UserRateThrottle):
+    """5 impersonaciones por hora por cuenta staff — limita la enumeración de
+    usuarios en caso de que un token de staff quede comprometido."""
+    scope = 'impersonate'
+
+
+class ExerciseCatalogRateThrottle(AnonRateThrottle):
+    """60 peticiones por minuto por IP al catálogo público — previene scraping
+    masivo del catálogo sin autenticación."""
+    scope = 'exercise_catalog'

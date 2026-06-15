@@ -198,6 +198,10 @@ REST_FRAMEWORK = {
         'ajustar_sesion': '15/hour',   # cost guard: each call hits Groq API
         'coach_chat': '60/minute',     # anti-spam del chat coach↔atleta
         'coach_vincular': '20/hour',   # frena el barrido de códigos de coach
+        'token_refresh': '20/minute',  # frena volcado masivo desde refresh token robado
+        'session_resumen': '20/hour',  # cost guard: llama a Groq en cache-miss
+        'impersonate': '5/hour',       # limita enumeración con token staff comprometido
+        'exercise_catalog': '60/minute', # previene scraping masivo del catálogo público
     },
 }
 

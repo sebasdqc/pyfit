@@ -10,8 +10,9 @@ import logging
 
 from django.db.models import Q
 from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from pyfit.throttles import ExerciseCatalogRateThrottle
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -120,6 +121,7 @@ CONTRAINDICACIONES = [
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@throttle_classes([ExerciseCatalogRateThrottle])
 def exercise_catalog(request):
     """Devuelve todas las opciones de dropdowns para el formulario de ejercicio."""
     return Response({
