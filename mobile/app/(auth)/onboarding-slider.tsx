@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react'
 import {
   Animated,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -185,7 +184,7 @@ export default function OnboardingSliderScreen() {
   const { colors } = useTheme()
   const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const scrollRef = useRef<ScrollView>(null)
+  const scrollRef = useRef<any>(null)
   const [currentPage, setCurrentPage] = useState(0)
 
   // Tracks horizontal scroll position — drives all per-page animations natively
@@ -268,7 +267,7 @@ export default function OnboardingSliderScreen() {
 
       {/* Pager — bottom-anchored content, top area is clear */}
       <Animated.View style={{ opacity: entranceOp, transform: [{ translateY: entranceY }], height: pageHeight }}>
-        <ScrollView
+        <Animated.ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
@@ -340,7 +339,7 @@ export default function OnboardingSliderScreen() {
               </Text>
             </Animated.View>
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
 
       {/* Bottom controls — outside the pager, in normal flow */}

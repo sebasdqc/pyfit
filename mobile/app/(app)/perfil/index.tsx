@@ -226,6 +226,14 @@ export default function PerfilScreen() {
     ])
   }
 
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta funcionalidad estará disponible próximamente. Si necesitas eliminar tu cuenta ahora, escríbenos a hola@pyfit.app.',
+      [{ text: 'Entendido', style: 'cancel' }]
+    )
+  }
+
   async function handlePickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
@@ -442,6 +450,8 @@ export default function PerfilScreen() {
             onPress={() => router.push('/(auth)/privacidad' as any)} styles={styles} />
           <View style={styles.divider} />
           <AdminRow title={t('perfil_logout')} danger onPress={handleLogout} styles={styles} />
+          <View style={styles.divider} />
+          <AdminRow title="Eliminar cuenta" danger onPress={handleDeleteAccount} styles={styles} />
         </View>
 
         <Text style={styles.version}>{t('perfil_version')}</Text>

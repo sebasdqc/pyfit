@@ -102,6 +102,7 @@ interface AlternativaEjercicio {
 interface SubTarget {
   ejercicio:   Ejercicio
   faseNombre:  string
+  idx:         number
 }
 
 // ─── Date helper ──────────────────────────────────────────────────────────────
@@ -349,11 +350,13 @@ function EjercicioRow({
   ejercicio,
   isPrincipal,
   isModified,
+  canRegen,
   onSustituir,
 }: {
   ejercicio:   Ejercicio
   isPrincipal: boolean
   isModified:  boolean
+  canRegen:    boolean
   onSustituir?: () => void
 }) {
   const { colors } = useTheme()
@@ -381,14 +384,21 @@ function EjercicioRow({
         ) : null}
       </View>
 
-      {/* Right: reload button (principal only) */}
+      {/* Right: reload button (principal only, disabled after 2 regen) */}
       {isPrincipal ? (
         <TouchableOpacity
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          onPress={onSustituir}
+          style={{
+            width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+            backgroundColor: canRegen ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)',
+            borderWidth: 1,
+            borderColor: canRegen ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+          onPress={canRegen ? onSustituir : undefined}
+          disabled={!canRegen}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', lineHeight: 20 }}>↻</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, lineHeight: 20, color: canRegen ? '#fff' : 'rgba(255,255,255,0.2)' }}>↻</Text>
         </TouchableOpacity>
       ) : (
         <View style={{ width: 36 }} />
@@ -811,49 +821,41 @@ function AjusteModal({
               </View>
             ) : (
               <>
-                {/* Duration */}
-                <Text style={ajSt.sectionLabel}>{t('generate_adj_duration')}</Text>
-                <View style={ajSt.optionRow}>
+                {/* Intensity row: [−] INTENSIDAD [+] */}
+                <View style={ajSt.paramRow}>
                   <TouchableOpacity
-                    style={[ajSt.optBtn, duracionDelta === -15 && ajSt.optBtnSel]}
-                    onPress={() => setDuracionDelta(d => d === -15 ? 0 : -15)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[ajSt.optIcon, duracionDelta === -15 && ajSt.optIconSel]}>−</Text>
-                    <Text style={[ajSt.optLabel, duracionDelta === -15 && ajSt.optLabelSel]}>Más corta</Text>
-                    <Text style={[ajSt.optSub,   duracionDelta === -15 && ajSt.optSubSel]}>−15 min</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[ajSt.optBtn, duracionDelta === 15 && ajSt.optBtnSel]}
-                    onPress={() => setDuracionDelta(d => d === 15 ? 0 : 15)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[ajSt.optIcon, duracionDelta === 15 && ajSt.optIconSel]}>+</Text>
-                    <Text style={[ajSt.optLabel, duracionDelta === 15 && ajSt.optLabelSel]}>Más larga</Text>
-                    <Text style={[ajSt.optSub,   duracionDelta === 15 && ajSt.optSubSel]}>+15 min</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Intensity */}
-                <Text style={ajSt.sectionLabel}>{t('generate_adj_intensity')}</Text>
-                <View style={ajSt.optionRow}>
-                  <TouchableOpacity
-                    style={[ajSt.optBtn, rpeDelta === -1 && ajSt.optBtnSel]}
+                    style={[ajSt.deltaBtn, rpeDelta === -1 && ajSt.deltaBtnActive]}
                     onPress={() => setRpeDelta(r => r === -1 ? 0 : -1)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[ajSt.optIcon, rpeDelta === -1 && ajSt.optIconSel]}>↓</Text>
-                    <Text style={[ajSt.optLabel, rpeDelta === -1 && ajSt.optLabelSel]}>Bajar nivel</Text>
-                    <Text style={[ajSt.optSub,   rpeDelta === -1 && ajSt.optSubSel]}>−1 RPE</Text>
+                    <Text style={[ajSt.deltaBtnText, rpeDelta === -1 && ajSt.deltaBtnTextActive]}>−</Text>
                   </TouchableOpacity>
+                  <Text style={ajSt.paramLabel}>{t('generate_adj_intensity')}</Text>
                   <TouchableOpacity
-                    style={[ajSt.optBtn, rpeDelta === 1 && ajSt.optBtnSel]}
+                    style={[ajSt.deltaBtn, rpeDelta === 1 && ajSt.deltaBtnActive]}
                     onPress={() => setRpeDelta(r => r === 1 ? 0 : 1)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[ajSt.optIcon, rpeDelta === 1 && ajSt.optIconSel]}>↑</Text>
-                    <Text style={[ajSt.optLabel, rpeDelta === 1 && ajSt.optLabelSel]}>Subir nivel</Text>
-                    <Text style={[ajSt.optSub,   rpeDelta === 1 && ajSt.optSubSel]}>+1 RPE</Text>
+                    <Text style={[ajSt.deltaBtnText, rpeDelta === 1 && ajSt.deltaBtnTextActive]}>+</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Time row: [−] TIEMPO [+] */}
+                <View style={ajSt.paramRow}>
+                  <TouchableOpacity
+                    style={[ajSt.deltaBtn, duracionDelta === -15 && ajSt.deltaBtnActive]}
+                    onPress={() => setDuracionDelta(d => d === -15 ? 0 : -15)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.deltaBtnText, duracionDelta === -15 && ajSt.deltaBtnTextActive]}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={ajSt.paramLabel}>{t('generate_adj_duration')}</Text>
+                  <TouchableOpacity
+                    style={[ajSt.deltaBtn, duracionDelta === 15 && ajSt.deltaBtnActive]}
+                    onPress={() => setDuracionDelta(d => d === 15 ? 0 : 15)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ajSt.deltaBtnText, duracionDelta === 15 && ajSt.deltaBtnTextActive]}>+</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -923,57 +925,43 @@ function makeAjStyles(c: Colors) {
       letterSpacing: -0.4,
       marginBottom:  28,
     },
-    sectionLabel: {
-      fontFamily:   'SpaceGrotesk-SemiBold',
+    paramRow: {
+      flexDirection:  'row',
+      alignItems:     'center',
+      justifyContent: 'space-between',
+      marginBottom:   24,
+    },
+    paramLabel: {
+      fontFamily:    'JetBrainsMono-Medium',
       fontSize:      13,
-      color:        c.inkSecondary,
-      marginBottom:  10,
+      color:         c.inkSecondary,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      flex:          1,
+      textAlign:     'center',
     },
-    optionRow: {
-      flexDirection: 'row',
-      gap:           10,
-      marginBottom:  20,
-    },
-    optBtn: {
-      flex:            1,
+    deltaBtn: {
+      width:           52,
+      height:          52,
+      borderRadius:    26,
       backgroundColor: c.cardBg,
       borderWidth:     1,
       borderColor:     c.borderDefault,
-      borderRadius:    16,
-      paddingVertical: 18,
       alignItems:      'center',
-      gap:             5,
+      justifyContent:  'center',
     },
-    optBtnSel: {
-      backgroundColor: 'rgba(79,140,255,0.1)',
-      borderColor:     'rgba(79,140,255,0.4)',
+    deltaBtnActive: {
+      backgroundColor: 'rgba(79,140,255,0.15)',
+      borderColor:     'rgba(79,140,255,0.5)',
     },
-    optIcon: {
-      fontSize:   22,
-      color:      c.inkMuted,
+    deltaBtnText: {
       fontFamily: 'SpaceGrotesk-Bold',
+      fontSize:   24,
+      color:      c.inkMuted,
       lineHeight: 28,
     },
-    optIconSel: {
-      color: c.accentLight,
-    },
-    optLabel: {
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize:   13,
-      color:      c.inkSecondary,
-      textAlign:  'center',
-    },
-    optLabelSel: {
-      color: c.inkPrimary,
-    },
-    optSub: {
-      fontFamily:    'JetBrainsMono-Regular',
-      fontSize:      10,
-      color:         c.inkFaint,
-      letterSpacing:  0.5,
-    },
-    optSubSel: {
-      color: c.accentLight,
+    deltaBtnTextActive: {
+      color: c.accent,
     },
     loadingWrap: {
       alignItems:     'center',
@@ -1024,13 +1012,15 @@ function FaseBlock({
   defaultExpanded,
   expandedRef,
   modifiedKeys,
+  regenCount,
   onSustituir,
 }: {
   fase:            Fase
   defaultExpanded: boolean
   expandedRef:     React.MutableRefObject<Record<string, boolean>>
   modifiedKeys:    Set<string>
-  onSustituir:     (ejercicio: Ejercicio, faseNombre: string) => void
+  regenCount:      Record<string, number>
+  onSustituir:     (ejercicio: Ejercicio, faseNombre: string, idx: number) => void
 }) {
   const { colors } = useTheme()
   const blkSt = useMemo(() => makeBlkStyles(colors), [colors])
@@ -1089,7 +1079,8 @@ function FaseBlock({
                 ejercicio={ej}
                 isPrincipal={isPrincipal}
                 isModified={modifiedKeys.has(`${fase.nombre}:${ej.nombre}`)}
-                onSustituir={() => onSustituir(ej, fase.nombre)}
+                canRegen={(regenCount[`${fase.nombre}:${i}`] ?? 0) < 2}
+                onSustituir={() => onSustituir(ej, fase.nombre, i)}
               />
             </React.Fragment>
           ))}
@@ -1186,6 +1177,7 @@ export default function GenerateScreen() {
   const [resumenLoading, setResumenLoading] = useState(false)
   const [subTarget,      setSubTarget]      = useState<SubTarget | null>(null)
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
+  const [regenCount,     setRegenCount]     = useState<Record<string, number>>({})
   const [ajusteVisible,  setAjusteVisible]  = useState(false)
   const [coachNombre,    setCoachNombre]    = useState<string | null>(null)
   // Persiste el estado expand/collapse de cada fase entre desmontajes (ej. rotación, vuelta atrás)
@@ -1274,7 +1266,7 @@ export default function GenerateScreen() {
 
   const handleSelectAlternativa = useCallback((alt: AlternativaEjercicio, motivo: string) => {
     if (!subTarget) return
-    const { ejercicio, faseNombre } = subTarget
+    const { ejercicio, faseNombre, idx } = subTarget
     setSesion(prev => {
       if (!prev) return prev
       return {
@@ -1283,14 +1275,16 @@ export default function GenerateScreen() {
           fase.nombre === faseNombre
             ? {
                 ...fase,
-                ejercicios: fase.ejercicios.map(ej =>
-                  ej.nombre === ejercicio.nombre ? { ...ej, ...alt } : ej
+                ejercicios: fase.ejercicios.map((ej, i) =>
+                  i === idx ? { ...ej, ...alt } : ej
                 ),
               }
             : fase
         ),
       }
     })
+    const slotKey = `${faseNombre}:${idx}`
+    setRegenCount(prev => ({ ...prev, [slotKey]: (prev[slotKey] ?? 0) + 1 }))
     setModifiedKeys(prev => {
       const next = new Set(prev)
       next.add(`${faseNombre}:${ejercicio.nombre}`)
@@ -1302,7 +1296,7 @@ export default function GenerateScreen() {
         elegido:  alt.nombre,
         motivo,
         fase:     faseNombre,
-        nuevo:    alt,   // objeto completo → el backend persiste el cambio en respuesta_ia
+        nuevo:    alt,
       }).catch(() => {})
     }
     setSubTarget(null)
@@ -1346,6 +1340,7 @@ export default function GenerateScreen() {
   const handleAjusteResult = useCallback((nuevaSesion: Sesion) => {
     setSesion(nuevaSesion)
     setModifiedKeys(new Set())
+    setRegenCount({})
     if (!sesionId) return
     setResumen(null)
     setResumenLoading(true)
@@ -1500,7 +1495,8 @@ export default function GenerateScreen() {
                   defaultExpanded={fase.nombre === 'principal'}
                   expandedRef={faseExpandedRef}
                   modifiedKeys={modifiedKeys}
-                  onSustituir={(ej, fn) => setSubTarget({ ejercicio: ej, faseNombre: fn })}
+                  regenCount={regenCount}
+                  onSustituir={(ej, fn, i) => setSubTarget({ ejercicio: ej, faseNombre: fn, idx: i })}
                 />
               ))}
             </View>
