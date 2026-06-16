@@ -153,27 +153,31 @@ function TeamView({
                   key={r.athlete}
                   type="button"
                   onClick={() => a && onGoAthlete(a.id)}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-left transition-colors hover:bg-white/[0.02]"
+                  className="flex w-full flex-col gap-2 py-3 text-left transition-colors hover:bg-white/[0.02] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2"
                 >
-                  <div className="flex min-w-[180px] items-center gap-2.5">
+                  {/* Identidad: avatar + nombre */}
+                  <div className="flex min-w-0 items-center gap-2.5 sm:min-w-[180px]">
                     <Avatar name={a?.nombre ?? `#${r.athlete}`} src={a?.foto} size={32} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-white">{a?.nombre ?? `Atleta ${r.athlete}`}</p>
                       <p className="text-xs text-white/40">{r.dias_con_datos} día(s) con registro</p>
                     </div>
                   </div>
-                  <div className="flex-1 min-w-[180px]">
-                    {r.suficiente && r.acwr_ewma != null
-                      ? <AcwrBar acwr={r.acwr_ewma} />
-                      : <span className="text-xs text-white/35">Necesita ≥ 7 días de registro</span>}
+                  {/* Barra ACWR + valor + zona (agrupados en móvil) */}
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      {r.suficiente && r.acwr_ewma != null
+                        ? <AcwrBar acwr={r.acwr_ewma} />
+                        : <span className="text-xs text-white/35">Necesita ≥ 7 días</span>}
+                    </div>
+                    <div className="shrink-0 w-12 text-right">
+                      <p className="text-base font-bold text-white">{r.acwr_ewma ?? '—'}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-white/35">ACWR</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${SEM[tone].soft} ${SEM[tone].text}`}>
+                      {r.zona}
+                    </span>
                   </div>
-                  <div className="w-16 text-right">
-                    <p className="text-lg font-bold text-white">{r.acwr_ewma ?? '—'}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-white/35">ACWR</p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${SEM[tone].soft} ${SEM[tone].text}`}>
-                    {r.zona}
-                  </span>
                 </button>
               )
             })}
@@ -259,12 +263,12 @@ function AthleteView({
               key={a.id}
               type="button"
               onClick={() => onSelect(a.id)}
-              className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+              className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
                 a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
               }`}
             >
               <Avatar name={a.nombre} src={a.foto} size={22} />
-              <span className="whitespace-nowrap">{a.nombre}</span>
+              <span className="min-w-0 truncate">{a.nombre}</span>
             </button>
           ))}
         </div>

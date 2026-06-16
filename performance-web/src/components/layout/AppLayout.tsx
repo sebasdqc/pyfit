@@ -25,7 +25,7 @@ export function AppLayout() {
       )}
 
       {/* Contenido: ancho completo, con padding para librar la sidebar flotante */}
-      <div className="min-h-screen md:pl-[100px] lg:pl-[272px]">
+      <div className="min-h-screen overflow-x-hidden md:pl-[100px] lg:pl-[272px]">
         <Topbar onMenu={() => setMobileOpen(true)} />
         <main className="px-4 pb-12 pt-5 sm:px-6">
           <Outlet />

@@ -347,12 +347,12 @@ function AthleteView({
               key={a.id}
               type="button"
               onClick={() => onSelect(a.id)}
-              className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+              className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
                 a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
               }`}
             >
               <Avatar name={a.nombre} src={a.foto} size={22} />
-              <span className="whitespace-nowrap">{a.nombre}</span>
+              <span className="min-w-0 truncate">{a.nombre}</span>
             </button>
           ))}
         </div>
@@ -657,12 +657,12 @@ function CuestionariosSection({
               key={a.id}
               type="button"
               onClick={() => setSel(a.id)}
-              className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+              className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
                 a.id === sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
               }`}
             >
               <Avatar name={a.nombre} src={a.foto} size={22} />
-              <span className="whitespace-nowrap">{a.nombre}</span>
+              <span className="min-w-0 truncate">{a.nombre}</span>
             </button>
           ))}
         </div>
@@ -770,16 +770,16 @@ function CuestionariosSection({
         ) : (
           <div className="flex flex-col divide-y divide-perf-border">
             {histAthlete.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-                <div className="min-w-[180px]">
-                  <p className="text-sm font-medium text-white">{p.nombre}</p>
+              <div key={p.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+                <div className="min-w-0 sm:min-w-[180px]">
+                  <p className="truncate text-sm font-medium text-white">{p.nombre}</p>
                   <p className="text-xs text-white/40">{p.fecha}</p>
                 </div>
-                <div className="flex flex-1 items-center gap-3">
-                  <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">{p.resultados.indice}</span>
-                  <span className="text-xs text-white/55">{p.resultados.indice_label} · {p.resultados.interpretacion}</span>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">{p.resultados.indice}</span>
+                  <span className="min-w-0 truncate text-xs text-white/55">{p.resultados.indice_label} · {p.resultados.interpretacion}</span>
                 </div>
-                <button type="button" onClick={() => onDelete(p.id)} className="text-xs text-white/35 hover:text-perf-danger">Eliminar</button>
+                <button type="button" onClick={() => onDelete(p.id)} className="self-start text-xs text-white/35 hover:text-perf-danger sm:self-auto">Eliminar</button>
               </div>
             ))}
           </div>

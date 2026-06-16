@@ -148,15 +148,15 @@ export function PlantillaPage() {
                 key={a.id}
                 type="button"
                 onClick={() => toggle(a.id)}
-                className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+                className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
                   isSel
                     ? 'border-accent bg-accent/10 text-white'
                     : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
                 }`}
               >
                 <Avatar name={a.nombre} src={a.foto} size={24} />
-                <span className="whitespace-nowrap">{a.nombre}</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
+                <span className="min-w-0 truncate">{a.nombre}</span>
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
                 {compare && isSel && (
                   <span className="rounded bg-accent px-1.5 text-[10px] font-bold text-white">
                     {idx === 0 ? 'A' : 'B'}

@@ -615,19 +615,19 @@ function HistoryRow({ item, onDelete }: { item: SavedTest; onDelete: () => void 
     .filter(([, v]) => v === null || typeof v !== 'object')
     .slice(0, 3)
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-      <div className="min-w-[160px]">
-        <p className="text-sm font-medium text-white">{item.nombre}</p>
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+      <div className="min-w-0 sm:min-w-[160px]">
+        <p className="truncate text-sm font-medium text-white">{item.nombre}</p>
         <p className="text-xs text-white/40">{item.fecha} · {FAMILIA_LABEL[item.familia as TestFamilia] ?? item.familia}</p>
       </div>
-      <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-0.5">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-0.5">
         {resumen.map(([k, v]) => (
           <span key={k} className="text-xs text-white/65">
             <span className="text-white/40">{human(k)}:</span> <span className="text-white">{v === null ? '—' : String(v)}</span>
           </span>
         ))}
       </div>
-      <button type="button" onClick={onDelete} className="shrink-0 rounded-md px-2 py-1 text-xs text-white/35 hover:text-perf-danger" title="Eliminar">Eliminar</button>
+      <button type="button" onClick={onDelete} className="self-start shrink-0 rounded-md px-2 py-1 text-xs text-white/35 hover:text-perf-danger sm:self-auto" title="Eliminar">Eliminar</button>
     </div>
   )
 }
@@ -658,13 +658,13 @@ function AthleteChip({ a, sel, onClick }: { a: Athlete; sel: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+      className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
         sel ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
       }`}
     >
       <Avatar name={a.nombre} src={a.foto} size={22} />
-      <span className="whitespace-nowrap">{a.nombre}</span>
-      <span className={`h-1.5 w-1.5 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
+      <span className="min-w-0 truncate">{a.nombre}</span>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${SEM[ESTADO_TONE[a.estado]].bg}`} />
     </button>
   )
 }

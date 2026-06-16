@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  /* Evita scroll horizontal a nivel de página. Cualquier elemento que desborde
+     el viewport queda contenido; los contenedores con overflow-x-auto siguen
+     creando su propio scroll horizontal interno. */
+  html, body {
+    overflow-x: hidden;
+  }
+
   /* Foco visible global para navegación por teclado (WCAG 2.4.7). Un único
      anillo de acento azul para todos los controles del panel; el outline sigue
      el border-radius del elemento en navegadores modernos. Solo con teclado. */

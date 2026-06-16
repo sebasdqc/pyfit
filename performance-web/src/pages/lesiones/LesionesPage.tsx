@@ -375,12 +375,12 @@ function InjuryModal({
                       key={a.id}
                       type="button"
                       onClick={() => setAthleteId(a.id)}
-                      className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+                      className={`flex max-w-full items-center gap-2 overflow-hidden rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
                         a.id === athleteId ? 'border-accent bg-accent/10 text-white' : 'border-perf-border bg-perf-surface2 text-white/70 hover:text-white'
                       }`}
                     >
                       <Avatar name={a.nombre} src={a.foto} size={20} />
-                      <span className="whitespace-nowrap">{a.nombre}</span>
+                      <span className="min-w-0 truncate">{a.nombre}</span>
                     </button>
                   ))}
                 </div>
