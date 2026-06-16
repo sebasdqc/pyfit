@@ -86,6 +86,9 @@ export type CoachLoginResult =
   | { status: 'error' }              // red / servidor
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'
+if (__DEV__ && !process.env.EXPO_PUBLIC_API_URL) {
+  console.warn('[auth] EXPO_PUBLIC_API_URL no definida — usando localhost')
+}
 
 /**
  * Login del portal de entrenador. Usa un fetch dedicado (no apiPost) para

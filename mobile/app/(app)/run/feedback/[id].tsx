@@ -19,6 +19,7 @@ import { Colors } from '../../../../lib/colors'
 import { useTheme } from '../../../../lib/theme'
 import { useTranslation } from '../../../../lib/i18n'
 import { sendRunFeedback } from '../../../../lib/runsApi'
+import { captureMessage } from '../../../../lib/sentry'
 
 // ─── Opciones (mismas que el feedback de gym; mismas claves i18n) ────────────
 const RPE_OPTIONS = [
@@ -135,7 +136,7 @@ export default function RunFeedbackScreen() {
       }
     } catch {
       // No bloqueante: navegamos igual aunque el guardado falle.
-      console.warn('[run-feedback] POST failed — feedback not saved')
+      captureMessage('run-feedback POST failed — feedback not saved', 'warning')
     }
     router.replace('/(app)/dashboard')
   }

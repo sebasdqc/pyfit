@@ -801,7 +801,7 @@ export default function OnboardingScreen() {
       setCancelling(false)
       Alert.alert(
         'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a soporte@zyfit.app para que la eliminemos manualmente.',
+        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a hola@pyfit.app para que la eliminemos manualmente.',
         [
           {
             text: 'Salir de todas formas',

@@ -25,6 +25,7 @@ import { COLORS, FASES } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
+import { captureException } from '../../../lib/sentry'
 import { useTranslation } from '../../../lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -809,7 +810,7 @@ export default function EjecutarScreen() {
       apiPost(`/api/sessions/${id}/series-log/`, { log })
         .then(() => AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {}))
         .catch((err) => {
-          console.warn('[series-log] POST failed — training data not saved remotely:', err?.message)
+          captureException(err, { tags: { flow: 'series-log' } })
         })
     } else {
       AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {})
