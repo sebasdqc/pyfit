@@ -276,6 +276,20 @@ function PointSlider({
   const trackWRef = useRef(trackW); trackWRef.current = trackW
   const valueRef = useRef(value); valueRef.current = value
 
+  // Posición fraccionaria animada (0..1). En vez de saltar al punto destino, el
+  // thumb y el relleno se deslizan suavemente hacia él. `bounciness: 0` evita que
+  // se pase del tick (overshoot) en los extremos. useNativeDriver: false porque
+  // animamos width/left (props de layout, no soportadas por el driver nativo).
+  const posAnim = useRef(new Animated.Value(frac)).current
+  useEffect(() => {
+    Animated.spring(posAnim, {
+      toValue: frac,
+      bounciness: 0,
+      speed: 14,
+      useNativeDriver: false,
+    }).start()
+  }, [frac, posAnim])
+
   const commitFromX = useCallback((x: number) => {
     const w = trackWRef.current
     if (w <= 0 || steps <= 1) return
@@ -322,7 +336,7 @@ function PointSlider({
         onLayout={e => setTrackW(e.nativeEvent.layout.width)}
         {...pan.panHandlers}>
         <View style={styles.psTrack} />
-        <View style={[styles.psTrackFill, { width: trackW * frac, backgroundColor: accent, opacity: 0.65 }]} />
+        <Animated.View style={[styles.psTrackFill, { width: Animated.multiply(posAnim, trackW), backgroundColor: accent, opacity: 0.65 }]} />
         {opts.map((o, i) => {
           const on = i <= idx
           const left = trackW * (steps > 1 ? i / (steps - 1) : 0) - 4
@@ -331,8 +345,8 @@ function PointSlider({
               style={[styles.psTick, { left }, on && { borderColor: accent }]} />
           )
         })}
-        <View pointerEvents="none"
-          style={[styles.psThumb, { left: trackW * frac - 12, backgroundColor: accent, shadowColor: accent, opacity: 0.82 }]} />
+        <Animated.View pointerEvents="none"
+          style={[styles.psThumb, { left: Animated.subtract(Animated.multiply(posAnim, trackW), 12), backgroundColor: accent, shadowColor: accent, opacity: 0.82 }]} />
       </View>
     </View>
   )
