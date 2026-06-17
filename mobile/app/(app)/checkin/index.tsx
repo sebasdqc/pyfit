@@ -13,6 +13,7 @@ import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
+import { runModeForEntorno } from '../../../lib/runMode'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
 
@@ -1247,7 +1248,7 @@ export default function CheckinScreen() {
           {discPath === 'running' ? (
             <TouchableOpacity
               style={styles.nextWrap}
-              onPress={() => router.replace('/(app)/run')}
+              onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}`)}
               activeOpacity={0.88}>
               <LinearGradient
                 colors={['#ff8c42', '#e06c28']}

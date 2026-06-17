@@ -14,8 +14,9 @@ import MapView, { Polyline, PROVIDER_DEFAULT } from 'react-native-maps'
 import * as Location from 'expo-location'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
+import { isIndoorFromMode } from '../../../lib/runMode'
 import {
   estimateCalories,
   formatCalories,
@@ -121,7 +122,10 @@ export default function RunScreen() {
     stopRun,
   } = useRunTracking()
 
-  const [isIndoor, setIsIndoor] = useState(false)
+  // El modo interior/exterior viene del check-in (pantalla anterior) vía el
+  // parámetro `modo`. Es fijo durante la sesión: no se puede cambiar aquí.
+  const { modo } = useLocalSearchParams<{ modo?: string }>()
+  const [isIndoor] = useState(() => isIndoorFromMode(modo))
   const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const [userWeightKg, setUserWeightKg] = useState(70)
@@ -251,8 +255,16 @@ export default function RunScreen() {
         ],
       )
     } else {
-      router.back()
+      handleAbandon()
     }
+  }
+
+  // Abandona el Free Run cuando aún no ha empezado (status idle). Llega aquí por
+  // router.replace desde el check-in, así que volvemos al inicio de forma
+  // explícita (no dependemos del back stack) para que el usuario pueda elegir
+  // otro entrenamiento, p. ej. pesas.
+  function handleAbandon() {
+    router.replace('/(app)/dashboard')
   }
 
   function handleFinish() {
@@ -377,35 +389,13 @@ export default function RunScreen() {
       {/* ── Bottom panel ── */}
       <View style={[styles.panel, { paddingBottom: insets.bottom + 20, backgroundColor: colors.sheetBg, borderTopColor: colors.borderDefault }]}>
 
-        {/* Mode toggle — only when idle */}
+        {/* El modo (interior/exterior) se hereda del check-in y se muestra como
+            etiqueta fija — ya no es seleccionable aquí. */}
         {status === 'idle' && (
-          <View style={styles.modeRow}>
-            <TouchableOpacity
-              style={[
-                styles.modeBtn,
-                !isIndoor && { backgroundColor: colors.accent + '22', borderColor: colors.accent },
-                isIndoor  && { backgroundColor: 'transparent', borderColor: colors.borderDefault },
-              ]}
-              onPress={() => setIsIndoor(false)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.modeBtnText, { color: !isIndoor ? colors.accent : colors.inkMuted }]}>
-                🌿  EXTERIOR
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modeBtn,
-                isIndoor  && { backgroundColor: colors.accent + '22', borderColor: colors.accent },
-                !isIndoor && { backgroundColor: 'transparent', borderColor: colors.borderDefault },
-              ]}
-              onPress={() => setIsIndoor(true)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.modeBtnText, { color: isIndoor ? colors.accent : colors.inkMuted }]}>
-                🏋️  INTERIOR
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.modePill}>
+            <Text style={[styles.modePillText, { color: colors.inkSecondary }]}>
+              {isIndoor ? '🏋️  INTERIOR' : '🌿  EXTERIOR'}
+            </Text>
           </View>
         )}
 
@@ -453,13 +443,25 @@ export default function RunScreen() {
         {/* Action buttons */}
         <View style={styles.btnWrap}>
           {status === 'idle' && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.green }]}
-              onPress={handleStartRun}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.actionBtnText, { color: colors.white }]}>EMPEZAR</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: colors.green }]}
+                onPress={handleStartRun}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.actionBtnText, { color: colors.white }]}>EMPEZAR</Text>
+              </TouchableOpacity>
+              {/* Salida explícita por si el usuario eligió Free Run por error y
+                  prefiere otro entrenamiento. Como aún no empezó, no hay datos
+                  que perder: sale directo al inicio. */}
+              <TouchableOpacity
+                style={styles.abandonBtn}
+                onPress={handleAbandon}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.abandonBtnText, { color: colors.inkMuted }]}>ABANDONAR</Text>
+              </TouchableOpacity>
+            </>
           )}
 
           {inProgress && (
@@ -617,21 +619,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // Mode toggle
-  modeRow: {
-    flexDirection: 'row',
-    gap: 10,
+  // Mode pill — etiqueta fija (heredada del check-in), no seleccionable
+  modePill: {
+    alignSelf: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 50,
     marginBottom: 16,
   },
-  modeBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: 50,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeBtnText: {
+  modePillText: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 11,
     letterSpacing: 1,
@@ -701,6 +697,18 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Bold',
     fontSize: 17,
     letterSpacing: 1,
+  },
+  abandonBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  abandonBtnText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 12,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   btnRow: {
     flexDirection: 'row',
