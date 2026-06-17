@@ -116,9 +116,26 @@ export default function PrivacidadScreen() {
           <Li s={s}>Objetivos de entrenamiento, estilo y preferencias.</Li>
           <Li s={s}>Competencias o eventos deportivos registrados.</Li>
 
-          <Text style={s.subTitle}>2.4 Datos técnicos</Text>
+          <Text style={s.subTitle}>2.4 Datos de ubicación (GPS)</Text>
+          <P s={s}>
+            Cuando el Usuario utiliza la función de carrera al aire libre ("Free Run"), la Aplicación recopila datos precisos de ubicación (GPS) para trazar el recorrido y calcular distancia, ritmo, velocidad y desnivel:
+          </P>
+          <Li s={s}>La ubicación se recopila únicamente mientras hay una carrera activa, nunca de forma continua ni en segundo plano fuera de una sesión.</Li>
+          <Li s={s}>Con el consentimiento del Usuario, la ubicación puede recopilarse también en segundo plano (con la app cerrada o la pantalla apagada) para no interrumpir el registro de la carrera. Este permiso es opcional y puede revocarse en cualquier momento desde los ajustes del sistema.</Li>
+          <Li s={s}>Los datos de ubicación se utilizan exclusivamente para la función de carrera y no se emplean con fines publicitarios ni se comparten con terceros con ese propósito.</Li>
+
+          <Text style={s.subTitle}>2.5 Datos de Apple Health (solo iOS)</Text>
+          <P s={s}>
+            Si el Usuario lo autoriza expresamente, la Aplicación puede leer datos de Apple Health (por ejemplo, métricas de actividad o recuperación) para personalizar los entrenamientos, y registrar sus sesiones en Apple Health. Estos datos permanecen en el dispositivo y bajo el control del Usuario, quien puede revocar el acceso desde la app Salud de iOS.
+          </P>
+
+          <Text style={s.subTitle}>2.6 Fotografía de perfil</Text>
+          <Li s={s}>Si el Usuario elige una foto de perfil desde su galería, esa imagen se almacena asociada a su cuenta. Es completamente opcional.</Li>
+
+          <Text style={s.subTitle}>2.7 Datos técnicos y de diagnóstico</Text>
           <Li s={s}>Tokens de autenticación JWT almacenados de forma segura en el dispositivo.</Li>
           <Li s={s}>Datos de uso de la Aplicación necesarios para su funcionamiento.</Li>
+          <Li s={s}>Informes de errores y fallos (crash reports) y datos de rendimiento técnico, procesados a través de Sentry para diagnosticar y corregir problemas de estabilidad. Estos informes pueden incluir el modelo de dispositivo, la versión del sistema operativo y la traza técnica del error, pero no se utilizan para identificar personalmente al Usuario ni con fines publicitarios.</Li>
         </Section>
 
         <Section title="3. Finalidades del Tratamiento" s={s}>
@@ -165,10 +182,15 @@ export default function PrivacidadScreen() {
 
           <Text style={s.subTitle}>5.2 Infraestructura y Almacenamiento</Text>
           <P s={s}>
-            Railway (Railway Corp., Estados Unidos): proveedor de infraestructura en la nube donde se alojan los servidores y la base de datos de la Aplicación. Los datos se almacenan en servidores con cifrado en reposo y en tránsito.
+            DigitalOcean, LLC (Estados Unidos): proveedor de infraestructura en la nube donde se alojan los servidores y la base de datos de la Aplicación. Los datos se almacenan en servidores con cifrado en reposo y en tránsito.
           </P>
 
-          <Text style={s.subTitle}>5.3 Distribución de la Aplicación</Text>
+          <Text style={s.subTitle}>5.3 Diagnóstico de Errores</Text>
+          <P s={s}>
+            Sentry (Functional Software, Inc., Estados Unidos): utilizamos Sentry para recibir informes automáticos de fallos y errores técnicos que nos permiten mejorar la estabilidad de la Aplicación. Sentry procesa datos técnicos del dispositivo y trazas de error, pero no recibe datos de salud ni utiliza esta información con fines publicitarios.
+          </P>
+
+          <Text style={s.subTitle}>5.4 Distribución de la Aplicación</Text>
           <P s={s}>
             Apple App Store y Google Play Store: plataformas de distribución que pueden recopilar datos analíticos básicos del dispositivo de conformidad con sus propias políticas de privacidad.
           </P>
@@ -235,7 +257,7 @@ export default function PrivacidadScreen() {
             La Aplicación móvil de {APP_NAME} no utiliza cookies. Para el funcionamiento de la autenticación, utilizamos tokens JWT (JSON Web Tokens) almacenados de forma segura en el dispositivo del Usuario mediante el sistema de almacenamiento seguro del sistema operativo.
           </P>
           <P s={s}>
-            No utilizamos tecnologías de seguimiento cross-site, píxeles de seguimiento, ni herramientas de análisis de comportamiento de terceros en la Aplicación móvil.
+            No utilizamos tecnologías de seguimiento cross-site, píxeles de seguimiento, ni herramientas de publicidad de terceros en la Aplicación móvil. La única herramienta de terceros con acceso a datos técnicos es Sentry, utilizada exclusivamente para el diagnóstico de errores y fallos (no para análisis de comportamiento publicitario), tal como se describe en la sección 5.
           </P>
         </Section>
 

@@ -9,7 +9,7 @@ import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
-import { apiGet, apiPost } from '../../../lib/api'
+import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 import { fetchMiCoachUnread } from '../../../lib/coachApi'
 import { logout } from '../../../lib/auth'
 
@@ -226,12 +226,41 @@ export default function PerfilScreen() {
     ])
   }
 
+  const [deleting, setDeleting] = useState(false)
+
   function handleDeleteAccount() {
+    if (deleting) return
     Alert.alert(
       'Eliminar cuenta',
-      'Esta funcionalidad estará disponible próximamente. Si necesitas eliminar tu cuenta ahora, escríbenos a hola@pyfit.app.',
-      [{ text: 'Entendido', style: 'cancel' }]
+      'Se eliminará tu cuenta y todos tus datos (perfil, sesiones, historial, lesiones). Esta acción es permanente y no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar definitivamente',
+          style: 'destructive',
+          onPress: confirmDeleteAccount,
+        },
+      ]
     )
+  }
+
+  async function confirmDeleteAccount() {
+    if (deleting) return
+    setDeleting(true)
+    try {
+      // Borra la cuenta + todos sus datos asociados (cascada en el backend).
+      await apiDelete('/api/auth/account/')
+      // Reutilizamos logout() para limpiar tokens, usuario y estado de impersonación.
+      await logout()
+      router.replace('/(auth)/login')
+    } catch {
+      setDeleting(false)
+      Alert.alert(
+        'No pudimos eliminar tu cuenta',
+        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@pyfit.app para que la eliminemos manualmente.',
+        [{ text: 'Entendido', style: 'cancel' }]
+      )
+    }
   }
 
   async function handlePickAvatar() {

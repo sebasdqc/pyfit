@@ -10,6 +10,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'

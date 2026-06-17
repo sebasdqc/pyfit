@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import MapView, { Polyline, PROVIDER_DEFAULT } from 'react-native-maps'
 import * as Location from 'expo-location'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
@@ -27,6 +28,13 @@ import {
 import { apiGet } from '../../../lib/api'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
+
+// Clave de consentimiento de la disclosure prominente de ubicación en segundo
+// plano. Google Play exige mostrar este aviso ANTES de solicitar el permiso
+// ACCESS_BACKGROUND_LOCATION, explicando qué dato se accede, para qué función y
+// que se recopila incluso con la app cerrada. Persistimos la aceptación para no
+// repetirla en cada carrera (basta mostrarla antes de la primera solicitud).
+const BG_LOCATION_DISCLOSURE_KEY = '@zyfit/bgLocationDisclosureAccepted'
 
 // ─── Back Arrow ───────────────────────────────────────────────────────────────
 
@@ -201,6 +209,36 @@ export default function RunScreen() {
   }, [error, status])
 
   const inProgress = status === 'active' || status === 'paused'
+
+  // Disclosure prominente de ubicación en segundo plano (requisito de Google Play).
+  // Se muestra una sola vez, ANTES de que `startRun` solicite el permiso de
+  // background. Si el usuario acepta, persistimos el consentimiento y arrancamos;
+  // si lo rechaza, no arrancamos (puede usar modo interior sin GPS).
+  async function handleStartRun() {
+    try {
+      const accepted = await AsyncStorage.getItem(BG_LOCATION_DISCLOSURE_KEY)
+      if (accepted === 'true' || isIndoor) {
+        startRun()
+        return
+      }
+    } catch {
+      // Si AsyncStorage falla, mostramos la disclosure igualmente (más seguro).
+    }
+    Alert.alert(
+      'Ubicación en segundo plano',
+      'Para registrar tu carrera al completo, Zyfit recopila tu ubicación (GPS) también cuando la app está en segundo plano o con la pantalla apagada. La ubicación se usa exclusivamente para trazar tu recorrido y calcular distancia, ritmo y desnivel. Puedes revocar este permiso cuando quieras desde los ajustes del sistema.',
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        {
+          text: 'Continuar',
+          onPress: async () => {
+            await AsyncStorage.setItem(BG_LOCATION_DISCLOSURE_KEY, 'true').catch(() => {})
+            startRun()
+          },
+        },
+      ],
+    )
+  }
 
   function handleExit() {
     if (inProgress) {
@@ -417,7 +455,7 @@ export default function RunScreen() {
           {status === 'idle' && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: colors.green }]}
-              onPress={startRun}
+              onPress={handleStartRun}
               activeOpacity={0.85}
             >
               <Text style={[styles.actionBtnText, { color: colors.white }]}>EMPEZAR</Text>
