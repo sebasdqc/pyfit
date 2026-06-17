@@ -19,6 +19,9 @@ interface NavItem {
   label: string
   icon: IconName
   to?: string // si no hay ruta aún, el ítem es visual (fase de diseño)
+  // Activo solo con coincidencia exacta de ruta (no por prefijo). Necesario
+  // cuando otra ruta hermana extiende esta (p. ej. /gps vs /gps/match-day).
+  exact?: boolean
   // Si el ítem es uno de los 5 módulos, su id de gating (puede ocultarse según
   // la membresía del usuario en el centro activo).
   moduleId?: ModuleId
@@ -34,6 +37,18 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
+  {
+    id: 'gps',
+    label: 'GPS',
+    icon: 'gps',
+    children: [
+      { id: 'gps-resumen', label: 'Resumen de campo', icon: 'eye', to: '/gps', exact: true },
+      { id: 'gps-match', label: 'Match Day', icon: 'rendimiento', to: '/gps/match-day' },
+      { id: 'gps-post', label: 'Post-sesión', icon: 'report', to: '/gps/post-sesion' },
+      { id: 'gps-carga', label: 'Carga semanal', icon: 'carga', to: '/gps/carga-semanal' },
+      { id: 'gps-jugador', label: 'Perfil de jugador', icon: 'plantilla', to: '/gps/jugador' },
+    ],
+  },
   { id: 'calendario', label: 'Calendario', icon: 'calendario', to: '/calendario' },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
@@ -46,7 +61,6 @@ const NAV: NavItem[] = [
       { id: 'fisicos', label: 'Físicos', icon: 'tests', to: '/tests', moduleId: 'test' },
       { id: 'carga', label: 'Carga interna', icon: 'carga', to: '/carga', moduleId: 'rendimiento' },
       { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
-      { id: 'gps', label: 'GPS y Tecnología', icon: 'gps', to: '/gps' },
     ],
   },
   { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
@@ -54,6 +68,11 @@ const NAV: NavItem[] = [
   { id: 'reportes', label: 'Reportes', icon: 'reportes', to: '/reportes' },
   { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
 ]
+
+// Ítem activo: por defecto coincide por prefijo; con `exact`, solo coincidencia
+// exacta (para rutas que son prefijo de otra hermana, p. ej. /gps).
+const matchPath = (pathname: string, to?: string, exact?: boolean): boolean =>
+  !!to && (exact ? pathname === to : pathname.startsWith(to))
 
 const ROLE_LABEL: Record<string, string> = {
   director_tecnico: 'Director técnico',
@@ -120,7 +139,7 @@ export function Sidebar({
               <NavGroup key={item.id} item={item} onNavigate={onNavigate} />
             ) : (
               <li key={item.id}>
-                <NavItemRow item={item} active={item.to ? pathname.startsWith(item.to) : false} onNavigate={onNavigate} />
+                <NavItemRow item={item} active={matchPath(pathname, item.to, item.exact)} onNavigate={onNavigate} />
               </li>
             ),
           )}
@@ -209,7 +228,7 @@ function NavItemRow({
 function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
   const { pathname } = useLocation()
   const children = item.children ?? []
-  const childActive = children.some((c) => (c.to ? pathname.startsWith(c.to) : false))
+  const childActive = children.some((c) => matchPath(pathname, c.to, c.exact))
   const [open, setOpen] = useState(childActive)
 
   // Si navegas a un hijo (p. ej. por enlace directo), mantén el grupo abierto.
@@ -244,7 +263,7 @@ function NavGroup({ item, onNavigate }: { item: NavItem; onNavigate: () => void 
       {open && (
         <ul className="mt-1 flex flex-col gap-1">
           {children.map((child) => {
-            const active = child.to ? pathname.startsWith(child.to) : false
+            const active = matchPath(pathname, child.to, child.exact)
             return (
               <li key={child.id}>
                 <NavLink

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zyfit Performance — Post-Session</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #0d0f12;
+    --bg2:      #131720;
+    --bg3:      #1a2030;
+    --bg4:      #212840;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.12);
+    --text:     #e8ecf4;
+    --text2:    #8b93a8;
+    --text3:    #545d72;
+    --green:    #00d68f;
+    --green2:   #00a36e;
+    --amber:    #ffb020;
+    --red:      #ff4d4d;
+    --blue:     #4d8ef7;
+    --purple:   #9b87f5;
+    --radius:   8px;
+    --radius-lg:12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 13px; font-weight: 600; letter-spacing: .06em; color: var(--green); text-transform: uppercase; }
+  .divider-v { width: 1px; height: 20px; background: var(--border); }
+  .done-pill {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    background: rgba(0,214,143,0.1); border: 1px solid rgba(0,214,143,0.2);
+    color: var(--green); border-radius: 20px; padding: 4px 10px;
+  }
+  .page { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px;
+  }
+  .kpi-label { font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -.01em; color: var(--text); }
+  .kpi-value.green  { color: var(--green); }
+  .kpi-value.amber  { color: var(--amber); }
+  .kpi-value.purple { color: var(--purple); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .kpi-delta { font-size: 11px; margin-top: 3px; }
+  .kpi-delta.up   { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+  .kpi-delta.neutral { color: var(--text3); }
+
+  .mid-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .panel-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .panel-body  { padding: 14px; }
+
+  /* Speed zones */
+  .sz-list { display: flex; flex-direction: column; gap: 10px; }
+  .sz-row  { display: grid; grid-template-columns: 100px 1fr 42px; align-items: center; gap: 10px; }
+  .sz-label { font-size: 12px; color: var(--text2); }
+  .sz-bg   { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .sz-fill { height: 100%; border-radius: 3px; }
+  .sz-pct  { font-size: 11px; color: var(--text3); text-align: right; font-family: 'JetBrains Mono', monospace; }
+  .sz-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .sz-leg-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); }
+  .sz-leg-dot  { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Position bars */
+  .pos-list { display: flex; flex-direction: column; gap: 10px; }
+  .pos-row  { display: flex; flex-direction: column; gap: 3px; }
+  .pos-row-head { display: flex; justify-content: space-between; font-size: 11px; }
+  .pos-name { color: var(--text2); }
+  .pos-val  { color: var(--text); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+  .pos-bar-bg   { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .pos-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* Compare */
+  .compare-row { display: flex; flex-direction: column; gap: 8px; }
+  .cmp-item { display: flex; flex-direction: column; gap: 3px; }
+  .cmp-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); }
+  .cmp-bars { display: flex; gap: 3px; align-items: center; }
+  .cmp-bg   { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .cmp-fill { height: 100%; border-radius: 3px; }
+  .cmp-tag  { font-size: 9px; width: 28px; text-align: right; color: var(--text3); }
+
+  /* Detail table */
+  .detail-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .04em;
+    padding: 9px 12px; text-align: right;
+    background: var(--bg3); border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child,
+  thead th:nth-child(2),
+  thead th:nth-child(3) { text-align: left; }
+  tbody td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    color: var(--text2); text-align: right;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  tbody td:first-child,
+  tbody td:nth-child(2),
+  tbody td:nth-child(3) { text-align: left; font-family: 'Inter', sans-serif; }
+  tbody td:first-child { color: var(--text3); }
+  tbody td:nth-child(2) { font-weight: 500; color: var(--text); font-size: 12px; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--bg3); }
+  .td-peak { color: var(--green); font-weight: 500; }
+  .td-warn { color: var(--amber); font-weight: 500; }
+  .td-alert{ color: var(--red); font-weight: 500; }
+
+  .status-tag {
+    font-size: 10px; font-weight: 600; border-radius: 4px;
+    padding: 2px 7px; font-family: 'Inter', sans-serif;
+  }
+  .st-ok   { background: rgba(0,214,143,0.1); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
+  .st-warn { background: rgba(255,176,32,0.1); color: var(--amber); border: 1px solid rgba(255,176,32,0.2); }
+
+  .pos-badge { font-size: 9px; font-weight: 600; border-radius: 3px; padding: 2px 6px; }
+  .pos-pt { background: rgba(155,135,245,0.15); color: var(--purple); }
+  .pos-dc { background: rgba(0,214,143,0.12); color: var(--green); }
+  .pos-mc { background: rgba(77,142,247,0.15); color: var(--blue); }
+  .pos-dl { background: rgba(255,176,32,0.12); color: var(--amber); }
+
+  /* Rec pills */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rec-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+  .pill-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill { font-size: 11px; border-radius: 5px; padding: 4px 10px; font-weight: 500; }
+  .pill-g  { background: rgba(0,214,143,0.1); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
+  .pill-a  { background: rgba(255,176,32,0.1); color: var(--amber); border: 1px solid rgba(255,176,32,0.2); }
+  .pill-r  { background: rgba(255,77,77,0.1); color: var(--red); border: 1px solid rgba(255,77,77,0.2); }
+  .pill-b  { background: rgba(77,142,247,0.1); color: var(--blue); border: 1px solid rgba(77,142,247,0.2); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">Zyfit</div>
+    <div class="divider-v"></div>
+    <div>
+      <div style="font-size:13px;font-weight:500">Post-session — Entrenamiento táctico 4v4+4 / Partido reducido</div>
+      <div style="font-size:11px;color:var(--text3)">Lunes 10 Jun 2026 · 08:15 – 10:05 · Duración: 110 min · Campo principal</div>
+    </div>
+    <div class="done-pill">✓ Completado</div>
+  </div>
+  <div style="font-size:11px;color:var(--text3)">Analista: C. Romero · Exportar ↗</div>
+</div>
+
+<div class="page">
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">Distancia total equipo</div>
+      <div class="kpi-value green">107.4</div>
+      <div class="kpi-sub">km · 11 jugadores</div>
+      <div class="kpi-delta up">▲ +6.3% vs sesión anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">HMLD promedio</div>
+      <div class="kpi-value purple">1,842</div>
+      <div class="kpi-sub">m · high metabolic load dist.</div>
+      <div class="kpi-delta up">▲ +7.7% vs semana ant.</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Player Load promedio</div>
+      <div class="kpi-value">612</div>
+      <div class="kpi-sub">ua · rango esperado: 580–650</div>
+      <div class="kpi-delta up">▲ Dentro del rango objetivo</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Sprint distance prom.</div>
+      <div class="kpi-value amber">842</div>
+      <div class="kpi-sub">m · umbral: &gt;19 km/h</div>
+      <div class="kpi-delta up">▲ +5.4% vs sesión anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Power Plays promedio</div>
+      <div class="kpi-value green">47</div>
+      <div class="kpi-sub">acciones &gt;20 w/kg · &gt;1s</div>
+      <div class="kpi-delta up">▲ +12% vs ref. partido</div>
+    </div>
+  </div>
+
+  <!-- MID GRID -->
+  <div class="mid-grid">
+
+    <!-- Speed zones -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Distribución por zonas de velocidad</span>
+      </div>
+      <div class="panel-body">
+        <div style="position:relative;height:110px;margin-bottom:14px">
+          <canvas id="zoneChart" role="img" aria-label="Distribución de tiempo por zona de velocidad"></canvas>
+        </div>
+        <div class="sz-list">
+          <div class="sz-row"><span class="sz-label">Z1 &lt;7 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:18%;background:#545d72"></div></div><span class="sz-pct">18%</span></div>
+          <div class="sz-row"><span class="sz-label">Z2 7–14 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:34%;background:var(--green2)"></div></div><span class="sz-pct">34%</span></div>
+          <div class="sz-row"><span class="sz-label">Z3 14–19 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:28%;background:var(--green)"></div></div><span class="sz-pct">28%</span></div>
+          <div class="sz-row"><span class="sz-label">Z4 19–24 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:14%;background:var(--amber)"></div></div><span class="sz-pct">14%</span></div>
+          <div class="sz-row"><span class="sz-label">Z5 &gt;24 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:6%;background:var(--red)"></div></div><span class="sz-pct">6%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Position load -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Player Load por posición</span></div>
+      <div class="panel-body">
+        <div style="position:relative;height:110px;margin-bottom:14px">
+          <canvas id="posChart" role="img" aria-label="Player Load promedio por posición"></canvas>
+        </div>
+        <div class="pos-list">
+          <div class="pos-row">
+            <div class="pos-row-head"><span class="pos-name">Mediocampistas (MC)</span><span class="pos-val">671 ua</span></div>
+            <div class="pos-bar-bg"><div class="pos-bar-fill" style="width:95%;background:var(--blue)"></div></div>
+          </div>
+          <div class="pos-row">
+            <div class="pos-row-head"><span class="pos-name">Delanteros laterales (DL)</span><span class="pos-val">614 ua</span></div>
+            <div class="pos-bar-bg"><div class="pos-bar-fill" style="width:87%;background:var(--amber)"></div></div>
+          </div>
+          <div class="pos-row">
+            <div class="pos-row-head"><span class="pos-name">Defensas centrales (DC)</span><span class="pos-val">525 ua</span></div>
+            <div class="pos-bar-bg"><div class="pos-bar-fill" style="width:74%;background:var(--green)"></div></div>
+          </div>
+          <div class="pos-row">
+            <div class="pos-row-head"><span class="pos-name">Porteros (PT)</span><span class="pos-val">310 ua</span></div>
+            <div class="pos-bar-bg"><div class="pos-bar-fill" style="width:44%;background:var(--purple)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Hoy vs sesión anterior</span></div>
+      <div class="panel-body">
+        <div style="position:relative;height:110px;margin-bottom:14px">
+          <canvas id="cmpChart" role="img" aria-label="Comparativa de métricas clave entre la sesión de hoy y la anterior"></canvas>
+        </div>
+        <div class="compare-row">
+          <div class="cmp-item">
+            <div class="cmp-head"><span>Distancia (km)</span><span style="color:var(--green)">▲ +6.3%</span></div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:100%;background:var(--green)"></div></div>
+              <span class="cmp-tag">107.4</span>
+            </div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:94%;background:rgba(255,255,255,0.15)"></div></div>
+              <span class="cmp-tag">101.0</span>
+            </div>
+          </div>
+          <div class="cmp-item">
+            <div class="cmp-head"><span>Player Load (ua)</span><span style="color:var(--green)">▲ +8%</span></div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:100%;background:var(--purple)"></div></div>
+              <span class="cmp-tag">612</span>
+            </div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:93%;background:rgba(255,255,255,0.15)"></div></div>
+              <span class="cmp-tag">567</span>
+            </div>
+          </div>
+          <div class="cmp-item">
+            <div class="cmp-head"><span>Sprint dist. (m)</span><span style="color:var(--green)">▲ +5.4%</span></div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:100%;background:var(--amber)"></div></div>
+              <span class="cmp-tag">842</span>
+            </div>
+            <div class="cmp-bars">
+              <div class="cmp-bg"><div class="cmp-fill" style="width:95%;background:rgba(255,255,255,0.15)"></div></div>
+              <span class="cmp-tag">798</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DETAIL TABLE -->
+  <div class="detail-panel">
+    <div class="panel-head">
+      <span class="panel-title">Detalle individual — sesión de hoy</span>
+      <span style="font-size:11px;color:var(--text3)">Ordenado por Player Load desc.</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Jugador</th><th>Pos</th>
+          <th>Distancia (km)</th><th>Sprint dist (m)</th>
+          <th>Vel. máx (km/h)</th><th>Player Load</th>
+          <th>Acel &gt;3m/s²</th><th>Decel &gt;3m/s²</th>
+          <th>Power Plays</th><th>HMLD (m)</th><th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="detail-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom-grid">
+    <div class="rec-panel">
+      <div class="panel-title" style="margin-bottom:4px">Recomendaciones de recuperación</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Basado en Player Load y estado individual</div>
+      <div class="pill-cloud" id="rec-pills"></div>
+    </div>
+    <div class="rec-panel">
+      <div class="panel-title" style="margin-bottom:4px">Aceleraciones y deceleraciones</div>
+      <div style="position:relative;height:130px;margin-top:8px">
+        <canvas id="accelChart" role="img" aria-label="Aceleraciones y deceleraciones totales por jugador"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const players = [
+  {num:6, name:'Martínez',  pos:'MC', km:12.1, spr:1102, vmax:29.4, pl:688, acel:21, decel:18, pp:54, hmld:2140, estado:'ok'},
+  {num:8, name:'Torres',    pos:'MC', km:11.8, spr:1048, vmax:28.7, pl:671, acel:19, decel:17, pp:51, hmld:2011, estado:'ok'},
+  {num:10,name:'Vargas',    pos:'MC', km:11.4, spr:987,  vmax:29.8, pl:654, acel:18, decel:16, pp:48, hmld:1988, estado:'ok'},
+  {num:7, name:'Rodríguez', pos:'DL', km:12.4, spr:1214, vmax:31.7, pl:641, acel:24, decel:21, pp:61, hmld:2244, estado:'ok'},
+  {num:11,name:'Suárez',    pos:'DL', km:11.6, spr:1098, vmax:30.1, pl:618, acel:20, decel:18, pp:52, hmld:2088, estado:'ok'},
+  {num:2, name:'Pérez',     pos:'DL', km:11.1, spr:944,  vmax:29.2, pl:601, acel:17, decel:15, pp:44, hmld:1901, estado:'warn'},
+  {num:4, name:'Castillo',  pos:'DL', km:10.9, spr:911,  vmax:28.8, pl:587, acel:16, decel:14, pp:42, hmld:1878, estado:'ok'},
+  {num:5, name:'Herrera',   pos:'DC', km:10.4, spr:712,  vmax:26.4, pl:548, acel:14, decel:12, pp:36, hmld:1621, estado:'warn'},
+  {num:3, name:'González',  pos:'DC', km:10.1, spr:688,  vmax:27.1, pl:501, acel:12, decel:11, pp:31, hmld:1544, estado:'ok'},
+  {num:1, name:'Méndez',    pos:'PT', km:5.4,  spr:144,  vmax:18.4, pl:318, acel:8,  decel:7,  pp:14, hmld:488,  estado:'ok'},
+  {num:9, name:'Jiménez',   pos:'PT', km:5.1,  spr:128,  vmax:17.8, pl:302, acel:7,  decel:6,  pp:12, hmld:452,  estado:'ok'},
+];
+
+const posMap = { PT: 'pos-pt', DC: 'pos-dc', MC: 'pos-mc', DL: 'pos-dl' };
+
+const tbody = document.getElementById('detail-tbody');
+players.forEach(p => {
+  const stCls = p.estado === 'ok' ? 'st-ok' : 'st-warn';
+  const stLbl = p.estado === 'ok' ? 'Óptimo' : 'Precaución';
+  const plCls = p.pl > 660 ? 'td-warn' : p.pl > 600 ? '' : '';
+  const vmaxCls = p.vmax > 30 ? 'td-peak' : '';
+  tbody.innerHTML += `<tr>
+    <td>${p.num}</td>
+    <td>${p.name}</td>
+    <td><span class="pos-badge ${posMap[p.pos]}">${p.pos}</span></td>
+    <td class="${p.km > 11.5 ? 'td-peak' : ''}">${p.km.toFixed(1)}</td>
+    <td>${p.spr.toLocaleString()}</td>
+    <td class="${vmaxCls}">${p.vmax.toFixed(1)}</td>
+    <td class="${plCls}" style="font-weight:500;color:var(--text)">${p.pl}</td>
+    <td>${p.acel}</td>
+    <td>${p.decel}</td>
+    <td style="color:var(--purple)">${p.pp}</td>
+    <td>${p.hmld.toLocaleString()}</td>
+    <td><span class="status-tag ${stCls}">${stLbl}</span></td>
+  </tr>`;
+});
+
+const pills = [
+  {txt:'#2 Pérez — 36h reposo activo', cls:'pill-a'},
+  {txt:'#5 Herrera — revisión médica mañana', cls:'pill-r'},
+  {txt:'Equipo — sesión regenerativa martes', cls:'pill-g'},
+  {txt:'MC — reducir volumen sprint miércoles', cls:'pill-b'},
+  {txt:'DL — crioterapia post-entrenamiento', cls:'pill-g'},
+  {txt:'PT — trabajo técnico específico martes', cls:'pill-g'},
+];
+const pillBox = document.getElementById('rec-pills');
+pills.forEach(p => { pillBox.innerHTML += `<span class="pill ${p.cls}">${p.txt}</span>`; });
+
+// Zone chart
+const zCtx = document.getElementById('zoneChart').getContext('2d');
+new Chart(zCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Z1 <7', 'Z2 7-14', 'Z3 14-19', 'Z4 19-24', 'Z5 >24'],
+    datasets: [{ data: [18,34,28,14,6], backgroundColor: ['#545d72','#00a36e','#00d68f','#ffb020','#ff4d4d'], borderWidth: 0, hoverOffset: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '65%',
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw}%` } } }
+  }
+});
+
+// Position chart
+const pCtx = document.getElementById('posChart').getContext('2d');
+new Chart(pCtx, {
+  type: 'bar',
+  data: {
+    labels: ['MC','DL','DC','PT'],
+    datasets: [{ data: [671,614,525,310], backgroundColor: ['rgba(77,142,247,0.7)','rgba(255,176,32,0.7)','rgba(0,214,143,0.7)','rgba(155,135,245,0.6)'], borderWidth: 0, borderRadius: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw} ua` } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#545d72', font: { size: 10 } } },
+      y: { display: false }
+    }
+  }
+});
+
+// Compare chart
+const cCtx = document.getElementById('cmpChart').getContext('2d');
+new Chart(cCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Distancia', 'PL (ua)', 'Sprint (m)', 'HMLD (m)'],
+    datasets: [
+      { label: 'Hoy', data: [107, 612, 842, 1842], backgroundColor: 'rgba(0,214,143,0.7)', borderWidth: 0, borderRadius: 3 },
+      { label: 'Anterior', data: [101, 567, 798, 1710], backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 0, borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#545d72', font: { size: 10 }, autoSkip: false } },
+      y: { display: false }
+    }
+  }
+});
+
+// Accel chart
+const aCtx = document.getElementById('accelChart').getContext('2d');
+new Chart(aCtx, {
+  type: 'bar',
+  data: {
+    labels: players.map(p => p.name.slice(0,5)),
+    datasets: [
+      { label: 'Acel', data: players.map(p => p.acel), backgroundColor: 'rgba(0,214,143,0.6)', borderWidth: 0, borderRadius: 2 },
+      { label: 'Decel', data: players.map(p => p.decel), backgroundColor: 'rgba(155,135,245,0.5)', borderWidth: 0, borderRadius: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#545d72', font: { size: 9 } } },
+      y: { display: false }
+    }
+  }
+});
+</script>
+</body>
+</html>

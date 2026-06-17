@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zyfit Performance — Weekly Load</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #0d0f12;
+    --bg2:      #131720;
+    --bg3:      #1a2030;
+    --bg4:      #212840;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.12);
+    --text:     #e8ecf4;
+    --text2:    #8b93a8;
+    --text3:    #545d72;
+    --green:    #00d68f;
+    --amber:    #ffb020;
+    --red:      #ff4d4d;
+    --blue:     #4d8ef7;
+    --purple:   #9b87f5;
+    --radius:   8px;
+    --radius-lg:12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  .topbar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 13px; font-weight: 600; letter-spacing: .06em; color: var(--green); text-transform: uppercase; }
+  .divider-v { width: 1px; height: 20px; background: var(--border); }
+  .week-pill {
+    font-size: 11px; font-weight: 500; background: var(--bg4);
+    border: 1px solid var(--border2); color: var(--blue);
+    border-radius: 20px; padding: 4px 12px;
+  }
+  .page { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px;
+  }
+  .kpi-label { font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 600; line-height: 1; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.red   { color: var(--red); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .kpi-delta { font-size: 11px; margin-top: 3px; color: var(--text3); }
+
+  /* ACWR zone indicator */
+  .acwr-zone-bar {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px;
+  }
+  .zone-track {
+    position: relative; height: 20px;
+    border-radius: 10px; overflow: hidden;
+    display: flex;
+    margin: 10px 0 6px;
+  }
+  .zone-seg { height: 100%; }
+  .zone-needle {
+    position: absolute; top: -3px; width: 3px; height: 26px;
+    background: white; border-radius: 2px;
+    transform: translateX(-50%);
+    transition: left .5s ease;
+    box-shadow: 0 0 6px rgba(255,255,255,0.4);
+  }
+  .zone-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); }
+
+  /* Big chart panel */
+  .chart-panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px;
+  }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .panel-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .legend-row { display: flex; gap: 16px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+  .leg-line { width: 20px; height: 2px; border-radius: 1px; }
+  .leg-dash { width: 20px; height: 0; border-top: 2px dashed var(--text3); }
+
+  /* Two col layout */
+  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 14px; }
+
+  /* ACWR table */
+  .acwr-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase;
+    letter-spacing: .04em; padding: 9px 14px; text-align: right;
+    background: var(--bg3); border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child, thead th:nth-child(2) { text-align: left; }
+  tbody td {
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    color: var(--text2); text-align: right;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  tbody td:first-child, tbody td:nth-child(2) { text-align: left; font-family: 'Inter', sans-serif; }
+  tbody td:first-child { color: var(--text3); }
+  tbody td:nth-child(2) { font-weight: 500; color: var(--text); font-size: 12px; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--bg3); }
+  tbody tr.row-danger { background: rgba(255,77,77,0.04); }
+  tbody tr.row-warn   { background: rgba(255,176,32,0.04); }
+
+  .risk-tag { font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 8px; font-family: 'Inter', sans-serif; }
+  .rt-ok   { background: rgba(0,214,143,0.1); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
+  .rt-warn { background: rgba(255,176,32,0.1); color: var(--amber); border: 1px solid rgba(255,176,32,0.2); }
+  .rt-danger { background: rgba(255,77,77,0.1); color: var(--red); border: 1px solid rgba(255,77,77,0.2); }
+  .acwr-val-ok     { color: var(--green); font-weight: 600; }
+  .acwr-val-warn   { color: var(--amber); font-weight: 600; }
+  .acwr-val-danger { color: var(--red); font-weight: 600; }
+
+  /* Right panel */
+  .right-col { display: flex; flex-direction: column; gap: 14px; }
+  .mini-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+  .day-dist-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 10px; }
+  .day-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .day-bar-wrap { width: 100%; height: 70px; display: flex; align-items: flex-end; }
+  .day-bar { width: 100%; border-radius: 3px 3px 0 0; transition: height .3s; }
+  .day-label { font-size: 10px; color: var(--text3); }
+  .day-val   { font-size: 9px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+  .stat2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat2 { background: var(--bg3); border-radius: var(--radius); padding: 10px; text-align: center; }
+  .stat2-v { font-size: 20px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .stat2-l { font-size: 10px; color: var(--text3); margin-top: 3px; }
+  .stat2-sub { font-size: 9px; color: var(--text3); margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">Zyfit</div>
+    <div class="divider-v"></div>
+    <div>
+      <div style="font-size:13px;font-weight:500">Weekly Load — Gestión de carga y riesgo de lesión</div>
+      <div style="font-size:11px;color:var(--text3)">Semana 24 · 10–16 Jun 2026 · 4 sesiones planificadas</div>
+    </div>
+    <div class="week-pill">Sem 24 / 38</div>
+  </div>
+  <div style="font-size:11px;color:var(--text3)">Preparador físico: L. García · 11 jugadores activos</div>
+</div>
+
+<div class="page">
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">Carga aguda (sem. actual)</div>
+      <div class="kpi-value">2,448</div>
+      <div class="kpi-sub">ua Player Load promedio</div>
+      <div class="kpi-delta">+10.7% vs sem. anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Carga crónica (4 sem.)</div>
+      <div class="kpi-value">2,211</div>
+      <div class="kpi-sub">ua promedio rodante</div>
+      <div class="kpi-delta">Referencia estable</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ACWR equipo</div>
+      <div class="kpi-value green">1.11</div>
+      <div class="kpi-sub">Zona segura: 0.80–1.30</div>
+      <div class="kpi-delta" style="color:var(--green)">✓ En rango óptimo</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Jugadores en riesgo</div>
+      <div class="kpi-value red">2</div>
+      <div class="kpi-sub">ACWR &gt;1.4 esta semana</div>
+      <div class="kpi-delta" style="color:var(--red)">▲ Acción requerida</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Monotonía semanal</div>
+      <div class="kpi-value amber">1.4</div>
+      <div class="kpi-sub">Recomendado: &lt;2.0</div>
+      <div class="kpi-delta" style="color:var(--green)">✓ Dentro del rango</div>
+    </div>
+  </div>
+
+  <!-- ACWR ZONE -->
+  <div class="acwr-zone-bar">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="panel-title">Zona ACWR del equipo — método Banister</span>
+      <span style="font-size:11px;color:var(--text3)">ACWR actual: <strong style="color:var(--green)">1.11</strong></span>
+    </div>
+    <div class="zone-track">
+      <div class="zone-seg" style="width:20%;background:rgba(77,142,247,0.4)" title="Subcargado <0.8"></div>
+      <div class="zone-seg" style="width:25%;background:rgba(0,214,143,0.35)" title="Zona segura 0.8-1.05"></div>
+      <div class="zone-seg" style="width:25%;background:rgba(0,214,143,0.55)" title="Zona óptima 1.05-1.3"></div>
+      <div class="zone-seg" style="width:15%;background:rgba(255,176,32,0.45)" title="Precaución 1.3-1.5"></div>
+      <div class="zone-seg" style="width:15%;background:rgba(255,77,77,0.4)" title="Riesgo alto >1.5"></div>
+      <div class="zone-needle" style="left:44%"></div>
+    </div>
+    <div class="zone-labels">
+      <span>Subcargado (&lt;0.8)</span>
+      <span>Seguro (0.8–1.3)</span>
+      <span>Precaución (1.3–1.5)</span>
+      <span>Riesgo (&gt;1.5)</span>
+    </div>
+  </div>
+
+  <!-- MAIN CHART -->
+  <div class="chart-panel">
+    <div class="chart-head">
+      <span class="panel-title">Evolución de carga — últimas 8 semanas</span>
+      <div class="legend-row">
+        <div class="leg"><div class="leg-line" style="background:var(--green)"></div>Carga aguda (sem.)</div>
+        <div class="leg"><div class="leg-dash"></div>Carga crónica (4 sem.)</div>
+        <div class="leg"><div class="leg-line" style="background:rgba(77,142,247,0.5)"></div>ACWR (eje der.)</div>
+      </div>
+    </div>
+    <div style="position:relative;height:180px">
+      <canvas id="mainChart" role="img" aria-label="Evolución de carga aguda, crónica y ACWR en las últimas 8 semanas"></canvas>
+    </div>
+  </div>
+
+  <!-- TWO COL -->
+  <div class="two-col">
+
+    <!-- ACWR TABLE -->
+    <div class="acwr-panel">
+      <div class="panel-head" style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <span class="panel-title">ACWR individual — semana 24</span>
+        <span style="font-size:11px;color:var(--text3)">Ordenado por ACWR desc.</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Jugador</th><th>Carga aguda</th><th>Carga crónica</th><th>ACWR</th><th>Δ sem. ant.</th><th>Zona de riesgo</th></tr>
+        </thead>
+        <tbody id="acwr-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+
+      <div class="mini-panel">
+        <div class="panel-title">Distribución de carga por día</div>
+        <div class="day-dist-grid" id="day-grid"></div>
+      </div>
+
+      <div class="mini-panel">
+        <div class="panel-title" style="margin-bottom:10px">Resumen semanal</div>
+        <div class="stat2-grid">
+          <div class="stat2">
+            <div class="stat2-v">3,428</div>
+            <div class="stat2-l">Strain semanal (ua)</div>
+            <div class="stat2-sub">Carga × monotonía</div>
+          </div>
+          <div class="stat2">
+            <div class="stat2-v">107.4</div>
+            <div class="stat2-l">km dist. total equipo</div>
+            <div class="stat2-sub">+6.3% vs semana ant.</div>
+          </div>
+          <div class="stat2">
+            <div class="stat2-v">4/5</div>
+            <div class="stat2-l">Sesiones completadas</div>
+            <div class="stat2-sub">1 partido oficial</div>
+          </div>
+          <div class="stat2">
+            <div class="stat2-v" style="color:var(--green)">9/11</div>
+            <div class="stat2-l">Jugadores en zona</div>
+            <div class="stat2-sub">ACWR 0.8–1.3</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mini-panel">
+        <div class="panel-title" style="margin-bottom:10px">Planificación próxima semana</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text2)">Lun 17 Jun</span>
+            <span style="color:var(--text3)">Regenerativo (60 min)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text2)">Mar 18 Jun</span>
+            <span style="color:var(--text3)">Táctico (90 min)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text2)">Mié 19 Jun</span>
+            <span style="color:var(--amber)">⚠ Reducir carga (#6, #7)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text2)">Jue 20 Jun</span>
+            <span style="color:var(--text3)">Precompetencia (75 min)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0">
+            <span style="color:var(--text2)">Vie 21 Jun</span>
+            <span style="color:var(--blue)">Partido vs Mineros</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const acwrData = [
+  {num:7,  name:'Rodríguez', aguda:2944, cronica:1901, acwr:1.55, delta:'+0.18', risk:'danger'},
+  {num:6,  name:'Martínez',  aguda:2810, cronica:1988, acwr:1.41, delta:'+0.12', risk:'warn'},
+  {num:8,  name:'Torres',    aguda:2688, cronica:2100, acwr:1.28, delta:'+0.03', risk:'ok'},
+  {num:10, name:'Vargas',    aguda:2601, cronica:2088, acwr:1.25, delta:'+0.01', risk:'ok'},
+  {num:11, name:'Suárez',    aguda:2488, cronica:2044, acwr:1.22, delta:'-0.02', risk:'ok'},
+  {num:2,  name:'Pérez',     aguda:2344, cronica:2010, acwr:1.17, delta:'+0.05', risk:'ok'},
+  {num:4,  name:'Castillo',  aguda:2288, cronica:2001, acwr:1.14, delta:'-0.01', risk:'ok'},
+  {num:5,  name:'Herrera',   aguda:2144, cronica:1988, acwr:1.08, delta:'+0.02', risk:'ok'},
+  {num:3,  name:'González',  aguda:2001, cronica:1944, acwr:1.03, delta:'-0.04', risk:'ok'},
+  {num:1,  name:'Méndez',    aguda:1244, cronica:1188, acwr:1.05, delta:'+0.01', risk:'ok'},
+  {num:9,  name:'Jiménez',   aguda:1188, cronica:1144, acwr:1.04, delta:'-0.02', risk:'ok'},
+];
+
+const riskConfig = {
+  ok:     { tag: 'rt-ok',     label: 'Zona segura',  cls: 'acwr-val-ok' },
+  warn:   { tag: 'rt-warn',   label: 'Precaución',   cls: 'acwr-val-warn' },
+  danger: { tag: 'rt-danger', label: 'Riesgo alto',  cls: 'acwr-val-danger' },
+};
+
+const tbody = document.getElementById('acwr-tbody');
+acwrData.forEach(p => {
+  const r = riskConfig[p.risk];
+  const rowCls = p.risk === 'danger' ? 'row-danger' : p.risk === 'warn' ? 'row-warn' : '';
+  const deltaColor = p.delta.startsWith('+') ? 'color:var(--amber)' : 'color:var(--green)';
+  tbody.innerHTML += `<tr class="${rowCls}">
+    <td>${p.num}</td>
+    <td>${p.name}</td>
+    <td>${p.aguda.toLocaleString()}</td>
+    <td>${p.cronica.toLocaleString()}</td>
+    <td class="${r.cls}">${p.acwr.toFixed(2)}</td>
+    <td style="${deltaColor}">${p.delta}</td>
+    <td><span class="risk-tag ${r.tag}">${r.label}</span></td>
+  </tr>`;
+});
+
+// Day distribution
+const days = [
+  {day:'Lun', val:688, color:'rgba(0,214,143,0.6)'},
+  {day:'Mar', val:412, color:'rgba(0,214,143,0.4)'},
+  {day:'Mié', val:721, color:'rgba(0,214,143,0.6)'},
+  {day:'Jue', val:627, color:'rgba(0,214,143,0.5)'},
+  {day:'Vie', val:0,   color:'rgba(255,255,255,0.08)'},
+  {day:'Sáb', val:0,   color:'rgba(255,255,255,0.08)'},
+];
+const maxDay = Math.max(...days.map(d => d.val));
+const dayGrid = document.getElementById('day-grid');
+days.forEach(d => {
+  const h = d.val > 0 ? Math.round((d.val / maxDay) * 60) : 4;
+  dayGrid.innerHTML += `<div class="day-bar-col">
+    <div class="day-val">${d.val > 0 ? d.val : '—'}</div>
+    <div class="day-bar-wrap"><div class="day-bar" style="height:${h}px;background:${d.color}"></div></div>
+    <div class="day-label">${d.day}</div>
+  </div>`;
+});
+
+// Main chart
+const mCtx = document.getElementById('mainChart').getContext('2d');
+new Chart(mCtx, {
+  data: {
+    labels: ['Sem 17','Sem 18','Sem 19','Sem 20','Sem 21','Sem 22','Sem 23','Sem 24'],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Carga aguda',
+        data: [1988, 2101, 2244, 2088, 2311, 2488, 2350, 2448],
+        backgroundColor: 'rgba(0,214,143,0.2)',
+        borderColor: 'rgba(0,214,143,0.5)',
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y'
+      },
+      {
+        type: 'line',
+        label: 'Carga crónica',
+        data: [1844, 1901, 1966, 2001, 2088, 2144, 2188, 2211],
+        borderColor: '#545d72',
+        borderDash: [5, 3],
+        borderWidth: 1.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#545d72',
+        tension: .4,
+        yAxisID: 'y'
+      },
+      {
+        type: 'line',
+        label: 'ACWR',
+        data: [1.08, 1.10, 1.14, 1.04, 1.11, 1.16, 1.07, 1.11],
+        borderColor: 'rgba(77,142,247,0.7)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: 'rgba(77,142,247,0.9)',
+        tension: .4,
+        yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: '#545d72', font: { size: 11 } }
+      },
+      y: {
+        position: 'left',
+        min: 1600, max: 2800,
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: { color: '#545d72', font: { size: 10 }, maxTicksLimit: 5 }
+      },
+      y2: {
+        position: 'right',
+        min: 0.8, max: 1.6,
+        grid: { display: false },
+        ticks: { color: '#4d8ef7', font: { size: 10 }, maxTicksLimit: 5 }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

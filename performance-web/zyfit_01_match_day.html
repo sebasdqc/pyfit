@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zyfit Performance — Match Day</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #0d0f12;
+    --bg2:      #131720;
+    --bg3:      #1a2030;
+    --bg4:      #212840;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.12);
+    --text:     #e8ecf4;
+    --text2:    #8b93a8;
+    --text3:    #545d72;
+    --green:    #00d68f;
+    --green2:   #00a36e;
+    --green-bg: rgba(0,214,143,0.08);
+    --amber:    #ffb020;
+    --amber-bg: rgba(255,176,32,0.10);
+    --red:      #ff4d4d;
+    --red-bg:   rgba(255,77,77,0.10);
+    --blue:     #4d8ef7;
+    --blue-bg:  rgba(77,142,247,0.10);
+    --purple:   #9b87f5;
+    --radius:   8px;
+    --radius-lg:12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-size: 13px; font-weight: 600; letter-spacing: .06em; color: var(--green); text-transform: uppercase; }
+  .divider-v { width: 1px; height: 20px; background: var(--border); }
+  .match-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .match-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  .live-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,77,77,0.12);
+    border: 1px solid rgba(255,77,77,0.25);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: .05em;
+    color: #ff6b6b;
+    text-transform: uppercase;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--red);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .4; transform: scale(.8); }
+  }
+
+  .timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px; font-weight: 500;
+    color: var(--text);
+    letter-spacing: .04em;
+    min-width: 56px;
+  }
+  .period-badge {
+    font-size: 11px; font-weight: 500;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: var(--text2);
+  }
+
+  /* ── LAYOUT ── */
+  .page { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── KPI STRIP ── */
+  .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text3); font-weight: 500; letter-spacing: .03em; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 600; line-height: 1; letter-spacing: -.01em; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.red   { color: var(--red); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .kpi-delta { font-size: 11px; margin-top: 4px; }
+  .kpi-delta.up   { color: var(--green); }
+  .kpi-delta.warn { color: var(--amber); }
+
+  /* ── MAIN GRID ── */
+  .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+
+  /* ── PLAYER TABLE ── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .panel-body  { padding: 0; }
+
+  .col-heads {
+    display: grid;
+    grid-template-columns: 32px 40px 130px 36px 1fr 64px 64px 56px 52px;
+    gap: 0;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ch {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .04em;
+    text-align: right;
+  }
+  .ch:nth-child(-n+3) { text-align: left; }
+
+  .player-rows { display: flex; flex-direction: column; }
+  .pr {
+    display: grid;
+    grid-template-columns: 32px 40px 130px 36px 1fr 64px 64px 56px 52px;
+    gap: 0;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    transition: background .12s;
+    cursor: default;
+  }
+  .pr:last-child { border-bottom: none; }
+  .pr:hover { background: var(--bg3); }
+  .pr.alert  { background: rgba(255,77,77,0.05); border-color: rgba(255,77,77,0.2); }
+  .pr.warn   { background: rgba(255,176,32,0.05); border-color: rgba(255,176,32,0.15); }
+
+  .pnum  { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+  .pos-badge {
+    font-size: 9px; font-weight: 600; letter-spacing: .03em;
+    border-radius: 3px; padding: 2px 5px; text-align: center;
+  }
+  .pos-pt { background: rgba(139,135,245,0.15); color: #9b87f5; }
+  .pos-dc { background: rgba(0,214,143,0.12); color: var(--green); }
+  .pos-mc { background: rgba(77,142,247,0.15); color: var(--blue); }
+  .pos-dl { background: rgba(255,176,32,0.12); color: var(--amber); }
+
+  .pname { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; }
+
+  .load-col { display: flex; flex-direction: column; gap: 3px; }
+  .load-bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .load-bar-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+  .load-pct { font-size: 9px; color: var(--text3); font-family: 'JetBrains Mono', monospace; text-align: right; }
+
+  .stat { font-size: 12px; color: var(--text2); text-align: right; font-family: 'JetBrains Mono', monospace; }
+  .stat.hot  { color: var(--red); font-weight: 500; }
+  .stat.warn { color: var(--amber); font-weight: 500; }
+  .stat.peak { color: var(--green); font-weight: 500; }
+
+  .alert-cell { display: flex; justify-content: center; align-items: center; }
+  .alert-icon { font-size: 15px; }
+
+  /* ── RIGHT COLUMN ── */
+  .right-col { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── ALERTS ── */
+  .alerts-panel {
+    background: rgba(255,77,77,0.06);
+    border: 1px solid rgba(255,77,77,0.2);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .alerts-title {
+    font-size: 11px; font-weight: 600; color: #ff6b6b;
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .alert-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,77,77,0.12);
+  }
+  .alert-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .alert-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .alert-desc { font-size: 11px; color: #ff9090; }
+  .alert-action {
+    margin-top: 5px;
+    font-size: 10px; font-weight: 600;
+    background: rgba(255,77,77,0.15);
+    color: #ff9090;
+    border-radius: 3px; padding: 2px 7px;
+    display: inline-block;
+  }
+
+  .warn-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,176,32,0.12);
+  }
+  .warn-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  /* ── MINI CHART PANEL ── */
+  .chart-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    flex: 1;
+  }
+
+  /* ── TEAM SUMMARY ── */
+  .team-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .mini-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .mini-stat {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 10px;
+    text-align: center;
+  }
+  .mini-stat-v { font-size: 18px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .mini-stat-l { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  /* ── BOTTOM STRIP ── */
+  .bottom-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .bottom-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .speed-zone-row { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .sz { display: grid; grid-template-columns: 80px 1fr 38px; align-items: center; gap: 8px; }
+  .sz-name { font-size: 11px; color: var(--text3); }
+  .sz-bg   { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .sz-fill { height: 100%; border-radius: 2px; }
+  .sz-pct  { font-size: 10px; color: var(--text3); text-align: right; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Zyfit</div>
+    <div class="divider-v"></div>
+    <div>
+      <div class="match-title">Caracas FC vs Deportivo Lara — Liga Futve Jornada 18</div>
+      <div class="match-sub">Estadio Olímpico · Caracas · Capacidad 35,000</div>
+    </div>
+    <div class="live-pill"><span class="live-dot"></span>En vivo</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="period-badge">2º Tiempo</div>
+    <div class="timer" id="timer">63:24</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">Distancia prom. equipo</div>
+      <div class="kpi-value green" id="kpi-dist">9.4</div>
+      <div class="kpi-sub">km · meta partido: 10.5 km</div>
+      <div class="kpi-delta up" id="kpi-dist-delta">▲ 89% de la meta</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Velocidad máxima</div>
+      <div class="kpi-value amber">31.7</div>
+      <div class="kpi-sub">km/h · #7 Rodríguez</div>
+      <div class="kpi-delta up">▲ Récord temporada</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Player Load promedio</div>
+      <div class="kpi-value" id="kpi-pl">487</div>
+      <div class="kpi-sub">ua · referencia: 640 ua</div>
+      <div class="kpi-delta warn" id="kpi-pl-pct">▲ +12% vs partido anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Sprints totales equipo</div>
+      <div class="kpi-value green" id="kpi-spr">148</div>
+      <div class="kpi-sub">acciones &gt;19 km/h</div>
+      <div class="kpi-delta up">▲ 2.4/min ritmo actual</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- PLAYER TABLE -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Monitoreo en tiempo real — 11 jugadores</span>
+        <span style="font-size:11px;color:var(--text3)" id="update-ts">Actualizado hace 0s</span>
+      </div>
+      <div class="panel-body">
+        <div class="col-heads">
+          <div class="ch">#</div>
+          <div class="ch">Pos</div>
+          <div class="ch">Jugador</div>
+          <div class="ch">Min</div>
+          <div class="ch" style="text-align:left;padding-left:2px">Player Load</div>
+          <div class="ch">km</div>
+          <div class="ch">v.máx</div>
+          <div class="ch">Sprints</div>
+          <div class="ch">Estado</div>
+        </div>
+        <div class="player-rows" id="player-rows"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- ALERTS -->
+      <div class="alerts-panel" id="alerts-panel">
+        <div class="alerts-title">⚠ Alertas activas</div>
+        <div id="alerts-body"></div>
+      </div>
+
+      <!-- TEAM CHART -->
+      <div class="chart-panel">
+        <div class="panel-title" style="margin-bottom:10px">Carga por jugador</div>
+        <div style="position:relative;height:130px">
+          <canvas id="loadChart" role="img" aria-label="Player Load de cada jugador del equipo"></canvas>
+        </div>
+      </div>
+
+      <!-- TEAM SUMMARY -->
+      <div class="team-panel">
+        <div class="panel-title">Resumen equipo</div>
+        <div class="mini-stat-grid">
+          <div class="mini-stat">
+            <div class="mini-stat-v" id="ms-high">2</div>
+            <div class="mini-stat-l">En zona de alerta</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-v" id="ms-warn">1</div>
+            <div class="mini-stat-l">Precaución</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-v">11</div>
+            <div class="mini-stat-l">Sensores activos</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-v">10Hz</div>
+            <div class="mini-stat-l">Frecuencia GPS</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM STRIP -->
+  <div class="bottom-strip">
+    <div class="bottom-card">
+      <div class="panel-title">Zonas de velocidad — equipo</div>
+      <div class="speed-zone-row">
+        <div class="sz"><span class="sz-name">Z1 &lt;7 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:18%;background:#545d72"></div></div><span class="sz-pct">18%</span></div>
+        <div class="sz"><span class="sz-name">Z2 7–14 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:34%;background:var(--green2)"></div></div><span class="sz-pct">34%</span></div>
+        <div class="sz"><span class="sz-name">Z3 14–19 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:28%;background:var(--green)"></div></div><span class="sz-pct">28%</span></div>
+        <div class="sz"><span class="sz-name">Z4 19–24 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:14%;background:var(--amber)"></div></div><span class="sz-pct">14%</span></div>
+        <div class="sz"><span class="sz-name">Z5 &gt;24 km/h</span><div class="sz-bg"><div class="sz-fill" style="width:6%;background:var(--red)"></div></div><span class="sz-pct">6%</span></div>
+      </div>
+    </div>
+
+    <div class="bottom-card">
+      <div class="panel-title">Carga acumulada — 2 tiempos</div>
+      <div style="position:relative;height:100px;margin-top:10px">
+        <canvas id="periodsChart" role="img" aria-label="Carga acumulada comparada entre primer y segundo tiempo"></canvas>
+      </div>
+    </div>
+
+    <div class="bottom-card">
+      <div class="panel-title">Aceleraciones / Deceleraciones</div>
+      <div style="position:relative;height:100px;margin-top:10px">
+        <canvas id="accelChart" role="img" aria-label="Número de aceleraciones y deceleraciones por posición"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const players = [
+  {num:1, name:'Méndez',    pos:'PT', posClass:'pos-pt', pl:312, plMax:480, km:5.2,  vmax:18.4, spr:12,  status:'ok'},
+  {num:3, name:'González',  pos:'DC', posClass:'pos-dc', pl:501, plMax:620, km:9.8,  vmax:27.1, spr:18,  status:'ok'},
+  {num:5, name:'Herrera',   pos:'DC', posClass:'pos-dc', pl:548, plMax:600, km:10.1, vmax:26.4, spr:16,  status:'warn'},
+  {num:2, name:'Pérez',     pos:'DL', posClass:'pos-dl', pl:589, plMax:630, km:10.9, vmax:29.2, spr:24,  status:'ok'},
+  {num:4, name:'Castillo',  pos:'DL', posClass:'pos-dl', pl:472, plMax:610, km:10.3, vmax:28.8, spr:22,  status:'ok'},
+  {num:6, name:'Martínez',  pos:'MC', posClass:'pos-mc', pl:634, plMax:640, km:11.4, vmax:28.1, spr:19,  status:'alert'},
+  {num:8, name:'Torres',    pos:'MC', posClass:'pos-mc', pl:601, plMax:650, km:11.1, vmax:27.9, spr:17,  status:'ok'},
+  {num:10,name:'Vargas',    pos:'MC', posClass:'pos-mc', pl:577, plMax:660, km:10.7, vmax:29.5, spr:21,  status:'ok'},
+  {num:7, name:'Rodríguez', pos:'DL', posClass:'pos-dl', pl:612, plMax:670, km:11.8, vmax:31.7, spr:28,  status:'ok'},
+  {num:11,name:'Suárez',    pos:'DL', posClass:'pos-dl', pl:558, plMax:640, km:10.5, vmax:30.1, spr:25,  status:'ok'},
+  {num:9, name:'Jiménez',   pos:'PT', posClass:'pos-pt', pl:648, plMax:640, km:9.2,  vmax:27.3, spr:11,  status:'alert'},
+];
+
+function barColor(pct) {
+  if (pct >= 1.0) return '#ff4d4d';
+  if (pct >= 0.90) return '#ffb020';
+  if (pct >= 0.75) return '#4d8ef7';
+  return '#00d68f';
+}
+
+function statusIcon(status) {
+  if (status === 'alert') return '<span style="color:#ff4d4d;font-size:16px" title="Alerta crítica">⚠</span>';
+  if (status === 'warn')  return '<span style="color:#ffb020;font-size:16px" title="Precaución">◉</span>';
+  return '<span style="color:#2a3548;font-size:16px">●</span>';
+}
+
+function renderPlayers() {
+  const cont = document.getElementById('player-rows');
+  cont.innerHTML = players.map(p => {
+    const pct = p.pl / p.plMax;
+    const barW = Math.min(Math.round(pct * 100), 100);
+    const rowCls = p.status === 'alert' ? 'pr alert' : p.status === 'warn' ? 'pr warn' : 'pr';
+    const kmCls  = p.km > 11.0 ? 'stat peak' : 'stat';
+    const vmaxCls = p.vmax > 30 ? 'stat peak' : p.vmax > 28 ? 'stat warn' : 'stat';
+    return `<div class="${rowCls}">
+      <span class="pnum">${p.num}</span>
+      <span class="pos-badge ${p.posClass}">${p.pos}</span>
+      <span class="pname">${p.name}</span>
+      <span class="stat" style="text-align:left">63'</span>
+      <div class="load-col">
+        <div class="load-bar-bg">
+          <div class="load-bar-fill" style="width:${barW}%;background:${barColor(pct)}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace">${p.pl} ua</span>
+          <span class="load-pct">${Math.round(pct*100)}%</span>
+        </div>
+      </div>
+      <span class="${kmCls}">${p.km.toFixed(1)}</span>
+      <span class="${vmaxCls}">${p.vmax.toFixed(1)}</span>
+      <span class="stat">${p.spr}</span>
+      <span class="alert-cell">${statusIcon(p.status)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderAlerts() {
+  const alertPlayers = players.filter(p => p.status !== 'ok');
+  const body = document.getElementById('alerts-body');
+  body.innerHTML = alertPlayers.map(p => {
+    const isAlert = p.status === 'alert';
+    const pct = Math.round(p.pl / p.plMax * 100);
+    return `<div class="${isAlert ? 'alert-item' : 'warn-item'}">
+      <div class="alert-name">#${p.num} ${p.name} <span style="font-size:10px;color:var(--text3)">(${p.pos})</span></div>
+      <div class="alert-desc">${isAlert ? `Player Load al ${pct}% del máximo individual` : `Carga en zona de precaución (${pct}%)`}</div>
+      <span class="alert-action">${isAlert ? 'Considerar sustitución' : 'Monitorear próximos 10 min'}</span>
+    </div>`;
+  }).join('');
+}
+
+renderPlayers();
+renderAlerts();
+
+// Load chart
+const loadCtx = document.getElementById('loadChart').getContext('2d');
+const loadChart = new Chart(loadCtx, {
+  type: 'bar',
+  data: {
+    labels: players.map(p => p.name),
+    datasets: [{
+      data: players.map(p => p.pl),
+      backgroundColor: players.map(p => barColor(p.pl / p.plMax)),
+      borderWidth: 0,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw} ua` } } },
+    scales: {
+      x: { display: false },
+      y: { min: 0, max: 700, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#545d72', font: { size: 9 }, maxTicksLimit: 4 } }
+    }
+  }
+});
+
+// Periods chart
+const pCtx = document.getElementById('periodsChart').getContext('2d');
+new Chart(pCtx, {
+  type: 'bar',
+  data: {
+    labels: players.map(p => p.name.slice(0,4)),
+    datasets: [
+      { label: '1T', data: [148,242,261,282,228,304,288,274,294,266,156], backgroundColor: 'rgba(77,142,247,0.5)', borderWidth:0, borderRadius:2 },
+      { label: '2T', data: [164,259,287,307,244,330,313,303,318,292,172], backgroundColor: 'rgba(0,214,143,0.5)', borderWidth:0, borderRadius:2 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { display: false },
+      y: { display: false }
+    }
+  }
+});
+
+// Accel chart
+const aCtx = document.getElementById('accelChart').getContext('2d');
+new Chart(aCtx, {
+  type: 'bar',
+  data: {
+    labels: ['PT','DC','MC','DL'],
+    datasets: [
+      { label: 'Acel', data: [8, 13, 19, 22], backgroundColor: 'rgba(0,214,143,0.6)', borderWidth:0, borderRadius:3 },
+      { label: 'Decel', data: [7, 11, 17, 20], backgroundColor: 'rgba(155,135,245,0.5)', borderWidth:0, borderRadius:3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#545d72', font: { size: 10 } } },
+      y: { display: false }
+    }
+  }
+});
+
+// Live timer
+let secs = 63 * 60 + 24;
+const timerEl = document.getElementById('timer');
+let lastUpdate = 0;
+setInterval(() => {
+  secs++;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  lastUpdate++;
+  document.getElementById('update-ts').textContent = `Actualizado hace ${lastUpdate}s`;
+
+  // Simulate live data
+  if (secs % 3 === 0) {
+    players.forEach(p => {
+      if (p.status !== 'alert') {
+        p.pl = Math.min(p.pl + Math.floor(Math.random() * 4), p.plMax + 30);
+        p.km = parseFloat((p.km + Math.random() * 0.02).toFixed(2));
+        if (Math.random() < 0.08) p.spr++;
+      }
+    });
+    lastUpdate = 0;
+    renderPlayers();
+    loadChart.data.datasets[0].data = players.map(p => p.pl);
+    loadChart.data.datasets[0].backgroundColor = players.map(p => barColor(p.pl / p.plMax));
+    loadChart.update('none');
+
+    const avgPL = Math.round(players.reduce((a,p) => a + p.pl, 0) / players.length);
+    const avgDist = (players.reduce((a,p) => a + p.km, 0) / players.length).toFixed(1);
+    document.getElementById('kpi-pl').textContent = avgPL;
+    document.getElementById('kpi-dist').textContent = avgDist;
+    document.getElementById('kpi-spr').textContent = players.reduce((a,p) => a + p.spr, 0);
+  }
+}, 1000);
+</script>
+</body>
+</html>

@@ -18,6 +18,10 @@ import { EquipoPage } from '@/pages/equipo/EquipoPage'
 import { CalendarioPage } from '@/pages/calendario/CalendarioPage'
 import { ReportesPage } from '@/pages/reportes/ReportesPage'
 import { GpsPage } from '@/pages/gps/GpsPage'
+import { MatchDayPage } from '@/pages/gps/MatchDayPage'
+import { PostSessionPage } from '@/pages/gps/PostSessionPage'
+import { WeeklyLoadPage } from '@/pages/gps/WeeklyLoadPage'
+import { PlayerProfilePage } from '@/pages/gps/PlayerProfilePage'
 import { CargaPage } from '@/pages/carga/CargaPage'
 
 export const router = createBrowserRouter([
@@ -38,6 +42,10 @@ export const router = createBrowserRouter([
           { path: 'tests', element: <TestPage /> },
           { path: 'carga', element: <CargaPage /> },
           { path: 'gps', element: <GpsPage /> },
+          { path: 'gps/match-day', element: <MatchDayPage /> },
+          { path: 'gps/post-sesion', element: <PostSessionPage /> },
+          { path: 'gps/carga-semanal', element: <WeeklyLoadPage /> },
+          { path: 'gps/jugador', element: <PlayerProfilePage /> },
           { path: 'planificacion', element: <PlanificacionPage /> },
           { path: 'psicologico', element: <PsicologicoPage /> },
           { path: 'simulador', element: <SimuladorPage /> },
