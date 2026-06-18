@@ -1,0 +1,27 @@
+# Proyectos separados — no son parte del landing de Next.js
+backend/
+mobile/
+performance-web/
+academy-web/
+
+# Archivos binarios y documentos en la raíz
+*.jpg
+*.jpeg
+*.png
+*.pdf
+*.mp4
+*.mov
+
+# Dependencias
+node_modules/
+
+# Builds
+.next/
+out/
+build/
+dist/
+
+# Dev
+.env*
+*.log
+.DS_Store
