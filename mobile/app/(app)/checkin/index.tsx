@@ -370,6 +370,7 @@ export default function CheckinScreen() {
   const [newLocTipo, setNewLocTipo] = useState('')
   const [newLocImplementos, setNewLocImplementos] = useState<string[]>([])
   const [savingLoc, setSavingLoc] = useState(false)
+  const [savedLocName, setSavedLocName] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -417,8 +418,9 @@ export default function CheckinScreen() {
     }
     setSavingLoc(true)
     try {
+      const nombre = newLocNombre.trim()
       const saved = await apiPost('/api/locations/', {
-        nombre: newLocNombre.trim(),
+        nombre,
         tipo: newLocTipo.toLowerCase(),
         implementos: newLocImplementos,
       })
@@ -427,7 +429,10 @@ export default function CheckinScreen() {
       setNewLocImplementos([])
       setAddingLoc(false)
       await loadData()
-      if (saved?.id) setLocationId(saved.id)
+      if (saved?.id) {
+        setLocationId(saved.id)
+        setSavedLocName(nombre)
+      }
     } catch (e: any) {
       setError(e.message ?? 'No se pudo guardar la ubicación.')
     } finally {
@@ -1019,7 +1024,7 @@ export default function CheckinScreen() {
               return (
                 <TouchableOpacity key={loc.id}
                   style={[styles.estadoCard, on && { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: 'rgba(79,140,255,0.45)', borderWidth: 1.5 }]}
-                  onPress={() => { setLocationId(on ? null : loc.id); setGrupoMuscular(null); setError('') }}
+                  onPress={() => { setLocationId(on ? null : loc.id); setSavedLocName(null); setError('') }}
                   activeOpacity={0.82}>
                   <View style={[styles.estadoBar, { backgroundColor: on ? colors.accent : 'transparent' }]} />
                   <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -1041,6 +1046,26 @@ export default function CheckinScreen() {
                 </TouchableOpacity>
               )
             })}
+          </View>
+        )}
+
+        {!entornoOpts && savedLocName && (
+          <View style={{
+            backgroundColor: 'rgba(50,200,150,0.1)',
+            borderWidth: 1,
+            borderColor: 'rgba(50,200,150,0.35)',
+            borderRadius: 12,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            marginBottom: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <Text style={{ color: '#32c896', fontSize: 14 }}>✓</Text>
+            <Text style={{ color: '#32c896', fontFamily: 'SpaceGrotesk-Medium', fontSize: 13 }}>
+              {savedLocName} añadido y seleccionado para esta sesión
+            </Text>
           </View>
         )}
 

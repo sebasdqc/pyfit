@@ -710,7 +710,7 @@ def _crear_checkin_neutro(user, hoy):
     perfil = getattr(user, 'profile', None)
     dur = perfil.duracion_disponible if (perfil and perfil.duracion_disponible) else 60
     dur = max(10, min(300, int(dur)))
-    loc = user.locations.order_by('created_at').first()
+    loc = user.locations.order_by('-created_at').first()
     return DailyCheckin.objects.create(
         user=user, fecha=hoy, estado_animo=3, calidad_sueno=7,
         duracion_disponible=dur, location=loc, foco_entrenamiento=[],
@@ -1054,7 +1054,7 @@ def generate_session(request):
     if checkin.location:
         loc = checkin.location
     else:
-        loc = user.locations.order_by('created_at').first()
+        loc = user.locations.order_by('-created_at').first()
         if not loc:
             loc = SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
 
@@ -1518,13 +1518,13 @@ def session_ajustar(request, pk):
     user    = request.user
     checkin = session.checkin
 
-    # Resolve location (prefer session.location, fallback to checkin.location, then first)
+    # Resolve location (prefer session.location, fallback to checkin.location, then most recent)
     if session.location:
         loc = session.location
     elif checkin and checkin.location:
         loc = checkin.location
     else:
-        loc = user.locations.order_by('created_at').first()
+        loc = user.locations.order_by('-created_at').first()
         if not loc:
             loc = SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
 
