@@ -218,7 +218,7 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -343,18 +343,21 @@ if SENTRY_DSN:
     from sentry_sdk.integrations.logging import LoggingIntegration
 
     def _sentry_before_send(event, hint):
-        """Scrub liviano. Sentry ya tiene defaults razonables, pero esto
-        elimina algunos campos sensibles que aparecen frecuente en PyFit:
-        - JWT tokens en headers de request
-        - emails (PII)
-        """
+        """Scrub liviano de campos sensibles antes de enviar a Sentry."""
         try:
             req = event.get('request') or {}
+            # Scrub headers con credenciales
             headers = req.get('headers') or {}
-            if 'Authorization' in headers:
-                headers['Authorization'] = '[scrubbed]'
-            if 'Cookie' in headers:
-                headers['Cookie'] = '[scrubbed]'
+            for field in ('Authorization', 'Cookie'):
+                if field in headers:
+                    headers[field] = '[scrubbed]'
+            # Scrub body de endpoints de auth — password e id_token nunca
+            # deben aparecer en Sentry aunque se capture una excepción en login.
+            data = req.get('data') or {}
+            if isinstance(data, dict):
+                for field in ('password', 'id_token', 'token', 'refresh'):
+                    if field in data:
+                        data[field] = '[scrubbed]'
         except Exception:
             pass
         return event
