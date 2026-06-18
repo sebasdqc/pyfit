@@ -5,6 +5,9 @@ from users.serializers import UserLocationSerializer
 
 class CheckinSerializer(serializers.ModelSerializer):
     location_detail = UserLocationSerializer(source='location', read_only=True)
+    # Explicit caps prevent token bloat in the AI prompt and unbounded DB writes.
+    dolor_hoy = serializers.CharField(max_length=500, allow_blank=True, required=False, allow_null=True)
+    notas     = serializers.CharField(max_length=1000, allow_blank=True, required=False, allow_null=True)
 
     class Meta:
         model = DailyCheckin

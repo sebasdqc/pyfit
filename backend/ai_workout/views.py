@@ -18,18 +18,32 @@ from checkins.models import DailyCheckin
 def _get_local_date(request) -> date:
     """
     Devuelve la fecha local del dispositivo (header X-Local-Date).
-    Fallback a date.today() (UTC) si el header no está disponible o es inválido.
-
-    Necesario para que las sesiones se guarden en la fecha que el usuario
-    percibe, no en la fecha UTC del servidor (que puede diferir en zonas UTC-).
+    Acepta la fecha del cliente solo si está dentro de ±1 día del servidor
+    (cubre diferencias de zona horaria legítimas sin permitir fechas arbitrarias
+    del pasado/futuro que podrían manipular el contexto de generación).
     """
+    server_today = date.today()
     header = request.headers.get('X-Local-Date', '').strip()
     if header:
         try:
-            return date.fromisoformat(header)
+            client_date = date.fromisoformat(header)
+            if abs((client_date - server_today).days) <= 1:
+                return client_date
         except ValueError:
             pass
-    return date.today()
+    return server_today
+
+
+def _sanitize_prompt_text(value, max_len: int) -> str:
+    """Sanitiza texto de usuario antes de interpolarlo en el prompt de IA.
+
+    Elimina saltos de línea (que rompen el formato del prompt y pueden usarse
+    para inyectar instrucciones) y acota la longitud para limitar el costo en
+    tokens y prevenir prompt-injection por payload masivo.
+    """
+    if not value:
+        return ''
+    return str(value).replace('\n', ' ').replace('\r', ' ').strip()[:max_len]
 from ai_workout.adaptive_engine import AdaptiveEngineService, DOLOR_KEYWORDS
 from ai_workout import training_science as ts
 
@@ -778,7 +792,7 @@ DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
 
     # Consideraciones médicas declaradas en el onboarding — restricción de seguridad.
     condiciones = ctx.get('condiciones_medicas') or []
-    notas_med   = (ctx.get('notas_medicas') or '').strip()
+    notas_med   = _sanitize_prompt_text(ctx.get('notas_medicas'), 500)
     condiciones_txt = ', '.join(condiciones) if condiciones else 'ninguna declarada'
     if condiciones or notas_med:
         restriccion_medica = (
@@ -800,18 +814,26 @@ DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
     cd = ctx.get('coach_directiva') or {}
     cd_lines = []
     if cd.get('objetivo'):
-        cd_lines.append(f"   - Objetivo de la semana fijado por el coach: {cd['objetivo']}")
+        cd_lines.append(f"   - Objetivo de la semana fijado por el coach: {_sanitize_prompt_text(cd['objetivo'], 300)}")
     if cd.get('foco'):
-        cd_lines.append(f"   - Enfatiza especialmente: {cd['foco']}")
+        cd_lines.append(f"   - Enfatiza especialmente: {_sanitize_prompt_text(cd['foco'], 200)}")
     if cd.get('evitar'):
-        cd_lines.append(f"   - Evita (indicación del coach): {cd['evitar']}")
+        cd_lines.append(f"   - Evita (indicación del coach): {_sanitize_prompt_text(cd['evitar'], 200)}")
     if cd.get('nota'):
-        cd_lines.append(f"   - Nota del coach: {cd['nota']}")
+        cd_lines.append(f"   - Nota del coach: {_sanitize_prompt_text(cd['nota'], 300)}")
     directiva_coach = (
         "\n   - DIRECTIVA DEL ENTRENADOR (alta prioridad — el coach del atleta la fijó; síguela "
         "salvo que choque con una restricción absoluta de seguridad de arriba):\n"
         + "\n".join(cd_lines)
     ) if cd_lines else ''
+
+    # Pre-sanitize all user-controlled free-text fields before prompt interpolation.
+    # Prevents prompt injection via newlines/adversarial instructions.
+    _s_dolor_hoy      = _sanitize_prompt_text(ctx.get('dolor_hoy'), 500)
+    _s_notas_checkin  = _sanitize_prompt_text(ctx.get('notas'), 500)
+    _s_notas_medicas  = _sanitize_prompt_text(ctx.get('notas_medicas'), 500)
+    _s_fav            = _sanitize_prompt_text(ctx.get('ejercicios_favoritos'), 300)
+    _s_evitar         = _sanitize_prompt_text(ctx.get('ejercicios_evitar'), 300)
 
     return f"""
 Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
@@ -827,10 +849,10 @@ PERFIL COMPLETO DEL ATLETA:
 - Experiencia deportiva previa: {ctx['experiencia_deportiva'] or 'ninguna especificada'}
 - Lesiones o limitaciones: {ctx['lesiones'] or 'ninguna'}
 - Condiciones médicas declaradas: {', '.join(ctx['condiciones_medicas']) if ctx.get('condiciones_medicas') else 'ninguna'}
-- Notas médicas adicionales: {ctx.get('notas_medicas') or 'ninguna'}
+- Notas médicas adicionales: {_s_notas_medicas or 'ninguna'}
 - Estilo de entrenamiento preferido: {ctx['estilo_entrenamiento'] or 'no especificado'}
-- Ejercicios favoritos: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
-- Ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
+- Ejercicios favoritos: {_s_fav or 'ninguno especificado'}
+- Ejercicios a evitar: {_s_evitar or 'ninguno'}
 - Días de entrenamiento por semana: {ctx['dias_semana'] or 3}
 - Horario preferido: {ctx['horario_preferido'] or 'no especificado'}
 - Nivel de estrés habitual: {ctx['nivel_estres'] or 'no especificado'}
@@ -846,8 +868,8 @@ ESTADO HOY:
 - Estado de ánimo: {ctx['estado_animo']}/5
 - Calidad de sueño: {ctx['calidad_sueno']}{'h' if isinstance(ctx['calidad_sueno'], (int, float)) and ctx['calidad_sueno'] > 4 else '/4'}
 - HRV: {ctx['hrv'] or 'no disponible'}
-- Notas del usuario: {ctx['notas'] or 'ninguna'}
-- Dolor o molestia HOY: {ctx['dolor_hoy'] or 'ninguno reportado'}
+- Notas del usuario: {_s_notas_checkin or 'ninguna'}
+- Dolor o molestia HOY: {_s_dolor_hoy or 'ninguno reportado'}
 - Foco de entrenamiento solicitado: {', '.join(ctx['foco_entrenamiento']) if ctx['foco_entrenamiento'] else 'libre — decide tú según el contexto'}
 - Fatiga acumulada últimas 72h: {ctx['fatiga']}
 - RPE objetivo calculado: {ctx['rpe_target']}/10
@@ -912,8 +934,8 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
    - Prioriza ejercicios multiarticulares (mayor estímulo hormonal y neuromuscular)
    - Ajusta la complejidad técnica al nivel del atleta: a menor nivel de experiencia, patrones más simples y estables; a mayor nivel, mayor demanda técnica y coordinativa permitida
    - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión
-   - Respeta ejercicios a evitar: {ctx['ejercicios_evitar'] or 'ninguno'}
-   - Considera ejercicios favoritos cuando sea apropiado: {ctx['ejercicios_favoritos'] or 'ninguno especificado'}
+   - Respeta ejercicios a evitar: {_s_evitar or 'ninguno'}
+   - Considera ejercicios favoritos cuando sea apropiado: {_s_fav or 'ninguno especificado'}
 
 4. ESTRUCTURA DE LA SESIÓN (NSCA Guidelines, 2022)
    - Calentamiento: activación neuromuscular progresiva, movilidad específica, 8-12 min
@@ -940,7 +962,7 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
 
 INSTRUCCIONES FINALES:
 0. RESTRICCIONES ABSOLUTAS — estas son reglas que NO puedes violar bajo ninguna circunstancia:
-   - Si hay dolor o molestia reportada hoy ("{ctx['dolor_hoy'] or 'ninguno'}"), NUNCA incluyas ejercicios que involucren esa zona corporal. Esto es innegociable.
+   - Si hay dolor o molestia reportada hoy ("{_s_dolor_hoy or 'ninguno'}"), NUNCA incluyas ejercicios que involucren esa zona corporal. Esto es innegociable.
    - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
    - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
    - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.

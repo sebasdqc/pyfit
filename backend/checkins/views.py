@@ -10,19 +10,19 @@ from .serializers import CheckinSerializer
 def _get_local_date(request) -> date:
     """
     Devuelve la fecha local del dispositivo (header X-Local-Date) para lecturas.
-    Si el header no está presente o es inválido, cae back a date.today() (UTC).
-
-    Esto es necesario porque date.today() en el servidor devuelve la fecha UTC,
-    que puede ser un día distinto al del usuario en zonas UTC- cuando entrena
-    en la noche (ej: 10 PM local = 3 AM UTC del día siguiente).
+    Acepta la fecha del cliente solo si está dentro de ±1 día del servidor,
+    al igual que _get_write_date, para un modelo de confianza coherente.
     """
+    server_today = date.today()
     header = request.headers.get('X-Local-Date', '').strip()
     if header:
         try:
-            return date.fromisoformat(header)
+            client_date = date.fromisoformat(header)
+            if abs((client_date - server_today).days) <= 1:
+                return client_date
         except ValueError:
             pass
-    return date.today()
+    return server_today
 
 
 def _get_write_date(request) -> date:

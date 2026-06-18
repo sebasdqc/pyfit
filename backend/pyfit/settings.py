@@ -188,7 +188,18 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'EXCEPTION_HANDLER': 'pyfit.exceptions.json_exception_handler',
+    # Backstop throttles applied to any endpoint that does not set throttle_classes
+    # explicitly. Views with @throttle_classes(...) override these completely.
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    # NUM_PROXIES=1: use the rightmost IP in X-Forwarded-For (real client IP
+    # from our single DO load-balancer), not the leftmost (attacker-controlled).
+    'NUM_PROXIES': 1,
     'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',           # backstop para endpoints sin throttle explícito
+        'user': '300/minute',          # backstop para endpoints autenticados
         'login': '10/minute',
         'register': '5/hour',
         'password_reset': '5/hour',

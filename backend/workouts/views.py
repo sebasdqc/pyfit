@@ -15,19 +15,20 @@ from .models import Session, SessionFeedback, Competition, Exercise, UserExercis
 def _get_local_date(request) -> date:
     """
     Devuelve la fecha local del dispositivo cliente (header X-Local-Date).
-    Fallback a date.today() (UTC) si el header no está presente o es inválido.
-
-    Necesario porque date.today() en el servidor usa UTC, lo que puede
-    diferir del día local del usuario en zonas horarias UTC- cuando entrena
-    en la noche (ej: 10 PM martes local = 3 AM miércoles UTC).
+    Acepta la fecha del cliente solo si está dentro de ±1 día del servidor
+    para cubrir diferencias de zona horaria sin permitir fechas arbitrarias
+    del pasado/futuro (que podrían manipular el historial o las estadísticas).
     """
+    server_today = date.today()
     header = request.headers.get('X-Local-Date', '').strip()
     if header:
         try:
-            return date.fromisoformat(header)
+            client_date = date.fromisoformat(header)
+            if abs((client_date - server_today).days) <= 1:
+                return client_date
         except ValueError:
             pass
-    return date.today()
+    return server_today
 from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer
 
 
