@@ -387,6 +387,37 @@ export default function FeedbackScreen() {
     return () => { cancelled = true }
   }, [])
 
+  // ── Share card data ───────────────────────────────────────────────────────────
+  const [sessionForShare, setSessionForShare] = useState<any>(null)
+
+  useEffect(() => {
+    apiGet(`/api/sessions/${id}/`)
+      .then(data => setSessionForShare(data))
+      .catch(() => {})
+  }, [id])
+
+  const shareCardProps = useMemo(() => {
+    const ia = sessionForShare?.respuesta_ia
+    if (!ia) return {}
+    const allExercises = ((ia.fases || []) as any[]).flatMap((f: any) => f.ejercicios || [])
+    const totalSeries = allExercises.reduce((sum: number, e: any) => sum + (parseInt(String(e.series)) || 0), 0)
+    const fecha: string = sessionForShare?.fecha || ''
+    const parts = fecha.split('-')
+    const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
+    const dateLabel = parts.length === 3
+      ? `${parseInt(parts[2])} ${MONTHS[parseInt(parts[1]) - 1] ?? ''} ${parts[0]}`
+      : undefined
+    return {
+      title: (ia.titulo || ia.objetivo_sesion || undefined) as string | undefined,
+      metrics: [
+        { label: 'EJERCICIOS', value: String(allExercises.length) },
+        { label: 'SERIES',     value: String(totalSeries) },
+        { label: 'DURACIÓN',   value: `${ia.duracion_total || sessionForShare?.duracion_planificada || '--'} min` },
+      ],
+      dateLabel,
+    }
+  }, [sessionForShare])
+
   // ── Share card modal ─────────────────────────────────────────────────────────
   const [shareOpen, setShareOpen] = useState(false)
   const step1Complete   = rpeChoice !== null && sensacion !== null
@@ -743,7 +774,7 @@ export default function FeedbackScreen() {
             contentContainerStyle={styles.shareModalContent}
             showsVerticalScrollIndicator={false}
           >
-            <WorkoutShareCard sessionType="gym" />
+            <WorkoutShareCard sessionType="gym" {...shareCardProps} />
           </ScrollView>
         </View>
       </Modal>

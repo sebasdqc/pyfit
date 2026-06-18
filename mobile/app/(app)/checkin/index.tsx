@@ -511,6 +511,28 @@ export default function CheckinScreen() {
     return null
   }
 
+  function resetCheckin() {
+    setScreenIndex(0)
+    setCategoria(null)
+    setDisciplina(null)
+    setEntornoCardio(null)
+    setGrupoMuscular(null)
+    setRunningMode(null)
+    setPendingCat(null)
+    setPendingDisc(null)
+    setEstadoFisico('bien')
+    setCalidadSueno('bien')
+    setEstadoMental('normal')
+    setZonasDolorHoy([])
+    setTiempoDispo(null)
+    setLocationId(null)
+    setSavedLocName(null)
+    setError('')
+    setCheckinSaved(false)
+    setProcesandoTimer(false)
+    setAddingLoc(false)
+  }
+
   // Tocar una categoría en d4: parpadea 2 veces y avanza a d4_sub. Resetea la
   // subdisciplina para que d4_sub arranque sin selección al cambiar de categoría.
   function pickCategoria(cat: DisciplinaCat) {
@@ -1295,6 +1317,15 @@ export default function CheckinScreen() {
               </LinearGradient>
             </TouchableOpacity>
           )}
+          <TouchableOpacity
+            onPress={resetCheckin}
+            style={styles.resetCheckinBtn}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.resetCheckinText, { color: colors.inkMuted }]}>
+              ↩  Cambiar parámetros
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     )
@@ -1699,6 +1730,12 @@ function makeStyles(c: Colors) {
     nextBtnText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
       color: '#ffffff', letterSpacing: 0.3,
+    },
+    resetCheckinBtn: {
+      marginTop: 12, paddingVertical: 12, alignItems: 'center',
+    },
+    resetCheckinText: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 14,
     },
   })
 }
