@@ -414,6 +414,11 @@ export default function FeedbackScreen() {
         { label: 'SERIES',     value: String(totalSeries) },
         { label: 'DURACIÓN',   value: `${ia.duracion_total || sessionForShare?.duracion_planificada || '--'} min` },
       ],
+      exercises: allExercises.map((e: any) => ({
+        nombre: String(e.nombre || ''),
+        series: parseInt(String(e.series)) || 0,
+        repeticiones: String(e.repeticiones || ''),
+      })),
       dateLabel,
     }
   }, [sessionForShare])

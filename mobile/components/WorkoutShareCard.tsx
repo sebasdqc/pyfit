@@ -50,6 +50,12 @@ export interface ShareCardRouteCoord {
   longitude: number
 }
 
+export interface ShareCardExercise {
+  nombre: string
+  series: number | string
+  repeticiones: string
+}
+
 export interface WorkoutShareCardProps {
   /** Determina la variante visual de la tarjeta. */
   sessionType: WorkoutSessionType
@@ -59,6 +65,8 @@ export interface WorkoutShareCardProps {
   metrics?: ShareCardMetric[]
   /** Traza GPS para dibujar la ruta (running). >= 2 puntos para renderizar. */
   routeCoords?: ShareCardRouteCoord[]
+  /** Lista de ejercicios realizados (gym). Se muestran hasta 6. */
+  exercises?: ShareCardExercise[]
   /** Fecha formateada para el footer (p. ej. "07 JUN 2026"). */
   dateLabel?: string
   /** Handle del usuario para el footer (p. ej. "@sebastian"). */
@@ -224,6 +232,7 @@ interface ShareCardFaceProps {
   title?: string
   metrics: ShareCardMetric[]
   routeCoords?: ShareCardRouteCoord[]
+  exercises?: ShareCardExercise[]
   placeholderLabel: string
   score?: string | number
   userLabel?: string
@@ -231,10 +240,14 @@ interface ShareCardFaceProps {
 }
 
 const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFace(
-  { accent, kicker, glowCorner, title, metrics, routeCoords, placeholderLabel, score, userLabel, dateLabel },
+  { accent, kicker, glowCorner, title, metrics, routeCoords, exercises, placeholderLabel, score, userLabel, dateLabel },
   ref,
 ) {
   const hasRoute = !!(routeCoords && routeCoords.length > 1)
+  const hasExercises = !!(exercises && exercises.length > 0)
+  const visibleExercises = hasExercises ? exercises!.slice(0, 6) : []
+  const extraCount = hasExercises && exercises!.length > 6 ? exercises!.length - 6 : 0
+
   return (
     <View ref={ref} collapsable={false} style={styles.card}>
       <CornerGlow color={accent} corner={glowCorner} />
@@ -272,6 +285,21 @@ const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFac
       <View style={styles.placeholderArea}>
         {hasRoute ? (
           <RoutePath coords={routeCoords!} color={accent} />
+        ) : hasExercises ? (
+          <View style={styles.exerciseList}>
+            {visibleExercises.map((ex, i) => (
+              <View key={i} style={[styles.exerciseRow, i > 0 && styles.exerciseRowBorder]}>
+                <View style={[styles.exerciseDot, { backgroundColor: accent }]} />
+                <Text style={styles.exerciseName} numberOfLines={1}>{ex.nombre}</Text>
+                <Text style={styles.exerciseMeta}>
+                  {ex.series}×{ex.repeticiones}
+                </Text>
+              </View>
+            ))}
+            {extraCount > 0 && (
+              <Text style={styles.exerciseMore}>+{extraCount} más</Text>
+            )}
+          </View>
         ) : (
           <Text style={styles.placeholderText}>{placeholderLabel}</Text>
         )}
@@ -300,6 +328,7 @@ export default function WorkoutShareCard({
   title,
   metrics,
   routeCoords,
+  exercises,
   dateLabel,
   userLabel,
   score,
@@ -379,6 +408,7 @@ export default function WorkoutShareCard({
               title={title}
               metrics={displayMetrics}
               routeCoords={routeCoords}
+              exercises={exercises}
               placeholderLabel={v.placeholderLabel}
               score={score}
               userLabel={userLabel}
@@ -535,12 +565,59 @@ const styles = StyleSheet.create({
     backgroundColor: CARD.placeholderBg,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   placeholderText: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 13,
     letterSpacing: 0.5,
     color: CARD.inkFaint,
+  },
+
+  // Lista de ejercicios (gym)
+  exerciseList: {
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 0,
+  },
+  exerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    gap: 10,
+  },
+  exerciseRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: CARD.border,
+  },
+  exerciseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    flexShrink: 0,
+  },
+  exerciseName: {
+    flex: 1,
+    fontFamily: 'SpaceGrotesk-Medium',
+    fontSize: 13,
+    color: CARD.white,
+    letterSpacing: -0.2,
+  },
+  exerciseMeta: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    color: CARD.inkSecondary,
+    letterSpacing: 0.3,
+    flexShrink: 0,
+  },
+  exerciseMore: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 10,
+    color: CARD.inkFaint,
+    letterSpacing: 0.5,
+    marginTop: 6,
+    textAlign: 'center',
   },
 
   // Zyfit Score
