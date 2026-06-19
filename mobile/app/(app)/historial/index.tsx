@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TextInput,
   Animated,
+  Easing,
   ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -748,6 +749,28 @@ function SessionCard({
   )
 }
 
+// ─── Empty State ──────────────────────────────────────────────────────────────
+// Icono dentro de un círculo de vidrio + entrada con fade y leve slide-up, en vez
+// del glifo geométrico ◎ suelto (que en algunas fuentes se veía como un cuadro).
+function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+  const { colors } = useTheme()
+  const styles = useMemo(() => makeStyles(colors), [colors])
+  const anim = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start()
+  }, [anim])
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] })
+  return (
+    <Animated.View style={[styles.emptyBox, { opacity: anim, transform: [{ translateY }] }]}>
+      <View style={styles.emptyIconCircle}>
+        <Text style={styles.emptyIconGlyph}>{icon}</Text>
+      </View>
+      <Text style={styles.emptyText}>{title}</Text>
+      <Text style={styles.emptySubtext}>{subtitle}</Text>
+    </Animated.View>
+  )
+}
+
 // ─── List View ────────────────────────────────────────────────────────────────
 
 type WeekGroup = { key: string; label: string; sessions: Session[] }
@@ -776,20 +799,12 @@ function ListView({
   }
 
   if (!weeks.length) {
-    if (hasFilters) {
-      return (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyFilterIcon}>◎</Text>
-          <Text style={styles.emptyText}>{t('historial_empty')}</Text>
-          <Text style={styles.emptySubtext}>{t('historial_empty_sub')}</Text>
-        </View>
-      )
-    }
     return (
-      <View style={styles.emptyBox}>
-        <Text style={styles.emptyText}>{t('historial_empty')}</Text>
-        <Text style={styles.emptySubtext}>{t('historial_empty_sub')}</Text>
-      </View>
+      <EmptyState
+        icon={hasFilters ? '🔍' : '🏋️'}
+        title={t('historial_empty')}
+        subtitle={t('historial_empty_sub')}
+      />
     )
   }
 
@@ -1424,10 +1439,19 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       gap: 8,
     },
-    emptyFilterIcon: {
-      color: c.inkFaint,
-      fontSize: 36,
-      marginBottom: 4,
+    emptyIconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 6,
+    },
+    emptyIconGlyph: {
+      fontSize: 28,
     },
     emptyText: {
       color: c.inkSecondary,
