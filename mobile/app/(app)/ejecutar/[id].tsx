@@ -902,6 +902,14 @@ export default function EjecutarScreen() {
   const faseStyle = currentEj ? getFaseStyle(currentEj.faseNombre) : { color: colors.accent, label: '' }
   const nextEj = flatList[currentIndex + 1]
 
+  // Progreso por SERIE (no por ejercicio): la barra avanza con cada serie
+  // completada de toda la sesión, no solo al pasar de un ejercicio al siguiente.
+  const totalSeriesSesion  = flatList.reduce((sum, ej) => sum + (ej.series || 0), 0)
+  const seriesHechasSesion = flatList.reduce(
+    (sum, ej) => sum + Math.min(seriesCompletadas[ej.globalIndex] ?? 0, ej.series || 0),
+    0,
+  )
+
   if (loading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', gap: 14 }]}>
@@ -967,7 +975,7 @@ export default function EjecutarScreen() {
       <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
       {/* Progress bar — topOffset respects safe area (status bar) */}
-      <ProgressBar current={currentIndex} total={flatList.length} topOffset={insets.top} />
+      <ProgressBar current={seriesHechasSesion} total={totalSeriesSesion} topOffset={insets.top} />
 
       {/* Nav bar */}
       <View style={styles.navBar}>
@@ -1181,7 +1189,7 @@ export default function EjecutarScreen() {
             {seriesDone < currentEj.series ? (
               <View style={styles.nextEjCard}>
                 <Text style={styles.nextEjLabel}>{t('ejecutar_next_label')}</Text>
-                <Text style={styles.nextEjNombre}>{currentEj.nombre}</Text>
+                <Text style={styles.nextEjNombre} numberOfLines={1}>{currentEj.nombre}</Text>
                 <Text style={styles.nextEjDetail}>
                   Serie {seriesDone + 1} · {currentEj.repeticiones} reps · RPE {currentEj.rpe_sugerido}
                 </Text>
@@ -1189,7 +1197,7 @@ export default function EjecutarScreen() {
             ) : nextEj ? (
               <View style={styles.nextEjCard}>
                 <Text style={styles.nextEjLabel}>{t('ejecutar_next_exercise')}</Text>
-                <Text style={styles.nextEjNombre}>{nextEj.nombre}</Text>
+                <Text style={styles.nextEjNombre} numberOfLines={1}>{nextEj.nombre}</Text>
                 <Text style={styles.nextEjDetail}>
                   {nextEj.series} series · {nextEj.repeticiones} reps
                 </Text>
@@ -1197,7 +1205,7 @@ export default function EjecutarScreen() {
             ) : (
               <View style={styles.nextEjCard}>
                 <Text style={styles.nextEjLabel}>{t('ejecutar_after_rest')}</Text>
-                <Text style={styles.nextEjNombre}>{t('ejecutar_last_exercise')}</Text>
+                <Text style={styles.nextEjNombre} numberOfLines={1}>{t('ejecutar_last_exercise')}</Text>
               </View>
             )}
 

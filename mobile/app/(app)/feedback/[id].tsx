@@ -85,7 +85,7 @@ function ProgressBar({ step }: { step: number }) {
             key={seg}
             style={[
               pbStyles.segment,
-              isActive    && { flex: 1.25, height: 5, backgroundColor: colors.accent },
+              isActive    && { flex: 1.25, height: 6, borderRadius: 3, backgroundColor: colors.accent },
               isCompleted && { backgroundColor: colors.accentLight, opacity: 0.7 },
               !isActive && !isCompleted && { backgroundColor: colors.borderBright },
             ]}
@@ -98,7 +98,7 @@ function ProgressBar({ step }: { step: number }) {
 
 const pbStyles = StyleSheet.create({
   row:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-  segment: { flex: 1, height: 3, borderRadius: 4 },
+  segment: { flex: 1, height: 4, borderRadius: 2 },
 })
 
 // ─── Option Row ───────────────────────────────────────────────────────────────
@@ -343,13 +343,11 @@ function NextSessionCard({
           <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
           <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.agendarBtn}
-          onPress={() => Alert.alert(t('feedback_coming_soon'), t('feedback_calendar_soon'))}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.agendarBtnText}>📅  Agendar</Text>
-        </TouchableOpacity>
+        {/* Etiqueta informativa, no un botón: agendar aún no existe, así que no
+            mostramos una affordance pulsable que solo abría un Alert. */}
+        <View style={styles.agendarTag}>
+          <Text style={styles.agendarTagText}>📅  {t('feedback_coming_soon')}</Text>
+        </View>
       </View>
     </Animated.View>
   )
@@ -996,14 +994,14 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary, letterSpacing: -0.2, lineHeight: 20,
     },
     nextSessionDia: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkSecondary },
-    agendarBtn: {
-      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
-      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+    agendarTag: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    agendarBtnText: {
-      fontFamily: 'JetBrainsMono-Medium', fontSize: 11,
-      color: c.inkSecondary, letterSpacing: 0.3,
+    agendarTagText: {
+      fontFamily: 'JetBrainsMono-Medium', fontSize: 10,
+      color: c.inkMuted, letterSpacing: 0.5, textTransform: 'uppercase',
     },
 
     // ── Skeleton ──────────────────────────────────────────────────────────────
