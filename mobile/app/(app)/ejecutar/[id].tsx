@@ -1081,6 +1081,14 @@ export default function EjecutarScreen() {
                 </TouchableOpacity>
               </View>
             )}
+
+            <TouchableOpacity
+              style={styles.salirLinkBtn}
+              onPress={handleSalir}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.salirLinkText}>Salir del entrenamiento</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           // ── Rest mode ─────────────────────────────────────────────────────
@@ -1181,6 +1189,14 @@ export default function EjecutarScreen() {
                 color={faseStyle.color}
               />
             </View>
+
+            <TouchableOpacity
+              style={styles.salirLinkBtn}
+              onPress={handleSalir}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.salirLinkText}>Salir del entrenamiento</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -1578,6 +1594,17 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 16,
       color: c.bg,
+    },
+    salirLinkBtn: {
+      marginTop: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    salirLinkText: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 14,
+      color: c.inkMuted,
+      textDecorationLine: 'underline',
     },
   })
 }

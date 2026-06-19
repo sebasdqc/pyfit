@@ -1736,6 +1736,7 @@ function makeStyles(c: Colors) {
     },
     resetCheckinText: {
       fontFamily: 'SpaceGrotesk-Medium', fontSize: 14,
+      textDecorationLine: 'underline',
     },
   })
 }

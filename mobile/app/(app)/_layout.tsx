@@ -76,7 +76,7 @@ const ROUTE_LABEL_KEY: Record<string, string> = {
 
 // Rutas donde NO se muestra la barra inferior: durante el entrenamiento y su
 // feedback, para evitar fugas a otras pantallas a mitad de la sesión.
-const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]']
+const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'generate/index', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]']
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()

@@ -1312,7 +1312,7 @@ export default function GenerateScreen() {
     // Fire-and-forget: marks session as started for analytics.
     // Navigation does not depend on this completing.
     apiPost(`/api/sessions/${sesionId}/iniciar/`, {}).catch(() => {})
-    router.push(`/(app)/ejecutar/${sesionId}`)
+    router.replace(`/(app)/ejecutar/${sesionId}`)
   }, [sesionId])
 
   const handleMarcarCompletada = useCallback(() => {
@@ -1320,7 +1320,7 @@ export default function GenerateScreen() {
     const now = Date.now()
     if (now - navTsRef.current < 700) return
     navTsRef.current = now
-    router.push(`/(app)/feedback/${sesionId}`)
+    router.replace(`/(app)/feedback/${sesionId}`)
   }, [sesionId])
 
   const handleCancelar = useCallback(() => {
