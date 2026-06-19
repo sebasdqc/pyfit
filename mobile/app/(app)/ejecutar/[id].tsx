@@ -505,10 +505,10 @@ function SliderButton({ onComplete, label, color }: { onComplete: () => void; la
     extrapolate: 'clamp',
   })
 
+  const TRACK_H = 60
   return (
     <View
-      // Más angosto (88%, centrado) → menor recorrido y menos fricción.
-      style={{ height: 60, width: '88%', alignSelf: 'center', borderRadius: 30, backgroundColor: `${color}18`, borderWidth: 1.5, borderColor: `${color}45`, overflow: 'hidden', justifyContent: 'center' }}
+      style={{ height: TRACK_H, width: '88%', alignSelf: 'center', borderRadius: TRACK_H / 2, backgroundColor: `${color}18`, borderWidth: 1.5, borderColor: `${color}45`, overflow: 'hidden', justifyContent: 'center' }}
       onLayout={e => { const w = e.nativeEvent.layout.width; trackWRef.current = w; setTrackW(w) }}
     >
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', opacity: labelOpacity }}>
@@ -517,13 +517,27 @@ function SliderButton({ onComplete, label, color }: { onComplete: () => void; la
       {trackW > 0 && (
         <Animated.View
           style={{
-            position: 'absolute', top: PAD, left: PAD,
-            width: HANDLE, height: 60 - PAD * 2, borderRadius: 30 - PAD,
-            backgroundColor: color, alignItems: 'center', justifyContent: 'center',
+            position: 'absolute',
+            top: (TRACK_H - HANDLE) / 2,
+            left: PAD,
+            width: HANDLE,
+            height: HANDLE,
+            borderRadius: HANDLE / 2,
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'center',
             transform: [{ translateX: pan }],
           }}
           {...panResponder.panHandlers}
         >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: color }]} />
+          <LinearGradient
+            colors={['rgba(255,255,255,0.32)', 'rgba(0,0,0,0.14)']}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+          <View style={{ position: 'absolute', top: 1, left: 1, right: 1, bottom: 1, borderRadius: HANDLE / 2 - 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' }} />
           <Text style={{ color: '#000', fontSize: 22, lineHeight: 26 }}>›</Text>
         </Animated.View>
       )}
@@ -580,6 +594,7 @@ export default function EjecutarScreen() {
   // Per-set tracking
   const [currentPeso, setCurrentPeso] = useState('')
   const [currentReps, setCurrentReps] = useState('')
+  const [focusedInput, setFocusedInput] = useState<'peso' | 'reps' | null>(null)
   const currentPesoRef = useRef('')
   const currentRepsRef = useRef('')
   const seriesLogRef = useRef<Record<number, Array<{ peso: string; reps: string; dificultad?: number }>>>({})
@@ -1115,13 +1130,15 @@ export default function EjecutarScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <View style={styles.descansoInputInner}>
+                  <View style={[styles.descansoInputInner, focusedInput === 'peso' && { borderColor: faseStyle.color, backgroundColor: `${faseStyle.color}0D` }]}>
                     <TextInput
                       style={styles.descansoInput}
                       value={currentPeso}
                       onChangeText={v => { setCurrentPeso(v); currentPesoRef.current = v }}
+                      onFocus={() => setFocusedInput('peso')}
+                      onBlur={() => setFocusedInput(null)}
                       placeholder="—"
-                      placeholderTextColor={colors.inkFaint}
+                      placeholderTextColor={colors.inkMuted}
                       keyboardType="decimal-pad"
                       maxLength={6}
                       returnKeyType="done"
@@ -1135,13 +1152,15 @@ export default function EjecutarScreen() {
 
               <View style={styles.descansoInputWrap}>
                 <Text style={styles.descansoInputLabel}>{t('ejecutar_reps')}</Text>
-                <View style={styles.descansoInputInner}>
+                <View style={[styles.descansoInputInner, focusedInput === 'reps' && { borderColor: faseStyle.color, backgroundColor: `${faseStyle.color}0D` }]}>
                   <TextInput
                     style={styles.descansoInput}
                     value={currentReps}
                     onChangeText={v => { setCurrentReps(v); currentRepsRef.current = v }}
+                    onFocus={() => setFocusedInput('reps')}
+                    onBlur={() => setFocusedInput(null)}
                     placeholder="—"
-                    placeholderTextColor={colors.inkFaint}
+                    placeholderTextColor={colors.inkMuted}
                     keyboardType="number-pad"
                     maxLength={3}
                     returnKeyType="done"
