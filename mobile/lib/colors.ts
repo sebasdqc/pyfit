@@ -163,6 +163,38 @@ export const NEON_COLORS = {
   gradientTop: 'rgba(255,45,120,0.10)', // glow neón superior
 }
 
+// ─── Radius scale ─────────────────────────────────────────────────────────────
+// Escala única de border-radius para toda la app. Antes había ~9 valores sueltos
+// (14, 16, 18, 19, 20, 22, 24…) que rompían la cohesión visual. Usar estos tokens.
+//   xs   chips/tags pequeños, dots redondeados
+//   sm   inputs, cards internas, botones compactos
+//   md   cards estándar (la base)
+//   lg   cards prominentes / superficies destacadas
+//   xl   sheets, modales, hero cards
+//   pill píldoras totalmente redondeadas
+export const RADII = {
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  pill: 999,
+} as const
+
+// Sombra de elevación sutil para cards sobre fondos oscuros. Un negro puro no se
+// ve sobre un fondo casi-negro, por eso se tiñe con un color de acento a baja
+// opacidad → leve "lift"/glow en iOS + elevation en Android. Pasar el color del
+// acento o de la fase para que la sombra sea contextual.
+export function cardShadow(color: string, opacity = 0.18) {
+  return {
+    shadowColor: color,
+    shadowOpacity: opacity,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  }
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 

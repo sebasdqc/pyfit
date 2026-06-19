@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react'
 import {
   Alert,
   Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -143,8 +144,31 @@ function OptionRow({
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
+// Pulso de opacidad compartido para los skeletons — el estado de carga "respira"
+// en vez de quedarse congelado. Corre en el hilo nativo (opacity).
+function useSkeletonPulse() {
+  const pulse = useRef(new Animated.Value(0.4)).current
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [pulse])
+  return pulse
+}
+
 function SkeletonLine({ width, height = 12, styles }: { width: string | number; height?: number; styles: ReturnType<typeof makeStyles> }) {
-  return <View style={[styles.skeletonLine, { width: width as any, height }]} />
+  const pulse = useSkeletonPulse()
+  return <Animated.View style={[styles.skeletonLine, { width: width as any, height, opacity: pulse }]} />
+}
+
+function SkeletonCircle({ styles }: { styles: ReturnType<typeof makeStyles> }) {
+  const pulse = useSkeletonPulse()
+  return <Animated.View style={[styles.skeletonCircle, { opacity: pulse }]} />
 }
 
 // ─── Step 2 — Trainer Summary ─────────────────────────────────────────────────
@@ -691,7 +715,7 @@ export default function FeedbackScreen() {
                 <>
                   <Text style={styles.loadingLabel}>{t('feedback_generating_logro')}</Text>
                   <View style={styles.achievementCard}>
-                    <View style={styles.skeletonCircle} />
+                    <SkeletonCircle styles={styles} />
                     <SkeletonLine width="55%" height={22} styles={styles} />
                     <SkeletonLine width="85%" height={12} styles={styles} />
                     <SkeletonLine width="70%" height={12} styles={styles} />

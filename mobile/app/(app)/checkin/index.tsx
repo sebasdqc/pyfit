@@ -158,6 +158,19 @@ const TIPOS_LUGAR = ['Gimnasio', 'Casa', 'Exterior']
 
 // ─── Body Map ─────────────────────────────────────────────────────────────────
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
+
+// Punto de zona seleccionada — entra con un "pop" elástico (spring sobre el radio)
+// para confirmar visualmente el toque. useNativeDriver: false porque animamos una
+// prop de SVG, no un transform.
+function AnimatedZoneDot({ cx, cy, color }: { cx: number; cy: number; color: string }) {
+  const r = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.spring(r, { toValue: 5, useNativeDriver: false, tension: 140, friction: 5 }).start()
+  }, [r])
+  return <AnimatedCircle cx={cx} cy={cy} r={r} fill={color} opacity={0.9} />
+}
+
 function CheckinBodyMap({
   selectedZones,
   onZonePress,
@@ -169,14 +182,15 @@ function CheckinBodyMap({
   defaultFill:   string
   defaultStroke: string
 }) {
-  const SEL  = 'rgba(255,107,107,0.26)'
+  const SEL  = 'rgba(255,107,107,0.45)'   // más opaco → la selección se nota en dark mode
   const SSEL = '#ff6b6b'
   const DEF  = defaultFill
   const SDEF = defaultStroke
 
   function f(id: string) { return selectedZones.includes(id) ? SEL  : DEF  }
   function s(id: string) { return selectedZones.includes(id) ? SSEL : SDEF }
-  function p(id: string) { return () => onZonePress(id) }
+  // Haptic ligero al tocar una zona → feedback táctil que confirma el registro.
+  function p(id: string) { return () => { Haptics.selectionAsync(); onZonePress(id) } }
 
   return (
     <Svg width={160} height={320} viewBox="0 0 180 360">
@@ -212,7 +226,7 @@ function CheckinBodyMap({
 
       {Object.keys(ZONE_DOTS).filter(id => selectedZones.includes(id)).map(id => {
         const [cx, cy] = ZONE_DOTS[id]
-        return <Circle key={id} cx={cx} cy={cy} r={5} fill={SSEL} opacity={0.9} />
+        return <AnimatedZoneDot key={id} cx={cx} cy={cy} color={SSEL} />
       })}
 
       <Rect x={65}  y={57}  width={50} height={56} fill="transparent" onPress={p('pecho')} />

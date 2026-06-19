@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import { router, useLocalSearchParams } from 'expo-router'
-import { COLORS, FASES } from '../../../lib/colors'
+import { COLORS, FASES, RADII, cardShadow } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
@@ -276,7 +276,7 @@ const ratingStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 18,
+    borderRadius: RADII.md,
     paddingVertical: 14,
     paddingHorizontal: 10,
     gap: 12,
@@ -1034,7 +1034,7 @@ export default function EjecutarScreen() {
             </View>
 
             {/* Series info card — solo stats, sin encabezado */}
-            <View style={[styles.serieCard, { borderColor: faseStyle.color + '40' }]}>
+            <View style={[styles.serieCard, { borderColor: faseStyle.color + '40' }, cardShadow(faseStyle.color)]}>
               <View style={styles.serieStats}>
                 <View style={styles.serieStat}>
                   <Text style={styles.serieStatValue}>{currentEj.repeticiones}</Text>
@@ -1260,7 +1260,7 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
-      borderRadius: 14,
+      borderRadius: RADII.md,
       paddingVertical: 12,
       paddingHorizontal: 28,
     },
@@ -1379,7 +1379,7 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
-      borderRadius: 14,
+      borderRadius: RADII.md,
       padding: 14,
       gap: 6,
     },
@@ -1398,7 +1398,7 @@ function makeStyles(c: Colors) {
     },
     serieCard: {
       borderWidth: 1,
-      borderRadius: 18,
+      borderRadius: RADII.md,
       padding: 18,
       backgroundColor: c.cardBg,
     },
@@ -1463,7 +1463,7 @@ function makeStyles(c: Colors) {
       backgroundColor: 'rgba(50,200,150,0.1)',
       borderWidth: 1,
       borderColor: 'rgba(50,200,150,0.3)',
-      borderRadius: 14,
+      borderRadius: RADII.md,
       paddingVertical: 14,
       alignItems: 'center',
     },

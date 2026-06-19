@@ -542,14 +542,28 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
   style?: object
 }) {
   const { colors } = useTheme()
+  // Pulso de opacidad (shimmer) para que el estado de carga se sienta vivo y no
+  // como contenido congelado. useNativeDriver: la opacidad corre en el hilo nativo.
+  const pulse = useRef(new Animated.Value(0.4)).current
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [pulse])
   return (
-    <View
+    <Animated.View
       style={[
         {
           width: width as number,
           height,
           borderRadius,
           backgroundColor: colors.glassBg,
+          opacity: pulse,
         },
         style,
       ]}
@@ -1409,9 +1423,8 @@ export default function DashboardScreen() {
         {loading ? (
           <View style={[styles.zsCard, { opacity: 0.5 }]}>
             <Skeleton width={90} height={9} borderRadius={4} style={{ alignSelf: 'center' }} />
-            <View style={{ width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
-              backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.08)', alignSelf: 'center', marginVertical: 8 }} />
+            <Skeleton width={RING_SIZE} height={RING_SIZE} borderRadius={RING_SIZE / 2}
+              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignSelf: 'center', marginVertical: 8 }} />
             <Skeleton width={120} height={18} borderRadius={5} style={{ alignSelf: 'center' }} />
             <Skeleton width="85%" height={12} borderRadius={4} style={{ alignSelf: 'center', marginTop: 6 }} />
           </View>

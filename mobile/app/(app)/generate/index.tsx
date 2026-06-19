@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { router, useLocalSearchParams } from 'expo-router'
-import { COLORS, FASES, Colors } from '../../../lib/colors'
+import { COLORS, FASES, Colors, RADII, cardShadow } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
@@ -622,7 +622,7 @@ function makeMStyles(c: Colors) {
       gap:               12,
       paddingVertical:   12,
       paddingHorizontal: 14,
-      borderRadius:      14,
+      borderRadius:      RADII.md,
       marginBottom:       6,
       borderWidth:        1,
       borderColor:       c.borderDefault,
@@ -1714,9 +1714,10 @@ function makeStyles(c: Colors) {
       backgroundColor: 'rgba(79,140,255,0.07)',
       borderWidth:     1,
       borderColor:     'rgba(79,140,255,0.2)',
-      borderRadius:    16,
+      borderRadius:    RADII.md,
       padding:         16,
       marginBottom:    24,
+      ...cardShadow(c.accent, 0.12),
     },
     trainerCardHeader: {
       flexDirection: 'row',
