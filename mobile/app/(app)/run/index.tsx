@@ -214,6 +214,22 @@ export default function RunScreen() {
     }
   }, [error, status])
 
+  // Mostrar el aviso de ubicación automáticamente 1.5 s después de entrar a la
+  // pantalla (solo en exterior y si el usuario no lo aceptó antes). Evita tener
+  // que pulsar EMPEZAR para que aparezca; al aceptar, la carrera arranca sola.
+  useEffect(() => {
+    if (isIndoor) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      let accepted: string | null = null
+      try {
+        accepted = await AsyncStorage.getItem(BG_LOCATION_DISCLOSURE_KEY)
+      } catch {}
+      if (!cancelled && accepted !== 'true') setDisclosureVisible(true)
+    }, 1500)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [isIndoor])
+
   const inProgress = status === 'active' || status === 'paused'
 
   // Disclosure prominente de ubicación en segundo plano (requisito de Google Play).
