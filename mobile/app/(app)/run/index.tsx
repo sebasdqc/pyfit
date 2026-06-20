@@ -29,6 +29,7 @@ import {
 import { apiGet } from '../../../lib/api'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
+import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
 
 // Clave de consentimiento de la disclosure prominente de ubicación en segundo
 // plano. Google Play exige mostrar este aviso ANTES de solicitar el permiso
@@ -130,6 +131,7 @@ export default function RunScreen() {
   const [locationReady, setLocationReady] = useState(false)
   const [userWeightKg, setUserWeightKg] = useState(70)
   const [rpe, setRpe] = useState(0)
+  const [disclosureVisible, setDisclosureVisible] = useState(false)
 
   // Indoor pulse animation
   const pulseAnim = useRef(new Animated.Value(1)).current
@@ -228,20 +230,15 @@ export default function RunScreen() {
     } catch {
       // Si AsyncStorage falla, mostramos la disclosure igualmente (más seguro).
     }
-    Alert.alert(
-      'Ubicación en segundo plano',
-      'Para registrar tu carrera al completo, Zyfit recopila tu ubicación (GPS) también cuando la app está en segundo plano o con la pantalla apagada. La ubicación se usa exclusivamente para trazar tu recorrido y calcular distancia, ritmo y desnivel. Puedes revocar este permiso cuando quieras desde los ajustes del sistema.',
-      [
-        { text: 'Ahora no', style: 'cancel' },
-        {
-          text: 'Continuar',
-          onPress: async () => {
-            await AsyncStorage.setItem(BG_LOCATION_DISCLOSURE_KEY, 'true').catch(() => {})
-            startRun()
-          },
-        },
-      ],
-    )
+    setDisclosureVisible(true)
+  }
+
+  // Aceptar el aviso: persistimos el consentimiento (basta mostrarlo una vez) y
+  // arrancamos la carrera, que es quien solicita el permiso de ubicación.
+  async function handleDisclosureAccept() {
+    setDisclosureVisible(false)
+    await AsyncStorage.setItem(BG_LOCATION_DISCLOSURE_KEY, 'true').catch(() => {})
+    startRun()
   }
 
   function handleExit() {
@@ -500,6 +497,14 @@ export default function RunScreen() {
           )}
         </View>
       </View>
+
+      {/* Aviso prominente de ubicación en segundo plano (requisito de Google Play).
+          Se muestra una sola vez, antes de que `startRun` solicite el permiso. */}
+      <BgLocationDisclosure
+        visible={disclosureVisible}
+        onAccept={handleDisclosureAccept}
+        onDismiss={() => setDisclosureVisible(false)}
+      />
     </View>
   )
 }
