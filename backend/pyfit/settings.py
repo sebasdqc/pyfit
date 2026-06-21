@@ -62,6 +62,9 @@ INSTALLED_APPS = [
     'checkins',
     'ai_workout',
     'runs',
+    # Motor de running inteligente (espejo de ai_workout): ciencia + adaptación +
+    # generación. Sus modelos de datos viven en la app 'runs'.
+    'ai_running',
     'devices',
     # Vertical B2B "Zyfit Performance" (panel web para centros deportivos).
     'performance',

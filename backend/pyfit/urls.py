@@ -121,6 +121,9 @@ urlpatterns = [
     # Runs (Free Run + future Planned Run)
     path('api/runs/', include('runs.urls')),
 
+    # Running inteligente (motor de generación de rutinas de carrera)
+    path('api/running/', include('ai_running.urls')),
+
     # Training Cycle (periodization)
     path('api/training-cycle/', workout_views.training_cycle_view),
     path('api/training-cycle/advance/', workout_views.training_cycle_advance),
