@@ -38,7 +38,7 @@ import Svg, { Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-sv
 // que nunca aparecen en la imagen final.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type WorkoutSessionType = 'running' | 'gym'
+export type WorkoutSessionType = 'running' | 'gym' | 'descanso'
 
 export interface ShareCardMetric {
   label: string
@@ -67,6 +67,8 @@ export interface WorkoutShareCardProps {
   routeCoords?: ShareCardRouteCoord[]
   /** Lista de ejercicios realizados (gym). Se muestran hasta 6. */
   exercises?: ShareCardExercise[]
+  /** Frase protagonista (variante 'descanso'); ocupa el área central de la tarjeta. */
+  phrase?: string
   /** Fecha formateada para el footer (p. ej. "07 JUN 2026"). */
   dateLabel?: string
   /** Handle del usuario para el footer (p. ej. "@sebastian"). */
@@ -86,6 +88,7 @@ const CARD = {
   white: '#ffffff',
   green: '#1DDE82',
   purple: '#6366F1',
+  violet: '#A78BFA',
   inkSecondary: 'rgba(255,255,255,0.6)',
   inkMuted: 'rgba(255,255,255,0.4)',
   inkFaint: 'rgba(255,255,255,0.25)',
@@ -119,6 +122,8 @@ interface VariantConfig {
   placeholderLabel: string
   /** Métricas mostradas (tiempo, ritmo, series, etc.). */
   metrics: { label: string; value: string }[]
+  /** Texto del botón de compartir (fuera de la captura). */
+  shareLabel: string
 }
 
 const VARIANTS: Record<WorkoutSessionType, VariantConfig> = {
@@ -128,6 +133,7 @@ const VARIANTS: Record<WorkoutSessionType, VariantConfig> = {
     kicker: 'CARRERA',
     btnText: '#06281A',
     placeholderLabel: '[ruta]',
+    shareLabel: 'COMPARTIR RUTINA',
     metrics: [
       { label: 'TIEMPO', value: '--' },
       { label: 'RITMO', value: '--' },
@@ -140,11 +146,23 @@ const VARIANTS: Record<WorkoutSessionType, VariantConfig> = {
     kicker: 'FUERZA',
     btnText: '#ffffff',
     placeholderLabel: '[ejercicios]',
+    shareLabel: 'COMPARTIR RUTINA',
     metrics: [
       { label: 'EJERCICIOS', value: '--' },
       { label: 'SERIES', value: '--' },
       { label: 'VOLUMEN', value: '--' },
     ],
+  },
+  // Día de descanso: sin métricas ni bloque de ruta/ejercicios. El protagonista es
+  // la frase (prop `phrase`), que ocupa el área central. Acento violeta calmo.
+  descanso: {
+    accent: CARD.violet,
+    glowCorner: 'right',
+    kicker: 'DÍA DE DESCANSO',
+    btnText: '#1b1340',
+    placeholderLabel: '',
+    shareLabel: 'COMPARTIR',
+    metrics: [],
   },
 }
 
@@ -233,6 +251,7 @@ interface ShareCardFaceProps {
   metrics: ShareCardMetric[]
   routeCoords?: ShareCardRouteCoord[]
   exercises?: ShareCardExercise[]
+  phrase?: string
   placeholderLabel: string
   score?: string | number
   userLabel?: string
@@ -240,7 +259,7 @@ interface ShareCardFaceProps {
 }
 
 const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFace(
-  { accent, kicker, glowCorner, title, metrics, routeCoords, exercises, placeholderLabel, score, userLabel, dateLabel },
+  { accent, kicker, glowCorner, title, metrics, routeCoords, exercises, phrase, placeholderLabel, score, userLabel, dateLabel },
   ref,
 ) {
   const hasRoute = !!(routeCoords && routeCoords.length > 1)
@@ -266,24 +285,31 @@ const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFac
         <Text style={styles.title}>{title ?? '— —'}</Text>
       </View>
 
-      {/* Métricas */}
-      <View style={styles.metricsRow}>
-        {metrics.map((m, i) => (
-          <View
-            key={`${m.label}-${i}`}
-            style={[styles.metric, i < metrics.length - 1 && styles.metricDivider]}
-          >
-            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {m.value}
-            </Text>
-            <Text style={styles.metricLabel}>{m.label}</Text>
-          </View>
-        ))}
-      </View>
+      {/* Métricas (se omiten en variantes sin métricas, p. ej. descanso) */}
+      {metrics.length > 0 && (
+        <View style={styles.metricsRow}>
+          {metrics.map((m, i) => (
+            <View
+              key={`${m.label}-${i}`}
+              style={[styles.metric, i < metrics.length - 1 && styles.metricDivider]}
+            >
+              <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {m.value}
+              </Text>
+              <Text style={styles.metricLabel}>{m.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
-      {/* Área grande: ruta (running) o ejercicios (gym) */}
+      {/* Área grande: frase (descanso) · ruta (running) · ejercicios (gym) */}
       <View style={styles.placeholderArea}>
-        {hasRoute ? (
+        {phrase ? (
+          <View style={styles.phraseBlock}>
+            <Text style={[styles.phraseQuote, { color: accent }]}>“</Text>
+            <Text style={styles.phraseText}>{phrase}</Text>
+          </View>
+        ) : hasRoute ? (
           <RoutePath coords={routeCoords!} color={accent} />
         ) : hasExercises ? (
           <View style={styles.exerciseList}>
@@ -329,6 +355,7 @@ export default function WorkoutShareCard({
   metrics,
   routeCoords,
   exercises,
+  phrase,
   dateLabel,
   userLabel,
   score,
@@ -372,7 +399,7 @@ export default function WorkoutShareCard({
       if (canShare) {
         await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
-          dialogTitle: 'Compartir entrenamiento',
+          dialogTitle: sessionType === 'descanso' ? 'Compartir descanso' : 'Compartir entrenamiento',
           UTI: 'public.png',
         })
       } else {
@@ -409,6 +436,7 @@ export default function WorkoutShareCard({
               metrics={displayMetrics}
               routeCoords={routeCoords}
               exercises={exercises}
+              phrase={phrase}
               placeholderLabel={v.placeholderLabel}
               score={score}
               userLabel={userLabel}
@@ -444,7 +472,7 @@ export default function WorkoutShareCard({
         {sharing ? (
           <ActivityIndicator color={active.btnText} />
         ) : (
-          <Text style={[styles.shareBtnText, { color: active.btnText }]}>COMPARTIR RUTINA</Text>
+          <Text style={[styles.shareBtnText, { color: active.btnText }]}>{v.shareLabel}</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -572,6 +600,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.5,
     color: CARD.inkFaint,
+  },
+
+  // Frase protagonista (variante descanso)
+  phraseBlock: {
+    paddingHorizontal: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phraseQuote: {
+    fontFamily: 'SpaceGrotesk-Bold',
+    fontSize: 60,
+    lineHeight: 52,
+    marginBottom: 8,
+  },
+  phraseText: {
+    fontFamily: 'SpaceGrotesk-Bold',
+    fontSize: 23,
+    lineHeight: 31,
+    letterSpacing: -0.5,
+    color: CARD.white,
+    textAlign: 'center',
   },
 
   // Lista de ejercicios (gym)

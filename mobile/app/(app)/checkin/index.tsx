@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Alert, View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, TextInput, Animated, PanResponder,
+  StyleSheet, ActivityIndicator, TextInput, Animated, PanResponder, Modal,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,6 +14,8 @@ import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
 import { runModeForEntorno } from '../../../lib/runMode'
+import { getUser } from '../../../lib/storage'
+import WorkoutShareCard from '../../../components/WorkoutShareCard'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
 
@@ -70,6 +72,13 @@ const CAT_CARDIO = { cat: 'CARDIOVASCULAR' as const, path: 'running'     as cons
 const CAT_FUERZA = { cat: 'FUERZA'         as const, path: 'musculacion' as const, foco: 'serio',     color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)' }
 const CAT_MOVIL  = { cat: 'MOVILIDAD'      as const, path: 'libre'       as const, foco: 'moverme',   color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.45)' }
 
+// Día de descanso: 4ª categoría SIN disciplina ni ubicación. No abre subdisciplinas
+// (d4_sub) ni genera entrenamiento; recorre el estado de hoy, guarda el check-in y
+// termina en un resumen con tarjeta para compartir. Acento violeta calmo.
+const REST_COLOR = '#a78bfa'
+const REST_COLOR_DARK = '#7c5cf0'
+const REST_FRASE = 'El descanso es tan importante como el entrenamiento.'
+
 const DISCIPLINA_OPTS = [
   { id: 'running'      as const, label: 'Running',              sub: 'Trabajo aeróbico en ruta',        ...CAT_CARDIO },
   { id: 'ciclismo'     as const, label: 'Ciclismo',             sub: 'Resistencia sobre la bici',       ...CAT_CARDIO },
@@ -91,7 +100,10 @@ const CATEGORIA_OPTS = [
   { cat: 'CARDIOVASCULAR' as const, label: 'Cardiovascular', sub: 'Resistencia y trabajo aeróbico',    color: '#ff8c42', bg: 'rgba(255,140,66,0.1)', border: 'rgba(255,140,66,0.45)' },
   { cat: 'FUERZA'         as const, label: 'Fuerza',         sub: 'Fuerza, hipertrofia y potencia',    color: '#4f8cff', bg: 'rgba(79,140,255,0.1)', border: 'rgba(79,140,255,0.45)' },
   { cat: 'MOVILIDAD'      as const, label: 'Movilidad',      sub: 'Flexibilidad, yoga y recuperación', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.45)' },
+  { cat: 'DESCANSO'       as const, label: 'Día de descanso', sub: 'Recuperación, sueño y bienestar',  color: REST_COLOR, bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.45)' },
 ]
+// Categoría incluye DESCANSO (que NO existe como disciplina en DISCIPLINA_OPTS).
+type Categoria = DisciplinaCat | 'DESCANSO'
 
 // Para disciplinas al aire libre / agua, "¿dónde entrenas hoy?" se reduce a 2
 // entornos simples (sin lugares guardados ni implementos). La elección se guarda
@@ -150,6 +162,8 @@ type ScreenId = typeof SCREENS[number]
 const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd5']
 const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5', 'd5b_grupo']
 const SEQ_OTHER:       ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5']
+// Descanso: solo categoría → estado de hoy (sin disciplina, tiempo, ubicación ni grupo).
+const SEQ_DESCANSO:    ScreenId[] = ['d4', 'd_estado']
 
 interface Location { id: number; nombre: string; tipo: string; implementos?: string[] }
 
@@ -263,6 +277,18 @@ function formatDate(lang: string): string {
     return `${DAYS_EN[d.getDay()]}, ${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
   }
   return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`
+}
+
+// Footer de la tarjeta para compartir: fecha de hoy "21 JUN 2026" y @handle.
+const MESES_SHORT = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
+function formatShareDate(): string {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2, '0')} ${MESES_SHORT[d.getMonth()]} ${d.getFullYear()}`
+}
+function handleFromUser(u: { nombre?: string; email?: string } | null): string | undefined {
+  if (!u) return undefined
+  const base = (u.nombre || u.email?.split('@')[0] || '').trim().toLowerCase().replace(/\s+/g, '')
+  return base ? `@${base}` : undefined
 }
 
 // ─── Point slider ─────────────────────────────────────────────────────────────
@@ -400,6 +426,11 @@ export default function CheckinScreen() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  // Handle del usuario para el footer de la tarjeta de descanso (failure-safe).
+  useEffect(() => {
+    getUser().then(u => setUserLabel(handleFromUser(u))).catch(() => {})
+  }, [])
+
   // Coach vinculado (si existe) → aviso en la 1ª página. Failure-safe: sin coach
   // o sin red, no se muestra nada.
   const [coachNombre, setCoachNombre] = useState<string | null>(null)
@@ -462,7 +493,7 @@ export default function CheckinScreen() {
   const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
   const [estadoMental, setEstadoMental] = useState<EstadoMental | null>('normal')
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
-  const [categoria, setCategoria] = useState<DisciplinaCat | null>(null)
+  const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
   // Entorno simple (exteriores/interiores · aguas abiertas/piscina) para cardio
   // al aire libre; reemplaza la selección de lugar guardado en esas disciplinas.
@@ -470,7 +501,7 @@ export default function CheckinScreen() {
   const [grupoMuscular, setGrupoMuscular] = useState<GrupoMuscular | null>(null)
   const [runningMode, setRunningMode] = useState<'libre' | 'inteligente' | null>(null)
   // Animación de "parpadeo x2" de la card de categoría antes de avanzar a d4_sub.
-  const [pendingCat, setPendingCat] = useState<DisciplinaCat | null>(null)
+  const [pendingCat, setPendingCat] = useState<Categoria | null>(null)
   // Idem para la disciplina concreta en d4_sub.
   const [pendingDisc, setPendingDisc] = useState<TipoDisciplina | null>(null)
   const flashAnim = useRef(new Animated.Value(1)).current
@@ -482,6 +513,9 @@ export default function CheckinScreen() {
   const submittingRef = useRef(false)
   const [checkinSaved, setCheckinSaved] = useState(false)
   const [procesandoTimer, setProcesandoTimer] = useState(false)
+  // Tarjeta para compartir del día de descanso (modal en el resumen).
+  const [shareOpen, setShareOpen] = useState(false)
+  const [userLabel, setUserLabel] = useState<string | undefined>(undefined)
 
   const currentScreen = SCREENS[screenIndex]
   const selectedLocation = locations.find(l => l.id === locationId)
@@ -494,13 +528,16 @@ export default function CheckinScreen() {
     [disciplina],
   )
   const showGrupoMuscular = discPath === 'musculacion'
+  // Día de descanso: la categoría sola define el flujo (no hay disciplina).
+  const isDescanso = categoria === 'DESCANSO'
 
   // Progress bar: pick the right sequence based on the disciplina's path
   const interactiveSeq: ScreenId[] = useMemo(() => {
+    if (isDescanso)                 return SEQ_DESCANSO
     if (discPath === 'running')     return SEQ_RUNNING
     if (discPath === 'musculacion') return SEQ_MUSCULACION
     return SEQ_OTHER
-  }, [discPath])
+  }, [discPath, isDescanso])
 
   const nInteractive = interactiveSeq.length
   const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
@@ -549,7 +586,7 @@ export default function CheckinScreen() {
 
   // Tocar una categoría en d4: parpadea 2 veces y avanza a d4_sub. Resetea la
   // subdisciplina para que d4_sub arranque sin selección al cambiar de categoría.
-  function pickCategoria(cat: DisciplinaCat) {
+  function pickCategoria(cat: Categoria) {
     if (pendingCat) return
     setCategoria(cat)
     setDisciplina(null)
@@ -564,7 +601,8 @@ export default function CheckinScreen() {
       Animated.timing(flashAnim, { toValue: 1,    duration: 110, useNativeDriver: true }),
     ]).start(() => {
       setPendingCat(null)
-      setScreenIndex(SCREENS.indexOf('d4_sub'))
+      // Descanso no tiene subdisciplinas → salta directo al estado de hoy.
+      setScreenIndex(SCREENS.indexOf(cat === 'DESCANSO' ? 'd_estado' : 'd4_sub'))
     })
   }
 
@@ -590,8 +628,10 @@ export default function CheckinScreen() {
 
   function goBack() {
     if (screenIndex === 0) { router.back(); return }
-    // Desde el estado combinado: volver al paso GPS (cardio) o a la subdisciplina.
+    // Desde el estado combinado: descanso vuelve a la categoría; cardio al paso
+    // GPS; el resto a la subdisciplina.
     if (currentScreen === 'd_estado') {
+      if (isDescanso) { setScreenIndex(SCREENS.indexOf('d4')); return }
       setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d4_sub'))
       return
     }
@@ -606,6 +646,12 @@ export default function CheckinScreen() {
     // d4_sub → cardio abre el paso GPS; el resto va al estado combinado
     if (currentScreen === 'd4_sub') {
       setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
+      return
+    }
+
+    // d_estado → descanso no pide tiempo, ubicación ni grupo: va directo a guardar
+    if (currentScreen === 'd_estado' && isDescanso) {
+      setScreenIndex(SCREENS.indexOf('d6_procesando'))
       return
     }
 
@@ -638,9 +684,11 @@ export default function CheckinScreen() {
       const entornoList = disciplina ? ENTORNO_OPTS[disciplina] : undefined
       const entornoLabel = entornoList?.find(o => o.id === entornoCardio)?.label ?? null
       const focos: string[] = []
+      if (isDescanso) focos.push('descanso')
       if (discOpt) { focos.push(discOpt.foco); focos.push(discOpt.id) }
       if (grupoOpt && showGrupoMuscular) focos.push(grupoOpt.id)
       const notasParts: string[] = []
+      if (isDescanso) notasParts.push('Día de descanso')
       if (discOpt) notasParts.push(`Disciplina: ${discOpt.label}`)
       if (grupoOpt && showGrupoMuscular) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
       if (entornoLabel) notasParts.push(`Entorno: ${entornoLabel}`)
@@ -663,7 +711,7 @@ export default function CheckinScreen() {
       submittingRef.current = false
       setSubmitting(false)
     }
-  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, calidadSueno, locationId, entornoCardio])
+  }, [zonasDolorHoy, tiempoDispo, disciplina, grupoMuscular, showGrupoMuscular, estadoMental, estadoFisico, calidadSueno, locationId, entornoCardio, isDescanso])
 
   // ── D5 processing orchestration ───────────────────────────────────────────
 
@@ -1236,18 +1284,64 @@ export default function CheckinScreen() {
     }
     return (
       <View style={styles.procesandoWrap}>
-        <ActivityIndicator color={isRunning ? '#ff8c42' : colors.accent} size="large" />
+        <ActivityIndicator color={isDescanso ? REST_COLOR : isRunning ? '#ff8c42' : colors.accent} size="large" />
         <Text style={styles.procesandoTitle}>
-          {isRunning ? 'Guardando tu\ncheck-in...' : 'Construyendo tu\nentrenamiento de hoy...'}
+          {isDescanso ? 'Guardando tu\ndía de descanso...' : isRunning ? 'Guardando tu\ncheck-in...' : 'Construyendo tu\nentrenamiento de hoy...'}
         </Text>
         <Text style={styles.procesandoSub}>
-          {isRunning ? 'Preparando tu sesión de running' : 'Calibrando tu sesión...'}
+          {isDescanso ? 'Registrando tu recuperación' : isRunning ? 'Preparando tu sesión de running' : 'Calibrando tu sesión...'}
         </Text>
       </View>
     )
   }
 
   function renderD7() {
+    // Día de descanso: sin pronóstico de sesión ni CTA de entrenamiento. Muestra la
+    // frase y un botón para compartir la tarjeta (se rasteriza a PNG en el modal).
+    if (isDescanso) {
+      return (
+        <View style={[styles.resumenWrap, { paddingTop: insets.top + 24 }]}>
+          <View style={[styles.resumenCheckCircle, { borderColor: REST_COLOR }]}>
+            <Text style={[styles.resumenCheckMark, { color: REST_COLOR }]}>✓</Text>
+          </View>
+          <Text style={[styles.resumenEyebrow, { color: REST_COLOR }]}>DÍA DE DESCANSO</Text>
+          <Text style={styles.resumenTitle}>Check-in guardado</Text>
+
+          <View style={styles.resumenCard}>
+            <Text style={styles.resumenDataText}>{buildSummaryText() || 'Tu estado de hoy quedó registrado.'}</Text>
+            <View style={styles.resumenDivider} />
+            <Text style={[styles.resumenSesionEyebrow, { color: REST_COLOR }]}>HOY</Text>
+            <Text style={styles.resumenSesionText}>{REST_FRASE}</Text>
+          </View>
+
+          <Text style={styles.resumenNote}>
+            Recuperar también es progreso. Vuelve mañana para tu próxima sesión.
+          </Text>
+
+          <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
+            <TouchableOpacity
+              style={styles.nextWrap}
+              onPress={() => setShareOpen(true)}
+              activeOpacity={0.88}>
+              <LinearGradient
+                colors={[REST_COLOR, REST_COLOR_DARK]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>Compartir</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.replace('/(app)/dashboard')}
+              style={styles.resetCheckinBtn}
+              activeOpacity={0.6}>
+              <Text style={[styles.resetCheckinText, { color: colors.inkMuted }]}>
+                Volver al inicio
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+    }
     const discOpt = DISCIPLINA_OPTS.find(d => d.id === disciplina)
     const tiempoOpt = TIEMPO_OPTS.find(t => t.id === tiempoDispo)
     const grupoOpt = GRUPO_MUSCULAR_OPTS.find(g => g.id === grupoMuscular)
@@ -1376,6 +1470,41 @@ export default function CheckinScreen() {
           contentContainerStyle={{ flexGrow: 1 }}>
           {renderD7()}
         </ScrollView>
+
+        {/* Modal de la tarjeta para compartir (solo día de descanso). */}
+        {isDescanso && (
+          <Modal
+            visible={shareOpen}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={() => setShareOpen(false)}
+          >
+            <View style={styles.shareModalRoot}>
+              <View style={[styles.shareModalClose, { paddingTop: insets.top + 8 }]}>
+                <TouchableOpacity
+                  onPress={() => setShareOpen(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.shareModalCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                contentContainerStyle={styles.shareModalContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <WorkoutShareCard
+                  sessionType="descanso"
+                  title="Hoy descanso"
+                  phrase={REST_FRASE}
+                  userLabel={userLabel}
+                  dateLabel={formatShareDate()}
+                />
+              </ScrollView>
+            </View>
+          </Modal>
+        )}
       </View>
     )
   }
@@ -1436,7 +1565,7 @@ export default function CheckinScreen() {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.nextBtn}>
               <Text style={styles.nextBtnText}>
-                {isLastInteractive ? 'Construir mi entrenamiento' : 'Continuar'}
+                {isLastInteractive ? (isDescanso ? 'Registrar mi descanso' : 'Construir mi entrenamiento') : 'Continuar'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -1751,6 +1880,20 @@ function makeStyles(c: Colors) {
     resetCheckinText: {
       fontFamily: 'SpaceGrotesk-Medium', fontSize: 14,
       textDecorationLine: 'underline',
+    },
+
+    // Modal de la tarjeta para compartir (día de descanso)
+    shareModalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
+    shareModalClose: {
+      flexDirection: 'row', justifyContent: 'flex-end',
+      paddingHorizontal: 20, paddingBottom: 4,
+    },
+    shareModalCloseText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 32,
+      color: '#ffffff', lineHeight: 36,
+    },
+    shareModalContent: {
+      flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24,
     },
   })
 }
