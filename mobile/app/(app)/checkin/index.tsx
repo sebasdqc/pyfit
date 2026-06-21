@@ -1002,7 +1002,7 @@ export default function CheckinScreen() {
         color: '#4f8cff',
         bg: 'rgba(79,140,255,0.1)',
         border: 'rgba(79,140,255,0.45)',
-        tag: 'PRÓXIMAMENTE',
+        tag: null,
       },
     ]
 
@@ -1018,11 +1018,7 @@ export default function CheckinScreen() {
               key={opt.id}
               style={[styles.estadoCard, { minHeight: 84 }]}
               onPress={() => {
-                if (opt.id === 'inteligente') {
-                  Alert.alert('Próximamente', 'El entrenamiento inteligente de running estará disponible muy pronto.')
-                  return
-                }
-                setRunningMode('libre')
+                setRunningMode(opt.id)
                 setError('')
                 setScreenIndex(SCREENS.indexOf('d_estado'))
               }}
@@ -1401,17 +1397,31 @@ export default function CheckinScreen() {
         {/* CTA */}
         <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
           {discPath === 'running' ? (
-            <TouchableOpacity
-              style={styles.nextWrap}
-              onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}`)}
-              activeOpacity={0.88}>
-              <LinearGradient
-                colors={['#ff8c42', '#e06c28']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={styles.nextBtn}>
-                <Text style={styles.nextBtnText}>{t('checkin_btn_run')}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            runningMode === 'inteligente' ? (
+              <TouchableOpacity
+                style={styles.nextWrap}
+                onPress={() => router.replace(`/(app)/running?modo=${runModeForEntorno(entornoCardio)}`)}
+                activeOpacity={0.88}>
+                <LinearGradient
+                  colors={['#4f8cff', '#2563ff']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.nextBtn}>
+                  <Text style={styles.nextBtnText}>Generar mi sesión</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.nextWrap}
+                onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}`)}
+                activeOpacity={0.88}>
+                <LinearGradient
+                  colors={['#ff8c42', '#e06c28']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.nextBtn}>
+                  <Text style={styles.nextBtnText}>{t('checkin_btn_run')}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )
           ) : (
             <TouchableOpacity
               style={styles.nextWrap}
