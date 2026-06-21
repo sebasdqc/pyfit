@@ -30,6 +30,7 @@ import { apiGet } from '../../../lib/api'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
+import { completePlannedRun, getRunSessionToday } from '../../../lib/runningApi'
 
 // Clave de consentimiento de la disclosure prominente de ubicación en segundo
 // plano. Google Play exige mostrar este aviso ANTES de solicitar el permiso
@@ -102,6 +103,12 @@ function rpeColor(rpe: number, colors: Colors): string {
   return colors.red
 }
 
+// Formatea segundos/km como "M:SS".
+function mmss(s: number): string {
+  const x = Math.max(0, Math.round(s))
+  return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunScreen() {
@@ -125,8 +132,14 @@ export default function RunScreen() {
 
   // El modo interior/exterior viene del check-in (pantalla anterior) vía el
   // parámetro `modo`. Es fijo durante la sesión: no se puede cambiar aquí.
-  const { modo } = useLocalSearchParams<{ modo?: string }>()
+  const { modo, planned } = useLocalSearchParams<{ modo?: string; planned?: string }>()
   const [isIndoor] = useState(() => isIndoorFromMode(modo))
+  // Guía de la sesión inteligente (presente solo si venimos de una PlannedRunSession).
+  const [guidance, setGuidance] = useState<{
+    paceRange: [number, number] | null
+    hrRange: [number, number] | null
+    rpe: number; zona: string; titulo: string
+  } | null>(null)
   const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const [userWeightKg, setUserWeightKg] = useState(70)
@@ -156,6 +169,28 @@ export default function RunScreen() {
       })
       .catch(() => {})
   }, [])
+
+  // Cargar la guía de la sesión inteligente (objetivo de ritmo/FC/RPE del bloque
+  // principal). Solo si llegamos con ?planned=<id>. El Free Run normal no la usa.
+  useEffect(() => {
+    if (!planned) return
+    getRunSessionToday()
+      .then((d: any) => {
+        const segs: any[] = d?.estructura_fases?.segmentos || []
+        if (!segs.length) return
+        const principal = segs.filter(x => x.fase === 'principal')
+        const pool = principal.length ? principal : segs
+        const target = pool.reduce((a, b) => ((b.rpe || 0) > (a.rpe || 0) ? b : a))
+        setGuidance({
+          paceRange: Array.isArray(target.pace_objetivo) ? target.pace_objetivo : null,
+          hrRange: Array.isArray(target.fc_objetivo) ? target.fc_objetivo : null,
+          rpe: target.rpe || 0,
+          zona: d?.respuesta_ia?.zona_principal || d?.zona_principal || '',
+          titulo: d?.respuesta_ia?.titulo || '',
+        })
+      })
+      .catch(() => {})
+  }, [planned])
 
   // GPS fetch — skip entirely for indoor mode
   useEffect(() => {
@@ -200,12 +235,19 @@ export default function RunScreen() {
   useEffect(() => {
     if (status === 'completed') {
       if (sessionId !== null) {
+        // F6: si era una sesión inteligente, vincula la RunSession a la
+        // PlannedRunSession (cierra el loop de readiness/umbral). Fire-and-forget:
+        // el enlace es server-side y no debe bloquear la navegación al resumen.
+        const pid = Number(planned)
+        if (planned && !Number.isNaN(pid)) {
+          completePlannedRun(pid, sessionId).catch(() => {})
+        }
         router.replace(`/(app)/run/resumen/${sessionId}`)
       } else {
         router.replace('/(app)/dashboard')
       }
     }
-  }, [status, sessionId])
+  }, [status, sessionId, planned])
 
   // Show GPS/start errors
   useEffect(() => {
@@ -324,6 +366,15 @@ export default function RunScreen() {
   const polylineCoords = coordinates.map(c => ({ latitude: c.latitude, longitude: c.longitude }))
   const caloriesEstimated = estimateCalories(elapsedSeconds, userWeightKg, isIndoor)
 
+  // Estado de ritmo en vivo vs el objetivo de la sesión inteligente (solo exterior).
+  let paceStatus: { label: string; color: string } | null = null
+  if (inProgress && !isIndoor && guidance?.paceRange && currentPace > 0) {
+    const [lo, hi] = guidance.paceRange
+    if (currentPace < lo) paceStatus = { label: 'MUY RÁPIDO', color: colors.red }
+    else if (currentPace > hi) paceStatus = { label: 'MUY LENTO', color: colors.orange }
+    else paceStatus = { label: 'EN ZONA', color: colors.green }
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
 
@@ -409,6 +460,46 @@ export default function RunScreen() {
             <Text style={[styles.modePillText, { color: colors.inkSecondary }]}>
               {isIndoor ? '🏋️  INTERIOR' : '🌿  EXTERIOR'}
             </Text>
+          </View>
+        )}
+
+        {/* Guía de la sesión inteligente: objetivo de ritmo/FC/RPE + estado en vivo. */}
+        {guidance && (
+          <View style={{
+            borderWidth: 1, borderColor: colors.borderDefault, backgroundColor: colors.glassBg,
+            borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12,
+          }}>
+            <Text style={{
+              fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1,
+              color: colors.accent, marginBottom: 6,
+            }}>
+              OBJETIVO{guidance.zona ? `  ·  ${guidance.zona}` : ''}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              {!isIndoor && guidance.paceRange && (
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: colors.inkPrimary }}>
+                  {mmss(guidance.paceRange[0])}–{mmss(guidance.paceRange[1])} /km
+                </Text>
+              )}
+              {guidance.hrRange && (
+                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.red }}>
+                  {guidance.hrRange[0]}–{guidance.hrRange[1]} ppm
+                </Text>
+              )}
+              <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.inkSecondary }}>
+                RPE {guidance.rpe}
+              </Text>
+              {paceStatus && (
+                <View style={{
+                  marginLeft: 'auto', borderWidth: 1, borderColor: paceStatus.color,
+                  borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
+                }}>
+                  <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 11, color: paceStatus.color }}>
+                    {paceStatus.label}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
