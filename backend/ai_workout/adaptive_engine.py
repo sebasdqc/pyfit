@@ -100,6 +100,21 @@ DOLOR_KEYWORDS: dict[str, str] = {
 # Equipo que nunca es restricción (peso corporal)
 EQUIPO_LIBRE = {'ninguno (peso corporal)', 'ninguno'}
 
+# Heurística por NOMBRE para la red de seguridad post-generación: si el LLM inventa
+# un ejercicio fuera del catálogo (no podemos resolver su equipo por tablas), su
+# nombre suele delatar el implemento que necesita. Claves normalizadas (sin tilde,
+# minúscula) → categoría de la UI (también normalizada) que DEBE estar disponible.
+# Conservador a propósito (solo términos inequívocos) para no descartar ejercicios
+# de peso corporal por un falso positivo.
+_EQUIP_NAME_HINTS: dict[str, str] = {
+    'barra':      'barras',
+    'mancuerna':  'mancuernas',   # cubre 'mancuernas'
+    'kettlebell': 'kettlebells',
+    'pesa rusa':  'kettlebells',
+    'polea':      'maquinas',
+    'smith':      'maquinas',
+}
+
 # Mapeo de categorías de location.implementos (opciones de UI) → nombres específicos de
 # EquipmentItem.name (lowercase). Necesario porque la UI almacena categorías ('Barras')
 # pero las tablas normalizadas usan nombres específicos ('Barra olímpica').
@@ -338,6 +353,45 @@ class AdaptiveEngineService:
             }
         return self._body_zones
 
+    # ─── Equipamiento (fuente única para pool + red de seguridad) ─────────────
+
+    def _expand_implementos(self, has_equipment_data: bool) -> set[str]:
+        """Implementos disponibles de la ubicación, en el vocabulario que usa cada
+        ruta del catálogo:
+          · normalizada (prod): categorías de la UI ('Barras') expandidas a los
+            nombres específicos del catálogo ('barra olímpica', …) en minúscula.
+          · JSON fallback: las categorías tal cual (mismo formato que el JSONField).
+        Centralizado para que el filtro del pool y la validación post-generación
+        apliquen EXACTAMENTE el mismo criterio."""
+        if has_equipment_data:
+            out: set[str] = set()
+            for _impl in (self.location.implementos or []):
+                key = _impl.lower().strip()
+                expanded = IMPLEMENTOS_EXPANSION.get(key)
+                out.update(expanded if expanded else {key})
+            return out
+        return set(self.location.implementos or [])
+
+    def _exercise_equipment_ok(self, ex, implementos_disponibles: set[str],
+                               has_equipment_data: bool) -> bool:
+        """¿El ejercicio se puede ejecutar con los implementos disponibles?
+        El peso corporal (EQUIPO_LIBRE) nunca es restricción."""
+        if has_equipment_data:
+            required_equip = [
+                ee.equipment.name.lower().strip()
+                for ee in ex.equipment_links.all()
+                if ee.is_required and ee.equipment.name.lower().strip() not in EQUIPO_LIBRE
+            ]
+            if required_equip:
+                if not implementos_disponibles:
+                    return False
+                if not all(eq in implementos_disponibles for eq in required_equip):
+                    return False
+            return True
+        # JSON fallback: categorías en español (mismo formato que location.implementos)
+        eq_set = set(ex.equipamiento or [])
+        return not (eq_set and not eq_set.issubset(implementos_disponibles))
+
     # ─── Paso 3 ───────────────────────────────────────────────────────────────
 
     def get_exercise_pool(self) -> list[dict]:
@@ -357,17 +411,7 @@ class AdaptiveEngineService:
             return self._get_exercise_pool_jsonfield()
 
         body_zones = self._get_body_zones()
-        implementos_raw = self.location.implementos or []
-        # Expand category names (UI labels) to specific EquipmentItem names (lowercase).
-        # 'Barras' → {'barra olímpica', ...}, 'Máquinas' → {'polea alta', ...}, etc.
-        implementos_disponibles: set[str] = set()
-        for _impl in implementos_raw:
-            _key = _impl.lower().strip()
-            _expanded = IMPLEMENTOS_EXPANSION.get(_key)
-            if _expanded:
-                implementos_disponibles.update(_expanded)
-            else:
-                implementos_disponibles.add(_key)
+        implementos_disponibles = self._expand_implementos(has_equipment_data)
 
         # nivel_experiencia (1–5) acota el techo técnico; si es null se deriva
         # del nivel categórico (compatibilidad con usuarios previos al cambio).
@@ -410,22 +454,8 @@ class AdaptiveEngineService:
                 continue
 
             # ── Filtro 3: Equipamiento ───────────────────────────────────────
-            if has_equipment_data:
-                required_equip = [
-                    ee.equipment.name.lower().strip()
-                    for ee in ex.equipment_links.all()
-                    if ee.is_required and ee.equipment.name.lower().strip() not in EQUIPO_LIBRE
-                ]
-                if required_equip:
-                    if not implementos_disponibles:
-                        continue
-                    if not all(eq in implementos_disponibles for eq in required_equip):
-                        continue
-            else:
-                # JSONField fallback for equipment
-                eq_set = set(ex.equipamiento or [])
-                if eq_set and not eq_set.issubset(implementos_disponibles):
-                    continue
+            if not self._exercise_equipment_ok(ex, implementos_disponibles, has_equipment_data):
+                continue
 
             # ── Filtro 4: Nivel técnico ──────────────────────────────────────
             if (
@@ -505,7 +535,7 @@ class AdaptiveEngineService:
         (e.g. 'Barras', 'Máquinas') — compare directly without normalizing case.
         """
         injury_zones = self._get_injury_zones()
-        implementos_disponibles = set(self.location.implementos or [])
+        implementos_disponibles = self._expand_implementos(has_equipment_data=False)
         # nivel_experiencia (1–5) acota el techo técnico; si es null se deriva
         # del nivel categórico (compatibilidad con usuarios previos al cambio).
         nivel_usuario = self.perfil.nivel_experiencia or NIVEL_MAP.get(self.perfil.nivel, 3)
@@ -515,8 +545,7 @@ class AdaptiveEngineService:
         pool: list[dict] = []
         for ex in Exercise.objects.filter(activo=True):
             # Equipment: JSONField (names in Spanish, same format as location.implementos)
-            eq_set = set(ex.equipamiento or [])
-            if eq_set and not eq_set.issubset(implementos_disponibles):
+            if not self._exercise_equipment_ok(ex, implementos_disponibles, has_equipment_data=False):
                 continue
 
             # Contraindications: JSONField (zone names lowercase)
@@ -617,6 +646,72 @@ class AdaptiveEngineService:
             self.user.id, sorted(allowed), len(pool), len(keep),
         )
         return keep
+
+    # ─── Red de seguridad post-generación: equipamiento ───────────────────────
+
+    @staticmethod
+    def _invented_requires_unavailable_equipment(nombre: str, raw_cats: set[str]) -> bool:
+        """Heurística por nombre para ejercicios que el LLM inventó fuera del
+        catálogo: si el nombre delata un implemento cuya categoría NO está
+        disponible, lo marcamos como no ejecutable. `raw_cats` ya viene normalizado."""
+        n = ts._norm(nombre)
+        for kw, cat in _EQUIP_NAME_HINTS.items():
+            if kw in n and cat not in raw_cats:
+                return True
+        return False
+
+    def drop_unavailable_equipment(self, sesion_generada: dict, user_id=None) -> int:
+        """Elimina de la sesión GENERADA los ejercicios que requieren implementos
+        NO disponibles en la ubicación. Simétrica a la red de contraindicaciones:
+        el pool ya viene filtrado, pero el LLM puede desviarse o inventar un
+        ejercicio de gimnasio en una sesión de casa — esto lo corrige antes de
+        persistir. Ejercicios del catálogo usan el mismo criterio que el pool;
+        los inventados (fuera de catálogo) usan la heurística por nombre.
+        Devuelve cuántos descartó."""
+        if not isinstance(sesion_generada, dict):
+            return 0
+        nombres = [
+            str(ej.get('nombre', '')).strip()
+            for fase in sesion_generada.get('fases', []) or []
+            for ej in (fase.get('ejercicios', []) or [])
+            if str(ej.get('nombre', '')).strip()
+        ]
+        if not nombres:
+            return 0
+
+        has_equipment_data, _ = _check_satellite_tables()
+        implementos_disponibles = self._expand_implementos(has_equipment_data)
+        catalogo = {
+            ex.nombre.lower(): ex
+            for ex in (
+                Exercise.objects
+                .filter(nombre__in=nombres)
+                .prefetch_related('equipment_links__equipment')
+            )
+        }
+        raw_cats = {ts._norm(i) for i in (self.location.implementos or [])}
+
+        dropped = 0
+        for fase in sesion_generada.get('fases', []) or []:
+            keep = []
+            for ej in (fase.get('ejercicios', []) or []):
+                nombre = str(ej.get('nombre', '')).strip()
+                ex = catalogo.get(nombre.lower())
+                if ex is not None:
+                    ok = self._exercise_equipment_ok(ex, implementos_disponibles, has_equipment_data)
+                else:
+                    ok = not self._invented_requires_unavailable_equipment(nombre, raw_cats)
+                if not ok:
+                    dropped += 1
+                    logger.warning(
+                        'generate: ejercicio sin equipamiento disponible descartado "%s" '
+                        '(implementos=%s) user=%s',
+                        nombre, sorted(raw_cats), user_id,
+                    )
+                    continue
+                keep.append(ej)
+            fase['ejercicios'] = keep
+        return dropped
 
     # ─── Paso 4 ───────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ from django.test import SimpleTestCase
 
 from ai_workout import training_science as ts
 from ai_workout.adaptive_engine import AdaptiveEngineService, _MIN_FOCUS_POOL
-from ai_workout.views import _format_exercise_pool_enriched
+from ai_workout.views import _format_exercise_pool_enriched, _eval_sueno, calcular_fatiga
 
 
 def _ex(nombre, patron, primarios, secundarios=None):
@@ -324,3 +324,138 @@ class FormatPoolCompactTests(SimpleTestCase):
         self.assertNotIn('descripción larga', out)   # descripción fuera
         self.assertIn('@RPE8', out)                  # prescripción presente
         self.assertIn('RIR2', out)
+
+
+# ─── Hallazgo #1: red de seguridad de equipamiento (coherencia casa/gimnasio) ──
+
+class InventedEquipmentHeuristicTests(SimpleTestCase):
+    """Heurística por nombre para ejercicios que el LLM inventa fuera del catálogo."""
+
+    def _flag(self, nombre, raw_cats):
+        return AdaptiveEngineService._invented_requires_unavailable_equipment(nombre, raw_cats)
+
+    def test_invented_barbell_dropped_in_bodyweight_session(self):
+        # Caso exacto del usuario: sesión de casa/peso corporal con un ejercicio
+        # de gimnasio inventado por el LLM.
+        self.assertTrue(self._flag('Press de banca con barra', set()))
+
+    def test_cable_machine_dropped_at_home(self):
+        self.assertTrue(self._flag('Jalón en polea al pecho', set()))
+
+    def test_dumbbell_ok_when_dumbbells_available(self):
+        self.assertFalse(self._flag('Curl con mancuernas', {'mancuernas'}))
+
+    def test_bodyweight_never_flagged(self):
+        self.assertFalse(self._flag('Flexiones de pecho', set()))
+        self.assertFalse(self._flag('Sentadilla búlgara', set()))   # 'barra' no es substring
+        self.assertFalse(self._flag('Plancha abdominal', set()))
+
+    def test_accent_insensitive_match(self):
+        # 'Máquinas' disponible (normalizado 'maquinas') cubre polea/smith.
+        self.assertFalse(self._flag('Sentadilla en máquina Smith', {'maquinas'}))
+        self.assertTrue(self._flag('Sentadilla en máquina Smith', set()))
+
+
+# ─── Hallazgo #2: evaluación de sueño respetando la escala del dato ────────────
+
+class SuenoEvalTests(SimpleTestCase):
+    def test_device_score_high_is_adequate_not_deprivation(self):
+        # EL BUG: score 4/4 de dispositivo se leía como "4 horas" → siempre privación.
+        label, directiva = _eval_sueno(4, es_score=True)
+        self.assertEqual(label, '4/4')
+        self.assertIn('adecuada', directiva)
+
+    def test_device_score_low_is_deprivation(self):
+        _, directiva = _eval_sueno(1, es_score=True)
+        self.assertIn('privación', directiva)
+
+    def test_device_score_two_is_suboptimal(self):
+        _, directiva = _eval_sueno(2, es_score=True)
+        self.assertIn('subóptimo', directiva)
+
+    def test_manual_hours_good(self):
+        label, directiva = _eval_sueno(8, es_score=False)
+        self.assertEqual(label, '8h')
+        self.assertIn('adecuada', directiva)
+
+    def test_manual_hours_deprivation(self):
+        _, directiva = _eval_sueno(5, es_score=False)
+        self.assertIn('privación', directiva)
+
+    def test_invalid_value_defaults_safely(self):
+        label, directiva = _eval_sueno(None, es_score=False)
+        self.assertEqual(label, '7h')
+        self.assertIn('adecuada', directiva)
+
+
+# ─── Hallazgo #3: fatiga solo sobre sesiones realmente ejecutadas ──────────────
+
+class _FakeSession:
+    def __init__(self, created_at, inicio_real=None, feedback=None):
+        self.created_at = created_at
+        self.inicio_real = inicio_real
+        self._feedback = feedback
+
+
+def _q_match(obj, q):
+    res = []
+    for child in q.children:
+        if hasattr(child, 'children'):           # Q anidado
+            res.append(_q_match(obj, child))
+        else:                                    # tupla ('campo__isnull', bool)
+            key, val = child
+            field = key.replace('__isnull', '')
+            attr = '_feedback' if field == 'feedback' else field
+            is_null = getattr(obj, attr, None) is None
+            res.append(is_null == val)
+    if not res:
+        return True
+    return any(res) if q.connector == 'OR' else all(res)
+
+
+class _FakeQS:
+    """Queryset mínimo que interpreta los .filter() de calcular_fatiga sin BD."""
+    def __init__(self, items):
+        self._items = list(items)
+
+    def filter(self, *args, **kwargs):
+        items = list(self._items)
+        if 'created_at__gte' in kwargs:
+            thr = kwargs['created_at__gte']
+            items = [i for i in items if i.created_at >= thr]
+        for q in args:
+            items = [i for i in items if _q_match(i, q)]
+        return _FakeQS(items)
+
+    def count(self):
+        return len(self._items)
+
+
+class FatigaExecutedOnlyTests(SimpleTestCase):
+    def _times(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        now = timezone.now()
+        return now - timedelta(hours=1), now - timedelta(hours=80)
+
+    def test_unexecuted_generations_do_not_count(self):
+        recent, _ = self._times()
+        qs = _FakeQS([_FakeSession(recent), _FakeSession(recent), _FakeSession(recent)])
+        self.assertEqual(calcular_fatiga(qs), 'bajo')
+
+    def test_executed_sessions_count(self):
+        recent, _ = self._times()
+        qs = _FakeQS([
+            _FakeSession(recent, inicio_real=recent),
+            _FakeSession(recent, feedback=object()),
+            _FakeSession(recent, inicio_real=recent),
+        ])
+        self.assertEqual(calcular_fatiga(qs), 'alto')
+
+    def test_old_executed_outside_window_excluded(self):
+        recent, old = self._times()
+        qs = _FakeQS([
+            _FakeSession(old, inicio_real=old),       # fuera de 72h
+            _FakeSession(recent, inicio_real=recent),  # 1 reciente
+        ])
+        self.assertEqual(calcular_fatiga(qs), 'bajo')

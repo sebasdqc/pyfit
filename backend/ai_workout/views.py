@@ -118,9 +118,15 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None, return_usage=False):
 
 def calcular_fatiga(sesiones_qs):
     from django.utils import timezone
+    from django.db.models import Q
     ahora = timezone.now()
     hace_72h = ahora - timedelta(hours=72)
-    ultimas = sesiones_qs.filter(created_at__gte=hace_72h)
+    # La fatiga debe reflejar entrenamiento REAL, no generaciones. Una rutina
+    # generada y nunca ejecutada no produce carga: contamos solo sesiones
+    # iniciadas o con feedback (las que el atleta de verdad entrenó).
+    ultimas = sesiones_qs.filter(created_at__gte=hace_72h).filter(
+        Q(inicio_real__isnull=False) | Q(feedback__isnull=False)
+    )
     count = ultimas.count()
     if count >= 3:
         return 'alto'
@@ -717,6 +723,40 @@ def _crear_checkin_neutro(user, hoy):
     )
 
 
+def _eval_sueno(calidad, es_score: bool):
+    """Etiqueta + directiva de sueño respetando la ESCALA del dato.
+
+    El campo `calidad_sueno` está sobrecargado: el check-in manual guarda HORAS
+    (3–12) y los dispositivos (Garmin/Apple Health) lo sobrescriben con un score
+    1–4. Sin distinguirlas, un sleep score alto (4/4) se leía como "4 horas" y
+    SIEMPRE disparaba "privación de sueño" para usuarios con dispositivo.
+
+    Devuelve (label, directiva)."""
+    try:
+        cs = float(calidad)
+    except (TypeError, ValueError):
+        cs = 7.0
+    if es_score:
+        # Escala 1–4 (dispositivo): 1=mala, 2=subóptima, 3–4=adecuada.
+        label = f'{cs:.0f}/4'
+        if cs <= 1:
+            directiva = 'privación de sueño significativa, reduce RPE objetivo en 1 punto adicional'
+        elif cs <= 2:
+            directiva = 'sueño subóptimo, modera la intensidad'
+        else:
+            directiva = 'recuperación adecuada'
+    else:
+        # Escala en horas (check-in manual).
+        label = f'{cs:g}h'
+        if cs < 6:
+            directiva = 'privación de sueño significativa, reduce RPE objetivo en 1 punto adicional'
+        elif cs < 7:
+            directiva = 'sueño subóptimo, modera la intensidad'
+        else:
+            directiva = 'recuperación adecuada'
+    return label, directiva
+
+
 def build_prompt(ctx):
     # Choose pool formatting: enriched (new) vs grouped (legacy fallback)
     enriched_pool = ctx.get('exercise_pool_enriched')
@@ -835,6 +875,9 @@ DIRECTIVAS DE LA SESIÓN (REGLAS DURAS — no negociables):
     _s_fav            = _sanitize_prompt_text(ctx.get('ejercicios_favoritos'), 300)
     _s_evitar         = _sanitize_prompt_text(ctx.get('ejercicios_evitar'), 300)
 
+    # Sueño: respeta la escala del dato (1–4 de dispositivo vs horas del check-in).
+    sueno_label, sueno_directiva = _eval_sueno(ctx['calidad_sueno'], ctx.get('sueno_es_score', False))
+
     return f"""
 Eres un entrenador personal y científico del ejercicio de élite. Tienes formación en fisiología del ejercicio, periodización y nutrición deportiva. Cada decisión que tomas está respaldada por evidencia científica de nivel A (meta-análisis y revisiones sistemáticas).
 
@@ -866,7 +909,7 @@ MARCADORES DE RENDIMIENTO (1RM):
 
 ESTADO HOY:
 - Estado de ánimo: {ctx['estado_animo']}/5
-- Calidad de sueño: {ctx['calidad_sueno']}{'h' if isinstance(ctx['calidad_sueno'], (int, float)) and ctx['calidad_sueno'] > 4 else '/4'}
+- Calidad de sueño: {sueno_label}
 - HRV: {ctx['hrv'] or 'no disponible'}
 - Notas del usuario: {_s_notas_checkin or 'ninguna'}
 - Dolor o molestia HOY: {_s_dolor_hoy or 'ninguno reportado'}
@@ -894,7 +937,7 @@ Formato de cada línea: • ejercicio · músculo principal · REPS @RPE RIR DES
 
 {exercise_pool_text}
 
-INSTRUCCIÓN CRÍTICA: DEBES elegir ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. Solo si el banco no tiene suficientes ejercicios para un patrón puedes crear uno nuevo, siempre que cumpla con los implementos disponibles y no tenga contraindicaciones.
+INSTRUCCIÓN CRÍTICA: Elige ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. NO inventes ejercicios fuera del banco; si necesitas más volumen, repite o varía dentro del banco. Solo en el caso límite de que el banco sea insuficiente para completar una fase podrás añadir un ejercicio adicional que requiera ÚNICAMENTE los implementos disponibles ({', '.join(ctx['implementos']) if ctx['implementos'] else 'peso corporal'}) y sin contraindicaciones — NUNCA uno que necesite equipamiento no disponible.
 
 ---
 
@@ -956,7 +999,7 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
 7. CONTEXTO DE VIDA (Kreher & Schwartz, 2012)
    - Trabajo {ctx['tipo_trabajo'] or 'mixto'}: {'ya tiene demanda física diaria, reduce volumen total en 10-15%' if ctx['tipo_trabajo'] == 'activo' else 'mayor potencial de recuperación entre sesiones' if ctx['tipo_trabajo'] == 'sedentario' else 'considera fatiga acumulada moderada'}
    - Estrés {ctx['nivel_estres'] or 'moderado'}: {'el cortisol elevado interfiere con la recuperación, reduce intensidad y prioriza ejercicios placenteros' if ctx['nivel_estres'] == 'alto' else 'óptimo para sesiones de alta demanda' if ctx['nivel_estres'] == 'bajo' else 'monitorea señales de fatiga'}
-   - Sueño {ctx['calidad_sueno']}h: {'privación de sueño significativa, reduce RPE objetivo en 1 punto adicional' if float(ctx['calidad_sueno']) < 6 else 'sueño subóptimo, modera la intensidad' if float(ctx['calidad_sueno']) < 7 else 'recuperación adecuada'}
+   - Sueño {sueno_label}: {sueno_directiva}
 
 ---
 
@@ -1063,6 +1106,9 @@ def generate_session(request):
 
     # ── Datos de dispositivo (Garmin / Apple Health) ──────────────────────────
     checkin_hrv, calidad_sueno_efectiva, device_context = process_device_data(user, checkin)
+    # ¿El sueño viene de un dispositivo (escala 1–4) en vez del check-in (horas)?
+    # Si el valor efectivo difiere del manual, lo sobrescribió el dispositivo.
+    sueno_es_score = calidad_sueno_efectiva != checkin.calidad_sueno
 
     rpe_target = calcular_rpe_target(fatiga, checkin.estado_animo, checkin_hrv)
 
@@ -1138,6 +1184,7 @@ def generate_session(request):
         'rm_press_hombro': perfil.rm_press_hombro,
         'estado_animo': checkin.estado_animo,
         'calidad_sueno': calidad_sueno_efectiva,
+        'sueno_es_score': sueno_es_score,
         'hrv': checkin_hrv,
         'notas': checkin.notas,
         'garmin_context': device_context,
@@ -1201,6 +1248,9 @@ def generate_session(request):
         sesion_generada, engine._get_injury_zones(), user.id,
         body_zones=engine._get_body_zones(),
     )
+    # GEN-5: red de seguridad de equipamiento — descarta ejercicios que requieran
+    # implementos no disponibles (coherencia casa/gimnasio), simétrica a la anterior.
+    engine.drop_unavailable_equipment(sesion_generada, user.id)
 
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
 
@@ -1553,8 +1603,10 @@ def session_ajustar(request, pk):
     # Datos de dispositivo (Garmin / Apple Health) — igual que en generate_session
     if checkin:
         checkin_hrv, calidad_sueno_efectiva, device_context = process_device_data(user, checkin)
+        sueno_es_score = calidad_sueno_efectiva != checkin.calidad_sueno
     else:
         checkin_hrv, calidad_sueno_efectiva, device_context = None, 7, None
+        sueno_es_score = False
 
     # Build a checkin-like object for AdaptiveEngineService when checkin is None
     checkin_for_engine = checkin or SimpleNamespace(
@@ -1613,6 +1665,7 @@ def session_ajustar(request, pk):
         'rm_press_hombro':      perfil.rm_press_hombro,
         'estado_animo':         checkin.estado_animo if checkin else 3,
         'calidad_sueno':        calidad_sueno_efectiva,
+        'sueno_es_score':       sueno_es_score,
         'hrv':                  checkin_hrv,
         'notas':                checkin.notas if checkin else None,
         'garmin_context':       device_context,
@@ -1666,6 +1719,7 @@ def session_ajustar(request, pk):
         sesion_generada, engine._get_injury_zones(), user.id,
         body_zones=engine._get_body_zones(),
     )
+    engine.drop_unavailable_equipment(sesion_generada, user.id)
 
     with transaction.atomic():
         session.respuesta_ia         = sesion_generada
