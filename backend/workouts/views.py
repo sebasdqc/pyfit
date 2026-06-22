@@ -206,6 +206,24 @@ def session_iniciar(request, pk):
     return Response({'ok': True})
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def session_fin_ejercicios(request, pk):
+    """Marca que el atleta terminó todos los ejercicios (llegó a la pantalla final
+    de ejecución). No es lo mismo que completar la sesión: el feedback sigue siendo
+    la señal de "entrené". Sirve para que el dashboard, en estado E, mande directo a
+    feedback en vez de reabrir la ejecución. Idempotente: no pisa la marca previa."""
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    if session.fin_ejercicios is None:
+        from django.utils import timezone
+        session.fin_ejercicios = timezone.now()
+        session.save(update_fields=['fin_ejercicios'])
+    return Response({'ok': True})
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([SessionResumenRateThrottle])
@@ -316,19 +334,21 @@ Reglas:
 def _calcular_racha_realtime(user, hoy=None):
     """
     Calcula la racha de días consecutivos en tiempo real (sin leer del perfil).
-    Un día cuenta como entrenado si tiene cualquier sesión (misma definición que
-    el calendario / volumen / Zyfit Score). Si hoy no tiene sesión, retrocede un día.
+    Un día cuenta como entrenado SOLO si tiene una sesión con feedback: la sesión
+    se crea al generar, así que "tener sesión" no implica haber entrenado; el
+    feedback es la señal de "entrené". Si hoy no cuenta, retrocede un día.
     Retorna el entero de días consecutivos.
     """
     if hoy is None:
         hoy = date.today()
-    # Días con cualquier sesión en los últimos 365 días
+    # Días con una sesión COMPLETADA (con feedback) en los últimos 365 días
     fecha_min = hoy - timedelta(days=365)
     dates_with_session = set(
         Session.objects.filter(
             user=user,
             fecha__gte=fecha_min,
             fecha__lte=hoy,
+            feedback__isnull=False,
         ).values_list('fecha', flat=True)
     )
     if not dates_with_session:
@@ -358,7 +378,7 @@ def _calcular_racha_contexto(user, hoy=None):
         hoy = date.today()
 
     # Single bulk query shared by all derived metrics — avoids 3 extra queries.
-    # Un día entrenado = cualquier sesión (consistente con el calendario / Zyfit Score).
+    # Un día entrenado = sesión con feedback (no basta con haberla generado).
     fecha_min = hoy - timedelta(days=365)
     lunes = hoy - timedelta(days=hoy.weekday())
     dates_with_session = set(
@@ -366,6 +386,7 @@ def _calcular_racha_contexto(user, hoy=None):
             user=user,
             fecha__gte=fecha_min,
             fecha__lte=hoy,
+            feedback__isnull=False,
         ).values_list('fecha', flat=True)
     )
 
@@ -966,9 +987,13 @@ def _semana_detalle(user, dias_semana_objetivo, cta_titulo, hoy: date | None = N
     lunes = hoy - timedelta(days=hoy.weekday())  # Monday of current week
     domingo = lunes + timedelta(days=6)
 
-    # Build a dict of {date_str: [sessions]} to support multiple sessions per day
+    # Build a dict of {date_str: [sessions]} to support multiple sessions per day.
+    # Solo sesiones COMPLETADAS (con feedback): un día "entrenado" exige feedback,
+    # igual que la racha — generar una rutina y no entrenarla no pinta el día.
     sesiones_map: dict[str, list] = {}
-    for s in user.sessions.filter(fecha__gte=lunes, fecha__lte=domingo).order_by('created_at'):
+    for s in user.sessions.filter(
+        fecha__gte=lunes, fecha__lte=domingo, feedback__isnull=False,
+    ).order_by('created_at'):
         key = str(s.fecha)
         sesiones_map.setdefault(key, []).append(s)
 
@@ -1195,14 +1220,19 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
                     .select_related('feedback').order_by('-created_at').first())
     if sesion_coach and getattr(sesion_coach, 'feedback', None) is None:
         empezada = sesion_coach.inicio_real is not None
+        # solo_feedback: terminó los ejercicios pero no registró feedback → el
+        # dashboard manda directo a feedback en vez de reabrir la ejecución.
+        solo_feedback = sesion_coach.fin_ejercicios is not None
         titulo_c = sesion_coach.respuesta_ia.get('titulo') if isinstance(sesion_coach.respuesta_ia, dict) else None
         return {
             'estado': 'E',
-            'pill_label': 'Entrenamiento en curso' if empezada else 'Sesión de tu coach',
+            'pill_label': 'Falta tu feedback' if solo_feedback else ('Entrenamiento en curso' if empezada else 'Sesión de tu coach'),
             'pill_color': 'orange',
             'titulo': titulo_c or 'Tu sesión de hoy',
-            'descripcion': 'Retoma donde la dejaste' if empezada else 'Tu coach preparó tu sesión de hoy',
+            'descripcion': ('Solo falta tu feedback para cerrarla' if solo_feedback
+                            else ('Retoma donde la dejaste' if empezada else 'Tu coach preparó tu sesión de hoy')),
             'sesion_hoy_id': sesion_coach.id,
+            'solo_feedback': solo_feedback,
         }
 
     # Estado D — primera semana (< 3 sesiones totales)
@@ -1230,16 +1260,21 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
         # Estado E — sesión generada hoy pero aún sin terminar → Continuar
         if not tiene_feedback:
             empezada = sesion_hoy.inicio_real is not None
+            # solo_feedback: terminó los ejercicios pero no dio feedback → enviar
+            # directo a feedback en lugar de reabrir la ejecución desde cero.
+            solo_feedback = sesion_hoy.fin_ejercicios is not None
             return {
                 'estado': 'E',
-                'pill_label': 'Entrenamiento en curso' if empezada else 'Sesión lista',
+                'pill_label': 'Falta tu feedback' if solo_feedback else ('Entrenamiento en curso' if empezada else 'Sesión lista'),
                 'pill_color': 'orange',
                 'titulo': titulo_hoy or 'Tu sesión de hoy',
                 'descripcion': (
-                    'Retoma donde la dejaste' if empezada
-                    else 'Tienes una sesión generada lista para empezar'
+                    'Solo falta tu feedback para cerrarla' if solo_feedback
+                    else ('Retoma donde la dejaste' if empezada
+                          else 'Tienes una sesión generada lista para empezar')
                 ),
                 'sesion_hoy_id': sesion_hoy.id,
+                'solo_feedback': solo_feedback,
             }
 
         # Estado B — ya entrenó hoy (hay feedback → completada)

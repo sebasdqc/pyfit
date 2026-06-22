@@ -572,6 +572,10 @@ export default function EjecutarScreen() {
   const [sesion, setSesion] = useState<Sesion | null>(null)
   const [flatList, setFlatList] = useState<FlatEjercicio[]>([])
   const [completed, setCompleted] = useState(false)
+  // logRecovered: el intento de recuperar el log persistido ya terminó (haya o no
+  // datos). Junto con flatList listo dispara el "retomar donde se salió".
+  const [logRecovered, setLogRecovered] = useState(false)
+  const resumedRef = useRef(false)
   // Nivel del usuario — define si la demo de cada ejercicio arranca desplegada.
   const [nivel, setNivel] = useState<string | null>(null)
 
@@ -630,27 +634,45 @@ export default function EjecutarScreen() {
     }
     if (id) fetchSession()
 
-    // Recuperar log persistido si la app fue matada a mitad de sesión
+    // Recuperar log persistido si la app fue matada a mitad de sesión, o si el
+    // usuario salió y vuelve a "Continuar entrenamiento" desde el dashboard.
     async function recoverLog() {
-      if (!id) return
+      if (!id) { setLogRecovered(true); return }
       try {
         const saved = await AsyncStorage.getItem(`@pyfit/series_log_${id}`)
-        if (!saved) return
-        const recovered: Record<number, Array<{ peso: string; reps: string; dificultad?: number }>> = JSON.parse(saved)
-        seriesLogRef.current = recovered
-        // Reconstruir el conteo de series desde el log recuperado
-        const counts: Record<number, number> = {}
-        for (const [key, entries] of Object.entries(recovered)) {
-          if (Array.isArray(entries)) counts[Number(key)] = entries.filter(Boolean).length
+        if (saved) {
+          const recovered: Record<number, Array<{ peso: string; reps: string; dificultad?: number }>> = JSON.parse(saved)
+          seriesLogRef.current = recovered
+          // Reconstruir el conteo de series desde el log recuperado
+          const counts: Record<number, number> = {}
+          for (const [key, entries] of Object.entries(recovered)) {
+            if (Array.isArray(entries)) counts[Number(key)] = entries.filter(Boolean).length
+          }
+          seriesCompletadasRef.current = counts
+          setSeriesCompletadas(counts)
         }
-        seriesCompletadasRef.current = counts
-        setSeriesCompletadas(counts)
       } catch {
         // ignorar errores de recuperación — no bloquear la sesión
+      } finally {
+        setLogRecovered(true)   // dispara el reposicionamiento aunque no haya datos
       }
     }
     recoverLog()
   }, [id])
+
+  // Retomar donde se salió: una vez cargada la sesión y recuperado el log,
+  // posicionar en el primer ejercicio con series pendientes. Solo una vez y solo
+  // si hay progreso previo; sin progreso arranca normal en el ejercicio 0.
+  useEffect(() => {
+    if (resumedRef.current) return
+    if (!logRecovered || flatList.length === 0) return
+    resumedRef.current = true
+    const counts = seriesCompletadasRef.current
+    const hayProgreso = Object.values(counts).some(n => (n ?? 0) > 0)
+    if (!hayProgreso) return
+    const idx = flatList.findIndex(ej => (counts[ej.globalIndex] ?? 0) < ej.series)
+    if (idx > 0) setCurrentIndex(idx)   // idx<=0 → ya está en su sitio; -1 (todo hecho) → fin natural
+  }, [logRecovered, flatList])
 
   // ── Fetch nivel del usuario ──────────────────────────────────────────────────
   // Solo se usa para decidir el estado inicial de la demo (desplegada para
@@ -805,7 +827,10 @@ export default function EjecutarScreen() {
 
   // ── Save series log (al completar y al salir — EJE-2) ─────────────────────────
 
-  const sendSeriesLog = useCallback(() => {
+  // keepCheckpoint: conservar el log local en AsyncStorage tras subirlo al backend.
+  // Se usa al SALIR a medias para que "Continuar entrenamiento" retome donde se
+  // dejó (recoverLog lo relee). Al completar la sesión se limpia (no hace falta).
+  const sendSeriesLog = useCallback((keepCheckpoint = false) => {
     if (!id) return
     const log = flatList
       .map((ej, idx) => {
@@ -823,18 +848,22 @@ export default function EjecutarScreen() {
       .filter(e => e.series.length > 0)
     if (log.length > 0) {
       apiPost(`/api/sessions/${id}/series-log/`, { log })
-        .then(() => AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {}))
+        .then(() => { if (!keepCheckpoint) AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {}) })
         .catch((err) => {
           captureException(err, { tags: { flow: 'series-log' } })
         })
-    } else {
+    } else if (!keepCheckpoint) {
       AsyncStorage.removeItem(`@pyfit/series_log_${id}`).catch(() => {})
     }
   }, [flatList, id])
 
   useEffect(() => {
-    if (completed) sendSeriesLog()
-  }, [completed, sendSeriesLog])
+    if (!completed) return
+    sendSeriesLog()
+    // Marca fin de ejercicios: si el usuario sale ahora sin dar feedback, el
+    // dashboard lo mandará directo a feedback (no a reabrir la ejecución).
+    if (id) apiPost(`/api/sessions/${id}/fin-ejercicios/`, {}).catch(() => {})
+  }, [completed, sendSeriesLog, id])
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -847,7 +876,7 @@ export default function EjecutarScreen() {
         text: 'Salir y dar feedback',
         onPress: () => {
           if (intervalRef.current) clearInterval(intervalRef.current)
-          sendSeriesLog()                       // EJE-2: preservar peso/reps/dificultad
+          sendSeriesLog(true)                   // EJE-2: preservar peso/reps/dificultad + checkpoint
           router.replace(`/(app)/feedback/${id}`)
         },
       })
@@ -857,7 +886,8 @@ export default function EjecutarScreen() {
       style: 'destructive',
       onPress: () => {
         if (intervalRef.current) clearInterval(intervalRef.current)
-        if (hayProgreso) sendSeriesLog()        // EJE-2: no perder el log al salir
+        // Conservar el checkpoint local: "Continuar entrenamiento" retoma aquí.
+        if (hayProgreso) sendSeriesLog(true)
         router.back()
       },
     })

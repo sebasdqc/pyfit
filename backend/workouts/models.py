@@ -268,6 +268,11 @@ class Session(models.Model):
     logro = models.JSONField(null=True, blank=True)       # {"icon": "...", "titulo": "...", "descripcion": "..."}
     sustituciones = models.JSONField(null=True, blank=True)  # [{original, elegido, motivo, fase}]
     inicio_real = models.DateTimeField(null=True, blank=True)
+    # Momento en que el atleta terminó TODOS los ejercicios (llegó a la pantalla
+    # final de "ejecutar"). Distingue "sesión a medias" de "solo falta el feedback":
+    # con fin_ejercicios y sin feedback, el dashboard manda directo a feedback en
+    # vez de reabrir la ejecución desde cero.
+    fin_ejercicios = models.DateTimeField(null=True, blank=True)
     # Observabilidad del motor adaptativo (poblados en generate_session):
     generacion_ms = models.IntegerField(null=True, blank=True)   # duración server-side de la generación (ms)
     tokens_in     = models.IntegerField(null=True, blank=True)   # prompt_tokens del LLM

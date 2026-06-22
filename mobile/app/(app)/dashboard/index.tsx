@@ -152,6 +152,7 @@ interface CTAData {
   descripcion: string
   sesion_hoy_id: number | null
   run_sesion_hoy_id?: number | null  // RunSession (carrera libre), modelo separado de Session
+  solo_feedback?: boolean  // estado E + terminó ejercicios sin feedback → ir directo a feedback
 }
 
 interface MetricaData {
@@ -1026,8 +1027,13 @@ function CTACard({
 
   function handlePress() {
     if (cta.estado === 'E' && cta.sesion_hoy_id != null) {
-      // Sesión generada sin terminar → retomar la ejecución
-      router.push(`/(app)/ejecutar/${cta.sesion_hoy_id}` as any)
+      // Terminó los ejercicios pero no dio feedback → directo a feedback.
+      // Si no, retomar la ejecución (ejecutar reabre donde la dejó).
+      if (cta.solo_feedback) {
+        router.push(`/(app)/feedback/${cta.sesion_hoy_id}` as any)
+      } else {
+        router.push(`/(app)/ejecutar/${cta.sesion_hoy_id}` as any)
+      }
     } else if (cta.estado === 'B') {
       if (cta.run_sesion_hoy_id != null) {
         // RunSession (carrera libre) → ir al resumen de la carrera
@@ -1042,6 +1048,7 @@ function CTACard({
   }
 
   const btnLabel =
+    cta.estado === 'E' && cta.solo_feedback ? 'Dar feedback' :
     cta.estado === 'E' ? 'Continuar entrenamiento' :
     cta.estado === 'B' && cta.run_sesion_hoy_id != null ? 'Ver resumen de tu carrera' :
     cta.estado === 'B' ? 'Ver resumen de tu sesión' :

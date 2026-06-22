@@ -555,3 +555,80 @@ class FeedbackIntegrationTests(TestCase):
         )
         response = self._post_feedback(s.id)
         self.assertEqual(response.status_code, 201)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Auditoría check-in/salida: racha solo con feedback + fin de ejercicios + CTA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SessionTerminationAuditTests(TestCase):
+    """Cubre: (1) la racha y el calendario solo cuentan sesiones CON feedback;
+    (2) marcar fin de ejercicios; (3) el CTA del dashboard distingue 'solo falta
+    feedback' (→ a feedback) de 'sesión a medias' (→ retomar ejecución)."""
+
+    def setUp(self):
+        self.user = make_user('audit@example.com')
+        self.loc = make_location(self.user)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _make_session(self, days_ago=0):
+        return Session.objects.create(
+            user=self.user,
+            fecha=date.today() - timedelta(days=days_ago),
+            duracion_planificada=60, rpe_target=7.0, location=self.loc,
+        )
+
+    # ── Racha solo con feedback (Q2) ──────────────────────────────────────────
+    def test_racha_ignora_sesion_sin_feedback(self):
+        from workouts.views import _calcular_racha_realtime
+        # Sesión generada hoy, nunca entrenada (sin feedback) → racha 0
+        self._make_session(days_ago=0)
+        self.assertEqual(_calcular_racha_realtime(self.user), 0)
+
+    def test_racha_cuenta_solo_dias_con_feedback(self):
+        from workouts.views import _calcular_racha_realtime
+        # Hoy con feedback, ayer solo generada (sin feedback) → racha corta en ayer
+        make_session_with_feedback(self.user, self.loc, days_ago=0)
+        self._make_session(days_ago=1)  # sin feedback → no cuenta
+        make_session_with_feedback(self.user, self.loc, days_ago=2)
+        self.assertEqual(_calcular_racha_realtime(self.user), 1)
+
+    # ── Endpoint fin-ejercicios ───────────────────────────────────────────────
+    def test_fin_ejercicios_marca_timestamp_idempotente(self):
+        s = self._make_session()
+        r1 = self.client.post(f'/api/sessions/{s.id}/fin-ejercicios/', {}, format='json')
+        self.assertEqual(r1.status_code, 200)
+        s.refresh_from_db()
+        self.assertIsNotNone(s.fin_ejercicios)
+        primera = s.fin_ejercicios
+        # Segunda llamada no pisa la marca previa
+        self.client.post(f'/api/sessions/{s.id}/fin-ejercicios/', {}, format='json')
+        s.refresh_from_db()
+        self.assertEqual(s.fin_ejercicios, primera)
+
+    # ── CTA del dashboard: solo_feedback vs retomar ───────────────────────────
+    def test_cta_solo_feedback_cuando_termino_ejercicios_sin_feedback(self):
+        from django.utils import timezone
+        from workouts.views import _cta_sugerido
+        # >=3 sesiones para salir del estado D (primera semana)
+        for d in range(3, 6):
+            make_session_with_feedback(self.user, self.loc, days_ago=d)
+        s = self._make_session(days_ago=0)
+        s.fin_ejercicios = timezone.now()
+        s.save(update_fields=['fin_ejercicios'])
+        cta = _cta_sugerido(self.user, total_sesiones=5, fatiga_pct=20)
+        self.assertEqual(cta['estado'], 'E')
+        self.assertTrue(cta['solo_feedback'])
+
+    def test_cta_retomar_cuando_sesion_a_medias(self):
+        from django.utils import timezone
+        from workouts.views import _cta_sugerido
+        for d in range(3, 6):
+            make_session_with_feedback(self.user, self.loc, days_ago=d)
+        s = self._make_session(days_ago=0)
+        s.inicio_real = timezone.now()  # empezada pero sin terminar ejercicios
+        s.save(update_fields=['inicio_real'])
+        cta = _cta_sugerido(self.user, total_sesiones=5, fatiga_pct=20)
+        self.assertEqual(cta['estado'], 'E')
+        self.assertFalse(cta['solo_feedback'])

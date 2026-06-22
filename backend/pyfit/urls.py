@@ -96,6 +96,7 @@ urlpatterns = [
     path('api/sessions/<int:pk>/logro/', workout_views.session_logro),
     path('api/sessions/<int:pk>/sustituir/', workout_views.session_sustituir),
     path('api/sessions/<int:pk>/iniciar/',   workout_views.session_iniciar),
+    path('api/sessions/<int:pk>/fin-ejercicios/', workout_views.session_fin_ejercicios),
     path('api/sessions/<int:pk>/ajustar/',   ai_views.session_ajustar),
     path('api/sessions/<int:pk>/series-log/', workout_views.save_series_log),
     path('api/sessions/<int:pk>/photos/',     workout_views.session_photos),
