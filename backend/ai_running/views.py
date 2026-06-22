@@ -293,6 +293,12 @@ def generate_run_session(request):
     if planned.estado == 'completada':
         return Response(PlannedRunSessionSerializer(planned).data)
 
+    # Idempotente para el día: si la sesión ya fue generada (tiene respuesta_ia), se
+    # devuelve sin re-llamar al LLM ni recalcular —la decisión del día ya se tomó tras
+    # el check-in; reabrir la pantalla no debe cambiar la sesión ni gastar tokens.
+    if planned.respuesta_ia:
+        return Response(PlannedRunSessionSerializer(planned).data)
+
     readiness = engine.compute_readiness(hoy)
     adj = engine.adapt_today(planned, readiness)
 
@@ -387,10 +393,13 @@ def running_plan_view(request):
     if request.method == 'POST':
         ser = RunningPlanSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        RunningPlan.objects.filter(user=user, is_active=True).update(is_active=False)
         monday = hoy - timedelta(days=hoy.weekday())
-        plan = ser.save(user=user, started_at=hoy, week_start=monday,
-                        semana_actual=1, is_active=True)
+        # Atómico: desactivar el plan previo y crear el nuevo no pueden quedar a medias
+        # (el constraint parcial unique_active_running_plan_per_user lo exige).
+        with transaction.atomic():
+            RunningPlan.objects.filter(user=user, is_active=True).update(is_active=False)
+            plan = ser.save(user=user, started_at=hoy, week_start=monday,
+                            semana_actual=1, is_active=True)
         runner_profile = get_or_create_runner_profile(user)
         perfil = getattr(user, 'profile', None)
         engine = RunningAdaptiveEngineService(user, perfil, runner_profile, plan)
@@ -440,4 +449,13 @@ def complete_planned(request, pk):
             run.save(update_fields=['session_type', 'updated_at'])
     planned.estado = 'completada'
     planned.save(update_fields=['run_session', 'estado', 'updated_at'])
+    # Cierra el loop también para el umbral/zonas: recalcula el baseline desde el
+    # historial actualizado, salvo que el atleta haya declarado/fijado uno a mano
+    # (no pisamos una fuente de mayor confianza con una estimación de historial).
+    rp = get_or_create_runner_profile(request.user)
+    if rp.fuente_baseline in ('cold_start', 'historial'):
+        try:
+            recompute_runner_baseline(request.user)
+        except Exception:
+            logger.warning('complete_planned: fallo al recalcular baseline user=%s', request.user.id)
     return Response(PlannedRunSessionSerializer(planned).data)

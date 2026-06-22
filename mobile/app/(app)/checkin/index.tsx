@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
-  Alert, View, Text, TouchableOpacity, ScrollView,
+  View, Text, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, TextInput, Animated, PanResponder, Modal,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
@@ -591,6 +591,7 @@ export default function CheckinScreen() {
     setCategoria(cat)
     setDisciplina(null)
     setEntornoCardio(null)
+    setRunningMode(null)   // se exige re-elegir libre/inteligente al entrar al subflujo
     setError('')
     flashAnim.setValue(1)
     setPendingCat(cat)
@@ -611,6 +612,7 @@ export default function CheckinScreen() {
     if (pendingDisc) return
     setDisciplina(id)
     setEntornoCardio(null)
+    setRunningMode(null)   // cambiar de disciplina invalida el modo elegido antes
     setError('')
     flashAnim.setValue(1)
     setPendingDisc(id)

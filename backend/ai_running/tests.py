@@ -92,6 +92,12 @@ class BaselineTests(SimpleTestCase):
         self.assertEqual(ts.weekly_volume_baseline(runs), 10.0)
         self.assertIsNone(ts.weekly_volume_baseline([]))
 
+    def test_guard_division_por_cero(self):
+        # Riegel y _threshold_from_effort no deben crashear con entradas degeneradas.
+        self.assertEqual(ts.riegel(1200, 0, 10), 0.0)
+        self.assertIsNone(ts._threshold_from_effort(0, 5))
+        self.assertIsNone(ts._threshold_from_effort(1200, 0))
+
 
 # ─── Volumen, regla del 10% y polarización ────────────────────────────────────
 

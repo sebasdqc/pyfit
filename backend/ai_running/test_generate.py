@@ -111,6 +111,53 @@ class GenerateRunTests(TestCase):
         run.refresh_from_db()
         self.assertEqual(run.session_type, 'planned')
 
+    @override_settings(GROQ_API_KEY='test-key')
+    def test_generate_idempotente_no_rellama_llm(self):
+        # Reabrir la pantalla el mismo día devuelve la sesión ya generada (sin re-LLM).
+        with patch('ai_running.views._call_groq', return_value=(_NARRATION, _USAGE)) as m:
+            r1 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+            r2 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        self.assertEqual(m.call_count, 1)
+        self.assertEqual(r1.data['id'], r2.data['id'])
+
+    @override_settings(GROQ_API_KEY='')
+    def test_completar_no_pisa_baseline_declarado(self):
+        rp = RunnerProfile.objects.get(user=self.user)
+        rp.fuente_baseline = 'declarado'
+        rp.confianza = 'alta'
+        rp.threshold_pace_s_km = 250
+        rp.save()
+        gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        now = timezone.now()
+        run = RunSession.objects.create(
+            user=self.user, started_at=now, ended_at=now + timedelta(minutes=40),
+            status='completed', session_type='free', total_distance_m=8000,
+            total_duration_s=2400, best_pace_s_per_km=240, rpe_real=7)
+        self.client.post(f"/api/running/sessions/{gen.data['id']}/complete/",
+                         {'run_session_id': run.id}, format='json')
+        rp.refresh_from_db()
+        self.assertEqual(rp.fuente_baseline, 'declarado')      # no pisado
+        self.assertEqual(rp.threshold_pace_s_km, 250)
+
+    @override_settings(GROQ_API_KEY='')
+    def test_completar_recalcula_baseline_desde_historial(self):
+        rp = RunnerProfile.objects.get(user=self.user)
+        rp.fuente_baseline = 'cold_start'
+        rp.threshold_pace_s_km = None
+        rp.save()
+        gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        now = timezone.now()
+        run = RunSession.objects.create(
+            user=self.user, started_at=now - timedelta(days=1),
+            ended_at=now - timedelta(days=1) + timedelta(minutes=25),
+            status='completed', session_type='free', total_distance_m=5000,
+            total_duration_s=1500, best_pace_s_per_km=250, rpe_real=7)
+        self.client.post(f"/api/running/sessions/{gen.data['id']}/complete/",
+                         {'run_session_id': run.id}, format='json')
+        rp.refresh_from_db()
+        self.assertEqual(rp.fuente_baseline, 'historial')      # recomputado
+        self.assertIsNotNone(rp.threshold_pace_s_km)
+
     @override_settings(GROQ_API_KEY='')
     def test_dolor_de_carga_degrada_a_descanso_o_easy(self):
         from checkins.models import DailyCheckin

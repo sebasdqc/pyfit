@@ -135,11 +135,13 @@ RIEGEL_EXP = 1.06   # exponente de fatiga del modelo de Riegel (válido ~1.5–3
 
 def riegel(t1_s: float, d1_km: float, d2_km: float, exp: float = RIEGEL_EXP) -> float:
     """Predice el tiempo (s) para la distancia d2 a partir de un esfuerzo (t1, d1)."""
+    if not d1_km or float(d1_km) <= 0:
+        return 0.0
     return float(t1_s) * (float(d2_km) / float(d1_km)) ** exp
 
 
 def _threshold_from_effort(tiempo_s: float, distancia_km: float,
-                           exp: float = RIEGEL_EXP) -> int:
+                           exp: float = RIEGEL_EXP) -> int | None:
     """Ritmo de umbral (s/km) ≈ el ritmo sostenible durante ~1 h, derivado de un
     esfuerzo (tiempo, distancia) con Riegel.
 
@@ -147,6 +149,8 @@ def _threshold_from_effort(tiempo_s: float, distancia_km: float,
         t1·(d/d1)^exp = 3600  →  d = d1·(3600/t1)^(1/exp)
     y el umbral = 3600 / d. Nota: desde distancias muy cortas (1 km) Riegel tiende
     a SUBESTIMAR (umbral más lento) — conservador a propósito; la confianza lo refleja."""
+    if not tiempo_s or not distancia_km or float(tiempo_s) <= 0 or float(distancia_km) <= 0:
+        return None
     d_1h = float(distancia_km) * (3600.0 / float(tiempo_s)) ** (1.0 / exp)
     return round(3600.0 / d_1h)
 

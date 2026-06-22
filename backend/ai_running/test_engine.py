@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from runs.models import RunnerProfile, RunningPlan, PlannedRunSession
+from runs.models import RunSession, RunnerProfile, RunningPlan, PlannedRunSession
 from workouts.models import Competition
 from ai_running import training_science_running as ts
 from ai_running.adaptive_engine_running import RunningAdaptiveEngineService
@@ -78,6 +78,14 @@ class QualitySpacingTests(TestCase):
         self.assertEqual(len(ds), 2)
         self.assertGreater(ds[1] - ds[0], 1)   # no consecutivas
 
+    def test_dias_adyacentes_no_fuerzan_calidades_consecutivas(self):
+        # Con días preferidos pegados, coloca MENOS calidades en vez de adyacentes.
+        chosen = RunningAdaptiveEngineService._pick_quality_days([0, 1, 2], long_day=2, n=2, min_gap=2)
+        ds = sorted(chosen)
+        for a, b in zip(ds, ds[1:]):
+            self.assertGreater(b - a, 1)
+        self.assertLessEqual(len(ds), 1)
+
 
 class MicrocycleTests(TestCase):
     def setUp(self):
@@ -112,6 +120,24 @@ class MicrocycleTests(TestCase):
         self.eng.generate_microcycle(MONDAY)
         row = PlannedRunSession.objects.get(plan=self.plan, fecha=fecha)
         self.assertEqual(row.estado, 'completada')           # intacta
+
+    def test_realized_km_last_week(self):
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        when = tz.make_aware(datetime.combine(MONDAY - timedelta(days=3), time(9, 0)))
+        RunSession.objects.create(
+            user=self.user, started_at=when, ended_at=when + timedelta(minutes=30),
+            status='completed', session_type='free', total_distance_m=6000, total_duration_s=1800)
+        self.assertEqual(self.eng._realized_km_last_week(MONDAY), 6.0)
+
+    def test_no_progresa_sobre_volumen_planificado_obsoleto(self):
+        # Bug de rollover: volumen planificado alto pero SIN carreras recientes
+        # (inactividad) → re-entra en base, no progresa +10% sobre el volumen viejo.
+        self.plan.km_objetivo_semana = 80
+        self.plan.save()
+        self.eng.generate_microcycle(MONDAY)
+        self.plan.refresh_from_db()
+        self.assertLess(self.plan.km_objetivo_semana, 80)
 
 
 class ReadinessTests(TestCase):

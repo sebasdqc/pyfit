@@ -113,6 +113,20 @@ class RunningAdaptiveEngineService:
     def _carga(self, ref_date):
         return athlete_carga(self._build_srpe_series(ref_date), ref_date)
 
+    def _realized_km_last_week(self, week_start) -> float:
+        """Km REALMENTE corridos (RunSession completadas) en la semana previa. Base
+        correcta para la regla del 10%: progresa sobre lo hecho, no lo planificado, y
+        tras una inactividad cae a ~0 → re-entrada en volumen base (sin arrastrar un
+        volumen que el atleta ya perdió)."""
+        ini = week_start - timedelta(days=7)
+        fin = week_start - timedelta(days=1)
+        qs = RunSession.objects.filter(
+            user=self.user, status='completed',
+            started_at__date__gte=ini, started_at__date__lte=fin,
+        )
+        total_m = sum((r.total_distance_m or 0) for r in qs)
+        return round(total_m / 1000.0, 1)
+
     def _dolor_carga(self) -> str | None:
         if not self.checkin:
             return None
@@ -280,9 +294,11 @@ class RunningAdaptiveEngineService:
         return 'base'
 
     @staticmethod
-    def _pick_quality_days(days: list[int], long_day: int, n: int) -> set:
-        """Elige n días de calidad maximizando la separación al long run y entre sí
-        (garantiza el espaciado 'no dos calidades consecutivas' cuando es posible)."""
+    def _pick_quality_days(days: list[int], long_day: int, n: int, min_gap: int = 2) -> set:
+        """Elige n días de calidad maximizando la separación al long run y entre sí,
+        respetando un mínimo de `min_gap` días entre días duros ('no dos calidades
+        consecutivas'). Si ningún día respeta el mínimo, coloca MENOS calidades (las
+        restantes quedan como easy) en vez de forzar adyacencia."""
         pool = [d for d in days if d != long_day]
         chosen: list[int] = []
         hard = [long_day]
@@ -294,7 +310,7 @@ class RunningAdaptiveEngineService:
                 gap = min(abs(d - h) for h in hard)
                 if gap > best_gap:
                     best_gap, best = gap, d
-            if best is None:
+            if best is None or best_gap < min_gap:
                 break
             chosen.append(best)
             hard.append(best)
@@ -329,7 +345,11 @@ class RunningAdaptiveEngineService:
         week_start = lunes ISO de la semana."""
         fase = self.resolve_phase(week_start)
         nivel = self._nivel()
-        prev = self.plan.km_objetivo_semana or self.runner_profile.volumen_semanal_base_km
+        # Regla del 10% sobre el volumen REALIZADO la semana previa (no el planificado):
+        # progresa sobre lo hecho y, tras inactividad (realizado ~0), re-entra en base
+        # en lugar de progresar +10% sobre un volumen que el atleta ya no sostiene.
+        realized = self._realized_km_last_week(week_start)
+        prev = realized if realized > 0 else None
         km = ts.weekly_volume_target(meta_tipo=self.plan.meta_tipo, nivel=nivel,
                                      fase=fase, prev_km=prev)
         # Cap por ACWR: si la carga ya está en precaución/peligro, no subir volumen.
@@ -341,7 +361,9 @@ class RunningAdaptiveEngineService:
         long_day = days[-1]
         n_q = N_QUALITY_BY_PHASE.get(fase, 1)
         n_q = min(n_q, max(0, len(days) - 1))
-        q_days = self._pick_quality_days(days, long_day, n_q)
+        # Espaciado mínimo entre sesiones de calidad (incluye el long run como día duro).
+        min_gap = ts.MIN_EASY_DAYS_BY_NIVEL.get(nivel, 1) + 1
+        q_days = self._pick_quality_days(days, long_day, n_q, min_gap)
         q_types = QUALITY_TYPES_BY_PHASE.get(fase, [])
 
         rows = []
