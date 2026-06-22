@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Rect, Circle, Ellipse } from 'react-native-svg'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
@@ -586,6 +586,18 @@ export default function CheckinScreen() {
     setProcesandoTimer(false)
     setAddingLoc(false)
   }
+
+  // Al volver a la pantalla ENTRENAR tras COMPLETAR un check-in (incluido el día de
+  // descanso), reiniciar para empezar uno nuevo en vez de quedar atascado en el
+  // resumen ("Día de descanso · Compartir"). Solo dispara si ya se había guardado:
+  // un check-in a medias (sin guardar) conserva su progreso al cambiar de pestaña.
+  const checkinSavedRef = useRef(false)
+  useEffect(() => { checkinSavedRef.current = checkinSaved }, [checkinSaved])
+  useFocusEffect(
+    useCallback(() => {
+      if (checkinSavedRef.current) resetCheckin()
+    }, []),
+  )
 
   // Tocar una categoría en d4: parpadea 2 veces y avanza a d4_sub. Resetea la
   // subdisciplina para que d4_sub arranque sin selección al cambiar de categoría.

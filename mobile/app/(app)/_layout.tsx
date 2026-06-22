@@ -76,7 +76,7 @@ const ROUTE_LABEL_KEY: Record<string, string> = {
 
 // Rutas donde NO se muestra la barra inferior: durante el entrenamiento y su
 // feedback, para evitar fugas a otras pantallas a mitad de la sesión.
-const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'generate/index', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]']
+const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'generate/index', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]', 'running/index']
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
@@ -258,6 +258,8 @@ export default function AppLayout() {
       <Tabs.Screen name="run/index" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="run/resumen/[id]" options={{ href: null, tabBarLabel: '' }} />
       <Tabs.Screen name="run/feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
+      {/* Running inteligente (sesión generada) — fuera del tab bar */}
+      <Tabs.Screen name="running/index" options={{ href: null, tabBarLabel: '' }} />
       {/* Admin (modo staff) */}
       <Tabs.Screen name="admin/index" options={{ href: null, tabBarLabel: '' }} />
       </Tabs>
