@@ -1,7 +1,7 @@
 import copy
 
 from rest_framework import serializers
-from .models import Session, SessionExercise, SessionFeedback, Competition
+from .models import Session, SessionExercise, SessionFeedback, Competition, SessionPhoto
 from checkins.models import DailyCheckin
 
 
@@ -112,9 +112,25 @@ class SessionListSerializer(serializers.ModelSerializer):
         }
 
 
+class SessionPhotoSerializer(serializers.ModelSerializer):
+    """Foto de sesión (gym o running). `url` es firmada y temporal con Spaces."""
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SessionPhoto
+        fields = ['id', 'url', 'created_at']
+
+    def get_url(self, obj):
+        try:
+            return obj.image.url
+        except Exception:
+            return None
+
+
 class SessionDetailSerializer(serializers.ModelSerializer):
     feedback = SessionFeedbackSerializer(read_only=True)
     exercises = SessionExerciseSerializer(many=True, read_only=True)
+    photos = SessionPhotoSerializer(many=True, read_only=True)
     # HIS-2: respuesta_ia COMPLETA (series/reps/notas/nota del entrenador) pero
     # enriquecida con el peso real registrado por ejercicio (series_log).
     respuesta_ia = serializers.SerializerMethodField()
@@ -123,7 +139,7 @@ class SessionDetailSerializer(serializers.ModelSerializer):
         model = Session
         fields = [
             'id', 'fecha', 'duracion_planificada', 'rpe_target', 'volumen_relativo',
-            'respuesta_ia', 'feedback', 'exercises', 'created_at',
+            'respuesta_ia', 'feedback', 'exercises', 'photos', 'created_at',
         ]
 
     def get_respuesta_ia(self, obj):

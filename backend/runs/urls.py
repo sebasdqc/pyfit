@@ -6,4 +6,5 @@ urlpatterns = [
     path('<int:pk>/', views.RunSessionDetailView.as_view(), name='run-detail'),
     path('<int:pk>/points/', views.add_run_points, name='run-add-points'),
     path('<int:pk>/feedback/', views.run_feedback, name='run-feedback'),
+    path('<int:pk>/photos/', views.run_photos, name='run-photos'),
 ]

@@ -21,6 +21,7 @@ import { useTheme } from '../../../../lib/theme'
 import { Colors } from '../../../../lib/colors'
 import { getUser } from '../../../../lib/storage'
 import WorkoutShareCard from '../../../../components/WorkoutShareCard'
+import SessionPhotos from '../../../../components/SessionPhotos'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,9 @@ export default function RunResumenScreen() {
             <MetricCardItem key={i} label={m.label} value={m.value} colors={colors} />
           ))}
         </View>
+
+        {/* Fotos de la sesión (se guardan y aparecen al volver a abrir la carrera) */}
+        <SessionPhotos kind="run" sessionId={session.id} initialPhotos={session.photos ?? []} editable />
 
         {/* CTA → feedback de la carrera, luego dashboard */}
         <TouchableOpacity

@@ -23,6 +23,7 @@ import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach } from '../../../lib/coachApi'
 import { useTranslation } from '../../../lib/i18n'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
+import SessionPhotos from '../../../components/SessionPhotos'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -732,6 +733,9 @@ export default function FeedbackScreen() {
               {proximaSesion && !logroLoading && (
                 <NextSessionCard proximaSesion={proximaSesion} styles={styles} />
               )}
+
+              {/* Fotos de la sesión (se guardan y aparecen en el historial) */}
+              <SessionPhotos kind="gym" sessionId={Number(id)} editable />
             </View>
           )}
 

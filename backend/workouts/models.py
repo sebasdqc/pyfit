@@ -496,3 +496,39 @@ class CalendarEvent(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.titulo} ({self.fecha})'
+
+
+class SessionPhoto(models.Model):
+    """Foto adjunta a UNA sesión (de fuerza `Session` O de running `runs.RunSession`).
+    La imagen va a DO Spaces si USE_SPACES está configurado (si no, a disco local).
+    `user` se guarda para autorizar/listar sin joins."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='session_photos')
+    session = models.ForeignKey('workouts.Session', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='photos')
+    run_session = models.ForeignKey('runs.RunSession', on_delete=models.CASCADE,
+                                    null=True, blank=True, related_name='photos')
+    # FileField (no ImageField) para no exigir Pillow a nivel de modelo/check —
+    # mismo criterio que performance.foto_img. La validación de imagen se hace en
+    # photo_service (Pillow opcional).
+    image = models.FileField(upload_to='session_photos/%Y/%m/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'session_photos'
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['user', '-created_at'])]
+        constraints = [
+            # Exactamente una de las dos FKs (gym XOR running).
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(session__isnull=False) & models.Q(run_session__isnull=True))
+                    | (models.Q(session__isnull=True) & models.Q(run_session__isnull=False))
+                ),
+                name='session_photo_exactly_one_owner',
+            ),
+        ]
+
+    def __str__(self):
+        owner = self.session_id or f'run:{self.run_session_id}'
+        return f'SessionPhoto<{owner}>'

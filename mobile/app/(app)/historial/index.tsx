@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import SessionPhotos from '../../../components/SessionPhotos'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
 import { FASES, Colors } from '../../../lib/colors'
@@ -253,6 +254,7 @@ function SessionModal({
   // HIS-1: el listado trae respuesta_ia RECORTADA (solo nombres). Al abrir el
   // detalle se hace fetch de la sesión completa (series/reps/notas + nota).
   const [fullIa, setFullIa] = useState<RespuestaIA | null>(null)
+  const [photos, setPhotos] = useState<any[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState(false)
 
@@ -261,13 +263,14 @@ function SessionModal({
     setDetailError(false)
     let cancel = false
     apiGet(`/api/sessions/${sessionId}/`)
-      .then((d: any) => { if (!cancel) { setFullIa(d?.respuesta_ia ?? null); setDetailLoading(false) } })
+      .then((d: any) => { if (!cancel) { setFullIa(d?.respuesta_ia ?? null); setPhotos(d?.photos ?? []); setDetailLoading(false) } })
       .catch(() => { if (!cancel) { setDetailError(true); setDetailLoading(false) } })
     return () => { cancel = true }
   }
 
   useEffect(() => {
-    if (!visible || !session) { setFullIa(null); setDetailLoading(false); setDetailError(false); return }
+    if (!visible || !session) { setFullIa(null); setPhotos([]); setDetailLoading(false); setDetailError(false); return }
+    setPhotos([])
     const yaCompleto = !!session.respuesta_ia?.fases?.some(
       f => f.ejercicios?.some(e => (e as any).series != null)
     )
@@ -416,6 +419,9 @@ function SessionModal({
                 ) : null}
               </View>
             )}
+
+            {/* Fotos de la sesión (galería read-only) */}
+            <SessionPhotos kind="gym" sessionId={session.id} initialPhotos={photos} editable={false} />
           </ScrollView>
         </View>
       </View>

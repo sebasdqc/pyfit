@@ -9,7 +9,8 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import IsAuthenticated
 from pyfit.throttles import SessionResumenRateThrottle
 from rest_framework.response import Response
-from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle
+from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle, SessionPhoto
+from .photo_service import create_session_photo, PhotoError
 
 
 def _get_local_date(request) -> date:
@@ -29,7 +30,7 @@ def _get_local_date(request) -> date:
         except ValueError:
             pass
     return server_today
-from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer
+from .serializers import SessionDetailSerializer, SessionListSerializer, SessionFeedbackSerializer, CompetitionSerializer, SessionPhotoSerializer
 
 
 @api_view(['GET'])
@@ -53,10 +54,38 @@ def session_list(request):
 @permission_classes([IsAuthenticated])
 def session_detail(request, pk):
     try:
-        session = request.user.sessions.select_related('feedback').prefetch_related('exercises').get(pk=pk)
+        session = request.user.sessions.select_related('feedback').prefetch_related('exercises', 'photos').get(pk=pk)
     except Session.DoesNotExist:
         return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
     return Response(SessionDetailSerializer(session).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def session_photos(request, pk):
+    """POST /api/sessions/<pk>/photos/ — adjunta una foto (base64 dataURI) a la sesión."""
+    try:
+        session = request.user.sessions.get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        photo = create_session_photo(request.user, request.data.get('image', ''), session=session)
+    except PhotoError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(SessionPhotoSerializer(photo).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def session_photo_delete(request, pk):
+    """DELETE /api/session-photos/<pk>/ — borra una foto propia (gym o running)."""
+    try:
+        photo = SessionPhoto.objects.get(pk=pk, user=request.user)
+    except SessionPhoto.DoesNotExist:
+        return Response({'error': 'Foto no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    photo.image.delete(save=False)   # borra el archivo en Spaces/disco
+    photo.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])

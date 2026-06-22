@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from .models import RunSession, RunPoint
+from workouts.photo_service import create_session_photo, PhotoError
+from workouts.serializers import SessionPhotoSerializer
 from .serializers import (
     RunSessionCreateSerializer,
     RunSessionUpdateSerializer,
@@ -46,7 +48,7 @@ class RunSessionDetailView(generics.RetrieveUpdateAPIView):
         return RunSessionDetailSerializer
 
     def get_queryset(self):
-        return RunSession.objects.filter(user=self.request.user)
+        return RunSession.objects.filter(user=self.request.user).prefetch_related('photos')
 
 
 @api_view(['POST'])
@@ -91,3 +93,15 @@ def run_feedback(request, pk):
             status=status.HTTP_200_OK,
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_photos(request, pk):
+    """POST /api/runs/<pk>/photos/ — adjunta una foto (base64 dataURI) a la carrera."""
+    session = get_object_or_404(RunSession, pk=pk, user=request.user)
+    try:
+        photo = create_session_photo(request.user, request.data.get('image', ''), run_session=session)
+    except PhotoError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(SessionPhotoSerializer(photo).data, status=status.HTTP_201_CREATED)

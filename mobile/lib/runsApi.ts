@@ -1,6 +1,7 @@
 // ─── Runs API ─────────────────────────────────────────────────────────────────
 
 import { apiGet, apiPatch, apiPost } from './api'
+import type { SessionPhoto } from './photosApi'
 
 // Punto tal como lo captura el dispositivo / hook (latitude/longitude).
 export interface RunPointInput {
@@ -52,6 +53,7 @@ export interface RunSession {
     pace_objetivo: [number, number] | null   // s/km [rápido, lento]
     fc_objetivo: [number, number] | null      // bpm [lo, hi]
   } | null
+  photos?: SessionPhoto[]
 }
 
 export interface RunFeedbackInput {

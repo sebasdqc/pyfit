@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import RunSession, RunPoint
+from workouts.serializers import SessionPhotoSerializer
 import math
 
 
@@ -228,6 +229,7 @@ class RunFeedbackSerializer(serializers.ModelSerializer):
 class RunSessionDetailSerializer(serializers.ModelSerializer):
     points = serializers.SerializerMethodField()
     planned = serializers.SerializerMethodField()
+    photos = SessionPhotoSerializer(many=True, read_only=True)
 
     class Meta:
         model = RunSession
@@ -235,7 +237,7 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
             'id', 'started_at', 'ended_at', 'status', 'session_type',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
             'best_pace_s_per_km', 'calories_burned', 'elevation_gain_m',
-            'avg_heart_rate', 'points', 'planned', 'created_at',
+            'avg_heart_rate', 'points', 'planned', 'photos', 'created_at',
             'rpe_real', 'rating', 'cumplimiento', 'molestias', 'feedback_notas', 'feedback_at',
         ]
 
