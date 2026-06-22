@@ -1218,7 +1218,9 @@ export default function GenerateScreen() {
       let data: SesionResponse
       try {
         data = await apiPost('/api/sessions/generate/', {})
-      } catch (postErr) {
+      } catch (postErr: any) {
+        // Límite diario alcanzado: NO es un timeout → no reintentar por polling, propagar.
+        if (postErr?.code === 'daily_limit' || postErr?.status === 429) throw postErr
         // La pasarela puede devolver 504 aunque el backend SÍ haya creado la
         // sesión (la generación tarda más que el timeout del proxy). En vez de
         // fallar, recuperamos la sesión nueva por polling.
@@ -1229,7 +1231,13 @@ export default function GenerateScreen() {
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
     } catch (err: any) {
-      if (mountedRef.current) setError(err.message || 'Error generando la sesión')
+      if (!mountedRef.current) return
+      if (err?.code === 'daily_limit' || err?.status === 429) {
+        router.replace('/(app)/dashboard')
+        Alert.alert('Alcanzaste tu límite diario', 'Generaste 5 sesiones hoy. Vuelve mañana para crear nuevas.')
+        return
+      }
+      setError(err.message || 'Error generando la sesión')
     } finally {
       if (mountedRef.current) setApiDone(true)
     }

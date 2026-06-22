@@ -128,15 +128,23 @@ async function request(
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}))
+    let message = `Error ${res.status}`
     // DRF validation errors come as { field: ["msg", ...], ... }
     if (typeof errBody === 'object' && !errBody.error && !errBody.detail) {
       const firstKey = Object.keys(errBody)[0]
       if (firstKey) {
         const msg = Array.isArray(errBody[firstKey]) ? errBody[firstKey][0] : errBody[firstKey]
-        throw new Error(`${firstKey}: ${msg}`)
+        message = `${firstKey}: ${msg}`
       }
+    } else {
+      message = errBody.error || errBody.detail || message
     }
-    throw new Error(errBody.error || errBody.detail || `Error ${res.status}`)
+    // Adjuntamos status y code (si el backend lo envía) para que los callers puedan
+    // distinguir casos como el límite diario (429 + code 'daily_limit').
+    const err = new Error(message) as Error & { status?: number; code?: string }
+    err.status = res.status
+    if (errBody && typeof errBody === 'object' && errBody.code) err.code = errBody.code
+    throw err
   }
 
   return res.json()

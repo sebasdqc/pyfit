@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle, AjustarSesionRateThrottle
-from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile
+from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile, DailyGenerationCount
 from checkins.models import DailyCheckin
 
 
@@ -1087,6 +1087,10 @@ def generate_session(request):
             'error': 'Tu coach pausó la generación automática con IA.',
         }, status=403)
 
+    # Límite diario de generaciones con IA (máx. 5/día, fecha local del dispositivo).
+    if DailyGenerationCount.reached_limit(user, hoy):
+        return Response({'error': 'Alcanzaste tu límite diario', 'code': 'daily_limit'}, status=429)
+
     checkin = user.checkins.select_related('location').filter(fecha=hoy).order_by('-created_at').first()
     if not checkin:
         if coach_cfg and not coach_cfg.get('checkin', True):
@@ -1280,6 +1284,9 @@ def generate_session(request):
             uso_fallback=uso_fallback,
         )
         _persist_session_exercises(sesion, sesion_generada)
+
+    # Generación exitosa → cuenta para el límite diario.
+    DailyGenerationCount.record(user, hoy)
 
     # Invalidar caché del insight y del saludo para regenerarlos con la nueva sesión
     from workouts.models import DailyCoachInsight, DailySaludo

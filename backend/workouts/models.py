@@ -532,3 +532,36 @@ class SessionPhoto(models.Model):
     def __str__(self):
         owner = self.session_id or f'run:{self.run_session_id}'
         return f'SessionPhoto<{owner}>'
+
+
+class DailyGenerationCount(models.Model):
+    """Contador de generaciones de sesión con IA por usuario y DÍA (fecha local del
+    dispositivo). Necesario porque las sesiones del día sin ejecutar se reemplazan
+    (GEN-2), así que contar `Session` no refleja cuántas veces se generó. Resetea por
+    calendario (una fila por fecha)."""
+    DEFAULT_LIMIT = 5
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='daily_generation_counts')
+    fecha = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'daily_generation_counts'
+        unique_together = [('user', 'fecha')]
+        indexes = [models.Index(fields=['user', 'fecha'])]
+
+    @classmethod
+    def reached_limit(cls, user, fecha, limit=None) -> bool:
+        limit = limit or cls.DEFAULT_LIMIT
+        obj = cls.objects.filter(user=user, fecha=fecha).first()
+        return bool(obj and obj.count >= limit)
+
+    @classmethod
+    def record(cls, user, fecha):
+        """Suma 1 de forma atómica (la fila se crea si no existe)."""
+        cls.objects.get_or_create(user=user, fecha=fecha)
+        cls.objects.filter(user=user, fecha=fecha).update(count=models.F('count') + 1)
+
+    def __str__(self):
+        return f'{self.user} {self.fecha}: {self.count}'

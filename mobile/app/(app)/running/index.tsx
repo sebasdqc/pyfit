@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -46,6 +46,11 @@ export default function RunningSessionScreen() {
     try {
       setData(await generateRunSession(indoor))
     } catch (e: any) {
+      if (e?.code === 'daily_limit' || e?.status === 429) {
+        router.replace('/(app)/dashboard')
+        Alert.alert('Alcanzaste tu límite diario', 'Generaste 5 sesiones hoy. Vuelve mañana para crear nuevas.')
+        return
+      }
       setError(e?.message ?? 'No se pudo generar la sesión.')
     } finally {
       setLoading(false)

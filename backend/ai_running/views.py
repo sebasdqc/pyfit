@@ -16,6 +16,7 @@ from rest_framework import status
 from pyfit.throttles import GenerateSessionRateThrottle
 from checkins.models import DailyCheckin
 from runs.models import RunSession, RunningPlan, PlannedRunSession
+from workouts.models import DailyGenerationCount
 # Reutilizamos el caller genérico de Groq y la fecha local del motor de fuerza.
 from ai_workout.views import _call_groq, _get_local_date, _sanitize_prompt_text
 
@@ -317,6 +318,12 @@ def generate_run_session(request):
         planned.save()
         return Response(PlannedRunSessionSerializer(planned).data)
 
+    # Límite diario de generaciones con IA (contador compartido con fuerza, máx. 5/día).
+    # Va después de las salidas idempotente/descanso para no bloquear esas (no generan).
+    if DailyGenerationCount.reached_limit(user, hoy):
+        return Response({'error': 'Alcanzaste tu límite diario', 'code': 'daily_limit'},
+                        status=status.HTTP_429_TOO_MANY_REQUESTS)
+
     presc = ts.prescribe_run_session(
         tipo_sesion=adj['tipo_sesion'], zonas=runner_profile.zonas or {},
         nivel=engine._nivel(),
@@ -365,6 +372,7 @@ def generate_run_session(request):
         planned.tokens_out = usage.get('tokens_out')
         planned.save()
 
+    DailyGenerationCount.record(user, hoy)
     return Response(PlannedRunSessionSerializer(planned).data)
 
 
