@@ -159,6 +159,31 @@ class GenerateRunTests(TestCase):
         self.assertIsNotNone(rp.threshold_pace_s_km)
 
     @override_settings(GROQ_API_KEY='')
+    def test_resumen_expone_objetivo_de_la_planificada(self):
+        # Tras vincular la RunSession, el detalle de /api/runs/<id>/ expone el objetivo
+        # de la sesión inteligente (para la adherencia en el resumen).
+        gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        now = timezone.now()
+        run = RunSession.objects.create(
+            user=self.user, started_at=now, ended_at=now + timedelta(minutes=40),
+            status='completed', session_type='free', total_distance_m=8000, total_duration_s=2400)
+        self.client.post(f"/api/running/sessions/{gen.data['id']}/complete/",
+                         {'run_session_id': run.id}, format='json')
+        detail = self.client.get(f'/api/runs/{run.id}/')
+        self.assertEqual(detail.status_code, 200)
+        self.assertIsNotNone(detail.data['planned'])
+        self.assertEqual(detail.data['planned']['zona_principal'], gen.data['zona_principal'])
+
+    @override_settings(GROQ_API_KEY='')
+    def test_runsession_libre_no_trae_planned(self):
+        now = timezone.now()
+        run = RunSession.objects.create(
+            user=self.user, started_at=now, ended_at=now + timedelta(minutes=30),
+            status='completed', session_type='free', total_distance_m=5000, total_duration_s=1800)
+        detail = self.client.get(f'/api/runs/{run.id}/')
+        self.assertIsNone(detail.data['planned'])
+
+    @override_settings(GROQ_API_KEY='')
     def test_dolor_de_carga_degrada_a_descanso_o_easy(self):
         from checkins.models import DailyCheckin
         DailyCheckin.objects.create(

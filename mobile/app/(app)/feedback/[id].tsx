@@ -421,8 +421,14 @@ export default function FeedbackScreen() {
   const shareCardProps = useMemo(() => {
     const ia = sessionForShare?.respuesta_ia
     if (!ia) return {}
-    const allExercises = ((ia.fases || []) as any[]).flatMap((f: any) => f.ejercicios || [])
-    const totalSeries = allExercises.reduce((sum: number, e: any) => sum + (parseInt(String(e.series)) || 0), 0)
+    const fases = (ia.fases || []) as any[]
+    const flat = fases.flatMap((f: any) =>
+      (f.ejercicios || []).map((e: any) => ({ ...e, _main: String(f.nombre || '').toLowerCase().includes('principal') })),
+    )
+    const totalSeries = flat.reduce((sum: number, e: any) => sum + (parseInt(String(e.series)) || 0), 0)
+    // La tarjeta muestra hasta 6 ejercicios: prioriza el bloque principal (los
+    // lifts reales) sobre calentamiento/vuelta a la calma.
+    const ordered = [...flat].sort((a: any, b: any) => (b._main ? 1 : 0) - (a._main ? 1 : 0))
     const fecha: string = sessionForShare?.fecha || ''
     const parts = fecha.split('-')
     const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
@@ -432,11 +438,11 @@ export default function FeedbackScreen() {
     return {
       title: (ia.titulo || ia.objetivo_sesion || undefined) as string | undefined,
       metrics: [
-        { label: 'EJERCICIOS', value: String(allExercises.length) },
+        { label: 'EJERCICIOS', value: String(flat.length) },
         { label: 'SERIES',     value: String(totalSeries) },
         { label: 'DURACIÓN',   value: `${ia.duracion_total || sessionForShare?.duracion_planificada || '--'} min` },
       ],
-      exercises: allExercises.map((e: any) => ({
+      exercises: ordered.map((e: any) => ({
         nombre: String(e.nombre || ''),
         series: parseInt(String(e.series)) || 0,
         repeticiones: String(e.repeticiones || ''),

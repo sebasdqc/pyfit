@@ -227,6 +227,7 @@ class RunFeedbackSerializer(serializers.ModelSerializer):
 
 class RunSessionDetailSerializer(serializers.ModelSerializer):
     points = serializers.SerializerMethodField()
+    planned = serializers.SerializerMethodField()
 
     class Meta:
         model = RunSession
@@ -234,7 +235,7 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
             'id', 'started_at', 'ended_at', 'status', 'session_type',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
             'best_pace_s_per_km', 'calories_burned', 'elevation_gain_m',
-            'avg_heart_rate', 'points', 'created_at',
+            'avg_heart_rate', 'points', 'planned', 'created_at',
             'rpe_real', 'rating', 'cumplimiento', 'molestias', 'feedback_notas', 'feedback_at',
         ]
 
@@ -247,6 +248,29 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
         if not full:
             points = downsample_points(points, MAX_DETAIL_POINTS)
         return RunPointSerializer(points, many=True).data
+
+    def get_planned(self, obj):
+        """Objetivo prescrito (zona/ritmo/FC/RPE del bloque principal) si la carrera
+        está vinculada a una sesión inteligente — para calcular adherencia en el
+        resumen. None para carreras libres."""
+        if obj.session_type != 'planned':
+            return None
+        pr = obj.planned_origin.first()
+        if not pr:
+            return None
+        segs = pr.estructura_fases.get('segmentos', []) if isinstance(pr.estructura_fases, dict) else []
+        principales = [s for s in segs if s.get('fase') == 'principal']
+        pool = principales or segs
+        target = max(pool, key=lambda s: s.get('rpe') or 0) if pool else {}
+        ia = pr.respuesta_ia if isinstance(pr.respuesta_ia, dict) else {}
+        return {
+            'tipo_sesion': pr.tipo_sesion,
+            'titulo': ia.get('titulo') or '',
+            'zona_principal': pr.zona_principal,
+            'rpe_target': pr.rpe_target,
+            'pace_objetivo': target.get('pace_objetivo'),   # [lo,hi] s/km o None
+            'fc_objetivo': target.get('fc_objetivo'),        # [lo,hi] bpm o None
+        }
 
 
 class RunSessionListSerializer(serializers.ModelSerializer):

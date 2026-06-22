@@ -28,10 +28,9 @@ import Svg, { Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-sv
 // primera iteración los colores son: el de la variante (verde en running) + azul
 // cielo + rosado. El usuario desliza para elegir el color y comparte el visible.
 //
-// La variante 'running' se alimenta con datos reales de la sesión vía props
-// (título, métricas, ruta, fecha, usuario). La variante 'gym' aún usa los
-// placeholders por defecto hasta que se conecte su flujo. Cualquier prop de
-// datos omitida cae al placeholder correspondiente.
+// Las tres variantes se alimentan con datos reales vía props: 'running' (título,
+// métricas, ruta), 'gym' (lista de ejercicios + métricas) y 'descanso' (frase).
+// Cualquier prop de datos omitida cae al placeholder correspondiente.
 //
 // El área capturada es ÚNICAMENTE la tarjeta visible (su cardRef). El botón
 // "COMPARTIR RUTINA" y los puntos del carrusel viven fuera de ese View, por lo

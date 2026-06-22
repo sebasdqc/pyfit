@@ -11,6 +11,7 @@ import { router } from 'expo-router'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
+import { getRestPhrase } from '../../../lib/restPhrases'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
 import { runModeForEntorno } from '../../../lib/runMode'
@@ -77,7 +78,7 @@ const CAT_MOVIL  = { cat: 'MOVILIDAD'      as const, path: 'libre'       as cons
 // termina en un resumen con tarjeta para compartir. Acento violeta calmo.
 const REST_COLOR = '#a78bfa'
 const REST_COLOR_DARK = '#7c5cf0'
-const REST_FRASE = 'El descanso es tan importante como el entrenamiento.'
+// La frase del día de descanso viene de lib/restPhrases (15 frases, rota por día).
 
 const DISCIPLINA_OPTS = [
   { id: 'running'      as const, label: 'Running',              sub: 'Trabajo aeróbico en ruta',        ...CAT_CARDIO },
@@ -500,6 +501,8 @@ export default function CheckinScreen() {
   const [entornoCardio, setEntornoCardio] = useState<string | null>(null)
   const [grupoMuscular, setGrupoMuscular] = useState<GrupoMuscular | null>(null)
   const [runningMode, setRunningMode] = useState<'libre' | 'inteligente' | null>(null)
+  // Frase del día de descanso: estable durante la sesión (misma en el resumen y la tarjeta).
+  const restFrase = useMemo(() => getRestPhrase(), [])
   // Animación de "parpadeo x2" de la card de categoría antes de avanzar a d4_sub.
   const [pendingCat, setPendingCat] = useState<Categoria | null>(null)
   // Idem para la disciplina concreta en d4_sub.
@@ -1309,7 +1312,7 @@ export default function CheckinScreen() {
             <Text style={styles.resumenDataText}>{buildSummaryText() || 'Tu estado de hoy quedó registrado.'}</Text>
             <View style={styles.resumenDivider} />
             <Text style={[styles.resumenSesionEyebrow, { color: REST_COLOR }]}>HOY</Text>
-            <Text style={styles.resumenSesionText}>{REST_FRASE}</Text>
+            <Text style={styles.resumenSesionText}>{restFrase}</Text>
           </View>
 
           <Text style={styles.resumenNote}>
@@ -1509,7 +1512,7 @@ export default function CheckinScreen() {
                 <WorkoutShareCard
                   sessionType="descanso"
                   title="Hoy descanso"
-                  phrase={REST_FRASE}
+                  phrase={restFrase}
                   userLabel={userLabel}
                   dateLabel={formatShareDate()}
                 />

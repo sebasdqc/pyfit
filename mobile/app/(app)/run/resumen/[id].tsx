@@ -46,6 +46,12 @@ function handleFromUser(u: { nombre?: string; email?: string } | null): string |
   return base ? `@${base}` : undefined
 }
 
+// Segundos/km → "M:SS".
+function mmssPace(s: number): string {
+  const x = Math.max(0, Math.round(s))
+  return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`
+}
+
 // ─── Metric Card ──────────────────────────────────────────────────────────────
 
 function MetricCardItem({ label, value, colors }: MetricCard & { colors: Colors }) {
@@ -173,6 +179,40 @@ export default function RunResumenScreen() {
     )
   }
 
+  // ── Adherencia (solo si la carrera vino de una sesión inteligente) ──
+  const planned = session.planned
+  let adh: null | {
+    zona: string; paceTarget: string | null
+    status: { label: string; color: string } | null
+    pct: number | null; rpeTarget: number | null; rpeReal: number | null
+  } = null
+  if (planned) {
+    const pr = planned.pace_objetivo
+    const avg = session.avg_pace_s_per_km ?? 0
+    let status: { label: string; color: string } | null = null
+    if (pr && avg > 0) {
+      if (avg < pr[0]) status = { label: 'MÁS RÁPIDO', color: colors.cyan }
+      else if (avg > pr[1]) status = { label: 'MÁS LENTO', color: colors.orange }
+      else status = { label: 'EN ZONA', color: colors.green }
+    }
+    let pct: number | null = null
+    if (pr && session.points && session.points.length) {
+      let inz = 0, tot = 0
+      for (const p of session.points) {
+        const sp = p.speed_m_s
+        if (sp && sp > 0) { tot++; const pace = 1000 / sp; if (pace >= pr[0] && pace <= pr[1]) inz++ }
+      }
+      if (tot >= 5) pct = Math.round((inz / tot) * 100)
+    }
+    adh = {
+      zona: planned.zona_principal,
+      paceTarget: pr ? `${mmssPace(pr[0])}–${mmssPace(pr[1])} /km` : null,
+      status, pct,
+      rpeTarget: planned.rpe_target,
+      rpeReal: session.rpe_real ?? null,
+    }
+  }
+
   return (
     <View style={[styles.root, { paddingTop: insets.top, backgroundColor: colors.bg }]}>
       {/* ── Mini map ── */}
@@ -211,6 +251,40 @@ export default function RunResumenScreen() {
       >
         {/* Title */}
         <Text style={[styles.title, { color: colors.inkPrimary }]}>Resumen</Text>
+
+        {/* Adherencia al plan (sesión inteligente) */}
+        {adh && (
+          <View style={{ borderWidth: 1, borderColor: colors.borderDefault, backgroundColor: colors.cardBg, borderRadius: 16, padding: 16, marginBottom: 18 }}>
+            <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, color: colors.accent, marginBottom: 10 }}>
+              ADHERENCIA AL PLAN{adh.zona ? `  ·  ${adh.zona}` : ''}
+            </Text>
+            {adh.paceTarget && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: colors.inkMuted }}>Objetivo</Text>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: colors.inkPrimary }}>{adh.paceTarget}</Text>
+                {adh.status && (
+                  <View style={{ marginLeft: 'auto', borderWidth: 1, borderColor: adh.status.color, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 11, color: adh.status.color }}>{adh.status.label}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', gap: 28 }}>
+              {adh.pct != null && (
+                <View>
+                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: colors.inkPrimary }}>{adh.pct}%</Text>
+                  <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.8, color: colors.inkMuted, marginTop: 2 }}>EN ZONA</Text>
+                </View>
+              )}
+              <View>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: colors.inkPrimary }}>
+                  {adh.rpeReal ?? '--'}<Text style={{ color: colors.inkMuted, fontSize: 15 }}> / {adh.rpeTarget ?? '--'}</Text>
+                </Text>
+                <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.8, color: colors.inkMuted, marginTop: 2 }}>RPE REAL / OBJ</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Metric grid (2 columns) */}
         <View style={styles.grid}>

@@ -43,6 +43,15 @@ export interface RunSession {
   molestias?: string[]
   feedback_notas?: string | null
   feedback_at?: string | null
+  // Objetivo de la sesión inteligente vinculada (null en carreras libres) — adherencia.
+  planned?: {
+    tipo_sesion: string
+    titulo: string
+    zona_principal: string
+    rpe_target: number | null
+    pace_objetivo: [number, number] | null   // s/km [rápido, lento]
+    fc_objetivo: [number, number] | null      // bpm [lo, hi]
+  } | null
 }
 
 export interface RunFeedbackInput {
