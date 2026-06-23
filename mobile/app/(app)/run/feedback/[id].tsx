@@ -102,6 +102,9 @@ export default function RunFeedbackScreen() {
   const [zonasMolestia, setZonasMolestia] = useState<string[]>([])
   const [notas, setNotas] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Tras guardar el feedback mostramos una pantalla de felicitación ("Buen Trabajo")
+  // antes de volver al dashboard, en vez de navegar directo.
+  const [done, setDone] = useState(false)
 
   const sessionId = id ? parseInt(id, 10) : NaN
   const canSubmit = rpeChoice !== null && sensacion !== null && !submitting
@@ -135,10 +138,12 @@ export default function RunFeedbackScreen() {
         })
       }
     } catch {
-      // No bloqueante: navegamos igual aunque el guardado falle.
+      // No bloqueante: felicitamos igual aunque el guardado falle.
       captureMessage('run-feedback POST failed — feedback not saved', 'warning')
     }
-    router.replace('/(app)/dashboard')
+    // En vez de ir directo al dashboard, mostramos "Buen Trabajo".
+    setSubmitting(false)
+    setDone(true)
   }
 
   function handleSkip() {
@@ -149,6 +154,34 @@ export default function RunFeedbackScreen() {
         { text: t('feedback_skip_cancel'), style: 'cancel' },
         { text: t('feedback_skip_confirm'), style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },
       ],
+    )
+  }
+
+  // ── Pantalla de felicitación tras Finalizar ──────────────────────────────────
+  if (done) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
+        <View style={styles.doneCenter}>
+          <Text style={styles.doneEmoji}>🎉</Text>
+          <Text style={styles.doneTitle}>Buen Trabajo</Text>
+        </View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+          <TouchableOpacity
+            style={styles.primaryWrap}
+            onPress={() => router.replace('/(app)/dashboard')}
+            activeOpacity={0.88}
+          >
+            <LinearGradient
+              colors={[colors.accent, colors.accentDark]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.primaryBtn}
+            >
+              <Text style={styles.primaryBtnText}>Regresar al menú</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
     )
   }
 
@@ -333,5 +366,13 @@ function makeStyles(c: Colors) {
     primaryBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', letterSpacing: 0.2 },
     skipBtn: { alignSelf: 'center', marginTop: 12, paddingVertical: 8, paddingHorizontal: 16 },
     skipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkMuted },
+
+    // Felicitación "Buen Trabajo" (centrada) tras Finalizar.
+    doneCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    doneEmoji: { fontSize: 64, marginBottom: 18 },
+    doneTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 44,
+      color: c.inkPrimary, letterSpacing: -1.2, textAlign: 'center',
+    },
   })
 }

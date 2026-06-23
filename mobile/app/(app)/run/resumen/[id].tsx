@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Modal,
@@ -53,6 +53,30 @@ function mmssPace(s: number): string {
   return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`
 }
 
+// Región que encuadra TODA la traza (caja envolvente + margen), para que el mapa
+// muestre el recorrido completo y no salga cortado. `fitToCoordinates` afina el
+// encuadre exacto en onMapReady; esto es el initialRegion (ya centrado).
+function boundingRegion(coords: { latitude: number; longitude: number }[]) {
+  if (coords.length === 0) {
+    return { latitude: 19.4326, longitude: -99.1332, latitudeDelta: 0.02, longitudeDelta: 0.02 }
+  }
+  let minLat = coords[0].latitude, maxLat = coords[0].latitude
+  let minLng = coords[0].longitude, maxLng = coords[0].longitude
+  for (const c of coords) {
+    if (c.latitude < minLat) minLat = c.latitude
+    if (c.latitude > maxLat) maxLat = c.latitude
+    if (c.longitude < minLng) minLng = c.longitude
+    if (c.longitude > maxLng) maxLng = c.longitude
+  }
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    // ×1.4 deja aire alrededor; mínimo para no sobre-acercar en rutas muy cortas.
+    latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.004),
+    longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.004),
+  }
+}
+
 // ─── Metric Card ──────────────────────────────────────────────────────────────
 
 function MetricCardItem({ label, value, colors }: MetricCard & { colors: Colors }) {
@@ -75,6 +99,7 @@ export default function RunResumenScreen() {
   const [error, setError] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [userLabel, setUserLabel] = useState<string | undefined>(undefined)
+  const mapRef = useRef<MapView>(null)
 
   useEffect(() => {
     getUser().then(u => setUserLabel(handleFromUser(u))).catch(() => {})
@@ -105,19 +130,18 @@ export default function RunResumenScreen() {
     longitude: p.lng,
   })) ?? []
 
-  const mapRegion = polylineCoords.length > 0
-    ? {
-        latitude: polylineCoords[0].latitude,
-        longitude: polylineCoords[0].longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }
-    : {
-        latitude: 19.4326,
-        longitude: -99.1332,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }
+  const mapRegion = boundingRegion(polylineCoords)
+
+  // Encuadra la traza completa una vez el mapa está listo (afina el initialRegion
+  // teniendo en cuenta el tamaño real del view → evita que la ruta salga cortada).
+  function fitRoute() {
+    if (polylineCoords.length > 1) {
+      mapRef.current?.fitToCoordinates(polylineCoords, {
+        edgePadding: { top: 36, right: 36, bottom: 36, left: 36 },
+        animated: false,
+      })
+    }
+  }
 
   // Build metric cards
   const metrics: MetricCard[] = session
@@ -219,9 +243,12 @@ export default function RunResumenScreen() {
       {/* ── Mini map ── */}
       <View style={[styles.mapContainer, { backgroundColor: colors.bg }]}>
         <MapView
+          ref={mapRef}
           style={StyleSheet.absoluteFillObject}
           provider={PROVIDER_DEFAULT}
           initialRegion={mapRegion}
+          onMapReady={fitRoute}
+          onLayout={fitRoute}
           scrollEnabled={false}
           zoomEnabled={false}
           rotateEnabled={false}
@@ -251,7 +278,7 @@ export default function RunResumenScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <Text style={[styles.title, { color: colors.inkPrimary }]}>Resumen</Text>
+        <Text style={[styles.title, { color: colors.inkPrimary }]}>Tu Resumen</Text>
 
         {/* Adherencia al plan (sesión inteligente) */}
         {adh && (
