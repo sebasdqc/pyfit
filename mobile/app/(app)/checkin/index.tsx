@@ -161,6 +161,8 @@ type ScreenId = typeof SCREENS[number]
 
 // Ordered interactive steps per disciplina path (drives progress bar)
 const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd5']
+// Trail es SIEMPRE en exteriores → se omite la pantalla de entorno (d5).
+const SEQ_RUNNING_TRAIL: ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado']
 const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5', 'd5b_grupo']
 const SEQ_OTHER:       ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5']
 // Descanso: solo categoría → estado de hoy (sin disciplina, tiempo, ubicación ni grupo).
@@ -533,14 +535,17 @@ export default function CheckinScreen() {
   const showGrupoMuscular = discPath === 'musculacion'
   // Día de descanso: la categoría sola define el flujo (no hay disciplina).
   const isDescanso = categoria === 'DESCANSO'
+  // Trail Running: siempre en exteriores → no se pregunta el entorno (d5) y el
+  // Free Run se marca como trail (card "TRAIL RUNNING" + DESNIVEL).
+  const isTrail = disciplina === 'trail'
 
   // Progress bar: pick the right sequence based on the disciplina's path
   const interactiveSeq: ScreenId[] = useMemo(() => {
     if (isDescanso)                 return SEQ_DESCANSO
-    if (discPath === 'running')     return SEQ_RUNNING
+    if (discPath === 'running')     return isTrail ? SEQ_RUNNING_TRAIL : SEQ_RUNNING
     if (discPath === 'musculacion') return SEQ_MUSCULACION
     return SEQ_OTHER
-  }, [discPath, isDescanso])
+  }, [discPath, isDescanso, isTrail])
 
   const nInteractive = interactiveSeq.length
   const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
@@ -674,6 +679,13 @@ export default function CheckinScreen() {
 
     // d_estado → cardio no pregunta tiempo disponible
     if (currentScreen === 'd_estado' && discPath === 'running') {
+      // Trail es SIEMPRE en exteriores: se omite la pantalla de entorno (d5) y se
+      // fija el entorno a "exteriores" para que el Free Run use GPS/mapa.
+      if (isTrail) {
+        setEntornoCardio('exteriores')
+        setScreenIndex(SCREENS.indexOf('d6_procesando'))
+        return
+      }
       setScreenIndex(SCREENS.indexOf('d5'))
       return
     }
@@ -1417,7 +1429,7 @@ export default function CheckinScreen() {
             runningMode === 'inteligente' ? (
               <TouchableOpacity
                 style={styles.nextWrap}
-                onPress={() => router.replace(`/(app)/running?modo=${runModeForEntorno(entornoCardio)}`)}
+                onPress={() => router.replace(`/(app)/running?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`)}
                 activeOpacity={0.88}>
                 <LinearGradient
                   colors={['#4f8cff', '#2563ff']}
@@ -1429,7 +1441,7 @@ export default function CheckinScreen() {
             ) : (
               <TouchableOpacity
                 style={styles.nextWrap}
-                onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}`)}
+                onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`)}
                 activeOpacity={0.88}>
                 <LinearGradient
                   colors={['#ff8c42', '#e06c28']}

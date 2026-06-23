@@ -54,24 +54,32 @@ class RunSessionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RunSession
         # `id` es imprescindible en la respuesta: el cliente lo usa para enviar
-        # puntos GPS y completar la sesión.
-        fields = ['id', 'started_at', 'session_type']
+        # puntos GPS y completar la sesión. `is_trail` es opcional en la escritura:
+        # el check-in de trail lo manda explícito (camino fiable); si no llega, se
+        # intenta heredar del check-in del día (respaldo).
+        fields = ['id', 'started_at', 'session_type', 'is_trail']
         read_only_fields = ['id']
+        extra_kwargs = {'is_trail': {'required': False}}
 
     def create(self, validated_data):
         request = self.context['request']
         validated_data['user'] = request.user
         validated_data['status'] = 'active'
+        # ¿El cliente marcó la carrera como trail explícitamente? (el check-in de
+        # trail envía is_trail=true al navegar al Free Run). Es el camino fiable y
+        # no depende del emparejamiento por fecha.
+        explicit_trail = bool(validated_data.get('is_trail'))
         instance = super().create(validated_data)
-        # Trail Running: hereda la disciplina del check-in de HOY. Se usa la misma
-        # fecha local (X-Local-Date) con la que el check-in escribió `fecha`, así el
-        # emparejamiento es exacto pese a TIME_ZONE=UTC.
-        from checkins.views import _get_write_date
-        hoy = _get_write_date(request)
-        checkin = request.user.checkins.filter(fecha=hoy).order_by('-created_at').first()
-        if checkin and 'trail' in (checkin.foco_entrenamiento or []):
-            instance.is_trail = True
-            instance.save(update_fields=['is_trail'])
+        # Respaldo: si no vino explícito, hereda la disciplina del check-in de HOY.
+        # Se usa la misma fecha local (X-Local-Date) con la que el check-in escribió
+        # `fecha`, así el emparejamiento es exacto pese a TIME_ZONE=UTC.
+        if not explicit_trail:
+            from checkins.views import _get_write_date
+            hoy = _get_write_date(request)
+            checkin = request.user.checkins.filter(fecha=hoy).order_by('-created_at').first()
+            if checkin and 'trail' in (checkin.foco_entrenamiento or []):
+                instance.is_trail = True
+                instance.save(update_fields=['is_trail'])
         return instance
 
 

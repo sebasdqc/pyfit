@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useRunTracking } from '../../../hooks/useRunTracking'
-import { isIndoorFromMode } from '../../../lib/runMode'
+import { isIndoorFromMode, isTrailFromParam } from '../../../lib/runMode'
 import {
   estimateCalories,
   formatCalories,
@@ -132,8 +132,11 @@ export default function RunScreen() {
 
   // El modo interior/exterior viene del check-in (pantalla anterior) vía el
   // parámetro `modo`. Es fijo durante la sesión: no se puede cambiar aquí.
-  const { modo, planned } = useLocalSearchParams<{ modo?: string; planned?: string }>()
+  const { modo, planned, trail } = useLocalSearchParams<{ modo?: string; planned?: string; trail?: string }>()
   const [isIndoor] = useState(() => isIndoorFromMode(modo))
+  // Trail Running (siempre exteriores) llega del check-in vía `?trail=1`. Fijo
+  // durante la sesión; se envía al crear la RunSession para el card "TRAIL RUNNING".
+  const [isTrail] = useState(() => isTrailFromParam(trail))
   // Guía de la sesión inteligente (presente solo si venimos de una PlannedRunSession).
   const [guidance, setGuidance] = useState<{
     paceRange: [number, number] | null
@@ -282,7 +285,7 @@ export default function RunScreen() {
     try {
       const accepted = await AsyncStorage.getItem(BG_LOCATION_DISCLOSURE_KEY)
       if (accepted === 'true' || isIndoor) {
-        startRun()
+        startRun(isTrail)
         return
       }
     } catch {
@@ -296,7 +299,7 @@ export default function RunScreen() {
   async function handleDisclosureAccept() {
     setDisclosureVisible(false)
     await AsyncStorage.setItem(BG_LOCATION_DISCLOSURE_KEY, 'true').catch(() => {})
-    startRun()
+    startRun(isTrail)
   }
 
   function handleExit() {

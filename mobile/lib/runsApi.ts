@@ -68,12 +68,16 @@ export interface RunFeedbackInput {
 
 /**
  * Create a new free run session.
+ * `isTrail` marca la carrera como Trail Running (siempre exteriores); el check-in
+ * de trail lo envía explícito para que el card muestre "TRAIL RUNNING" + DESNIVEL
+ * sin depender del emparejamiento por fecha con el check-in.
  * Returns the created session object (with id).
  */
-export async function createRunSession(startedAt: string): Promise<RunSession> {
+export async function createRunSession(startedAt: string, isTrail = false): Promise<RunSession> {
   return apiPost('/api/runs/', {
     started_at: startedAt,
     session_type: 'free',
+    is_trail: isTrail,
   })
 }
 

@@ -1,4 +1,4 @@
-import { runModeForEntorno, isIndoorFromMode } from './runMode'
+import { runModeForEntorno, isIndoorFromMode, isTrailFromParam } from './runMode'
 
 describe('runModeForEntorno (check-in → modo de Free Run)', () => {
   it('interiores → interior', () => {
@@ -34,6 +34,29 @@ describe('isIndoorFromMode (parámetro de navegación → isIndoor)', () => {
   it('array de expo-router → toma el primer elemento', () => {
     expect(isIndoorFromMode(['interior'])).toBe(true)
     expect(isIndoorFromMode(['exterior'])).toBe(false)
+  })
+})
+
+describe('isTrailFromParam (parámetro de navegación → Trail Running)', () => {
+  it('"1" → true', () => {
+    expect(isTrailFromParam('1')).toBe(true)
+  })
+  it('"true" → true', () => {
+    expect(isTrailFromParam('true')).toBe(true)
+  })
+  it('undefined → false (default: no trail)', () => {
+    expect(isTrailFromParam(undefined)).toBe(false)
+  })
+  it('null → false', () => {
+    expect(isTrailFromParam(null)).toBe(false)
+  })
+  it('"0" / valor desconocido → false', () => {
+    expect(isTrailFromParam('0')).toBe(false)
+    expect(isTrailFromParam('nope')).toBe(false)
+  })
+  it('array de expo-router → toma el primer elemento', () => {
+    expect(isTrailFromParam(['1'])).toBe(true)
+    expect(isTrailFromParam(['0'])).toBe(false)
   })
 })
 

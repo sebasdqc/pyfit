@@ -438,13 +438,22 @@ class RunIsTrailTests(TestCase):
             foco_entrenamiento=focos,
         )
 
-    def _create_run(self):
-        return self.client.post(
-            '/api/runs/', {'started_at': iso(NOW), 'session_type': 'free'}, format='json')
+    def _create_run(self, is_trail=None):
+        body = {'started_at': iso(NOW), 'session_type': 'free'}
+        if is_trail is not None:
+            body['is_trail'] = is_trail
+        return self.client.post('/api/runs/', body, format='json')
 
     def test_hereda_trail_del_checkin(self):
         self._make_checkin(['descargar', 'trail'])
         res = self._create_run()
+        self.assertEqual(res.status_code, 201)
+        self.assertTrue(RunSession.objects.get(id=res.data['id']).is_trail)
+
+    def test_is_trail_explicito_sin_checkin(self):
+        # El check-in de trail manda is_trail=true explícito: no debe depender del
+        # emparejamiento por fecha con el check-in.
+        res = self._create_run(is_trail=True)
         self.assertEqual(res.status_code, 201)
         self.assertTrue(RunSession.objects.get(id=res.data['id']).is_trail)
 

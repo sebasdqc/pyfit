@@ -33,7 +33,7 @@ const AJUSTE_LABEL: Record<string, string> = {
 export default function RunningSessionScreen() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const { modo } = useLocalSearchParams<{ modo?: string }>()
+  const { modo, trail } = useLocalSearchParams<{ modo?: string; trail?: string }>()
   const indoor = isIndoorFromMode(modo)
 
   const [loading, setLoading] = useState(true)
@@ -163,7 +163,7 @@ export default function RunningSessionScreen() {
 
         {/* CTA */}
         <TouchableOpacity
-          onPress={() => router.replace(`/(app)/run?modo=${modo || 'exterior'}&planned=${data?.id ?? ''}`)}
+          onPress={() => router.replace(`/(app)/run?modo=${modo || 'exterior'}&planned=${data?.id ?? ''}${trail ? '&trail=1' : ''}`)}
           activeOpacity={0.88}
           style={{ marginTop: 20 }}>
           <LinearGradient

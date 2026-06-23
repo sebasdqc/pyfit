@@ -36,7 +36,7 @@ export interface UseRunTrackingReturn {
   totalElevationGain:  number   // metros acumulados de subida
   backgroundActive:    boolean  // true cuando el background GPS está corriendo
   error:               string | null
-  startRun:  () => Promise<void>
+  startRun:  (isTrail?: boolean) => Promise<void>
   pauseRun:  () => Promise<void>
   resumeRun: () => Promise<void>
   stopRun:   () => Promise<void>
@@ -197,7 +197,7 @@ export function useRunTracking(): UseRunTrackingReturn {
   }, [drainQueue])
 
   // ── Iniciar carrera
-  const startRun = useCallback(async () => {
+  const startRun = useCallback(async (isTrail = false) => {
     if (startingRef.current) return   // guard doble-tap: evita crear 2 RunSession
     startingRef.current = true
     setError(null)
@@ -209,8 +209,8 @@ export function useRunTracking(): UseRunTrackingReturn {
         return
       }
 
-      // Crear sesión en backend
-      const session = await createRunSession(new Date().toISOString())
+      // Crear sesión en backend (is_trail llega desde el check-in de trail)
+      const session = await createRunSession(new Date().toISOString(), isTrail)
       sessionIdRef.current   = session.id
       setSessionId(session.id)
 

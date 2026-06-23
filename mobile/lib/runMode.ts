@@ -27,3 +27,13 @@ export function isIndoorFromMode(modo: string | string[] | null | undefined): bo
   const m = Array.isArray(modo) ? modo[0] : modo
   return m === 'interior'
 }
+
+/**
+ * Determina si el Free Run es Trail Running a partir del parámetro de navegación
+ * `trail` (el check-in de trail navega con `?trail=1`). expo-router puede entregar
+ * el parámetro como string o string[]; aquí normalizamos ambos. Default: false.
+ */
+export function isTrailFromParam(trail: string | string[] | null | undefined): boolean {
+  const t = Array.isArray(trail) ? trail[0] : trail
+  return t === '1' || t === 'true'
+}
