@@ -113,7 +113,8 @@ class SessionListSerializer(serializers.ModelSerializer):
 
 
 class SessionPhotoSerializer(serializers.ModelSerializer):
-    """Foto de sesión (gym o running). `url` es firmada y temporal con Spaces."""
+    """Foto de sesión (gym o running). `url` es el data URI base64 guardado en la BD
+    (el cliente lo usa directamente como `source.uri`)."""
     url = serializers.SerializerMethodField()
 
     class Meta:
@@ -121,10 +122,7 @@ class SessionPhotoSerializer(serializers.ModelSerializer):
         fields = ['id', 'url', 'created_at']
 
     def get_url(self, obj):
-        try:
-            return obj.image.url
-        except Exception:
-            return None
+        return obj.image_data or None
 
 
 class SessionDetailSerializer(serializers.ModelSerializer):

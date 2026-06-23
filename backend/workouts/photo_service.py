@@ -1,11 +1,9 @@
-"""Servicio de fotos de sesión: decodifica un dataURI base64 (mismo transporte que
-el avatar, ver users/views.upload_avatar) y lo guarda en un FileField → DO Spaces si
-USE_SPACES está configurado (si no, a disco local). Reutilizado por los endpoints de
-fotos de fuerza (workouts) y running (runs)."""
+"""Servicio de fotos de sesión: valida un dataURI base64 (mismo transporte que el
+avatar, ver users/views.upload_avatar) y lo guarda como texto en la BD. No usa object
+storage (DO Spaces): la foto vive en la columna `image_data`, igual que el avatar.
+Reutilizado por los endpoints de fotos de fuerza (workouts) y running (runs)."""
 import base64
 from io import BytesIO
-
-from django.core.files.base import ContentFile
 
 from .models import SessionPhoto
 
@@ -65,7 +63,11 @@ def create_session_photo(user, data_uri, *, session=None, run_session=None) -> S
     except Exception:
         raise PhotoError('El archivo no es una imagen válida.')
 
-    photo = SessionPhoto(user=user, session=session, run_session=run_session)
-    photo.image.save(f'photo.{ext}', ContentFile(raw), save=False)
+    # Se reescribe el dataURI de forma canónica (mime validado + base64 limpio) en vez
+    # de confiar en el header entrante. `ext` queda validado arriba aunque no se use al
+    # guardar como texto.
+    canonical = f'data:{mime};base64,{base64.b64encode(raw).decode("ascii")}'
+    photo = SessionPhoto(user=user, session=session, run_session=run_session,
+                         image_data=canonical)
     photo.save()
     return photo

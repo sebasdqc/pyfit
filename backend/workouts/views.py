@@ -83,8 +83,7 @@ def session_photo_delete(request, pk):
         photo = SessionPhoto.objects.get(pk=pk, user=request.user)
     except SessionPhoto.DoesNotExist:
         return Response({'error': 'Foto no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    photo.image.delete(save=False)   # borra el archivo en Spaces/disco
-    photo.delete()
+    photo.delete()   # la imagen es texto en la propia fila; no hay archivo aparte
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 

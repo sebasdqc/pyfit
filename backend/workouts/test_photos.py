@@ -1,9 +1,8 @@
 """Tests de fotos de sesión (gym + running): subida base64, detalle, authz, tope, borrado."""
-import tempfile
 from datetime import date
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -17,7 +16,6 @@ PNG = ('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
        'AAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
 
 
-@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class SessionPhotoTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='ph1', email='ph1@t.com', password='x')
@@ -58,7 +56,7 @@ class SessionPhotoTests(TestCase):
     def test_tope_de_fotos(self):
         for i in range(6):
             SessionPhoto.objects.create(user=self.user, session=self.session,
-                                        image=f'session_photos/x{i}.png')
+                                        image_data=PNG)
         res = self.client.post(f'/api/sessions/{self.session.id}/photos/', {'image': PNG}, format='json')
         self.assertEqual(res.status_code, 400)
 

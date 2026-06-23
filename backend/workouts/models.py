@@ -505,18 +505,18 @@ class CalendarEvent(models.Model):
 
 class SessionPhoto(models.Model):
     """Foto adjunta a UNA sesión (de fuerza `Session` O de running `runs.RunSession`).
-    La imagen va a DO Spaces si USE_SPACES está configurado (si no, a disco local).
-    `user` se guarda para autorizar/listar sin joins."""
+    La imagen se guarda como data URI base64 directamente en la BD (mismo patrón que
+    `users.User.avatar`): evita depender de object storage de pago (DO Spaces) y de
+    Pillow. `user` se guarda para autorizar/listar sin joins."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                              related_name='session_photos')
     session = models.ForeignKey('workouts.Session', on_delete=models.CASCADE,
                                 null=True, blank=True, related_name='photos')
     run_session = models.ForeignKey('runs.RunSession', on_delete=models.CASCADE,
                                     null=True, blank=True, related_name='photos')
-    # FileField (no ImageField) para no exigir Pillow a nivel de modelo/check —
-    # mismo criterio que performance.foto_img. La validación de imagen se hace en
-    # photo_service (Pillow opcional).
-    image = models.FileField(upload_to='session_photos/%Y/%m/')
+    # data URI base64 (`data:image/jpeg;base64,...`). El móvil comprime antes de subir;
+    # la validación de mime/tamaño/SVG se hace en photo_service (Pillow opcional).
+    image_data = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
