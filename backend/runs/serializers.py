@@ -59,9 +59,20 @@ class RunSessionCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
+        request = self.context['request']
+        validated_data['user'] = request.user
         validated_data['status'] = 'active'
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+        # Trail Running: hereda la disciplina del check-in de HOY. Se usa la misma
+        # fecha local (X-Local-Date) con la que el check-in escribió `fecha`, así el
+        # emparejamiento es exacto pese a TIME_ZONE=UTC.
+        from checkins.views import _get_write_date
+        hoy = _get_write_date(request)
+        checkin = request.user.checkins.filter(fecha=hoy).order_by('-created_at').first()
+        if checkin and 'trail' in (checkin.foco_entrenamiento or []):
+            instance.is_trail = True
+            instance.save(update_fields=['is_trail'])
+        return instance
 
 
 class RunSessionUpdateSerializer(serializers.ModelSerializer):
@@ -234,7 +245,7 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = RunSession
         fields = [
-            'id', 'started_at', 'ended_at', 'status', 'session_type',
+            'id', 'started_at', 'ended_at', 'status', 'session_type', 'is_trail',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
             'best_pace_s_per_km', 'calories_burned', 'elevation_gain_m',
             'avg_heart_rate', 'points', 'planned', 'photos', 'created_at',
@@ -280,7 +291,7 @@ class RunSessionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = RunSession
         fields = [
-            'id', 'started_at', 'ended_at', 'status', 'session_type',
+            'id', 'started_at', 'ended_at', 'status', 'session_type', 'is_trail',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
-            'created_at'
+            'elevation_gain_m', 'created_at'
         ]

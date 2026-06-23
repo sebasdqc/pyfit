@@ -58,6 +58,8 @@ export interface ShareCardExercise {
 export interface WorkoutShareCardProps {
   /** Determina la variante visual de la tarjeta. */
   sessionType: WorkoutSessionType
+  /** Sobreescribe el rótulo (kicker) de la variante; p. ej. "TRAIL RUNNING". */
+  kicker?: string
   /** Número/dato protagonista (p. ej. la distancia "5.20 km"). */
   title?: string
   /** Métricas a mostrar; si se omite, usa los placeholders de la variante. */
@@ -350,6 +352,7 @@ const ShareCardFace = forwardRef<View, ShareCardFaceProps>(function ShareCardFac
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function WorkoutShareCard({
   sessionType,
+  kicker,
   title,
   metrics,
   routeCoords,
@@ -360,6 +363,7 @@ export default function WorkoutShareCard({
   score,
 }: WorkoutShareCardProps) {
   const v = VARIANTS[sessionType]
+  const kickerText = kicker ?? v.kicker
   const { width: screenW } = useWindowDimensions()
 
   // Carrusel de colores: el de la variante primero, luego los nuevos (azul/rosa).
@@ -429,7 +433,7 @@ export default function WorkoutShareCard({
             <ShareCardFace
               ref={el => { cardRefs.current[i] = el }}
               accent={opt.accent}
-              kicker={v.kicker}
+              kicker={kickerText}
               glowCorner={v.glowCorner}
               title={title}
               metrics={displayMetrics}

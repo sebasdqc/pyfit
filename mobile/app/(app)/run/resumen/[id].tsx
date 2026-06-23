@@ -340,14 +340,21 @@ export default function RunResumenScreen() {
           >
             <WorkoutShareCard
               sessionType="running"
+              kicker={session.is_trail ? 'TRAIL RUNNING' : undefined}
               title={formatDistance(session.total_distance_m ?? 0)}
               metrics={[
                 { label: 'TIEMPO', value: formatDuration(session.total_duration_s ?? 0) },
                 { label: 'RITMO /KM', value: formatPace(session.avg_pace_s_per_km ?? 0).replace(' /km', '') },
-                {
-                  label: 'CALORÍAS',
-                  value: session.calories_burned != null ? `${Math.round(session.calories_burned)}` : '--',
-                },
+                // En trail la elevación es el dato protagonista → reemplaza a calorías.
+                session.is_trail
+                  ? {
+                      label: 'DESNIVEL +',
+                      value: session.elevation_gain_m != null ? `${Math.round(session.elevation_gain_m)} m` : '-- m',
+                    }
+                  : {
+                      label: 'CALORÍAS',
+                      value: session.calories_burned != null ? `${Math.round(session.calories_burned)}` : '--',
+                    },
               ]}
               routeCoords={polylineCoords}
               dateLabel={formatShareDate(session.ended_at ?? session.started_at)}

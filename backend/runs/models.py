@@ -26,6 +26,10 @@ class RunSession(models.Model):
     # Tipo — extensible para Planned Run
     session_type = models.CharField(max_length=20, choices=SESSION_TYPE_CHOICES, default='free')
 
+    # Trail Running: se hereda del check-in del día (foco 'trail') al crear la carrera.
+    # Cambia el rótulo de la tarjeta para compartir ("TRAIL RUNNING" en vez de "CARRERA").
+    is_trail = models.BooleanField(default=False)
+
     # FK prepared for future Planned Run module — uncomment when 'plans' app exists
     # plan_session = models.ForeignKey(
     #     'plans.PlanSession',

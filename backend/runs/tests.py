@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import Profile
+from checkins.models import DailyCheckin
 from .models import RunSession, RunPoint
 from .serializers import haversine_distance, downsample_points
 
@@ -422,3 +423,42 @@ class RunFeedbackEndpointTests(TestCase):
     def test_unauthenticated_rejected(self):
         res = APIClient().post(f'/api/runs/{self.session.pk}/feedback/', {'rating': 3}, format='json')
         self.assertIn(res.status_code, (401, 403))
+
+
+class RunIsTrailTests(TestCase):
+    """`is_trail` se hereda del check-in del día (foco 'trail') al crear la carrera."""
+    def setUp(self):
+        self.user = make_user('trail@test.com')
+        self.client = auth_client(self.user)
+
+    def _make_checkin(self, focos):
+        return DailyCheckin.objects.create(
+            user=self.user, fecha=date.today(), estado_animo=3,
+            calidad_sueno=Decimal('7.0'), duracion_disponible=60,
+            foco_entrenamiento=focos,
+        )
+
+    def _create_run(self):
+        return self.client.post(
+            '/api/runs/', {'started_at': iso(NOW), 'session_type': 'free'}, format='json')
+
+    def test_hereda_trail_del_checkin(self):
+        self._make_checkin(['descargar', 'trail'])
+        res = self._create_run()
+        self.assertEqual(res.status_code, 201)
+        self.assertTrue(RunSession.objects.get(id=res.data['id']).is_trail)
+
+    def test_running_normal_no_es_trail(self):
+        self._make_checkin(['descargar', 'running'])
+        res = self._create_run()
+        self.assertFalse(RunSession.objects.get(id=res.data['id']).is_trail)
+
+    def test_sin_checkin_no_es_trail(self):
+        res = self._create_run()
+        self.assertFalse(RunSession.objects.get(id=res.data['id']).is_trail)
+
+    def test_detalle_expone_is_trail(self):
+        self._make_checkin(['descargar', 'trail'])
+        rid = self._create_run().data['id']
+        detail = self.client.get(f'/api/runs/{rid}/')
+        self.assertTrue(detail.data['is_trail'])

@@ -28,6 +28,8 @@ export interface RunSession {
   started_at: string
   ended_at: string | null
   session_type: string
+  // Trail Running (heredado del check-in del día): cambia el rótulo del card.
+  is_trail?: boolean
   // Nombres exactos del backend (RunSessionDetailSerializer).
   total_distance_m?: number
   total_duration_s?: number
