@@ -759,11 +759,13 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
 function TuSemanaCard({
   semanaDetalle,
   sessions,
+  runDates,
   colors,
   styles,
 }: {
   semanaDetalle: SemanaDay[]
   sessions: FullSession[]
+  runDates: Set<string>
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
@@ -822,8 +824,9 @@ function TuSemanaCard({
     return m
   }, [eventos])
   const sesionesEstaSemana = useMemo(() =>
-    currDates.reduce((t, iso) => t + (sessionsByDate.get(iso)?.length ?? 0), 0),
-    [currDates, sessionsByDate],
+    currDates.reduce((t, iso) =>
+      t + (sessionsByDate.get(iso)?.length ?? 0) + (runDates.has(iso) ? 1 : 0), 0),
+    [currDates, sessionsByDate, runDates],
   )
   const diasDescansoSemana = useMemo(() =>
     currDates.filter(iso => iso <= today && (sessionsByDate.get(iso)?.length ?? 0) === 0).length,
@@ -1231,6 +1234,7 @@ export default function DashboardScreen() {
   const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<FullSession[]>([])
   const [sessionsError, setSessionsError] = useState(false)
+  const [runDates, setRunDates] = useState<Set<string>>(new Set())
   const [unreadNotifs, setUnreadNotifs] = useState(0)
 
   const fetchSessions = useCallback(async () => {
@@ -1245,6 +1249,19 @@ export default function DashboardScreen() {
     } catch {
       setSessionsError(true)
     }
+  }, [])
+
+  const fetchRunDates = useCallback(async () => {
+    try {
+      const desde = new Date()
+      desde.setDate(desde.getDate() - 200)
+      const d = await apiGet(`/api/runs/?desde=${localDateStr(desde)}&page_size=100`)
+      const list: { started_at: string; status: string }[] = Array.isArray(d) ? d : (d.results ?? [])
+      const dates = new Set(
+        list.filter(r => r.status === 'completed').map(r => r.started_at.slice(0, 10))
+      )
+      setRunDates(dates)
+    } catch {}
   }, [])
 
   const fetchDashboard = useCallback(async (cancelled?: { current: boolean }) => {
@@ -1263,9 +1280,9 @@ export default function DashboardScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await Promise.all([fetchDashboard(undefined), fetchSessions()])
+    await Promise.all([fetchDashboard(undefined), fetchSessions(), fetchRunDates()])
     setRefreshing(false)
-  }, [fetchDashboard, fetchSessions])
+  }, [fetchDashboard, fetchSessions, fetchRunDates])
 
   // Fetch on initial mount AND every time the screen comes back into focus
   // (e.g. after returning from the checkin → generate flow or "Entrenar otra vez hoy")
@@ -1275,6 +1292,7 @@ export default function DashboardScreen() {
       const cancelled = { current: false }
       fetchDashboard(cancelled)
       fetchSessions()
+      fetchRunDates()
       // Conteo de notificaciones no leídas para el badge de la campana.
       // Fire-and-forget: si falla no rompe el dashboard.
       apiGet('/api/notificaciones/')
@@ -1285,7 +1303,7 @@ export default function DashboardScreen() {
         })
         .catch(() => {})
       return () => { cancelled.current = true }
-    }, [fetchDashboard, fetchSessions])
+    }, [fetchDashboard, fetchSessions, fetchRunDates])
   )
 
 
@@ -1394,6 +1412,7 @@ export default function DashboardScreen() {
           <TuSemanaCard
             semanaDetalle={data?.semana_detalle ?? []}
             sessions={sessions}
+            runDates={runDates}
             colors={colors}
             styles={styles}
           />

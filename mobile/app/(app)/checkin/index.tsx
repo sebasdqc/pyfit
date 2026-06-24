@@ -85,7 +85,7 @@ const DISCIPLINA_OPTS = [
   { id: 'ciclismo'     as const, label: 'Ciclismo',             sub: 'Resistencia sobre la bici',       ...CAT_CARDIO },
   { id: 'trail'        as const, label: 'Trail',                sub: 'Carrera en montaña o sendero',    ...CAT_CARDIO },
   { id: 'natacion'     as const, label: 'Natación',             sub: 'Trabajo aeróbico en el agua',     ...CAT_CARDIO },
-  { id: 'gym'          as const, label: 'Gym',                  sub: 'Fuerza e hipertrofia con cargas', ...CAT_FUERZA },
+  { id: 'gym'          as const, label: 'Gimnasio',             sub: 'Fuerza e hipertrofia con cargas', ...CAT_FUERZA },
   { id: 'casa'         as const, label: 'En casa',              sub: 'Fuerza con poco material',        ...CAT_FUERZA },
   { id: 'calistenia'   as const, label: 'Calistenia',          sub: 'Fuerza con tu propio peso',       ...CAT_FUERZA },
   { id: 'stretching'   as const, label: 'Stretching',          sub: 'Estiramientos y flexibilidad',    ...CAT_MOVIL  },

@@ -31,8 +31,6 @@ interface Decision     { icon: string; text: string }
 interface Evidence     { text: string; reference: string }
 interface Resumen      { decisiones: Decision[]; evidencia: Evidence | null }
 interface Logro        { icon: string; titulo: string; descripcion: string }
-interface ProximaSesion { tipo: string; dia: string }
-
 // ─── Option data ──────────────────────────────────────────────────────────────
 
 const RPE_OPTIONS = [
@@ -319,41 +317,6 @@ function AchievementCard({
   )
 }
 
-// ─── Step 3 — Next Session Card (animated) ────────────────────────────────────
-
-function NextSessionCard({
-  proximaSesion, styles,
-}: {
-  proximaSesion: ProximaSesion
-  styles: ReturnType<typeof makeStyles>
-}) {
-  const { t } = useTranslation()
-  const fadeAnim = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1, duration: 360, delay: 280, useNativeDriver: true,
-    }).start()
-  }, [])
-
-  return (
-    <Animated.View style={{ opacity: fadeAnim }}>
-      <View style={styles.nextSessionCard}>
-        <View style={styles.nextSessionLeft}>
-          <Text style={styles.nextSessionLabel}>{t('feedback_next_session')}</Text>
-          <Text style={styles.nextSessionTipo}>{proximaSesion.tipo}</Text>
-          <Text style={styles.nextSessionDia}>{proximaSesion.dia}</Text>
-        </View>
-        {/* Etiqueta informativa, no un botón: agendar aún no existe, así que no
-            mostramos una affordance pulsable que solo abría un Alert. */}
-        <View style={styles.agendarTag}>
-          <Text style={styles.agendarTagText}>📅  {t('feedback_coming_soon')}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  )
-}
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function FeedbackScreen() {
@@ -384,7 +347,6 @@ export default function FeedbackScreen() {
   // ── Step 3 state ───────────────────────────────────────────────────────────
   const [logro,         setLogro]         = useState<Logro | null>(null)
   const [logroLoading,  setLogroLoading]  = useState(false)
-  const [proximaSesion, setProximaSesion] = useState<ProximaSesion | null>(null)
 
   // ── Step nav ───────────────────────────────────────────────────────────────
   const [step, setStep] = useState(1)
@@ -492,13 +454,11 @@ export default function FeedbackScreen() {
     if (step !== 3 || logro !== null || logroLoading) return
     setLogroLoading(true)
     apiGet(`/api/sessions/${id}/logro/`)
-      .then((data: { logro: Logro; proxima_sesion: ProximaSesion }) => {
+      .then((data: { logro: Logro; proxima_sesion?: unknown }) => {
         setLogro(data.logro)
-        setProximaSesion(data.proxima_sesion)
       })
       .catch(() => {
         setLogro({ icon: '🎯', titulo: 'Sesión completada.', descripcion: 'Cerramos esta sesión en tu historial.' })
-        setProximaSesion(null)
       })
       .finally(() => setLogroLoading(false))
   }, [step, id])
@@ -729,10 +689,6 @@ export default function FeedbackScreen() {
               ) : logro ? (
                 <AchievementCard logro={logro} styles={styles} />
               ) : null}
-
-              {proximaSesion && !logroLoading && (
-                <NextSessionCard proximaSesion={proximaSesion} styles={styles} />
-              )}
 
               {/* Fotos de la sesión (se guardan y aparecen en el historial) */}
               <SessionPhotos kind="gym" sessionId={Number(id)} editable />
@@ -986,32 +942,6 @@ function makeStyles(c: Colors) {
     achievementDesc: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkSecondary,
       textAlign: 'center', lineHeight: 22, letterSpacing: -0.1,
-    },
-
-    // ── Step 3 — Next session card ────────────────────────────────────────────
-    nextSessionCard: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, padding: 16,
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-    },
-    nextSessionLeft: { flex: 1, gap: 4 },
-    nextSessionLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      letterSpacing: 1.0, textTransform: 'uppercase', color: c.inkMuted,
-    },
-    nextSessionTipo: {
-      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15,
-      color: c.inkPrimary, letterSpacing: -0.2, lineHeight: 20,
-    },
-    nextSessionDia: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkSecondary },
-    agendarTag: {
-      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
-    agendarTagText: {
-      fontFamily: 'JetBrainsMono-Medium', fontSize: 10,
-      color: c.inkMuted, letterSpacing: 0.5, textTransform: 'uppercase',
     },
 
     // ── Skeleton ──────────────────────────────────────────────────────────────

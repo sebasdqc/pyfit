@@ -36,7 +36,11 @@ class RunSessionListCreateView(generics.ListCreateAPIView):
         return RunSessionListSerializer
 
     def get_queryset(self):
-        return RunSession.objects.filter(user=self.request.user)
+        qs = RunSession.objects.filter(user=self.request.user)
+        desde = self.request.query_params.get('desde')
+        if desde:
+            qs = qs.filter(started_at__date__gte=desde)
+        return qs
 
 
 class RunSessionDetailView(generics.RetrieveUpdateAPIView):
