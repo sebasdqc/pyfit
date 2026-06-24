@@ -1,14 +1,25 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, Animated,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
+  Modal, TouchableOpacity, TextInput, KeyboardAvoidingView,
+  Platform, Image,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path, Circle, Polygon } from 'react-native-svg'
+import Svg, { Path, Circle } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
 
 const { width: SCREEN_W } = Dimensions.get('window')
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Message {
+  id: string
+  role: 'coach' | 'user'
+  text: string
+  ts: Date
+}
 
 // ─── Recomendaciones placeholder ─────────────────────────────────────────────
 
@@ -55,110 +66,290 @@ const RECOMENDACIONES = [
   },
 ]
 
-// ─── Icono de Coach ───────────────────────────────────────────────────────────
+const MOCK_RESPONSES = [
+  'Basado en tu historial reciente, puedo ayudarte con eso. ¿Quieres que profundice en algún aspecto específico?',
+  'Entendido. Según tus datos de los últimos 30 días, te recomendaría enfocarte en esa área. ¿Tienes alguna restricción de tiempo o lesión que considerar?',
+  'Lo tomo en cuenta. Tu racha y tu nivel actual sugieren que estás listo para ese desafío. ¿Empezamos a planificarlo?',
+  'He revisado tus check-ins y tu patrón de descanso. Creo que podemos optimizar eso juntos. ¿Cuánto tiempo disponible tienes esta semana?',
+  'Muy buena pregunta. Combinando tu objetivo principal con tu historial de fatiga, la respuesta no es tan simple como parece. Cuéntame más sobre cómo te has sentido esta semana.',
+]
 
-function CoachIcon({ color, size = 32 }: { color: string; size?: number }) {
+const INITIAL_MSG: Message = {
+  id: 'coach-0',
+  role: 'coach',
+  text: 'Hola, soy tu Coach y tomo en cuenta tu historial, tus hábitos y tus preferencias. Pregunta lo que quieras.',
+  ts: new Date(),
+}
+
+function formatTs(d: Date) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// ─── Send icon ────────────────────────────────────────────────────────────────
+
+function SendIcon({ color }: { color: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={7} r={3.5} stroke={color} strokeWidth={1.7} />
-      <Path
-        d="M5 21c0-3.87 3.13-7 7-7s7 3.13 7 7"
-        stroke={color} strokeWidth={1.7} strokeLinecap="round"
-      />
-      <Path
-        d="M19.5 3l-1.8 2.4h1.3l-1.8 2.4"
-        stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
-      />
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2L11 13" stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M22 2L15 22l-4-9-9-4 20-7z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
     </Svg>
   )
 }
 
-// ─── Card de recomendación ────────────────────────────────────────────────────
+function CloseIcon({ color }: { color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  )
+}
 
-function RecCard({
-  rec, anim, colors,
-}: {
-  rec: typeof RECOMENDACIONES[0]
-  anim: Animated.Value
-  colors: any
+// ─── Typing indicator ─────────────────────────────────────────────────────────
+
+function TypingDots({ color }: { color: string }) {
+  const anims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.stagger(180, anims.map(a =>
+        Animated.sequence([
+          Animated.timing(a, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(a, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ])
+      ))
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [])
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4 }}>
+      {anims.map((a, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7, height: 7, borderRadius: 4,
+            backgroundColor: color,
+            transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
+          }}
+        />
+      ))}
+    </View>
+  )
+}
+
+// ─── Bubble ───────────────────────────────────────────────────────────────────
+
+function Bubble({ msg, colors }: { msg: Message; colors: any }) {
+  const isCoach = msg.role === 'coach'
+  return (
+    <View style={[chatStyles.bubbleRow, isCoach ? chatStyles.bubbleRowCoach : chatStyles.bubbleRowUser]}>
+      {isCoach && (
+        <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
+          <Text style={chatStyles.coachAvatarTxt}>C</Text>
+        </View>
+      )}
+      <View style={[
+        chatStyles.bubble,
+        isCoach
+          ? { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }
+          : { backgroundColor: colors.accent, borderColor: colors.accent, borderBottomRightRadius: 4 },
+      ]}>
+        <Text style={[chatStyles.bubbleTxt, { color: isCoach ? colors.inkPrimary : '#fff' }]}>
+          {msg.text}
+        </Text>
+        <Text style={[chatStyles.bubbleTs, { color: isCoach ? colors.inkFaint : 'rgba(255,255,255,0.5)' }]}>
+          {formatTs(msg.ts)}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+// ─── Chat Modal ───────────────────────────────────────────────────────────────
+
+function ChatModal({ visible, onClose, colors, insets }: {
+  visible: boolean; onClose: () => void; colors: any; insets: any
 }) {
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [32, 0] })
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MSG])
+  const [inputText, setInputText] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const scrollRef = useRef<ScrollView>(null)
+  const responseIdx = useRef(0)
+  const inputRef = useRef<TextInput>(null)
+
+  // Reset cuando se abre
+  useEffect(() => {
+    if (visible) {
+      setMessages([INITIAL_MSG])
+      setInputText('')
+      setIsTyping(false)
+    }
+  }, [visible])
+
+  // Scroll to bottom cuando llegan mensajes
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80)
+  }, [messages, isTyping])
+
+  function handleSend() {
+    const text = inputText.trim()
+    if (!text) return
+    const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text, ts: new Date() }
+    setMessages(prev => [...prev, userMsg])
+    setInputText('')
+    setIsTyping(true)
+
+    // Respuesta del Coach después de ~1.8s
+    setTimeout(() => {
+      const response = MOCK_RESPONSES[responseIdx.current % MOCK_RESPONSES.length]
+      responseIdx.current++
+      const coachMsg: Message = { id: `c-${Date.now()}`, role: 'coach', text: response, ts: new Date() }
+      setIsTyping(false)
+      setMessages(prev => [...prev, coachMsg])
+    }, 1800)
+  }
 
   return (
-    <Animated.View
-      style={[
-        styles.cardOuter,
-        {
-          borderColor: rec.color + '28',
-          backgroundColor: colors.cardBg,
-          opacity: anim,
-          transform: [{ translateY }],
-        },
-      ]}
-    >
-      {/* Barra superior de color */}
-      <View style={[styles.cardTopBar, { backgroundColor: rec.color }]} />
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[chatStyles.modal, { backgroundColor: colors.bg }]}>
+        <LinearGradient colors={[colors.gradientTop, 'transparent']} style={chatStyles.gradient} />
 
-      {/* Gradiente de fondo sutil */}
+        {/* Barra superior */}
+        <View style={[chatStyles.chatHeader, { paddingTop: insets.top + 12, borderBottomColor: colors.borderDefault }]}>
+          <TouchableOpacity onPress={onClose} style={chatStyles.closeBtn} activeOpacity={0.7}>
+            <CloseIcon color={colors.inkSecondary} />
+          </TouchableOpacity>
+          <View style={chatStyles.chatHeaderCenter}>
+            <View style={[chatStyles.coachAvatarLg, { backgroundColor: colors.accentDark, borderColor: colors.accent + '50' }]}>
+              <Text style={chatStyles.coachAvatarLgTxt}>C</Text>
+            </View>
+            <View>
+              <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>Coach</Text>
+              <Text style={[chatStyles.chatSubtitle, { color: colors.green }]}>● En línea</Text>
+            </View>
+          </View>
+          <View style={{ width: 36 }} />
+        </View>
+
+        {/* Mensajes */}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={chatStyles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {messages.map(msg => <Bubble key={msg.id} msg={msg} colors={colors} />)}
+
+            {isTyping && (
+              <View style={[chatStyles.bubbleRow, chatStyles.bubbleRowCoach]}>
+                <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
+                  <Text style={chatStyles.coachAvatarTxt}>C</Text>
+                </View>
+                <View style={[chatStyles.bubble, { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }]}>
+                  <TypingDots color={colors.inkMuted} />
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input bar */}
+          <View style={[chatStyles.inputBar, {
+            paddingBottom: insets.bottom + 8,
+            borderTopColor: colors.borderDefault,
+            backgroundColor: colors.bg,
+          }]}>
+            <TextInput
+              ref={inputRef}
+              style={[chatStyles.input, {
+                color: colors.inkPrimary,
+                backgroundColor: colors.cardBg,
+                borderColor: colors.borderBright,
+              }]}
+              placeholder="Escribe algo..."
+              placeholderTextColor={colors.inkFaint}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              onPress={handleSend}
+              activeOpacity={0.8}
+              style={[
+                chatStyles.sendBtn,
+                { backgroundColor: inputText.trim() ? colors.accent : colors.cardBg, borderColor: colors.borderBright },
+              ]}
+            >
+              <SendIcon color={inputText.trim() ? '#fff' : colors.inkMuted} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Rec Card ─────────────────────────────────────────────────────────────────
+
+function RecCard({ rec, anim, colors }: {
+  rec: typeof RECOMENDACIONES[0]; anim: Animated.Value; colors: any
+}) {
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [32, 0] })
+  return (
+    <Animated.View style={[
+      styles.cardOuter,
+      { borderColor: rec.color + '28', backgroundColor: colors.cardBg, opacity: anim, transform: [{ translateY }] },
+    ]}>
+      <View style={[styles.cardTopBar, { backgroundColor: rec.color }]} />
       <LinearGradient
         colors={[rec.color + '18', 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill} pointerEvents="none"
       />
-
       <View style={styles.cardContent}>
-        {/* Fila superior: categoría chip + emoji */}
         <View style={styles.cardHeaderRow}>
           <View style={[styles.categChip, { borderColor: rec.color + '50', backgroundColor: rec.color + '18' }]}>
             <Text style={[styles.categTxt, { color: rec.color }]}>{rec.categoria}</Text>
           </View>
           <Text style={styles.cardEmoji}>{rec.icono}</Text>
         </View>
-
-        {/* Título */}
         <Text style={[styles.cardTitle, { color: colors.inkPrimary }]}>{rec.titulo}</Text>
-
-        {/* Línea divisor */}
         <View style={[styles.cardDivider, { backgroundColor: rec.color + '30' }]} />
-
-        {/* Cuerpo */}
         <Text style={[styles.cardBody, { color: colors.inkSecondary }]}>{rec.cuerpo}</Text>
-
-        {/* Pie: indicador de tipo */}
         <View style={styles.cardFooter}>
           <View style={[styles.cardFooterDot, { backgroundColor: rec.color }]} />
-          <Text style={[styles.cardFooterTxt, { color: rec.color }]}>
-            Basado en tu historial
-          </Text>
+          <Text style={[styles.cardFooterTxt, { color: rec.color }]}>Basado en tu historial</Text>
         </View>
       </View>
     </Animated.View>
   )
 }
 
-// ─── Pantalla principal ───────────────────────────────────────────────────────
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CoachScreen() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [activeIdx, setActiveIdx] = useState(0)
+  const [chatOpen, setChatOpen] = useState(false)
 
-  // Animaciones de entrada
   const headerAnim = useRef(new Animated.Value(0)).current
   const cardAnims = useRef(RECOMENDACIONES.map(() => new Animated.Value(0))).current
 
   useEffect(() => {
-    // Header primero, luego cards en cascada
     Animated.timing(headerAnim, { toValue: 1, duration: 520, useNativeDriver: true }).start(() => {
-      Animated.stagger(
-        90,
-        cardAnims.map(a =>
-          Animated.spring(a, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 })
-        )
-      ).start()
+      Animated.stagger(90, cardAnims.map(a =>
+        Animated.spring(a, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 })
+      )).start()
     })
   }, [])
 
@@ -176,24 +367,14 @@ export default function CoachScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-
         {/* ── HEADER ── */}
         <Animated.View style={[
           styles.header,
           { opacity: headerOpacity, transform: [{ translateY: headerSlide }] },
         ]}>
-          <View style={styles.headerTop}>
-            <View style={[styles.iconWrap, { borderColor: colors.accent + '40', backgroundColor: colors.accent + '14' }]}>
-              <CoachIcon color={colors.accent} size={28} />
-            </View>
-            <View style={[styles.aiChip, { borderColor: colors.cyan + '40', backgroundColor: colors.cyan + '10' }]}>
-              <Text style={[styles.aiChipTxt, { color: colors.cyan }]}>IA · COACH PERSONAL</Text>
-            </View>
-          </View>
-
           <Text style={[styles.headline, { color: colors.inkPrimary }]}>
             El coach que{'\n'}
             <Text style={[styles.headlineAccent, { color: colors.accent }]}>te conoce,</Text>
@@ -201,7 +382,7 @@ export default function CoachScreen() {
           </Text>
         </Animated.View>
 
-        {/* ── RECOMENDACIONES — Slider ── */}
+        {/* ── RECOMENDACIONES ── */}
         <View style={styles.sectionWrap}>
           <View style={styles.sectionLabelRow}>
             <Text style={[styles.sectionLabel, { color: colors.inkMuted }]}>RECOMENDACIONES</Text>
@@ -210,7 +391,6 @@ export default function CoachScreen() {
             </View>
           </View>
 
-          {/* Slider horizontal con paginado */}
           <ScrollView
             horizontal
             pagingEnabled
@@ -227,7 +407,6 @@ export default function CoachScreen() {
             ))}
           </ScrollView>
 
-          {/* Dots paginador */}
           <View style={styles.dotsRow}>
             {RECOMENDACIONES.map((_, i) => (
               <View
@@ -243,28 +422,39 @@ export default function CoachScreen() {
           </View>
         </View>
 
-        {/* ── PRÓXIMAMENTE ── */}
-        <Animated.View style={[
-          styles.comingSoon,
-          {
-            borderColor: colors.borderDefault,
-            backgroundColor: colors.cardBg,
-            opacity: headerAnim,
-          },
-        ]}>
-          <Text style={[styles.comingSoonTitle, { color: colors.inkSecondary }]}>
-            Chat con tu Coach IA
-          </Text>
-          <Text style={[styles.comingSoonSub, { color: colors.inkMuted }]}>PRÓXIMAMENTE</Text>
+        {/* ── BOTÓN INICIAR CHAT ── */}
+        <Animated.View style={{ opacity: headerAnim }}>
+          <TouchableOpacity
+            onPress={() => setChatOpen(true)}
+            activeOpacity={0.82}
+            style={[styles.chatBtn, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
+          >
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }}>
+              <Path
+                d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4V5.5z"
+                stroke="#fff" strokeWidth={1.9} strokeLinejoin="round"
+              />
+            </Svg>
+            <Text style={styles.chatBtnTxt}>Iniciar Chat con tu Coach</Text>
+            <Text style={styles.chatBtnArrow}>›</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         <View style={{ height: 60 }} />
       </ScrollView>
+
+      {/* ── MODAL CHAT ── */}
+      <ChatModal
+        visible={chatOpen}
+        onClose={() => setChatOpen(false)}
+        colors={colors}
+        insets={insets}
+      />
     </View>
   )
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles pantalla principal ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -272,29 +462,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20 },
 
-  // Header
   header: { marginBottom: 32 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  iconWrap: {
-    width: 52, height: 52, borderRadius: 18, borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  aiChip: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1,
-  },
-  aiChipTxt: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.8,
-  },
   headline: {
     fontFamily: 'SpaceGrotesk-Bold', fontSize: 26,
     letterSpacing: -0.8, lineHeight: 34,
   },
-  headlineAccent: {
-    fontFamily: 'SpaceGrotesk-Bold',
-  },
+  headlineAccent: { fontFamily: 'SpaceGrotesk-Bold' },
 
-  // Sección
   sectionWrap: { marginBottom: 28 },
   sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   sectionLabel: {
@@ -307,25 +481,14 @@ const styles = StyleSheet.create({
   },
   countTxt: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9 },
 
-  // Slider
   slider: { marginHorizontal: -20 },
-  cardPage: {
-    width: SCREEN_W,
-    paddingHorizontal: 20,
-  },
+  cardPage: { width: SCREEN_W, paddingHorizontal: 20 },
 
-  // Card
-  cardOuter: {
-    borderRadius: 24, borderWidth: 1, overflow: 'hidden',
-    minHeight: 200,
-  },
+  cardOuter: { borderRadius: 24, borderWidth: 1, overflow: 'hidden', minHeight: 200 },
   cardTopBar: { height: 3 },
   cardContent: { padding: 22, paddingTop: 18, gap: 12 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  categChip: {
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 8, borderWidth: 1,
-  },
+  categChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   categTxt: {
     fontFamily: 'JetBrainsMono-Regular', fontSize: 8,
     letterSpacing: 1.8, textTransform: 'uppercase',
@@ -342,30 +505,104 @@ const styles = StyleSheet.create({
   },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 },
   cardFooterDot: { width: 5, height: 5, borderRadius: 3 },
-  cardFooterTxt: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 8, letterSpacing: 0.8,
-  },
+  cardFooterTxt: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, letterSpacing: 0.8 },
 
-  // Dots paginador
   dotsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 5, marginTop: 16,
   },
-  dot: {
-    height: 6, borderRadius: 3,
-    // width se inyecta dinámicamente (6 o 22)
+  dot: { height: 6, borderRadius: 3 },
+
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 20, paddingVertical: 18, paddingHorizontal: 24,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35, shadowRadius: 14,
+    elevation: 8,
+  },
+  chatBtnTxt: {
+    flex: 1,
+    fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16,
+    color: '#fff', letterSpacing: -0.3,
+  },
+  chatBtnArrow: {
+    fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: 'rgba(255,255,255,0.7)',
+  },
+})
+
+// ─── Styles del chat ──────────────────────────────────────────────────────────
+
+const chatStyles = StyleSheet.create({
+  modal: { flex: 1 },
+  gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 200 },
+
+  chatHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  closeBtn: {
+    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
+  },
+  chatHeaderCenter: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 10,
+  },
+  coachAvatarLg: {
+    width: 38, height: 38, borderRadius: 19, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  coachAvatarLgTxt: {
+    fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff',
+  },
+  chatTitle: {
+    fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, letterSpacing: -0.4,
+  },
+  chatSubtitle: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.5, marginTop: 1,
   },
 
-  // Coming soon
-  comingSoon: {
-    borderRadius: 20, borderWidth: 1,
-    paddingVertical: 28, paddingHorizontal: 24,
-    alignItems: 'center', gap: 8,
+  messagesContent: {
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12, gap: 12,
   },
-  comingSoonTitle: {
-    fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, letterSpacing: -0.4,
+
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  bubbleRowCoach: { justifyContent: 'flex-start' },
+  bubbleRowUser: { justifyContent: 'flex-end' },
+
+  coachAvatar: {
+    width: 30, height: 30, borderRadius: 15, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  comingSoonSub: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 2.5,
+  coachAvatarTxt: {
+    fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, color: '#fff',
+  },
+
+  bubble: {
+    maxWidth: SCREEN_W * 0.72, borderRadius: 18, borderWidth: 1,
+    paddingVertical: 11, paddingHorizontal: 15, gap: 4,
+  },
+  bubbleTxt: {
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, lineHeight: 21, letterSpacing: -0.1,
+  },
+  bubbleTs: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 8, letterSpacing: 0.2,
+    alignSelf: 'flex-end',
+  },
+
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
+    paddingHorizontal: 14, paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  input: {
+    flex: 1, borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 12,
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+    maxHeight: 100, minHeight: 44,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
 })
