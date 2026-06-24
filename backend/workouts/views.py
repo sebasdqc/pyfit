@@ -1924,6 +1924,98 @@ def stats_profile(request):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stats_report_mensual(request):
+    from django.db.models import Avg as _Avg
+    user = request.user
+    today = date.today()
+    year  = int(request.GET.get('year',  today.year))
+    month = int(request.GET.get('month', today.month))
+
+    first_day     = date(year, month, 1)
+    days_in_month = _cal.monthrange(year, month)[1]
+    last_day      = date(year, month, days_in_month)
+
+    sesiones       = user.sessions.select_related('feedback', 'checkin').filter(fecha__gte=first_day, fecha__lte=last_day)
+    sesiones_con_fb = sesiones.filter(feedback__isnull=False)
+
+    agg = sesiones_con_fb.aggregate(rpe_avg=_Avg('feedback__rpe_real'), cum_avg=_Avg('feedback__cumplimiento'))
+
+    try:
+        p = user.profile
+        nombre       = p.nombre or user.email.split('@')[0]
+        nivel        = (p.nivel or 'rookie').lower()
+        racha_actual = p.racha_actual or 0
+        mejor_racha  = p.mejor_racha  or 0
+        dias_semana  = p.dias_semana  or 3
+    except Exception:
+        nombre       = user.email.split('@')[0]
+        nivel        = 'rookie'
+        racha_actual = 0
+        mejor_racha  = 0
+        dias_semana  = 3
+
+    nivel_label = {'rookie': 'Rookie', 'atleta': 'Atleta', 'elite': 'Élite', 'leyenda': 'Leyenda'}.get(nivel, nivel.title())
+
+    sesiones_planificadas = max(1, round(dias_semana * days_in_month / 7))
+    sesiones_completadas  = sesiones_con_fb.count()
+    consistencia_pct      = min(100, round(sesiones_completadas / sesiones_planificadas * 100))
+
+    MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    mes_label = f"{MESES[month - 1]} {year}"
+
+    fuerza_count   = sesiones_con_fb.filter(checkin__foco_entrenamiento__contains=['serio']).count()
+    cardio_count   = sesiones_con_fb.filter(checkin__foco_entrenamiento__contains=['descargar']).count()
+    movilidad_count = sesiones_con_fb.filter(checkin__foco_entrenamiento__contains=['moverme']).count()
+    try:
+        from runs.models import RunSession
+        cardio_count += RunSession.objects.filter(user=user, status='completed', created_at__year=year, created_at__month=month).count()
+    except Exception:
+        pass
+
+    _GRUPOS = {'empujes': 'Pecho · Hombro · Tríceps', 'tracciones': 'Espalda · Bíceps', 'piernas_quad': 'Piernas · Cuádriceps', 'piernas_glut': 'Piernas · Glúteos'}
+    top_grupos = []
+    for token, label in _GRUPOS.items():
+        cnt = sesiones_con_fb.filter(checkin__foco_entrenamiento__contains=[token]).count()
+        if cnt > 0:
+            top_grupos.append({'key': token, 'label': label, 'count': cnt})
+    top_grupos.sort(key=lambda x: -x['count'])
+
+    detalle = []
+    for s in sesiones_con_fb.order_by('fecha'):
+        titulo = (s.respuesta_ia or {}).get('titulo', 'Sesión de entrenamiento') if isinstance(s.respuesta_ia, dict) else 'Sesión de entrenamiento'
+        fb = s.feedback
+        detalle.append({
+            'fecha':        str(s.fecha),
+            'titulo':       titulo,
+            'rpe_real':     round(float(fb.rpe_real), 1)   if fb.rpe_real     else None,
+            'cumplimiento': round(float(fb.cumplimiento))  if fb.cumplimiento else None,
+            'duracion':     s.duracion_planificada or 0,
+            'rating':       fb.rating if fb else None,
+        })
+
+    return Response({
+        'nombre':                nombre,
+        'nivel_label':           nivel_label,
+        'mes_label':             mes_label,
+        'year':                  year,
+        'month':                 month,
+        'sesiones_completadas':  sesiones_completadas,
+        'sesiones_planificadas': sesiones_planificadas,
+        'consistencia_pct':      consistencia_pct,
+        'rpe_promedio':          round(float(agg['rpe_avg']), 1) if agg['rpe_avg'] else None,
+        'cumplimiento_promedio': round(float(agg['cum_avg']))   if agg['cum_avg'] else None,
+        'racha_actual':          racha_actual,
+        'mejor_racha':           mejor_racha,
+        'total_sesiones':        user.sessions.count(),
+        'distribucion_tipo':     {'fuerza': fuerza_count, 'cardio': cardio_count, 'movilidad': movilidad_count},
+        'top_grupos':            top_grupos,
+        'adn_entrenamiento':     _generar_adn_entrenamiento(user),
+        'sesiones_detalle':      detalle,
+    })
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def competitions(request):

@@ -120,6 +120,7 @@ urlpatterns = [
     path('api/stats/cuerpo-contexto/', workout_views.stats_cuerpo_contexto),
     path('api/stats/ejercicios-top/', workout_views.stats_ejercicios_top),
     path('api/stats/radar/', workout_views.stats_radar),
+    path('api/stats/report-mensual/', workout_views.stats_report_mensual),
 
     # Runs (Free Run + future Planned Run)
     path('api/runs/', include('runs.urls')),

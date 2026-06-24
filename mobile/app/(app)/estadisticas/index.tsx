@@ -1408,32 +1408,63 @@ export default function StatsScreen() {
   const insets     = useSafeAreaInsets()
   const styles     = React.useMemo(() => makeHostStyles(colors), [colors])
 
-  const [tab, setTab] = useState<'estadisticas' | 'historial'>('estadisticas')
+  const [tab, setTab]           = useState<'estadisticas' | 'historial'>('estadisticas')
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const { exportMonthlyReport } = await import('../../../lib/monthlyReport')
+      await exportMonthlyReport()
+    } catch (e: any) {
+      Alert.alert('Error al exportar', e?.message ?? 'No se pudo generar el PDF. Intenta de nuevo.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <View style={styles.root}>
       <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
-      {/* ── Chips ── */}
+      {/* ── Chips + botón PDF ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.chipRow}>
+        <View style={styles.headerRow}>
+          <View style={[styles.chipRow, { flex: 1 }]}>
+            <TouchableOpacity
+              style={[styles.chip, tab === 'estadisticas' && styles.chipActive]}
+              onPress={() => setTab('estadisticas')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.chipText, tab === 'estadisticas' && styles.chipTextActive]}>
+                {t('stats_header')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.chip, tab === 'historial' && styles.chipActive]}
+              onPress={() => setTab('historial')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.chipText, tab === 'historial' && styles.chipTextActive]}>
+                {t('historial_header')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
-            style={[styles.chip, tab === 'estadisticas' && styles.chipActive]}
-            onPress={() => setTab('estadisticas')}
-            activeOpacity={0.85}
+            onPress={handleExport}
+            activeOpacity={0.75}
+            disabled={exporting}
+            style={[styles.pdfBtn, { borderColor: colors.borderBright, backgroundColor: colors.cardBg, opacity: exporting ? 0.5 : 1 }]}
           >
-            <Text style={[styles.chipText, tab === 'estadisticas' && styles.chipTextActive]}>
-              {t('stats_header')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.chip, tab === 'historial' && styles.chipActive]}
-            onPress={() => setTab('historial')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.chipText, tab === 'historial' && styles.chipTextActive]}>
-              {t('historial_header')}
-            </Text>
+            {exporting
+              ? <ActivityIndicator size="small" color={colors.accent} />
+              : <>
+                  <Text style={styles.pdfIcon}>📄</Text>
+                  <Text style={[styles.pdfText, { color: colors.accent }]}>PDF</Text>
+                </>
+            }
           </TouchableOpacity>
         </View>
       </View>
@@ -1453,6 +1484,7 @@ function makeHostStyles(c: Colors) {
     root:     { flex: 1, backgroundColor: c.bg },
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
     header:   { paddingHorizontal: 20, paddingBottom: 12, zIndex: 10 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     chipRow: {
       flexDirection: 'row',
       backgroundColor: c.cardBg,
@@ -1476,6 +1508,17 @@ function makeHostStyles(c: Colors) {
       letterSpacing: 0.2,
     },
     chipTextActive: { color: '#fff' },
+    pdfBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      borderWidth: 1, borderRadius: 12,
+      paddingHorizontal: 12, paddingVertical: 9,
+      minWidth: 60, justifyContent: 'center',
+    },
+    pdfIcon: { fontSize: 14 },
+    pdfText: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
+      letterSpacing: 1, textTransform: 'uppercase',
+    },
   })
 }
 
