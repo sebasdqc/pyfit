@@ -17,12 +17,19 @@ interface Profile {
   nombre: string; nivel: string; avatar?: string
 }
 
+interface DistribucionTipo {
+  fuerza: number
+  cardio: number
+  movilidad: number
+}
+
 interface ProfileStats {
   semanas_activas: number
   consistencia_30d: number
   sesiones_mes: number
   datos_medidos_30d: number
   adn_entrenamiento?: string | null
+  distribucion_tipo?: DistribucionTipo | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,6 +89,79 @@ function ADNCard({ texto, styles, dnaLabel, tagLabel }: {
           </View>
           <Text style={styles.adnText}>{texto}</Text>
         </View>
+      </View>
+    </View>
+  )
+}
+
+// ─── Distribución Chart ───────────────────────────────────────────────────────
+
+const DIST_CONFIG = [
+  { key: 'fuerza',    icon: '💪', tKey: 'perfil_dist_fuerza',    color: '#4f8cff' },
+  { key: 'cardio',    icon: '🏃', tKey: 'perfil_dist_cardio',    color: '#ff8c42' },
+  { key: 'movilidad', icon: '🧘', tKey: 'perfil_dist_movilidad', color: '#34d399' },
+] as const
+
+function DistribucionChart({
+  data,
+  loading,
+  styles,
+  colors,
+  t,
+}: {
+  data: DistribucionTipo | null | undefined
+  loading: boolean
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+  t: (key: string) => string
+}) {
+  const vals = {
+    fuerza: data?.fuerza ?? 0,
+    cardio: data?.cardio ?? 0,
+    movilidad: data?.movilidad ?? 0,
+  }
+  const maxVal = Math.max(vals.fuerza, vals.cardio, vals.movilidad, 1)
+  const total = vals.fuerza + vals.cardio + vals.movilidad
+
+  return (
+    <View style={styles.distWrap}>
+      <Text style={styles.adnSectionLabel}>{t('perfil_dist_label')}</Text>
+      <View style={styles.distCard}>
+        {DIST_CONFIG.map((tipo, idx) => {
+          const val = vals[tipo.key]
+          const pct = loading ? 0.2 : val / maxVal
+          return (
+            <View key={tipo.key}>
+              {idx > 0 && <View style={styles.distDivider} />}
+              <View style={styles.distRow}>
+                <View style={styles.distMeta}>
+                  <Text style={styles.distIcon}>{tipo.icon}</Text>
+                  <Text style={styles.distLabel}>{t(tipo.tKey)}</Text>
+                  <View style={{ flex: 1 }} />
+                  <Text style={[styles.distCount, { color: loading ? colors.inkMuted : tipo.color }]}>
+                    {loading ? '–' : val}
+                  </Text>
+                  <Text style={styles.distCountSuffix}> {t('perfil_dist_times')}</Text>
+                </View>
+                <View style={styles.distBarTrack}>
+                  <View
+                    style={[
+                      styles.distBarFill,
+                      {
+                        width: `${Math.round(pct * 100)}%` as any,
+                        backgroundColor: loading ? colors.inkFaint : tipo.color,
+                        opacity: loading ? 0.35 : 1,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+          )
+        })}
+        {!loading && total > 0 && (
+          <Text style={styles.distFooter}>{total} {t('perfil_dist_total')}</Text>
+        )}
       </View>
     </View>
   )
@@ -269,6 +349,15 @@ export default function PerfilScreen() {
           />
         )}
 
+        {/* ── DISTRIBUCIÓN POR TIPO ── */}
+        <DistribucionChart
+          data={profileStats?.distribucion_tipo}
+          loading={statsLoading}
+          styles={styles}
+          colors={colors}
+          t={t}
+        />
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -367,6 +456,41 @@ function makeStyles(c: Colors) {
     adnTag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright },
     adnTagText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
     adnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkPrimary, lineHeight: 22, letterSpacing: -0.1 },
+
+    // Distribución
+    distWrap: { marginBottom: 28 },
+    distCard: {
+      backgroundColor: c.cardBg,
+      borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20,
+    },
+    distDivider: { height: 1, backgroundColor: c.borderDefault },
+    distRow: { paddingVertical: 16 },
+    distMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    distIcon: { fontSize: 15, marginRight: 8 },
+    distLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase',
+    },
+    distCount: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.5,
+    },
+    distCountSuffix: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.inkMuted, letterSpacing: 0.5, textTransform: 'uppercase',
+      alignSelf: 'flex-end', paddingBottom: 3,
+    },
+    distBarTrack: {
+      height: 5, borderRadius: 3,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      overflow: 'hidden',
+    },
+    distBarFill: { height: 5, borderRadius: 3 },
+    distFooter: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: c.inkFaint, letterSpacing: 0.8, textTransform: 'uppercase',
+      textAlign: 'center', paddingBottom: 14, paddingTop: 2,
+    },
 
   })
 }

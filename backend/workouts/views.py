@@ -1871,12 +1871,38 @@ def stats_profile(request):
     # Total de datos medidos en los últimos 30 días (para la card "DATOS MEDIDOS")
     datos_medidos_30d = _contar_datos_medidos(request.user, hace_30)
 
+    # Distribución por tipo: fuerza/cardio/movilidad — solo sesiones con feedback (completadas)
+    fuerza_count = request.user.sessions.filter(
+        feedback__isnull=False,
+        checkin__foco_entrenamiento__contains=['serio'],
+    ).count()
+    cardio_count = request.user.sessions.filter(
+        feedback__isnull=False,
+        checkin__foco_entrenamiento__contains=['descargar'],
+    ).count()
+    movilidad_count = request.user.sessions.filter(
+        feedback__isnull=False,
+        checkin__foco_entrenamiento__contains=['moverme'],
+    ).count()
+    try:
+        from runs.models import RunSession
+        cardio_count += RunSession.objects.filter(
+            user=request.user, status='completed'
+        ).count()
+    except Exception:
+        pass
+
     return Response({
         'semanas_activas': semanas_activas,
         'consistencia_30d': consistencia_30d,
         'sesiones_mes': sesiones_mes,
         'datos_medidos_30d': datos_medidos_30d,
         'adn_entrenamiento': adn_entrenamiento,
+        'distribucion_tipo': {
+            'fuerza': fuerza_count,
+            'cardio': cardio_count,
+            'movilidad': movilidad_count,
+        },
     })
 
 
