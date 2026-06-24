@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, Linking, Pressable,
+  StyleSheet, Linking,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
@@ -17,7 +17,8 @@ import { logout } from '../../../lib/auth'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Profile {
-  nombre: string; plan?: 'starter' | 'pro'
+  nombre: string
+  plan?: 'starter' | 'pro'
   plan_tipo?: 'mensual' | 'anual' | ''
   plan_renovacion?: string | null
 }
@@ -59,40 +60,84 @@ function ChevronLeft({ color }: { color: string }) {
   )
 }
 
-// ─── GroupRow ─────────────────────────────────────────────────────────────────
+// ─── Primitivos de layout ─────────────────────────────────────────────────────
 
-function GroupRow({ icon, title, subtitle, badge, onPress, styles, colors }: {
-  icon: string; title: string; subtitle?: string; badge?: string
-  onPress: () => void; styles: ReturnType<typeof makeStyles>; colors: Colors
-}) {
+function SectionLabel({ label }: { label: string }) {
+  const { colors } = useTheme()
   return (
-    <TouchableOpacity style={styles.groupRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={styles.groupRowIcon}>{icon}</Text>
-      <View style={styles.groupRowMid}>
-        <Text style={styles.groupRowTitle}>{title}</Text>
-        {!!subtitle && <Text style={styles.groupRowSub}>{subtitle}</Text>}
+    <Text style={{
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+      color: colors.inkMuted, letterSpacing: 2, textTransform: 'uppercase',
+      marginBottom: 10, marginTop: 24, marginLeft: 4,
+    }}>
+      {label}
+    </Text>
+  )
+}
+
+function Divider() {
+  const { colors } = useTheme()
+  return <View style={{ height: 1, backgroundColor: colors.borderDefault, marginHorizontal: 18 }} />
+}
+
+function Row({
+  icon, title, subtitle, badge, rightLabel, onPress, danger = false,
+}: {
+  icon?: string; title: string; subtitle?: string; badge?: string
+  rightLabel?: string; onPress: () => void; danger?: boolean
+}) {
+  const { colors } = useTheme()
+  return (
+    <TouchableOpacity
+      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15, gap: 14 }}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {!!icon && <Text style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{icon}</Text>}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{
+          color: danger ? colors.red : colors.inkPrimary,
+          fontFamily: 'SpaceGrotesk-Regular', fontSize: 15,
+        }}>
+          {title}
+        </Text>
+        {!!subtitle && (
+          <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 }}>
+            {subtitle}
+          </Text>
+        )}
       </View>
+      {!!rightLabel && (
+        <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 }}>
+          {rightLabel}
+        </Text>
+      )}
       {!!badge && (
-        <View style={styles.groupBadge}>
-          <Text style={styles.groupBadgeText}>{badge}</Text>
+        <View style={{
+          paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+          backgroundColor: 'rgba(255,170,50,0.22)',
+          borderWidth: 1, borderColor: 'rgba(255,170,50,0.5)',
+        }}>
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: '#b45309', letterSpacing: 0.5 }}>
+            {badge}
+          </Text>
         </View>
       )}
-      <ChevronRight color={colors.inkMuted} />
+      {!danger && <ChevronRight color={colors.inkMuted} />}
     </TouchableOpacity>
   )
 }
 
-// ─── AdminRow ─────────────────────────────────────────────────────────────────
-
-function AdminRow({ title, onPress, danger = false, styles, colors }: {
-  title: string; onPress: () => void; danger?: boolean
-  styles: ReturnType<typeof makeStyles>; colors: Colors
-}) {
+function Card({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme()
   return (
-    <TouchableOpacity style={styles.adminRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.adminRowTitle, danger && { color: colors.red }]}>{title}</Text>
-      {!danger && <ChevronRight color={colors.inkMuted} />}
-    </TouchableOpacity>
+    <View style={{
+      backgroundColor: colors.cardBg,
+      borderWidth: 1, borderColor: colors.borderDefault,
+      borderRadius: 20, overflow: 'hidden', marginBottom: 4,
+    }}>
+      {children}
+    </View>
   )
 }
 
@@ -104,7 +149,7 @@ const DEFAULT: Profile = { nombre: '', plan: 'starter', plan_tipo: '', plan_reno
 
 export default function AjustesScreen() {
   const { colors, palette, setPalette } = useTheme()
-  const { t, lang } = useTranslation()
+  const { t, lang, setLang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -112,7 +157,10 @@ export default function AjustesScreen() {
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [coachUnread, setCoachUnread] = useState(0)
   const [deleting, setDeleting] = useState(false)
-  const [showPalettePicker, setShowPalettePicker] = useState(false)
+
+  // Expandibles inline
+  const [showThemePicker, setShowThemePicker] = useState(false)
+  const [showLangPicker, setShowLangPicker] = useState(false)
 
   const fetchAll = useCallback(async () => {
     try {
@@ -125,9 +173,7 @@ export default function AjustesScreen() {
         const d = profileRes.value
         setProfile({ nombre: d.nombre || '', plan: d.plan, plan_tipo: d.plan_tipo, plan_renovacion: d.plan_renovacion })
       }
-      if (statsRes.status === 'fulfilled') {
-        setProfileStats(statsRes.value)
-      }
+      if (statsRes.status === 'fulfilled') setProfileStats(statsRes.value)
       setCoachUnread(unreadRes.status === 'fulfilled' ? (unreadRes.value?.no_leidos ?? 0) : 0)
     } catch {}
   }, [])
@@ -167,12 +213,13 @@ export default function AjustesScreen() {
       setDeleting(false)
       Alert.alert(
         'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@pyfit.app para que la eliminemos manualmente.',
+        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@pyfit.app.',
         [{ text: 'Entendido', style: 'cancel' }]
       )
     }
   }
 
+  // Opciones de paleta
   const PALETTE_OPTIONS: { id: Palette; label: string; icon: string; pro?: boolean }[] = [
     { id: 'dark',     label: t('perfil_palette_dark'),     icon: '🌙' },
     { id: 'light',    label: t('perfil_palette_light'),    icon: '☀️' },
@@ -182,8 +229,21 @@ export default function AjustesScreen() {
     { id: 'forest',   label: t('perfil_palette_forest'),   icon: '🌲', pro: true },
     { id: 'neon',     label: t('perfil_palette_neon'),     icon: '⚡', pro: true },
   ]
-  const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
-  const currentLabel = PALETTE_OPTIONS.find(o => o.id === palette)?.label ?? ''
+  const currentPaletteIcon  = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
+  const currentPaletteLabel = PALETTE_OPTIONS.find(o => o.id === palette)?.label ?? ''
+
+  // Suscripción helpers
+  function navigateToSuscripcion() {
+    if (profile.plan === 'pro') {
+      router.push(
+        `/(app)/perfil/suscripcion?modo=gestion&plan_tipo=${profile.plan_tipo ?? ''}&plan_renovacion=${profile.plan_renovacion ?? ''}&sesiones_mes=${profileStats?.sesiones_mes ?? 0}` as any
+      )
+    } else {
+      const semanasVal = profileStats?.semanas_activas ?? 0
+      const nombreVal  = encodeURIComponent(profile.nombre || '')
+      router.push(`/(app)/perfil/suscripcion?modo=upgrade&nombre=${nombreVal}&semanas=${semanasVal}` as any)
+    }
+  }
 
   return (
     <View style={styles.root}>
@@ -198,142 +258,268 @@ export default function AjustesScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Dismiss overlay for palette picker */}
-      {showPalettePicker && (
-        <Pressable
-          style={[StyleSheet.absoluteFill, { zIndex: 99 }]}
-          onPress={() => setShowPalettePicker(false)}
-        />
-      )}
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ── APARIENCIA ── */}
-        <Text style={styles.sectionLabel}>APARIENCIA</Text>
-        <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.groupRow}
-            onPress={() => setShowPalettePicker(v => !v)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.groupRowIcon}>🎨</Text>
-            <View style={styles.groupRowMid}>
-              <Text style={styles.groupRowTitle}>Tema</Text>
-              <Text style={styles.groupRowSub}>{currentIcon} {currentLabel}</Text>
-            </View>
-            <ChevronRight color={colors.inkMuted} />
-          </TouchableOpacity>
-
-          {showPalettePicker && (
+        {/* ══════════════════════════════════════════ */}
+        {/* APARIENCIA                                 */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="APARIENCIA" />
+        <Card>
+          <Row
+            icon="🎨"
+            title="Tema"
+            subtitle={`${currentPaletteIcon}  ${currentPaletteLabel}`}
+            onPress={() => { setShowLangPicker(false); setShowThemePicker(v => !v) }}
+          />
+          {showThemePicker && (
             <>
-              <View style={styles.divider} />
-              <View style={[styles.paletteInline, { backgroundColor: colors.sheetBg }]}>
-                {PALETTE_OPTIONS.map((opt, i) => (
-                  <React.Fragment key={opt.id}>
-                    {i > 0 && <View style={[styles.dropdownDivider, { backgroundColor: colors.borderDefault }]} />}
-                    <TouchableOpacity
-                      onPress={() => { setPalette(opt.id); setShowPalettePicker(false) }}
-                      activeOpacity={0.7}
-                      style={styles.dropdownRow}
-                    >
-                      <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
-                      <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
-                        {opt.label}
-                      </Text>
-                      {opt.pro && (
-                        <View style={styles.groupBadge}>
-                          <Text style={styles.groupBadgeText}>Pro</Text>
-                        </View>
-                      )}
-                      {palette === opt.id && (
-                        <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
-                      )}
-                    </TouchableOpacity>
-                  </React.Fragment>
-                ))}
-              </View>
+              <Divider />
+              {PALETTE_OPTIONS.map((opt, i) => (
+                <React.Fragment key={opt.id}>
+                  {i > 0 && <Divider />}
+                  <TouchableOpacity
+                    onPress={() => { setPalette(opt.id); setShowThemePicker(false) }}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 13 }}
+                  >
+                    <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
+                    <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: palette === opt.id ? colors.accent : colors.inkSecondary }}>
+                      {opt.label}
+                    </Text>
+                    {opt.pro && (
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(255,170,50,0.22)', borderWidth: 1, borderColor: 'rgba(255,170,50,0.5)' }}>
+                        <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: '#b45309' }}>Pro</Text>
+                      </View>
+                    )}
+                    {palette === opt.id && (
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: colors.accent }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
             </>
           )}
-        </View>
+        </Card>
 
-        {/* ── MI PERFIL ── */}
-        <Text style={styles.sectionLabel}>MI PERFIL</Text>
-        <View style={styles.card}>
-          <GroupRow icon="👤" title={t('perfil_section_account')} subtitle={t('perfil_card_account_sub')}
-            onPress={() => router.push('/(app)/perfil/mi-cuenta' as any)} styles={styles} colors={colors} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🏋️" title={t('perfil_section_training')} subtitle={t('perfil_card_training_sub')}
-            onPress={() => router.push('/(app)/perfil/datos-entrenamiento' as any)} styles={styles} colors={colors} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="⌚" title={t('perfil_section_devices')} subtitle={t('perfil_row_devices_sub')}
-            onPress={() => router.push('/(app)/perfil/tus-dispositivos' as any)} styles={styles} colors={colors} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🧬" title={t('perfil_section_evidence')} subtitle={t('perfil_card_evidence_sub')}
-            onPress={() => router.push('/(app)/perfil/evidencia' as any)} styles={styles} colors={colors} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🧑‍🏫" title={t('perfil_section_coach_signup')} subtitle={t('perfil_card_coach_signup_sub')}
-            badge={coachUnread > 0 ? (coachUnread > 9 ? '9+' : String(coachUnread)) : undefined}
-            onPress={() => router.push('/(app)/perfil/registro-coach' as any)} styles={styles} colors={colors} />
-        </View>
-
-        {/* ── CUENTA ── */}
-        <Text style={styles.sectionLabel}>CUENTA</Text>
-        <View style={styles.adminCard}>
+        {/* ══════════════════════════════════════════ */}
+        {/* MI CUENTA                                  */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="MI CUENTA" />
+        <Card>
+          <Row
+            icon="👤"
+            title={t('perfil_row_personal')}
+            onPress={() => router.push('/(app)/perfil/datos-personales' as any)}
+          />
+          <Divider />
+          <Row
+            icon="🔐"
+            title="Cuenta"
+            subtitle="Email, contraseña y configuración"
+            onPress={() => router.push('/(app)/perfil/mi-cuenta' as any)}
+          />
+          <Divider />
+          <Row
+            icon="🔔"
+            title="Notificaciones"
+            subtitle="Alertas y preferencias de aviso"
+            onPress={() => router.push('/(app)/notificaciones' as any)}
+          />
+          <Divider />
           {profile.plan === 'pro' ? (
-            <GroupRow
+            <Row
               icon="👑"
               title={t('perfil_row_subscription')}
               subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
               badge="Pro"
-              onPress={() => {
-                const tipoVal  = profile.plan_tipo || ''
-                const renovVal = profile.plan_renovacion || ''
-                const sesVal   = profileStats?.sesiones_mes ?? 0
-                router.push(
-                  `/(app)/perfil/suscripcion?modo=gestion&plan_tipo=${tipoVal}&plan_renovacion=${renovVal}&sesiones_mes=${sesVal}` as any
-                )
-              }}
-              styles={styles} colors={colors}
+              onPress={navigateToSuscripcion}
             />
           ) : (
-            <GroupRow
+            <Row
               icon="⭐"
               title={t('perfil_row_upgrade')}
               subtitle={lang === 'es' ? 'Desbloquea tu entrenador completo' : 'Unlock your full coach'}
-              onPress={() => {
-                const semanasVal = profileStats?.semanas_activas ?? 0
-                const nombreVal  = encodeURIComponent(profile.nombre || '')
-                router.push(`/(app)/perfil/suscripcion?modo=upgrade&nombre=${nombreVal}&semanas=${semanasVal}` as any)
-              }}
-              styles={styles} colors={colors}
+              onPress={navigateToSuscripcion}
             />
           )}
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_referrals')}
-            onPress={() => router.push('/(app)/perfil/referidos' as any)} styles={styles} colors={colors} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_support')}
-            onPress={() => Linking.openURL('mailto:hola@pyfit.app')} styles={styles} colors={colors} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_privacy')}
-            onPress={() => router.push('/(auth)/privacidad' as any)} styles={styles} colors={colors} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_logout')} danger onPress={handleLogout} styles={styles} colors={colors} />
-          <View style={styles.divider} />
-          <AdminRow title="Eliminar cuenta" danger onPress={handleDeleteAccount} styles={styles} colors={colors} />
-        </View>
+          <Divider />
+          <Row
+            icon="🎁"
+            title={t('perfil_row_referrals')}
+            onPress={() => router.push('/(app)/perfil/referidos' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* PREFERENCIAS                               */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="PREFERENCIAS" />
+        <Card>
+          <Row
+            icon="🎯"
+            title={t('perfil_row_objectives')}
+            onPress={() => router.push('/(app)/perfil/objetivos' as any)}
+          />
+          <Divider />
+          <Row
+            icon="📍"
+            title={t('perfil_row_locations')}
+            onPress={() => router.push('/(app)/perfil/ubicaciones' as any)}
+          />
+          <Divider />
+          <Row
+            icon="⚙️"
+            title={t('perfil_row_preferences')}
+            onPress={() => router.push('/(app)/perfil/preferencias' as any)}
+          />
+          <Divider />
+          <Row
+            icon="🏋️"
+            title={t('perfil_row_training')}
+            onPress={() => router.push('/(app)/perfil/datos-entrenamiento' as any)}
+          />
+          <Divider />
+          <Row
+            icon="🩹"
+            title={t('perfil_row_injuries')}
+            onPress={() => router.push('/(app)/perfil/lesiones' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* TUS DATOS                                  */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="TUS DATOS" />
+        <Card>
+          <Row
+            icon="⌚"
+            title={t('perfil_section_devices')}
+            subtitle={t('perfil_row_devices_sub')}
+            onPress={() => router.push('/(app)/perfil/tus-dispositivos' as any)}
+          />
+          <Divider />
+          {/* Lenguaje — expandible inline */}
+          <Row
+            icon="🌐"
+            title={t('perfil_lang_label')}
+            rightLabel={lang === 'es' ? '🇪🇸  ES' : '🇺🇸  EN'}
+            onPress={() => { setShowThemePicker(false); setShowLangPicker(v => !v) }}
+          />
+          {showLangPicker && (
+            <>
+              <Divider />
+              {(['es', 'en'] as const).map((l, i) => (
+                <React.Fragment key={l}>
+                  {i > 0 && <Divider />}
+                  <TouchableOpacity
+                    onPress={() => { setLang(l); setShowLangPicker(false) }}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 13 }}
+                  >
+                    <Text style={{ fontSize: 15 }}>{l === 'es' ? '🇪🇸' : '🇺🇸'}</Text>
+                    <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: lang === l ? colors.accent : colors.inkSecondary }}>
+                      {l === 'es' ? t('perfil_lang_es') : t('perfil_lang_en')}
+                    </Text>
+                    {lang === l && (
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: colors.accent }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </>
+          )}
+          <Divider />
+          <Row
+            icon="📐"
+            title="Unidades"
+            subtitle="kg / cm · próximamente"
+            onPress={() => Alert.alert('Próximamente', 'Podrás elegir entre kg/lb y cm/ft en una próxima actualización.')}
+          />
+          <Divider />
+          <Row
+            icon="🔗"
+            title="Integraciones"
+            subtitle="Apple Health, Garmin y más"
+            onPress={() => router.push('/(app)/perfil/dispositivos' as any)}
+          />
+          <Divider />
+          <Row
+            icon="📊"
+            title="Reportes"
+            subtitle="Historial de pagos y actividad"
+            onPress={() => router.push('/(app)/perfil/historial-pagos' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* EVIDENCIA                                  */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label={t('perfil_section_evidence').toUpperCase()} />
+        <Card>
+          <Row
+            icon="🧬"
+            title={t('perfil_row_how_coach')}
+            onPress={() => router.push('/(app)/perfil/ciencia' as any)}
+          />
+          <Divider />
+          <Row
+            icon="📚"
+            title={t('perfil_row_bibliography')}
+            onPress={() => router.push('/(app)/perfil/bibliografia' as any)}
+          />
+          <Divider />
+          <Row
+            icon="📖"
+            title={t('perfil_row_glossary')}
+            onPress={() => router.push('/(app)/perfil/glosario' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* REGISTRO CON COACH (card standalone)       */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="ENTRENADOR" />
+        <Card>
+          <Row
+            icon="🧑‍🏫"
+            title={t('perfil_section_coach_signup')}
+            subtitle={t('perfil_card_coach_signup_sub')}
+            badge={coachUnread > 0 ? (coachUnread > 9 ? '9+' : String(coachUnread)) : undefined}
+            onPress={() => router.push('/(app)/perfil/registro-coach' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* AYUDA                                      */}
+        {/* ══════════════════════════════════════════ */}
+        <SectionLabel label="AYUDA" />
+        <Card>
+          <Row
+            icon="💬"
+            title={t('perfil_row_support')}
+            onPress={() => Linking.openURL('mailto:hola@pyfit.app')}
+          />
+          <Divider />
+          <Row
+            icon="🔒"
+            title={t('perfil_row_privacy')}
+            onPress={() => router.push('/(auth)/privacidad' as any)}
+          />
+        </Card>
+
+        {/* ══════════════════════════════════════════ */}
+        {/* ACCIONES DE CUENTA (sin header, al fondo)  */}
+        {/* ══════════════════════════════════════════ */}
+        <View style={{ height: 16 }} />
+        <Card>
+          <Row title={t('perfil_logout')} danger onPress={handleLogout} />
+          <Divider />
+          <Row title="Eliminar cuenta" danger onPress={handleDeleteAccount} />
+        </Card>
 
         <Text style={styles.version}>{t('perfil_version')}</Text>
         <View style={{ height: 40 }} />
@@ -348,8 +534,6 @@ function makeStyles(c: Colors) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
-
-    // Top bar
     topBar: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingBottom: 12,
@@ -363,62 +547,12 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 17, letterSpacing: -0.4,
     },
-
-    // Scroll
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
-
-    // Section labels
-    sectionLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      color: c.inkMuted, letterSpacing: 2, textTransform: 'uppercase',
-      marginBottom: 10, marginTop: 20, marginLeft: 4,
-    },
-
-    // Cards
-    card: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, marginBottom: 14, overflow: 'hidden',
-    },
-    adminCard: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, marginBottom: 16, overflow: 'hidden',
-    },
-
-    // Group rows
-    groupRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16, gap: 14 },
-    groupRowIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-    groupRowMid: { flex: 1, gap: 2 },
-    groupRowTitle: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 },
-    groupRowSub: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 },
-    groupBadge: {
-      paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-      backgroundColor: 'rgba(255,170,50,0.22)',
-      borderWidth: 1, borderColor: 'rgba(255,170,50,0.5)',
-    },
-    groupBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: '#b45309', letterSpacing: 0.5 },
-
-    // Admin rows
-    adminRow: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 18, paddingVertical: 16,
-    },
-    adminRowTitle: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 },
-    divider: { height: 1, backgroundColor: c.borderDefault, marginHorizontal: 18 },
-
-    // Palette picker (inline)
-    paletteInline: { borderRadius: 0 },
-    dropdownRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 18, paddingVertical: 13,
-    },
-    dropdownLabel: { flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13 },
-    dropdownCheck: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 },
-    dropdownDivider: { height: 1 },
-
+    scrollContent: { paddingHorizontal: 20, paddingTop: 4 },
     version: {
       color: c.inkFaint, fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10, letterSpacing: 0.4, textAlign: 'center', marginBottom: 8, marginTop: 8,
+      fontSize: 10, letterSpacing: 0.4, textAlign: 'center',
+      marginTop: 16, marginBottom: 8,
     },
   })
 }
