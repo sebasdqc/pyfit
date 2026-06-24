@@ -5,7 +5,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Path, Circle } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
@@ -23,6 +23,10 @@ interface DistribucionTipo {
 
 interface GrupoFav {
   key: string; label: string; count: number
+}
+
+interface Competencia {
+  id: number; nombre: string; fecha: string; tipo: string; distancia_disciplina?: string
 }
 
 interface ProfileStats {
@@ -45,16 +49,31 @@ function agruparMiles(n: number, sep: string) {
   return String(Math.max(0, Math.round(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, sep)
 }
 
-function nivelLabel(nivel: string) {
-  return ({ rookie: 'Rookie', atleta: 'Atleta', elite: 'Élite', leyenda: 'Leyenda' } as any)[nivel?.toLowerCase()] ?? nivel ?? 'Rookie'
-}
-
 function planLabel(plan?: string) {
   return plan === 'pro' ? 'Pro' : plan === 'ultra' ? 'Ultra' : 'Free'
 }
 
 function planColor(plan?: string) {
   return plan === 'pro' ? '#ffaa32' : plan === 'ultra' ? '#c084fc' : 'rgba(255,255,255,0.35)'
+}
+
+function formatFecha(dateStr: string, lang: string) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const months: Record<string, string[]> = {
+    es: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    pt: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+  }
+  const m = (months[lang] ?? months['es'])[d.getMonth()]
+  return `${d.getDate()} ${m}`
+}
+
+function tipoIcon(tipo: string) {
+  const map: Record<string, string> = {
+    running: '🏃', ciclismo: '🚴', triatlón: '🏊', natación: '🏊',
+    trail: '🏔️', futbol: '⚽', tenis: '🎾', otro: '🏅',
+  }
+  return map[tipo?.toLowerCase()] ?? '🏅'
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -70,6 +89,15 @@ function GearIcon({ color }: { color: string }) {
   )
 }
 
+function InfoIcon({ color }: { color: string }) {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.8" />
+      <Path d="M12 11v6M12 7.5v.5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  )
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton({ width, height, borderRadius = 8, style }: {
@@ -77,6 +105,26 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 }) {
   const { colors } = useTheme()
   return <View style={[{ width: width as any, height, borderRadius, backgroundColor: colors.glassBg }, style]} />
+}
+
+// ─── SectionLabelRow (label + ? info button) ──────────────────────────────────
+
+function SectionLabelRow({ label, info, styles }: {
+  label: string; info: string; styles: ReturnType<typeof makeStyles>
+}) {
+  return (
+    <View style={styles.sectionLabelRow}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <TouchableOpacity
+        onPress={() => Alert.alert('', info, [{ text: 'OK' }])}
+        activeOpacity={0.7}
+        style={styles.infoBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <InfoIcon color="rgba(255,255,255,0.3)" />
+      </TouchableOpacity>
+    </View>
+  )
 }
 
 // ─── Grupo config (colores del checkin) ───────────────────────────────────────
@@ -116,7 +164,11 @@ function DistribucionChart({
 
   return (
     <View style={styles.distWrap}>
-      <Text style={styles.sectionLabel}>{t('perfil_dist_label')}</Text>
+      <SectionLabelRow
+        label={t('perfil_dist_label')}
+        info="Muestra cuántas veces has entrenado fuerza, cardio y movilidad según los focos que elegiste en tus check-ins diarios."
+        styles={styles}
+      />
       <View style={styles.distCard}>
         {DIST_CONFIG.map((tipo, idx) => {
           const val = vals[tipo.key]
@@ -165,7 +217,11 @@ function FavoritosSection({
 
   return (
     <View style={styles.favWrap}>
-      <Text style={styles.sectionLabel}>ENTRENAMIENTOS FAVORITOS</Text>
+      <SectionLabelRow
+        label="ENTRENAMIENTOS FAVORITOS"
+        info="Los grupos musculares que más has trabajado en tus sesiones completadas con feedback."
+        styles={styles}
+      />
       {loading ? (
         <View style={styles.favChipsRow}>
           {[120, 90, 100].map((w, i) => (
@@ -198,6 +254,64 @@ function FavoritosSection({
   )
 }
 
+// ─── Eventos Próximos Section ─────────────────────────────────────────────────
+
+function EventosProximosSection({
+  eventos, loading, styles, colors, lang,
+}: {
+  eventos: Competencia[]; loading: boolean
+  styles: ReturnType<typeof makeStyles>; colors: Colors; lang: string
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+  const proximos = eventos.filter(e => e.fecha >= today).sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  return (
+    <View style={styles.eventosWrap}>
+      <Text style={styles.sectionLabel}>EVENTOS PRÓXIMOS</Text>
+      {loading ? (
+        <View style={{ gap: 10 }}>
+          <Skeleton width="100%" height={64} borderRadius={16} />
+          <Skeleton width="100%" height={64} borderRadius={16} />
+        </View>
+      ) : proximos.length === 0 ? (
+        <View style={styles.favEmpty}>
+          <Text style={styles.favEmptyText}>No tienes eventos registrados próximamente</Text>
+        </View>
+      ) : (
+        <View style={{ gap: 10 }}>
+          {proximos.map(ev => {
+            const diasRestantes = Math.ceil((new Date(ev.fecha + 'T00:00:00').getTime() - Date.now()) / 86400000)
+            const urgente = diasRestantes <= 7
+            return (
+              <View key={ev.id} style={styles.eventoCard}>
+                <View style={[styles.eventoColorBar, { backgroundColor: urgente ? '#ff8c42' : colors.accent }]} />
+                <View style={styles.eventoIcon}>
+                  <Text style={{ fontSize: 20 }}>{tipoIcon(ev.tipo)}</Text>
+                </View>
+                <View style={styles.eventoBody}>
+                  <Text style={styles.eventoNombre} numberOfLines={1}>{ev.nombre}</Text>
+                  <View style={styles.eventoMetaRow}>
+                    {ev.distancia_disciplina ? (
+                      <Text style={styles.eventoMeta}>{ev.distancia_disciplina}</Text>
+                    ) : null}
+                    {ev.distancia_disciplina ? <Text style={styles.eventoMetaDot}>·</Text> : null}
+                    <Text style={styles.eventoMeta}>{formatFecha(ev.fecha, lang)}</Text>
+                  </View>
+                </View>
+                <View style={[styles.eventoBadge, { borderColor: (urgente ? '#ff8c42' : colors.accent) + '50', backgroundColor: (urgente ? '#ff8c42' : colors.accent) + '15' }]}>
+                  <Text style={[styles.eventoBadgeTxt, { color: urgente ? '#ff8c42' : colors.accent }]}>
+                    {diasRestantes === 0 ? 'HOY' : `${diasRestantes}d`}
+                  </Text>
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      )}
+    </View>
+  )
+}
+
 // ─── Default profile ──────────────────────────────────────────────────────────
 
 const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '', plan: 'pro' }
@@ -217,13 +331,16 @@ export default function PerfilScreen() {
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [adnModalOpen, setAdnModalOpen] = useState(false)
+  const [eventos, setEventos] = useState<Competencia[]>([])
+  const [eventosLoading, setEventosLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
     setLoadError(false)
     try {
-      const [profileRes, statsRes] = await Promise.allSettled([
+      const [profileRes, statsRes, eventosRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
         apiGet('/api/stats/profile/'),
+        apiGet('/api/competitions/'),
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
@@ -232,16 +349,21 @@ export default function PerfilScreen() {
         setLoadError(true)
       }
       if (statsRes.status === 'fulfilled') setProfileStats(statsRes.value)
+      if (eventosRes.status === 'fulfilled') {
+        const data = eventosRes.value
+        setEventos(Array.isArray(data) ? data : (data.results ?? []))
+      }
     } catch {
       setLoadError(true)
     } finally {
       setLoading(false)
       setStatsLoading(false)
+      setEventosLoading(false)
     }
   }, [])
 
   useFocusEffect(useCallback(() => {
-    setLoading(true); setStatsLoading(true); fetchAll()
+    setLoading(true); setStatsLoading(true); setEventosLoading(true); fetchAll()
   }, [fetchAll]))
 
   async function handlePickAvatar() {
@@ -273,7 +395,6 @@ export default function PerfilScreen() {
   }
 
   const initials = getInitials(profile.nombre || 'U')
-  const nivel = nivelLabel(profile.nivel)
   const pLabel = planLabel(profile.plan)
   const pColor = planColor(profile.plan)
   const datosMedidos = agruparMiles(profileStats?.datos_medidos_30d ?? 0, lang === 'en' ? ',' : '.')
@@ -300,9 +421,6 @@ export default function PerfilScreen() {
                   <Text style={styles.avatarText}>{initials}</Text>
                 </View>
               )}
-              <View style={styles.avatarEditBadge}>
-                <Text style={styles.avatarEditIcon}>{uploading ? '⏳' : '📷'}</Text>
-              </View>
             </View>
           </TouchableOpacity>
 
@@ -315,7 +433,7 @@ export default function PerfilScreen() {
 
             {loadError && !loading ? (
               <TouchableOpacity
-                onPress={() => { setLoading(true); setStatsLoading(true); fetchAll() }}
+                onPress={() => { setLoading(true); setStatsLoading(true); setEventosLoading(true); fetchAll() }}
                 style={styles.retryBtn}
                 accessibilityRole="button"
               >
@@ -323,15 +441,9 @@ export default function PerfilScreen() {
               </TouchableOpacity>
             ) : (
               <View style={styles.nivelPill}>
-                <Text style={styles.nivelPillText}>{nivel}</Text>
-                {!statsLoading && semanas > 0 && (
-                  <>
-                    <View style={styles.nivelPillSep} />
-                    <Text style={styles.nivelPillText}>
-                      {semanas} {semanas === 1 ? 'sem.' : 'sem.'}
-                    </Text>
-                  </>
-                )}
+                <Text style={styles.nivelPillText}>
+                  {statsLoading ? '–' : `${semanas} sem.`}
+                </Text>
               </View>
             )}
 
@@ -369,7 +481,11 @@ export default function PerfilScreen() {
           </View>
         ) : !!adn && (
           <View style={styles.adnWrap}>
-            <Text style={styles.sectionLabel}>{t('perfil_dna_label')}</Text>
+            <SectionLabelRow
+              label={t('perfil_dna_label')}
+              info="Tu ADN de entrenamiento es un análisis personalizado generado por IA que describe tu estilo y patrones de entrenamiento basado en tu historial."
+              styles={styles}
+            />
             <TouchableOpacity onPress={() => setAdnModalOpen(true)} activeOpacity={0.75}>
               <View style={styles.adnCompactCard}>
                 <View style={styles.adnBar} />
@@ -400,6 +516,15 @@ export default function PerfilScreen() {
           loading={statsLoading}
           styles={styles}
           colors={colors}
+        />
+
+        {/* ── EVENTOS PRÓXIMOS ── */}
+        <EventosProximosSection
+          eventos={eventos}
+          loading={eventosLoading}
+          styles={styles}
+          colors={colors}
+          lang={lang}
         />
 
         <View style={{ height: 48 }} />
@@ -460,7 +585,13 @@ function makeStyles(c: Colors) {
     scrollContent: { paddingHorizontal: 20 },
     sectionLabel: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted,
-      letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10,
+      letterSpacing: 2, textTransform: 'uppercase',
+    },
+    sectionLabelRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
+    },
+    infoBtn: {
+      width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
     },
 
     // ── Header ──
@@ -479,13 +610,6 @@ function makeStyles(c: Colors) {
       alignItems: 'center', justifyContent: 'center',
     },
     avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, letterSpacing: -0.5 },
-    avatarEditBadge: {
-      position: 'absolute', bottom: 0, right: 0,
-      width: 26, height: 26, borderRadius: 13,
-      backgroundColor: c.accentDark, borderWidth: 2, borderColor: c.bg,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    avatarEditIcon: { fontSize: 12 },
     headerInfo: { flex: 1, paddingTop: 4, gap: 8 },
     nombre: {
       color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold',
@@ -500,7 +624,6 @@ function makeStyles(c: Colors) {
       color: c.accent, fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase',
     },
-    nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.accent },
     planBadge: {
       alignSelf: 'flex-start', borderWidth: 1, borderRadius: 10,
       paddingHorizontal: 10, paddingVertical: 4,
@@ -594,6 +717,38 @@ function makeStyles(c: Colors) {
     favEmptyText: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted,
       textAlign: 'center', lineHeight: 20,
+    },
+
+    // ── Eventos ──
+    eventosWrap: { marginBottom: 28 },
+    eventoCard: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, overflow: 'hidden',
+    },
+    eventoColorBar: { width: 3, alignSelf: 'stretch' },
+    eventoIcon: {
+      width: 44, alignItems: 'center', justifyContent: 'center',
+    },
+    eventoBody: { flex: 1, paddingVertical: 14, paddingRight: 8, gap: 4 },
+    eventoNombre: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.inkPrimary, letterSpacing: -0.3,
+    },
+    eventoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    eventoMeta: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted,
+      letterSpacing: 0.5, textTransform: 'uppercase',
+    },
+    eventoMetaDot: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkFaint,
+    },
+    eventoBadge: {
+      borderWidth: 1, borderRadius: 8,
+      paddingHorizontal: 9, paddingVertical: 4,
+      marginRight: 14,
+    },
+    eventoBadgeTxt: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1,
     },
 
     // ── Modal ADN ──
