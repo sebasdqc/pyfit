@@ -438,6 +438,7 @@ const translations = {
   perfil_palette_sand:        { es: 'Sand',                              en: 'Sand',                                pt: 'Sand' },
   perfil_palette_forest:      { es: 'Forest',                            en: 'Forest',                              pt: 'Forest' },
   perfil_palette_neon:        { es: 'Neon',                              en: 'Neon',                                pt: 'Neon' },
+  perfil_palette_ocean:       { es: 'Ocean',                             en: 'Ocean',                               pt: 'Ocean' },
   perfil_lang_label:          { es: 'Idioma',                            en: 'Language',                            pt: 'Idioma' },
   perfil_lang_es:             { es: 'Español',                           en: 'Español',                             pt: 'Español' },
   perfil_lang_en:             { es: 'English',                           en: 'English',                             pt: 'English' },

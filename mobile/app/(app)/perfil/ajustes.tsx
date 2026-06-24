@@ -228,6 +228,7 @@ export default function AjustesScreen() {
     { id: 'sand',     label: t('perfil_palette_sand'),     icon: '🏜️', pro: true },
     { id: 'forest',   label: t('perfil_palette_forest'),   icon: '🌲', pro: true },
     { id: 'neon',     label: t('perfil_palette_neon'),     icon: '⚡', pro: true },
+    { id: 'ocean',    label: t('perfil_palette_ocean'),    icon: '🌊', pro: true },
   ]
   const currentPaletteIcon  = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
   const currentPaletteLabel = PALETTE_OPTIONS.find(o => o.id === palette)?.label ?? ''

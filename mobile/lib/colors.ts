@@ -163,6 +163,30 @@ export const NEON_COLORS = {
   gradientTop: 'rgba(255,45,120,0.10)', // glow neón superior
 }
 
+// Ocean = tema OSCURO (azul marino profundo, acento turquesa). Mismo set de tokens;
+// éxito/alerta/error (green/orange/red) no cambian.
+export const OCEAN_COLORS = {
+  bg: '#070D14',                        // fondo primario — azul marino profundo
+  sheetBg: '#0C1520',                   // fondo secundario
+  white: '#ffffff',
+  accent: '#00B4D8',                    // acento principal (turquesa)
+  accentLight: '#48CAE4',
+  accentDark: '#0096C7',
+  cyan: '#90E0EF',                      // cian claro
+  green: '#32c896',
+  orange: '#ffaa32',
+  red: '#ff4444',
+  inkPrimary: '#E0F4FF',                // texto primario — casi blanco azulado
+  inkSecondary: '#6A9AB8',              // texto secundario
+  inkMuted: '#2D5270',                  // texto terciario
+  inkFaint: 'rgba(224,244,255,0.16)',
+  borderDefault: '#0E2035',             // borde sutil
+  borderBright: '#163050',              // borde medio
+  cardBg: '#0D1A28',                    // fondo terciario
+  glassBg: 'rgba(0,180,216,0.10)',      // acento fondo (baja opacidad)
+  gradientTop: 'rgba(0,180,216,0.14)',  // glow turquesa superior
+}
+
 // ─── Radius scale ─────────────────────────────────────────────────────────────
 // Escala única de border-radius para toda la app. Antes había ~9 valores sueltos
 // (14, 16, 18, 19, 20, 22, 24…) que rompían la cohesión visual. Usar estos tokens.

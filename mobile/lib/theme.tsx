@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
-import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, FOREST_COLORS, NEON_COLORS, Colors } from './colors'
+import { DARK_COLORS, LIGHT_COLORS, PINK_COLORS, MIDNIGHT_COLORS, SAND_COLORS, FOREST_COLORS, NEON_COLORS, OCEAN_COLORS, Colors } from './colors'
 
-export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand' | 'forest' | 'neon'
+export type Palette = 'dark' | 'light' | 'rosado' | 'midnight' | 'sand' | 'forest' | 'neon' | 'ocean'
 
 const PALETTE_COLORS: Record<Palette, Colors> = {
   dark:     DARK_COLORS,
@@ -12,6 +12,7 @@ const PALETTE_COLORS: Record<Palette, Colors> = {
   sand:     SAND_COLORS,
   forest:   FOREST_COLORS,
   neon:     NEON_COLORS,
+  ocean:    OCEAN_COLORS,
 }
 
 interface ThemeContextValue {
@@ -36,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_palette')
       .then(val => {
-        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand' || val === 'forest' || val === 'neon') {
+        if (val === 'light' || val === 'rosado' || val === 'dark' || val === 'midnight' || val === 'sand' || val === 'forest' || val === 'neon' || val === 'ocean') {
           setPaletteState(val)
         } else if (val === null) {
           // legacy key
@@ -61,7 +62,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider value={{
       palette,
       // dark, midnight, sand, forest y neon son oscuros; light y rosado son claros.
-      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand' || palette === 'forest' || palette === 'neon',
+      isDark: palette === 'dark' || palette === 'midnight' || palette === 'sand' || palette === 'forest' || palette === 'neon' || palette === 'ocean',
       colors: PALETTE_COLORS[palette],
       setPalette,
       toggleTheme,
