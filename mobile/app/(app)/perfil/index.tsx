@@ -442,7 +442,7 @@ export default function PerfilScreen() {
             ) : (
               <View style={styles.nivelPill}>
                 <Text style={styles.nivelPillText}>
-                  {statsLoading ? '–' : `${semanas} sem.`}
+                  {statsLoading ? '–' : `${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`}
                 </Text>
               </View>
             )}

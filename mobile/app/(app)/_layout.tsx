@@ -227,7 +227,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="chat/index"
         options={{
-          tabBarLabel: 'Chat',
+          tabBarLabel: 'Coach',
           tabBarIcon: ({ color }) => <IconChat color={color} />,
         }}
       />
