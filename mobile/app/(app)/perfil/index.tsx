@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Linking, Modal, Pressable, Image } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -7,32 +7,14 @@ import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
-import { useTheme, Palette } from '../../../lib/theme'
+import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
-import { apiGet, apiPost, apiDelete } from '../../../lib/api'
-import { fetchMiCoachUnread } from '../../../lib/coachApi'
-import { logout } from '../../../lib/auth'
+import { apiGet, apiPost } from '../../../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Location { id?: number; nombre: string; tipo: string; implementos: string[] }
-
 interface Profile {
-  nombre: string; objetivo: string; objetivos_multiples: string[]
-  nivel: string; peso: string; altura: string; sexo: string
-  estilo_entrenamiento: string; usa_ciclo_menstrual: boolean
-  dias_semana: number; horario_preferido: string; email?: string
-  fecha_nacimiento: string; racha_actual: number; puntos_totales: number
-  logros: any[]; locations: Location[]
-  experiencia_deportiva: string; lesiones: string
-  ejercicios_favoritos: string; ejercicios_evitar: string
-  rm_sentadilla: string; rm_peso_muerto: string; rm_press_banca: string; rm_press_hombro: string
-  nivel_estres: string; tipo_trabajo: string
-  // Suscripción — el backend emite estos campos como read-only desde el ProfileSerializer.
-  plan?: 'starter' | 'pro'
-  plan_tipo?: 'mensual' | 'anual' | ''
-  plan_renovacion?: string | null
-  avatar?: string  // base64 dataURI
+  nombre: string; nivel: string; avatar?: string
 }
 
 interface ProfileStats {
@@ -49,7 +31,6 @@ function getInitials(nombre: string) {
   return nombre.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
 }
 
-// Agrupa miles con el separador local (1.284 / 1,284) sin depender de Intl
 function agruparMiles(n: number, sep: string) {
   return String(Math.max(0, Math.round(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, sep)
 }
@@ -58,31 +39,21 @@ function nivelLabel(nivel: string) {
   return ({ rookie: 'Rookie', atleta: 'Atleta', elite: 'Élite', leyenda: 'Leyenda' } as any)[nivel?.toLowerCase()] ?? nivel ?? 'Rookie'
 }
 
-const MESES_ABREV = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-
-function formatRenovacion(planTipo: string | undefined, iso: string | null | undefined): string {
-  // Formato consistente para el subtítulo del entry Pro:
-  // "Mensual · Renueva el 15 jun". Si no llega fecha, omitimos esa parte.
-  const tipo = planTipo === 'anual' ? 'Anual' : 'Mensual'
-  if (!iso) return tipo
-  const [, m, d] = iso.split('-')
-  const mes = MESES_ABREV[parseInt(m, 10) - 1] ?? ''
-  const dia = parseInt(d, 10)
-  if (!mes || !dia) return tipo
-  return `${tipo} · Renueva el ${dia} ${mes}`
-}
-
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
-function ChevronRight({ color }: { color: string }) {
+function GearIcon({ color }: { color: string }) {
   return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5zm7.43-1.63c.04-.32.07-.65.07-.87s-.03-.57-.07-.87l1.91-1.49a.46.46 0 0 0 .11-.57l-1.8-3.12a.46.46 0 0 0-.56-.2l-2.26.91a6.56 6.56 0 0 0-1.5-.87l-.34-2.4A.45.45 0 0 0 14 4h-3.6a.45.45 0 0 0-.44.38l-.34 2.4c-.55.21-1.06.5-1.5.87l-2.26-.9a.46.46 0 0 0-.56.19l-1.8 3.12a.44.44 0 0 0 .11.57l1.91 1.49c-.05.3-.09.59-.09.87s.04.57.09.87L2.1 15.35a.44.44 0 0 0-.11.57l1.8 3.12c.12.2.37.28.56.2l2.26-.91c.44.37.95.67 1.5.87l.34 2.4c.05.22.25.4.44.4H14c.22 0 .41-.18.44-.4l.34-2.4c.55-.2 1.06-.5 1.5-.87l2.26.9c.21.09.44 0 .56-.19l1.8-3.12a.44.44 0 0 0-.11-.57l-1.86-1.49z"
+        fill={color}
+      />
     </Svg>
   )
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
+
 
 function Skeleton({ width, height, borderRadius = 8, style }: {
   width: number | string; height: number; borderRadius?: number; style?: object
@@ -92,6 +63,7 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 }
 
 // ─── ADN Card ─────────────────────────────────────────────────────────────────
+
 
 function ADNCard({ texto, styles, dnaLabel, tagLabel }: {
   texto: string; styles: ReturnType<typeof makeStyles>
@@ -115,64 +87,15 @@ function ADNCard({ texto, styles, dnaLabel, tagLabel }: {
   )
 }
 
-// ─── Group Row ────────────────────────────────────────────────────────────────
-
-function GroupRow({ icon, title, subtitle, badge, onPress, styles }: {
-  icon: string; title: string; subtitle?: string; badge?: string
-  onPress: () => void; styles: ReturnType<typeof makeStyles>
-}) {
-  const { colors } = useTheme()
-  return (
-    <TouchableOpacity style={styles.groupRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={styles.groupRowIcon}>{icon}</Text>
-      <View style={styles.groupRowMid}>
-        <Text style={styles.groupRowTitle}>{title}</Text>
-        {!!subtitle && <Text style={styles.groupRowSub}>{subtitle}</Text>}
-      </View>
-      {!!badge && (
-        <View style={styles.groupBadge}>
-          <Text style={styles.groupBadgeText}>{badge}</Text>
-        </View>
-      )}
-      <ChevronRight color={colors.inkMuted} />
-    </TouchableOpacity>
-  )
-}
-
-// ─── Admin Row ────────────────────────────────────────────────────────────────
-
-function AdminRow({ title, onPress, danger = false, styles }: {
-  title: string; onPress: () => void; danger?: boolean; styles: ReturnType<typeof makeStyles>
-}) {
-  const { colors } = useTheme()
-  return (
-    <TouchableOpacity style={styles.adminRow} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.adminRowTitle, danger && { color: colors.red }]}>{title}</Text>
-      {!danger && <ChevronRight color={colors.inkMuted} />}
-    </TouchableOpacity>
-  )
-}
-
 // ─── Default profile ──────────────────────────────────────────────────────────
 
-const DEFAULT: Profile = {
-  nombre: '', email: '', objetivo: '', objetivos_multiples: [], nivel: 'rookie',
-  experiencia_deportiva: '', lesiones: '', dias_semana: 3, horario_preferido: '',
-  estilo_entrenamiento: '', ejercicios_favoritos: '', ejercicios_evitar: '',
-  rm_sentadilla: '', rm_peso_muerto: '', rm_press_banca: '', rm_press_hombro: '',
-  fecha_nacimiento: '', peso: '', altura: '', sexo: '', nivel_estres: '',
-  tipo_trabajo: '', usa_ciclo_menstrual: false, racha_actual: 0, puntos_totales: 0,
-  logros: [], locations: [],
-  plan: 'starter', plan_tipo: '', plan_renovacion: null,
-  avatar: '',
-}
+const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '' }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function PerfilScreen() {
-  const { colors, palette, setPalette } = useTheme()
+  const { colors } = useTheme()
   const { t, lang } = useTranslation()
-  const [showPalettePicker, setShowPalettePicker] = useState(false)
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -181,27 +104,24 @@ export default function PerfilScreen() {
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [coachUnread, setCoachUnread] = useState(0)
   const [loadError, setLoadError] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoadError(false)
     try {
-      const [profileRes, statsRes, unreadRes] = await Promise.allSettled([
+      const [profileRes, statsRes] = await Promise.allSettled([
         apiGet('/api/profile/'),
         apiGet('/api/stats/profile/'),
-        fetchMiCoachUnread(),
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
-        setProfile({ ...DEFAULT, ...d, locations: d.locations ?? [] })
+        setProfile({ nombre: d.nombre || '', nivel: d.nivel || 'rookie', avatar: d.avatar || '' })
       } else {
         setLoadError(true)
       }
       if (statsRes.status === 'fulfilled') {
         setProfileStats(statsRes.value)
       }
-      setCoachUnread(unreadRes.status === 'fulfilled' ? (unreadRes.value?.no_leidos ?? 0) : 0)
     } catch {
       setLoadError(true)
     } finally {
@@ -215,53 +135,6 @@ export default function PerfilScreen() {
     setStatsLoading(true)
     fetchAll()
   }, [fetchAll]))
-
-  async function handleLogout() {
-    Alert.alert(t('perfil_logout_title'), t('perfil_logout_msg'), [
-      { text: t('perfil_logout_cancel'), style: 'cancel' },
-      {
-        text: t('perfil_logout_confirm'), style: 'destructive',
-        onPress: async () => { await logout(); router.replace('/(auth)/login') },
-      },
-    ])
-  }
-
-  const [deleting, setDeleting] = useState(false)
-
-  function handleDeleteAccount() {
-    if (deleting) return
-    Alert.alert(
-      'Eliminar cuenta',
-      'Se eliminará tu cuenta y todos tus datos (perfil, sesiones, historial, lesiones). Esta acción es permanente y no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar definitivamente',
-          style: 'destructive',
-          onPress: confirmDeleteAccount,
-        },
-      ]
-    )
-  }
-
-  async function confirmDeleteAccount() {
-    if (deleting) return
-    setDeleting(true)
-    try {
-      // Borra la cuenta + todos sus datos asociados (cascada en el backend).
-      await apiDelete('/api/auth/account/')
-      // Reutilizamos logout() para limpiar tokens, usuario y estado de impersonación.
-      await logout()
-      router.replace('/(auth)/login')
-    } catch {
-      setDeleting(false)
-      Alert.alert(
-        'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@pyfit.app para que la eliminemos manualmente.',
-        [{ text: 'Entendido', style: 'cancel' }]
-      )
-    }
-  }
 
   async function handlePickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -298,17 +171,6 @@ export default function PerfilScreen() {
   const initials = getInitials(profile.nombre || 'U')
   const nivel = nivelLabel(profile.nivel)
   const datosMedidos = agruparMiles(profileStats?.datos_medidos_30d ?? 0, lang === 'en' ? ',' : '.')
-
-  const PALETTE_OPTIONS: { id: Palette; label: string; icon: string; pro?: boolean }[] = [
-    { id: 'dark',     label: t('perfil_palette_dark'),     icon: '🌙' },
-    { id: 'light',    label: t('perfil_palette_light'),    icon: '☀️' },
-    { id: 'rosado',   label: t('perfil_palette_rosado'),   icon: '🌸' },
-    { id: 'midnight', label: t('perfil_palette_midnight'), icon: '🌌', pro: true },
-    { id: 'sand',     label: t('perfil_palette_sand'),     icon: '🏜️', pro: true },
-    { id: 'forest',   label: t('perfil_palette_forest'),   icon: '🌲', pro: true },
-    { id: 'neon',     label: t('perfil_palette_neon'),     icon: '⚡', pro: true },
-  ]
-  const currentIcon = PALETTE_OPTIONS.find(o => o.id === palette)?.icon ?? '🌙'
 
 
   return (
@@ -407,147 +269,18 @@ export default function PerfilScreen() {
           />
         )}
 
-        {/* ── SECCIONES (nivel 1) ──
-            Cada card abre su propio sub-menú; las opciones viven dentro de él. */}
-        <View style={styles.card}>
-          <GroupRow icon="👤" title={t('perfil_section_account')} subtitle={t('perfil_card_account_sub')}
-            onPress={() => router.push('/(app)/perfil/mi-cuenta' as any)} styles={styles} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🏋️" title={t('perfil_section_training')} subtitle={t('perfil_card_training_sub')}
-            onPress={() => router.push('/(app)/perfil/datos-entrenamiento' as any)} styles={styles} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="⌚" title={t('perfil_section_devices')} subtitle={t('perfil_row_devices_sub')}
-            onPress={() => router.push('/(app)/perfil/tus-dispositivos' as any)} styles={styles} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🧬" title={t('perfil_section_evidence')} subtitle={t('perfil_card_evidence_sub')}
-            onPress={() => router.push('/(app)/perfil/evidencia' as any)} styles={styles} />
-        </View>
-
-        <View style={styles.card}>
-          <GroupRow icon="🧑‍🏫" title={t('perfil_section_coach_signup')} subtitle={t('perfil_card_coach_signup_sub')}
-            badge={coachUnread > 0 ? (coachUnread > 9 ? '9+' : String(coachUnread)) : undefined}
-            onPress={() => router.push('/(app)/perfil/registro-coach' as any)} styles={styles} />
-        </View>
-
-        {/* ── BLOQUE ADMINISTRATIVO ── */}
-        <View style={styles.adminCard}>
-          {/* Suscripción — fila con dos estados mutuamente excluyentes según el plan.
-              Starter ofrece upgrade; Pro abre la pantalla de gestión. */}
-          {profile.plan === 'pro' ? (
-            <GroupRow
-              icon="👑"
-              title={t('perfil_row_subscription')}
-              subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
-              badge="Pro"
-              onPress={() => {
-                const tipoVal  = profile.plan_tipo || ''
-                const renovVal = profile.plan_renovacion || ''
-                const sesVal   = profileStats?.sesiones_mes ?? 0
-                router.push(
-                  `/(app)/perfil/suscripcion?modo=gestion&plan_tipo=${tipoVal}&plan_renovacion=${renovVal}&sesiones_mes=${sesVal}` as any
-                )
-              }}
-              styles={styles}
-            />
-          ) : (
-            <GroupRow
-              icon="⭐"
-              title={t('perfil_row_upgrade')}
-              subtitle={lang === 'es' ? 'Desbloquea tu entrenador completo' : 'Unlock your full coach'}
-              onPress={() => {
-                const semanasVal = profileStats?.semanas_activas ?? 0
-                const nombreVal  = encodeURIComponent(profile.nombre || '')
-                router.push(`/(app)/perfil/suscripcion?modo=upgrade&nombre=${nombreVal}&semanas=${semanasVal}` as any)
-              }}
-              styles={styles}
-            />
-          )}
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_referrals')}
-            onPress={() => router.push('/(app)/perfil/referidos' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_support')}
-            onPress={() => Linking.openURL('mailto:hola@pyfit.app')} styles={styles} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_row_privacy')}
-            onPress={() => router.push('/(auth)/privacidad' as any)} styles={styles} />
-          <View style={styles.divider} />
-          <AdminRow title={t('perfil_logout')} danger onPress={handleLogout} styles={styles} />
-          <View style={styles.divider} />
-          <AdminRow title="Eliminar cuenta" danger onPress={handleDeleteAccount} styles={styles} />
-        </View>
-
-        <Text style={styles.version}>{t('perfil_version')}</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Dismiss overlay — before button wrap so dropdowns stay on top */}
-      {showPalettePicker && (
-        <Pressable
-          style={[StyleSheet.absoluteFill, { zIndex: 99 }]}
-          onPress={() => setShowPalettePicker(false)}
-        />
-      )}
-
-      {/* ── TOP-RIGHT CONTROLS — language + theme, outside ScrollView ── */}
+      {/* ── TOP-RIGHT: gear → Ajustes ── */}
       <View style={[styles.topControls, { top: insets.top + 28 }]}>
-
-        {/* Language toggle pill — oculto temporalmente; se reactivará más adelante.
         <TouchableOpacity
-          style={styles.langToggle}
-          onPress={() => setLang(lang === 'es' ? 'en' : 'es')}
+          onPress={() => router.push('/(app)/perfil/ajustes' as any)}
           activeOpacity={0.7}
+          style={styles.gearBtn}
         >
-          <Text style={[styles.langToggleText, { color: colors.inkSecondary }]}>
-            {lang.toUpperCase()}
-          </Text>
+          <GearIcon color={colors.inkSecondary} />
         </TouchableOpacity>
-        */}
-
-        {/* Theme toggle + dropdown */}
-        <View style={styles.themeButtonWrap}>
-          <TouchableOpacity
-            onPress={() => setShowPalettePicker(v => !v)}
-            activeOpacity={0.7}
-            style={styles.themeToggle}
-          >
-            <Text style={{ fontSize: 18 }}>{currentIcon}</Text>
-          </TouchableOpacity>
-
-          {showPalettePicker && (
-            <View style={[styles.paletteDropdown, { backgroundColor: colors.sheetBg, borderColor: colors.borderBright }]}>
-              {PALETTE_OPTIONS.map((opt, i) => (
-                <React.Fragment key={opt.id}>
-                  {i > 0 && <View style={[styles.dropdownDivider, { backgroundColor: colors.borderDefault }]} />}
-                  <TouchableOpacity
-                    onPress={() => { setPalette(opt.id); setShowPalettePicker(false) }}
-                    activeOpacity={0.7}
-                    style={styles.dropdownRow}
-                  >
-                    <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
-                    <Text style={[styles.dropdownLabel, { color: palette === opt.id ? colors.accent : colors.inkSecondary }]}>
-                      {opt.label}
-                    </Text>
-                    {opt.pro && (
-                      <View style={styles.groupBadge}>
-                        <Text style={styles.groupBadgeText}>Pro</Text>
-                      </View>
-                    )}
-                    {palette === opt.id && (
-                      <Text style={[styles.dropdownCheck, { color: colors.accent }]}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                </React.Fragment>
-              ))}
-            </View>
-          )}
-        </View>
       </View>
     </View>
   )
@@ -605,39 +338,11 @@ function makeStyles(c: Colors) {
       flexDirection: 'row', alignItems: 'flex-start',
       gap: 8, zIndex: 100,
     },
-    langToggle: {
-      height: 38, borderRadius: 19,
-      paddingHorizontal: 12,
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      alignItems: 'center', justifyContent: 'center',
-    },
-    langToggleText: {
-      fontFamily: 'JetBrainsMono-Medium',
-      fontSize: 11, letterSpacing: 1.2,
-    },
-    themeButtonWrap: {
-      alignItems: 'flex-end',
-    },
-    themeToggle: {
+    gearBtn: {
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       alignItems: 'center', justifyContent: 'center',
     },
-    paletteDropdown: {
-      marginTop: 6, borderRadius: 14, borderWidth: 1,
-      overflow: 'hidden', minWidth: 160,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
-    },
-    dropdownRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 10,
-      paddingHorizontal: 14, paddingVertical: 11,
-    },
-    dropdownLabel: {
-      flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
-    },
-    dropdownCheck: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 },
-    dropdownDivider: { height: 1 },
 
     // Metrics grid
     metricsGrid: { marginBottom: 28 },
@@ -663,28 +368,5 @@ function makeStyles(c: Colors) {
     adnTagText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
     adnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkPrimary, lineHeight: 22, letterSpacing: -0.1 },
 
-    // Groups
-    card: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 20, marginBottom: 14, overflow: 'hidden' },
-    divider: { height: 1, backgroundColor: c.borderDefault, marginHorizontal: 18 },
-    groupRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16, gap: 14 },
-    groupRowIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-    groupRowMid: { flex: 1, gap: 2 },
-    groupRowTitle: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 },
-    groupRowSub: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 },
-    groupBadge: {
-      paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-      // Badge semántico naranja (próximamente / nuevo). Subimos opacidad para
-      // que sea visible sobre bg claro. Texto en ámbar oscuro mantiene contraste
-      // sobre el tint en cualquier paleta.
-      backgroundColor: 'rgba(255,170,50,0.22)',
-      borderWidth: 1, borderColor: 'rgba(255,170,50,0.5)',
-    },
-    groupBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: '#b45309', letterSpacing: 0.5 },
-
-    // Admin block
-    adminCard: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 20, marginBottom: 16, overflow: 'hidden' },
-    adminRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 16 },
-    adminRowTitle: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 },
-    version: { color: c.inkFaint, fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.4, textAlign: 'center', marginBottom: 8 },
   })
 }
