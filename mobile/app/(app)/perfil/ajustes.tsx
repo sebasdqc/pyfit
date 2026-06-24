@@ -509,6 +509,19 @@ export default function AjustesScreen() {
             title={t('perfil_row_privacy')}
             onPress={() => router.push('/(auth)/privacidad' as any)}
           />
+          <Divider />
+          <Row
+            icon="📄"
+            title="Términos y condiciones"
+            onPress={() => router.push('/(auth)/terminos' as any)}
+          />
+          <Divider />
+          <Row
+            icon="♿"
+            title="Accesibilidad"
+            subtitle="Próximamente"
+            onPress={() => Alert.alert('Próximamente', 'Opciones de tamaño de fuente, contraste y haptics en una próxima actualización.')}
+          />
         </Card>
 
         {/* ══════════════════════════════════════════ */}
