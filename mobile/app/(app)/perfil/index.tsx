@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -333,7 +333,6 @@ export default function PerfilScreen() {
   const [adnModalOpen, setAdnModalOpen] = useState(false)
   const [eventos, setEventos] = useState<Competencia[]>([])
   const [eventosLoading, setEventosLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoadError(false)
@@ -366,19 +365,6 @@ export default function PerfilScreen() {
   useFocusEffect(useCallback(() => {
     setLoading(true); setStatsLoading(true); setEventosLoading(true); fetchAll()
   }, [fetchAll]))
-
-  async function handleExport() {
-    if (exporting) return
-    setExporting(true)
-    try {
-      const { exportMonthlyReport } = await import('../../../lib/monthlyReport')
-      await exportMonthlyReport()
-    } catch (e: any) {
-      Alert.alert('Error al exportar', e?.message ?? 'No se pudo generar el PDF. Intenta de nuevo.')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   async function handlePickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -544,19 +530,8 @@ export default function PerfilScreen() {
         <View style={{ height: 48 }} />
       </ScrollView>
 
-      {/* ── Controles superiores: PDF + Ajustes ── */}
+      {/* ── Gear → Ajustes ── */}
       <View style={[styles.topControls, { top: insets.top + 20 }]}>
-        <TouchableOpacity
-          onPress={handleExport}
-          activeOpacity={0.7}
-          disabled={exporting}
-          style={[styles.gearBtn, { opacity: exporting ? 0.5 : 1 }]}
-        >
-          {exporting
-            ? <ActivityIndicator size="small" color={colors.accent} />
-            : <Text style={{ fontSize: 16 }}>📄</Text>
-          }
-        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => router.push('/(app)/perfil/ajustes' as any)}
           activeOpacity={0.7}

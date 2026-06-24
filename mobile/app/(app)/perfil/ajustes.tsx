@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, Linking,
+  StyleSheet, Linking, ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
@@ -157,6 +157,7 @@ export default function AjustesScreen() {
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [coachUnread, setCoachUnread] = useState(0)
   const [deleting, setDeleting] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   // Expandibles inline
   const [showThemePicker, setShowThemePicker] = useState(false)
@@ -200,6 +201,19 @@ export default function AjustesScreen() {
         { text: 'Eliminar definitivamente', style: 'destructive', onPress: confirmDeleteAccount },
       ]
     )
+  }
+
+  async function handleExportData() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const { exportMonthlyReport } = await import('../../../lib/monthlyReport')
+      await exportMonthlyReport()
+    } catch (e: any) {
+      Alert.alert('Error al exportar', e?.message ?? 'No se pudo generar el PDF. Intenta de nuevo.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   async function confirmDeleteAccount() {
@@ -458,6 +472,27 @@ export default function AjustesScreen() {
             subtitle="Historial de pagos y actividad"
             onPress={() => router.push('/(app)/perfil/historial-pagos' as any)}
           />
+          <Divider />
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15, gap: 14 }}
+            onPress={handleExportData}
+            activeOpacity={0.7}
+            disabled={exporting}
+          >
+            <Text style={{ fontSize: 18, width: 24, textAlign: 'center' }}>📤</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: colors.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 }}>
+                Exportar Datos
+              </Text>
+              <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 }}>
+                {exporting ? 'Generando PDF…' : 'Informe mensual en PDF'}
+              </Text>
+            </View>
+            {exporting
+              ? <ActivityIndicator size="small" color={colors.accent} />
+              : <ChevronRight color={colors.inkMuted} />
+            }
+          </TouchableOpacity>
         </Card>
 
         {/* ══════════════════════════════════════════ */}
