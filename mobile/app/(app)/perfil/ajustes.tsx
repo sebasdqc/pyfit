@@ -342,7 +342,7 @@ export default function AjustesScreen() {
             <Row
               icon="⭐"
               title={t('perfil_row_upgrade')}
-              subtitle={lang === 'es' ? 'Desbloquea tu entrenador completo' : 'Unlock your full coach'}
+              subtitle={lang === 'pt' ? 'Desbloqueie seu treinador completo' : lang === 'en' ? 'Unlock your full coach' : 'Desbloquea tu entrenador completo'}
               onPress={navigateToSuscripcion}
             />
           )}
@@ -406,25 +406,29 @@ export default function AjustesScreen() {
           <Row
             icon="🌐"
             title={t('perfil_lang_label')}
-            rightLabel={lang === 'es' ? '🇪🇸  ES' : '🇺🇸  EN'}
+            rightLabel={lang === 'es' ? '🇪🇸  ES' : lang === 'en' ? '🇺🇸  EN' : '🇧🇷  PT'}
             onPress={() => { setShowThemePicker(false); setShowLangPicker(v => !v) }}
           />
           {showLangPicker && (
             <>
               <Divider />
-              {(['es', 'en'] as const).map((l, i) => (
-                <React.Fragment key={l}>
+              {([
+                { code: 'es' as const, flag: '🇪🇸', label: t('perfil_lang_es') },
+                { code: 'en' as const, flag: '🇺🇸', label: t('perfil_lang_en') },
+                { code: 'pt' as const, flag: '🇧🇷', label: t('perfil_lang_pt') },
+              ]).map((opt, i) => (
+                <React.Fragment key={opt.code}>
                   {i > 0 && <Divider />}
                   <TouchableOpacity
-                    onPress={() => { setLang(l); setShowLangPicker(false) }}
+                    onPress={() => { setLang(opt.code); setShowLangPicker(false) }}
                     activeOpacity={0.7}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 13 }}
                   >
-                    <Text style={{ fontSize: 15 }}>{l === 'es' ? '🇪🇸' : '🇺🇸'}</Text>
-                    <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: lang === l ? colors.accent : colors.inkSecondary }}>
-                      {l === 'es' ? t('perfil_lang_es') : t('perfil_lang_en')}
+                    <Text style={{ fontSize: 15 }}>{opt.flag}</Text>
+                    <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: lang === opt.code ? colors.accent : colors.inkSecondary }}>
+                      {opt.label}
                     </Text>
-                    {lang === l && (
+                    {lang === opt.code && (
                       <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: colors.accent }}>✓</Text>
                     )}
                   </TouchableOpacity>

@@ -50,8 +50,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync('app_lang')
       .then(val => {
-        if (val === 'es' || val === 'en') {
-          setLangState(val)
+        if (val === 'es' || val === 'en' || val === 'pt') {
+          setLangState(val as Lang)
         }
       })
       .catch(() => {})
@@ -63,7 +63,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const toggleLang = useCallback(() => {
-    setLang(lang === 'es' ? 'en' : 'es')
+    setLang(lang === 'es' ? 'en' : lang === 'en' ? 'pt' : 'es')
   }, [lang, setLang])
 
   const t = useCallback(
