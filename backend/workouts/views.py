@@ -1892,6 +1892,23 @@ def stats_profile(request):
     except Exception:
         pass
 
+    # Top grupos musculares — sesiones con feedback, conteo por token en foco_entrenamiento
+    _GRUPO_LABELS = {
+        'empujes':      'Pecho · Hombro · Tríceps',
+        'tracciones':   'Espalda · Bíceps',
+        'piernas_quad': 'Piernas · Cuádriceps',
+        'piernas_glut': 'Piernas · Glúteos',
+    }
+    top_grupos = []
+    for token, label in _GRUPO_LABELS.items():
+        cnt = request.user.sessions.filter(
+            feedback__isnull=False,
+            checkin__foco_entrenamiento__contains=[token],
+        ).count()
+        if cnt > 0:
+            top_grupos.append({'key': token, 'label': label, 'count': cnt})
+    top_grupos.sort(key=lambda x: -x['count'])
+
     return Response({
         'semanas_activas': semanas_activas,
         'consistencia_30d': consistencia_30d,
@@ -1903,6 +1920,7 @@ def stats_profile(request):
             'cardio': cardio_count,
             'movilidad': movilidad_count,
         },
+        'top_grupos': top_grupos,
     })
 
 

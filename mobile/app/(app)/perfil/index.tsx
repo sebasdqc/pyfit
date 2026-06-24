@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -14,13 +14,15 @@ import { apiGet, apiPost } from '../../../lib/api'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Profile {
-  nombre: string; nivel: string; avatar?: string
+  nombre: string; nivel: string; avatar?: string; plan?: string
 }
 
 interface DistribucionTipo {
-  fuerza: number
-  cardio: number
-  movilidad: number
+  fuerza: number; cardio: number; movilidad: number
+}
+
+interface GrupoFav {
+  key: string; label: string; count: number
 }
 
 interface ProfileStats {
@@ -30,6 +32,7 @@ interface ProfileStats {
   datos_medidos_30d: number
   adn_entrenamiento?: string | null
   distribucion_tipo?: DistribucionTipo | null
+  top_grupos?: GrupoFav[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -44,6 +47,14 @@ function agruparMiles(n: number, sep: string) {
 
 function nivelLabel(nivel: string) {
   return ({ rookie: 'Rookie', atleta: 'Atleta', elite: 'Élite', leyenda: 'Leyenda' } as any)[nivel?.toLowerCase()] ?? nivel ?? 'Rookie'
+}
+
+function planLabel(plan?: string) {
+  return plan === 'pro' ? 'Pro' : plan === 'ultra' ? 'Ultra' : 'Free'
+}
+
+function planColor(plan?: string) {
+  return plan === 'pro' ? '#ffaa32' : plan === 'ultra' ? '#c084fc' : 'rgba(255,255,255,0.35)'
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -61,7 +72,6 @@ function GearIcon({ color }: { color: string }) {
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-
 function Skeleton({ width, height, borderRadius = 8, style }: {
   width: number | string; height: number; borderRadius?: number; style?: object
 }) {
@@ -69,29 +79,20 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
   return <View style={[{ width: width as any, height, borderRadius, backgroundColor: colors.glassBg }, style]} />
 }
 
-// ─── ADN Card ─────────────────────────────────────────────────────────────────
+// ─── Grupo config (colores del checkin) ───────────────────────────────────────
 
+const GRUPO_COLOR: Record<string, string> = {
+  empujes:      '#4f8cff',
+  tracciones:   '#32c896',
+  piernas_quad: '#ff8c42',
+  piernas_glut: '#c084fc',
+}
 
-function ADNCard({ texto, styles, dnaLabel, tagLabel }: {
-  texto: string; styles: ReturnType<typeof makeStyles>
-  dnaLabel: string; tagLabel: string
-}) {
-  return (
-    <View style={styles.adnWrap}>
-      <Text style={styles.adnSectionLabel}>{dnaLabel}</Text>
-      <View style={styles.adnCard}>
-        <View style={styles.adnBar} />
-        <View style={styles.adnContent}>
-          <View style={styles.adnTagRow}>
-            <View style={styles.adnTag}>
-              <Text style={styles.adnTagText}>{tagLabel}</Text>
-            </View>
-          </View>
-          <Text style={styles.adnText}>{texto}</Text>
-        </View>
-      </View>
-    </View>
-  )
+const GRUPO_ICON: Record<string, string> = {
+  empujes:      '💪',
+  tracciones:   '🏋',
+  piernas_quad: '🦵',
+  piernas_glut: '🍑',
 }
 
 // ─── Distribución Chart ───────────────────────────────────────────────────────
@@ -103,29 +104,19 @@ const DIST_CONFIG = [
 ] as const
 
 function DistribucionChart({
-  data,
-  loading,
-  styles,
-  colors,
-  t,
+  data, loading, styles, colors, t,
 }: {
   data: DistribucionTipo | null | undefined
-  loading: boolean
-  styles: ReturnType<typeof makeStyles>
-  colors: Colors
-  t: (key: string) => string
+  loading: boolean; styles: ReturnType<typeof makeStyles>
+  colors: Colors; t: (key: string) => string
 }) {
-  const vals = {
-    fuerza: data?.fuerza ?? 0,
-    cardio: data?.cardio ?? 0,
-    movilidad: data?.movilidad ?? 0,
-  }
+  const vals = { fuerza: data?.fuerza ?? 0, cardio: data?.cardio ?? 0, movilidad: data?.movilidad ?? 0 }
   const maxVal = Math.max(vals.fuerza, vals.cardio, vals.movilidad, 1)
   const total = vals.fuerza + vals.cardio + vals.movilidad
 
   return (
     <View style={styles.distWrap}>
-      <Text style={styles.adnSectionLabel}>{t('perfil_dist_label')}</Text>
+      <Text style={styles.sectionLabel}>{t('perfil_dist_label')}</Text>
       <View style={styles.distCard}>
         {DIST_CONFIG.map((tipo, idx) => {
           const val = vals[tipo.key]
@@ -144,16 +135,11 @@ function DistribucionChart({
                   <Text style={styles.distCountSuffix}> {t('perfil_dist_times')}</Text>
                 </View>
                 <View style={styles.distBarTrack}>
-                  <View
-                    style={[
-                      styles.distBarFill,
-                      {
-                        width: `${Math.round(pct * 100)}%` as any,
-                        backgroundColor: loading ? colors.inkFaint : tipo.color,
-                        opacity: loading ? 0.35 : 1,
-                      },
-                    ]}
-                  />
+                  <View style={[styles.distBarFill, {
+                    width: `${Math.round(pct * 100)}%` as any,
+                    backgroundColor: loading ? colors.inkFaint : tipo.color,
+                    opacity: loading ? 0.35 : 1,
+                  }]} />
                 </View>
               </View>
             </View>
@@ -167,9 +153,54 @@ function DistribucionChart({
   )
 }
 
+// ─── Favoritos Section ────────────────────────────────────────────────────────
+
+function FavoritosSection({
+  grupos, loading, styles, colors,
+}: {
+  grupos?: GrupoFav[]; loading: boolean
+  styles: ReturnType<typeof makeStyles>; colors: Colors
+}) {
+  const hasData = !loading && grupos && grupos.length > 0
+
+  return (
+    <View style={styles.favWrap}>
+      <Text style={styles.sectionLabel}>ENTRENAMIENTOS FAVORITOS</Text>
+      {loading ? (
+        <View style={styles.favChipsRow}>
+          {[120, 90, 100].map((w, i) => (
+            <Skeleton key={i} width={w} height={34} borderRadius={10} />
+          ))}
+        </View>
+      ) : !hasData ? (
+        <View style={styles.favEmpty}>
+          <Text style={styles.favEmptyText}>Completa más entrenamientos para ver tus favoritos</Text>
+        </View>
+      ) : (
+        <View style={styles.favChipsRow}>
+          {grupos!.map(g => {
+            const color = GRUPO_COLOR[g.key] ?? colors.accent
+            const icon = GRUPO_ICON[g.key] ?? '🏋'
+            return (
+              <View
+                key={g.key}
+                style={[styles.favChip, { borderColor: color + '60', backgroundColor: color + '12' }]}
+              >
+                <Text style={styles.favChipIcon}>{icon}</Text>
+                <Text style={[styles.favChipLabel, { color }]}>{g.label}</Text>
+                <Text style={[styles.favChipCount, { color: color + 'aa' }]}>{g.count}×</Text>
+              </View>
+            )
+          })}
+        </View>
+      )}
+    </View>
+  )
+}
+
 // ─── Default profile ──────────────────────────────────────────────────────────
 
-const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '' }
+const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '', plan: 'pro' }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -185,6 +216,7 @@ export default function PerfilScreen() {
   const [statsLoading, setStatsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const [adnModalOpen, setAdnModalOpen] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoadError(false)
@@ -195,13 +227,11 @@ export default function PerfilScreen() {
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
-        setProfile({ nombre: d.nombre || '', nivel: d.nivel || 'rookie', avatar: d.avatar || '' })
+        setProfile({ nombre: d.nombre || '', nivel: d.nivel || 'rookie', avatar: d.avatar || '', plan: d.plan || 'pro' })
       } else {
         setLoadError(true)
       }
-      if (statsRes.status === 'fulfilled') {
-        setProfileStats(statsRes.value)
-      }
+      if (statsRes.status === 'fulfilled') setProfileStats(statsRes.value)
     } catch {
       setLoadError(true)
     } finally {
@@ -211,9 +241,7 @@ export default function PerfilScreen() {
   }, [])
 
   useFocusEffect(useCallback(() => {
-    setLoading(true)
-    setStatsLoading(true)
-    fetchAll()
+    setLoading(true); setStatsLoading(true); fetchAll()
   }, [fetchAll]))
 
   async function handlePickAvatar() {
@@ -224,24 +252,20 @@ export default function PerfilScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: true, aspect: [1, 1], quality: 0.8,
     })
     if (result.canceled || !result.assets?.[0]) return
     try {
       setUploading(true)
-      // Redimensionar y comprimir a 300x300
       const manipulated = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
         [{ resize: { width: 300, height: 300 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       )
       const base64 = `data:image/jpeg;base64,${manipulated.base64}`
-      // Upload al backend — update local state only after the POST confirms.
       await apiPost('/api/profile/avatar/', { avatar: base64 })
       setProfile(prev => ({ ...prev, avatar: base64 }))
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.')
     } finally {
       setUploading(false)
@@ -250,8 +274,11 @@ export default function PerfilScreen() {
 
   const initials = getInitials(profile.nombre || 'U')
   const nivel = nivelLabel(profile.nivel)
+  const pLabel = planLabel(profile.plan)
+  const pColor = planColor(profile.plan)
   const datosMedidos = agruparMiles(profileStats?.datos_medidos_30d ?? 0, lang === 'en' ? ',' : '.')
-
+  const adn = profileStats?.adn_entrenamiento
+  const semanas = profileStats?.semanas_activas ?? 0
 
   return (
     <View style={styles.root}>
@@ -259,18 +286,15 @@ export default function PerfilScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 28 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── HEADER ── */}
+        {/* ── HEADER: avatar izq + info der ── */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.85} disabled={uploading}>
             <View style={styles.avatarWrapper}>
               {profile.avatar ? (
-                <Image
-                  source={{ uri: profile.avatar }}
-                  style={styles.avatarImage}
-                />
+                <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>{initials}</Text>
@@ -281,30 +305,39 @@ export default function PerfilScreen() {
               </View>
             </View>
           </TouchableOpacity>
-          <Text style={styles.nombre}>{loading ? '...' : (profile.nombre || 'Usuario')}</Text>
-          {loadError && !loading && (
-            <TouchableOpacity
-              onPress={() => { setLoading(true); setStatsLoading(true); fetchAll() }}
-              style={{ marginTop: 6, paddingVertical: 5, paddingHorizontal: 14,
-                borderRadius: 10, borderWidth: 1,
-                borderColor: 'rgba(255,68,68,0.4)', backgroundColor: 'rgba(255,68,68,0.08)' }}
-              accessibilityRole="button"
-            >
-              <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff6b6b' }}>
-                No se pudo cargar el perfil · ↺ Reintentar
-              </Text>
-            </TouchableOpacity>
-          )}
-          <View style={styles.nivelPill}>
-            <Text style={styles.nivelPillText}>{nivel}</Text>
-            {!statsLoading && (profileStats?.semanas_activas ?? 0) > 0 && (
-              <>
-                <View style={styles.nivelPillSep} />
-                <Text style={styles.nivelPillText}>
-                  {profileStats!.semanas_activas} {profileStats!.semanas_activas === 1 ? 'semana activa' : 'semanas activas'}
-                </Text>
-              </>
+
+          <View style={styles.headerInfo}>
+            {loading ? (
+              <Skeleton width={140} height={22} borderRadius={5} style={{ marginBottom: 10 }} />
+            ) : (
+              <Text style={styles.nombre} numberOfLines={2}>{profile.nombre || 'Usuario'}</Text>
             )}
+
+            {loadError && !loading ? (
+              <TouchableOpacity
+                onPress={() => { setLoading(true); setStatsLoading(true); fetchAll() }}
+                style={styles.retryBtn}
+                accessibilityRole="button"
+              >
+                <Text style={styles.retryText}>↺ Reintentar</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.nivelPill}>
+                <Text style={styles.nivelPillText}>{nivel}</Text>
+                {!statsLoading && semanas > 0 && (
+                  <>
+                    <View style={styles.nivelPillSep} />
+                    <Text style={styles.nivelPillText}>
+                      {semanas} {semanas === 1 ? 'sem.' : 'sem.'}
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
+
+            <View style={[styles.planBadge, { borderColor: pColor + '55', backgroundColor: pColor + '18' }]}>
+              <Text style={[styles.planText, { color: pColor }]}>{pLabel}</Text>
+            </View>
           </View>
         </View>
 
@@ -313,56 +346,67 @@ export default function PerfilScreen() {
           <View style={styles.metricCard}>
             <View style={styles.metricCardText}>
               <Text style={styles.metricLabel}>{t('perfil_measured_data')}</Text>
-              <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : 'Last 30 days'}</Text>
+              <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : lang === 'pt' ? 'Últimos 30 dias' : 'Last 30 days'}</Text>
             </View>
-            <Text
-              style={[styles.metricValue, { color: colors.cyan }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.45}
-            >
+            <Text style={[styles.metricValue, { color: colors.cyan }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.45}>
               {statsLoading ? '–' : datosMedidos}
             </Text>
           </View>
         </View>
 
-        {/* ── ADN DE ENTRENAMIENTO ── */}
+        {/* ── ADN — compact card → abre modal ── */}
         {statsLoading ? (
-          <View style={[styles.adnWrap, { opacity: 0.45 }]}>
+          <View style={[styles.adnWrap, { opacity: 0.4 }]}>
             <Skeleton width={52} height={9} borderRadius={3} style={{ marginBottom: 10 }} />
-            <View style={styles.adnCard}>
+            <View style={styles.adnCompactCard}>
               <View style={styles.adnBar} />
-              <View style={[styles.adnContent, { gap: 9 }]}>
-                <Skeleton width={140} height={13} borderRadius={4} />
-                <Skeleton width="97%" height={13} borderRadius={4} />
-                <Skeleton width="86%" height={13} borderRadius={4} />
-                <Skeleton width="65%" height={13} borderRadius={4} />
+              <View style={styles.adnCompactBody}>
+                <Skeleton width={130} height={10} borderRadius={4} style={{ marginBottom: 8 }} />
+                <Skeleton width="90%" height={10} borderRadius={4} />
               </View>
+              <Skeleton width={16} height={16} borderRadius={4} style={{ marginRight: 18, alignSelf: 'center' }} />
             </View>
           </View>
-        ) : !!profileStats?.adn_entrenamiento && (
-          <ADNCard
-            texto={profileStats.adn_entrenamiento}
-            styles={styles}
-            dnaLabel={t('perfil_dna_label')}
-            tagLabel={t('perfil_dna_tag')}
-          />
+        ) : !!adn && (
+          <View style={styles.adnWrap}>
+            <Text style={styles.sectionLabel}>{t('perfil_dna_label')}</Text>
+            <TouchableOpacity onPress={() => setAdnModalOpen(true)} activeOpacity={0.75}>
+              <View style={styles.adnCompactCard}>
+                <View style={styles.adnBar} />
+                <View style={styles.adnCompactBody}>
+                  <View style={styles.adnTag}>
+                    <Text style={styles.adnTagText}>{t('perfil_dna_tag')}</Text>
+                  </View>
+                  <Text style={styles.adnPreview} numberOfLines={1}>{adn}</Text>
+                </View>
+                <Text style={styles.adnArrow}>›</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         )}
 
-        {/* ── DISTRIBUCIÓN POR TIPO ── */}
+        {/* ── DISTRIBUCIÓN ── */}
         <DistribucionChart
           data={profileStats?.distribucion_tipo}
           loading={statsLoading}
           styles={styles}
           colors={colors}
-          t={t}
+          t={t as (key: string) => string}
         />
 
-        <View style={{ height: 40 }} />
+        {/* ── ENTRENAMIENTOS FAVORITOS ── */}
+        <FavoritosSection
+          grupos={profileStats?.top_grupos}
+          loading={statsLoading}
+          styles={styles}
+          colors={colors}
+        />
+
+        <View style={{ height: 48 }} />
       </ScrollView>
 
-      {/* ── TOP-RIGHT: gear → Ajustes ── */}
-      <View style={[styles.topControls, { top: insets.top + 28 }]}>
+      {/* ── Gear → Ajustes ── */}
+      <View style={[styles.topControls, { top: insets.top + 20 }]}>
         <TouchableOpacity
           onPress={() => router.push('/(app)/perfil/ajustes' as any)}
           activeOpacity={0.7}
@@ -371,6 +415,37 @@ export default function PerfilScreen() {
           <GearIcon color={colors.inkSecondary} />
         </TouchableOpacity>
       </View>
+
+      {/* ── Modal ADN ── */}
+      <Modal
+        visible={adnModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAdnModalOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setAdnModalOpen(false)}>
+          <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{t('perfil_dna_label')}</Text>
+            <View style={styles.modalDivider} />
+            <View style={styles.modalTagRow}>
+              <View style={styles.adnTag}>
+                <Text style={styles.adnTagText}>{t('perfil_dna_tag')}</Text>
+              </View>
+            </View>
+            <Text style={styles.modalText}>{adn}</Text>
+            <TouchableOpacity
+              onPress={() => setAdnModalOpen(false)}
+              style={styles.modalCloseBtn}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.modalCloseTxt}>
+                {lang === 'es' ? 'Cerrar' : lang === 'pt' ? 'Fechar' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -383,49 +458,63 @@ function makeStyles(c: Colors) {
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 400 },
     scroll: { flex: 1 },
     scrollContent: { paddingHorizontal: 20 },
-
-    // Header
-    header: { alignItems: 'center', marginBottom: 28, gap: 10 },
-    avatarWrapper: {
-      position: 'relative',
-      marginBottom: 2,
+    sectionLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted,
+      letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10,
     },
+
+    // ── Header ──
+    header: {
+      flexDirection: 'row', alignItems: 'flex-start',
+      gap: 16, marginBottom: 28,
+    },
+    avatarWrapper: { position: 'relative' },
     avatarImage: {
-      width: 104, height: 104, borderRadius: 52,
+      width: 82, height: 82, borderRadius: 41,
       borderWidth: 2, borderColor: c.accentLight,
     },
     avatarCircle: {
-      width: 104, height: 104, borderRadius: 52,
-      backgroundColor: c.accentDark,
-      borderWidth: 2, borderColor: c.accentLight,
+      width: 82, height: 82, borderRadius: 41,
+      backgroundColor: c.accentDark, borderWidth: 2, borderColor: c.accentLight,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 36, letterSpacing: -0.5 },
+    avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, letterSpacing: -0.5 },
     avatarEditBadge: {
-      position: 'absolute',
-      bottom: 0, right: 0,
-      width: 30, height: 30, borderRadius: 15,
-      backgroundColor: c.accentDark,
-      borderWidth: 2, borderColor: c.bg,
+      position: 'absolute', bottom: 0, right: 0,
+      width: 26, height: 26, borderRadius: 13,
+      backgroundColor: c.accentDark, borderWidth: 2, borderColor: c.bg,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarEditIcon: { fontSize: 14, lineHeight: 18 },
-    nombre: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, letterSpacing: -0.7 },
+    avatarEditIcon: { fontSize: 12 },
+    headerInfo: { flex: 1, paddingTop: 4, gap: 8 },
+    nombre: {
+      color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 22, letterSpacing: -0.7, lineHeight: 26,
+    },
     nivelPill: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: c.cardBg,
-      borderWidth: 1, borderColor: c.borderBright,
-      borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+      flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 16, paddingHorizontal: 11, paddingVertical: 5,
     },
     nivelPillText: {
       color: c.accent, fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
+      fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase',
     },
     nivelPillSep: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.accent },
+    planBadge: {
+      alignSelf: 'flex-start', borderWidth: 1, borderRadius: 10,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    planText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase' },
+    retryBtn: {
+      alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12,
+      borderRadius: 10, borderWidth: 1,
+      borderColor: 'rgba(255,68,68,0.4)', backgroundColor: 'rgba(255,68,68,0.08)',
+    },
+    retryText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff6b6b' },
     topControls: {
       position: 'absolute', right: 20,
-      flexDirection: 'row', alignItems: 'flex-start',
-      gap: 8, zIndex: 100,
+      flexDirection: 'row', alignItems: 'flex-start', gap: 8, zIndex: 100,
     },
     gearBtn: {
       width: 38, height: 38, borderRadius: 19,
@@ -433,11 +522,10 @@ function makeStyles(c: Colors) {
       alignItems: 'center', justifyContent: 'center',
     },
 
-    // Metrics grid
+    // ── Métricas ──
     metricsGrid: { marginBottom: 28 },
     metricCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1, borderColor: c.borderDefault,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, paddingVertical: 22, paddingHorizontal: 24,
       flexDirection: 'row', alignItems: 'center', gap: 16,
     },
@@ -446,51 +534,100 @@ function makeStyles(c: Colors) {
     metricValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 48, letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'right' },
     metricSub: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
 
-    // ADN
-    adnWrap: { marginBottom: 28 },
-    adnSectionLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-    adnCard: { flexDirection: 'row', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 18, overflow: 'hidden' },
-    adnBar: { width: 3, backgroundColor: c.accent },
-    adnContent: { flex: 1, padding: 18, gap: 12 },
-    adnTagRow: { flexDirection: 'row' },
-    adnTag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright },
+    // ── ADN compact ──
+    adnWrap: { marginBottom: 24 },
+    adnCompactCard: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 18, overflow: 'hidden',
+    },
+    adnBar: { width: 3, alignSelf: 'stretch', backgroundColor: c.accent },
+    adnCompactBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 16, gap: 6 },
+    adnTag: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 8, paddingVertical: 3,
+      borderRadius: 6, backgroundColor: c.cardBg,
+      borderWidth: 1, borderColor: c.borderBright,
+    },
     adnTagText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
-    adnText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkPrimary, lineHeight: 22, letterSpacing: -0.1 },
+    adnPreview: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkSecondary, lineHeight: 19, letterSpacing: -0.1 },
+    adnArrow: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: c.inkMuted, paddingHorizontal: 16 },
 
-    // Distribución
+    // ── Distribución ──
     distWrap: { marginBottom: 28 },
     distCard: {
-      backgroundColor: c.cardBg,
-      borderWidth: 1, borderColor: c.borderDefault,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20,
     },
     distDivider: { height: 1, backgroundColor: c.borderDefault },
     distRow: { paddingVertical: 16 },
     distMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     distIcon: { fontSize: 15, marginRight: 8 },
-    distLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase',
-    },
-    distCount: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.5,
-    },
+    distLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase' },
+    distCount: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.5 },
     distCountSuffix: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      color: c.inkMuted, letterSpacing: 0.5, textTransform: 'uppercase',
-      alignSelf: 'flex-end', paddingBottom: 3,
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted,
+      letterSpacing: 0.5, textTransform: 'uppercase', alignSelf: 'flex-end', paddingBottom: 3,
     },
-    distBarTrack: {
-      height: 5, borderRadius: 3,
-      backgroundColor: 'rgba(255,255,255,0.06)',
-      overflow: 'hidden',
-    },
+    distBarTrack: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
     distBarFill: { height: 5, borderRadius: 3 },
     distFooter: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-      color: c.inkFaint, letterSpacing: 0.8, textTransform: 'uppercase',
-      textAlign: 'center', paddingBottom: 14, paddingTop: 2,
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkFaint,
+      letterSpacing: 0.8, textTransform: 'uppercase', textAlign: 'center', paddingBottom: 14, paddingTop: 2,
     },
 
+    // ── Favoritos ──
+    favWrap: { marginBottom: 28 },
+    favChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    favChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      borderWidth: 1, borderRadius: 12,
+      paddingHorizontal: 12, paddingVertical: 9,
+    },
+    favChipIcon: { fontSize: 14 },
+    favChipLabel: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, letterSpacing: -0.2 },
+    favChipCount: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.5 },
+    favEmpty: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 16, paddingVertical: 20, paddingHorizontal: 20, alignItems: 'center',
+    },
+    favEmptyText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted,
+      textAlign: 'center', lineHeight: 20,
+    },
+
+    // ── Modal ADN ──
+    modalBackdrop: {
+      flex: 1, backgroundColor: 'rgba(0,0,0,0.72)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: '#0d1117',
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      paddingHorizontal: 24, paddingBottom: 36, paddingTop: 16,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    },
+    modalHandle: {
+      width: 40, height: 4, borderRadius: 2,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignSelf: 'center', marginBottom: 20,
+    },
+    modalTitle: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: c.inkPrimary,
+      letterSpacing: -0.6, marginBottom: 16,
+    },
+    modalDivider: { height: 1, backgroundColor: c.borderDefault, marginBottom: 16 },
+    modalTagRow: { marginBottom: 14 },
+    modalText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary,
+      lineHeight: 24, letterSpacing: -0.1, marginBottom: 28,
+    },
+    modalCloseBtn: {
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+    },
+    modalCloseTxt: {
+      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.inkPrimary, letterSpacing: -0.2,
+    },
   })
 }
