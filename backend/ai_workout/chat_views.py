@@ -268,3 +268,387 @@ def chat_coach(request):
         return Response({'error': 'No se pudo obtener respuesta. Intenta de nuevo.'}, status=status.HTTP_502_BAD_GATEWAY)
 
     return Response({'respuesta': respuesta})
+
+
+# ─── Recomendaciones (rule-based, sin costo de IA) ───────────────────────────
+
+_REC_COLORS = {
+    'recovery':    '#32c896',
+    'progression': '#4f8cff',
+    'pattern':     '#ffaa32',
+    'alert':       '#ff6b6b',
+    'goal':        '#c084fc',
+}
+
+_NIVEL_SIGUIENTE = {
+    'Rookie':  ('Atleta',  5),
+    'Atleta':  ('Élite',   15),
+    'Élite':   ('Leyenda', 30),
+    'Leyenda': (None,      None),
+}
+
+# Textos parametrizados por idioma —────────────────────────────────────────────
+def _t(lang, key, **kw):
+    _STRINGS = {
+        # insight
+        'insight_no_sessions': {
+            'es': 'Sin sesiones esta semana. Es un buen momento para retomar el ritmo con una sesión suave hoy.',
+            'en': 'No sessions this week. It\'s a good time to get back on track with a light session today.',
+            'pt': 'Sem sessões esta semana. É um bom momento para retomar o ritmo com uma sessão leve hoje.',
+            'fr': 'Aucune séance cette semaine. C\'est un bon moment pour reprendre avec une séance légère aujourd\'hui.',
+        },
+        'insight_rpe_down': {
+            'es': 'Tu RPE promedio bajó de {prev} a {now} esta semana. Estás recuperándote bien — buen momento para empujar en tu próxima sesión.',
+            'en': 'Your avg RPE dropped from {prev} to {now} this week. You\'re recovering well — good time to push in your next session.',
+            'pt': 'Seu RPE médio caiu de {prev} para {now} esta semana. Você está se recuperando bem — bom momento para se esforçar mais.',
+            'fr': 'Votre RPE moyen est passé de {prev} à {now} cette semaine. Vous récupérez bien — bon moment pour pousser lors de votre prochaine séance.',
+        },
+        'insight_rpe_up': {
+            'es': 'Tu intensidad subió esta semana (RPE {prev} → {now}). Buena progresión — incluye una sesión de recuperación pronto.',
+            'en': 'Your intensity went up this week (RPE {prev} → {now}). Good progress — include a recovery session soon.',
+            'pt': 'Sua intensidade aumentou esta semana (RPE {prev} → {now}). Boa progressão — inclua uma sessão de recuperação em breve.',
+            'fr': 'Votre intensité a augmenté cette semaine (RPE {prev} → {now}). Bonne progression — incluez une séance de récupération bientôt.',
+        },
+        'insight_consistent': {
+            'es': 'Semana sólida con {n} sesiones. La consistencia es tu mayor activo — mantenla.',
+            'en': 'Solid week with {n} sessions. Consistency is your greatest asset — keep it up.',
+            'pt': 'Semana sólida com {n} sessões. A consistência é seu maior ativo — mantenha.',
+            'fr': 'Semaine solide avec {n} séances. La régularité est votre meilleur atout — continuez.',
+        },
+        'insight_start': {
+            'es': 'Llevas {n} sesión esta semana. Hay margen para agregar más si el tiempo lo permite.',
+            'en': 'You have {n} session this week. There\'s room to add more if time allows.',
+            'pt': 'Você tem {n} sessão esta semana. Há espaço para adicionar mais se o tempo permitir.',
+            'fr': 'Vous avez {n} séance cette semaine. Il y a de la place pour en ajouter plus si le temps le permet.',
+        },
+        # rec — recovery
+        'rec_recovery_title': {
+            'es': 'Hoy es día de movilidad',
+            'en': 'Today is a mobility day',
+            'pt': 'Hoje é dia de mobilidade',
+            'fr': 'Aujourd\'hui c\'est un jour de mobilité',
+        },
+        'rec_recovery_body': {
+            'es': 'Tus últimas sesiones tuvieron alta carga acumulada. Tu sistema nervioso necesita un respiro. Una sesión suave hoy mejorará tu rendimiento en el próximo entreno.',
+            'en': 'Your recent sessions had high accumulated load. Your nervous system needs a break. A light session today will boost your performance next time.',
+            'pt': 'Suas últimas sessões tiveram alta carga acumulada. Seu sistema nervoso precisa de um descanso. Uma sessão leve hoje melhorará seu desempenho no próximo treino.',
+            'fr': 'Vos dernières séances avaient une charge accumulée élevée. Votre système nerveux a besoin d\'une pause. Une séance légère aujourd\'hui améliorera vos performances.',
+        },
+        'rec_recovery_source': {
+            'es': 'Basado en tu fatiga acumulada',
+            'en': 'Based on your accumulated fatigue',
+            'pt': 'Baseado na sua fadiga acumulada',
+            'fr': 'Basé sur votre fatigue accumulée',
+        },
+        # rec — progression
+        'rec_progression_title': {
+            'es': 'Estás cerca del nivel {nivel}',
+            'en': 'You\'re close to {nivel} level',
+            'pt': 'Você está perto do nível {nivel}',
+            'fr': 'Vous êtes proche du niveau {nivel}',
+        },
+        'rec_progression_body': {
+            'es': 'A {n} sesiones de alcanzar {nivel}. Con tu cadencia actual, lo conseguirás en aproximadamente {semanas} semanas. No frenes ahora.',
+            'en': '{n} sessions away from reaching {nivel}. At your current pace, you\'ll get there in about {semanas} weeks. Don\'t stop now.',
+            'pt': 'A {n} sessões de alcançar {nivel}. No seu ritmo atual, você conseguirá em aproximadamente {semanas} semanas. Não pare agora.',
+            'fr': 'À {n} séances du niveau {nivel}. À votre rythme actuel, vous y arriverez en environ {semanas} semaines. Ne vous arrêtez pas maintenant.',
+        },
+        'rec_progression_source': {
+            'es': 'Basado en tus sesiones totales',
+            'en': 'Based on your total sessions',
+            'pt': 'Baseado nas suas sessões totais',
+            'fr': 'Basé sur vos séances totales',
+        },
+        # rec — HRV alert
+        'rec_hrv_title': {
+            'es': 'Señales de fatiga sistémica',
+            'en': 'Signs of systemic fatigue',
+            'pt': 'Sinais de fadiga sistêmica',
+            'fr': 'Signes de fatigue systémique',
+        },
+        'rec_hrv_body': {
+            'es': 'Tu HRV promedio esta semana fue de {hrv}ms, por debajo del umbral óptimo. Prioriza el descanso los próximos días y reduce la intensidad.',
+            'en': 'Your avg HRV this week was {hrv}ms, below the optimal threshold. Prioritize rest over the next few days and reduce intensity.',
+            'pt': 'Seu HRV médio esta semana foi de {hrv}ms, abaixo do limiar ideal. Priorize o descanso nos próximos dias e reduza a intensidade.',
+            'fr': 'Votre HRV moyen cette semaine était de {hrv}ms, en dessous du seuil optimal. Priorisez le repos ces prochains jours et réduisez l\'intensité.',
+        },
+        'rec_hrv_source': {
+            'es': 'Basado en tu HRV promedio',
+            'en': 'Based on your average HRV',
+            'pt': 'Baseado no seu HRV médio',
+            'fr': 'Basé sur votre HRV moyen',
+        },
+        # rec — sleep
+        'rec_sleep_title': {
+            'es': 'Sueño insuficiente esta semana',
+            'en': 'Insufficient sleep this week',
+            'pt': 'Sono insuficiente esta semana',
+            'fr': 'Sommeil insuffisant cette semaine',
+        },
+        'rec_sleep_body': {
+            'es': 'Tu promedio de sueño fue de {h}h. El sueño es el principal factor de recuperación muscular. Intenta dormir al menos 7-8h las próximas noches.',
+            'en': 'Your average sleep was {h}h. Sleep is the primary muscle recovery factor. Try to get at least 7-8h in the coming nights.',
+            'pt': 'Sua média de sono foi de {h}h. O sono é o principal fator de recuperação muscular. Tente dormir pelo menos 7-8h nas próximas noites.',
+            'fr': 'Votre moyenne de sommeil était de {h}h. Le sommeil est le principal facteur de récupération musculaire. Essayez de dormir au moins 7-8h ces prochaines nuits.',
+        },
+        'rec_sleep_source': {
+            'es': 'Basado en tus check-ins de la semana',
+            'en': 'Based on your check-ins this week',
+            'pt': 'Baseado nos seus check-ins da semana',
+            'fr': 'Basé sur vos check-ins de la semaine',
+        },
+        # rec — RPE pattern
+        'rec_rpe_title': {
+            'es': 'Tu esfuerzo real supera el planificado',
+            'en': 'Your actual effort exceeds the planned',
+            'pt': 'Seu esforço real supera o planejado',
+            'fr': 'Votre effort réel dépasse le planifié',
+        },
+        'rec_rpe_body': {
+            'es': 'En {n} sesiones recientes tu RPE real superó el planificado. Puede ser progreso positivo o señal de que necesitas reducir la carga voluntariamente.',
+            'en': 'In {n} recent sessions your actual RPE exceeded the planned. This may be positive progress or a sign you need to voluntarily reduce load.',
+            'pt': 'Em {n} sessões recentes seu RPE real superou o planejado. Pode ser progresso positivo ou sinal de que você precisa reduzir voluntariamente a carga.',
+            'fr': 'Dans {n} séances récentes votre RPE réel a dépassé le planifié. Cela peut être une progression positive ou un signe que vous devez réduire volontairement la charge.',
+        },
+        'rec_rpe_source': {
+            'es': 'Basado en tu RPE real vs planificado',
+            'en': 'Based on your actual vs planned RPE',
+            'pt': 'Baseado no seu RPE real vs planejado',
+            'fr': 'Basé sur votre RPE réel vs planifié',
+        },
+        # rec — goal
+        'rec_goal_title': {
+            'es': 'Mantén el foco en tu objetivo',
+            'en': 'Stay focused on your goal',
+            'pt': 'Mantenha o foco no seu objetivo',
+            'fr': 'Restez concentré sur votre objectif',
+        },
+        'rec_goal_body': {
+            'es': 'Tu objetivo es {objetivo}. Cada sesión te acerca. La consistencia supera a la intensidad de una sola sesión espectacular.',
+            'en': 'Your goal is {objetivo}. Each session brings you closer. Consistency beats one spectacular session every time.',
+            'pt': 'Seu objetivo é {objetivo}. Cada sessão te aproxima. A consistência supera a intensidade de uma única sessão espetacular.',
+            'fr': 'Votre objectif est {objetivo}. Chaque séance vous rapproche. La régularité l\'emporte toujours sur une seule séance spectaculaire.',
+        },
+        'rec_goal_source': {
+            'es': 'Basado en tu objetivo principal',
+            'en': 'Based on your main goal',
+            'pt': 'Baseado no seu objetivo principal',
+            'fr': 'Basé sur votre objectif principal',
+        },
+        # detecciones
+        'det_sleep': {
+            'es': 'Tu sueño promedio esta semana fue de {h}h — por debajo de lo recomendado.',
+            'en': 'Your avg sleep this week was {h}h — below the recommended amount.',
+            'pt': 'Seu sono médio esta semana foi de {h}h — abaixo do recomendado.',
+            'fr': 'Votre sommeil moyen cette semaine était de {h}h — en dessous des recommandations.',
+        },
+        'det_rpe': {
+            'es': 'Tu RPE real superó el planificado en {n} de tus últimas sesiones.',
+            'en': 'Your actual RPE exceeded the planned in {n} of your recent sessions.',
+            'pt': 'Seu RPE real superou o planejado em {n} das suas sessões recentes.',
+            'fr': 'Votre RPE réel a dépassé le planifié dans {n} de vos séances récentes.',
+        },
+        'det_muscle': {
+            'es': '{grupo} lleva {dias} días sin trabajo directo.',
+            'en': '{grupo} hasn\'t had direct work in {dias} days.',
+            'pt': '{grupo} está há {dias} dias sem trabalho direto.',
+            'fr': '{grupo} n\'a pas eu de travail direct depuis {dias} jours.',
+        },
+    }
+    tmpl = _STRINGS.get(key, {}).get(lang) or _STRINGS.get(key, {}).get('es', key)
+    return tmpl.format(**kw) if kw else tmpl
+
+
+def _build_recomendaciones_data(user, lang: str) -> dict:
+    profile = getattr(user, 'profile', None)
+    today = date.today()
+    hace_7d  = today - timedelta(days=7)
+    hace_14d = timezone.now() - timedelta(days=14)
+
+    sesiones_qs  = Session.objects.filter(user=user, created_at__gte=hace_14d)
+    completadas  = sesiones_qs.filter(feedback__isnull=False).select_related('feedback')
+    fatiga       = calcular_fatiga(sesiones_qs)
+    total_sesiones = Session.objects.filter(user=user, feedback__isnull=False).count()
+
+    checkins_semana = DailyCheckin.objects.filter(user=user, fecha__gte=hace_7d)
+    sueno_vals = [float(c.calidad_sueno) for c in checkins_semana if c.calidad_sueno]
+    sueno_prom = round(sum(sueno_vals) / len(sueno_vals), 1) if sueno_vals else None
+    hrv_vals   = [c.hrv for c in checkins_semana if c.hrv]
+    hrv_prom   = round(sum(hrv_vals) / len(hrv_vals)) if hrv_vals else None
+
+    # ── Insight del día ───────────────────────────────────────────────────────
+    sesiones_semana = Session.objects.filter(user=user, fecha__gte=hace_7d, feedback__isnull=False).select_related('feedback')
+    n_semana = sesiones_semana.count()
+    rpe_now_vals  = [float(s.feedback.rpe_real) for s in sesiones_semana if s.feedback and s.feedback.rpe_real]
+    sesiones_prev = Session.objects.filter(
+        user=user, fecha__gte=hace_7d - timedelta(days=7), fecha__lt=hace_7d, feedback__isnull=False
+    ).select_related('feedback')
+    rpe_prev_vals = [float(s.feedback.rpe_real) for s in sesiones_prev if s.feedback and s.feedback.rpe_real]
+    rpe_now  = round(sum(rpe_now_vals) / len(rpe_now_vals), 1) if rpe_now_vals else None
+    rpe_prev = round(sum(rpe_prev_vals) / len(rpe_prev_vals), 1) if rpe_prev_vals else None
+
+    if n_semana == 0:
+        insight = _t(lang, 'insight_no_sessions')
+    elif rpe_now and rpe_prev and rpe_prev > rpe_now + 0.3:
+        insight = _t(lang, 'insight_rpe_down', prev=rpe_prev, now=rpe_now)
+    elif rpe_now and rpe_prev and rpe_now > rpe_prev + 0.3:
+        insight = _t(lang, 'insight_rpe_up', prev=rpe_prev, now=rpe_now)
+    elif n_semana >= 3:
+        insight = _t(lang, 'insight_consistent', n=n_semana)
+    else:
+        insight = _t(lang, 'insight_start', n=n_semana)
+
+    # ── Recomendaciones ───────────────────────────────────────────────────────
+    recs = []
+
+    if fatiga == 'alto':
+        recs.append({
+            'id': 'rec-recovery', 'icono': '🧘',
+            'categoria': 'RECUPERACIÓN' if lang == 'es' else 'RECOVERY' if lang == 'en' else 'RECUPERAÇÃO' if lang == 'pt' else 'RÉCUPÉRATION',
+            'color': _REC_COLORS['recovery'],
+            'titulo':  _t(lang, 'rec_recovery_title'),
+            'cuerpo':  _t(lang, 'rec_recovery_body'),
+            'fuente':  _t(lang, 'rec_recovery_source'),
+        })
+
+    nivel_label = profile.nivel_label() if (profile and callable(getattr(profile, 'nivel_label', None))) else 'Rookie'
+    siguiente, sesiones_umbral = _NIVEL_SIGUIENTE.get(nivel_label, (None, None))
+    if siguiente and sesiones_umbral:
+        faltan = sesiones_umbral - total_sesiones
+        if 0 < faltan <= 20:
+            dias_sem = getattr(profile, 'dias_semana', 3) or 3
+            semanas  = max(1, round(faltan / max(1, dias_sem)))
+            recs.append({
+                'id': 'rec-progression', 'icono': '⚡',
+                'categoria': 'PROGRESIÓN' if lang == 'es' else 'PROGRESSION' if lang in ('en', 'fr') else 'PROGRESSÃO',
+                'color': _REC_COLORS['progression'],
+                'titulo':  _t(lang, 'rec_progression_title', nivel=siguiente),
+                'cuerpo':  _t(lang, 'rec_progression_body', n=faltan, nivel=siguiente, semanas=semanas),
+                'fuente':  _t(lang, 'rec_progression_source'),
+            })
+
+    if hrv_prom and hrv_prom < 50:
+        recs.append({
+            'id': 'rec-hrv', 'icono': '🛡️',
+            'categoria': 'ALERTA',
+            'color': _REC_COLORS['alert'],
+            'titulo':  _t(lang, 'rec_hrv_title'),
+            'cuerpo':  _t(lang, 'rec_hrv_body', hrv=hrv_prom),
+            'fuente':  _t(lang, 'rec_hrv_source'),
+        })
+    elif sueno_prom and sueno_prom < 6.5:
+        recs.append({
+            'id': 'rec-sleep', 'icono': '😴',
+            'categoria': 'ALERTA',
+            'color': _REC_COLORS['alert'],
+            'titulo':  _t(lang, 'rec_sleep_title'),
+            'cuerpo':  _t(lang, 'rec_sleep_body', h=sueno_prom),
+            'fuente':  _t(lang, 'rec_sleep_source'),
+        })
+
+    rpe_discrepancias = sum(
+        1 for s in completadas
+        if s.feedback and s.feedback.rpe_real and s.rpe_target
+        and float(s.feedback.rpe_real) > float(s.rpe_target) + 1.0
+    )
+    if rpe_discrepancias >= 2:
+        recs.append({
+            'id': 'rec-rpe', 'icono': '📈',
+            'categoria': 'PATRÓN' if lang == 'es' else 'PATTERN' if lang == 'en' else 'PADRÃO' if lang == 'pt' else 'MODÈLE',
+            'color': _REC_COLORS['pattern'],
+            'titulo':  _t(lang, 'rec_rpe_title'),
+            'cuerpo':  _t(lang, 'rec_rpe_body', n=rpe_discrepancias),
+            'fuente':  _t(lang, 'rec_rpe_source'),
+        })
+
+    objetivo = _sanitize(getattr(profile, 'objetivo', '') or '', 80)
+    if objetivo and len(recs) < 3:
+        recs.append({
+            'id': 'rec-goal', 'icono': '🎯',
+            'categoria': 'OBJETIVO' if lang == 'es' else 'GOAL' if lang == 'en' else 'OBJETIVO' if lang == 'pt' else 'OBJECTIF',
+            'color': _REC_COLORS['goal'],
+            'titulo':  _t(lang, 'rec_goal_title'),
+            'cuerpo':  _t(lang, 'rec_goal_body', objetivo=objetivo),
+            'fuente':  _t(lang, 'rec_goal_source'),
+        })
+
+    # ── Detecciones ───────────────────────────────────────────────────────────
+    detecciones = []
+
+    if sueno_prom and sueno_prom < 7:
+        detecciones.append({
+            'tipo': 'warning' if sueno_prom >= 6 else 'alerta',
+            'color': '#ffaa32' if sueno_prom >= 6 else '#ff4444',
+            'texto': _t(lang, 'det_sleep', h=sueno_prom),
+        })
+
+    if rpe_discrepancias >= 2:
+        detecciones.append({
+            'tipo': 'warning', 'color': '#ffaa32',
+            'texto': _t(lang, 'det_rpe', n=rpe_discrepancias),
+        })
+
+    _MUSCLE_KW = {
+        'tren inferior': ['sentadilla', 'prensa', 'zancada', 'lunges', 'squat', 'leg press', 'femoral'],
+        'pecho':         ['press banca', 'press inclinado', 'aperturas', 'chest', 'bench press', 'pec'],
+        'espalda':       ['jalón', 'remo', 'pull', 'dominadas', 'lat pull', 'row'],
+    }
+    _MUSCLE_LABEL = {
+        'tren inferior': {'es': 'Tren inferior', 'en': 'Lower body',    'pt': 'Membros inferiores', 'fr': 'Membres inférieurs'},
+        'pecho':         {'es': 'Pecho',         'en': 'Chest',         'pt': 'Peitoral',           'fr': 'Pectoraux'},
+        'espalda':       {'es': 'Espalda',        'en': 'Back',          'pt': 'Costas',             'fr': 'Dos'},
+    }
+    grupos_dias: dict[str, int] = {}
+    for s in completadas:
+        if not s.respuesta_ia or not s.fecha:
+            continue
+        dias_diff = (today - s.fecha).days
+        for fase in s.respuesta_ia.get('fases', []):
+            if 'principal' not in fase.get('nombre', '').lower():
+                continue
+            for ej in fase.get('ejercicios', []):
+                nombre_ej = ej.get('nombre', '').lower()
+                for grupo, keywords in _MUSCLE_KW.items():
+                    if any(k in nombre_ej for k in keywords):
+                        grupos_dias[grupo] = min(grupos_dias.get(grupo, 99), dias_diff)
+
+    for grupo, dias in grupos_dias.items():
+        if dias >= 7 and len(detecciones) < 3:
+            label = _MUSCLE_LABEL.get(grupo, {}).get(lang, grupo.capitalize())
+            detecciones.append({
+                'tipo': 'alerta', 'color': '#ff4444',
+                'texto': _t(lang, 'det_muscle', grupo=label, dias=dias),
+            })
+
+    # ── Nombre del coach vinculado ────────────────────────────────────────────
+    coach_nombre = None
+    link_coach = user.coaches.filter(estado='activo').select_related('coach__profile').first()
+    if link_coach:
+        coach_nombre = (
+            getattr(link_coach.coach, 'first_name', '') or
+            _sanitize(getattr(getattr(link_coach.coach, 'profile', None), 'nombre', '') or '', 60) or
+            None
+        )
+
+    return {
+        'coach':           {'nombre': coach_nombre},
+        'insight':         {'texto': insight},
+        'recomendaciones': recs,
+        'detecciones':     detecciones[:3],
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chat_recomendaciones(request):
+    """
+    GET /api/chat/recomendaciones/?lang=es
+    Devuelve insight del día, recomendaciones y detecciones calculadas
+    desde los datos reales del atleta. Sin costo de IA (rule-based).
+    """
+    lang = request.query_params.get('lang', 'es')
+    if lang not in ('es', 'en', 'pt', 'fr'):
+        lang = 'es'
+
+    data = _build_recomendaciones_data(request.user, lang)
+    return Response(data)

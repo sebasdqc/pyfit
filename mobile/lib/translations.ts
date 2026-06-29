@@ -478,6 +478,31 @@ const translations = {
   common_sets:                { es: 'series',                            en: 'sets',                                pt: 'séries',                              fr: 'séries' },
   common_reps:                { es: 'reps',                              en: 'reps',                                pt: 'reps',                                fr: 'reps' },
   common_kg:                  { es: 'kg',                                en: 'kg',                                  pt: 'kg',                                  fr: 'kg' },
+
+  // ─── Coach / Chat ─────────────────────────────────────────────────────────────
+  chat_online:                { es: '● En línea',                        en: '● Online',                            pt: '● Online',                            fr: '● En ligne' },
+  chat_placeholder:           { es: 'Escribe algo...',                   en: 'Type something...',                   pt: 'Digite algo...',                      fr: 'Écrivez quelque chose...' },
+  chat_initial_msg:           { es: 'Hola, soy tu Coach y tomo en cuenta tu historial, tus hábitos y tus preferencias. Pregunta lo que quieras.',
+                                en: 'Hi, I\'m your Coach. I take into account your history, habits and preferences. Ask me anything.',
+                                pt: 'Olá, sou seu Coach e levo em conta seu histórico, hábitos e preferências. Pergunte o que quiser.',
+                                fr: 'Bonjour, je suis votre Coach. Je prends en compte votre historique, vos habitudes et vos préférences. Posez-moi n\'importe quelle question.' },
+  chat_error_msg:             { es: 'Lo siento, no puedo responder ahora. Inténtalo de nuevo.',
+                                en: 'Sorry, I can\'t respond right now. Try again.',
+                                pt: 'Desculpe, não consigo responder agora. Tente novamente.',
+                                fr: 'Désolé, je ne peux pas répondre maintenant. Réessayez.' },
+  chat_insight_label:         { es: 'INSIGHT DEL DÍA',                  en: 'DAILY INSIGHT',                       pt: 'INSIGHT DO DIA',                      fr: 'INSIGHT DU JOUR' },
+  chat_recs_label:            { es: 'RECOMENDACIONES',                   en: 'RECOMMENDATIONS',                     pt: 'RECOMENDAÇÕES',                       fr: 'RECOMMANDATIONS' },
+  chat_explore_label:         { es: 'EXPLORA CON TU COACH',              en: 'EXPLORE WITH YOUR COACH',             pt: 'EXPLORE COM SEU COACH',               fr: 'EXPLOREZ AVEC VOTRE COACH' },
+  chat_detected_label:        { es: 'ESTA SEMANA TU COACH DETECTÓ',      en: 'THIS WEEK YOUR COACH DETECTED',       pt: 'ESTA SEMANA SEU COACH DETECTOU',      fr: 'CETTE SEMAINE VOTRE COACH A DÉTECTÉ' },
+  chat_start_btn:             { es: 'Iniciar Chat con tu Coach',         en: 'Start Chat with your Coach',          pt: 'Iniciar Chat com seu Coach',          fr: 'Démarrer le Chat avec votre Coach' },
+  chat_start_sub_default:     { es: 'Haz tu pregunta, conozco tu historial', en: 'Ask me anything, I know your history', pt: 'Faça sua pergunta, conheço seu histórico', fr: 'Posez votre question, je connais votre historique' },
+  chat_start_sub_rec:         { es: 'Sobre:',                            en: 'About:',                              pt: 'Sobre:',                              fr: 'À propos :' },
+  chat_ask_coach:             { es: 'Preguntarle al Coach',              en: 'Ask the Coach',                       pt: 'Perguntar ao Coach',                  fr: 'Demander au Coach' },
+  chat_headline_1:            { es: 'El coach que',                      en: 'The coach who',                       pt: 'O coach que',                         fr: 'Le coach qui' },
+  chat_headline_accent:       { es: 'te conoce,',                        en: 'knows you,',                          pt: 'te conhece,',                         fr: 'vous connaît,' },
+  chat_headline_2:            { es: 'sabe lo que necesitas y hacia donde vas.', en: 'knows what you need and where you\'re going.', pt: 'sabe o que você precisa e para onde vai.', fr: 'sait ce dont vous avez besoin et où vous allez.' },
+  chat_loading:               { es: 'Cargando recomendaciones...',       en: 'Loading recommendations...',          pt: 'Carregando recomendações...',         fr: 'Chargement des recommandations...' },
+  chat_no_insight:            { es: 'Completa tu primera sesión para ver tu insight del día.', en: 'Complete your first session to see your daily insight.', pt: 'Conclua sua primeira sessão para ver o insight do dia.', fr: 'Complétez votre première séance pour voir l\'insight du jour.' },
 } as const
 
 export type TranslationKey = keyof typeof translations

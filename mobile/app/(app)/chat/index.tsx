@@ -3,14 +3,14 @@ import {
   View, Text, ScrollView, StyleSheet, Animated,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
   Modal, TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform,
+  Platform, ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
-import { apiPost } from '../../../lib/api'
+import { apiPost, apiGet } from '../../../lib/api'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 
@@ -23,82 +23,32 @@ interface Message {
   ts: Date
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
-const RECOMENDACIONES = [
-  {
-    id: '1',
-    categoria: 'RECUPERACIÓN',
-    color: '#32c896',
-    titulo: 'Hoy es día de movilidad',
-    cuerpo: 'Tus últimas 4 sesiones tuvieron RPE promedio de 8.1. Tu sistema nervioso necesita un respiro. Una sesión suave hoy mejorará tu rendimiento el próximo entreno.',
-    icono: '🧘',
-    fuente: 'Basado en tu RPE de esta semana',
-  },
-  {
-    id: '2',
-    categoria: 'PROGRESIÓN',
-    color: '#4f8cff',
-    titulo: 'Estás cerca del nivel Élite',
-    cuerpo: 'A 15 sesiones de alcanzar Élite. Con tu cadencia actual de 3 por semana, lo conseguirás en aproximadamente 5 semanas. No frenes ahora.',
-    icono: '⚡',
-    fuente: 'Basado en tus sesiones totales',
-  },
-  {
-    id: '3',
-    categoria: 'PATRÓN',
-    color: '#ffaa32',
-    titulo: 'Tu ventana de mayor rendimiento',
-    cuerpo: 'Los datos muestran un 23% más de cumplimiento los martes y jueves por la mañana. Considera bloquear esos horarios como tus entrenamientos fijos.',
-    icono: '📈',
-    fuente: 'Basado en tu historial de cumplimiento',
-  },
-  {
-    id: '4',
-    categoria: 'ALERTA',
-    color: '#ff6b6b',
-    titulo: 'Señales de fatiga acumulada',
-    cuerpo: 'Tu HRV promedio cayó a 52ms esta semana. Duerme mínimo 8h los próximos 3 días y baja la intensidad. No es rendirse, es entrenar con inteligencia.',
-    icono: '🛡️',
-    fuente: 'Basado en tu HRV promedio',
-  },
-  {
-    id: '5',
-    categoria: 'OBJETIVO',
-    color: '#c084fc',
-    titulo: 'Construye tu base aeróbica',
-    cuerpo: 'Tu perfil prioriza resistencia pero tus check-ins recientes apuntan a fuerza. Añade una sesión de cardio continuo de 30–40 min esta semana para equilibrar.',
-    icono: '🎯',
-    fuente: 'Basado en tu objetivo principal',
-  },
-]
-
-const INSIGHT_DIA = {
-  texto: 'Tu RPE promedio bajó de 8.1 a 6.8 esta semana. Estás recuperándote bien — es un buen momento para empujar un poco más en tu próxima sesión de fuerza.',
+interface RecData {
+  id: string
+  categoria: string
+  color: string
+  titulo: string
+  cuerpo: string
+  icono: string
+  fuente: string
 }
 
-const CHIPS_TEMAS = [
-  'Cómo calentar antes de fuerza',
-  'Carga de carbohidratos',
-  'Mejores suplementos para mi objetivo',
-  'Cómo progresar en sentadilla',
-  'Qué hacer si no duermo bien',
-  'Semana de descarga',
-]
-
-// TODO: conectar a datos reales de la API (sueño promedio, RPE real vs planificado, grupos musculares)
-const DETECCIONES: { tipo: 'info' | 'warning' | 'alerta'; color: string; texto: string }[] = [
-  { tipo: 'info',    color: '#4f8cff', texto: 'Tu sueño promedio esta semana fue de 6.2 h — por debajo de lo recomendado.' },
-  { tipo: 'warning', color: '#ffaa32', texto: 'Tu RPE real (7.8) superó el planificado (6.5) en 3 de tus últimas sesiones.' },
-  { tipo: 'alerta',  color: '#ff4444', texto: 'Tren inferior lleva 5 días sin trabajo directo.' },
-]
-
-const INITIAL_MSG: Message = {
-  id: 'coach-0',
-  role: 'coach',
-  text: 'Hola, soy tu Coach y tomo en cuenta tu historial, tus hábitos y tus preferencias. Pregunta lo que quieras.',
-  ts: new Date(),
+interface DetecData {
+  tipo: 'info' | 'warning' | 'alerta'
+  color: string
+  texto: string
 }
+
+interface RecsResponse {
+  coach: { nombre: string | null }
+  insight: { texto: string }
+  recomendaciones: RecData[]
+  detecciones: DetecData[]
+}
+
+const MAX_RECS = 5
 
 function formatTs(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -234,21 +184,21 @@ function Bubble({ msg, colors }: { msg: Message; colors: any }) {
 
 // ─── Chat Modal ───────────────────────────────────────────────────────────────
 
-function ChatModal({ visible, onClose, colors, insets, initialContext }: {
+function ChatModal({ visible, onClose, colors, insets, initialContext, coachNombre }: {
   visible: boolean
   onClose: () => void
   colors: any
   insets: any
   initialContext?: string
+  coachNombre?: string
 }) {
-  const { lang } = useTranslation()
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MSG])
+  const { lang, t } = useTranslation()
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
 
-  // Historial para enviar a la API (excluye el mensaje inicial del coach)
   function buildHistorial(msgs: Message[]) {
     return msgs
       .filter(m => m.id !== 'coach-0')
@@ -273,13 +223,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
       setMessages(prev => [...prev, {
         id: `c-err-${Date.now()}`,
         role: 'coach',
-        text: lang === 'fr'
-          ? 'Désolé, je ne peux pas répondre maintenant. Réessayez.'
-          : lang === 'en'
-          ? 'Sorry, I can\'t respond right now. Try again.'
-          : lang === 'pt'
-          ? 'Desculpe, não consigo responder agora. Tente novamente.'
-          : 'Lo siento, no puedo responder ahora. Inténtalo de nuevo.',
+        text: t('chat_error_msg'),
         ts: new Date(),
       }])
     } finally {
@@ -290,13 +234,14 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
   useEffect(() => {
     if (!visible) return
     setInputText('')
+    const msg0: Message = { id: 'coach-0', role: 'coach', text: t('chat_initial_msg'), ts: new Date() }
     if (initialContext) {
       const userMsg: Message = { id: 'u-ctx-0', role: 'user', text: initialContext, ts: new Date() }
-      const base = [INITIAL_MSG, userMsg]
+      const base = [msg0, userMsg]
       setMessages(base)
       sendToAPI(initialContext, base)
     } else {
-      setMessages([INITIAL_MSG])
+      setMessages([msg0])
       setIsTyping(false)
     }
   }, [visible, initialContext])
@@ -309,11 +254,9 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
     const text = inputText.trim()
     if (!text || isTyping) return
     const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text, ts: new Date() }
-    setMessages(prev => {
-      const next = [...prev, userMsg]
-      sendToAPI(text, next)
-      return next
-    })
+    const next = [...messages, userMsg]
+    setMessages(next)
+    sendToAPI(text, next)
     setInputText('')
   }
 
@@ -331,8 +274,10 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
               <Text style={chatStyles.coachAvatarLgTxt}>C</Text>
             </View>
             <View>
-              <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>Coach</Text>
-              <Text style={[chatStyles.chatSubtitle, { color: colors.green }]}>● En línea</Text>
+              <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>
+                {coachNombre || 'Coach'}
+              </Text>
+              <Text style={[chatStyles.chatSubtitle, { color: colors.green }]}>{t('chat_online')}</Text>
             </View>
           </View>
           <View style={{ width: 36 }} />
@@ -375,7 +320,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
                 backgroundColor: colors.cardBg,
                 borderColor: colors.borderBright,
               }]}
-              placeholder="Escribe algo..."
+              placeholder={t('chat_placeholder')}
               placeholderTextColor={colors.inkFaint}
               value={inputText}
               onChangeText={setInputText}
@@ -405,7 +350,8 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
 
 // ─── Insight del día ──────────────────────────────────────────────────────────
 
-function InsightCard({ colors }: { colors: any }) {
+function InsightCard({ colors, texto, loading }: { colors: any; texto?: string; loading: boolean }) {
+  const { t } = useTranslation()
   return (
     <View style={[
       insightStyles.wrap,
@@ -417,11 +363,14 @@ function InsightCard({ colors }: { colors: any }) {
     ]}>
       <View style={insightStyles.labelRow}>
         <LightbulbIcon color={colors.cyan} size={14} />
-        <Text style={[insightStyles.label, { color: colors.cyan }]}>INSIGHT DEL DÍA</Text>
+        <Text style={[insightStyles.label, { color: colors.cyan }]}>{t('chat_insight_label')}</Text>
       </View>
-      <Text style={[insightStyles.text, { color: colors.inkSecondary }]}>
-        {INSIGHT_DIA.texto}
-      </Text>
+      {loading
+        ? <ActivityIndicator size="small" color={colors.inkMuted} />
+        : <Text style={[insightStyles.text, { color: colors.inkSecondary }]}>
+            {texto || t('chat_no_insight')}
+          </Text>
+      }
     </View>
   )
 }
@@ -429,11 +378,12 @@ function InsightCard({ colors }: { colors: any }) {
 // ─── Rec Card ─────────────────────────────────────────────────────────────────
 
 function RecCard({ rec, anim, colors, onAskCoach }: {
-  rec: typeof RECOMENDACIONES[0]
+  rec: RecData
   anim: Animated.Value
   colors: any
   onAskCoach: () => void
 }) {
+  const { t } = useTranslation()
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [32, 0] })
   return (
     <Animated.View style={[
@@ -472,7 +422,7 @@ function RecCard({ rec, anim, colors, onAskCoach }: {
         >
           <View style={styles.cardAskBtnLeft}>
             <MiniChatIcon color={rec.color} size={12} />
-            <Text style={[styles.cardAskBtnTxt, { color: rec.color }]}>Preguntarle al Coach</Text>
+            <Text style={[styles.cardAskBtnTxt, { color: rec.color }]}>{t('chat_ask_coach')}</Text>
           </View>
           <Text style={[styles.cardAskBtnArrow, { color: rec.color }]}>›</Text>
         </TouchableOpacity>
@@ -481,30 +431,60 @@ function RecCard({ rec, anim, colors, onAskCoach }: {
   )
 }
 
+// ─── Chips por idioma ─────────────────────────────────────────────────────────
+
+const CHIPS_BY_LANG: Record<string, string[]> = {
+  es: ['Cómo calentar antes de fuerza', 'Carga de carbohidratos', 'Mejores suplementos para mi objetivo', 'Cómo progresar en sentadilla', 'Qué hacer si no duermo bien', 'Semana de descarga'],
+  en: ['How to warm up for strength', 'Carb loading', 'Best supplements for my goal', 'How to progress in squats', 'What to do when I sleep poorly', 'Deload week'],
+  pt: ['Como aquecer antes da força', 'Carga de carboidratos', 'Melhores suplementos para meu objetivo', 'Como progredir no agachamento', 'O que fazer se não durmir bem', 'Semana de descarga'],
+  fr: ['Comment s\'échauffer avant la force', 'Charge en glucides', 'Meilleurs compléments pour mon objectif', 'Comment progresser au squat', 'Que faire si je dors mal', 'Semaine de décharge'],
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CoachScreen() {
   const { colors } = useTheme()
+  const { lang, t } = useTranslation()
   const insets = useSafeAreaInsets()
 
   const [activeIdx, setActiveIdx] = useState(0)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatContext, setChatContext] = useState<string | undefined>(undefined)
 
+  const [recs, setRecs] = useState<RecData[]>([])
+  const [detecciones, setDetecciones] = useState<DetecData[]>([])
+  const [insightTexto, setInsightTexto] = useState<string | undefined>(undefined)
+  const [loadingRecs, setLoadingRecs] = useState(true)
+  const [coachNombre, setCoachNombre] = useState<string | undefined>(undefined)
+
   const headerAnim = useRef(new Animated.Value(0)).current
-  const cardAnims = useRef(RECOMENDACIONES.map(() => new Animated.Value(0))).current
+  const cardAnims = useRef(Array.from({ length: MAX_RECS }, () => new Animated.Value(0))).current
 
   useEffect(() => {
-    Animated.timing(headerAnim, { toValue: 1, duration: 520, useNativeDriver: true }).start(() => {
-      Animated.stagger(90, cardAnims.map(a =>
-        Animated.spring(a, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 })
-      )).start()
-    })
+    Animated.timing(headerAnim, { toValue: 1, duration: 520, useNativeDriver: true }).start()
   }, [])
+
+  useEffect(() => {
+    setLoadingRecs(true)
+    apiGet(`/api/chat/recomendaciones/?lang=${lang}`)
+      .then((data: RecsResponse) => {
+        setRecs(data.recomendaciones || [])
+        setDetecciones(data.detecciones || [])
+        setInsightTexto(data.insight?.texto)
+        setCoachNombre(data.coach?.nombre || undefined)
+        // Stagger card animations
+        const anims = data.recomendaciones?.slice(0, MAX_RECS).map((_, i) => cardAnims[i]) || []
+        Animated.stagger(90, anims.map(a =>
+          Animated.spring(a, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 })
+        )).start()
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRecs(false))
+  }, [lang])
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
-    setActiveIdx(Math.max(0, Math.min(idx, RECOMENDACIONES.length - 1)))
+    setActiveIdx(Math.max(0, Math.min(idx, recs.length - 1)))
   }
 
   function openChat(ctx?: string) {
@@ -517,10 +497,10 @@ export default function CoachScreen() {
     setChatContext(undefined)
   }
 
-  const activeRec = RECOMENDACIONES[activeIdx]
+  const activeRec = recs[activeIdx]
   const chatBtnSubtext = activeRec
-    ? `Sobre: "${activeRec.titulo}"`
-    : 'Haz tu pregunta, conozco tu historial'
+    ? `${t('chat_start_sub_rec')} "${activeRec.titulo}"`
+    : t('chat_start_sub_default')
 
   const headerOpacity = headerAnim
   const headerSlide = headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] })
@@ -540,66 +520,72 @@ export default function CoachScreen() {
           { opacity: headerOpacity, transform: [{ translateY: headerSlide }] },
         ]}>
           <Text style={[styles.headline, { color: colors.inkPrimary }]}>
-            El coach que{'\n'}
-            <Text style={[styles.headlineAccent, { color: colors.accent }]}>te conoce,</Text>
-            {' '}sabe lo que necesitas y hacia donde vas.
+            {t('chat_headline_1')}{'\n'}
+            <Text style={[styles.headlineAccent, { color: colors.accent }]}>{t('chat_headline_accent')}</Text>
+            {' '}{t('chat_headline_2')}
           </Text>
         </Animated.View>
 
         {/* ── INSIGHT DEL DÍA ── */}
         <Animated.View style={{ opacity: headerOpacity, marginBottom: 28 }}>
-          <InsightCard colors={colors} />
+          <InsightCard colors={colors} texto={insightTexto} loading={loadingRecs} />
         </Animated.View>
 
         {/* ── RECOMENDACIONES ── */}
         <View style={styles.sectionWrap}>
           <View style={styles.sectionLabelRow}>
-            <Text style={[styles.sectionLabel, { color: colors.inkMuted }]}>RECOMENDACIONES</Text>
-            <View style={[styles.countBadge, { borderColor: colors.borderBright, backgroundColor: colors.cardBg }]}>
-              <Text style={[styles.countTxt, { color: colors.inkMuted }]}>{RECOMENDACIONES.length}</Text>
-            </View>
-          </View>
-
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleScroll}
-            scrollEventThrottle={16}
-            decelerationRate="fast"
-            style={styles.slider}
-          >
-            {RECOMENDACIONES.map((rec, idx) => (
-              <View key={rec.id} style={styles.cardPage}>
-                <RecCard
-                  rec={rec}
-                  anim={cardAnims[idx]}
-                  colors={colors}
-                  onAskCoach={() => openChat(`Quiero saber más sobre esto: "${rec.titulo}"`)}
-                />
+            <Text style={[styles.sectionLabel, { color: colors.inkMuted }]}>{t('chat_recs_label')}</Text>
+            {!loadingRecs && (
+              <View style={[styles.countBadge, { borderColor: colors.borderBright, backgroundColor: colors.cardBg }]}>
+                <Text style={[styles.countTxt, { color: colors.inkMuted }]}>{recs.length}</Text>
               </View>
-            ))}
-          </ScrollView>
-
-          <View style={styles.dotsRow}>
-            {RECOMENDACIONES.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === activeIdx
-                    ? { width: 22, backgroundColor: colors.accent }
-                    : { width: 6, backgroundColor: colors.inkFaint },
-                ]}
-              />
-            ))}
+            )}
           </View>
+
+          {loadingRecs
+            ? <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginVertical: 32 }} />
+            : <>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={handleScroll}
+                  scrollEventThrottle={16}
+                  decelerationRate="fast"
+                  style={styles.slider}
+                >
+                  {recs.map((rec, idx) => (
+                    <View key={rec.id} style={styles.cardPage}>
+                      <RecCard
+                        rec={rec}
+                        anim={cardAnims[idx] ?? new Animated.Value(1)}
+                        colors={colors}
+                        onAskCoach={() => openChat(`${t('chat_start_sub_rec')} "${rec.titulo}"`)}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.dotsRow}>
+                  {recs.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === activeIdx
+                          ? { width: 22, backgroundColor: colors.accent }
+                          : { width: 6, backgroundColor: colors.inkFaint },
+                      ]}
+                    />
+                  ))}
+                </View>
+              </>
+          }
         </View>
 
         {/* ── EXPLORA CON TU COACH ── */}
         <View style={styles.sectionWrap}>
           <Text style={[styles.sectionLabel, { color: colors.inkMuted, marginBottom: 14 }]}>
-            EXPLORA CON TU COACH
+            {t('chat_explore_label')}
           </Text>
           <ScrollView
             horizontal
@@ -607,7 +593,7 @@ export default function CoachScreen() {
             style={styles.chipsScroll}
             contentContainerStyle={styles.chipsContent}
           >
-            {CHIPS_TEMAS.map((tema, i) => (
+            {CHIPS_BY_LANG[lang]?.map((tema, i) => (
               <TouchableOpacity
                 key={i}
                 onPress={() => openChat(tema)}
@@ -621,21 +607,23 @@ export default function CoachScreen() {
         </View>
 
         {/* ── ESTA SEMANA TU COACH DETECTÓ ── */}
-        <View style={[styles.sectionWrap, styles.detecWrap, { borderColor: colors.borderDefault, backgroundColor: colors.cardBg }]}>
-          <Text style={[styles.sectionLabel, { color: colors.inkMuted, marginBottom: 14 }]}>
-            ESTA SEMANA TU COACH DETECTÓ
-          </Text>
-          {DETECCIONES.map((d, i) => (
-            <View key={i} style={[styles.detecRow, i < DETECCIONES.length - 1 && { marginBottom: 12 }]}>
-              <View style={styles.detecIconWrap}>
-                {d.tipo === 'info'    && <InfoIcon    color={d.color} size={15} />}
-                {d.tipo === 'warning' && <WarningIcon color={d.color} size={15} />}
-                {d.tipo === 'alerta'  && <AlertaIcon  color={d.color} size={15} />}
+        {detecciones.length > 0 && (
+          <View style={[styles.sectionWrap, styles.detecWrap, { borderColor: colors.borderDefault, backgroundColor: colors.cardBg }]}>
+            <Text style={[styles.sectionLabel, { color: colors.inkMuted, marginBottom: 14 }]}>
+              {t('chat_detected_label')}
+            </Text>
+            {detecciones.map((d, i) => (
+              <View key={i} style={[styles.detecRow, i < detecciones.length - 1 && { marginBottom: 12 }]}>
+                <View style={styles.detecIconWrap}>
+                  {d.tipo === 'info'    && <InfoIcon    color={d.color} size={15} />}
+                  {d.tipo === 'warning' && <WarningIcon color={d.color} size={15} />}
+                  {d.tipo === 'alerta'  && <AlertaIcon  color={d.color} size={15} />}
+                </View>
+                <Text style={[styles.detecTxt, { color: colors.inkSecondary }]}>{d.texto}</Text>
               </View>
-              <Text style={[styles.detecTxt, { color: colors.inkSecondary }]}>{d.texto}</Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* ── BOTÓN INICIAR CHAT ── */}
         <Animated.View style={{ opacity: headerAnim }}>
@@ -651,7 +639,7 @@ export default function CoachScreen() {
               />
             </Svg>
             <View style={{ flex: 1 }}>
-              <Text style={styles.chatBtnTxt}>Iniciar Chat con tu Coach</Text>
+              <Text style={styles.chatBtnTxt}>{t('chat_start_btn')}</Text>
               <Text style={styles.chatBtnSubtxt} numberOfLines={1}>{chatBtnSubtext}</Text>
             </View>
             <Text style={styles.chatBtnArrow}>›</Text>
@@ -667,6 +655,7 @@ export default function CoachScreen() {
         colors={colors}
         insets={insets}
         initialContext={chatContext}
+        coachNombre={coachNombre}
       />
     </View>
   )

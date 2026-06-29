@@ -105,6 +105,7 @@ urlpatterns = [
 
     # AI Chat Coach
     path('api/chat/', chat_views.chat_coach),
+    path('api/chat/recomendaciones/', chat_views.chat_recomendaciones),
 
     # AI extras
     path('api/ejercicio-demo/', ai_views.ejercicio_demo),
