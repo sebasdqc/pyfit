@@ -301,5 +301,7 @@ class RunSessionListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'started_at', 'ended_at', 'status', 'session_type', 'is_trail',
             'total_distance_m', 'total_duration_s', 'avg_pace_s_per_km',
-            'elevation_gain_m', 'created_at'
+            'elevation_gain_m', 'calories_burned',
+            'rpe_real', 'rating', 'cumplimiento',
+            'created_at',
         ]

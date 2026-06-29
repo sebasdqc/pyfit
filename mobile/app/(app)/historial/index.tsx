@@ -33,7 +33,7 @@ interface Ejercicio {
   descanso_segundos: number
   rpe_sugerido: number
   notas?: string
-  peso?: number | null  // HIS-2: peso real registrado (series_log), null si no se registró
+  peso?: number | null
 }
 
 interface Fase {
@@ -72,6 +72,29 @@ interface Session {
   feedback?: Feedback
   checkin?: Checkin | null
 }
+
+interface RunSessionNorm {
+  id: number
+  fecha: string               // derivado de started_at (YYYY-MM-DD)
+  started_at: string
+  ended_at?: string | null
+  status: string
+  session_type: string        // 'free' | 'planned'
+  is_trail: boolean
+  total_distance_m: number
+  total_duration_s: number
+  avg_pace_s_per_km: number
+  elevation_gain_m: number
+  calories_burned?: number | null
+  rpe_real?: number | null
+  rating?: number | null
+  cumplimiento?: number | null
+  created_at: string
+}
+
+type GymItem = Session   & { _tipo: 'gym' }
+type RunItem = RunSessionNorm & { _tipo: 'run' }
+type HistorialItem = GymItem | RunItem
 
 type FilterTipo = 'Todo' | 'Musculación' | 'Running' | 'Libre'
 
@@ -124,6 +147,27 @@ function getEjerciciosSintesis(ia?: RespuestaIA, max = 3): string {
   return shown.join(' · ') + (rest > 0 ? ` +${rest}` : '')
 }
 
+function formatPace(paceS: number): string {
+  if (!paceS || paceS <= 0) return '--'
+  const m = Math.floor(paceS / 60)
+  const s = paceS % 60
+  return `${m}:${String(s).padStart(2, '0')}/km`
+}
+
+function formatDuration(totalS: number): string {
+  if (!totalS || totalS <= 0) return '--'
+  const h = Math.floor(totalS / 3600)
+  const m = Math.floor((totalS % 3600) / 60)
+  const s = totalS % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function formatDistanceKm(m: number): string {
+  if (!m || m <= 0) return '0 km'
+  return (m / 1000).toFixed(2) + ' km'
+}
+
 // ─── Type & state visual config ──────────────────────────────────────────────
 
 const TIPO_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
@@ -171,9 +215,9 @@ function formatWeekLabel(ws: Date, monthNames: string[]): string {
   return `Semana del ${sd} de ${sm} al ${ed} de ${em}`
 }
 
-function groupByWeek(sessions: Session[], monthNames: string[]): { key: string; label: string; sessions: Session[] }[] {
-  const map = new Map<string, { ws: Date; sessions: Session[] }>()
-  for (const s of sessions) {
+function groupByWeek(items: HistorialItem[], monthNames: string[]): { key: string; label: string; sessions: HistorialItem[] }[] {
+  const map = new Map<string, { ws: Date; sessions: HistorialItem[] }>()
+  for (const s of items) {
     const ws = getWeekStartDate(s.fecha)
     const key = `${ws.getUTCFullYear()}-${String(ws.getUTCMonth() + 1).padStart(2, '0')}-${String(ws.getUTCDate()).padStart(2, '0')}`
     if (!map.has(key)) map.set(key, { ws, sessions: [] })
@@ -195,14 +239,19 @@ function inferTipoSesion(ia?: RespuestaIA): FilterTipo {
   return 'Libre'
 }
 
-function matchesTipo(session: Session, tipo: FilterTipo): boolean {
-  if (tipo === 'Todo') return true
-  return inferTipoSesion(session.respuesta_ia) === tipo
+function inferTipoItem(item: HistorialItem): FilterTipo {
+  if (item._tipo === 'run') return 'Running'
+  return inferTipoSesion(item.respuesta_ia)
 }
 
-function countActiveWeeks(sessions: Session[]): number {
+function matchesTipo(item: HistorialItem, tipo: FilterTipo): boolean {
+  if (tipo === 'Todo') return true
+  return inferTipoItem(item) === tipo
+}
+
+function countActiveWeeks(items: HistorialItem[]): number {
   const weeks = new Set<string>()
-  for (const s of sessions) {
+  for (const s of items) {
     const d = new Date(Date.UTC(
       parseInt(s.fecha.slice(0, 4)),
       parseInt(s.fecha.slice(5, 7)) - 1,
@@ -217,11 +266,11 @@ function countActiveWeeks(sessions: Session[]): number {
   return weeks.size
 }
 
-function getMostFrequent(sessions: Session[]): { tipo: string; count: number } | null {
-  if (!sessions.length) return null
+function getMostFrequent(items: HistorialItem[]): { tipo: string; count: number } | null {
+  if (!items.length) return null
   const map = new Map<string, { count: number; lastFecha: string }>()
-  for (const s of sessions) {
-    const tipo = inferTipoSesion(s.respuesta_ia)
+  for (const s of items) {
+    const tipo = inferTipoItem(s)
     const entry = map.get(tipo) ?? { count: 0, lastFecha: '' }
     entry.count++
     if (s.fecha > entry.lastFecha) entry.lastFecha = s.fecha
@@ -755,6 +804,156 @@ function SessionCard({
   )
 }
 
+// ─── Run Card ─────────────────────────────────────────────────────────────────
+
+function RunCard({
+  run,
+  onPress,
+  styles,
+  colors,
+}: {
+  run: RunItem
+  onPress: () => void
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+}) {
+  const { ta } = useTranslation()
+  const monthShort = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const icon = run.is_trail ? '🏔️' : '🏃'
+  const rpe = run.rpe_real
+  return (
+    <TouchableOpacity style={styles.sessionCard2} onPress={onPress} activeOpacity={0.78}>
+      <View style={styles.cardRow}>
+        <View style={[styles.typeIconBox, { backgroundColor: 'rgba(108,229,255,0.12)' }]}>
+          <Text style={styles.typeIconText}>{icon}</Text>
+        </View>
+        <View style={styles.cardCenter}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {formatDistanceKm(run.total_distance_m)}
+            {run.is_trail ? '  🏔 Trail' : ''}
+          </Text>
+          <View style={styles.cardMeta}>
+            <Text style={styles.cardMetaDate}>{formatDate(run.fecha, monthShort, weekdayShort)}</Text>
+            <View style={styles.metaDot} />
+            <Text style={styles.cardMetaDur}>⏱ {formatDuration(run.total_duration_s)}</Text>
+            {run.avg_pace_s_per_km > 0 && (
+              <>
+                <View style={styles.metaDot} />
+                <Text style={styles.cardMetaDur}>🚀 {formatPace(run.avg_pace_s_per_km)}</Text>
+              </>
+            )}
+            {run.elevation_gain_m > 0 && (
+              <>
+                <View style={styles.metaDot} />
+                <Text style={styles.cardMetaDur}>↑{Math.round(run.elevation_gain_m)}m</Text>
+              </>
+            )}
+          </View>
+        </View>
+        <View style={styles.cardRight}>
+          {rpe != null ? (
+            <View style={[styles.rpeBadge, { borderColor: `${getRpeColor(rpe)}55` }]}>
+              <Text style={[styles.rpeBadgeVal, { color: getRpeColor(rpe) }]}>{rpe}</Text>
+              <Text style={styles.rpeBadgeLabel}>RPE</Text>
+            </View>
+          ) : <View style={styles.rpeBadgeSpacer} />}
+          <Text style={[styles.chevron, { color: colors.inkFaint }]}>›</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+// ─── Run Detail Modal ─────────────────────────────────────────────────────────
+
+function RunModal({ run, visible, onClose }: { run: RunItem | null; visible: boolean; onClose: () => void }) {
+  const { colors } = useTheme()
+  const { ta } = useTranslation()
+  const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
+  const monthShort = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+  const [detail, setDetail] = useState<any>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    if (!visible || !run) { setDetail(null); return }
+    setDetailLoading(true)
+    apiGet(`/api/runs/${run.id}/`)
+      .then(d => setDetail(d))
+      .catch(() => {})
+      .finally(() => setDetailLoading(false))
+  }, [visible, run])
+
+  if (!run) return null
+
+  const d = detail ?? run
+  const photos: any[] = detail?.photos ?? []
+
+  const statItems = [
+    { label: 'DISTANCIA',   value: formatDistanceKm(run.total_distance_m) },
+    { label: 'DURACIÓN',    value: formatDuration(run.total_duration_s) },
+    { label: 'PACE MEDIO',  value: formatPace(run.avg_pace_s_per_km) },
+    ...(run.elevation_gain_m > 0 ? [{ label: 'DESNIVEL', value: `↑${Math.round(run.elevation_gain_m)}m` }] : []),
+    ...(d.calories_burned ? [{ label: 'CALORÍAS', value: `${Math.round(d.calories_burned)} kcal` }] : []),
+    ...(d.avg_heart_rate   ? [{ label: 'FC MEDIA',  value: `${d.avg_heart_rate} bpm` }] : []),
+  ]
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={modalStyles.overlay}>
+        <View style={modalStyles.sheet}>
+          <View style={modalStyles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={modalStyles.titulo}>
+                {run.is_trail ? '🏔️ Trail Run' : '🏃 Carrera'}
+                {run.session_type === 'planned' ? '  · Planificada' : ''}
+              </Text>
+              <Text style={modalStyles.fecha}>{formatDate(run.fecha, monthShort, weekdayShort)}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn} activeOpacity={0.7}>
+              <Text style={modalStyles.closeX}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+            {detailLoading && <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />}
+
+            {/* Métricas */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
+              {statItems.map(({ label, value }) => (
+                <View key={label} style={[modalStyles.statChip, { flex: 1, minWidth: 100 }]}>
+                  <Text style={modalStyles.statValue}>{value}</Text>
+                  <Text style={modalStyles.statLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Feedback */}
+            {(run.rpe_real != null || run.rating != null || run.cumplimiento != null) && (
+              <View style={[modalStyles.feedbackCard, { marginBottom: 16 }]}>
+                <Text style={modalStyles.feedbackTitle}>FEEDBACK POST-CARRERA</Text>
+                <View style={modalStyles.feedbackRow}>
+                  {run.rpe_real != null && <Text style={modalStyles.feedbackItem}>RPE real: {run.rpe_real}</Text>}
+                  {run.rating   != null && <Text style={modalStyles.feedbackItem}>Rating: {'⭐'.repeat(run.rating)}</Text>}
+                  {run.cumplimiento != null && <Text style={modalStyles.feedbackItem}>Completado: {run.cumplimiento}%</Text>}
+                </View>
+                {d.feedback_notas ? <Text style={modalStyles.feedbackNotas}>{d.feedback_notas}</Text> : null}
+              </View>
+            )}
+
+            {/* Fotos */}
+            {photos.length > 0 && (
+              <SessionPhotos kind="run" sessionId={run.id} initialPhotos={photos} editable={false} />
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 // Icono dentro de un círculo de vidrio + entrada con fade y leve slide-up, en vez
 // del glifo geométrico ◎ suelto (que en algunas fuentes se veía como un cuadro).
@@ -779,7 +978,7 @@ function EmptyState({ icon, title, subtitle }: { icon: string; title: string; su
 
 // ─── List View ────────────────────────────────────────────────────────────────
 
-type WeekGroup = { key: string; label: string; sessions: Session[] }
+type WeekGroup = { key: string; label: string; sessions: HistorialItem[] }
 
 function ListView({
   weeks,
@@ -787,12 +986,14 @@ function ListView({
   hasMore,
   isLoadingMore,
   onSelectSession,
+  onSelectRun,
 }: {
   weeks: WeekGroup[]
   hasFilters: boolean
   hasMore: boolean
   isLoadingMore: boolean
-  onSelectSession: (s: Session) => void
+  onSelectSession: (s: GymItem) => void
+  onSelectRun: (r: RunItem) => void
 }) {
   const { colors } = useTheme()
   const { t } = useTranslation()
@@ -819,16 +1020,26 @@ function ListView({
       {weeks.map(group => (
         <View key={group.key} style={styles.weekGroup}>
           <Text style={styles.weekLabel}>{group.label.toUpperCase()}</Text>
-          {group.sessions.map(session => (
-            <SessionCard
-              key={session.id}
-              session={session}
-              isExpanded={expandedId === session.id}
-              onToggle={() => handleToggle(session.id)}
-              styles={styles}
-              colors={colors}
-            />
-          ))}
+          {group.sessions.map(item => item._tipo === 'run'
+            ? (
+              <RunCard
+                key={`run-${item.id}`}
+                run={item}
+                onPress={() => onSelectRun(item)}
+                styles={styles}
+                colors={colors}
+              />
+            ) : (
+              <SessionCard
+                key={`gym-${item.id}`}
+                session={item}
+                isExpanded={expandedId === item.id}
+                onToggle={() => handleToggle(item.id)}
+                styles={styles}
+                colors={colors}
+              />
+            )
+          )}
         </View>
       ))}
 
@@ -925,7 +1136,7 @@ function DayModal({
 function SummaryBlock({
   sessions, styles, colors,
 }: {
-  sessions: Session[]
+  sessions: HistorialItem[]
   styles: ReturnType<typeof makeStyles>
   colors: Colors
 }) {
@@ -986,7 +1197,8 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const lastDeepLinkKey = useRef<string | null>(null)
 
   // ── Data ───────────────────────────────────────────────────────────────────
-  const [sessions,   setSessions]   = useState<Session[]>([])
+  const [gymSessions, setGymSessions] = useState<Session[]>([])
+  const [runSessions, setRunSessions] = useState<RunSessionNorm[]>([])
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
@@ -997,10 +1209,12 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const [tipoFilter,  setTipoFilter]  = useState<FilterTipo>('Todo')
 
   // ── Modals ─────────────────────────────────────────────────────────────────
-  const [selectedSession,    setSelectedSession]    = useState<Session | null>(null)
+  const [selectedSession,     setSelectedSession]     = useState<GymItem | null>(null)
   const [sessionModalVisible, setSessionModalVisible] = useState(false)
-  const [daySessions,        setDaySessions]        = useState<Session[]>([])
-  const [dayModalVisible,    setDayModalVisible]    = useState(false)
+  const [selectedRun,         setSelectedRun]         = useState<RunItem | null>(null)
+  const [runModalVisible,     setRunModalVisible]     = useState(false)
+  const [daySessions,         setDaySessions]         = useState<Session[]>([])
+  const [dayModalVisible,     setDayModalVisible]     = useState(false)
 
   // i18n month names for week label formatter
   const monthNamesI18n = [
@@ -1008,11 +1222,20 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
   ]
 
-  const fetchSessions = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     try {
       setError(null)
-      const data = await apiGet('/api/sessions/')
-      setSessions(Array.isArray(data) ? data : (data.results ?? []))
+      const [gymData, runData] = await Promise.all([
+        apiGet('/api/sessions/'),
+        apiGet('/api/runs/'),
+      ])
+      setGymSessions(Array.isArray(gymData) ? gymData : (gymData.results ?? []))
+      const rawRuns: any[] = Array.isArray(runData) ? runData : (runData.results ?? [])
+      setRunSessions(
+        rawRuns
+          .filter((r: any) => r.status === 'completed')
+          .map((r: any) => ({ ...r, fecha: r.started_at.slice(0, 10) }))
+      )
     } catch (e: any) {
       setError(e.message ?? 'Error al cargar el historial')
     } finally {
@@ -1022,31 +1245,37 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await fetchSessions()
+    await fetchAll()
     setRefreshing(false)
-  }, [fetchSessions])
+  }, [fetchAll])
 
-  useEffect(() => { fetchSessions() }, [fetchSessions])
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Merge gym + run into unified list
+  const allItems = useMemo((): HistorialItem[] => {
+    const gym: HistorialItem[] = gymSessions.map(s => ({ ...s, _tipo: 'gym' as const }))
+    const run: HistorialItem[] = runSessions.map(r => ({ ...r, _tipo: 'run' as const }))
+    return [...gym, ...run].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  }, [gymSessions, runSessions])
 
   // ── Auto-open modal when navigated from dashboard with a fecha param ───────
   useEffect(() => {
     if (!paramFecha || loading) return
-    // Con `ts` reaccionamos a cada navegación nueva; sin él, una sola vez por fecha.
     const key = paramTs ?? `once:${paramFecha}`
     if (lastDeepLinkKey.current === key) return
     lastDeepLinkKey.current = key
-    const ds = sessions.filter(s => s.fecha === paramFecha)
+    const ds = gymSessions.filter(s => s.fecha === paramFecha)
     if (ds.length === 1) {
-      setSelectedSession(ds[0])
+      setSelectedSession({ ...ds[0], _tipo: 'gym' })
       setSessionModalVisible(true)
     } else if (ds.length > 1) {
       setDaySessions(ds)
       setDayModalVisible(true)
     }
-  }, [paramFecha, paramTs, loading, sessions])
+  }, [paramFecha, paramTs, loading, gymSessions])
 
-  const filteredSessions = useMemo(() => {
-    let result = sessions
+  const filteredItems = useMemo(() => {
+    let result = allItems
 
     if (tipoFilter !== 'Todo') {
       result = result.filter(s => matchesTipo(s, tipoFilter))
@@ -1054,27 +1283,32 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(s => {
-        const titulo   = (s.respuesta_ia?.titulo          ?? '').toLowerCase()
-        const objetivo = (s.respuesta_ia?.objetivo_sesion ?? '').toLowerCase()
-        const tipo     = inferTipoSesion(s.respuesta_ia).toLowerCase()
-        const ejercs   = s.respuesta_ia?.fases?.flatMap(f => f.ejercicios.map(e => e.nombre.toLowerCase())) ?? []
+      result = result.filter(item => {
+        if (item._tipo === 'run') {
+          const tipo = 'running'
+          const trail = item.is_trail ? 'trail' : ''
+          return tipo.includes(q) || trail.includes(q)
+        }
+        const titulo   = (item.respuesta_ia?.titulo          ?? '').toLowerCase()
+        const objetivo = (item.respuesta_ia?.objetivo_sesion ?? '').toLowerCase()
+        const tipo     = inferTipoSesion(item.respuesta_ia).toLowerCase()
+        const ejercs   = item.respuesta_ia?.fases?.flatMap(f => f.ejercicios.map(e => e.nombre.toLowerCase())) ?? []
         return titulo.includes(q) || objetivo.includes(q) || tipo.includes(q) || ejercs.some(n => n.includes(q))
       })
     }
 
     return result
-  }, [sessions, searchQuery, tipoFilter])
+  }, [allItems, searchQuery, tipoFilter])
 
   const hasFilters = searchQuery.trim().length > 0 || tipoFilter !== 'Todo'
 
   // ── Pagination ─────────────────────────────────────────────────────────────
-  const allWeeks = useMemo(() => groupByWeek(filteredSessions, monthNamesI18n), [filteredSessions])
+  const allWeeks = useMemo(() => groupByWeek(filteredItems, monthNamesI18n), [filteredItems])
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
   const [isLoadingMore,    setIsLoadingMore]    = useState(false)
 
   // Reset visible range whenever filters change
-  useEffect(() => { setVisibleWeekCount(3) }, [filteredSessions])
+  useEffect(() => { setVisibleWeekCount(3) }, [filteredItems])
 
   const visibleWeeks = useMemo(() => allWeeks.slice(0, visibleWeekCount), [allWeeks, visibleWeekCount])
   const hasMore      = visibleWeekCount < allWeeks.length
@@ -1103,9 +1337,14 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
     setSearchOpen(v => !v)
   }
 
-  function openSession(s: Session) {
+  function openSession(s: GymItem) {
     setSelectedSession(s)
     setSessionModalVisible(true)
+  }
+
+  function openRun(r: RunItem) {
+    setSelectedRun(r)
+    setRunModalVisible(true)
   }
 
   return (
@@ -1134,7 +1373,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
         {!embedded && <Text style={styles.sectionLabel}>{t('historial_header')}</Text>}
         <View style={styles.headerRow}>
           <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
-            {loading ? '...' : `${sessions.length} ${t('historial_sessions_suffix')}.`}
+            {loading ? '...' : `${allItems.length} ${t('historial_sessions_suffix')}.`}
           </Text>
           <TouchableOpacity
             onPress={toggleSearch}
@@ -1188,8 +1427,8 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
         )}
 
         {/* ── Summary ── */}
-        {!loading && !error && sessions.length > 0 && (
-          <SummaryBlock sessions={sessions} styles={styles} colors={colors} />
+        {!loading && !error && allItems.length > 0 && (
+          <SummaryBlock sessions={allItems} styles={styles} colors={colors} />
         )}
 
         {/* ── Content (solo vista Lista) ── */}
@@ -1200,7 +1439,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={fetchSessions} style={styles.retryBtn} activeOpacity={0.8}>
+            <TouchableOpacity onPress={fetchAll} style={styles.retryBtn} activeOpacity={0.8}>
               <Text style={styles.retryText}>Reintentar</Text>
             </TouchableOpacity>
           </View>
@@ -1211,6 +1450,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
             hasMore={hasMore}
             isLoadingMore={isLoadingMore}
             onSelectSession={openSession}
+            onSelectRun={openRun}
           />
         )}
 
@@ -1222,11 +1462,16 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
         visible={sessionModalVisible}
         onClose={() => setSessionModalVisible(false)}
       />
+      <RunModal
+        run={selectedRun}
+        visible={runModalVisible}
+        onClose={() => setRunModalVisible(false)}
+      />
       <DayModal
         daySessions={daySessions}
         visible={dayModalVisible}
         onClose={() => setDayModalVisible(false)}
-        onSelectSession={openSession}
+        onSelectSession={(s) => openSession({ ...s, _tipo: 'gym' })}
       />
     </View>
   )
