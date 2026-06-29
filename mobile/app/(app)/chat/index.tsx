@@ -156,13 +156,13 @@ function TypingDots({ color }: { color: string }) {
 
 // ─── Bubble ───────────────────────────────────────────────────────────────────
 
-function Bubble({ msg, colors }: { msg: Message; colors: any }) {
+function Bubble({ msg, colors, coachInitial = 'C' }: { msg: Message; colors: any; coachInitial?: string }) {
   const isCoach = msg.role === 'coach'
   return (
     <View style={[chatStyles.bubbleRow, isCoach ? chatStyles.bubbleRowCoach : chatStyles.bubbleRowUser]}>
       {isCoach && (
         <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
-          <Text style={chatStyles.coachAvatarTxt}>C</Text>
+          <Text style={chatStyles.coachAvatarTxt}>{coachInitial}</Text>
         </View>
       )}
       <View style={[
@@ -198,6 +198,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
   const [isTyping, setIsTyping] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
+  const avatarInitial = (coachNombre || 'Coach')[0].toUpperCase()
 
   function buildHistorial(msgs: Message[]) {
     return msgs
@@ -271,7 +272,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
           </TouchableOpacity>
           <View style={chatStyles.chatHeaderCenter}>
             <View style={[chatStyles.coachAvatarLg, { backgroundColor: colors.accentDark, borderColor: colors.accent + '50' }]}>
-              <Text style={chatStyles.coachAvatarLgTxt}>C</Text>
+              <Text style={chatStyles.coachAvatarLgTxt}>{avatarInitial}</Text>
             </View>
             <View>
               <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>
@@ -295,11 +296,11 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {messages.map(msg => <Bubble key={msg.id} msg={msg} colors={colors} />)}
+            {messages.map(msg => <Bubble key={msg.id} msg={msg} colors={colors} coachInitial={avatarInitial} />)}
             {isTyping && (
               <View style={[chatStyles.bubbleRow, chatStyles.bubbleRowCoach]}>
                 <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
-                  <Text style={chatStyles.coachAvatarTxt}>C</Text>
+                  <Text style={chatStyles.coachAvatarTxt}>{avatarInitial}</Text>
                 </View>
                 <View style={[chatStyles.bubble, { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }]}>
                   <TypingDots color={colors.inkMuted} />
