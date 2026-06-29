@@ -170,6 +170,14 @@ interface ZyfitScoreData {
   valor: number | null
   descripcion: string | null
   has_data: boolean
+  // TODO: el backend debe exponer los factores en /api/stats/dashboard/
+  factores?: { consistencia: number; sueno: number; volumen: number }
+}
+
+interface CheckinHoy {
+  calidad_sueno: number | null
+  estado_animo: number | null
+  hrv: number | null
 }
 
 interface RachaContextoAlerta {
@@ -195,6 +203,7 @@ interface DashboardData {
   semana_detalle: SemanaDay[]
   zyfit_score?: ZyfitScoreData
   insight_entrenador?: InsightPayload | null
+  racha_actual?: number
 }
 
 interface InsightPayload {
@@ -499,6 +508,37 @@ function ZyfitScoreCard({
         </View>
       </View>
 
+      {/* ── Barras de factores — solo cuando hay datos ── */}
+      {hasData && (
+        <View style={styles.zsFactores}>
+          {([
+            { label: 'Consistencia', key: 'consistencia' as const },
+            { label: 'Sueño',        key: 'sueno'        as const },
+            { label: 'Volumen',      key: 'volumen'      as const },
+          ] as const).map(f => {
+            // TODO: conectar valores reales desde el backend cuando exponga factores individuales
+            const val = scoreData?.factores?.[f.key] ?? null
+            const barColor = val == null ? colors.borderBright
+              : val >= 70 ? colors.green
+              : val >= 40 ? colors.orange
+              : colors.red
+            return (
+              <View key={f.key} style={styles.zsFactorRow}>
+                <Text style={[styles.zsFactorLabel, { color: colors.inkMuted }]}>{f.label}</Text>
+                <View style={[styles.zsFactorBarBg, { backgroundColor: colors.borderDefault }]}>
+                  {val != null && (
+                    <View style={[styles.zsFactorBarFill, { width: `${val}%`, backgroundColor: barColor }]} />
+                  )}
+                </View>
+                <Text style={[styles.zsFactorPct, { color: val != null ? barColor : colors.inkFaint }]}>
+                  {val != null ? `${val}%` : '—'}
+                </Text>
+              </View>
+            )
+          })}
+        </View>
+      )}
+
       {/* ── Enlace explicación ── */}
       <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.zsHowBtn}>
         <Text style={styles.zsHowText}>¿Cómo se calcula el Score? →</Text>
@@ -760,12 +800,14 @@ function TuSemanaCard({
   semanaDetalle,
   sessions,
   runDates,
+  racha,
   colors,
   styles,
 }: {
   semanaDetalle: SemanaDay[]
   sessions: FullSession[]
   runDates: Set<string>
+  racha?: number
   colors: Colors
   styles: ReturnType<typeof makeStyles>
 }) {
@@ -934,7 +976,14 @@ function TuSemanaCard({
         />
 
         {/* Footer — actualiza solo cuando la página queda centrada */}
-        <View style={styles.semFooter}>
+        <View style={[styles.semFooter, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }]}>
+          {/* Streak badge — solo semana actual con racha > 0 */}
+          {currentOffset === 0 && !!racha && racha > 0 && (
+            <View style={styles.streakBadge}>
+              <Text style={{ fontSize: 11 }}>🔥</Text>
+              <Text style={[styles.streakCount, { color: colors.cyan }]}>{racha}</Text>
+            </View>
+          )}
           <Text style={styles.semFooterText}>
             {currentOffset !== 0 ? (
               <>
@@ -987,6 +1036,68 @@ function TuSemanaCard({
     </View>
   )
 }
+
+// ─── Readiness Bar ───────────────────────────────────────────────────────────
+
+function getReadinessLabel(sueno: number | null, animo: number | null, hrv: number | null): { label: string; color: string } {
+  let score = 0; let count = 0
+  if (sueno != null)  { score += sueno >= 7 ? 2 : sueno >= 5 ? 1 : 0; count++ }
+  if (animo != null)  { score += animo >= 4 ? 2 : animo >= 3 ? 1 : 0; count++ }
+  if (hrv   != null)  { score += hrv   >= 60 ? 2 : hrv >= 45 ? 1 : 0; count++ }
+  if (count === 0) return { label: 'Sin datos', color: '#6b7280' }
+  const ratio = score / (count * 2)
+  if (ratio >= 0.7) return { label: 'Cuerpo listo', color: '#32c896' }
+  if (ratio >= 0.4) return { label: 'Cuerpo precavido', color: '#ffaa32' }
+  return { label: 'Cuerpo descansando', color: '#ff6b6b' }
+}
+
+function ReadinessBar({ checkin, colors }: { checkin: CheckinHoy; colors: Colors }) {
+  const { label, color } = getReadinessLabel(checkin.calidad_sueno, checkin.estado_animo, checkin.hrv)
+  const ANIMO_EMOJIS = ['', '😩', '😔', '😐', '😊', '🔥']
+  return (
+    <View style={[readinessStyles.wrap, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}>
+      <View style={[readinessStyles.dot, { backgroundColor: color }]} />
+      <Text style={[readinessStyles.label, { color }]}>{label}</Text>
+      <View style={[readinessStyles.sep, { backgroundColor: colors.borderBright }]} />
+      <View style={readinessStyles.dataRow}>
+        {checkin.calidad_sueno != null && (
+          <View style={readinessStyles.dataItem}>
+            <Text style={readinessStyles.dataIcon}>🌙</Text>
+            <Text style={[readinessStyles.dataVal, { color: colors.inkSecondary }]}>{checkin.calidad_sueno.toFixed(1)}h</Text>
+          </View>
+        )}
+        {checkin.estado_animo != null && (
+          <View style={readinessStyles.dataItem}>
+            <Text style={readinessStyles.dataIcon}>{ANIMO_EMOJIS[checkin.estado_animo] ?? '😐'}</Text>
+            <Text style={[readinessStyles.dataVal, { color: colors.inkSecondary }]}>{checkin.estado_animo}/5</Text>
+          </View>
+        )}
+        {checkin.hrv != null && (
+          <View style={readinessStyles.dataItem}>
+            <Text style={readinessStyles.dataIcon}>💓</Text>
+            <Text style={[readinessStyles.dataVal, { color: colors.inkSecondary }]}>{checkin.hrv}ms</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  )
+}
+
+const readinessStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 10,
+    marginBottom: 12, gap: 8,
+  },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  label: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase' },
+  sep: { width: 1, height: 14 },
+  dataRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'flex-end' },
+  dataItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dataIcon: { fontSize: 12, lineHeight: 16 },
+  dataVal: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.3 },
+})
 
 // ─── CTA Card ─────────────────────────────────────────────────────────────────
 
@@ -1147,6 +1258,104 @@ function CTACard({
   )
 }
 
+// ─── Helpers — fecha relativa ─────────────────────────────────────────────────
+
+function relativeFecha(iso: string): string {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const d = new Date(iso + 'T00:00:00')
+  const diff = Math.floor((today.getTime() - d.getTime()) / 86400000)
+  if (diff === 0) return 'Hoy'
+  if (diff === 1) return 'Ayer'
+  if (diff < 7)  return `Hace ${diff} días`
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`
+}
+
+// ─── Última Sesión Card ───────────────────────────────────────────────────────
+
+function UltimaSesionCard({ session, colors }: { session: FullSession; colors: Colors }) {
+  const titulo       = session.respuesta_ia?.titulo ?? 'Sesión'
+  const duracion     = session.respuesta_ia?.duracion_total ?? session.duracion_planificada ?? 0
+  const cumplimiento = session.feedback?.cumplimiento ?? null
+  const rpe          = session.feedback?.rpe_real ?? null
+  const icono        = getDisciplineIcon(titulo)
+  const fecha        = relativeFecha(session.fecha)
+  const cumpColor    = cumplimiento == null ? colors.inkSecondary
+    : cumplimiento >= 90 ? colors.green
+    : cumplimiento >= 70 ? colors.orange
+    : colors.red
+
+  return (
+    <TouchableOpacity
+      onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
+      activeOpacity={0.8}
+      style={[ultimaStyles.wrap, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}
+    >
+      <Text style={[ultimaStyles.sectionLabel, { color: colors.inkMuted }]}>ÚLTIMA SESIÓN</Text>
+      <View style={ultimaStyles.row}>
+        <View style={ultimaStyles.iconBox}>
+          <Text style={{ fontSize: 20 }}>{icono}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[ultimaStyles.titulo, { color: colors.inkPrimary }]} numberOfLines={1}>{titulo}</Text>
+          <Text style={[ultimaStyles.fecha, { color: colors.inkMuted }]}>{fecha}</Text>
+        </View>
+        <Text style={[ultimaStyles.chevron, { color: colors.inkFaint }]}>›</Text>
+      </View>
+
+      {/* Métricas — solo las que tienen datos */}
+      {(duracion > 0 || cumplimiento != null || rpe != null) && (
+        <View style={[ultimaStyles.metricsRow, { borderTopColor: colors.borderDefault }]}>
+          {duracion > 0 && (
+            <View style={ultimaStyles.metricItem}>
+              <Text style={[ultimaStyles.metricVal, { color: colors.inkSecondary }]}>{duracion} min</Text>
+              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>DURACIÓN</Text>
+            </View>
+          )}
+          {cumplimiento != null && (
+            <View style={ultimaStyles.metricItem}>
+              <Text style={[ultimaStyles.metricVal, { color: cumpColor }]}>{cumplimiento}%</Text>
+              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>CUMPLIMIENTO</Text>
+            </View>
+          )}
+          {rpe != null && (
+            <View style={ultimaStyles.metricItem}>
+              <Text style={[ultimaStyles.metricVal, { color: colors.inkSecondary }]}>RPE {rpe}</Text>
+              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>ESFUERZO</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </TouchableOpacity>
+  )
+}
+
+const ultimaStyles = StyleSheet.create({
+  wrap: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 16 },
+  sectionLabel: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 8,
+    letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: 'rgba(79,140,255,0.10)',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  titulo: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, letterSpacing: -0.3, lineHeight: 19 },
+  fecha:  { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.3, marginTop: 1 },
+  chevron: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, flexShrink: 0 },
+  metricsRow: {
+    flexDirection: 'row', marginTop: 12, paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  metricItem: { flex: 1, alignItems: 'center' },
+  metricVal:  { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, letterSpacing: -0.3, lineHeight: 20 },
+  metricLabel: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 7,
+    letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 2,
+  },
+})
+
 // ─── Coach Message Card (Zone 5) ─────────────────────────────────────────────
 
 function InsightCard({
@@ -1160,8 +1369,8 @@ function InsightCard({
 }) {
   // Siempre visible — en modo empty muestra el punto de partida
   const modo      = payload?.modo ?? 'empty'
-  const mensaje   = payload?.mensaje ?? 'Realiza tu primer entrenamiento para obtener más datos.'
-  const fragmento = payload?.fragmento ?? 'primer entrenamiento'
+  const mensaje   = payload?.mensaje ?? 'Tu entrenador está analizando tu semana.'
+  const fragmento = payload?.fragmento ?? ''
 
   // empty usa ícono de rayo (inicio), resto usa sparkles
   const Icon = modo === 'empty'
@@ -1184,6 +1393,15 @@ function InsightCard({
       <Text style={styles.z5Text}>
         {renderMensajeConFragmento(mensaje, fragmento, styles.z5Text, styles.z5TextHighlight)}
       </Text>
+
+      {/* Link a la pestaña Coach */}
+      <TouchableOpacity
+        onPress={() => router.push('/(app)/chat' as any)}
+        activeOpacity={0.75}
+        style={styles.z5CoachLink}
+      >
+        <Text style={styles.z5CoachLinkTxt}>Ver recomendaciones →</Text>
+      </TouchableOpacity>
 
       {/* ── Enlace explicación ── */}
       <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.z5HowBtn}>
@@ -1236,6 +1454,7 @@ export default function DashboardScreen() {
   const [sessionsError, setSessionsError] = useState(false)
   const [runDates, setRunDates] = useState<Set<string>>(new Set())
   const [unreadNotifs, setUnreadNotifs] = useState(0)
+  const [checkinHoy, setCheckinHoy] = useState<CheckinHoy | null>(null)
 
   const fetchSessions = useCallback(async () => {
     setSessionsError(false)
@@ -1293,6 +1512,21 @@ export default function DashboardScreen() {
       fetchDashboard(cancelled)
       fetchSessions()
       fetchRunDates()
+      // Check-in del día para la readiness bar. Fire-and-forget.
+      apiGet('/api/checkins/today/')
+        .then((d: any) => {
+          if (cancelled.current) return
+          if (d && typeof d === 'object' && !d.detail) {
+            setCheckinHoy({
+              calidad_sueno: d.calidad_sueno ?? null,
+              estado_animo:  d.estado_animo  ?? null,
+              hrv:           d.hrv           ?? null,
+            })
+          } else {
+            setCheckinHoy(null)
+          }
+        })
+        .catch(() => { if (!cancelled.current) setCheckinHoy(null) })
       // Conteo de notificaciones no leídas para el badge de la campana.
       // Fire-and-forget: si falla no rompe el dashboard.
       apiGet('/api/notificaciones/')
@@ -1306,6 +1540,12 @@ export default function DashboardScreen() {
     }, [fetchDashboard, fetchSessions, fetchRunDates])
   )
 
+
+  const ultimaSesion = useMemo(() => {
+    const withFeedback = sessions.filter(s => s.feedback != null)
+    if (withFeedback.length === 0) return null
+    return withFeedback.reduce((a, b) => a.fecha > b.fecha ? a : b)
+  }, [sessions])
 
   return (
     <View style={styles.root}>
@@ -1384,11 +1624,7 @@ export default function DashboardScreen() {
             >
               <BellIcon />
               {unreadNotifs > 0 && (
-                <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>
-                    {unreadNotifs > 9 ? '9+' : String(unreadNotifs)}
-                  </Text>
-                </View>
+                <View style={styles.bellBadge} />
               )}
             </TouchableOpacity>
           </View>
@@ -1413,6 +1649,7 @@ export default function DashboardScreen() {
             semanaDetalle={data?.semana_detalle ?? []}
             sessions={sessions}
             runDates={runDates}
+            racha={data?.racha_actual}
             colors={colors}
             styles={styles}
           />
@@ -1431,6 +1668,11 @@ export default function DashboardScreen() {
               No se pudo cargar el historial · ↺ Reintentar
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* ── READINESS BAR — visible solo si hay check-in del día ── */}
+        {!loading && checkinHoy && (
+          <ReadinessBar checkin={checkinHoy} colors={colors} />
         )}
 
         {/* ── ZONA 2 — Card CTA principal ── */}
@@ -1456,6 +1698,11 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <ZyfitScoreCard scoreData={data?.zyfit_score} colors={colors} styles={styles} />
+        )}
+
+        {/* ── Última sesión completada con feedback ── */}
+        {!loading && ultimaSesion && (
+          <UltimaSesionCard session={ultimaSesion} colors={colors} />
         )}
 
         {/* ── ZONA 5 — Tu Entrenador ── */}
@@ -1550,23 +1797,34 @@ function makeStyles(c: Colors) {
     },
     bellBadge: {
       position: 'absolute',
-      top: -3,
-      right: -3,
-      minWidth: 16,
-      height: 16,
-      borderRadius: 8,
-      backgroundColor: c.red,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 3,
-      borderWidth: 1.5,
-      borderColor: c.bg,
+      top: 4,
+      right: 4,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: c.cyan,
     },
     bellBadgeText: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       color: '#fff',
       lineHeight: 12,
+    },
+    streakBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 20,
+      backgroundColor: 'rgba(108,229,255,0.10)',
+      borderWidth: 1,
+      borderColor: 'rgba(108,229,255,0.25)',
+    },
+    streakCount: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 12,
+      letterSpacing: -0.3,
     },
     z1Date: {
       // eliminado — ya no se muestra la fecha en el header
@@ -1985,6 +2243,15 @@ function makeStyles(c: Colors) {
       alignSelf: 'center',
       paddingVertical: 2,
     },
+    z5CoachLink: {
+      alignSelf: 'flex-start',
+    },
+    z5CoachLinkTxt: {
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 13,
+      color: c.accent,
+      letterSpacing: -0.2,
+    },
     z5Text: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 13,
@@ -1998,6 +2265,39 @@ function makeStyles(c: Colors) {
       color: c.inkPrimary,
       lineHeight: 21,
       letterSpacing: -0.1,
+    },
+
+    // ── Zyfit Score — Factor bars
+    zsFactores: {
+      gap: 8,
+    },
+    zsFactorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    zsFactorLabel: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 11,
+      letterSpacing: -0.1,
+      width: 90,
+    },
+    zsFactorBarBg: {
+      flex: 1,
+      height: 5,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    zsFactorBarFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+    zsFactorPct: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      letterSpacing: 0.5,
+      width: 32,
+      textAlign: 'right',
     },
 
     // Error / empty states

@@ -1,9 +1,9 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, Animated,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
   Modal, TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image,
+  Platform,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -21,7 +21,7 @@ interface Message {
   ts: Date
 }
 
-// ─── Recomendaciones placeholder ─────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const RECOMENDACIONES = [
   {
@@ -31,6 +31,7 @@ const RECOMENDACIONES = [
     titulo: 'Hoy es día de movilidad',
     cuerpo: 'Tus últimas 4 sesiones tuvieron RPE promedio de 8.1. Tu sistema nervioso necesita un respiro. Una sesión suave hoy mejorará tu rendimiento el próximo entreno.',
     icono: '🧘',
+    fuente: 'Basado en tu RPE de esta semana',
   },
   {
     id: '2',
@@ -39,6 +40,7 @@ const RECOMENDACIONES = [
     titulo: 'Estás cerca del nivel Élite',
     cuerpo: 'A 15 sesiones de alcanzar Élite. Con tu cadencia actual de 3 por semana, lo conseguirás en aproximadamente 5 semanas. No frenes ahora.',
     icono: '⚡',
+    fuente: 'Basado en tus sesiones totales',
   },
   {
     id: '3',
@@ -47,6 +49,7 @@ const RECOMENDACIONES = [
     titulo: 'Tu ventana de mayor rendimiento',
     cuerpo: 'Los datos muestran un 23% más de cumplimiento los martes y jueves por la mañana. Considera bloquear esos horarios como tus entrenamientos fijos.',
     icono: '📈',
+    fuente: 'Basado en tu historial de cumplimiento',
   },
   {
     id: '4',
@@ -55,6 +58,7 @@ const RECOMENDACIONES = [
     titulo: 'Señales de fatiga acumulada',
     cuerpo: 'Tu HRV promedio cayó a 52ms esta semana. Duerme mínimo 8h los próximos 3 días y baja la intensidad. No es rendirse, es entrenar con inteligencia.',
     icono: '🛡️',
+    fuente: 'Basado en tu HRV promedio',
   },
   {
     id: '5',
@@ -63,7 +67,28 @@ const RECOMENDACIONES = [
     titulo: 'Construye tu base aeróbica',
     cuerpo: 'Tu perfil prioriza resistencia pero tus check-ins recientes apuntan a fuerza. Añade una sesión de cardio continuo de 30–40 min esta semana para equilibrar.',
     icono: '🎯',
+    fuente: 'Basado en tu objetivo principal',
   },
+]
+
+const INSIGHT_DIA = {
+  texto: 'Tu RPE promedio bajó de 8.1 a 6.8 esta semana. Estás recuperándote bien — es un buen momento para empujar un poco más en tu próxima sesión de fuerza.',
+}
+
+const CHIPS_TEMAS = [
+  'Cómo calentar antes de fuerza',
+  'Carga de carbohidratos',
+  'Mejores suplementos para mi objetivo',
+  'Cómo progresar en sentadilla',
+  'Qué hacer si no duermo bien',
+  'Semana de descarga',
+]
+
+// TODO: conectar a datos reales de la API (sueño promedio, RPE real vs planificado, grupos musculares)
+const DETECCIONES: { tipo: 'info' | 'warning' | 'alerta'; color: string; texto: string }[] = [
+  { tipo: 'info',    color: '#4f8cff', texto: 'Tu sueño promedio esta semana fue de 6.2 h — por debajo de lo recomendado.' },
+  { tipo: 'warning', color: '#ffaa32', texto: 'Tu RPE real (7.8) superó el planificado (6.5) en 3 de tus últimas sesiones.' },
+  { tipo: 'alerta',  color: '#ff4444', texto: 'Tren inferior lleva 5 días sin trabajo directo.' },
 ]
 
 const MOCK_RESPONSES = [
@@ -85,7 +110,7 @@ function formatTs(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-// ─── Send icon ────────────────────────────────────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function SendIcon({ color }: { color: string }) {
   return (
@@ -100,6 +125,55 @@ function CloseIcon({ color }: { color: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function LightbulbIcon({ color, size = 15 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 21h6M12 3a6 6 0 0 1 4 10.58V17H8v-3.42A6 6 0 0 1 12 3z"
+        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+function MiniChatIcon({ color, size = 12 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4V5.5z"
+        stroke={color} strokeWidth={2} strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+function InfoIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={1.8} />
+      <Path d="M12 8v.5M12 12v4" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function WarningIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3L2 21h20L12 3z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+      <Path d="M12 9v5M12 17.5v.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function AlertaIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={1.8} />
+      <Path d="M15 9l-6 6M9 9l6 6" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   )
 }
@@ -166,8 +240,12 @@ function Bubble({ msg, colors }: { msg: Message; colors: any }) {
 
 // ─── Chat Modal ───────────────────────────────────────────────────────────────
 
-function ChatModal({ visible, onClose, colors, insets }: {
-  visible: boolean; onClose: () => void; colors: any; insets: any
+function ChatModal({ visible, onClose, colors, insets, initialContext }: {
+  visible: boolean
+  onClose: () => void
+  colors: any
+  insets: any
+  initialContext?: string
 }) {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MSG])
   const [inputText, setInputText] = useState('')
@@ -176,16 +254,29 @@ function ChatModal({ visible, onClose, colors, insets }: {
   const responseIdx = useRef(0)
   const inputRef = useRef<TextInput>(null)
 
-  // Reset cuando se abre
   useEffect(() => {
-    if (visible) {
+    if (!visible) return
+    responseIdx.current = 0
+    setInputText('')
+    if (initialContext) {
+      const userMsg: Message = { id: 'u-ctx-0', role: 'user', text: initialContext, ts: new Date() }
+      setMessages([INITIAL_MSG, userMsg])
+      setIsTyping(true)
+      setTimeout(() => {
+        responseIdx.current = 1
+        setIsTyping(false)
+        setMessages(prev => [...prev, {
+          id: 'c-ctx-0', role: 'coach',
+          text: MOCK_RESPONSES[0],
+          ts: new Date(),
+        }])
+      }, 1800)
+    } else {
       setMessages([INITIAL_MSG])
-      setInputText('')
       setIsTyping(false)
     }
-  }, [visible])
+  }, [visible, initialContext])
 
-  // Scroll to bottom cuando llegan mensajes
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80)
   }, [messages, isTyping])
@@ -197,14 +288,11 @@ function ChatModal({ visible, onClose, colors, insets }: {
     setMessages(prev => [...prev, userMsg])
     setInputText('')
     setIsTyping(true)
-
-    // Respuesta del Coach después de ~1.8s
     setTimeout(() => {
       const response = MOCK_RESPONSES[responseIdx.current % MOCK_RESPONSES.length]
       responseIdx.current++
-      const coachMsg: Message = { id: `c-${Date.now()}`, role: 'coach', text: response, ts: new Date() }
       setIsTyping(false)
-      setMessages(prev => [...prev, coachMsg])
+      setMessages(prev => [...prev, { id: `c-${Date.now()}`, role: 'coach', text: response, ts: new Date() }])
     }, 1800)
   }
 
@@ -213,7 +301,6 @@ function ChatModal({ visible, onClose, colors, insets }: {
       <View style={[chatStyles.modal, { backgroundColor: colors.bg }]}>
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={chatStyles.gradient} />
 
-        {/* Barra superior */}
         <View style={[chatStyles.chatHeader, { paddingTop: insets.top + 12, borderBottomColor: colors.borderDefault }]}>
           <TouchableOpacity onPress={onClose} style={chatStyles.closeBtn} activeOpacity={0.7}>
             <CloseIcon color={colors.inkSecondary} />
@@ -230,7 +317,6 @@ function ChatModal({ visible, onClose, colors, insets }: {
           <View style={{ width: 36 }} />
         </View>
 
-        {/* Mensajes */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -244,7 +330,6 @@ function ChatModal({ visible, onClose, colors, insets }: {
             keyboardShouldPersistTaps="handled"
           >
             {messages.map(msg => <Bubble key={msg.id} msg={msg} colors={colors} />)}
-
             {isTyping && (
               <View style={[chatStyles.bubbleRow, chatStyles.bubbleRowCoach]}>
                 <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
@@ -257,7 +342,6 @@ function ChatModal({ visible, onClose, colors, insets }: {
             )}
           </ScrollView>
 
-          {/* Input bar */}
           <View style={[chatStyles.inputBar, {
             paddingBottom: insets.bottom + 8,
             borderTopColor: colors.borderDefault,
@@ -297,10 +381,36 @@ function ChatModal({ visible, onClose, colors, insets }: {
   )
 }
 
+// ─── Insight del día ──────────────────────────────────────────────────────────
+
+function InsightCard({ colors }: { colors: any }) {
+  return (
+    <View style={[
+      insightStyles.wrap,
+      {
+        backgroundColor: colors.cardBg,
+        borderColor: colors.borderDefault,
+        borderLeftColor: colors.cyan,
+      },
+    ]}>
+      <View style={insightStyles.labelRow}>
+        <LightbulbIcon color={colors.cyan} size={14} />
+        <Text style={[insightStyles.label, { color: colors.cyan }]}>INSIGHT DEL DÍA</Text>
+      </View>
+      <Text style={[insightStyles.text, { color: colors.inkSecondary }]}>
+        {INSIGHT_DIA.texto}
+      </Text>
+    </View>
+  )
+}
+
 // ─── Rec Card ─────────────────────────────────────────────────────────────────
 
-function RecCard({ rec, anim, colors }: {
-  rec: typeof RECOMENDACIONES[0]; anim: Animated.Value; colors: any
+function RecCard({ rec, anim, colors, onAskCoach }: {
+  rec: typeof RECOMENDACIONES[0]
+  anim: Animated.Value
+  colors: any
+  onAskCoach: () => void
 }) {
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [32, 0] })
   return (
@@ -324,10 +434,26 @@ function RecCard({ rec, anim, colors }: {
         <Text style={[styles.cardTitle, { color: colors.inkPrimary }]}>{rec.titulo}</Text>
         <View style={[styles.cardDivider, { backgroundColor: rec.color + '30' }]} />
         <Text style={[styles.cardBody, { color: colors.inkSecondary }]}>{rec.cuerpo}</Text>
+
+        {/* Fuente del dato */}
         <View style={styles.cardFooter}>
           <View style={[styles.cardFooterDot, { backgroundColor: rec.color }]} />
-          <Text style={[styles.cardFooterTxt, { color: rec.color }]}>Basado en tu historial</Text>
+          <Text style={[styles.cardFooterTxt, { color: rec.color }]}>{rec.fuente}</Text>
         </View>
+
+        {/* Botón preguntarle al Coach */}
+        <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
+        <TouchableOpacity
+          onPress={onAskCoach}
+          activeOpacity={0.75}
+          style={[styles.cardAskBtn, { backgroundColor: rec.color + '12', borderColor: rec.color + '35' }]}
+        >
+          <View style={styles.cardAskBtnLeft}>
+            <MiniChatIcon color={rec.color} size={12} />
+            <Text style={[styles.cardAskBtnTxt, { color: rec.color }]}>Preguntarle al Coach</Text>
+          </View>
+          <Text style={[styles.cardAskBtnArrow, { color: rec.color }]}>›</Text>
+        </TouchableOpacity>
       </View>
     </Animated.View>
   )
@@ -341,6 +467,7 @@ export default function CoachScreen() {
 
   const [activeIdx, setActiveIdx] = useState(0)
   const [chatOpen, setChatOpen] = useState(false)
+  const [chatContext, setChatContext] = useState<string | undefined>(undefined)
 
   const headerAnim = useRef(new Animated.Value(0)).current
   const cardAnims = useRef(RECOMENDACIONES.map(() => new Animated.Value(0))).current
@@ -357,6 +484,21 @@ export default function CoachScreen() {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
     setActiveIdx(Math.max(0, Math.min(idx, RECOMENDACIONES.length - 1)))
   }
+
+  function openChat(ctx?: string) {
+    setChatContext(ctx)
+    setChatOpen(true)
+  }
+
+  function closeChat() {
+    setChatOpen(false)
+    setChatContext(undefined)
+  }
+
+  const activeRec = RECOMENDACIONES[activeIdx]
+  const chatBtnSubtext = activeRec
+    ? `Sobre: "${activeRec.titulo}"`
+    : 'Haz tu pregunta, conozco tu historial'
 
   const headerOpacity = headerAnim
   const headerSlide = headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] })
@@ -382,6 +524,11 @@ export default function CoachScreen() {
           </Text>
         </Animated.View>
 
+        {/* ── INSIGHT DEL DÍA ── */}
+        <Animated.View style={{ opacity: headerOpacity, marginBottom: 28 }}>
+          <InsightCard colors={colors} />
+        </Animated.View>
+
         {/* ── RECOMENDACIONES ── */}
         <View style={styles.sectionWrap}>
           <View style={styles.sectionLabelRow}>
@@ -402,7 +549,12 @@ export default function CoachScreen() {
           >
             {RECOMENDACIONES.map((rec, idx) => (
               <View key={rec.id} style={styles.cardPage}>
-                <RecCard rec={rec} anim={cardAnims[idx]} colors={colors} />
+                <RecCard
+                  rec={rec}
+                  anim={cardAnims[idx]}
+                  colors={colors}
+                  onAskCoach={() => openChat(`Quiero saber más sobre esto: "${rec.titulo}"`)}
+                />
               </View>
             ))}
           </ScrollView>
@@ -422,10 +574,51 @@ export default function CoachScreen() {
           </View>
         </View>
 
+        {/* ── EXPLORA CON TU COACH ── */}
+        <View style={styles.sectionWrap}>
+          <Text style={[styles.sectionLabel, { color: colors.inkMuted, marginBottom: 14 }]}>
+            EXPLORA CON TU COACH
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chipsContent}
+          >
+            {CHIPS_TEMAS.map((tema, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => openChat(tema)}
+                activeOpacity={0.75}
+                style={[styles.chip, { borderColor: colors.borderBright, backgroundColor: colors.cardBg }]}
+              >
+                <Text style={[styles.chipTxt, { color: colors.inkSecondary }]}>{tema}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ── ESTA SEMANA TU COACH DETECTÓ ── */}
+        <View style={[styles.sectionWrap, styles.detecWrap, { borderColor: colors.borderDefault, backgroundColor: colors.cardBg }]}>
+          <Text style={[styles.sectionLabel, { color: colors.inkMuted, marginBottom: 14 }]}>
+            ESTA SEMANA TU COACH DETECTÓ
+          </Text>
+          {DETECCIONES.map((d, i) => (
+            <View key={i} style={[styles.detecRow, i < DETECCIONES.length - 1 && { marginBottom: 12 }]}>
+              <View style={styles.detecIconWrap}>
+                {d.tipo === 'info'    && <InfoIcon    color={d.color} size={15} />}
+                {d.tipo === 'warning' && <WarningIcon color={d.color} size={15} />}
+                {d.tipo === 'alerta'  && <AlertaIcon  color={d.color} size={15} />}
+              </View>
+              <Text style={[styles.detecTxt, { color: colors.inkSecondary }]}>{d.texto}</Text>
+            </View>
+          ))}
+        </View>
+
         {/* ── BOTÓN INICIAR CHAT ── */}
         <Animated.View style={{ opacity: headerAnim }}>
           <TouchableOpacity
-            onPress={() => setChatOpen(true)}
+            onPress={() => openChat(undefined)}
             activeOpacity={0.82}
             style={[styles.chatBtn, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
           >
@@ -435,7 +628,10 @@ export default function CoachScreen() {
                 stroke="#fff" strokeWidth={1.9} strokeLinejoin="round"
               />
             </Svg>
-            <Text style={styles.chatBtnTxt}>Iniciar Chat con tu Coach</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.chatBtnTxt}>Iniciar Chat con tu Coach</Text>
+              <Text style={styles.chatBtnSubtxt} numberOfLines={1}>{chatBtnSubtext}</Text>
+            </View>
             <Text style={styles.chatBtnArrow}>›</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -443,16 +639,37 @@ export default function CoachScreen() {
         <View style={{ height: 60 }} />
       </ScrollView>
 
-      {/* ── MODAL CHAT ── */}
       <ChatModal
         visible={chatOpen}
-        onClose={() => setChatOpen(false)}
+        onClose={closeChat}
         colors={colors}
         insets={insets}
+        initialContext={chatContext}
       />
     </View>
   )
 }
+
+// ─── Insight styles ───────────────────────────────────────────────────────────
+
+const insightStyles = StyleSheet.create({
+  wrap: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    padding: 16,
+    gap: 8,
+  },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  label: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+    letterSpacing: 2, textTransform: 'uppercase',
+  },
+  text: {
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
+    lineHeight: 22, letterSpacing: -0.1,
+  },
+})
 
 // ─── Styles pantalla principal ────────────────────────────────────────────────
 
@@ -462,7 +679,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20 },
 
-  header: { marginBottom: 32 },
+  header: { marginBottom: 20 },
   headline: {
     fontFamily: 'SpaceGrotesk-Bold', fontSize: 26,
     letterSpacing: -0.8, lineHeight: 34,
@@ -503,9 +720,21 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
     lineHeight: 22, letterSpacing: -0.1,
   },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   cardFooterDot: { width: 5, height: 5, borderRadius: 3 },
   cardFooterTxt: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, letterSpacing: 0.8 },
+  cardAskSeparator: { height: StyleSheet.hairlineWidth },
+  cardAskBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderRadius: 10, borderWidth: 1,
+    paddingVertical: 9, paddingHorizontal: 12,
+  },
+  cardAskBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  cardAskBtnTxt: {
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  cardAskBtnArrow: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 18 },
 
   dotsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -513,17 +742,43 @@ const styles = StyleSheet.create({
   },
   dot: { height: 6, borderRadius: 3 },
 
+  chipsScroll: { marginHorizontal: -20 },
+  chipsContent: { paddingHorizontal: 20, gap: 8, flexDirection: 'row' },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 20, borderWidth: 1,
+  },
+  chipTxt: {
+    fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
+    letterSpacing: -0.2,
+  },
+
+  detecWrap: {
+    borderRadius: 20, borderWidth: 1,
+    padding: 18,
+  },
+  detecRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  detecIconWrap: { marginTop: 1 },
+  detecTxt: {
+    flex: 1,
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 13,
+    lineHeight: 20, letterSpacing: -0.1,
+  },
+
   chatBtn: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 20, paddingVertical: 18, paddingHorizontal: 24,
+    borderRadius: 20, paddingVertical: 16, paddingHorizontal: 24,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35, shadowRadius: 14,
     elevation: 8,
   },
   chatBtnTxt: {
-    flex: 1,
     fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16,
     color: '#fff', letterSpacing: -0.3,
+  },
+  chatBtnSubtxt: {
+    fontFamily: 'SpaceGrotesk-Regular', fontSize: 11,
+    color: 'rgba(255,255,255,0.65)', letterSpacing: -0.1, marginTop: 1,
   },
   chatBtnArrow: {
     fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: 'rgba(255,255,255,0.7)',
