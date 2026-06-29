@@ -83,3 +83,10 @@ class ExerciseCatalogRateThrottle(AnonRateThrottle):
     """60 peticiones por minuto por IP al catálogo público — previene scraping
     masivo del catálogo sin autenticación."""
     scope = 'exercise_catalog'
+
+
+class AIChatRateThrottle(UserRateThrottle):
+    """30 mensajes por hora por usuario — protege el gasto en Groq API.
+    El chat IA llama a Groq en cada mensaje; sin throttle un usuario puede
+    disparar costes arbitrarios en sesiones largas."""
+    scope = 'ai_chat'

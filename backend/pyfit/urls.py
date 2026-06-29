@@ -12,6 +12,7 @@ from checkins import views as checkin_views
 from workouts import views as workout_views
 from workouts import exercise_views
 from ai_workout import views as ai_views
+from ai_workout import chat_views
 from devices.urls import garmin_urlpatterns, apple_health_urlpatterns
 
 
@@ -101,6 +102,9 @@ urlpatterns = [
     path('api/sessions/<int:pk>/series-log/', workout_views.save_series_log),
     path('api/sessions/<int:pk>/photos/',     workout_views.session_photos),
     path('api/session-photos/<int:pk>/',      workout_views.session_photo_delete),
+
+    # AI Chat Coach
+    path('api/chat/', chat_views.chat_coach),
 
     # AI extras
     path('api/ejercicio-demo/', ai_views.ejercicio_demo),

@@ -216,6 +216,7 @@ REST_FRAMEWORK = {
         'session_resumen': '20/hour',  # cost guard: llama a Groq en cache-miss
         'impersonate': '5/hour',       # limita enumeración con token staff comprometido
         'exercise_catalog': '60/minute', # previene scraping masivo del catálogo público
+        'ai_chat': '30/hour',          # cost guard: cada mensaje llama a Groq API
     },
 }
 

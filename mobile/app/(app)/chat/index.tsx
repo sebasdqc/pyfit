@@ -9,6 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
+import { apiPost } from '../../../lib/api'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 
@@ -89,14 +91,6 @@ const DETECCIONES: { tipo: 'info' | 'warning' | 'alerta'; color: string; texto: 
   { tipo: 'info',    color: '#4f8cff', texto: 'Tu sueño promedio esta semana fue de 6.2 h — por debajo de lo recomendado.' },
   { tipo: 'warning', color: '#ffaa32', texto: 'Tu RPE real (7.8) superó el planificado (6.5) en 3 de tus últimas sesiones.' },
   { tipo: 'alerta',  color: '#ff4444', texto: 'Tren inferior lleva 5 días sin trabajo directo.' },
-]
-
-const MOCK_RESPONSES = [
-  'Basado en tu historial reciente, puedo ayudarte con eso. ¿Quieres que profundice en algún aspecto específico?',
-  'Entendido. Según tus datos de los últimos 30 días, te recomendaría enfocarte en esa área. ¿Tienes alguna restricción de tiempo o lesión que considerar?',
-  'Lo tomo en cuenta. Tu racha y tu nivel actual sugieren que estás listo para ese desafío. ¿Empezamos a planificarlo?',
-  'He revisado tus check-ins y tu patrón de descanso. Creo que podemos optimizar eso juntos. ¿Cuánto tiempo disponible tienes esta semana?',
-  'Muy buena pregunta. Combinando tu objetivo principal con tu historial de fatiga, la respuesta no es tan simple como parece. Cuéntame más sobre cómo te has sentido esta semana.',
 ]
 
 const INITIAL_MSG: Message = {
@@ -247,30 +241,60 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
   insets: any
   initialContext?: string
 }) {
+  const { lang } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([INITIAL_MSG])
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
-  const responseIdx = useRef(0)
   const inputRef = useRef<TextInput>(null)
+
+  // Historial para enviar a la API (excluye el mensaje inicial del coach)
+  function buildHistorial(msgs: Message[]) {
+    return msgs
+      .filter(m => m.id !== 'coach-0')
+      .map(m => ({ role: m.role, text: m.text }))
+  }
+
+  async function sendToAPI(texto: string, currentMessages: Message[]) {
+    setIsTyping(true)
+    try {
+      const data = await apiPost('/api/chat/', {
+        mensaje: texto,
+        historial: buildHistorial(currentMessages),
+        lang,
+      })
+      setMessages(prev => [...prev, {
+        id: `c-${Date.now()}`,
+        role: 'coach',
+        text: data.respuesta,
+        ts: new Date(),
+      }])
+    } catch {
+      setMessages(prev => [...prev, {
+        id: `c-err-${Date.now()}`,
+        role: 'coach',
+        text: lang === 'fr'
+          ? 'Désolé, je ne peux pas répondre maintenant. Réessayez.'
+          : lang === 'en'
+          ? 'Sorry, I can\'t respond right now. Try again.'
+          : lang === 'pt'
+          ? 'Desculpe, não consigo responder agora. Tente novamente.'
+          : 'Lo siento, no puedo responder ahora. Inténtalo de nuevo.',
+        ts: new Date(),
+      }])
+    } finally {
+      setIsTyping(false)
+    }
+  }
 
   useEffect(() => {
     if (!visible) return
-    responseIdx.current = 0
     setInputText('')
     if (initialContext) {
       const userMsg: Message = { id: 'u-ctx-0', role: 'user', text: initialContext, ts: new Date() }
-      setMessages([INITIAL_MSG, userMsg])
-      setIsTyping(true)
-      setTimeout(() => {
-        responseIdx.current = 1
-        setIsTyping(false)
-        setMessages(prev => [...prev, {
-          id: 'c-ctx-0', role: 'coach',
-          text: MOCK_RESPONSES[0],
-          ts: new Date(),
-        }])
-      }, 1800)
+      const base = [INITIAL_MSG, userMsg]
+      setMessages(base)
+      sendToAPI(initialContext, base)
     } else {
       setMessages([INITIAL_MSG])
       setIsTyping(false)
@@ -283,17 +307,14 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
 
   function handleSend() {
     const text = inputText.trim()
-    if (!text) return
+    if (!text || isTyping) return
     const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text, ts: new Date() }
-    setMessages(prev => [...prev, userMsg])
+    setMessages(prev => {
+      const next = [...prev, userMsg]
+      sendToAPI(text, next)
+      return next
+    })
     setInputText('')
-    setIsTyping(true)
-    setTimeout(() => {
-      const response = MOCK_RESPONSES[responseIdx.current % MOCK_RESPONSES.length]
-      responseIdx.current++
-      setIsTyping(false)
-      setMessages(prev => [...prev, { id: `c-${Date.now()}`, role: 'coach', text: response, ts: new Date() }])
-    }, 1800)
   }
 
   return (
@@ -367,12 +388,13 @@ function ChatModal({ visible, onClose, colors, insets, initialContext }: {
             <TouchableOpacity
               onPress={handleSend}
               activeOpacity={0.8}
+              disabled={isTyping || !inputText.trim()}
               style={[
                 chatStyles.sendBtn,
-                { backgroundColor: inputText.trim() ? colors.accent : colors.cardBg, borderColor: colors.borderBright },
+                { backgroundColor: (inputText.trim() && !isTyping) ? colors.accent : colors.cardBg, borderColor: colors.borderBright },
               ]}
             >
-              <SendIcon color={inputText.trim() ? '#fff' : colors.inkMuted} />
+              <SendIcon color={(inputText.trim() && !isTyping) ? '#fff' : colors.inkMuted} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
