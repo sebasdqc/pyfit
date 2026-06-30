@@ -72,6 +72,7 @@ urlpatterns = [
     # Profile
     path('api/profile/', user_views.profile_view),
     path('api/profile/avatar/', user_views.upload_avatar),
+    path('api/profile/push-token/', user_views.update_push_token),
 
     # Locations
     path('api/locations/', user_views.locations_view),

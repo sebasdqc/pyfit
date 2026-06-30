@@ -1293,6 +1293,19 @@ def generate_session(request):
     DailyCoachInsight.objects.filter(user=user, fecha=hoy).delete()
     DailySaludo.objects.filter(user=user, fecha=hoy).delete()
 
+    # Push notification: avisar al usuario que su rutina está lista (fire-and-forget)
+    try:
+        from users.push import send_push
+        titulo_sesion = sesion_generada.get('titulo', 'Tu sesión')
+        send_push(
+            user,
+            title='¡Tu sesión está lista! 💪',
+            body=titulo_sesion,
+            data={'sesion_id': sesion.id},
+        )
+    except Exception:
+        pass
+
     return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
 
 

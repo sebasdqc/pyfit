@@ -245,6 +245,7 @@ class Profile(models.Model):
     # retención, churn) para que la analítica refleje usuarios reales. No afecta
     # el funcionamiento normal de la app para esa cuenta.
     is_test = models.BooleanField(default=False, db_index=True)
+    push_token = models.CharField(max_length=250, blank=True, default='')
 
     class Meta:
         db_table = 'profiles'

@@ -6,6 +6,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ThemeProvider, useTheme } from '../lib/theme'
 import { I18nProvider } from '../lib/i18n'
+import { UnitsProvider } from '../lib/units'
 import { initSentry, withSentryWrap } from '../lib/sentry'
 import AppleHealthService from '../lib/appleHealth'
 import { getAccessToken } from '../lib/storage'
@@ -133,11 +134,13 @@ function RootLayout() {
         <View style={{ flex: 1, backgroundColor: '#000' }} />
       ) : (
         <I18nProvider>
+          <UnitsProvider>
           <ThemeProvider>
             <SafeAreaProvider>
               <ThemedApp />
             </SafeAreaProvider>
           </ThemeProvider>
+          </UnitsProvider>
         </I18nProvider>
       )}
     </GestureHandlerRootView>

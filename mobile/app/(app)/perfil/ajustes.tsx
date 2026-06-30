@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
+import { useUnits, UnitSystem } from '../../../lib/units'
 import { apiGet, apiDelete } from '../../../lib/api'
 import { fetchMiCoachUnread } from '../../../lib/coachApi'
 import { logout } from '../../../lib/auth'
@@ -150,6 +151,7 @@ const DEFAULT: Profile = { nombre: '', plan: 'starter', plan_tipo: '', plan_reno
 export default function AjustesScreen() {
   const { colors, palette, setPalette } = useTheme()
   const { t, lang, setLang } = useTranslation()
+  const { unitSystem, setUnitSystem } = useUnits()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -162,6 +164,7 @@ export default function AjustesScreen() {
   // Expandibles inline
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [showLangPicker, setShowLangPicker] = useState(false)
+  const [showUnitsPicker, setShowUnitsPicker] = useState(false)
 
   const fetchAll = useCallback(async () => {
     try {
@@ -455,9 +458,35 @@ export default function AjustesScreen() {
           <Row
             icon="📐"
             title="Unidades"
-            subtitle="kg / cm · próximamente"
-            onPress={() => Alert.alert('Próximamente', 'Podrás elegir entre kg/lb y cm/ft en una próxima actualización.')}
+            rightLabel={unitSystem === 'imperial' ? '🇺🇸 lb / in' : '📏 kg / cm'}
+            onPress={() => { setShowThemePicker(false); setShowLangPicker(false); setShowUnitsPicker(v => !v) }}
           />
+          {showUnitsPicker && (
+            <>
+              <Divider />
+              {([
+                { id: 'metric' as UnitSystem, icon: '📏', label: 'Métrico — kg / cm' },
+                { id: 'imperial' as UnitSystem, icon: '🇺🇸', label: 'Imperial — lb / in' },
+              ]).map((opt, i) => (
+                <React.Fragment key={opt.id}>
+                  {i > 0 && <Divider />}
+                  <TouchableOpacity
+                    onPress={() => { setUnitSystem(opt.id); setShowUnitsPicker(false) }}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 13 }}
+                  >
+                    <Text style={{ fontSize: 15 }}>{opt.icon}</Text>
+                    <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: unitSystem === opt.id ? colors.accent : colors.inkSecondary }}>
+                      {opt.label}
+                    </Text>
+                    {unitSystem === opt.id && (
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: colors.accent }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </>
+          )}
           <Divider />
           <Row
             icon="🔗"

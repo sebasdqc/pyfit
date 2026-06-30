@@ -11,6 +11,7 @@ import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPatch } from '../../../lib/api'
 import { COUNTRIES, normalizeCountry } from '../../../lib/countries'
+import { useUnits } from '../../../lib/units'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ function ReadOnlyField({ label, value, styles }: { label: string; value: string;
 
 export default function DatosPersonalesScreen() {
   const { colors } = useTheme()
+  const { weightLabel, heightLabel, toInputWeight, toInputHeight, fromInputWeight, fromInputHeight } = useUnits()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -121,8 +123,8 @@ export default function DatosPersonalesScreen() {
       setFullProfile(data)
       setNombre(data.nombre ?? '')
       setPais(data.pais ?? '')
-      setPeso(data.peso ? String(data.peso) : '')
-      setAltura(data.altura ? String(data.altura) : '')
+      setPeso(data.peso ? toInputWeight(Number(data.peso)) : '')
+      setAltura(data.altura ? toInputHeight(Number(data.altura)) : '')
       setNivelEstres(data.nivel_estres ?? '')
       setTipoTrabajo(data.tipo_trabajo ?? '')
       setExperiencia(data.experiencia_deportiva ?? '')
@@ -131,21 +133,29 @@ export default function DatosPersonalesScreen() {
 
   async function save() {
     if (!fullProfile) return
-    // PRF-4: validar rango antes del PUT (el modelo exige 30–300 kg / 100–250 cm)
-    const p = Number(String(peso).replace(',', '.'))
+    // Convertir a métrico antes de validar y guardar
+    const pesoMetric = fromInputWeight(peso)
+    const alturaMetric = fromInputHeight(altura)
+    const p = Number(pesoMetric.replace(',', '.'))
     if (peso && (isNaN(p) || p < 30 || p > 300)) {
-      Alert.alert('Peso inválido', 'El peso debe estar entre 30 y 300 kg.'); return
+      Alert.alert('Peso inválido', weightLabel === 'lb'
+        ? 'El peso debe estar entre 66 y 661 lb.'
+        : 'El peso debe estar entre 30 y 300 kg.')
+      return
     }
-    const a = Number(String(altura).replace(',', '.'))
+    const a = Number(alturaMetric.replace(',', '.'))
     if (altura && (isNaN(a) || a < 100 || a > 250)) {
-      Alert.alert('Altura inválida', 'La altura debe estar entre 100 y 250 cm.'); return
+      Alert.alert('Altura inválida', heightLabel === 'in'
+        ? 'La altura debe estar entre 39 y 98 pulgadas.'
+        : 'La altura debe estar entre 100 y 250 cm.')
+      return
     }
     setSaving(true)
     try {
       // PRF: PATCH parcial — solo los campos de esta pantalla, para no pisar
       // datos editados en otras pantallas (lost update).
       await apiPatch('/api/profile/', {
-        nombre, pais, peso, altura,
+        nombre, pais, peso: pesoMetric, altura: alturaMetric,
         nivel_estres: nivelEstres,
         tipo_trabajo: tipoTrabajo,
         experiencia_deportiva: experiencia,
@@ -231,13 +241,13 @@ export default function DatosPersonalesScreen() {
 
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="PESO (kg)" value={peso} onChangeText={mark(setPeso)}
-                    placeholder="70" keyboardType="decimal-pad" styles={styles} />
+                  <GlassInput label={`PESO (${weightLabel})`} value={peso} onChangeText={mark(setPeso)}
+                    placeholder={weightLabel === 'lb' ? '154' : '70'} keyboardType="decimal-pad" styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="ALTURA (cm)" value={altura} onChangeText={mark(setAltura)}
-                    placeholder="175" keyboardType="numeric" styles={styles} />
+                  <GlassInput label={`ALTURA (${heightLabel})`} value={altura} onChangeText={mark(setAltura)}
+                    placeholder={heightLabel === 'in' ? '69' : '175'} keyboardType="numeric" styles={styles} />
                 </View>
               </View>
 

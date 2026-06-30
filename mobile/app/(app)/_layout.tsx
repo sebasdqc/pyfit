@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Tabs } from 'expo-router'
 import { StackActions } from '@react-navigation/native'
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native'
@@ -5,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
+import { registerForPushNotifications } from '../../lib/pushNotifications'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -195,6 +197,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function AppLayout() {
+  useEffect(() => {
+    // Fire-and-forget: request permission + send token to backend on first load
+    registerForPushNotifications()
+  }, [])
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs

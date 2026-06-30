@@ -370,6 +370,22 @@ def upload_avatar(request):
     return Response({'ok': True, 'avatar': avatar_data})
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_push_token(request):
+    """POST /api/profile/push-token/ — registra el Expo push token del dispositivo."""
+    token = (request.data.get('token') or '').strip()
+    if not token:
+        return Response({'error': 'token requerido'}, status=400)
+    try:
+        prof = request.user.profile
+    except Exception:
+        return Response({'error': 'Perfil no encontrado'}, status=404)
+    prof.push_token = token
+    prof.save(update_fields=['push_token'])
+    return Response({'ok': True})
+
+
 _VALID_TIPO_LOCATION = {'gimnasio', 'casa', 'exterior'}
 _VALID_SEVERIDAD    = {'leve', 'moderada', 'severa', 'cronica'}
 
