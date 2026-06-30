@@ -494,6 +494,14 @@ def _check_logros(profile):
                         tipo='logro',
                         texto=f'¡Desbloqueaste "{logro["icon"]} {logro["label"]}"! Sigue construyendo hábitos.',
                     )
+                # Push para el mismo logro (fire-and-forget)
+                from users.push import send_push
+                send_push(
+                    profile.user,
+                    title=f'{logro["icon"]} ¡Nuevo logro!',
+                    body=logro['label'],
+                    data={'tipo': 'logro', 'logro_id': logro['id']},
+                )
             except Exception:
                 pass
     if changed:

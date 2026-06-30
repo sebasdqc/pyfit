@@ -449,6 +449,14 @@ def _calcular_racha_contexto(user, hoy=None):
     }
 
 
+_RACHA_HITOS = {
+    3:  ('🔥', '¡3 días de racha!',      'Llevas 3 días consecutivos. ¡Sigue así!'),
+    7:  ('💎', '¡Semana perfecta!',       '7 días seguidos entrenando. Excepcional.'),
+    14: ('⚡', '¡Dos semanas seguidas!',  'Llevas 14 días de racha. Esto ya es hábito.'),
+    30: ('👑', '¡Mes completo!',          '30 días consecutivos. Eres una leyenda.'),
+}
+
+
 def _actualizar_racha(user):
     """
     Persiste la racha en profile.racha_actual para gamificación y logros.
@@ -460,12 +468,22 @@ def _actualizar_racha(user):
     except Exception:
         return
 
+    racha_anterior = profile.racha_actual
     racha = _calcular_racha_realtime(user)
     profile.racha_actual = racha
     if racha > profile.mejor_racha:
         profile.mejor_racha = racha
     profile.puntos_totales = user.sessions.filter(feedback__isnull=False).count() * 10
     profile.save(update_fields=['racha_actual', 'mejor_racha', 'puntos_totales'])
+
+    # Push si la racha acaba de cruzar un hito (solo al crecer, no al recuperar)
+    if racha in _RACHA_HITOS and racha > racha_anterior:
+        try:
+            from users.push import send_push
+            icono, titulo, cuerpo = _RACHA_HITOS[racha]
+            send_push(user, title=titulo, body=cuerpo, data={'tipo': 'racha', 'dias': racha})
+        except Exception:
+            pass
 
 
 def _check_logros(user):
