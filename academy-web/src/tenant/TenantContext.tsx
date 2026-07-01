@@ -60,15 +60,21 @@ function applyBranding(cfg: TenantConfig) {
   }
 }
 
-async function fetchTenantConfig(): Promise<TenantConfig> {
+async function fetchTenantConfig(): Promise<TenantConfig | null> {
   try {
     const headers: Record<string, string> = {}
     if (TENANT_SLUG) headers['X-Tenant-Slug'] = TENANT_SLUG
     const res = await fetch(`${API_URL}/api/academy/tenant/config/`, { headers })
-    if (!res.ok) return DEFAULT_CONFIG
-    return await res.json()
+    if (!res.ok) return null
+    const data: TenantConfig & { slug?: string } = await res.json()
+    // Si pedimos un tenant específico pero el backend no lo resolvió (sin campo
+    // slug en la respuesta), ignoramos el branding devuelto para no sobreescribir
+    // el DEFAULT_CONFIG. Ocurre cuando el backend aún no tiene soporte de
+    // X-Tenant-Slug o el tenant no está sembrado en la BD todavía.
+    if (TENANT_SLUG && !data.slug) return null
+    return data
   } catch {
-    return DEFAULT_CONFIG
+    return null
   }
 }
 
@@ -85,8 +91,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchTenantConfig().then(cfg => {
-      setConfig(cfg)
-      applyBranding(cfg)
+      if (cfg) {
+        setConfig(cfg)
+        applyBranding(cfg)
+      }
     })
   }, [])
 
