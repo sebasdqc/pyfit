@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#cc1f36" />
     <title>Zyfit Academy</title>
+    <!-- CSS vars del tenant por defecto aplicadas ANTES de que cargue el JS
+         para evitar el flash de colores al cargar/recargar la página.
+         TenantContext las sobreescribe si el tenant tiene branding propio. -->
+    <style>
+      :root {
+        --color-brand:        204 31 54;
+        --color-brand-dark:   166 23 41;
+        --color-brand-deep:   122 15 29;
+        --color-accent:       230 57 80;
+        --color-accent-light: 240 98 114;
+        --color-accent-dark:  184 24 46;
+        --color-ok:   22 163 74;
+        --color-warn: 217 119 6;
+        --color-danger: 220 38 38;
+        --font-sans: 'Inter', system-ui, sans-serif;
+      }
+    </style>
     <!-- Inter (Zyfit Academy) + Ubuntu (CONMEBOL Evolución). El TenantContext
          activa la fuente correcta vía --font-sans según el tenant cargado. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
