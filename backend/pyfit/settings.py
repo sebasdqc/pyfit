@@ -228,6 +228,11 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Permite el header X-Tenant-Slug que envían los frontends multi-site de Academy
+# para resolver el tenant activo sin necesitar dominios propios.
+from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
+CORS_ALLOW_HEADERS = list(_cors_default_headers) + ['X-Tenant-Slug']
+
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.environ.get(

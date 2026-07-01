@@ -7,11 +7,16 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios'
-import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/lib/constants'
+import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TENANT_SLUG } from '@/lib/constants'
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    // Identifica el tenant activo en el backend sin necesitar dominio propio.
+    // El middleware de Academy lo prioriza sobre la resolución por Host.
+    ...(TENANT_SLUG ? { 'X-Tenant-Slug': TENANT_SLUG } : {}),
+  },
 })
 
 // ── Gestión de tokens (localStorage) ────────────────────────────────────────

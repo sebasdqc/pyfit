@@ -1,21 +1,23 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { TenantConfig } from '@/types'
-import { API_URL } from '@/lib/constants'
+import { API_URL, TENANT_SLUG } from '@/lib/constants'
 
-// ── Defaults (identidad CONMEBOL / Zyfit Academy) ────────────────────────────
+// ── Defaults (Zyfit Academy — Ciencias del Deporte) ──────────────────────────
+// Usados solo mientras carga el branding del tenant vía API, o si la llamada
+// falla. Cada site desplegado recibe su branding correcto desde el backend.
 
 const DEFAULT_CONFIG: TenantConfig = {
   nombre_plataforma: 'Zyfit Academy',
-  color_brand:        '#1a3e72',
-  color_brand_dark:   '#13294d',
-  color_brand_deep:   '#0c1a30',
-  color_accent:       '#0066b3',
-  color_accent_light: '#2a82d6',
-  color_accent_dark:  '#004a87',
-  color_ok:     '#1f9d6b',
-  color_warn:   '#e08a00',
-  color_danger: '#d64545',
-  fuente:      'Ubuntu',
+  color_brand:        '#cc1f36',
+  color_brand_dark:   '#a61729',
+  color_brand_deep:   '#7a0f1d',
+  color_accent:       '#e63950',
+  color_accent_light: '#f06272',
+  color_accent_dark:  '#b8182e',
+  color_ok:     '#16a34a',
+  color_warn:   '#d97706',
+  color_danger: '#dc2626',
+  fuente:      'Inter',
   tagline:     '',
   logo_url:    '',
   favicon_url: '',
@@ -60,7 +62,9 @@ function applyBranding(cfg: TenantConfig) {
 
 async function fetchTenantConfig(): Promise<TenantConfig> {
   try {
-    const res = await fetch(`${API_URL}/api/academy/tenant/config/`)
+    const headers: Record<string, string> = {}
+    if (TENANT_SLUG) headers['X-Tenant-Slug'] = TENANT_SLUG
+    const res = await fetch(`${API_URL}/api/academy/tenant/config/`, { headers })
     if (!res.ok) return DEFAULT_CONFIG
     return await res.json()
   } catch {

@@ -2,17 +2,22 @@
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// Slug del tenant activo. Se inyecta en BUILD TIME vía VITE_TENANT_SLUG.
+// El cliente axios lo envía como X-Tenant-Slug en cada request para que el
+// backend resuelva el catálogo correcto sin necesitar dominios propios.
+// Vacío = catálogo raíz de Zyfit (local dev sin tenant específico).
+export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || ''
+
 // Claves de almacenamiento de tokens JWT (localStorage). Prefijo propio para no
 // colisionar con el panel Performance (zperf_*) si comparten dominio en el futuro.
 export const ACCESS_TOKEN_KEY = 'zacad_access'
 export const REFRESH_TOKEN_KEY = 'zacad_refresh'
 
-// Identidad de producto. La marca visual sigue el manual CONMEBOL; el nombre del
-// producto es Zyfit Academy. Centralizado para ajustarlo en una sola línea.
+// Identidad de producto base. El branding específico (colores, tagline, logo)
+// lo provee el tenant via API → TenantContext. Solo name/product son fijos.
 export const BRAND = {
   name: 'Zyfit',
   product: 'Academy',
-  tagline: 'Cree en grande',
 }
 
 // Catálogos de presentación (coinciden con los choices del backend).
@@ -23,16 +28,18 @@ export const NIVELES = [
 ] as const
 
 // Categorías sugeridas. Es solo una ayuda de UI (el backend acepta texto libre).
-// Alineadas con las áreas temáticas de la formación CONMEBOL Evolución.
 export const CATEGORIAS = [
-  'formación de entrenadores',
-  'táctica',
+  'entrenamiento personal',
+  'nutrición deportiva',
+  'fisiología del ejercicio',
+  'entrenamiento concurrente',
+  'suplementación',
+  'biomecánica',
+  'rendimiento deportivo',
+  'recuperación y salud',
   'preparación física',
-  'metodología',
-  'nutrición',
-  'arbitraje',
-  'gestión deportiva',
-  'entrenamiento',
+  'metodología del entrenamiento',
+  'formación de entrenadores',
 ] as const
 
 export const NIVEL_LABEL: Record<string, string> = {

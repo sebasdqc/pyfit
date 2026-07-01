@@ -55,8 +55,8 @@ export function LoginPage() {
             al alcance de todos.
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-            Cursos, evaluaciones y certificaciones para llevar tu conocimiento del
-            juego al siguiente nivel.
+            Cursos, evaluaciones y certificaciones para llevar tu conocimiento al
+            siguiente nivel.
           </p>
           {tenant.tagline && (
             <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>

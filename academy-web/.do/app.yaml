@@ -33,3 +33,8 @@ static_sites:
       - key: VITE_API_URL
         scope: BUILD_TIME
         value: "https://sea-lion-app-a2j4f.ondigitalocean.app"
+      # Identifica este site como el tenant CONMEBOL. El backend resuelve el
+      # catálogo correcto (cursos CONMEBOL, branding navy) via X-Tenant-Slug.
+      - key: VITE_TENANT_SLUG
+        scope: BUILD_TIME
+        value: "conmebol"
