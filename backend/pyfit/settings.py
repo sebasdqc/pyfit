@@ -228,10 +228,22 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Permite el header X-Tenant-Slug que envían los frontends multi-site de Academy
-# para resolver el tenant activo sin necesitar dominios propios.
-from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
-CORS_ALLOW_HEADERS = list(_cors_default_headers) + ['X-Tenant-Slug']
+# Headers CORS permitidos. Incluye X-Tenant-Slug que envían los frontends
+# multi-site de Academy para resolver el tenant sin necesitar dominio propio.
+# Lista hardcodeada para evitar imports de corsheaders en settings (incompatible
+# con django-cors-headers 4.x donde corsheaders.defaults fue eliminado).
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-tenant-slug',
+]
 
 CORS_ALLOWED_ORIGINS = [
     o.strip()
