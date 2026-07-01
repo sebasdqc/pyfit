@@ -891,7 +891,7 @@ export default function CheckinScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            {zonasDolorHoy.length > 0 ? (
+            {zonasDolorHoy.length > 0 && (
               <View style={styles.selectedZonas}>
                 {zonasDolorHoy.map(z => (
                   <TouchableOpacity key={z} style={styles.zonaChip} onPress={() => toggleZona(z)} activeOpacity={0.8}>
@@ -900,8 +900,6 @@ export default function CheckinScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            ) : (
-              <Text style={styles.zonaHint}>{t('checkin_dim1_zone_hint')}</Text>
             )}
           </View>
         )}

@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import { router, useLocalSearchParams } from 'expo-router'
+import * as Haptics from 'expo-haptics'
 import { COLORS, FASES, RADII, cardShadow } from '../../../lib/colors'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
@@ -171,9 +172,11 @@ function MediaCard({
             {expanded ? t('ejecutar_demo_hide') : t('ejecutar_demo_show')}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleYouTube} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[mediaStyles.ytInline, { color: faseColor }]}>▶ YouTube</Text>
-        </TouchableOpacity>
+        {!expanded && demo?.youtube_url ? (
+          <TouchableOpacity onPress={handleYouTube} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[mediaStyles.ytInline, { color: faseColor }]}>▶ YouTube</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Expandable media area */}
@@ -205,10 +208,12 @@ function MediaCard({
             </View>
           )}
 
-          <TouchableOpacity style={mediaStyles.ytRow} onPress={handleYouTube}>
-            <Text style={mediaStyles.ytIcon}>▶</Text>
-            <Text style={[mediaStyles.ytText, { color: faseColor }]}>{t('ejecutar_youtube')}</Text>
-          </TouchableOpacity>
+          {demo?.youtube_url ? (
+            <TouchableOpacity style={mediaStyles.ytRow} onPress={handleYouTube}>
+              <Text style={mediaStyles.ytIcon}>▶</Text>
+              <Text style={[mediaStyles.ytText, { color: faseColor }]}>{t('ejecutar_youtube')}</Text>
+            </TouchableOpacity>
+          ) : null}
         </>
       )}
     </View>
@@ -578,6 +583,7 @@ export default function EjecutarScreen() {
   const resumedRef = useRef(false)
   // Nivel del usuario — define si la demo de cada ejercicio arranca desplegada.
   const [nivel, setNivel] = useState<string | null>(null)
+  const [unitsWeight, setUnitsWeight] = useState<'kg' | 'lb'>('kg')
 
   // Demo media
   const [currentDemo, setCurrentDemo] = useState<DemoMedia | null>(null)
@@ -680,7 +686,12 @@ export default function EjecutarScreen() {
   useEffect(() => {
     let cancelled = false
     apiGet('/api/profile/')
-      .then((data: any) => { if (!cancelled) setNivel(data?.nivel ?? null) })
+      .then((data: any) => {
+        if (!cancelled) {
+          setNivel(data?.nivel ?? null)
+          setUnitsWeight(data?.units_weight === 'lb' ? 'lb' : 'kg')
+        }
+      })
       .catch(() => {})
     return () => { cancelled = true }
   }, [])
@@ -796,6 +807,7 @@ export default function EjecutarScreen() {
   const completarSerie = () => {
     const ej = flatList[currentIndex]
     if (!ej) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {})
 
     const done = (seriesCompletadasRef.current[ej.globalIndex] ?? 0) + 1
     const nextMap = { ...seriesCompletadasRef.current, [ej.globalIndex]: done }
@@ -838,7 +850,7 @@ export default function EjecutarScreen() {
         const series = entries
           .map((e, si) => ({
             serie: si + 1,
-            peso: parseFloat(e?.peso) || null,
+            peso: (v => Number.isFinite(v) ? v : null)(parseFloat(e?.peso ?? '')),
             reps: parseInt(e?.reps) || null,
             dificultad: e?.dificultad ?? null,
           }))
@@ -1174,7 +1186,7 @@ export default function EjecutarScreen() {
                       maxLength={6}
                       returnKeyType="done"
                     />
-                    <Text style={styles.descansoInputUnit}>kg</Text>
+                    <Text style={styles.descansoInputUnit}>{unitsWeight}</Text>
                   </View>
                 )}
               </View>

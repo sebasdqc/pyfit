@@ -322,17 +322,12 @@ function AchievementCard({
 export default function FeedbackScreen() {
   const { id }     = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
-
-  if (!id) {
-    router.replace('/(app)/dashboard')
-    return null
-  }
   const { t }      = useTranslation()
   const styles     = useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
   const scrollRef  = useRef<ScrollView>(null)
-  const submittingRef = useRef(false)   // guard doble-tap en "Listo"
-  const navTsRef      = useRef(0)        // debounce de goNext (evita saltarse un paso)
+  const submittingRef = useRef(false)
+  const navTsRef      = useRef(0)
 
   // ── Step 1 state ───────────────────────────────────────────────────────────
   const [rpeChoice,     setRpeChoice]     = useState<number | null>(null)
@@ -462,6 +457,11 @@ export default function FeedbackScreen() {
       })
       .finally(() => setLogroLoading(false))
   }, [step, id])
+
+  if (!id) {
+    router.replace('/(app)/dashboard')
+    return null
+  }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

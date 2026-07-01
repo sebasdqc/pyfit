@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle } from 'react-native-svg'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { router, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS, FASES, Colors, RADII, cardShadow } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
@@ -1160,6 +1161,7 @@ export default function GenerateScreen() {
   const { colors } = useTheme()
   const { t, lang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
   const { t: checkinTs } = useLocalSearchParams<{ t?: string }>()
   const lastTsRef = useRef<string>('__init__')
   const navTsRef  = useRef(0)   // debounce para no apilar pantallas al doble-tap
@@ -1425,7 +1427,7 @@ export default function GenerateScreen() {
         ) : sesion ? (
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
             showsVerticalScrollIndicator={false}
           >
             {/* Top nav — botón de salida */}
