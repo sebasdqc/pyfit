@@ -1,19 +1,19 @@
-# Zyfit Academy (Ciencias del Deporte) — Static Site independiente en DO.
-# Mismo código fuente que el site CONMEBOL (academy-web/) pero con tenant
-# distinto: branding rojo, catálogo de ciencias del deporte aislado.
+# CONMEBOL Evolución — Static Site independiente en DO (pendiente de crear).
+# Mismo código fuente que el site principal (academy-web/) pero con tenant
+# distinto: branding navy, catálogo de formación CONMEBOL aislado.
 #
-# Primer deploy:
+# Primer deploy (cuando se necesite):
 #   doctl apps create --spec academy-web/.do/app-zyfit.yaml
 #
-# DO asignará una URL propia (zyfit-academy-deporte-xxxxx.ondigitalocean.app).
+# DO asignará una URL propia (zyfit-academy-conmebol-xxxxx.ondigitalocean.app).
 # Tras el primer deploy:
 #   1. Añadir esa URL a CORS_ALLOWED_ORIGINS del backend (sea-lion-app) en DO.
 #   2. Correr en la consola de sea-lion-app:
-#        python manage.py seed_zyfit_tenants --only zyfit-academy
+#        python manage.py seed_zyfit_tenants --only conmebol
 #
 # Actualizaciones: deploy_on_push a main lo hace automáticamente.
 
-name: zyfit-academy-deporte
+name: zyfit-academy-conmebol
 region: nyc
 
 static_sites:
@@ -30,8 +30,8 @@ static_sites:
       - key: VITE_API_URL
         scope: BUILD_TIME
         value: "https://sea-lion-app-a2j4f.ondigitalocean.app"
-      # Identifica este site como Zyfit Academy (Ciencias del Deporte).
-      # El backend devuelve branding rojo + catálogo del tenant zyfit-academy.
+      # Identifica este site como CONMEBOL Evolución.
+      # El backend devuelve branding navy + catálogo del tenant conmebol.
       - key: VITE_TENANT_SLUG
         scope: BUILD_TIME
-        value: "zyfit-academy"
+        value: "conmebol"
