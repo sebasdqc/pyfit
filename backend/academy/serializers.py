@@ -143,6 +143,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
     instructor_nombre = serializers.SerializerMethodField()
     escuela_nombre = serializers.SerializerMethodField()
+    escuela_slug = serializers.SerializerMethodField()
     total_modulos = serializers.SerializerMethodField()
     total_lecciones = serializers.SerializerMethodField()
     total_inscritos = serializers.SerializerMethodField()
@@ -150,7 +151,7 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            'id', 'school', 'escuela_nombre', 'instructor', 'instructor_nombre',
+            'id', 'school', 'escuela_nombre', 'escuela_slug', 'instructor', 'instructor_nombre',
             'titulo', 'slug', 'resumen',
             'descripcion', 'categoria', 'nivel',
             'disciplina', 'licencia', 'modalidad', 'carga_horaria_h', 'acredita_renovacion',
@@ -162,6 +163,9 @@ class CourseSerializer(serializers.ModelSerializer):
 
     def get_escuela_nombre(self, obj):
         return obj.school.nombre if obj.school_id else None
+
+    def get_escuela_slug(self, obj):
+        return obj.school.slug if obj.school_id else None
 
     def get_instructor_nombre(self, obj):
         return _display_name(obj.instructor)

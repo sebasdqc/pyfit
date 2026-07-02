@@ -11,8 +11,8 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Icon, type IconName } from '@/components/Icon'
-import { Emblem } from '@/components/Emblem'
 import { NIVEL_LABEL } from '@/lib/constants'
+import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
 import type { CourseDetail, Enrollment, Lesson } from '@/types'
 
 const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
@@ -101,6 +101,7 @@ export function CourseDetailPage() {
   }
 
   const totalLecciones = course.modulos.reduce((n, m) => n + m.lecciones.length, 0)
+  const theme = schoolTheme(course.escuela_slug)
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,12 +109,17 @@ export function CourseDetailPage() {
         <Icon name="chevronLeft" size={16} /> Catálogo
       </Link>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
-        <div className="pointer-events-none absolute -right-10 -top-12 opacity-[0.08]">
-          <Emblem size={280} tone="dark" />
+      {/* Hero (color propio de la escuela) */}
+      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-9" style={{ backgroundImage: schoolGradient(theme) }}>
+        <div className="pointer-events-none absolute -right-10 -top-12 text-white/10">
+          <Icon name={theme.icon} size={300} strokeWidth={1} />
         </div>
         <div className="relative z-10 max-w-2xl">
+          {course.escuela_nombre && (
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
+              {course.escuela_nombre}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {course.categoria && (
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
@@ -222,7 +228,10 @@ export function CourseDetailPage() {
         {/* Tarjeta de acción */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="za-card overflow-hidden">
-            <div className="flex h-32 items-center justify-center bg-gradient-to-br from-brand to-brand-deep">
+            <div
+              className="flex h-32 items-center justify-center"
+              style={course.portada ? undefined : { backgroundImage: schoolGradient(theme) }}
+            >
               {course.portada ? (
                 <img
                   src={course.portada}
@@ -231,7 +240,9 @@ export function CourseDetailPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Emblem size={56} tone="dark" />
+                <span className="text-white/85">
+                  <Icon name={theme.icon} size={48} strokeWidth={1.3} />
+                </span>
               )}
             </div>
             <div className="p-5">

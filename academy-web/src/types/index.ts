@@ -75,6 +75,7 @@ export interface Course {
   id: number
   school: number | null
   escuela_nombre: string | null
+  escuela_slug: string | null
   instructor: number | null
   instructor_nombre: string
   titulo: string

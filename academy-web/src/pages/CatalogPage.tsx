@@ -10,6 +10,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Emblem } from '@/components/Emblem'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
+import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
 import type { Course, School } from '@/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -38,26 +39,30 @@ function SchoolTag({ nivel }: { nivel: string }) {
 // ── Vista agrupada por escuela ────────────────────────────────────────────────
 
 function SchoolSection({ school }: { school: School }) {
+  const theme = schoolTheme(school.slug)
   return (
     <section aria-labelledby={`school-${school.id}`}>
-      {/* Cabecera de la escuela */}
-      <div className="mb-4 flex flex-col gap-1 border-l-4 border-accent pl-4">
-        <h2
-          id={`school-${school.id}`}
-          className="text-[17px] font-bold tracking-tight text-ink"
+      {/* Cabecera de la escuela (color propio de la escuela) */}
+      <div className="mb-4 flex items-start gap-4 border-l-4 pl-4" style={{ borderColor: theme.accent }}>
+        <span
+          className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-card"
+          style={{ backgroundImage: schoolGradient(theme) }}
         >
-          {school.nombre}
-        </h2>
-        {school.descripcion && (
-          <p className="text-sm text-ink-soft">{school.descripcion}</p>
-        )}
-        <div className="mt-1 flex flex-wrap gap-2">
-          {Array.from(new Set(school.cursos.map((c) => c.nivel))).map((n) => (
-            <SchoolTag key={n} nivel={n} />
-          ))}
-          <span className="text-xs text-ink-muted">
-            {school.total_cursos} {school.total_cursos === 1 ? 'curso' : 'cursos'}
-          </span>
+          <Icon name={theme.icon} size={22} />
+        </span>
+        <div className="flex flex-col gap-1">
+          <h2 id={`school-${school.id}`} className="text-[17px] font-bold tracking-tight text-ink">
+            {school.nombre}
+          </h2>
+          {school.descripcion && <p className="text-sm text-ink-soft">{school.descripcion}</p>}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {Array.from(new Set(school.cursos.map((c) => c.nivel))).map((n) => (
+              <SchoolTag key={n} nivel={n} />
+            ))}
+            <span className="text-xs text-ink-muted">
+              {school.total_cursos} {school.total_cursos === 1 ? 'curso' : 'cursos'}
+            </span>
+          </div>
         </div>
       </div>
 

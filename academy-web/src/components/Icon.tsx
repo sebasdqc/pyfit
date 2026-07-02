@@ -32,6 +32,8 @@ export type IconName =
   | 'live'
   | 'pitch'
   | 'upload'
+  | 'activity'
+  | 'heart'
 
 const PATHS: Record<IconName, ReactNode> = {
   catalog: (
@@ -159,6 +161,10 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
     </>
   ),
+  // Analítica / rendimiento: pulso de electrocardiograma.
+  activity: <path d="M3 12h4l3 8 4-16 3 8h4" />,
+  // Recuperación / wellness: corazón.
+  heart: <path d="M12 20s-7-4.5-9.5-9A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9.5 5c-2.5 4.5-9.5 9-9.5 9Z" />,
 }
 
 export function Icon({

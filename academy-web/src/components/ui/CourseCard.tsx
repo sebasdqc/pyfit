@@ -1,23 +1,24 @@
-// Tarjeta de curso para el catálogo y el área de instructor. Si el curso no tiene
-// portada, se usa un placeholder con gradiente navy + emblema (referencial; en
-// próximas iteraciones se cargarán portadas reales).
+// Tarjeta de curso para el catálogo y el área de instructor. Si el curso tiene
+// `portada` se muestra la imagen; si no, se genera una portada temática con el
+// color y el motivo de su escuela (schoolTheme), en vez de un placeholder genérico.
 
 import { Link } from 'react-router-dom'
-import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { Badge } from './Badge'
 import { NIVEL_LABEL } from '@/lib/constants'
+import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
 import type { Course } from '@/types'
 
 export function CourseCard({ course, to }: { course: Course; to: string }) {
   const hasPortada = Boolean(course.portada)
+  const theme = schoolTheme(course.escuela_slug)
   return (
     <Link
       to={to}
       className="group za-card overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
     >
       {/* Portada */}
-      <div className="relative h-36 overflow-hidden bg-gradient-to-br from-brand to-brand-deep">
+      <div className="relative h-36 overflow-hidden" style={hasPortada ? undefined : { backgroundImage: schoolGradient(theme) }}>
         {hasPortada ? (
           <img
             src={course.portada}
@@ -26,14 +27,25 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="opacity-25 transition-opacity group-hover:opacity-40">
-              <Emblem size={64} tone="dark" />
+          <>
+            {/* Motivo temático de la escuela: ícono grande, muy tenue. */}
+            <div className="pointer-events-none absolute -right-5 -top-5 text-white/10 transition-transform duration-300 group-hover:scale-110">
+              <Icon name={theme.icon} size={150} strokeWidth={1.2} />
             </div>
-          </div>
+            <div className="relative flex h-full flex-col justify-between p-4">
+              {course.escuela_nombre && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  {course.escuela_nombre}
+                </span>
+              )}
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm">
+                <Icon name={theme.icon} size={18} />
+              </span>
+            </div>
+          </>
         )}
         {!course.publicado && (
-          <span className="absolute left-3 top-3 rounded-full bg-warn px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+          <span className="absolute right-3 top-3 rounded-full bg-warn px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
             Borrador
           </span>
         )}

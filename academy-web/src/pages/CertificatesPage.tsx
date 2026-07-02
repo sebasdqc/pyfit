@@ -65,25 +65,45 @@ export function CertificatesPage() {
 
 function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: string; codigo: string }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border-2 border-brand/15 bg-white p-6 shadow-card">
-      <div className="pointer-events-none absolute -right-6 -top-8 opacity-[0.05]">
-        <Emblem size={200} tone="light" />
+    <div className="relative overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand/15">
+      {/* Orla doble decorativa */}
+      <div className="pointer-events-none absolute inset-2.5 rounded-xl border border-brand/20" />
+      <div className="pointer-events-none absolute inset-[13px] rounded-lg border border-brand/10" />
+      {/* Sello de fondo muy tenue */}
+      <div className="pointer-events-none absolute -right-8 -bottom-10 opacity-[0.05]">
+        <Emblem size={220} tone="light" />
       </div>
-      <div className="relative z-10">
+
+      <div className="relative z-10 px-7 py-7">
         <div className="flex items-center justify-between">
-          <Emblem size={34} tone="light" />
-          <span className="za-eyebrow">Certificado</span>
+          <Emblem size={30} tone="light" />
+          <span className="za-eyebrow">Certificado de finalización</span>
         </div>
-        <p className="mt-5 text-xs uppercase tracking-wide text-ink-muted">Se certifica que</p>
-        <p className="text-lg font-bold text-ink">{nombre}</p>
-        <p className="mt-3 text-xs uppercase tracking-wide text-ink-muted">completó el curso</p>
-        <p className="text-base font-semibold text-brand">{titulo}</p>
-        <div className="mt-5 flex items-center justify-between gap-2 border-t border-surface-border pt-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate font-mono text-xs text-ink-muted">{codigo}</span>
-            <CopyCodeButton codigo={codigo} />
+
+        <div className="mt-6 text-center">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">Se certifica que</p>
+          <p className="mt-1.5 text-xl font-bold tracking-tight text-ink">{nombre}</p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-ink-muted">completó satisfactoriamente</p>
+          <p className="mt-1.5 text-[15px] font-semibold text-brand">{titulo}</p>
+          {/* Filete central con sello */}
+          <div className="mx-auto mt-4 flex items-center justify-center gap-2 text-brand/40">
+            <span className="h-px w-10 bg-current" />
+            <Icon name="certificate" size={15} />
+            <span className="h-px w-10 bg-current" />
           </div>
-          <span className="shrink-0 text-xs italic text-ink-soft">{BRAND.name} {BRAND.product}</span>
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wide text-ink-muted">Código de verificación</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-mono text-xs font-medium text-ink">{codigo}</span>
+              <CopyCodeButton codigo={codigo} />
+            </div>
+          </div>
+          <span className="shrink-0 text-right text-xs font-semibold italic text-brand">
+            {BRAND.name} {BRAND.product}
+          </span>
         </div>
       </div>
     </div>
