@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Dialog } from '@/components/ui/Dialog'
 import { Icon } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
-import { CATEGORIAS, DISCIPLINAS, LICENCIAS, MODALIDADES, NIVELES } from '@/lib/constants'
+import { CATEGORIAS, NIVELES } from '@/lib/constants'
 import type { Course } from '@/types'
 
 function slugify(s: string): string {
@@ -141,11 +141,6 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [resumen, setResumen] = useState('')
   const [categoria, setCategoria] = useState<string>(CATEGORIAS[0])
   const [nivel, setNivel] = useState<string>(NIVELES[0].id)
-  const [disciplina, setDisciplina] = useState<string>('general')
-  const [licencia, setLicencia] = useState<string>('')
-  const [modalidad, setModalidad] = useState<string>('virtual')
-  const [cargaHoraria, setCargaHoraria] = useState<string>('')
-  const [acreditaRenovacion, setAcreditaRenovacion] = useState(false)
   const [publicado, setPublicado] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -167,11 +162,6 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
         resumen: resumen.trim(),
         categoria,
         nivel,
-        disciplina,
-        licencia,
-        modalidad,
-        carga_horaria_h: cargaHoraria ? Number(cargaHoraria) : 0,
-        acredita_renovacion: acreditaRenovacion,
         publicado,
       })
       onCreated()
@@ -247,58 +237,6 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </Labeled>
           </div>
 
-          {/* Ejes de la formación CONMEBOL Evolución */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Labeled label="Disciplina">
-              <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} className="input">
-                {DISCIPLINAS.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            </Labeled>
-            <Labeled label="Licencia">
-              <select value={licencia} onChange={(e) => setLicencia(e.target.value)} className="input">
-                <option value="">Sin licencia (curso/taller)</option>
-                {LICENCIAS.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </Labeled>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Labeled label="Modalidad">
-              <select value={modalidad} onChange={(e) => setModalidad(e.target.value)} className="input">
-                {MODALIDADES.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </Labeled>
-            <Labeled label="Carga horaria (h)">
-              <input
-                type="number"
-                min={0}
-                value={cargaHoraria}
-                onChange={(e) => setCargaHoraria(e.target.value)}
-                placeholder="Ej. 140"
-                className="input"
-              />
-            </Labeled>
-          </div>
-          <label className="flex items-center gap-2.5 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              checked={acreditaRenovacion}
-              onChange={(e) => setAcreditaRenovacion(e.target.checked)}
-              className="h-4 w-4 rounded border-surface-border text-accent focus:ring-accent"
-            />
-            Acredita horas de actualización para renovar la licencia
-          </label>
           <label className="flex items-center gap-2.5 text-sm text-ink-soft">
             <input
               type="checkbox"
