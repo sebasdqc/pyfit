@@ -2,34 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Variables de tema (default: identidad CONMEBOL/Zyfit Academy) ───────────
+/* ── Variables de tema: Zyfit Academy — Ciencias del Deporte (rojo) ─────────
    brand/accent/ok/warn/danger como canales RGB ("R G B") para que los
-   modificadores de opacidad de Tailwind funcionen (bg-brand/10, etc.).
-   El TenantProvider los sobreescribe en runtime para white-label. */
+   modificadores de opacidad de Tailwind funcionen (bg-brand/10, etc.). */
 :root {
-  /* brand (#1a3e72 → 26 62 114) */
-  --color-brand:        26 62 114;
-  --color-brand-dark:   19 41 77;
-  --color-brand-deep:   12 26 48;
-  /* accent (#0066b3 → 0 102 179) */
-  --color-accent:       0 102 179;
-  --color-accent-light: 42 130 214;
-  --color-accent-dark:  0 74 135;
+  /* brand: rojo Zyfit Academy (#cc1f36 → 204 31 54) */
+  --color-brand:        204 31 54;
+  --color-brand-dark:   166 23 41;
+  --color-brand-deep:   122 15 29;
+  /* accent: rosa-rojo (#e63950 → 230 57 80) */
+  --color-accent:       230 57 80;
+  --color-accent-light: 240 98 114;
+  --color-accent-dark:  184 24 46;
   /* semánticos */
-  --color-ok:     31 157 107;
-  --color-warn:   224 138  0;
-  --color-danger: 214  69 69;
-  /* ink (texto — no necesita opacidad, hex directo) */
-  --color-ink:          #1a3e72;
-  --color-ink-soft:     #475569;
-  --color-ink-muted:    #647189;
-  --color-ink-faint:    #aab4c5;
+  --color-ok:     22 163 74;
+  --color-warn:   217 119 6;
+  --color-danger: 220 38 38;
+  /* ink (texto) */
+  --color-ink:          #111827;
+  --color-ink-soft:     #374151;
+  --color-ink-muted:    #6b7280;
+  --color-ink-faint:    #9ca3af;
   /* surface */
   --color-surface:        #ffffff;
-  --color-surface-soft:   #f4f7fc;
-  --color-surface-border: #e3e9f2;
+  --color-surface-soft:   #f9fafb;
+  --color-surface-border: #e5e7eb;
   /* tipografía */
-  --font-sans: 'Ubuntu';
+  --font-sans: 'Inter', system-ui, sans-serif;
 }
 
 @layer base {
