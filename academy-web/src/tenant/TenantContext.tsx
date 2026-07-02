@@ -67,11 +67,12 @@ async function fetchTenantConfig(): Promise<TenantConfig | null> {
     const res = await fetch(`${API_URL}/api/academy/tenant/config/`, { headers })
     if (!res.ok) return null
     const data: TenantConfig & { slug?: string } = await res.json()
-    // Si pedimos un tenant específico pero el backend no lo resolvió (sin campo
-    // slug en la respuesta), ignoramos el branding devuelto para no sobreescribir
-    // el DEFAULT_CONFIG. Ocurre cuando el backend aún no tiene soporte de
-    // X-Tenant-Slug o el tenant no está sembrado en la BD todavía.
-    if (TENANT_SLUG && !data.slug) return null
+    // Si el backend no resolvió ningún tenant (sin campo slug en la respuesta)
+    // ignoramos el branding devuelto para mantener el DEFAULT_CONFIG. Ocurre
+    // cuando el backend tiene código viejo, el tenant no está sembrado, o
+    // VITE_TENANT_SLUG no llegó a la build. En todos esos casos el DEFAULT_CONFIG
+    // (rojo) es el fallback correcto.
+    if (!data.slug) return null
     return data
   } catch {
     return null
