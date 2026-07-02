@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
-    Submission, CourseBadge, EarnedBadge, Tenant,
+    Submission, CourseBadge, EarnedBadge, Tenant, School,
 )
 
 
@@ -23,6 +23,22 @@ class LessonInline(TabularInline):
 class QuestionInline(TabularInline):
     model = Question
     extra = 0
+
+
+class CourseInSchoolInline(TabularInline):
+    model = Course
+    fields = ('titulo', 'slug', 'nivel', 'publicado')
+    extra = 0
+    show_change_link = True
+
+
+@admin.register(School)
+class SchoolAdmin(ModelAdmin):
+    list_display = ('nombre', 'slug', 'orden', 'tenant', 'created_at')
+    list_filter = ('tenant',)
+    search_fields = ('nombre', 'slug')
+    prepopulated_fields = {'slug': ('nombre',)}
+    inlines = [CourseInSchoolInline]
 
 
 @admin.register(Tenant)

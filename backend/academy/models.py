@@ -200,6 +200,31 @@ class Tenant(models.Model):
         return self.nombre
 
 
+class School(models.Model):
+    """Escuela — agrupa cursos por área temática (ej. Ciencia del Entrenamiento).
+
+    Es el nivel superior de la jerarquía: Escuela → Curso → Módulo → Lección.
+    Opcional: un curso puede existir sin escuela (school=NULL).
+    """
+
+    nombre = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=90, unique=True)
+    descripcion = models.TextField(blank=True)
+    orden = models.PositiveIntegerField(default=0, help_text='Orden de aparición en el catálogo.')
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='escuelas',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_schools'
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Course(models.Model):
     """Curso — entidad raíz de la academia.
 
@@ -208,6 +233,12 @@ class Course(models.Model):
     catálogo visible para cualquier estudiante.
     """
 
+    # Escuela a la que pertenece el curso (nivel superior de la jerarquía).
+    # NULL = curso sin escuela (catálogo plano, retrocompatible).
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cursos',
+    )
     # Autor / dueño del curso. SET_NULL para no perder el curso si se borra la
     # cuenta del instructor (el contenido sobrevive a la persona).
     instructor = models.ForeignKey(

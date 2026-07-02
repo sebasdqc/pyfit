@@ -32,6 +32,10 @@ def deduplicate_checkins(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    # atomic=False porque auditlog registra triggers diferidos en daily_checkin.
+    # Si todo corre en una sola transacción, Postgres bloquea el ALTER TABLE
+    # al haber trigger events pendientes del DELETE previo.
+    atomic = False
 
     dependencies = [
         ('checkins', '0007_alter_dailycheckin_calidad_sueno_and_more'),

@@ -11,7 +11,7 @@ from rest_framework import serializers
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
-    Submission, CourseBadge,
+    Submission, CourseBadge, School,
 )
 
 
@@ -113,10 +113,23 @@ class CourseBadgeSerializer(serializers.ModelSerializer):
 
 # ─── Cursos ───────────────────────────────────────────────────────────────────
 
+class SchoolSerializer(serializers.ModelSerializer):
+    total_cursos = serializers.SerializerMethodField()
+
+    class Meta:
+        model = School
+        fields = ['id', 'nombre', 'slug', 'descripcion', 'orden', 'total_cursos', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def get_total_cursos(self, obj):
+        return obj.cursos.filter(publicado=True).count()
+
+
 class CourseSerializer(serializers.ModelSerializer):
     """Resumen de curso para el catálogo y la autoría."""
 
     instructor_nombre = serializers.SerializerMethodField()
+    escuela_nombre = serializers.SerializerMethodField()
     total_modulos = serializers.SerializerMethodField()
     total_lecciones = serializers.SerializerMethodField()
     total_inscritos = serializers.SerializerMethodField()
@@ -124,7 +137,8 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            'id', 'instructor', 'instructor_nombre', 'titulo', 'slug', 'resumen',
+            'id', 'school', 'escuela_nombre', 'instructor', 'instructor_nombre',
+            'titulo', 'slug', 'resumen',
             'descripcion', 'categoria', 'nivel',
             'disciplina', 'licencia', 'modalidad', 'carga_horaria_h', 'acredita_renovacion',
             'portada', 'duracion_estimada_min',
@@ -132,6 +146,9 @@ class CourseSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'instructor', 'created_at', 'updated_at']
+
+    def get_escuela_nombre(self, obj):
+        return obj.school.nombre if obj.school_id else None
 
     def get_instructor_nombre(self, obj):
         return _display_name(obj.instructor)
