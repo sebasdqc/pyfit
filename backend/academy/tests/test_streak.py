@@ -9,7 +9,7 @@ o rendir un quiz dispara la racha SIN una llamada extra del frontend.
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -289,4 +289,28 @@ class EndpointTests(TestCase):
         res = self.client.get('/api/academy/streak/')
         self.assertEqual(res.status_code, 200)
         for k in ('racha_actual', 'mejor_racha', 'freezes_disponibles', 'estado', 'alerta'):
+            self.assertIn(k, res.data)
+
+
+class SweepEndpointTests(TestCase):
+    """POST /api/academy/streak/sweep/ — barrido diario disparado por cron externo."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+    @override_settings(CRON_SECRET='')
+    def test_sin_secreto_configurado_503(self):
+        res = self.client.post('/api/academy/streak/sweep/')
+        self.assertEqual(res.status_code, 503)
+
+    @override_settings(CRON_SECRET='s3cr3t')
+    def test_secreto_incorrecto_403(self):
+        res = self.client.post('/api/academy/streak/sweep/', HTTP_X_CRON_SECRET='malo')
+        self.assertEqual(res.status_code, 403)
+
+    @override_settings(CRON_SECRET='s3cr3t')
+    def test_secreto_correcto_200(self):
+        res = self.client.post('/api/academy/streak/sweep/', HTTP_X_CRON_SECRET='s3cr3t')
+        self.assertEqual(res.status_code, 200)
+        for k in ('evaluados', 'freezes_consumidos', 'rotas', 'sanas'):
             self.assertIn(k, res.data)

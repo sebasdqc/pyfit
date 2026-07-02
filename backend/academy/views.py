@@ -36,8 +36,10 @@ las vistas con helpers, igual que en Zyfit Performance. El "scoring" (calificar
 quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
 """
 
+import hmac
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -594,6 +596,25 @@ def streak_view(request):
     return Response(streak_service.get_or_create_state(
         request.user, hoy=_get_local_date(request),
     ))
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def streak_sweep(request):
+    """Barrido diario de rachas por HTTP (equivalente al comando academy_streak_sweep).
+
+    Pensado para dispararse desde un cron externo (GitHub Actions) que no tiene
+    sesión de usuario. Se protege con un secreto compartido (settings.CRON_SECRET):
+    la request debe traer la cabecera `X-Cron-Secret`. Sin CRON_SECRET configurado
+    el endpoint queda deshabilitado (503). Compara en tiempo constante."""
+    secret = getattr(settings, 'CRON_SECRET', '') or ''
+    if not secret:
+        return Response({'detail': 'Cron deshabilitado (falta CRON_SECRET).'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    provided = request.headers.get('X-Cron-Secret', '')
+    if not hmac.compare_digest(provided, secret):
+        return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+    return Response(streak_service.run_daily_maintenance())
 
 
 # ─── Entregables del Programa Evolución 360° ──────────────────────────────────

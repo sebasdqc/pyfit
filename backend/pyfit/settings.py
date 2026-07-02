@@ -306,6 +306,10 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
+# Secreto compartido para disparar jobs vía HTTP desde un cron externo (GitHub
+# Actions). Vacío = endpoints de cron deshabilitados (503). Ver academy.views.streak_sweep.
+CRON_SECRET = os.environ.get('CRON_SECRET', '')
+
 # ─── Google Sign-In ───────────────────────────────────────────────────────────
 # Audiencias (client IDs) aceptadas al verificar el id_token de Google que envía
 # la app. Debe incluir el **Web client ID** (que la SDK nativa usa como

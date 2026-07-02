@@ -34,6 +34,8 @@ urlpatterns = [
 
     # Racha de estudio (gamificación de retención)
     path('streak/', views.streak_view),
+    # Barrido diario (cron externo con secreto compartido)
+    path('streak/sweep/', views.streak_sweep),
 
     # Aprendizaje (estudiante)
     path('enrollments/', views.my_enrollments),
