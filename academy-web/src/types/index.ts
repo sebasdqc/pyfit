@@ -60,8 +60,21 @@ export interface LoginResponse {
 
 // ── Catálogo ────────────────────────────────────────────────────────────────
 
+export interface School {
+  id: number
+  nombre: string
+  slug: string
+  descripcion: string
+  orden: number
+  total_cursos: number
+  created_at: string
+  cursos: Course[]
+}
+
 export interface Course {
   id: number
+  school: number | null
+  escuela_nombre: string | null
   instructor: number | null
   instructor_nombre: string
   titulo: string

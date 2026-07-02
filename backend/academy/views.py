@@ -51,13 +51,14 @@ from pyfit.throttles import LoginRateThrottle
 from . import grading
 from .models import (
     Course, Module, Lesson, Quiz, Question,
-    Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant,
+    Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
 )
 from .permissions import IsAcademyUser, can_edit_course, is_author
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
     QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
     QuizAttemptSerializer, CertificateSerializer, SubmissionSerializer,
+    SchoolSerializer, SchoolWithCoursesSerializer,
 )
 
 User = get_user_model()
@@ -237,6 +238,26 @@ def courses_view(request):
         from django.db.models import Q
         qs = qs.filter(Q(titulo__icontains=q) | Q(resumen__icontains=q))
     return Response(CourseSerializer(qs, many=True).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def schools_view(request):
+    """Lista las escuelas del tenant con sus cursos publicados anidados.
+
+    Devuelve solo escuelas que tienen al menos un curso publicado, ordenadas
+    por `orden`. Cada escuela incluye el array `cursos` (publicados).
+    """
+    tenant = getattr(request, 'tenant', None)
+    schools = (
+        School.objects
+        .filter(tenant=tenant)
+        .prefetch_related('cursos')
+        .order_by('orden', 'nombre')
+    )
+    # Excluir escuelas sin cursos publicados (no tendría sentido mostrarlas).
+    schools = [s for s in schools if s.cursos.filter(publicado=True).exists()]
+    return Response(SchoolWithCoursesSerializer(schools, many=True).data)
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])

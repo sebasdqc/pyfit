@@ -4,8 +4,15 @@
 import { api } from './client'
 import type {
   Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, Lesson,
-  LessonTipo, QuizAttempt, Submission, SubmissionEstado,
+  LessonTipo, QuizAttempt, Submission, SubmissionEstado, School,
 } from '@/types'
+
+// ── Escuelas ──────────────────────────────────────────────────────────────────
+
+export async function listSchools(): Promise<School[]> {
+  const res = await api.get<School[]>('/academy/schools/')
+  return res.data
+}
 
 // ── Catálogo / cursos ─────────────────────────────────────────────────────────
 

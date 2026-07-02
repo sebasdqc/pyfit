@@ -1,24 +1,109 @@
-// Catálogo de cursos publicados. Consume GET /api/academy/courses/ con filtros
-// de categoría, nivel y búsqueda. Hero de marca + grilla de tarjetas.
+// Catálogo de cursos. Sin filtros activos muestra las escuelas agrupadas
+// (GET /api/academy/schools/). Con búsqueda o filtro cae al grid plano
+// (GET /api/academy/courses/).
 
 import { useEffect, useMemo, useState } from 'react'
-import { listCourses } from '@/api/academy'
+import { listCourses, listSchools } from '@/api/academy'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Emblem } from '@/components/Emblem'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
-import type { Course } from '@/types'
+import type { Course, School } from '@/types'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const NIVEL_DOT: Record<string, string> = {
+  principiante: 'bg-ok',
+  intermedio: 'bg-warn',
+  avanzado: 'bg-danger',
+}
+
+const NIVEL_LABEL: Record<string, string> = {
+  principiante: 'Principiante',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
+}
+
+function SchoolTag({ nivel }: { nivel: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink-soft">
+      <span className={`h-1.5 w-1.5 rounded-full ${NIVEL_DOT[nivel] ?? 'bg-ink-muted'}`} />
+      {NIVEL_LABEL[nivel] ?? nivel}
+    </span>
+  )
+}
+
+// ── Vista agrupada por escuela ────────────────────────────────────────────────
+
+function SchoolSection({ school }: { school: School }) {
+  return (
+    <section aria-labelledby={`school-${school.id}`}>
+      {/* Cabecera de la escuela */}
+      <div className="mb-4 flex flex-col gap-1 border-l-4 border-accent pl-4">
+        <h2
+          id={`school-${school.id}`}
+          className="text-[17px] font-bold tracking-tight text-ink"
+        >
+          {school.nombre}
+        </h2>
+        {school.descripcion && (
+          <p className="text-sm text-ink-soft">{school.descripcion}</p>
+        )}
+        <div className="mt-1 flex flex-wrap gap-2">
+          {Array.from(new Set(school.cursos.map((c) => c.nivel))).map((n) => (
+            <SchoolTag key={n} nivel={n} />
+          ))}
+          <span className="text-xs text-ink-muted">
+            {school.total_cursos} {school.total_cursos === 1 ? 'curso' : 'cursos'}
+          </span>
+        </div>
+      </div>
+
+      {/* Grid de cursos de la escuela */}
+      {school.cursos.length === 0 ? (
+        <p className="text-sm text-ink-muted">Sin cursos publicados aún.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {school.cursos.map((c) => (
+            <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 
 export function CatalogPage() {
+  const [schools, setSchools] = useState<School[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+
   const [q, setQ] = useState('')
   const [categoria, setCategoria] = useState('')
   const [nivel, setNivel] = useState('')
+
+  const filtersActive = Boolean(q.trim() || categoria || nivel)
+
+  // Carga escuelas (vista agrupada) al montar — sin filtros.
   useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(false)
+    listSchools()
+      .then((data) => active && setSchools(data))
+      .catch(() => active && setError(true))
+      .finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [])
+
+  // Carga el catálogo plano cuando hay filtros de categoría o nivel activos.
+  useEffect(() => {
+    if (!filtersActive) return
     let active = true
     setLoading(true)
     setError(false)
@@ -29,19 +114,35 @@ export function CatalogPage() {
       .then((data) => active && setCourses(data))
       .catch(() => active && setError(true))
       .finally(() => active && setLoading(false))
-    return () => {
-      active = false
-    }
-  }, [categoria, nivel])
+    return () => { active = false }
+  }, [categoria, nivel, filtersActive])
 
-  // La búsqueda por texto se filtra en cliente sobre lo ya cargado (rápida).
-  const visible = useMemo(() => {
+  // Búsqueda en cliente sobre lo ya cargado.
+  const visibleCourses = useMemo(() => {
     const term = q.trim().toLowerCase()
     if (!term) return courses
     return courses.filter(
       (c) => c.titulo.toLowerCase().includes(term) || c.resumen.toLowerCase().includes(term),
     )
   }, [courses, q])
+
+  // Búsqueda en cliente sobre las escuelas cargadas.
+  const visibleSchools = useMemo(() => {
+    const term = q.trim().toLowerCase()
+    if (!term || categoria || nivel) return schools
+    return schools
+      .map((s) => ({
+        ...s,
+        cursos: s.cursos.filter(
+          (c) => c.titulo.toLowerCase().includes(term) || c.resumen.toLowerCase().includes(term),
+        ),
+      }))
+      .filter((s) => s.cursos.length > 0)
+  }, [schools, q, categoria, nivel])
+
+  const isEmpty = filtersActive
+    ? !loading && !error && visibleCourses.length === 0
+    : !loading && !error && visibleSchools.length === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,23 +175,28 @@ export function CatalogPage() {
             className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
-        <Select value={categoria} onChange={setCategoria} placeholder="Categoría">
+        <FilterSelect value={categoria} onChange={setCategoria} placeholder="Categoría">
           {CATEGORIAS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+            <option key={c} value={c}>{c}</option>
           ))}
-        </Select>
-        <Select value={nivel} onChange={setNivel} placeholder="Nivel">
+        </FilterSelect>
+        <FilterSelect value={nivel} onChange={setNivel} placeholder="Nivel">
           {NIVELES.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.label}
-            </option>
+            <option key={n.id} value={n.id}>{n.label}</option>
           ))}
-        </Select>
+        </FilterSelect>
+        {filtersActive && (
+          <button
+            onClick={() => { setQ(''); setCategoria(''); setNivel('') }}
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-white px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
+          >
+            <Icon name="close" size={14} />
+            Limpiar
+          </button>
+        )}
       </div>
 
-      {/* Resultados */}
+      {/* Contenido */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Spinner size={40} />
@@ -101,20 +207,28 @@ export function CatalogPage() {
           title="No se pudo cargar el catálogo"
           description="Revisa tu conexión e inténtalo de nuevo."
         />
-      ) : visible.length === 0 ? (
+      ) : isEmpty ? (
         <EmptyState
           icon="catalog"
           title={q.trim() ? 'Sin resultados' : 'Sin cursos por ahora'}
           description={
             q.trim()
-              ? `No encontramos cursos que coincidan con “${q.trim()}”.`
+              ? `No encontramos cursos que coincidan con "${q.trim()}".`
               : 'Aún no hay cursos publicados con estos filtros.'
           }
         />
-      ) : (
+      ) : filtersActive ? (
+        /* Vista plana cuando hay filtros activos */
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((c) => (
+          {visibleCourses.map((c) => (
             <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
+          ))}
+        </div>
+      ) : (
+        /* Vista agrupada por escuela */
+        <div className="flex flex-col gap-10">
+          {visibleSchools.map((s) => (
+            <SchoolSection key={s.id} school={s} />
           ))}
         </div>
       )}
@@ -122,7 +236,7 @@ export function CatalogPage() {
   )
 }
 
-function Select({
+function FilterSelect({
   value,
   onChange,
   placeholder,

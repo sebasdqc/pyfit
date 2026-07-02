@@ -125,6 +125,19 @@ class SchoolSerializer(serializers.ModelSerializer):
         return obj.cursos.filter(publicado=True).count()
 
 
+class SchoolWithCoursesSerializer(SchoolSerializer):
+    """Escuela con sus cursos publicados anidados — para el catálogo agrupado."""
+
+    cursos = serializers.SerializerMethodField()
+
+    class Meta(SchoolSerializer.Meta):
+        fields = SchoolSerializer.Meta.fields + ['cursos']
+
+    def get_cursos(self, obj):
+        cursos = obj.cursos.filter(publicado=True).order_by('created_at')
+        return CourseSerializer(cursos, many=True, context=self.context).data
+
+
 class CourseSerializer(serializers.ModelSerializer):
     """Resumen de curso para el catálogo y la autoría."""
 

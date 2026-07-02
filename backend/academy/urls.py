@@ -12,6 +12,9 @@ urlpatterns = [
     path('auth/login/', views.academy_login),
     path('me/', views.academy_me),
 
+    # Escuelas (catálogo agrupado)
+    path('schools/', views.schools_view),
+
     # Cursos (catálogo + autoría)
     path('courses/', views.courses_view),
     path('courses/<int:pk>/', views.course_detail),
