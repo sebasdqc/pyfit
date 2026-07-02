@@ -17,6 +17,7 @@ export type IconName =
   | 'search'
   | 'play'
   | 'doc'
+  | 'audio'
   | 'quiz'
   | 'clock'
   | 'users'
@@ -79,6 +80,12 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <path d="M14 2v6h6M8 13h8M8 17h6" />
+    </>
+  ),
+  audio: (
+    <>
+      <path d="M3 14v-2a9 9 0 0 1 18 0v2" />
+      <path d="M21 16a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 16a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z" />
     </>
   ),
   quiz: (

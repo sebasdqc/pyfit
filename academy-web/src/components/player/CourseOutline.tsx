@@ -11,6 +11,7 @@ import type { CourseDetail, LessonTipo } from '@/types'
 const LESSON_ICON: Record<LessonTipo, IconName> = {
   video: 'play',
   texto: 'doc',
+  audio: 'audio',
   quiz: 'quiz',
   en_vivo: 'live',
   practica: 'pitch',

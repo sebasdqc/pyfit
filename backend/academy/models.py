@@ -63,6 +63,7 @@ NIVEL_CHOICES = [
 #                  (la lección solo se completa cuando la entrega es aprobada).
 LESSON_VIDEO = 'video'
 LESSON_TEXTO = 'texto'
+LESSON_AUDIO = 'audio'
 LESSON_QUIZ = 'quiz'
 LESSON_EN_VIVO = 'en_vivo'
 LESSON_PRACTICA = 'practica'
@@ -70,6 +71,7 @@ LESSON_ENTREGABLE = 'entregable'
 LESSON_TIPO_CHOICES = [
     (LESSON_VIDEO, 'Video'),
     (LESSON_TEXTO, 'Texto'),
+    (LESSON_AUDIO, 'Audio'),
     (LESSON_QUIZ, 'Quiz'),
     (LESSON_EN_VIVO, 'Sesión en vivo'),
     (LESSON_PRACTICA, 'Práctica presencial'),

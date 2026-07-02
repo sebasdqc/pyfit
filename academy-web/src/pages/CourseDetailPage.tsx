@@ -18,6 +18,7 @@ import type { CourseDetail, Enrollment, Lesson } from '@/types'
 const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
   video: 'play',
   texto: 'doc',
+  audio: 'audio',
   quiz: 'quiz',
   en_vivo: 'live',
   practica: 'pitch',
@@ -26,6 +27,7 @@ const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
 const LESSON_LABEL: Record<Lesson['tipo'], string> = {
   video: 'Video',
   texto: 'Lectura',
+  audio: 'Audio',
   quiz: 'Evaluación',
   en_vivo: 'Sesión en vivo',
   practica: 'Práctica presencial',

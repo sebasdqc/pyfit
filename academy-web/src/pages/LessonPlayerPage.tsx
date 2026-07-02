@@ -21,6 +21,7 @@ import type { EnrollmentDetail, Lesson, LessonTipo, Submission } from '@/types'
 const TYPE_LABEL: Record<LessonTipo, string> = {
   video: 'Video',
   texto: 'Lectura',
+  audio: 'Audio',
   quiz: 'Evaluación',
   en_vivo: 'Sesión en vivo',
   practica: 'Práctica presencial',
@@ -29,6 +30,7 @@ const TYPE_LABEL: Record<LessonTipo, string> = {
 const TYPE_ICON: Record<LessonTipo, IconName> = {
   video: 'play',
   texto: 'doc',
+  audio: 'audio',
   quiz: 'quiz',
   en_vivo: 'live',
   practica: 'pitch',
@@ -406,6 +408,36 @@ function LessonBody({
                 {lesson.contenido
                   ? 'Tu instructor lo publicará pronto. Mientras tanto, repasa el material de apoyo de la lección.'
                   : 'Tu instructor lo publicará pronto. Vuelve a esta lección más tarde.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {lesson.contenido && <TextBody text={lesson.contenido} />}
+      </div>
+    )
+  }
+
+  if (lesson.tipo === 'audio') {
+    return (
+      <div className="flex flex-col gap-5">
+        {lesson.video_url ? (
+          /* El campo video_url reutiliza la URL de media también para audio. */
+          <audio controls preload="none" src={lesson.video_url} className="w-full">
+            Tu navegador no soporta el reproductor de audio.
+          </audio>
+        ) : (
+          /* Placeholder: la lección es de audio pero aún no se produjo el archivo.
+             El alumno sigue con el guion de apoyo y la marca como completada. */
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-brand-deep p-8 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white">
+              <Icon name="audio" size={24} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-white">Audio en producción</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-white/60">
+                {lesson.contenido
+                  ? 'Publicaremos el audio pronto. Mientras tanto, sigue el guion de apoyo de la lección.'
+                  : 'Publicaremos el audio pronto. Vuelve a esta lección más tarde.'}
               </p>
             </div>
           </div>

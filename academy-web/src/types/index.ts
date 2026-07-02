@@ -33,7 +33,7 @@ export type Licencia = '' | 'C' | 'B' | 'A' | 'PRO'
 export type Modalidad = 'presencial' | 'virtual' | 'semipresencial'
 // Los tres últimos tipos son del Programa Evolución 360° (modalidad híbrida):
 // sesión sincrónica en vivo, práctica presencial y entregable con revisión.
-export type LessonTipo = 'video' | 'texto' | 'quiz' | 'en_vivo' | 'practica' | 'entregable'
+export type LessonTipo = 'video' | 'texto' | 'audio' | 'quiz' | 'en_vivo' | 'practica' | 'entregable'
 export type EntregableTipo = '' | 'texto' | 'video' | 'planificacion'
 export type QuestionTipo = 'opcion_unica' | 'opcion_multiple' | 'verdadero_falso'
 export type EnrollmentEstado = 'activa' | 'completada' | 'cancelada'
