@@ -232,3 +232,47 @@ export interface Certificate {
   estudiante_nombre: string
   emitido_at: string
 }
+
+// ── Racha de estudio (gamificación de retención) ──────────────────────────────
+// Espeja academy.streak_service.streak_state().
+
+export type StreakEstado = 'sin_iniciar' | 'activa' | 'en_riesgo' | 'congelada' | 'recuperable'
+export type StreakColor = 'brand' | 'accent' | 'ok' | 'warn' | 'neutral'
+
+export interface StreakAlerta {
+  tipo: string
+  mensaje: string
+  color: StreakColor
+}
+
+export interface StreakLogro {
+  id: string
+  label: string
+  icon: string // emoji
+}
+
+export interface StreakRecuperacion {
+  racha_en_riesgo: number
+  horas_restantes: number
+}
+
+export interface StreakState {
+  racha_actual: number
+  mejor_racha: number
+  ultima_actividad: string | null
+  estudiado_hoy: boolean
+  estado: StreakEstado
+  en_riesgo: boolean
+  freezes_disponibles: number
+  freezes_usados: number
+  congelada: boolean
+  proximo_freeze_en: number | null // días hasta el próximo freeze (null si al tope)
+  freezes_max: number
+  dias_por_freeze: number
+  recuperacion: StreakRecuperacion | null
+  total_dias_activos: number
+  total_rachas_rotas: number
+  puntos_totales: number
+  logros: StreakLogro[]
+  alerta: StreakAlerta | null
+}

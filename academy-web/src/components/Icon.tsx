@@ -34,6 +34,8 @@ export type IconName =
   | 'upload'
   | 'activity'
   | 'heart'
+  | 'flame'
+  | 'snowflake'
 
 const PATHS: Record<IconName, ReactNode> = {
   catalog: (
@@ -165,6 +167,15 @@ const PATHS: Record<IconName, ReactNode> = {
   activity: <path d="M3 12h4l3 8 4-16 3 8h4" />,
   // Recuperación / wellness: corazón.
   heart: <path d="M12 20s-7-4.5-9.5-9A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9.5 5c-2.5 4.5-9.5 9-9.5 9Z" />,
+  // Racha de estudio: llama.
+  flame: <path d="M12 3c1 3-1.5 4-1.5 6.5a3.5 3.5 0 0 0 7 0c0-1.2-.5-2.3-1.2-3 .2 2-1 3-2 3 .8-2.3-2.3-4.7-2.3-6.5ZM12 3C8 5 6 8.5 6 12a6 6 0 0 0 12 0" />,
+  // Freeze de racha: copo de nieve.
+  snowflake: (
+    <>
+      <path d="M12 2v20M4.2 7l15.6 10M19.8 7 4.2 17" />
+      <path d="M12 5.5 9.5 4M12 5.5 14.5 4M12 18.5 9.5 20M12 18.5l2.5 1.5" />
+    </>
+  ),
 }
 
 export function Icon({

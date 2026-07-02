@@ -601,3 +601,86 @@ class Certificate(models.Model):
 
     def __str__(self):
         return self.codigo
+
+
+# ─── Racha de estudio (gamificación de retención) ─────────────────────────────
+#
+# Espejo de la racha de entrenamiento (users.Profile.racha_actual / mejor_racha /
+# puntos_totales / logros), pero NAMESPACED en Academy y por usuario a través de
+# TODOS los cursos y escuelas: la regla de negocio dice que cuenta una actividad
+# de estudio "en cualquier curso de las tres escuelas", así que el streak vive a
+# nivel de usuario, no de matrícula. Se mantiene desacoplado a propósito del
+# streak de entrenamiento (el futuro "doble streak" los combinará en la capa de
+# presentación sin fusionar estos modelos). Toda la lógica vive en
+# academy.streak_service (capa de servicio), igual que academy.grading para el
+# scoring: los modelos solo guardan estado.
+
+
+class AcademyStreak(models.Model):
+    """Estado de la racha de estudio de un usuario (1:1 con la cuenta).
+
+    A diferencia de la racha de entrenamiento (que se deriva en tiempo real de las
+    sesiones con feedback), esta racha es ESTADO PERSISTENTE porque los "freezes"
+    la hacen depender de eventos con historia (un freeze rellena un día perdido).
+    `academy.streak_service` es el único que la escribe.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_streak',
+    )
+    # Días de estudio consecutivos vigentes (incluye días cubiertos por freeze).
+    racha_actual = models.PositiveIntegerField(default=0)
+    # Mejor racha histórica (nunca decrece).
+    mejor_racha = models.PositiveIntegerField(default=0)
+    # Última fecha LOCAL (del alumno) con actividad de estudio válida.
+    ultima_actividad = models.DateField(null=True, blank=True)
+    # Última fecha cubierta por un freeze consumido (rellena un hueco sin actividad).
+    # La "cobertura" de la racha es max(ultima_actividad, congelado_hasta).
+    congelado_hasta = models.DateField(null=True, blank=True)
+    # Freezes acumulados disponibles (se gana 1 cada N días; tope MAX_FREEZES).
+    freezes_disponibles = models.PositiveSmallIntegerField(default=0)
+    # Freezes consumidos en total (histórico, para estadísticas).
+    freezes_usados = models.PositiveIntegerField(default=0)
+    # ── Recuperación de racha (ventana post-ruptura) ──
+    # Al romperse, guardamos la racha perdida aquí para poder revivirla si el
+    # alumno vuelve a estudiar dentro de la ventana (racha "en riesgo").
+    racha_en_riesgo = models.PositiveIntegerField(default=0)
+    recuperable_hasta = models.DateTimeField(null=True, blank=True)
+    # ── Historial / gamificación ──
+    total_rachas_rotas = models.PositiveIntegerField(default=0)
+    puntos_totales = models.PositiveIntegerField(default=0)
+    logros = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'academy_streaks'
+
+    def __str__(self):
+        return f'{self.user_id} · racha {self.racha_actual}'
+
+
+class AcademyActivityDay(models.Model):
+    """Bitácora de un día (local) en que el usuario tuvo actividad de estudio válida.
+
+    Una fila por (usuario, fecha): completar una lección/módulo o rendir un quiz.
+    Es idempotente por día (unique) — repetir actividad el mismo día no la duplica —
+    y sirve de fuente auditable para recomputar la racha y los puntos. NO se registra
+    "abrir la app" ni "navegar el catálogo": eso no es actividad de estudio.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_activity_days',
+    )
+    fecha = models.DateField()
+    # Qué disparó la actividad (para trazabilidad; no altera la racha).
+    origen = models.CharField(max_length=20, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_activity_days'
+        unique_together = [['user', 'fecha']]
+        ordering = ['-fecha']
+        indexes = [models.Index(fields=['user', '-fecha'])]
+
+    def __str__(self):
+        return f'{self.user_id} · {self.fecha}'

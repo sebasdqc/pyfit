@@ -16,6 +16,7 @@ import { CourseOutline } from '@/components/player/CourseOutline'
 import { QuizLesson } from '@/components/player/QuizLesson'
 import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { toEmbedUrl } from '@/lib/videoEmbed'
+import { useStreak } from '@/lib/useStreak'
 import type { EnrollmentDetail, Lesson, LessonTipo, Submission } from '@/types'
 
 const TYPE_LABEL: Record<LessonTipo, string> = {
@@ -56,6 +57,10 @@ export function LessonPlayerPage() {
   const [marking, setMarking] = useState(false)
   const [markError, setMarkError] = useState(false)
   const outlineRef = useRef<HTMLElement>(null)
+  // Racha de estudio: cache compartido + confirmación al sumar el día.
+  const { streak: myStreak, refresh: refreshStreak } = useStreak()
+  const [rachaToast, setRachaToast] = useState<number | null>(null)
+  const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Lecciones aplanadas en orden (con el título de su módulo para el encabezado).
   const lessons = useMemo(
@@ -142,6 +147,18 @@ export function LessonPlayerPage() {
     if (lessonId != null) setCompleted((prevSet) => new Set(prevSet).add(lessonId))
   }
 
+  // Refresca la racha compartida (Topbar/tarjeta) y, si creció, muestra una
+  // confirmación breve de que hoy sumó el día de estudio.
+  function celebrarRacha(nueva: number | null | undefined) {
+    const antes = myStreak?.racha_actual ?? 0
+    refreshStreak()
+    if (nueva != null && nueva > antes) {
+      setRachaToast(nueva)
+      if (toastRef.current) clearTimeout(toastRef.current)
+      toastRef.current = setTimeout(() => setRachaToast(null), 2600)
+    }
+  }
+
   async function markComplete() {
     if (!current) return
     setMarking(true)
@@ -149,6 +166,7 @@ export function LessonPlayerPage() {
     try {
       const r = await completeLesson(id, current.lesson.id)
       applyProgress(r.progreso, r.estado, current.lesson.id)
+      celebrarRacha(r.racha_estudio)
       if (next) setCurrentId(next.lesson.id)
     } catch {
       setMarkError(true)
@@ -160,6 +178,7 @@ export function LessonPlayerPage() {
   function onQuizGraded(r: AttemptResult) {
     // El backend completa la lección del quiz al aprobar.
     applyProgress(r.progreso, r.estado, r.aprobado && current ? current.lesson.id : undefined)
+    celebrarRacha(r.racha_estudio)
   }
 
   function onSubmitted(s: Submission) {
@@ -175,6 +194,18 @@ export function LessonPlayerPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface-soft">
+      {/* Confirmación al sumar el día de estudio (racha extendida). */}
+      {rachaToast != null && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4" role="status" aria-live="polite">
+          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-white px-4 py-2.5 shadow-cardHover">
+            <Icon name="flame" size={18} className="text-brand za-flame" />
+            <span className="text-sm font-semibold text-ink">
+              ¡Racha de {rachaToast} {rachaToast === 1 ? 'día' : 'días'}! Sumaste tu día de estudio.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Barra superior del reproductor */}
       <header className="flex items-center gap-2 border-b border-surface-border bg-white px-4 py-3 sm:gap-3 sm:px-6">
         <button

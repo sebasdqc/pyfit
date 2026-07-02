@@ -76,6 +76,21 @@
   }
 }
 
+/* ── Racha de estudio: micro-animaciones (tenue, no ansiógeno) ──────────────
+   La llama respira suavemente; el número "salta" al extenderse la racha. El
+   bloque de prefers-reduced-motion de abajo las neutraliza automáticamente. */
+@keyframes za-flame {
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50%      { transform: scale(1.08) rotate(-2deg); opacity: 1; }
+}
+@keyframes za-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.za-flame { animation: za-flame 2.4s ease-in-out infinite; transform-origin: center bottom; }
+.za-pop   { animation: za-pop 0.5s ease-out; }
+
 /* Respeta la preferencia de "movimiento reducido" del sistema (mejores prácticas
    de accesibilidad). Neutraliza spinners, pulsos, transiciones y auto-scroll
    en toda la app de una sola vez. */

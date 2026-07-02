@@ -36,6 +36,8 @@ las vistas con helpers, igual que en Zyfit Performance. El "scoring" (calificar
 quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
 """
 
+from datetime import date
+
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -48,7 +50,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle
-from . import grading
+from . import grading, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
@@ -86,6 +88,39 @@ _DEFAULT_BRANDING = {
 
 
 # ─── Helpers de scope ─────────────────────────────────────────────────────────
+
+def _get_local_date(request) -> date:
+    """Fecha LOCAL del alumno (header X-Local-Date), con el mismo criterio que el
+    resto del backend (workouts._get_local_date): se acepta la fecha del cliente
+    solo si cae dentro de ±1 día del servidor (cubre la zona horaria sin permitir
+    fechas arbitrarias que manipulen la racha). Cae a UTC si no llega.
+
+    Es CLAVE para la racha de estudio: el "día" del streak es el del dispositivo,
+    no el del servidor."""
+    server_today = date.today()
+    header = request.headers.get('X-Local-Date', '').strip()
+    if header:
+        try:
+            client_date = date.fromisoformat(header)
+            if abs((client_date - server_today).days) <= 1:
+                return client_date
+        except ValueError:
+            pass
+    return server_today
+
+
+def _registrar_actividad_estudio(user, request, origen=''):
+    """Registra actividad de estudio para la racha (efecto colateral de completar
+    una lección/quiz). Failure-safe: un fallo de la racha NUNCA debe tumbar el
+    flujo de aprendizaje. Devuelve la racha actual o None."""
+    try:
+        streak = streak_service.record_study_activity(
+            user, hoy=_get_local_date(request), origen=origen,
+        )
+        return streak.racha_actual
+    except Exception:
+        return None
+
 
 def _course_for_read(user, pk, tenant=None):
     """Curso visible para el usuario dentro del tenant activo."""
@@ -509,7 +544,10 @@ def lesson_complete(request, enrollment_id, lesson_id):
         enrollment=enrollment, lesson=lesson, defaults={'completado': True},
     )
     pct = grading.recompute_progress(enrollment)
-    return Response({'progreso': pct, 'estado': enrollment.estado})
+    # La racha de estudio se actualiza como efecto colateral de la acción real de
+    # aprendizaje (sin endpoint aparte que el front deba llamar).
+    racha = _registrar_actividad_estudio(request.user, request, origen='leccion')
+    return Response({'progreso': pct, 'estado': enrollment.estado, 'racha_estudio': racha})
 
 
 @api_view(['POST'])
@@ -535,10 +573,27 @@ def quiz_attempt(request, enrollment_id, quiz_id):
             enrollment=enrollment, lesson=quiz.lesson, defaults={'completado': True},
         )
     pct = grading.recompute_progress(enrollment)
+    # Rendir un quiz cuenta como actividad de estudio del día (aprobado o no).
+    racha = _registrar_actividad_estudio(request.user, request, origen='quiz')
     data = QuizAttemptSerializer(attempt).data
     data['progreso'] = pct
     data['estado'] = enrollment.estado
+    data['racha_estudio'] = racha
     return Response(data, status=status.HTTP_201_CREATED)
+
+
+# ─── Racha de estudio (gamificación de retención) ─────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def streak_view(request):
+    """Estado de la racha de estudio del usuario autenticado: racha activa, mejor
+    racha histórica, freezes disponibles, estado (activa/en_riesgo/congelada/
+    recuperable), alerta motivacional y ventana de recuperación. Solo lectura: la
+    racha se actualiza sola al completar lecciones/quizzes (ver streak_service)."""
+    return Response(streak_service.get_or_create_state(
+        request.user, hoy=_get_local_date(request),
+    ))
 
 
 # ─── Entregables del Programa Evolución 360° ──────────────────────────────────

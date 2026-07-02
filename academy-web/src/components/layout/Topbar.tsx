@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
+import { StreakPill } from '@/components/StreakPill'
 import { useAuth } from '@/auth/useAuth'
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
@@ -30,7 +31,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </div>
       </div>
 
-      <UserMenu nombre={user?.nombre ?? 'Usuario'} email={user?.email ?? ''} onLogout={logout} />
+      <div className="flex shrink-0 items-center gap-2.5">
+        {!user?.is_instructor && <StreakPill />}
+        <UserMenu nombre={user?.nombre ?? 'Usuario'} email={user?.email ?? ''} onLogout={logout} />
+      </div>
     </header>
   )
 }

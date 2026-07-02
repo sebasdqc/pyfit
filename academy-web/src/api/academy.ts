@@ -4,8 +4,15 @@
 import { api } from './client'
 import type {
   Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, Lesson,
-  LessonTipo, QuizAttempt, Submission, SubmissionEstado, School,
+  LessonTipo, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
 } from '@/types'
+
+// ── Racha de estudio ──────────────────────────────────────────────────────────
+
+export async function getStreak(): Promise<StreakState> {
+  const res = await api.get<StreakState>('/academy/streak/')
+  return res.data
+}
 
 // ── Escuelas ──────────────────────────────────────────────────────────────────
 
@@ -108,16 +115,21 @@ export async function getEnrollment(id: number): Promise<EnrollmentDetail> {
   return res.data
 }
 
-export async function completeLesson(enrollmentId: number, lessonId: number): Promise<{ progreso: number; estado: string }> {
+export async function completeLesson(
+  enrollmentId: number,
+  lessonId: number,
+): Promise<{ progreso: number; estado: string; racha_estudio: number | null }> {
   const res = await api.post(`/academy/enrollments/${enrollmentId}/lessons/${lessonId}/complete/`)
   return res.data
 }
 
 // El intento de quiz lo califica el SERVIDOR; la respuesta añade el progreso y
 // estado actualizados de la matrícula (la vista los agrega al QuizAttempt).
+// `racha_estudio` = racha de estudio tras contar este quiz como actividad del día.
 export interface AttemptResult extends QuizAttempt {
   progreso: number
   estado: string
+  racha_estudio: number | null
 }
 
 export async function submitQuizAttempt(

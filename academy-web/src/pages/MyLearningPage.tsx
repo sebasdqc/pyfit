@@ -10,12 +10,15 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
+import { StreakCard } from '@/components/StreakCard'
+import { useStreak } from '@/lib/useStreak'
 import type { Enrollment } from '@/types'
 
 export function MyLearningPage() {
   const [items, setItems] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const { streak } = useStreak()
 
   useEffect(() => {
     let active = true
@@ -34,6 +37,8 @@ export function MyLearningPage() {
         <p className="za-eyebrow">Mi aprendizaje</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Continúa donde lo dejaste</h1>
       </header>
+
+      <StreakCard streak={streak} />
 
       {loading ? (
         <div className="flex justify-center py-20">

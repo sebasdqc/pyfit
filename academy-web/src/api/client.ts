@@ -35,10 +35,22 @@ export function clearTokens() {
   localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
-// ── Request: añade Authorization si hay token ───────────────────────────────
+// Fecha LOCAL del navegador (YYYY-MM-DD). El backend la usa para atribuir la
+// actividad de estudio (racha) al día del alumno y no al del servidor (UTC).
+function localDateISO(): string {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+// ── Request: añade Authorization + la fecha local del dispositivo ────────────
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // Mismo header que la app móvil (workouts): el servidor lo valida (±1 día) y
+  // resuelve el "día" del streak de estudio en la zona horaria del alumno.
+  config.headers['X-Local-Date'] = localDateISO()
   return config
 })
 

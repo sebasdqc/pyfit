@@ -4,6 +4,7 @@
 import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { fetchMe, loginRequest } from '@/api/auth'
 import { clearTokens, getAccessToken, setTokens } from '@/api/client'
+import { resetStreakCache } from '@/lib/useStreak'
 import type { AuthUser } from '@/types'
 
 export interface AuthContextValue {
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearTokens()
+    resetStreakCache() // que la racha no se filtre entre cuentas al re-loguear
     setUser(null)
   }, [])
 

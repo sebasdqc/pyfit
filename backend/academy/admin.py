@@ -7,6 +7,7 @@ from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, EarnedBadge, Tenant, School,
+    AcademyStreak, AcademyActivityDay,
 )
 
 
@@ -134,3 +135,20 @@ class CourseBadgeAdmin(ModelAdmin):
 class EarnedBadgeAdmin(ModelAdmin):
     list_display = ('enrollment', 'badge', 'otorgada_at')
     search_fields = ('enrollment__student__email', 'badge__nombre')
+
+
+@admin.register(AcademyStreak)
+class AcademyStreakAdmin(ModelAdmin):
+    list_display = ('user', 'racha_actual', 'mejor_racha', 'ultima_actividad',
+                    'freezes_disponibles', 'freezes_usados', 'puntos_totales', 'updated_at')
+    search_fields = ('user__email',)
+    autocomplete_fields = ('user',)
+    readonly_fields = ('updated_at',)
+
+
+@admin.register(AcademyActivityDay)
+class AcademyActivityDayAdmin(ModelAdmin):
+    list_display = ('user', 'fecha', 'origen', 'created_at')
+    list_filter = ('origen',)
+    search_fields = ('user__email',)
+    date_hierarchy = 'fecha'
