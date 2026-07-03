@@ -40,6 +40,9 @@ urlpatterns = [
     # Home del estudiante (progreso por escuela/curso, racha, insignias, continuar)
     path('dashboard/', views.dashboard_view),
 
+    # Insignias de identidad (escuela completada, racha, inicio de recorrido)
+    path('badges/', views.badges_view),
+
     # Aprendizaje (estudiante)
     path('enrollments/', views.my_enrollments),
     path('enrollments/<int:enrollment_id>/', views.enrollment_detail),

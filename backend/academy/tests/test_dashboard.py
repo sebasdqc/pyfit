@@ -10,7 +10,8 @@ from rest_framework.test import APIClient
 
 from academy import grading
 from academy.models import (
-    AcademyStreak, Course, CourseBadge, Enrollment, LessonProgress, Module, Lesson, School,
+    AcademyBadge, AcademyEarnedBadge, AcademyStreak, Course, CourseBadge, Enrollment,
+    LessonProgress, Module, Lesson, School,
 )
 
 User = get_user_model()
@@ -263,6 +264,30 @@ class DashboardBadgesTests(_Base):
         self.assertIn('otorgada_at', badge)
 
 
+class DashboardIdentityBadgesTests(_Base):
+    """`insignias_identidad` — catálogo global de identidad (AcademyBadge),
+    DISTINTO de `insignias` (CourseBadge, arriba). Ver academy.badges_service."""
+
+    def test_incluye_catalogo_activo_con_estado_obtenida(self):
+        obtenida = AcademyBadge.objects.create(
+            identificador='primer-paso', nombre='Primer Paso', icono='🎯',
+            criterio_tipo=AcademyBadge.CRITERIO_PRIMERA_LECCION,
+        )
+        AcademyBadge.objects.create(
+            identificador='racha-30', nombre='Racha 30', icono='👑',
+            criterio_tipo=AcademyBadge.CRITERIO_STREAK_DIAS, criterio_valor=30,
+        )
+        AcademyEarnedBadge.objects.create(user=self.student, badge=obtenida)
+
+        data = self._dashboard()
+
+        self.assertEqual(data['insignias_identidad']['total'], 2)
+        self.assertEqual(data['insignias_identidad']['total_obtenidas'], 1)
+        por_id = {i['identificador']: i for i in data['insignias_identidad']['items']}
+        self.assertTrue(por_id['primer-paso']['obtenida'])
+        self.assertFalse(por_id['racha-30']['obtenida'])
+
+
 # ─── Estadísticas de por vida ────────────────────────────────────────────────────
 
 class DashboardStatsTests(_Base):
@@ -297,9 +322,17 @@ class DashboardQueryCountTests(_Base):
                     if j == 1:
                         self._complete(enrollment, lessons[0])
 
+        # Catálogo de insignias de identidad "real" (como lo deja seed_academy_badges)
+        # para que la guarda también cubra insignias_identidad, no solo el 0 default.
+        for k in range(6):
+            AcademyBadge.objects.create(
+                identificador=f'insignia-{k}', nombre=f'Insignia {k}',
+                criterio_tipo=AcademyBadge.CRITERIO_PRIMERA_LECCION,
+            )
+
         # Fijo independientemente del tamaño del catálogo (3 escuelas × 3 cursos ×
-        # hasta 2 matrículas c/u aquí) — si este número empieza a crecer con el
-        # fixture, es la señal de una N+1 reintroducida.
-        with self.assertNumQueries(15):
+        # hasta 2 matrículas c/u aquí, + 6 insignias de identidad) — si este número
+        # empieza a crecer con el fixture, es la señal de una N+1 reintroducida.
+        with self.assertNumQueries(17):
             res = self.client.get('/api/academy/dashboard/')
         self.assertEqual(res.status_code, 200)

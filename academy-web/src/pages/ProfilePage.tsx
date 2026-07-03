@@ -1,12 +1,15 @@
 // Perfil del usuario. Datos reales de /api/academy/me/. Permite editar el nombre
 // visible (PATCH /me/); el correo es de solo lectura. Muestra rol y métricas.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getBadges } from '@/api/academy'
 import { updateMe } from '@/api/auth'
 import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Icon } from '@/components/Icon'
+import { BadgeGallery } from '@/components/badges/BadgeGallery'
+import type { AcademyBadgeCatalog } from '@/types'
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth()
@@ -14,6 +17,17 @@ export function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState(false)
+  const [badges, setBadges] = useState<AcademyBadgeCatalog | null>(null)
+
+  useEffect(() => {
+    let active = true
+    getBadges()
+      .then((b) => active && setBadges(b))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (!user) return null
   const dirty = nombre.trim() !== '' && nombre.trim() !== user.nombre
@@ -59,6 +73,9 @@ export function ProfilePage() {
         <Stat icon="learning" value={user.total_inscripciones} label="Inscripciones" />
         <Stat icon="instructor" value={user.total_cursos_creados} label="Cursos creados" />
       </section>
+
+      {/* Insignias de identidad */}
+      {badges && <BadgeGallery identidad={badges} />}
 
       {/* Datos editables */}
       <section className="za-card p-6">

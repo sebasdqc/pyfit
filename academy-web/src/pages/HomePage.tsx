@@ -13,6 +13,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Spinner } from '@/components/ui/Spinner'
 import { StreakCard } from '@/components/StreakCard'
 import { SchoolProgressRing } from '@/components/dashboard/SchoolProgressRing'
+import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { schoolTheme } from '@/lib/schoolTheme'
 import type {
   CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
@@ -98,28 +99,7 @@ export function HomePage() {
             ))}
           </div>
 
-          {data.insignias.total > 0 && (
-            <div className="za-card p-5">
-              <div className="flex items-center justify-between">
-                <p className="za-eyebrow">Insignias</p>
-                <span className="text-xs font-medium text-ink-muted">{data.insignias.total} en total</span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {data.insignias.recientes.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center gap-2 rounded-xl border border-surface-border bg-surface-soft px-3 py-2"
-                  >
-                    <span className="text-lg leading-none">{b.icono}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-ink">{b.nombre}</p>
-                      <p className="truncate text-[11px] text-ink-muted">{b.curso_titulo}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <BadgeGallery identidad={data.insignias_identidad} cursoBadges={data.insignias.recientes} />
 
           <StatsFooter stats={data.stats} />
         </>

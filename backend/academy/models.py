@@ -684,3 +684,80 @@ class AcademyActivityDay(models.Model):
 
     def __str__(self):
         return f'{self.user_id} · {self.fecha}'
+
+
+# ─── Insignias de identidad (gamificación transversal) ────────────────────────
+#
+# DISTINTO de CourseBadge/EarnedBadge (arriba): aquellas son el "Check-list de
+# Competencias" de un curso puntual (Programa Evolución 360°), ligadas a una
+# lección y otorgadas por MATRÍCULA. Estas son insignias de IDENTIDAD del
+# estudiante — escuela completada, hitos de racha, inicio de recorrido — de
+# alcance GLOBAL por USUARIO y transversal a todos los cursos/escuelas. Catálogo
+# data-driven a propósito (fila nueva = insignia nueva, sin tocar código); toda
+# la lógica de otorgamiento vive en academy.badges_service (evaluador genérico
+# único, sin funciones por insignia), igual patrón que academy.grading /
+# academy.streak_service.
+
+
+class AcademyBadge(models.Model):
+    """Catálogo de insignias de identidad. `criterio_tipo` decide qué campo de
+    criterio usar (`criterio_escuela`/`criterio_curso`/`criterio_valor`);
+    `badges_service` es el único despachador. `activo=False` retira la insignia
+    del otorgamiento futuro SIN borrar el historial de quienes ya la ganaron
+    (por eso `AcademyEarnedBadge.badge` es CASCADE mientras que estos criterios
+    son SET_NULL: borrar el catálogo nunca debe destruir historial ganado)."""
+
+    CRITERIO_ESCUELA_COMPLETADA = 'escuela_completada'
+    CRITERIO_STREAK_DIAS = 'streak_dias'
+    CRITERIO_PRIMERA_LECCION = 'primera_leccion'
+    CRITERIO_CURSO_COMPLETADO = 'curso_completado'
+    CRITERIO_CHOICES = [
+        (CRITERIO_ESCUELA_COMPLETADA, 'Escuela completada'),
+        (CRITERIO_STREAK_DIAS, 'Racha de estudio (días)'),
+        (CRITERIO_PRIMERA_LECCION, 'Primera lección completada'),
+        (CRITERIO_CURSO_COMPLETADO, 'Curso completado'),
+    ]
+
+    identificador = models.SlugField(max_length=60, unique=True)
+    nombre = models.CharField(max_length=80)
+    descripcion = models.CharField(max_length=200, blank=True)
+    icono = models.CharField(max_length=8, blank=True, help_text='Emoji de la insignia.')
+    criterio_tipo = models.CharField(max_length=20, choices=CRITERIO_CHOICES)
+    # Solo uno de estos dos aplica según criterio_tipo (escuela_completada / curso_completado).
+    criterio_escuela = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    criterio_curso = models.ForeignKey(
+        Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    # Umbral numérico (ej. días de racha) para criterio_tipo=streak_dias.
+    criterio_valor = models.PositiveIntegerField(null=True, blank=True)
+    orden = models.PositiveIntegerField(default=0)
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_badges'
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return f'{self.icono} {self.nombre}'.strip()
+
+
+class AcademyEarnedBadge(models.Model):
+    """Insignia de identidad otorgada a un USUARIO (no a una matrícula — a
+    diferencia de EarnedBadge). La otorga SIEMPRE academy.badges_service."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_insignias',
+    )
+    badge = models.ForeignKey(AcademyBadge, on_delete=models.CASCADE, related_name='+')
+    otorgada_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_badges_earned'
+        unique_together = [['user', 'badge']]
+        ordering = ['-otorgada_at']
+
+    def __str__(self):
+        return f'{self.user_id} · {self.badge_id}'

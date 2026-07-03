@@ -7,7 +7,7 @@ from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, EarnedBadge, Tenant, School,
-    AcademyStreak, AcademyActivityDay,
+    AcademyStreak, AcademyActivityDay, AcademyBadge, AcademyEarnedBadge,
 )
 
 
@@ -152,3 +152,19 @@ class AcademyActivityDayAdmin(ModelAdmin):
     list_filter = ('origen',)
     search_fields = ('user__email',)
     date_hierarchy = 'fecha'
+
+
+@admin.register(AcademyBadge)
+class AcademyBadgeAdmin(ModelAdmin):
+    list_display = ('__str__', 'criterio_tipo', 'criterio_escuela', 'criterio_curso',
+                    'criterio_valor', 'orden', 'activo')
+    list_filter = ('criterio_tipo', 'activo')
+    search_fields = ('nombre', 'identificador')
+    prepopulated_fields = {'identificador': ('nombre',)}
+
+
+@admin.register(AcademyEarnedBadge)
+class AcademyEarnedBadgeAdmin(ModelAdmin):
+    list_display = ('user', 'badge', 'otorgada_at')
+    search_fields = ('user__email', 'badge__nombre')
+    autocomplete_fields = ('user',)

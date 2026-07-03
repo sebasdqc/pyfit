@@ -18,7 +18,7 @@ import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { TutorChat } from '@/components/tutor/TutorChat'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useStreak } from '@/lib/useStreak'
-import type { EnrollmentDetail, Lesson, LessonTipo, Submission } from '@/types'
+import type { EnrollmentDetail, Lesson, LessonTipo, NuevaInsigniaOtorgada, Submission } from '@/types'
 
 const TYPE_LABEL: Record<LessonTipo, string> = {
   video: 'Video',
@@ -63,6 +63,11 @@ export function LessonPlayerPage() {
   const { streak: myStreak, refresh: refreshStreak } = useStreak()
   const [rachaToast, setRachaToast] = useState<number | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Insignias de identidad recién otorgadas: se muestran de a una, en cola (si
+  // una misma acción desbloqueó varias a la vez), apiladas SOBRE el toast de
+  // racha (bottom-24 vs bottom-6) para que ambos puedan convivir sin solaparse.
+  const [insigniaQueue, setInsigniaQueue] = useState<NuevaInsigniaOtorgada[]>([])
+  const insigniaToastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Lecciones aplanadas en orden (con el título de su módulo para el encabezado).
   const lessons = useMemo(
@@ -111,6 +116,17 @@ export function LessonPlayerPage() {
         .catch(() => {})
     }
   }, [estado, certCode, id])
+
+  // Avanza la cola de insignias: muestra la primera, la retira tras 2.6s.
+  useEffect(() => {
+    if (insigniaQueue.length === 0) return
+    insigniaToastRef.current = setTimeout(() => {
+      setInsigniaQueue((prev) => prev.slice(1))
+    }, 2600)
+    return () => {
+      if (insigniaToastRef.current) clearTimeout(insigniaToastRef.current)
+    }
+  }, [insigniaQueue])
 
   // Drawer del temario (móvil): foco atrapado, cierre con Escape y scroll-lock.
   const closeOutline = useCallback(() => setOutlineOpen(false), [])
@@ -167,6 +183,12 @@ export function LessonPlayerPage() {
     }
   }
 
+  // Encola las insignias recién otorgadas en esta acción (si hay) para mostrarlas
+  // una por una — el efecto de abajo avanza la cola automáticamente.
+  function celebrarInsignias(nuevas: NuevaInsigniaOtorgada[] | undefined) {
+    if (nuevas && nuevas.length > 0) setInsigniaQueue((prev) => [...prev, ...nuevas])
+  }
+
   async function markComplete() {
     if (!current) return
     setMarking(true)
@@ -175,6 +197,7 @@ export function LessonPlayerPage() {
       const r = await completeLesson(id, current.lesson.id)
       applyProgress(r.progreso, r.estado, current.lesson.id)
       celebrarRacha(r.racha_estudio)
+      celebrarInsignias(r.nuevas_insignias)
       if (next) setCurrentId(next.lesson.id)
     } catch {
       setMarkError(true)
@@ -187,6 +210,7 @@ export function LessonPlayerPage() {
     // El backend completa la lección del quiz al aprobar.
     applyProgress(r.progreso, r.estado, r.aprobado && current ? current.lesson.id : undefined)
     celebrarRacha(r.racha_estudio)
+    celebrarInsignias(r.nuevas_insignias)
   }
 
   function onSubmitted(s: Submission) {
@@ -210,6 +234,17 @@ export function LessonPlayerPage() {
             <span className="text-sm font-semibold text-ink">
               ¡Racha de {rachaToast} {rachaToast === 1 ? 'día' : 'días'}! Sumaste tu día de estudio.
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Insignia de identidad recién otorgada — apilado sobre el toast de racha
+          (bottom-24 vs bottom-6) para que ambos convivan sin solaparse. */}
+      {insigniaQueue[0] && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4" role="status" aria-live="polite">
+          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-white px-4 py-2.5 shadow-cardHover">
+            <span className="text-lg leading-none">{insigniaQueue[0].icono}</span>
+            <span className="text-sm font-semibold text-ink">¡Nueva insignia: {insigniaQueue[0].nombre}!</span>
           </div>
         </div>
       )}

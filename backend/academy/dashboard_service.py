@@ -18,7 +18,7 @@ usar "score"/"puntaje" para este número.
 
 from django.db.models import Max, Sum
 
-from . import streak_service
+from . import badges_service, streak_service
 from .models import Course, Enrollment, Lesson, LessonProgress, School
 
 BADGES_RECIENTES_MAX = 12
@@ -237,7 +237,13 @@ def build_dashboard(user, tenant=None, hoy=None, ahora=None) -> dict:
         'tiene_matriculas': bool(enrollments),
         'escuelas': escuelas,
         'racha': racha,
+        # 'insignias' = Check-list de Competencias por curso (CourseBadge/EarnedBadge,
+        # Programa Evolución 360°, otorgadas por matrícula). 'insignias_identidad' =
+        # catálogo global de identidad (AcademyBadge/AcademyEarnedBadge, por usuario:
+        # escuela completada, racha, inicio). Son DOS sistemas separados a propósito
+        # (ver academy.badges_service); el cliente los unifica en una sola galería.
         'insignias': _recent_badges(enrollments),
+        'insignias_identidad': badges_service.catalog_state(user),
         'continuar': continuar,
         'siguiente_paso': siguiente_paso,
         'stats': _lifetime_stats(enrollments, racha),

@@ -26,6 +26,7 @@ Montados bajo /api/academy/ en pyfit/urls.py. Resumen de la API:
     GET  /enrollments/<eid>/certificate/            certificado (si emitido)
     GET  /certificates/verify/<codigo>/             verificar un certificado
     GET  /dashboard/                                Home: progreso por escuela/curso, racha, insignias, continuar
+    GET  /badges/                                   catálogo de insignias de identidad (obtenida/no)
 
     # ENTREGABLES del Programa Evolución 360° (hitos con revisión del instructor)
     GET/POST /enrollments/<eid>/lessons/<lid>/submission/  mi entrega (ver / enviar)
@@ -53,7 +54,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle
-from . import dashboard_service, grading, streak_service
+from . import badges_service, dashboard_service, grading, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
@@ -123,6 +124,22 @@ def _registrar_actividad_estudio(user, request, origen=''):
         return streak.racha_actual
     except Exception:
         return None
+
+
+def _otorgar_insignias(user):
+    """Evalúa y otorga (efecto colateral, failure-safe) las insignias de
+    identidad recién cumplidas por `user`. Llamar SIEMPRE al final de la vista,
+    después de recompute_progress y _registrar_actividad_estudio (necesita el
+    estado ya guardado de ambos: progreso/estado de matrícula y racha del día).
+    Nunca debe tumbar el flujo de aprendizaje."""
+    try:
+        nuevas = badges_service.evaluate_badges(user)
+        return [
+            {'id': e.badge_id, 'nombre': e.badge.nombre, 'icono': e.badge.icono}
+            for e in nuevas
+        ]
+    except Exception:
+        return []
 
 
 def _course_for_read(user, pk, tenant=None):
@@ -550,7 +567,13 @@ def lesson_complete(request, enrollment_id, lesson_id):
     # La racha de estudio se actualiza como efecto colateral de la acción real de
     # aprendizaje (sin endpoint aparte que el front deba llamar).
     racha = _registrar_actividad_estudio(request.user, request, origen='leccion')
-    return Response({'progreso': pct, 'estado': enrollment.estado, 'racha_estudio': racha})
+    # Insignias de identidad: SIEMPRE al final, después de que progreso y racha
+    # ya quedaron guardados (ver docstring de _otorgar_insignias).
+    nuevas_insignias = _otorgar_insignias(request.user)
+    return Response({
+        'progreso': pct, 'estado': enrollment.estado, 'racha_estudio': racha,
+        'nuevas_insignias': nuevas_insignias,
+    })
 
 
 @api_view(['POST'])
@@ -578,10 +601,14 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     pct = grading.recompute_progress(enrollment)
     # Rendir un quiz cuenta como actividad de estudio del día (aprobado o no).
     racha = _registrar_actividad_estudio(request.user, request, origen='quiz')
+    # Insignias de identidad: SIEMPRE al final, después de que progreso y racha
+    # ya quedaron guardados (ver docstring de _otorgar_insignias).
+    nuevas_insignias = _otorgar_insignias(request.user)
     data = QuizAttemptSerializer(attempt).data
     data['progreso'] = pct
     data['estado'] = enrollment.estado
     data['racha_estudio'] = racha
+    data['nuevas_insignias'] = nuevas_insignias
     return Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -608,6 +635,19 @@ def dashboard_view(request):
     return Response(dashboard_service.build_dashboard(
         request.user, tenant=getattr(request, 'tenant', None), hoy=_get_local_date(request),
     ))
+
+
+# ─── Insignias de identidad (gamificación transversal) ─────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def badges_view(request):
+    """Catálogo de insignias de identidad (activas) con estado obtenida/no del
+    usuario autenticado — para pintar la galería completa (obtenidas a color,
+    no obtenidas en silueta) en el dashboard/perfil. Solo lectura: el
+    otorgamiento ocurre solo como efecto colateral de completar una
+    lección/quiz/entrega (ver badges_service)."""
+    return Response(badges_service.catalog_state(request.user))
 
 
 @api_view(['POST'])
@@ -736,10 +776,14 @@ def submission_review(request, submission_id):
         # Si se revierte una aprobación previa, la lección deja de contar.
         LessonProgress.objects.filter(enrollment=enrollment, lesson=submission.lesson).delete()
     grading.recompute_progress(enrollment)
+    # Insignias de identidad: son del ALUMNO de la matrícula, no de request.user
+    # (quien llama este endpoint es el instructor revisando la entrega).
+    nuevas_insignias = _otorgar_insignias(enrollment.student)
 
     data = SubmissionSerializer(submission).data
     data['progreso'] = enrollment.progreso
     data['estado_matricula'] = enrollment.estado
+    data['nuevas_insignias'] = nuevas_insignias
     return Response(data)
 
 

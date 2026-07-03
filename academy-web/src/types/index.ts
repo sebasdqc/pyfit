@@ -340,8 +340,48 @@ export interface DashboardData {
   tiene_matriculas: boolean
   escuelas: DashboardSchool[]
   racha: StreakState
+  // Check-list de Competencias por curso (CourseBadge/EarnedBadge, Programa 360°).
   insignias: { total: number; recientes: DashboardEarnedBadge[] }
+  // Catálogo global de identidad (escuela completada, racha, inicio). DISTINTO
+  // del anterior — ver academy.badges_service. El cliente los unifica en una
+  // sola galería visual (BadgeGallery).
+  insignias_identidad: AcademyBadgeCatalog
   continuar: DashboardNextStep | null
   siguiente_paso: DashboardNextStep | null
   stats: DashboardStats
+}
+
+// ── Insignias de identidad (transversales, por usuario) ───────────────────────
+// Espeja academy.badges_service.catalog_state(). DISTINTAS de CourseBadge
+// (Check-list de Competencias por curso, arriba): estas son globales — escuela
+// completada, hitos de racha, inicio de recorrido — otorgadas por usuario, no
+// por matrícula.
+
+export type AcademyBadgeCriterio =
+  | 'escuela_completada' | 'streak_dias' | 'primera_leccion' | 'curso_completado'
+
+export interface AcademyBadgeItem {
+  id: number
+  identificador: string
+  nombre: string
+  descripcion: string
+  icono: string // emoji
+  criterio_tipo: AcademyBadgeCriterio
+  escuela_slug: string | null // solo si criterio_tipo === 'escuela_completada'
+  obtenida: boolean
+  otorgada_at: string | null
+}
+
+export interface AcademyBadgeCatalog {
+  total: number
+  total_obtenidas: number
+  items: AcademyBadgeItem[]
+}
+
+// Insignia recién otorgada en la MISMA request (lesson_complete/quiz_attempt/
+// submission_review) — para la celebración en el cliente, sin round-trip extra.
+export interface NuevaInsigniaOtorgada {
+  id: number
+  nombre: string
+  icono: string
 }
