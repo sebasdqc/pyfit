@@ -276,3 +276,72 @@ export interface StreakState {
   logros: StreakLogro[]
   alerta: StreakAlerta | null
 }
+
+// ── Dashboard (Home del estudiante) ───────────────────────────────────────────
+// Espeja academy.dashboard_service.build_dashboard().
+
+export type CourseEstado = 'completado' | 'en_progreso' | 'no_iniciado'
+
+export interface DashboardCourse {
+  id: number
+  titulo: string
+  slug: string
+  estado: CourseEstado
+  progreso: number
+  enrollment_id: number | null
+  certificado: string | null
+}
+
+export interface DashboardSchool {
+  id: number
+  nombre: string
+  slug: string
+  orden: number
+  progreso_general: number
+  total_cursos: number
+  cursos_completados: number
+  cursos_en_progreso: number
+  cursos_no_iniciados: number
+  cursos: DashboardCourse[]
+}
+
+export interface DashboardEarnedBadge {
+  id: number
+  nombre: string
+  icono: string // emoji
+  descripcion: string
+  curso_id: number
+  curso_titulo: string
+  otorgada_at: string
+}
+
+export interface DashboardNextStep {
+  enrollment_id: number
+  curso_id: number
+  curso_titulo: string
+  curso_slug: string
+  escuela_nombre: string | null
+  progreso: number
+  leccion: { id: number; titulo: string; tipo: LessonTipo; modulo_titulo: string }
+}
+
+export interface DashboardStats {
+  cursos_completados: number
+  cursos_activos: number
+  total_inscripciones: number
+  mejor_racha: number
+  // Estimado a partir de la duración de las lecciones completadas — no es
+  // tiempo de reproducción medido.
+  minutos_estimados_invertidos: number
+}
+
+export interface DashboardData {
+  progreso_general: number
+  tiene_matriculas: boolean
+  escuelas: DashboardSchool[]
+  racha: StreakState
+  insignias: { total: number; recientes: DashboardEarnedBadge[] }
+  continuar: DashboardNextStep | null
+  siguiente_paso: DashboardNextStep | null
+  stats: DashboardStats
+}

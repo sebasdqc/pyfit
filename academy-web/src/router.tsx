@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/LoginPage'
+import { HomePage } from '@/pages/HomePage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
 import { LessonPlayerPage } from '@/pages/LessonPlayerPage'
@@ -25,7 +26,8 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="/catalogo" replace /> },
+          { index: true, element: <Navigate to="/inicio" replace /> },
+          { path: 'inicio', element: <HomePage /> },
           { path: 'catalogo', element: <CatalogPage /> },
           { path: 'cursos/:courseId', element: <CourseDetailPage /> },
           { path: 'aprendizaje', element: <MyLearningPage /> },

@@ -37,6 +37,9 @@ urlpatterns = [
     # Barrido diario (cron externo con secreto compartido)
     path('streak/sweep/', views.streak_sweep),
 
+    # Home del estudiante (progreso por escuela/curso, racha, insignias, continuar)
+    path('dashboard/', views.dashboard_view),
+
     # Aprendizaje (estudiante)
     path('enrollments/', views.my_enrollments),
     path('enrollments/<int:enrollment_id>/', views.enrollment_detail),

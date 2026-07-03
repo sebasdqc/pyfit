@@ -16,6 +16,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { id: 'inicio', label: 'Inicio', icon: 'home', to: '/inicio' },
   { id: 'catalogo', label: 'Catálogo', icon: 'catalog', to: '/catalogo' },
   { id: 'aprendizaje', label: 'Mi aprendizaje', icon: 'learning', to: '/aprendizaje' },
   { id: 'certificados', label: 'Certificados', icon: 'certificate', to: '/certificados' },

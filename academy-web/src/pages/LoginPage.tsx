@@ -27,7 +27,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate('/catalogo', { replace: true })
+      navigate('/inicio', { replace: true })
     } catch {
       setError('No se pudo iniciar sesión. Verifica tu correo y contraseña.')
     } finally {

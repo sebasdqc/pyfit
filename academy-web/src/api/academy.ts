@@ -3,7 +3,7 @@
 
 import { api } from './client'
 import type {
-  Course, CourseDetail, Enrollment, EnrollmentDetail, Certificate, Lesson,
+  Course, CourseDetail, DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson,
   LessonTipo, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
 } from '@/types'
 
@@ -11,6 +11,13 @@ import type {
 
 export async function getStreak(): Promise<StreakState> {
   const res = await api.get<StreakState>('/academy/streak/')
+  return res.data
+}
+
+// ── Dashboard (Home del estudiante) ───────────────────────────────────────────
+
+export async function getDashboard(): Promise<DashboardData> {
+  const res = await api.get<DashboardData>('/academy/dashboard/')
   return res.data
 }
 

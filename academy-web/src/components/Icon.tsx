@@ -4,6 +4,7 @@
 import type { ReactNode, SVGProps } from 'react'
 
 export type IconName =
+  | 'home'
   | 'catalog'
   | 'learning'
   | 'certificate'
@@ -42,6 +43,12 @@ export type IconName =
   | 'thumbDown'
 
 const PATHS: Record<IconName, ReactNode> = {
+  home: (
+    <>
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5.5 10v9a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1v-9" />
+    </>
+  ),
   catalog: (
     <>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />

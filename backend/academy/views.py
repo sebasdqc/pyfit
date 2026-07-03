@@ -25,6 +25,7 @@ Montados bajo /api/academy/ en pyfit/urls.py. Resumen de la API:
     POST /enrollments/<eid>/quizzes/<qid>/attempt/  rendir un quiz (calificado servidor)
     GET  /enrollments/<eid>/certificate/            certificado (si emitido)
     GET  /certificates/verify/<codigo>/             verificar un certificado
+    GET  /dashboard/                                Home: progreso por escuela/curso, racha, insignias, continuar
 
     # ENTREGABLES del Programa Evolución 360° (hitos con revisión del instructor)
     GET/POST /enrollments/<eid>/lessons/<lid>/submission/  mi entrega (ver / enviar)
@@ -52,7 +53,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle
-from . import grading, streak_service
+from . import dashboard_service, grading, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
@@ -595,6 +596,17 @@ def streak_view(request):
     racha se actualiza sola al completar lecciones/quizzes (ver streak_service)."""
     return Response(streak_service.get_or_create_state(
         request.user, hoy=_get_local_date(request),
+    ))
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def dashboard_view(request):
+    """Home del estudiante: progreso por escuela/curso, racha, insignias,
+    continuar/siguiente-paso y estadísticas de por vida, en una sola llamada.
+    Solo lectura y en vivo (sin caché) — ver dashboard_service.build_dashboard."""
+    return Response(dashboard_service.build_dashboard(
+        request.user, tenant=getattr(request, 'tenant', None), hoy=_get_local_date(request),
     ))
 
 
