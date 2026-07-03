@@ -8,6 +8,7 @@ contexto `include_answers` (lo fija la vista según el rol).
 
 from rest_framework import serializers
 
+from .community_models import CommunityPost, CommunityReply, CommunityReport
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
@@ -311,3 +312,64 @@ class EnrollmentDetailSerializer(EnrollmentSerializer):
             {'badge': e.badge_id, 'otorgada_at': e.otorgada_at}
             for e in obj.insignias_obtenidas.all()
         ]
+
+
+# ─── Comunidad (foro Q&A) ───────────────────────────────────────────────────────
+
+class CommunityReplySerializer(serializers.ModelSerializer):
+    autor_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommunityReply
+        fields = [
+            'id', 'post', 'autor', 'autor_nombre', 'contenido', 'estado',
+            'votos_count', 'es_mejor_respuesta', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_autor_nombre(self, obj):
+        return _display_name(obj.autor)
+
+
+class CommunityPostSerializer(serializers.ModelSerializer):
+    """Resumen de post para el listado."""
+
+    autor_nombre = serializers.SerializerMethodField()
+    escuela_nombre = serializers.CharField(source='escuela.nombre', read_only=True)
+    curso_titulo = serializers.CharField(source='curso.titulo', read_only=True, default=None)
+
+    class Meta:
+        model = CommunityPost
+        fields = [
+            'id', 'autor', 'autor_nombre', 'escuela', 'escuela_nombre',
+            'curso', 'curso_titulo', 'modulo', 'titulo', 'contenido', 'estado',
+            'respuestas_count', 'mejor_respuesta', 'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_autor_nombre(self, obj):
+        return _display_name(obj.autor)
+
+
+class CommunityPostDetailSerializer(CommunityPostSerializer):
+    """Post con sus respuestas anidadas (mejor respuesta primero, ver
+    `CommunityReply.Meta.ordering`). Solo respuestas visibles: lo oculto por
+    moderación/reportes no se lista a los alumnos, ni siquiera al autor del
+    post (lo revisa staff vía Django Admin)."""
+
+    respuestas = serializers.SerializerMethodField()
+
+    class Meta(CommunityPostSerializer.Meta):
+        fields = CommunityPostSerializer.Meta.fields + ['respuestas']
+
+    def get_respuestas(self, obj):
+        from .community_models import ESTADO_VISIBLE
+        visibles = obj.respuestas.filter(estado=ESTADO_VISIBLE)
+        return CommunityReplySerializer(visibles, many=True).data
+
+
+class CommunityReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityReport
+        fields = ['id', 'post', 'reply', 'reportado_por', 'motivo', 'detalle', 'created_at']
+        read_only_fields = fields

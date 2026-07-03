@@ -322,6 +322,10 @@ TUTOR_EMBEDDING_MODEL = os.environ.get(
 # Actions). Vacío = endpoints de cron deshabilitados (503). Ver academy.views.streak_sweep.
 CRON_SECRET = os.environ.get('CRON_SECRET', '')
 
+# Cantidad de reportes de alumnos que oculta automáticamente un post/respuesta
+# de la Comunidad (sin intervención humana). Ver academy.community_service.
+COMMUNITY_REPORT_THRESHOLD = int(os.environ.get('COMMUNITY_REPORT_THRESHOLD', '3'))
+
 # ─── Google Sign-In ───────────────────────────────────────────────────────────
 # Audiencias (client IDs) aceptadas al verificar el id_token de Google que envía
 # la app. Debe incluir el **Web client ID** (que la SDK nativa usa como

@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import views
+from . import community_views, views
 
 urlpatterns = [
     # Config pública del tenant (sin auth — llamada antes del login para el branding)
@@ -57,4 +57,13 @@ urlpatterns = [
 
     # Verificación pública de certificados (por código)
     path('certificates/verify/<str:codigo>/', views.certificate_verify),
+
+    # Comunidad (foro Q&A asíncrono entre alumnos — capa de engagement opcional,
+    # ver academy.community_service para la moderación automática vía IA)
+    path('community/posts/', community_views.community_posts_view),
+    path('community/posts/<int:post_id>/', community_views.community_post_detail_view),
+    path('community/posts/<int:post_id>/respuestas/', community_views.community_replies_view),
+    path('community/respuestas/<int:reply_id>/votar/', community_views.community_vote_view),
+    path('community/posts/<int:post_id>/mejor-respuesta/', community_views.community_best_answer_view),
+    path('community/reportes/', community_views.community_report_view),
 ]

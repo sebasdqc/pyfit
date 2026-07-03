@@ -359,6 +359,7 @@ export interface DashboardData {
 
 export type AcademyBadgeCriterio =
   | 'escuela_completada' | 'streak_dias' | 'primera_leccion' | 'curso_completado'
+  | 'respuestas_utiles'
 
 export interface AcademyBadgeItem {
   id: number
@@ -384,4 +385,65 @@ export interface NuevaInsigniaOtorgada {
   id: number
   nombre: string
   icono: string
+}
+
+// ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
+// Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
+// ningún campo de aquí participa en progreso/certificación/racha/badges core.
+
+export type CommunityEstado = 'visible' | 'oculto_ia' | 'oculto_reportes' | 'oculto_manual'
+export type CommunityReportMotivo = 'spam' | 'ofensivo' | 'fuera_de_tema' | 'otro'
+
+export interface CommunityReply {
+  id: number
+  post: number
+  autor: number
+  autor_nombre: string
+  contenido: string
+  estado: CommunityEstado
+  votos_count: number
+  es_mejor_respuesta: boolean
+  created_at: string
+}
+
+export interface CommunityPost {
+  id: number
+  autor: number
+  autor_nombre: string
+  escuela: number
+  escuela_nombre: string
+  curso: number | null
+  curso_titulo: string | null
+  modulo: number | null
+  titulo: string
+  contenido: string
+  estado: CommunityEstado
+  respuestas_count: number
+  mejor_respuesta: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityPostDetail extends CommunityPost {
+  respuestas: CommunityReply[]
+}
+
+export interface CommunityPostsResponse {
+  results: CommunityPost[]
+  count: number
+}
+
+export interface CommunityVoteResult {
+  votos_count: number
+  ya_voto: boolean
+}
+
+export interface CommunityReport {
+  id: number
+  post: number | null
+  reply: number | null
+  reportado_por: number
+  motivo: CommunityReportMotivo
+  detalle: string
+  created_at: string
 }

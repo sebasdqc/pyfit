@@ -1,8 +1,11 @@
 """Registro de los modelos de Zyfit Academy en el admin (Unfold)."""
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from unfold.admin import ModelAdmin, TabularInline
 
+from .community_models import (
+    ESTADO_OCULTO_MANUAL, ESTADO_VISIBLE, CommunityPost, CommunityReply, CommunityReport,
+)
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
@@ -168,3 +171,51 @@ class AcademyEarnedBadgeAdmin(ModelAdmin):
     list_display = ('user', 'badge', 'otorgada_at')
     search_fields = ('user__email', 'badge__nombre')
     autocomplete_fields = ('user',)
+
+
+# ─── Comunidad (foro Q&A) ───────────────────────────────────────────────────────
+# Panel de revisión 100% OPCIONAL: la moderación automática (IA + umbral de
+# reportes, ver community_service) ya oculta contenido problemático sin
+# intervención humana — este admin es solo una herramienta de conveniencia
+# para que staff revise/reintegre, nunca un prerrequisito operativo.
+
+@admin.action(description='✓ Aprobar (volver a visible)')
+def aprobar_contenido(modeladmin, request, queryset):
+    n = queryset.update(estado=ESTADO_VISIBLE, reportes_count=0)
+    messages.success(request, f'{n} elemento(s) marcado(s) como visible.')
+
+
+@admin.action(description='✕ Ocultar manualmente')
+def ocultar_contenido(modeladmin, request, queryset):
+    n = queryset.update(estado=ESTADO_OCULTO_MANUAL)
+    messages.success(request, f'{n} elemento(s) ocultado(s).')
+
+
+@admin.register(CommunityPost)
+class CommunityPostAdmin(ModelAdmin):
+    list_display = ('titulo', 'autor', 'escuela', 'curso', 'estado',
+                     'reportes_count', 'respuestas_count', 'created_at')
+    list_filter = ('estado', 'escuela', 'curso')
+    search_fields = ('titulo', 'contenido', 'autor__email')
+    autocomplete_fields = ('autor', 'escuela', 'curso', 'modulo', 'mejor_respuesta')
+    readonly_fields = ('moderacion_resultado', 'created_at', 'updated_at')
+    actions = [aprobar_contenido, ocultar_contenido]
+
+
+@admin.register(CommunityReply)
+class CommunityReplyAdmin(ModelAdmin):
+    list_display = ('post', 'autor', 'estado', 'votos_count',
+                     'reportes_count', 'es_mejor_respuesta', 'created_at')
+    list_filter = ('estado', 'es_mejor_respuesta')
+    search_fields = ('contenido', 'autor__email', 'post__titulo')
+    autocomplete_fields = ('post', 'autor')
+    readonly_fields = ('moderacion_resultado', 'created_at', 'updated_at')
+    actions = [aprobar_contenido, ocultar_contenido]
+
+
+@admin.register(CommunityReport)
+class CommunityReportAdmin(ModelAdmin):
+    list_display = ('id', 'post', 'reply', 'reportado_por', 'motivo', 'created_at')
+    list_filter = ('motivo',)
+    search_fields = ('detalle', 'reportado_por__email')
+    autocomplete_fields = ('post', 'reply', 'reportado_por')

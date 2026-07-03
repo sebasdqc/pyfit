@@ -362,9 +362,11 @@ class Notification(models.Model):
         ('alerta',       'Alerta de patrón'),
         ('logro',        'Logro desbloqueado'),
         ('reencuentro',  'Reencuentro'),
+        ('community_respuesta',       'Nueva respuesta en tu pregunta de Comunidad'),
+        ('community_mejor_respuesta', 'Tu respuesta fue marcada como mejor respuesta'),
     ]
     user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
-    tipo       = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    tipo       = models.CharField(max_length=30, choices=TIPO_CHOICES)
     texto      = models.TextField()
     leida      = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -385,6 +387,10 @@ class NotificationPreference(models.Model):
     alerta      = models.BooleanField(default=True)
     logro       = models.BooleanField(default=True)
     reencuentro = models.BooleanField(default=True)
+    # Cubre AMBOS tipos de Comunidad (community_respuesta/community_mejor_respuesta):
+    # es una capa de engagement opcional, no fragmentamos la UI de preferencias
+    # por un feature secundario. Ver academy.community_service._notificar.
+    comunidad   = models.BooleanField(default=True)
     hora_inicio = models.TimeField(default='07:00:00')
     hora_fin    = models.TimeField(default='22:00:00')
     silencio    = models.BooleanField(default=False)

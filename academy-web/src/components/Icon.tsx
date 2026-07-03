@@ -41,6 +41,7 @@ export type IconName =
   | 'send'
   | 'thumbUp'
   | 'thumbDown'
+  | 'flag'
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -211,6 +212,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1z" />
       <path d="M17 14 13 21a2 2 0 0 1-3-2l1-5H6a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 8 3h9z" />
+    </>
+  ),
+  // Reportar contenido (Comunidad): bandera.
+  flag: (
+    <>
+      <path d="M5 3v18" />
+      <path d="M5 4h13l-3 4 3 4H5" />
     </>
   ),
 }

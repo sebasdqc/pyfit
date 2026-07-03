@@ -711,11 +711,13 @@ class AcademyBadge(models.Model):
     CRITERIO_STREAK_DIAS = 'streak_dias'
     CRITERIO_PRIMERA_LECCION = 'primera_leccion'
     CRITERIO_CURSO_COMPLETADO = 'curso_completado'
+    CRITERIO_RESPUESTAS_UTILES = 'respuestas_utiles'
     CRITERIO_CHOICES = [
         (CRITERIO_ESCUELA_COMPLETADA, 'Escuela completada'),
         (CRITERIO_STREAK_DIAS, 'Racha de estudio (días)'),
         (CRITERIO_PRIMERA_LECCION, 'Primera lección completada'),
         (CRITERIO_CURSO_COMPLETADO, 'Curso completado'),
+        (CRITERIO_RESPUESTAS_UTILES, 'Respuestas de Comunidad marcadas como mejor respuesta'),
     ]
 
     identificador = models.SlugField(max_length=60, unique=True)
@@ -761,3 +763,10 @@ class AcademyEarnedBadge(models.Model):
 
     def __str__(self):
         return f'{self.user_id} · {self.badge_id}'
+
+
+# Comunidad (foro Q&A) — modelos en archivo propio para no seguir engordando
+# este módulo; ver community_models.py.
+from .community_models import (  # noqa: E402,F401
+    CommunityPost, CommunityReply, CommunityVote, CommunityReport,
+)

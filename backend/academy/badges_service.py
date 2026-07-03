@@ -20,6 +20,7 @@ sigue el mismo patrón explícito que `grading.py`/`streak_service.py`.
 
 from django.db.models import Count
 
+from .community_models import ESTADO_VISIBLE, CommunityReply
 from .models import (
     AcademyBadge, AcademyEarnedBadge, Course, Enrollment, LessonProgress,
 )
@@ -73,6 +74,14 @@ def _build_context(user, pendientes) -> dict:
             enrollment__student=user, completado=True,
         ).exists()
 
+    if AcademyBadge.CRITERIO_RESPUESTAS_UTILES in tipos:
+        # Comunidad es una capa de engagement OPCIONAL (ver community_service);
+        # este es el único criterio que depende de ella, y solo cuenta
+        # respuestas VISIBLES marcadas como mejor respuesta por otro alumno.
+        ctx['respuestas_utiles'] = CommunityReply.objects.filter(
+            autor=user, es_mejor_respuesta=True, estado=ESTADO_VISIBLE,
+        ).count()
+
     return ctx
 
 
@@ -112,6 +121,8 @@ def _cumple_criterio(badge, ctx) -> bool:
         return bool(badge.criterio_valor) and ctx.get('racha_actual', 0) >= badge.criterio_valor
     if badge.criterio_tipo == AcademyBadge.CRITERIO_PRIMERA_LECCION:
         return ctx.get('tiene_leccion_completada', False)
+    if badge.criterio_tipo == AcademyBadge.CRITERIO_RESPUESTAS_UTILES:
+        return bool(badge.criterio_valor) and ctx.get('respuestas_utiles', 0) >= badge.criterio_valor
     return False
 
 

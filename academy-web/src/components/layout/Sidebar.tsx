@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { id: 'catalogo', label: 'Catálogo', icon: 'catalog', to: '/catalogo' },
   { id: 'aprendizaje', label: 'Mi aprendizaje', icon: 'learning', to: '/aprendizaje' },
   { id: 'certificados', label: 'Certificados', icon: 'certificate', to: '/certificados' },
+  { id: 'comunidad', label: 'Comunidad', icon: 'users', to: '/comunidad' },
   { id: 'instructor', label: 'Mis cursos', icon: 'instructor', to: '/instructor', instructorOnly: true },
 ]
 

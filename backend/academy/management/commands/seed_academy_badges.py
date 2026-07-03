@@ -67,6 +67,15 @@ BADGES = [
         'criterio_valor': 30,
         'orden': 5,
     },
+    {
+        'identificador': 'colaborador',
+        'nombre': 'Colaborador',
+        'descripcion': '5 de tus respuestas en Comunidad fueron marcadas como mejor respuesta.',
+        'icono': '🤝',
+        'criterio_tipo': AcademyBadge.CRITERIO_RESPUESTAS_UTILES,
+        'criterio_valor': 5,
+        'orden': 6,
+    },
 ]
 
 
