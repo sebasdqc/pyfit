@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { Icon, type IconName } from '@/components/Icon'
 import { NIVEL_LABEL } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
@@ -45,6 +46,7 @@ export function CourseDetailPage() {
   const [error, setError] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
   const [enrollError, setEnrollError] = useState(false)
+  const [paywallModulo, setPaywallModulo] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -219,7 +221,15 @@ export function CourseDetailPage() {
                 <p className="text-sm text-ink-muted">Este curso aún no tiene módulos.</p>
               )}
               {course.modulos.map((m, i) => (
-                <ModuleBlock key={m.id} index={i + 1} titulo={m.titulo} descripcion={m.descripcion} lecciones={m.lecciones} />
+                <ModuleBlock
+                  key={m.id}
+                  index={i + 1}
+                  titulo={m.titulo}
+                  descripcion={m.descripcion}
+                  esGratuito={m.es_gratuito}
+                  lecciones={m.lecciones}
+                  onLockedLessonClick={() => setPaywallModulo(m.titulo)}
+                />
               ))}
             </div>
           </section>
@@ -295,6 +305,14 @@ export function CourseDetailPage() {
           </div>
         </aside>
       </div>
+
+      {paywallModulo && (
+        <PaywallDialog
+          moduloTitulo={paywallModulo}
+          cursoTitulo={course.titulo}
+          onClose={() => setPaywallModulo(null)}
+        />
+      )}
     </div>
   )
 }
@@ -303,12 +321,16 @@ function ModuleBlock({
   index,
   titulo,
   descripcion,
+  esGratuito,
   lecciones,
+  onLockedLessonClick,
 }: {
   index: number
   titulo: string
   descripcion: string
+  esGratuito: boolean
   lecciones: Lesson[]
+  onLockedLessonClick: () => void
 }) {
   const [open, setOpen] = useState(index === 1)
   return (
@@ -324,7 +346,10 @@ function ModuleBlock({
           {index}
         </span>
         <span className="flex-1">
-          <span className="block text-sm font-semibold text-ink">{titulo}</span>
+          <span className="flex items-center gap-2">
+            <span className="block text-sm font-semibold text-ink">{titulo}</span>
+            {!esGratuito && <Badge tone="brand">PRO</Badge>}
+          </span>
           <span className="block text-xs text-ink-muted">{lecciones.length} lecciones</span>
         </span>
         <Icon name="chevronDown" size={18} className={`text-ink-muted transition-transform ${open ? '' : '-rotate-90'}`} />
@@ -333,9 +358,17 @@ function ModuleBlock({
         <div id={`module-panel-${index}`} className="divide-y divide-surface-border">
           {descripcion && <p className="px-4 py-3 text-sm text-ink-soft">{descripcion}</p>}
           {lecciones.map((l) => (
-            <div key={l.id} className="flex items-center gap-3 px-4 py-3">
-              <Icon name={LESSON_ICON[l.tipo]} size={17} className="shrink-0 text-accent" />
-              <span className="flex-1 text-sm text-ink">{l.titulo}</span>
+            <div
+              key={l.id}
+              onClick={l.bloqueado ? onLockedLessonClick : undefined}
+              className={`flex items-center gap-3 px-4 py-3 ${l.bloqueado ? 'cursor-pointer hover:bg-surface-soft' : ''}`}
+            >
+              <Icon
+                name={l.bloqueado ? 'lock' : LESSON_ICON[l.tipo]}
+                size={17}
+                className={`shrink-0 ${l.bloqueado ? 'text-ink-muted' : 'text-accent'}`}
+              />
+              <span className={`flex-1 text-sm ${l.bloqueado ? 'text-ink-muted' : 'text-ink'}`}>{l.titulo}</span>
               <span className="text-xs text-ink-muted">{LESSON_LABEL[l.tipo]}</span>
               {l.duracion_min > 0 && <span className="text-xs text-ink-muted">{l.duracion_min} min</span>}
             </div>

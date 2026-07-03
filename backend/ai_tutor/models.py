@@ -180,8 +180,15 @@ class TutorDailyUsage(models.Model):
 
     @classmethod
     def limit_for(cls, user) -> int:
-        plan = getattr(getattr(user, 'profile', None), 'plan', 'starter') or 'starter'
-        return cls.LIMITS.get(plan, cls.DEFAULT_LIMIT)
+        """Pro si CUALQUIERA de los dos productos está activo: la suscripción
+        "Zyfit Pro" del entrenador principal (`users.Profile.plan`) o "Zyfit
+        Academy Pro" (paquete separado — ver `academy.access_service`; el
+        tutor vive dentro de Academy, así que pagar cualquiera de los dos debe
+        subir su cuota diaria)."""
+        from academy.access_service import NIVEL_PRO, nivel_academia_de
+        plan_principal = getattr(getattr(user, 'profile', None), 'plan', 'starter') or 'starter'
+        plan_efectivo = 'pro' if (plan_principal == 'pro' or nivel_academia_de(user) == NIVEL_PRO) else 'starter'
+        return cls.LIMITS.get(plan_efectivo, cls.DEFAULT_LIMIT)
 
     @classmethod
     def used_today(cls, user, fecha) -> int:

@@ -16,6 +16,7 @@ import { CourseOutline } from '@/components/player/CourseOutline'
 import { QuizLesson } from '@/components/player/QuizLesson'
 import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { TutorChat } from '@/components/tutor/TutorChat'
+import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useStreak } from '@/lib/useStreak'
 import type { EnrollmentDetail, Lesson, LessonTipo, NuevaInsigniaOtorgada, Submission } from '@/types'
@@ -58,6 +59,9 @@ export function LessonPlayerPage() {
   const [tutorOpen, setTutorOpen] = useState(false)
   const [marking, setMarking] = useState(false)
   const [markError, setMarkError] = useState(false)
+  // Freemium: título del módulo con el que se intentó navegar sin acceso — abre
+  // el paywall en vez de moverse ahí. Ver `goTo`, que centraliza el gating.
+  const [paywallModulo, setPaywallModulo] = useState<string | null>(null)
   const outlineRef = useRef<HTMLElement>(null)
   // Racha de estudio: cache compartido + confirmación al sumar el día.
   const { streak: myStreak, refresh: refreshStreak } = useStreak()
@@ -198,7 +202,7 @@ export function LessonPlayerPage() {
       applyProgress(r.progreso, r.estado, current.lesson.id)
       celebrarRacha(r.racha_estudio)
       celebrarInsignias(r.nuevas_insignias)
-      if (next) setCurrentId(next.lesson.id)
+      if (next) goTo(next.lesson.id)
     } catch {
       setMarkError(true)
     } finally {
@@ -219,7 +223,16 @@ export function LessonPlayerPage() {
     setEntregas((prev) => [s, ...prev.filter((x) => x.lesson !== s.lesson)])
   }
 
+  // Único punto de navegación entre lecciones (temario, anterior/siguiente,
+  // auto-avance al completar, fuentes citadas por el tutor). Si la lección de
+  // destino está bloqueada (freemium), abre el paywall en vez de navegar ahí.
   function goTo(lessonId: number) {
+    const target = lessons.find((x) => x.lesson.id === lessonId)
+    if (target?.lesson.bloqueado) {
+      setPaywallModulo(target.moduleTitle)
+      setOutlineOpen(false)
+      return
+    }
     setCurrentId(lessonId)
     setOutlineOpen(false)
   }
@@ -343,6 +356,11 @@ export function LessonPlayerPage() {
                       <Icon name="clock" size={14} /> {current.lesson.duracion_min} min
                     </span>
                   )}
+                  {current.lesson.bloqueado && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 font-medium text-brand">
+                      <Icon name="lock" size={12} /> Academy Pro
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-6">
@@ -375,7 +393,8 @@ export function LessonPlayerPage() {
                   <div className="flex items-center gap-3">
                     {/* Video/texto/en vivo/práctica: marcar como completada. El quiz se
                         completa al aprobar y el entregable cuando el instructor aprueba. */}
-                    {current.lesson.tipo !== 'quiz' && current.lesson.tipo !== 'entregable' && !isDone && (
+                    {current.lesson.tipo !== 'quiz' && current.lesson.tipo !== 'entregable' &&
+                      !isDone && !current.lesson.bloqueado && (
                       <button
                         onClick={markComplete}
                         disabled={marking}
@@ -418,6 +437,14 @@ export function LessonPlayerPage() {
         courseLessonIds={courseLessonIds}
         onSourceClick={(lid) => goTo(lid)}
       />
+
+      {paywallModulo && (
+        <PaywallDialog
+          moduloTitulo={paywallModulo}
+          cursoTitulo={enr.curso.titulo}
+          onClose={() => setPaywallModulo(null)}
+        />
+      )}
     </div>
   )
 }
@@ -439,6 +466,12 @@ function LessonBody({
   onQuizGraded: (r: AttemptResult) => void
   onSubmitted: (s: Submission) => void
 }) {
+  // Freemium: se puede llegar aquí directo (lección inicial al abrir el curso,
+  // o una fuente citada por el tutor) sin pasar por el guard de `goTo`.
+  if (lesson.bloqueado) {
+    return <LockedLessonBody />
+  }
+
   if (lesson.tipo === 'en_vivo') {
     return <LiveSessionBody lesson={lesson} />
   }
@@ -605,6 +638,29 @@ function LiveSessionBody({ lesson }: { lesson: Lesson }) {
       </div>
       {lesson.contenido && <TextBody text={lesson.contenido} />}
     </div>
+  )
+}
+
+// Estado inline (no modal) para cuando la lección ACTUAL está bloqueada — se
+// llega aquí sin pasar por el guard de navegación (lección inicial al abrir el
+// curso, o una fuente citada por el tutor). El paywall modal (PaywallDialog)
+// es para cuando el usuario todavía está eligiendo a dónde navegar.
+function LockedLessonBody() {
+  const navigate = useNavigate()
+  return (
+    <EmptyState
+      icon="lock"
+      title="Esta lección es de Zyfit Academy Pro"
+      description="Suscríbete para desbloquear el resto del curso, certificados y una cuota diaria ampliada del tutor IA."
+      action={
+        <button
+          onClick={() => navigate('/suscripcion')}
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:opacity-90"
+        >
+          Ver planes de Academy Pro
+        </button>
+      }
+    />
   )
 }
 

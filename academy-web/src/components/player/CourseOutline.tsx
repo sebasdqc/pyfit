@@ -33,6 +33,9 @@ export function CourseOutline({
   progreso: number
   earnedBadges: Set<number>
   certEmitido: boolean
+  // `onSelect` decide qué hacer con una lección bloqueada (paywall) — ver
+  // LessonPlayerPage.goTo, que centraliza el gating para todos los caminos
+  // de navegación (temario, anterior/siguiente, fuentes del tutor).
   onSelect: (lessonId: number) => void
 }) {
   const totalLecciones = course.modulos.reduce((n, m) => n + m.lecciones.length, 0)
@@ -82,15 +85,21 @@ export function CourseOutline({
                       {active && (
                         <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
                       )}
-                      {/* Estado de completado */}
+                      {/* Estado de completado (o candado si el módulo es de pago) */}
                       <span
                         className={[
                           'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
                           done ? 'border-ok bg-ok text-white' : 'border-surface-border text-ink-muted',
                         ].join(' ')}
                       >
-                        {done ? <Icon name="check" size={12} /> : <Icon name={LESSON_ICON[l.tipo]} size={11} />}
-                        <span className="sr-only">{done ? 'Completada' : 'No completada'}.</span>
+                        {done ? (
+                          <Icon name="check" size={12} />
+                        ) : l.bloqueado ? (
+                          <Icon name="lock" size={11} />
+                        ) : (
+                          <Icon name={LESSON_ICON[l.tipo]} size={11} />
+                        )}
+                        <span className="sr-only">{done ? 'Completada' : l.bloqueado ? 'Bloqueada (Academy Pro)' : 'No completada'}.</span>
                       </span>
                       <span className={`flex-1 line-clamp-2 ${active ? 'font-medium' : ''}`}>{l.titulo}</span>
                       {l.duracion_min > 0 && (

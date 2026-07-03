@@ -11,6 +11,7 @@ from .models import (
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, EarnedBadge, Tenant, School,
     AcademyStreak, AcademyActivityDay, AcademyBadge, AcademyEarnedBadge,
+    AcademySubscription,
 )
 
 
@@ -65,8 +66,8 @@ class CourseAdmin(ModelAdmin):
 
 @admin.register(Module)
 class ModuleAdmin(ModelAdmin):
-    list_display = ('titulo', 'course', 'orden')
-    list_filter = ('course',)
+    list_display = ('titulo', 'course', 'orden', 'es_gratuito')
+    list_filter = ('course', 'es_gratuito')
     search_fields = ('titulo', 'course__titulo')
     inlines = [LessonInline]
 
@@ -98,6 +99,17 @@ class EnrollmentAdmin(ModelAdmin):
     list_filter = ('estado', 'course')
     search_fields = ('student__email', 'course__titulo')
     autocomplete_fields = ('student', 'course')
+
+
+@admin.register(AcademySubscription)
+class AcademySubscriptionAdmin(ModelAdmin):
+    """Suscripción "Zyfit Academy Pro" (administrada — sin cobrador conectado
+    todavía). Aquí el staff otorga/ajusta acceso Pro manualmente, mismo patrón
+    que users.CoachSubscriptionAdmin."""
+    list_display = ('user', 'estado', 'plan_tipo', 'fecha_renovacion', 'proveedor_pago', 'created_at')
+    list_filter = ('estado', 'plan_tipo')
+    search_fields = ('user__email',)
+    autocomplete_fields = ('user',)
 
 
 @admin.register(LessonProgress)

@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import community_views, views
+from . import community_views, subscription_views, views
 
 urlpatterns = [
     # Config pública del tenant (sin auth — llamada antes del login para el branding)
@@ -57,6 +57,12 @@ urlpatterns = [
 
     # Verificación pública de certificados (por código)
     path('certificates/verify/<str:codigo>/', views.certificate_verify),
+
+    # Suscripción "Zyfit Academy Pro" (paquete separado de la suscripción del
+    # entrenador principal — ver academy.access_service/academy.payments)
+    path('subscription/', subscription_views.subscription_status),
+    path('subscription/cancelar/', subscription_views.subscription_cancel),
+    path('subscription/webhook/', subscription_views.subscription_webhook),
 
     # Comunidad (foro Q&A asíncrono entre alumnos — capa de engagement opcional,
     # ver academy.community_service para la moderación automática vía IA)

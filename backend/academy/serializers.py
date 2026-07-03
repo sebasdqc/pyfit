@@ -8,6 +8,7 @@ contexto `include_answers` (lo fija la vista según el rol).
 
 from rest_framework import serializers
 
+from . import access_service
 from .community_models import CommunityPost, CommunityReply, CommunityReport
 from .models import (
     Course, Module, Lesson, Quiz, Question,
@@ -74,22 +75,45 @@ class QuizSerializer(serializers.ModelSerializer):
 # ─── Lecciones / Módulos ──────────────────────────────────────────────────────
 
 class LessonSerializer(serializers.ModelSerializer):
+    """`bloqueado` refleja el gating freemium (ver academy.access_service):
+    visible pero bloqueado, no oculto — el estudiante Free ve que la lección
+    existe (título/tipo/duración) pero no su contenido. El contexto debe traer
+    `nivel_academia` ('starter'/'pro'); si no se provee (rutas de autoría,
+    siempre desbloqueadas) se asume 'pro'."""
+
     quiz = serializers.SerializerMethodField()
+    bloqueado = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             'id', 'module', 'orden', 'titulo', 'tipo',
             'contenido', 'video_url', 'duracion_min',
-            'fecha_en_vivo', 'entregable_tipo', 'quiz', 'created_at',
+            'fecha_en_vivo', 'entregable_tipo', 'quiz', 'bloqueado', 'created_at',
         ]
         read_only_fields = ['id', 'module', 'created_at']
 
+    def _bloqueado(self, obj):
+        nivel = self.context.get('nivel_academia', access_service.NIVEL_PRO)
+        return not access_service.puede_ver_leccion(nivel, obj)
+
+    def get_bloqueado(self, obj):
+        return self._bloqueado(obj)
+
     def get_quiz(self, obj):
+        if self._bloqueado(obj):
+            return None
         quiz = getattr(obj, 'quiz', None)
         if not quiz:
             return None
         return QuizSerializer(quiz, context=self.context).data
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('bloqueado'):
+            data['contenido'] = ''
+            data['video_url'] = ''
+        return data
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -97,7 +121,7 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Module
-        fields = ['id', 'course', 'orden', 'titulo', 'descripcion', 'lecciones', 'created_at']
+        fields = ['id', 'course', 'orden', 'titulo', 'descripcion', 'es_gratuito', 'lecciones', 'created_at']
         read_only_fields = ['id', 'course', 'created_at']
 
 
@@ -299,8 +323,12 @@ class EnrollmentDetailSerializer(EnrollmentSerializer):
         ]
 
     def get_curso(self, obj):
-        # Estudiante: nunca incluir la clave de respuestas.
-        return CourseDetailSerializer(obj.course, context={'include_answers': False}).data
+        # Estudiante: nunca incluir la clave de respuestas; propaga el nivel
+        # de acceso a Academy ya resuelto por la vista (gating freemium).
+        return CourseDetailSerializer(obj.course, context={
+            'include_answers': False,
+            'nivel_academia': self.context.get('nivel_academia'),
+        }).data
 
     def get_lecciones_completadas(self, obj):
         return list(

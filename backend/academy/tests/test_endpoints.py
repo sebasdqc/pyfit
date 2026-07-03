@@ -41,7 +41,7 @@ class _Base(TestCase):
     def _course_con_quiz(self, **kw):
         """Curso con 1 lección de texto + 1 quiz de 1 pregunta (clave: 'b')."""
         course = self._course(**kw)
-        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        m = Module.objects.create(course=course, orden=1, titulo='M1', es_gratuito=True)
         Lesson.objects.create(module=m, orden=1, titulo='Lectura', tipo='texto')
         ql = Lesson.objects.create(module=m, orden=2, titulo='Quiz', tipo='quiz')
         quiz = Quiz.objects.create(lesson=ql, titulo='Q', puntaje_aprobacion=70)
@@ -141,7 +141,7 @@ class LessonVideoTests(_Base):
 
     def _leccion_video(self):
         course = self._course()
-        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        m = Module.objects.create(course=course, orden=1, titulo='M1', es_gratuito=True)
         lesson = Lesson.objects.create(
             module=m, orden=1, titulo='Clase magistral', tipo='video',
         )
@@ -178,7 +178,7 @@ class LessonVideoTests(_Base):
 
     def test_convertir_lectura_a_video(self):
         course = self._course()
-        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        m = Module.objects.create(course=course, orden=1, titulo='M1', es_gratuito=True)
         lesson = Lesson.objects.create(module=m, orden=1, titulo='Lectura', tipo='texto')
         self.client.force_authenticate(self.instructor)
         res = self.client.patch(
@@ -303,7 +303,7 @@ class Evolucion360Tests(_Base):
         """Curso mínimo 360°: texto + entregable de texto (con insignia) +
         entregable de video (con insignia)."""
         course = self._course(slug='programa-360')
-        m = Module.objects.create(course=course, orden=1, titulo='Fase única')
+        m = Module.objects.create(course=course, orden=1, titulo='Fase única', es_gratuito=True)
         texto = Lesson.objects.create(module=m, orden=1, titulo='Lectura', tipo='texto')
         analisis = Lesson.objects.create(
             module=m, orden=2, titulo='Análisis de caso', tipo='entregable',

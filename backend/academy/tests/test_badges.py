@@ -42,7 +42,7 @@ class _Base(TestCase):
         )
 
     def _lessons(self, course, n=1):
-        m = Module.objects.create(course=course, orden=1, titulo='M1')
+        m = Module.objects.create(course=course, orden=1, titulo='M1', es_gratuito=True)
         return [
             Lesson.objects.create(module=m, orden=i, titulo=f'Lección {i}', tipo='texto')
             for i in range(1, n + 1)

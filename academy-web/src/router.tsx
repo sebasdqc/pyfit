@@ -16,6 +16,7 @@ import { CertificatesPage } from '@/pages/CertificatesPage'
 import { CommunityPage } from '@/pages/CommunityPage'
 import { QuestionDetailPage } from '@/pages/QuestionDetailPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { SubscriptionPage } from '@/pages/SubscriptionPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },
           { path: 'instructor/cursos/:courseId/entregas', element: <SubmissionsPage /> },
           { path: 'perfil', element: <ProfilePage /> },
+          { path: 'suscripcion', element: <SubscriptionPage /> },
         ],
       },
     ],

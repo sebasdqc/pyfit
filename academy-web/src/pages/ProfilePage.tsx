@@ -2,6 +2,7 @@
 // visible (PATCH /me/); el correo es de solo lectura. Muestra rol y métricas.
 
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getBadges } from '@/api/academy'
 import { updateMe } from '@/api/auth'
 import { useAuth } from '@/auth/useAuth'
@@ -64,6 +65,9 @@ export function ProfilePage() {
             {user.is_admin && <Badge tone="brand">Administrador</Badge>}
             {user.is_instructor && <Badge tone="accent">Instructor</Badge>}
             {!user.is_admin && !user.is_instructor && <Badge tone="neutral">Estudiante</Badge>}
+            <Badge tone={user.nivel_academia === 'pro' ? 'ok' : 'neutral'}>
+              {user.nivel_academia === 'pro' ? 'Academy Pro' : 'Starter'}
+            </Badge>
           </div>
         </div>
       </section>
@@ -73,6 +77,23 @@ export function ProfilePage() {
         <Stat icon="learning" value={user.total_inscripciones} label="Inscripciones" />
         <Stat icon="instructor" value={user.total_cursos_creados} label="Cursos creados" />
       </section>
+
+      {/* Suscripción */}
+      <Link
+        to="/suscripcion"
+        className="za-card flex items-center gap-4 p-5 transition-colors hover:bg-surface-soft"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-brand">
+          <Icon name="star" size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-ink">Mi suscripción</p>
+          <p className="text-xs text-ink-muted">
+            {user.nivel_academia === 'pro' ? 'Academy Pro activo — gestionar plan' : 'Desbloquea el catálogo completo con Academy Pro'}
+          </p>
+        </div>
+        <Icon name="chevronRight" size={18} className="shrink-0 text-ink-muted" />
+      </Link>
 
       {/* Insignias de identidad */}
       {badges && <BadgeGallery identidad={badges} />}

@@ -326,6 +326,11 @@ CRON_SECRET = os.environ.get('CRON_SECRET', '')
 # de la Comunidad (sin intervención humana). Ver academy.community_service.
 COMMUNITY_REPORT_THRESHOLD = int(os.environ.get('COMMUNITY_REPORT_THRESHOLD', '3'))
 
+# Secreto compartido para el webhook de pagos de "Zyfit Academy Pro" (cabecera
+# X-Academy-Payment-Secret). Vacío = webhook deshabilitado (503). Sin proveedor
+# de pago real confirmado todavía — ver academy.payments/academy.subscription_views.
+ACADEMY_PAYMENT_WEBHOOK_SECRET = os.environ.get('ACADEMY_PAYMENT_WEBHOOK_SECRET', '')
+
 # ─── Google Sign-In ───────────────────────────────────────────────────────────
 # Audiencias (client IDs) aceptadas al verificar el id_token de Google que envía
 # la app. Debe incluir el **Web client ID** (que la SDK nativa usa como

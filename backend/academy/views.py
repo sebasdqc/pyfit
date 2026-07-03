@@ -54,7 +54,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle
-from . import badges_service, dashboard_service, grading, streak_service
+from . import access_service, badges_service, dashboard_service, grading, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
@@ -159,8 +159,11 @@ def _course_for_edit(user, pk, tenant=None):
 
 
 def _author_context(user, course):
-    """Contexto para serializar: incluye la clave de respuestas solo al autor."""
-    return {'include_answers': can_edit_course(user, course)}
+    """Contexto para serializar: incluye la clave de respuestas y el nivel de
+    acceso a Academy (gating freemium) — autor/admin nunca ven bloqueado."""
+    puede_editar = can_edit_course(user, course)
+    nivel = access_service.NIVEL_PRO if puede_editar else access_service.nivel_academia_de(user)
+    return {'include_answers': puede_editar, 'nivel_academia': nivel}
 
 
 # ─── Config pública del tenant (sin auth) ─────────────────────────────────────
@@ -244,6 +247,7 @@ def _user_payload(user):
         'puede_crear_cursos': is_author(user),
         'total_inscripciones': Enrollment.objects.filter(student=user).count(),
         'total_cursos_creados': Course.objects.filter(instructor=user).count(),
+        'nivel_academia': access_service.nivel_academia_de(user),
     }
 
 
@@ -393,6 +397,22 @@ def module_lessons(request, pk, module_id):
                                      context=_author_context(request.user, course)).data)
 
 
+def _bloqueo_academy_pro(user, course, lesson):
+    """403 si `lesson` requiere Academy Pro y el usuario no tiene acceso
+    (defensa en profundidad: aunque el árbol ya sirve la lección bloqueada sin
+    contenido, esto evita leerla/completarla llamando al endpoint directo por
+    id). Autor/admin del curso nunca están bloqueados. None si puede continuar."""
+    if can_edit_course(user, course):
+        return None
+    nivel = access_service.nivel_academia_de(user)
+    if access_service.puede_ver_leccion(nivel, lesson):
+        return None
+    return Response(
+        {'detail': 'requiere_academy_pro', 'modulo': lesson.module.titulo, 'curso': course.titulo},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAcademyUser])
 def lesson_detail(request, pk, module_id, lesson_id):
@@ -402,6 +422,9 @@ def lesson_detail(request, pk, module_id, lesson_id):
         course = _course_for_read(request.user, pk, tenant)
         module = get_object_or_404(Module, pk=module_id, course=course)
         lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
+        bloqueo = _bloqueo_academy_pro(request.user, course, lesson)
+        if bloqueo:
+            return bloqueo
         return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
 
     course = _course_for_edit(request.user, pk, tenant)
@@ -435,6 +458,9 @@ def lesson_quiz(request, lesson_id):
         # Lectura: visible si el curso es legible para el usuario.
         if not (course.publicado or can_edit_course(request.user, course)):
             raise Http404
+        bloqueo = _bloqueo_academy_pro(request.user, course, lesson)
+        if bloqueo:
+            return bloqueo
         quiz = getattr(lesson, 'quiz', None)
         if not quiz:
             return Response({'detail': 'Esta lección no tiene quiz.'}, status=status.HTTP_404_NOT_FOUND)
@@ -543,7 +569,8 @@ def my_enrollments(request):
 def enrollment_detail(request, enrollment_id):
     """Matrícula con el árbol del curso, lecciones completadas e intentos."""
     enrollment = _my_enrollment_or_404(request.user, enrollment_id)
-    return Response(EnrollmentDetailSerializer(enrollment).data)
+    context = _author_context(request.user, enrollment.course)
+    return Response(EnrollmentDetailSerializer(enrollment, context=context).data)
 
 
 @api_view(['POST'])
@@ -555,6 +582,9 @@ def lesson_complete(request, enrollment_id, lesson_id):
     la entrega (submission_review)."""
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
     lesson = get_object_or_404(Lesson, pk=lesson_id, module__course=enrollment.course)
+    bloqueo = _bloqueo_academy_pro(request.user, enrollment.course, lesson)
+    if bloqueo:
+        return bloqueo
     if lesson.tipo == 'entregable':
         return Response(
             {'detail': 'Esta lección se completa cuando el instructor aprueba tu entrega.'},
@@ -584,6 +614,9 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     Body: `{respuestas: {question_id: [opcion_ids]}}`."""
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
     quiz = get_object_or_404(Quiz, pk=quiz_id, lesson__module__course=enrollment.course)
+    bloqueo = _bloqueo_academy_pro(request.user, enrollment.course, quiz.lesson)
+    if bloqueo:
+        return bloqueo
 
     resultado = grading.grade_attempt(quiz, request.data.get('respuestas') or {})
     attempt = QuizAttempt.objects.create(

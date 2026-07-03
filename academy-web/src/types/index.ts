@@ -39,6 +39,8 @@ export type QuestionTipo = 'opcion_unica' | 'opcion_multiple' | 'verdadero_falso
 export type EnrollmentEstado = 'activa' | 'completada' | 'cancelada'
 export type SubmissionEstado = 'enviada' | 'aprobada' | 'rechazada'
 
+export type AcademyNivel = 'starter' | 'pro'
+
 // Payload de /api/academy/me/ y del login.
 export interface AuthUser {
   id: number
@@ -50,6 +52,8 @@ export interface AuthUser {
   puede_crear_cursos: boolean
   total_inscripciones: number
   total_cursos_creados: number
+  // Nivel de acceso freemium: 'starter' (gratis) o 'pro' (Academy Pro activo).
+  nivel_academia: AcademyNivel
 }
 
 export interface LoginResponse {
@@ -134,6 +138,10 @@ export interface Lesson {
   fecha_en_vivo: string | null // fecha/hora de la sesión sincrónica (en_vivo)
   entregable_tipo: EntregableTipo // qué sube el estudiante (solo tipo entregable)
   quiz: Quiz | null
+  // Freemium: true si el usuario actual no tiene acceso (módulo pago sin
+  // Academy Pro). Visible pero bloqueado — contenido/video_url llegan vacíos
+  // y quiz llega null cuando bloqueado=true. Ver academy.access_service.
+  bloqueado: boolean
   created_at: string
 }
 
@@ -143,6 +151,8 @@ export interface Module {
   orden: number
   titulo: string
   descripcion: string
+  // Módulos gratis (freemium) son consumibles por cualquier estudiante.
+  es_gratuito: boolean
   lecciones: Lesson[]
   created_at: string
 }
@@ -446,4 +456,19 @@ export interface CommunityReport {
   motivo: CommunityReportMotivo
   detalle: string
   created_at: string
+}
+
+// ── Suscripción "Zyfit Academy Pro" ───────────────────────────────────────────
+// Espeja academy.subscription_views._subscription_payload(). Paquete SEPARADO
+// de la suscripción "Zyfit Pro" del entrenador principal (app mobile).
+
+export type AcademySubscriptionEstado =
+  | 'sin_suscripcion' | 'activa' | 'cancelada' | 'vencida' | 'pago_fallido'
+export type AcademyPlanTipo = 'mensual' | 'anual'
+
+export interface AcademySubscriptionStatus {
+  estado: AcademySubscriptionEstado
+  plan_tipo: AcademyPlanTipo | null
+  fecha_renovacion: string | null
+  nivel: AcademyNivel
 }

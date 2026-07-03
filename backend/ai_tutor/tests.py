@@ -140,6 +140,17 @@ class RateLimitTests(_Base):
         self.user.refresh_from_db()
         self.assertEqual(TutorDailyUsage.limit_for(self.user), 30)
 
+    def test_limite_por_academy_pro_sin_zyfit_pro(self):
+        """Academy Pro es un paquete separado de "Zyfit Pro" (Profile.plan),
+        pero como el tutor vive dentro de Academy, tener Academy Pro también
+        debe subir la cuota diaria a 30 aunque Profile.plan siga en starter."""
+        from academy.models import AcademySubscription
+
+        Profile.objects.create(user=self.user, nombre='A')  # plan default = starter
+        self.assertEqual(TutorDailyUsage.limit_for(self.user), 3)
+        AcademySubscription.objects.create(user=self.user, estado=AcademySubscription.ESTADO_ACTIVA)
+        self.assertEqual(TutorDailyUsage.limit_for(self.user), 30)
+
     def test_reached_limit(self):
         hoy = date(2026, 7, 2)
         self.assertFalse(TutorDailyUsage.reached_limit(self.user, hoy))

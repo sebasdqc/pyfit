@@ -37,6 +37,8 @@ Principios (heredados del resto del backend y de Zyfit Performance):
   • Tablas con prefijo `academy_*`.
 """
 
+from datetime import date
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -314,6 +316,10 @@ class Module(models.Model):
     orden = models.PositiveIntegerField(default=0)
     titulo = models.CharField(max_length=160)
     descripcion = models.TextField(blank=True)
+    # Freemium: módulos con es_gratuito=True son consumibles por cualquier
+    # estudiante (tier starter). El resto exige AcademySubscription activa.
+    # Ver academy.access_service para el único punto de verdad del gating.
+    es_gratuito = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -763,6 +769,60 @@ class AcademyEarnedBadge(models.Model):
 
     def __str__(self):
         return f'{self.user_id} · {self.badge_id}'
+
+
+class AcademySubscription(models.Model):
+    """Suscripción a "Zyfit Academy Pro" — paquete PROPIO, separado de la
+    suscripción "Zyfit Pro" del entrenador principal (`users.Profile.plan`).
+    Comprar uno no activa el otro; ver academy.access_service.nivel_academia_de
+    para el único punto de verdad de qué nivel de acceso tiene un usuario.
+
+    Mismo patrón que `users.CoachSubscription`: administrada (sin cobrador
+    conectado todavía — ver academy.payments.AdministeredGateway), pero a
+    diferencia de esa NO se crea perezosamente para todos los estudiantes:
+    solo existe una fila para quien alguna vez tuvo/tiene Academy Pro. La
+    ausencia de fila significa tier starter (free).
+    """
+
+    ESTADO_ACTIVA = 'activa'
+    ESTADO_CANCELADA = 'cancelada'
+    ESTADO_VENCIDA = 'vencida'
+    ESTADO_PAGO_FALLIDO = 'pago_fallido'
+    ESTADO_CHOICES = [
+        (ESTADO_ACTIVA, 'Activa'),
+        (ESTADO_CANCELADA, 'Cancelada'),
+        (ESTADO_VENCIDA, 'Vencida'),
+        (ESTADO_PAGO_FALLIDO, 'Pago fallido'),
+    ]
+    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('anual', 'Anual')]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_subscription',
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVA)
+    plan_tipo = models.CharField(max_length=20, choices=PLAN_TIPO_CHOICES, default='mensual')
+    fecha_inicio = models.DateField(auto_now_add=True)
+    # Próxima fecha de cobro (activa) o fin del período ya pagado (cancelada
+    # en grace: sigue Pro hasta esta fecha, como cualquier suscripción estándar).
+    fecha_renovacion = models.DateField(null=True, blank=True)
+    # '' = administrada manualmente (sin proveedor real conectado todavía).
+    proveedor_pago = models.CharField(max_length=40, blank=True, default='')
+    referencia_externa = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'academy_subscriptions'
+
+    def __str__(self):
+        return f'{self.user_id} · Academy Pro [{self.estado}]'
+
+    def da_acceso_pro(self) -> bool:
+        if self.estado == self.ESTADO_ACTIVA:
+            return True
+        if self.estado == self.ESTADO_CANCELADA and self.fecha_renovacion:
+            return date.today() <= self.fecha_renovacion
+        return False
 
 
 # Comunidad (foro Q&A) — modelos en archivo propio para no seguir engordando

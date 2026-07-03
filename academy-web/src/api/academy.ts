@@ -3,9 +3,9 @@
 
 import { api } from './client'
 import type {
-  AcademyBadgeCatalog, Course, CourseDetail, DashboardData, Enrollment, EnrollmentDetail,
-  Certificate, Lesson, LessonTipo, NuevaInsigniaOtorgada, QuizAttempt, Submission,
-  SubmissionEstado, School, StreakState,
+  AcademyBadgeCatalog, AcademySubscriptionStatus, Course, CourseDetail,
+  DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
+  NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
 } from '@/types'
 
 // ── Racha de estudio ──────────────────────────────────────────────────────────
@@ -217,5 +217,19 @@ export async function getCertificate(enrollmentId: number): Promise<Certificate>
 
 export async function verifyCertificate(codigo: string): Promise<Certificate> {
   const res = await api.get<Certificate>(`/academy/certificates/verify/${encodeURIComponent(codigo)}/`)
+  return res.data
+}
+
+// ── Suscripción "Zyfit Academy Pro" ───────────────────────────────────────────
+// No hay endpoint de "activar": sin cobrador conectado todavía, activar solo
+// lo hace Django Admin o el webhook de pago — ver academy.payments (backend).
+
+export async function getSubscriptionStatus(): Promise<AcademySubscriptionStatus> {
+  const res = await api.get<AcademySubscriptionStatus>('/academy/subscription/')
+  return res.data
+}
+
+export async function cancelSubscription(): Promise<AcademySubscriptionStatus> {
+  const res = await api.post<AcademySubscriptionStatus>('/academy/subscription/cancelar/')
   return res.data
 }

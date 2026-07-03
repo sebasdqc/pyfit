@@ -236,7 +236,7 @@ class EndpointTests(TestCase):
         self.course = Course.objects.create(
             instructor=self.instructor, titulo='C', slug='c', nivel='principiante', publicado=True,
         )
-        m = Module.objects.create(course=self.course, orden=1, titulo='M1')
+        m = Module.objects.create(course=self.course, orden=1, titulo='M1', es_gratuito=True)
         self.lesson = Lesson.objects.create(module=m, orden=1, titulo='L1', tipo='texto')
         ql = Lesson.objects.create(module=m, orden=2, titulo='Quiz', tipo='quiz')
         self.quiz = Quiz.objects.create(lesson=ql, puntaje_aprobacion=50)
