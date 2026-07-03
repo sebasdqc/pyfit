@@ -19,6 +19,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from academy.access_service import NIVEL_PRO, NIVEL_STARTER
 from academy.models import Course, Module, Lesson, School
 from users.models import Profile
 
@@ -37,13 +38,13 @@ class _Base(TestCase):
         self.user = User.objects.create_user(username='a@x.com', email='a@x.com', password='x')
         self.client = APIClient()
 
-    def _course(self, slug='curso-1'):
+    def _course(self, slug='curso-1', publicado=True, es_gratuito=False):
         school = School.objects.create(nombre='Ciencia del Entrenamiento', slug=f's-{slug}')
         course = Course.objects.create(
             titulo='Curso 1', slug=slug, categoria='entrenamiento',
-            nivel='principiante', publicado=True, school=school,
+            nivel='principiante', publicado=publicado, school=school,
         )
-        module = Module.objects.create(course=course, orden=1, titulo='Periodización')
+        module = Module.objects.create(course=course, orden=1, titulo='Periodización', es_gratuito=es_gratuito)
         lesson = Lesson.objects.create(module=module, orden=1, titulo='Qué es periodizar', tipo='texto')
         return course, module, lesson
 
@@ -59,13 +60,15 @@ class _Base(TestCase):
 
 class RetrievalTests(_Base):
     def test_recupera_el_chunk_correcto(self):
+        # Módulo pago (es_gratuito=False por defecto): se pide nivel=PRO a propósito
+        # porque este test cubre el RANKING, no el gating (ver tests de abajo).
         course, _m, lesson = self._course()
         a = self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
         self._chunk(course, lesson, 1, 'La hidratación durante el ejercicio.', [0.0, 1.0, 0.0])
 
         # La pregunta "apunta" al vector del chunk A.
         with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]):
-            results = retrieval.retrieve('¿qué es periodizar?', course_id=course.id)
+            results = retrieval.retrieve('¿qué es periodizar?', course_id=course.id, nivel=NIVEL_PRO)
 
         self.assertTrue(results, 'debe recuperar al menos un chunk')
         self.assertEqual(results[0][0].id, a.id)
@@ -75,6 +78,50 @@ class RetrievalTests(_Base):
     def test_sin_chunks_devuelve_vacio(self):
         with patch('ai_tutor.embeddings.embed_text', return_value=[1.0, 0.0, 0.0]):
             self.assertEqual(retrieval.retrieve('cualquier cosa'), [])
+
+    def test_nivel_starter_no_recupera_contenido_de_modulo_pago(self):
+        """El RAG no debe poder citar un módulo Academy Pro a un usuario starter
+        (bypass de paywall detectado en la auditoría de seguridad)."""
+        course, _m, lesson = self._course(es_gratuito=False)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]):
+            starter = retrieval.retrieve('¿qué es periodizar?', course_id=course.id, nivel=NIVEL_STARTER)
+            pro = retrieval.retrieve('¿qué es periodizar?', course_id=course.id, nivel=NIVEL_PRO)
+
+        self.assertEqual(starter, [])
+        self.assertTrue(pro, 'con nivel PRO sí debe recuperar el chunk')
+
+    def test_nivel_starter_si_recupera_modulo_gratuito(self):
+        course, _m, lesson = self._course(es_gratuito=True)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]):
+            results = retrieval.retrieve('¿qué es periodizar?', course_id=course.id, nivel=NIVEL_STARTER)
+
+        self.assertTrue(results, 'un módulo gratuito debe ser visible incluso en nivel starter')
+
+    def test_no_recupera_contenido_de_curso_no_publicado(self):
+        """El RAG nunca debe filtrar contenido de un curso todavía en borrador,
+        sin importar el nivel del usuario (ni siquiera PRO/instructor)."""
+        course, _m, lesson = self._course(publicado=False, es_gratuito=True)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]):
+            results = retrieval.retrieve('¿qué es periodizar?', course_id=course.id, nivel=NIVEL_PRO)
+
+        self.assertEqual(results, [])
+
+    def test_default_nivel_es_fail_closed(self):
+        """Si un caller olvida pasar `nivel`, el default debe ser el más restrictivo
+        (starter) y no un acceso completo — así un descuido nunca reintroduce el bug."""
+        course, _m, lesson = self._course(es_gratuito=False)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]):
+            results = retrieval.retrieve('¿qué es periodizar?', course_id=course.id)
+
+        self.assertEqual(results, [])
 
 
 # ─── Guardrails ─────────────────────────────────────────────────────────────────
@@ -127,6 +174,35 @@ class ServiceTests(_Base):
         mock_groq.assert_not_called()
         self.assertTrue(msg.redirigido)
         self.assertEqual(TutorDailyUsage.used_today(self.user, date(2026, 7, 2)), 0)
+
+    def test_no_cita_contenido_pago_a_usuario_starter_end_to_end(self):
+        """Reproduce el bypass de paywall de la auditoría: un alumno starter
+        pregunta por un curso Academy Pro y el tutor NO debe citarlo como fuente."""
+        course, _m, lesson = self._course(es_gratuito=False)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]), \
+                patch('ai_tutor.services._call_groq_chat', return_value=('respuesta genérica', _fake_usage())):
+            _conv, msg = services.answer(
+                user=self.user, question='¿qué es periodizar?',
+                fecha=date(2026, 7, 2), course_id=course.id,
+            )
+        self.assertEqual(msg.fuentes, [])
+
+    def test_si_cita_contenido_pago_a_usuario_con_academy_pro(self):
+        from academy.models import AcademySubscription
+
+        course, _m, lesson = self._course(es_gratuito=False)
+        self._chunk(course, lesson, 0, 'La periodización organiza la carga.', [1.0, 0.0, 0.0])
+        AcademySubscription.objects.create(user=self.user, estado=AcademySubscription.ESTADO_ACTIVA)
+
+        with patch('ai_tutor.embeddings.embed_text', return_value=[0.9, 0.1, 0.0]), \
+                patch('ai_tutor.services._call_groq_chat', return_value=('respuesta con fuente', _fake_usage())):
+            _conv, msg = services.answer(
+                user=self.user, question='¿qué es periodizar?',
+                fecha=date(2026, 7, 2), course_id=course.id,
+            )
+        self.assertEqual(len(msg.fuentes), 1)
 
 
 # ─── Rate limiting por tier ─────────────────────────────────────────────────────

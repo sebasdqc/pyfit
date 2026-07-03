@@ -34,6 +34,7 @@ export function RegisterPage() {
   const { refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -41,6 +42,10 @@ export function RegisterPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!acceptedTerms) {
+      setError('Debes aceptar los Términos de Servicio y la Política de Privacidad.')
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
@@ -126,6 +131,29 @@ export function RegisterPage() {
               icon={<Icon name="lock" size={18} />}
             />
 
+            <label className="flex items-start gap-2.5 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked)
+                  setError(null)
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border text-accent focus:ring-accent"
+              />
+              <span>
+                Acepto los{' '}
+                <Link to="/terminos" target="_blank" rel="noreferrer" className="font-medium text-accent hover:text-accent-dark">
+                  Términos de Servicio
+                </Link>{' '}
+                y la{' '}
+                <Link to="/privacidad" target="_blank" rel="noreferrer" className="font-medium text-accent hover:text-accent-dark">
+                  Política de Privacidad
+                </Link>
+                .
+              </span>
+            </label>
+
             {error && (
               <p role="alert" className="text-sm text-danger">
                 {error}
@@ -134,7 +162,7 @@ export function RegisterPage() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !acceptedTerms}
               className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
             >
               {submitting ? 'Creando cuenta…' : 'Crear cuenta gratis'}

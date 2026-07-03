@@ -204,6 +204,19 @@ class CourseSerializer(serializers.ModelSerializer):
     def get_total_inscritos(self, obj):
         return obj.enrollments.count()
 
+    def validate_school(self, value):
+        """La escuela debe pertenecer al mismo tenant que el curso (o ambos ser
+        del catálogo raíz sin tenant) — si no, un instructor podría colgar su
+        curso de una escuela de OTRO tenant. El contexto trae `tenant`
+        (lo fija la vista según el dominio de la request)."""
+        if value is None:
+            return value
+        tenant = self.context.get('tenant')
+        tenant_id = tenant.id if tenant else None
+        if value.tenant_id != tenant_id:
+            raise serializers.ValidationError('La escuela no pertenece a este tenant.')
+        return value
+
     def validate_portada(self, value):
         # Acepta vacío, un data URL de imagen o una URL http(s).
         if not value:

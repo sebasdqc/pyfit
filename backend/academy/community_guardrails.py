@@ -4,7 +4,7 @@ llamar a Groq (ahorran tokens y cuota, y son testeables de forma determinista).
 Deliberadamente CONSERVADOR, mismo criterio que `ai_tutor.guardrails`: solo
 intercepta señales fuertes; el resto de casos (incluido "fuera_de_tema", que
 requiere comprensión semántica) los clasifica el LLM en
-`community_prompts.build_moderation_prompt`. Preferimos un falso negativo
+`community_service.moderar_texto`. Preferimos un falso negativo
 (que lo termine viendo el LLM, o el sistema de reportes de alumnos) a un falso
 positivo que oculte una pregunta legítima."""
 

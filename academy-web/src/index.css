@@ -116,3 +116,25 @@
     opacity: 0.72;
   }
 }
+
+/* ── Exportar certificado a PDF vía impresión (CertificatesPage.tsx) ─────────
+   Sin librería nueva: "Guardar como PDF" del diálogo de impresión del propio
+   navegador. Truco estándar para imprimir UN SOLO elemento sin depender de su
+   profundidad en el DOM (sidebar/topbar/otros diplomas incluidos): se oculta
+   todo por visibilidad y se saca al target de flujo con position:absolute. */
+@media print {
+  body.printing-diploma * {
+    visibility: hidden !important;
+  }
+  body.printing-diploma .diploma-print-active,
+  body.printing-diploma .diploma-print-active * {
+    visibility: visible !important;
+  }
+  body.printing-diploma .diploma-print-active {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none !important;
+  }
+}

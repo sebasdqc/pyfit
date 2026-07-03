@@ -12,6 +12,8 @@ import logging
 import math
 import re
 
+from academy.access_service import NIVEL_STARTER, puede_ver_leccion
+
 from . import embeddings
 from .models import TutorChunk
 
@@ -57,17 +59,28 @@ def _keyword_fallback(query, chunks, top_k):
     return scored[:top_k]
 
 
-def retrieve(query, top_k=TOP_K, course_id=None):
+def retrieve(query, top_k=TOP_K, course_id=None, nivel=NIVEL_STARTER):
     """Devuelve [(TutorChunk, score)] ordenado desc por relevancia.
 
     Si `course_id` se pasa, restringe la búsqueda a ese curso (mejor precisión
     cuando el alumno pregunta desde una lección). El caller puede reintentar sin
     filtro si no hay resultados relevantes.
+
+    `nivel` es el nivel de acceso YA RESUELTO del usuario (ver
+    `academy.access_service.nivel_academia_de`) — el RAG NUNCA debe poder citar
+    contenido de un módulo pago a un usuario que no tiene Academy Pro, ni
+    contenido de un curso que no está publicado. Por defecto NIVEL_STARTER
+    (fail-closed): un caller que olvide pasar el nivel nunca filtra de más
+    hacia contenido bloqueado.
     """
-    qs = TutorChunk.objects.all()
+    qs = (
+        TutorChunk.objects
+        .select_related('lesson__module', 'course')
+        .filter(course__publicado=True)
+    )
     if course_id:
         qs = qs.filter(course_id=course_id)
-    chunks = list(qs)
+    chunks = [ch for ch in qs if puede_ver_leccion(nivel, ch.lesson)]
     if not chunks:
         return []
 
@@ -89,13 +102,13 @@ def retrieve(query, top_k=TOP_K, course_id=None):
     return [(ch, s) for ch, s in scored[:top_k] if s >= MIN_SCORE]
 
 
-def retrieve_grounding(query, course_id=None, top_k=TOP_K):
+def retrieve_grounding(query, course_id=None, top_k=TOP_K, nivel=NIVEL_STARTER):
     """Recupera grounding priorizando el curso activo y cayendo al catálogo global.
 
     Devuelve (results, scoped) donde `scoped=True` indica que los resultados salieron
     del curso activo (útil para matizar la cita)."""
     if course_id:
-        scoped = retrieve(query, top_k=top_k, course_id=course_id)
+        scoped = retrieve(query, top_k=top_k, course_id=course_id, nivel=nivel)
         if scoped:
             return scoped, True
-    return retrieve(query, top_k=top_k), False
+    return retrieve(query, top_k=top_k, nivel=nivel), False

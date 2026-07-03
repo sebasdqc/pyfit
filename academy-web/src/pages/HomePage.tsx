@@ -4,10 +4,11 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getDashboard } from '@/api/academy'
+import { getDashboard, listCourses } from '@/api/academy'
 import { useAuth } from '@/auth/useAuth'
 import { Icon } from '@/components/Icon'
 import { Badge } from '@/components/ui/Badge'
+import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Spinner } from '@/components/ui/Spinner'
@@ -16,13 +17,14 @@ import { SchoolProgressRing } from '@/components/dashboard/SchoolProgressRing'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { schoolTheme } from '@/lib/schoolTheme'
 import type {
-  CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
+  Course, CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
 } from '@/types'
 
 export function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [recomendados, setRecomendados] = useState<Course[]>([])
   const { user } = useAuth()
 
   useEffect(() => {
@@ -35,6 +37,22 @@ export function HomePage() {
       active = false
     }
   }, [])
+
+  // Sin matrículas, un estudiante nuevo no tiene ninguna señal de por dónde
+  // empezar (el catálogo se muestra plano, sin curación). Se destacan los
+  // primeros cursos publicados como punto de partida simple — sin ranking ni
+  // personalización, solo para no dejar al usuario frente a un catálogo vacío
+  // de contexto. Se pide perezosamente, solo cuando realmente hace falta.
+  useEffect(() => {
+    if (!data || data.tiene_matriculas || user?.is_instructor) return
+    let active = true
+    listCourses()
+      .then((cs) => active && setRecomendados(cs.slice(0, 3)))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [data, user])
 
   const nombre = (user?.nombre ?? '').split(/\s+/)[0] || 'Estudiante'
   const objetivo = data?.continuar ?? data?.siguiente_paso ?? null
@@ -57,27 +75,39 @@ export function HomePage() {
           description="Revisa tu conexión e inténtalo de nuevo."
         />
       ) : !data || !data.tiene_matriculas ? (
-        <EmptyState
-          icon={user?.is_instructor ? 'instructor' : 'learning'}
-          title={
-            user?.is_instructor
-              ? 'Aún no tienes cursos como estudiante'
-              : 'Todavía no te has inscrito a ningún curso'
-          }
-          description={
-            user?.is_instructor
-              ? 'Gestiona tus cursos publicados o inscríbete en el catálogo para empezar a aprender.'
-              : 'Explora el catálogo y empieza tu primera formación.'
-          }
-          action={
-            <Link
-              to={user?.is_instructor ? '/instructor' : '/catalogo'}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
-            >
-              {user?.is_instructor ? 'Ir a mis cursos' : 'Ir al catálogo'} <Icon name="arrowRight" size={16} />
-            </Link>
-          }
-        />
+        <>
+          <EmptyState
+            icon={user?.is_instructor ? 'instructor' : 'learning'}
+            title={
+              user?.is_instructor
+                ? 'Aún no tienes cursos como estudiante'
+                : 'Todavía no te has inscrito a ningún curso'
+            }
+            description={
+              user?.is_instructor
+                ? 'Gestiona tus cursos publicados o inscríbete en el catálogo para empezar a aprender.'
+                : 'Explora el catálogo y empieza tu primera formación.'
+            }
+            action={
+              <Link
+                to={user?.is_instructor ? '/instructor' : '/catalogo'}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
+              >
+                {user?.is_instructor ? 'Ir a mis cursos' : 'Ir al catálogo'} <Icon name="arrowRight" size={16} />
+              </Link>
+            }
+          />
+          {recomendados.length > 0 && (
+            <div>
+              <p className="za-eyebrow">Para empezar, te recomendamos</p>
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {recomendados.map((c) => (
+                  <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,320px)_1fr]">

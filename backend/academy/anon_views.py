@@ -24,13 +24,14 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from . import access_service
 from .models import AnonymousProgress, AnonymousSession, Course, Lesson
 from .serializers import CourseDetailSerializer, CourseSerializer, LessonSerializer
+from pyfit.throttles import AnonSessionRateThrottle
 
 # Ventana razonable antes de purgar una sesión anónima nunca convertida (ver
 # anon_sweep) — ni tan corta que un visitante que vuelve en unas semanas
@@ -55,6 +56,7 @@ def _get_session(request):
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AnonSessionRateThrottle])
 def anon_session(request):
     """POST crea una sesión anónima nueva (el cliente persiste el id devuelto
     en almacenamiento local y lo manda como `X-Anon-Session` en el resto de

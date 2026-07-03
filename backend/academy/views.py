@@ -59,7 +59,7 @@ from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
 )
-from .permissions import IsAcademyUser, can_edit_course, is_author
+from .permissions import IsAcademyUser, can_edit_course, is_author, tenant_mismatch
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
     QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
@@ -207,6 +207,11 @@ def academy_login(request):
             {'detail': 'Esta cuenta no tiene acceso a Zyfit Academy.'},
             status=status.HTTP_403_FORBIDDEN,
         )
+    if tenant_mismatch(user, request):
+        return Response(
+            {'detail': 'Esta cuenta pertenece a otra organización de Zyfit Academy.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     refresh = RefreshToken.for_user(user)
     return Response({
         'access': str(refresh.access_token),
@@ -268,7 +273,7 @@ def courses_view(request):
         if not is_author(request.user):
             return Response({'detail': 'Solo un instructor o admin puede crear cursos.'},
                             status=status.HTTP_403_FORBIDDEN)
-        serializer = CourseSerializer(data=request.data)
+        serializer = CourseSerializer(data=request.data, context={'tenant': tenant})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         course = serializer.save(instructor=request.user, tenant=tenant)
@@ -332,7 +337,8 @@ def course_detail(request, pk):
     if request.method == 'DELETE':
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    serializer = CourseSerializer(course, data=request.data, partial=request.method == 'PATCH')
+    serializer = CourseSerializer(course, data=request.data, partial=request.method == 'PATCH',
+                                   context={'tenant': tenant})
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()

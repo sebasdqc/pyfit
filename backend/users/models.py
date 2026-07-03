@@ -59,6 +59,20 @@ class User(AbstractUser):
     # propiedad `academy_acceso`). El admin de producto (is_admin/is_staff) también
     # puede crear cursos sin necesitar este flag.
     academy_instructor = models.BooleanField(default=False)
+    # Organización de Academy (white-label) a la que pertenece esta cuenta —
+    # NULL = sin restricción (catálogo raíz o cuenta anterior a este campo).
+    # Se estampa SOLO al registrarse (ver users.views.register), según el
+    # tenant resuelto por academy.middleware.TenantMiddleware en ese momento;
+    # nunca se reasigna después. `academy.permissions.IsAcademyUser` la usa
+    # para impedir que una cuenta de un tenant navegue el catálogo/comunidad
+    # de OTRO tenant agregando `X-Tenant-Slug` a mano (hallazgo de auditoría:
+    # antes cualquier cuenta activa entraba a cualquier tenant con solo
+    # cambiar ese header). Referencia por string ('academy.Tenant') para no
+    # acoplar este módulo al import de la app academy.
+    academy_tenant = models.ForeignKey(
+        'academy.Tenant', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='miembros',
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

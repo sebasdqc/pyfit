@@ -3,7 +3,7 @@
 // /api/academy/certificates/verify/<codigo>/). El diseño del diploma se
 // profundizará en próximas iteraciones (hoy: tarjeta referencial).
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { listMyEnrollments, verifyCertificate } from '@/api/academy'
 import { Spinner } from '@/components/ui/Spinner'
@@ -64,8 +64,29 @@ export function CertificatesPage() {
 }
 
 function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: string; codigo: string }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // "Descargar PDF" sin librería nueva: aísla ESTE diploma con CSS de
+  // impresión (ver index.css) y abre el diálogo nativo del navegador, donde
+  // "Guardar como PDF" es una opción estándar de destino. `afterprint` limpia
+  // las clases tanto si el alumno imprime como si cancela el diálogo.
+  useEffect(() => {
+    function cleanup() {
+      document.body.classList.remove('printing-diploma')
+      cardRef.current?.classList.remove('diploma-print-active')
+    }
+    window.addEventListener('afterprint', cleanup)
+    return () => window.removeEventListener('afterprint', cleanup)
+  }, [])
+
+  function handleDownload() {
+    cardRef.current?.classList.add('diploma-print-active')
+    document.body.classList.add('printing-diploma')
+    window.print()
+  }
+
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand/15">
+    <div ref={cardRef} className="relative overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand/15">
       {/* Orla doble decorativa */}
       <div className="pointer-events-none absolute inset-2.5 rounded-xl border border-brand/20" />
       <div className="pointer-events-none absolute inset-[13px] rounded-lg border border-brand/10" />
@@ -105,6 +126,15 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
             {BRAND.name} {BRAND.product}
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={handleDownload}
+          className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-brand/20 text-sm font-semibold text-brand transition-colors hover:bg-brand/5 print:hidden"
+        >
+          <Icon name="doc" size={16} />
+          Descargar PDF
+        </button>
       </div>
     </div>
   )

@@ -111,6 +111,13 @@ export function LoginPage() {
               icon={<Icon name="lock" size={18} />}
             />
 
+            <Link
+              to="/recuperar"
+              className="-mt-2 self-end text-xs font-medium text-accent hover:text-accent-dark"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+
             {error && (
               <p role="alert" className="text-sm text-danger">
                 {error}

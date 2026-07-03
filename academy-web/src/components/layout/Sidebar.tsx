@@ -56,7 +56,7 @@ export function Sidebar({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
         <button
           type="button"
           onClick={onNavigate}
-          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink md:hidden"
+          className="-mr-1.5 flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-soft hover:text-ink md:hidden"
           aria-label="Cerrar menú"
         >
           <Icon name="close" size={18} />
@@ -73,7 +73,7 @@ export function Sidebar({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   [
-                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+                    'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
                     'md:justify-center md:px-0 lg:justify-start lg:px-3',
                     isActive
                       ? 'bg-accent/10 font-medium text-brand'

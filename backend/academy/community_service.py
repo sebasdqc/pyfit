@@ -10,6 +10,7 @@ para lo que la IA no llegó a interceptar; ninguno de los dos requiere que un
 humano revise una cola para que el foro siga funcionando (ver `academy.admin`
 para el panel de revisión, 100% opcional)."""
 
+import json
 import logging
 
 from django.conf import settings
@@ -17,16 +18,19 @@ from django.db import transaction
 from django.db.models import F
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from groq import Groq
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ai_workout.views import _call_groq
+from ai_workout.views import GROQ_MAX_RETRIES, GROQ_TIMEOUT_SECONDS
 
 from . import badges_service, community_guardrails
 from .community_models import (
     ESTADO_OCULTO_IA, ESTADO_OCULTO_REPORTES, ESTADO_VISIBLE,
     CommunityPost, CommunityReply, CommunityReport, CommunityVote,
 )
-from .community_prompts import CATEGORIAS_VALIDAS, build_moderation_prompt
+from .community_prompts import (
+    CATEGORIAS_VALIDAS, build_moderation_system_prompt, build_moderation_user_message,
+)
 from .models import Course, Module, School
 from .serializers import _display_name
 
@@ -39,27 +43,67 @@ CONTENIDO_REPLY_MAX_LEN = 3000
 
 # ─── Moderación automática (IA) ────────────────────────────────────────────────
 
+def _call_groq_moderation(system_prompt: str, user_message: str, max_tokens: int) -> dict:
+    """Variante de `ai_workout.views._call_groq` con system/user separados
+    (defensa contra prompt injection: el texto del alumno viaja como mensaje
+    'user', nunca mezclado con las instrucciones del moderador en un único
+    bloque — mismo patrón que `ai_tutor.services._call_groq_chat`). Devuelve
+    el JSON parseado; propaga `json.JSONDecodeError`/`ValueError`/errores del
+    SDK de Groq tal cual para que el caller decida cómo degradar."""
+    if not settings.GROQ_API_KEY:
+        raise RuntimeError('GROQ_API_KEY not configured')
+    client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    completion = client.chat.completions.create(
+        model='llama-3.3-70b-versatile',
+        messages=[
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_message},
+        ],
+        max_tokens=max_tokens,
+    )
+    text = (completion.choices[0].message.content or '').strip()
+    if not text:
+        raise ValueError('Empty response from AI')
+    clean = text.replace('```json', '').replace('```', '').strip()
+    return json.loads(clean)
+
+
 def moderar_texto(texto: str) -> dict:
     """Clasifica `texto` en apropiado/spam/fuera_de_tema/dañino.
 
-    Orden: guardrails determinísticos (gratis, sin llamar a Groq) → Groq. Si
-    Groq falla o timeoutea, FAIL-OPEN (se publica como 'apropiado'): el
-    guardrail ya filtró los casos obvios, y una caída de un servicio externo
-    opcional no debe degradar la experiencia de todo el foro (el sistema de
-    reportes de alumnos queda como red de seguridad secundaria)."""
+    Orden: guardrails determinísticos (gratis, sin llamar a Groq) → Groq.
+
+    Dos formas de degradar, tratadas DISTINTO a propósito:
+      • Groq no responde (timeout, sin API key, error del SDK) → FAIL-OPEN
+        (se publica como 'apropiado'): es una caída de un servicio externo
+        opcional, y no debe degradar la experiencia de todo el foro (el
+        sistema de reportes de alumnos queda como red de seguridad
+        secundaria). Trade-off deliberado, sin cambios.
+      • Groq SÍ responde pero con JSON inválido o una categoría que no
+        reconocemos → FAIL-CLOSED (se oculta para revisión, igual que
+        'dañino'): esto es lo que lograría un alumno que intente manipular al
+        clasificador para que su respuesta no sea interpretable. Antes ambos
+        casos caían al mismo 'apropiado' — eso premiaba precisamente el
+        intento de manipulación."""
     hit = community_guardrails.check(texto)
     if hit:
         return {**hit, 'fuente': 'guardrails'}
 
     try:
-        data = _call_groq(build_moderation_prompt(texto), max_tokens=150)
+        data = _call_groq_moderation(
+            build_moderation_system_prompt(), build_moderation_user_message(texto), max_tokens=150,
+        )
+    except json.JSONDecodeError as exc:
+        logger.warning('community_moderar_texto: Groq respondió con JSON inválido (%s) — oculto para revisión', exc)
+        return {'categoria': 'dañino', 'razon': 'respuesta de moderación no interpretable', 'fuente': 'invalido'}
     except Exception as exc:
         logger.warning('community_moderar_texto: Groq no disponible (%s)', exc)
         return {'categoria': 'apropiado', 'razon': 'moderación no disponible', 'fuente': 'fallback'}
 
     categoria = data.get('categoria') if isinstance(data, dict) else None
     if categoria not in CATEGORIAS_VALIDAS:
-        categoria = 'apropiado'
+        logger.warning('community_moderar_texto: categoría inválida de Groq (%r) — oculto para revisión', categoria)
+        return {'categoria': 'dañino', 'razon': 'categoría de moderación no reconocida', 'fuente': 'invalido'}
     razon = (data.get('razon') if isinstance(data, dict) else '') or ''
     return {'categoria': categoria, 'razon': razon, 'fuente': 'groq'}
 

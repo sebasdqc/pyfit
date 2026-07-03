@@ -30,6 +30,21 @@ export async function registerRequest(email: string, password: string): Promise<
   return res.data
 }
 
+// Recuperación de contraseña — mismos endpoints AllowAny que ya usa el
+// onboarding móvil (/api/auth/reset-password/ y /confirm-reset/, no son de
+// /academy/). El backend nunca revela si el email existe (siempre 200).
+export async function requestPasswordReset(email: string): Promise<void> {
+  await api.post('/auth/reset-password/', { email })
+}
+
+export async function confirmPasswordReset(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  await api.post('/auth/confirm-reset/', { email, code, new_password: newPassword })
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   const res = await api.get<AuthUser>('/academy/me/')
   return res.data

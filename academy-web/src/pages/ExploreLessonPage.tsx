@@ -30,6 +30,7 @@ export function ExploreLessonPage() {
   const [completing, setCompleting] = useState(false)
   const [completada, setCompletada] = useState(false)
   const [prompt, setPrompt] = useState<RegisterPromptReason | null>(null)
+  const [completeError, setCompleteError] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -51,6 +52,7 @@ export function ExploreLessonPage() {
 
   async function handleComplete() {
     setCompleting(true)
+    setCompleteError(false)
     try {
       await completePublicLesson(lId)
       setCompletada(true)
@@ -60,6 +62,8 @@ export function ExploreLessonPage() {
       } else {
         navigate(`/explorar/cursos/${cId}`)
       }
+    } catch {
+      setCompleteError(true)
     } finally {
       setCompleting(false)
     }
@@ -107,6 +111,12 @@ export function ExploreLessonPage() {
                 'Marcar como completada'
               )}
             </button>
+
+            {completeError && (
+              <p role="alert" className="text-sm text-danger">
+                No se pudo guardar tu progreso. Revisa tu conexión e inténtalo de nuevo.
+              </p>
+            )}
           </>
         )}
       </main>

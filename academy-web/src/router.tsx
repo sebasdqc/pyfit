@@ -6,6 +6,9 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { TermsPage } from '@/pages/TermsPage'
+import { PrivacyPage } from '@/pages/PrivacyPage'
 import { ExploreCatalogPage } from '@/pages/ExploreCatalogPage'
 import { ExploreCourseDetailPage } from '@/pages/ExploreCourseDetailPage'
 import { ExploreLessonPage } from '@/pages/ExploreLessonPage'
@@ -30,6 +33,9 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/registro', element: <RegisterPage /> },
+  { path: '/recuperar', element: <ForgotPasswordPage /> },
+  { path: '/terminos', element: <TermsPage /> },
+  { path: '/privacidad', element: <PrivacyPage /> },
   // Onboarding sin registro: catálogo y contenido gratis navegables sin cuenta
   // (ver academy.anon_views, backend) — fuera de ProtectedRoute a propósito.
   { path: '/explorar', element: <ExploreCatalogPage /> },

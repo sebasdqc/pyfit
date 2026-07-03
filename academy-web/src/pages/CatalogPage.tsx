@@ -2,7 +2,7 @@
 // (GET /api/academy/schools/). Con búsqueda o filtro cae al grid plano
 // (GET /api/academy/courses/).
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { listCourses, listSchools } from '@/api/academy'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -89,10 +89,17 @@ export function CatalogPage() {
   const [error, setError] = useState(false)
 
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [categoria, setCategoria] = useState('')
   const [nivel, setNivel] = useState('')
 
-  const filtersActive = Boolean(q.trim() || categoria || nivel)
+  const filtersActive = Boolean(debouncedQ.trim() || categoria || nivel)
+
+  // Debounce de la búsqueda: evita disparar una request por cada tecla.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(id)
+  }, [q])
 
   // Carga escuelas (vista agrupada) al montar — sin filtros.
   useEffect(() => {
@@ -106,13 +113,17 @@ export function CatalogPage() {
     return () => { active = false }
   }, [])
 
-  // Carga el catálogo plano cuando hay filtros de categoría o nivel activos.
+  // Carga el catálogo plano cuando hay búsqueda o filtro de categoría/nivel
+  // activos. La búsqueda se resuelve en el BACKEND (Course.titulo/resumen,
+  // ver academy.views.courses_view) en vez de filtrar en memoria lo ya
+  // cargado, para que siga funcionando igual si el catálogo crece o se pagina.
   useEffect(() => {
     if (!filtersActive) return
     let active = true
     setLoading(true)
     setError(false)
     listCourses({
+      q: debouncedQ.trim() || undefined,
       categoria: categoria || undefined,
       nivel: nivel || undefined,
     })
@@ -120,34 +131,11 @@ export function CatalogPage() {
       .catch(() => active && setError(true))
       .finally(() => active && setLoading(false))
     return () => { active = false }
-  }, [categoria, nivel, filtersActive])
-
-  // Búsqueda en cliente sobre lo ya cargado.
-  const visibleCourses = useMemo(() => {
-    const term = q.trim().toLowerCase()
-    if (!term) return courses
-    return courses.filter(
-      (c) => c.titulo.toLowerCase().includes(term) || c.resumen.toLowerCase().includes(term),
-    )
-  }, [courses, q])
-
-  // Búsqueda en cliente sobre las escuelas cargadas.
-  const visibleSchools = useMemo(() => {
-    const term = q.trim().toLowerCase()
-    if (!term || categoria || nivel) return schools
-    return schools
-      .map((s) => ({
-        ...s,
-        cursos: s.cursos.filter(
-          (c) => c.titulo.toLowerCase().includes(term) || c.resumen.toLowerCase().includes(term),
-        ),
-      }))
-      .filter((s) => s.cursos.length > 0)
-  }, [schools, q, categoria, nivel])
+  }, [debouncedQ, categoria, nivel, filtersActive])
 
   const isEmpty = filtersActive
-    ? !loading && !error && visibleCourses.length === 0
-    : !loading && !error && visibleSchools.length === 0
+    ? !loading && !error && courses.length === 0
+    : !loading && !error && schools.length === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -223,16 +211,16 @@ export function CatalogPage() {
           }
         />
       ) : filtersActive ? (
-        /* Vista plana cuando hay filtros activos */
+        /* Vista plana cuando hay búsqueda o filtros activos */
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleCourses.map((c) => (
+          {courses.map((c) => (
             <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
           ))}
         </div>
       ) : (
         /* Vista agrupada por escuela */
         <div className="flex flex-col gap-10">
-          {visibleSchools.map((s) => (
+          {schools.map((s) => (
             <SchoolSection key={s.id} school={s} />
           ))}
         </div>

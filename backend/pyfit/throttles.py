@@ -97,3 +97,31 @@ class AcademyTutorRateThrottle(UserRateThrottle):
     El límite diario real por tier (free 3 / pro 30) lo aplica TutorDailyUsage a
     nivel de negocio; este throttle es un respaldo por hora."""
     scope = 'academy_tutor'
+
+
+class AnonSessionRateThrottle(AnonRateThrottle):
+    """20 sesiones anónimas nuevas por hora por IP — cada POST crea una fila
+    de `AnonymousSession` en BD sin necesitar cuenta; sin este límite, el
+    backstop genérico (60/min) permitía crear miles de sesiones huérfanas por
+    hora. Solo cuenta POST: el GET (rehidratar la UI) no crea filas."""
+    scope = 'anon_session'
+
+    def allow_request(self, request, view):
+        if request.method != 'POST':
+            return True
+        return super().allow_request(request, view)
+
+
+class CommunityRateThrottle(UserRateThrottle):
+    """30 publicaciones (preguntas + respuestas) por hora por usuario — protege
+    el gasto en Groq: cada post/respuesta que no cae en los guardrails baratos
+    pasa por `community_service.moderar_texto`, que llama a Groq. Sin este
+    throttle, el backstop genérico de 300/min dejaba pasar hasta ~18.000
+    llamadas/hora por cuenta. Solo cuenta POST (crear contenido); listar,
+    votar y reportar no llaman a Groq y no necesitan este límite."""
+    scope = 'community_write'
+
+    def allow_request(self, request, view):
+        if request.method != 'POST':
+            return True
+        return super().allow_request(request, view)

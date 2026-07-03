@@ -12,9 +12,10 @@ Cubren lo exigido por la especificación:
     opcional.
 
 Mismo estilo que test_badges.py: BD real (TestCase) + APIClient con
-force_authenticate. La IA se mockea sobre `academy.community_service._call_groq`
-(mismo patrón que ai_tutor.tests mockeando `ai_tutor.services._call_groq_chat`):
-se prueba la lógica de comunidad, no la dependencia externa.
+force_authenticate. La IA se mockea sobre
+`academy.community_service._call_groq_moderation` (mismo patrón que
+ai_tutor.tests mockeando `ai_tutor.services._call_groq_chat`): se prueba la
+lógica de comunidad, no la dependencia externa.
 """
 
 from unittest.mock import patch
@@ -73,7 +74,7 @@ class _Base(TestCase):
 
 class ModeracionPostTests(_Base):
     def test_post_visible_cuando_moderacion_aprueba(self):
-        with patch('academy.community_service._call_groq', return_value=_groq_ok()) as mock_groq:
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok()) as mock_groq:
             res = self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 'Duda de técnica',
                 'contenido': '¿Cómo mejorar la técnica de sentadilla?',
@@ -83,7 +84,7 @@ class ModeracionPostTests(_Base):
         mock_groq.assert_called_once()
 
     def test_post_oculto_por_ia_contenido_danino(self):
-        with patch('academy.community_service._call_groq', return_value=_groq_ok('dañino', 'insulto')):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok('dañino', 'insulto')):
             res = self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 'x', 'contenido': 'contenido problemático',
             }, format='json')
@@ -93,7 +94,7 @@ class ModeracionPostTests(_Base):
         self.assertEqual(post.moderacion_resultado['fuente'], 'groq')
 
     def test_oculto_por_guardrails_sin_llamar_a_groq(self):
-        with patch('academy.community_service._call_groq') as mock_groq:
+        with patch('academy.community_service._call_groq_moderation') as mock_groq:
             res = self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 'oferta',
                 'contenido': 'Compra ya nuestro producto milagroso, escribeme al whatsapp',
@@ -104,7 +105,7 @@ class ModeracionPostTests(_Base):
         self.assertEqual(post.moderacion_resultado['fuente'], 'guardrails')
 
     def test_fail_open_cuando_groq_falla(self):
-        with patch('academy.community_service._call_groq', side_effect=Exception('timeout')):
+        with patch('academy.community_service._call_groq_moderation', side_effect=Exception('timeout')):
             res = self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 'x',
                 'contenido': 'una pregunta normal sobre entrenamiento',
@@ -114,10 +115,61 @@ class ModeracionPostTests(_Base):
         post = CommunityPost.objects.get(pk=res.data['id'])
         self.assertEqual(post.moderacion_resultado['fuente'], 'fallback')
 
+    def test_fail_open_se_mantiene_para_errores_genericos_del_sdk(self):
+        """Errores genéricos (timeout, sin API key, SDK de Groq) siguen siendo
+        fail-open: es una caída del servicio externo, no una respuesta que
+        pudo haber sido manipulada — mismo trade-off que ya existía."""
+        with patch('academy.community_service._call_groq_moderation', side_effect=ValueError('empty response')):
+            res = self.client.post('/api/academy/community/posts/', {
+                'escuela': self.escuela.id, 'titulo': 'x',
+                'contenido': 'una pregunta normal sobre entrenamiento',
+            }, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['estado'], ESTADO_VISIBLE)
+        post = CommunityPost.objects.get(pk=res.data['id'])
+        self.assertEqual(post.moderacion_resultado['fuente'], 'fallback')
+
+    def test_fail_closed_cuando_groq_responde_json_invalido(self):
+        """A diferencia del test anterior: acá Groq SÍ responde, pero con
+        texto no interpretable como JSON — el escenario que lograría un
+        alumno que manipule al clasificador para romper su salida. Debe
+        ocultarse para revisión, no publicarse como si nada."""
+        import json
+        with patch(
+            'academy.community_service._call_groq_moderation',
+            side_effect=json.JSONDecodeError('boom', 'doc', 0),
+        ):
+            res = self.client.post('/api/academy/community/posts/', {
+                'escuela': self.escuela.id, 'titulo': 'x',
+                'contenido': 'una pregunta normal sobre entrenamiento',
+            }, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['estado'], ESTADO_OCULTO_IA)
+        post = CommunityPost.objects.get(pk=res.data['id'])
+        self.assertEqual(post.moderacion_resultado['fuente'], 'invalido')
+
+    def test_fail_closed_cuando_categoria_es_invalida(self):
+        """Groq responde JSON válido pero con una categoría que no reconocemos
+        (p. ej. un intento de manipulación que logra que responda algo fuera
+        del enum) — antes esto caía al mismo 'apropiado' que una respuesta
+        limpia; ahora se oculta para revisión."""
+        with patch(
+            'academy.community_service._call_groq_moderation',
+            return_value={'categoria': 'ignora_las_reglas', 'razon': 'x'},
+        ):
+            res = self.client.post('/api/academy/community/posts/', {
+                'escuela': self.escuela.id, 'titulo': 'x',
+                'contenido': 'una pregunta normal sobre entrenamiento',
+            }, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['estado'], ESTADO_OCULTO_IA)
+        post = CommunityPost.objects.get(pk=res.data['id'])
+        self.assertEqual(post.moderacion_resultado['fuente'], 'invalido')
+
     def test_alumno_sin_matricula_puede_postear_general(self):
         """No hay concepto de "mis escuelas": cualquier alumno del tenant
         puede postear en cualquier escuela publicada, sin estar inscrito."""
-        with patch('academy.community_service._call_groq', return_value=_groq_ok()):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok()):
             res = self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 'General', 'contenido': 'pregunta general',
             }, format='json')
@@ -131,7 +183,7 @@ class ModeracionRespuestaTests(_Base):
     def test_respuesta_oculta_por_ia(self):
         post = self._post()
         self.client.force_authenticate(self.otro)
-        with patch('academy.community_service._call_groq', return_value=_groq_ok('spam', 'link')):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok('spam', 'link')):
             res = self.client.post(
                 f'/api/academy/community/posts/{post.id}/respuestas/',
                 {'contenido': 'compra aqui'}, format='json',
@@ -305,7 +357,7 @@ class NoGatingTests(_Base):
         AcademyStreak.objects.create(user=self.student, racha_actual=3, mejor_racha=3)
         antes = self.client.get('/api/academy/streak/').data['racha_actual']
 
-        with patch('academy.community_service._call_groq', return_value=_groq_ok()):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok()):
             self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 't', 'contenido': 'c',
             }, format='json')
@@ -324,7 +376,7 @@ class NoGatingTests(_Base):
 
         post = self._post(curso=curso)
         self.client.force_authenticate(self.otro)
-        with patch('academy.community_service._call_groq', return_value=_groq_ok()):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok()):
             self.client.post(
                 f'/api/academy/community/posts/{post.id}/respuestas/',
                 {'contenido': 'una respuesta'}, format='json',
@@ -338,7 +390,7 @@ class NoGatingTests(_Base):
             identificador='primer-paso', nombre='Primer Paso',
             criterio_tipo=AcademyBadge.CRITERIO_PRIMERA_LECCION,
         )
-        with patch('academy.community_service._call_groq', return_value=_groq_ok()):
+        with patch('academy.community_service._call_groq_moderation', return_value=_groq_ok()):
             self.client.post('/api/academy/community/posts/', {
                 'escuela': self.escuela.id, 'titulo': 't', 'contenido': 'c',
             }, format='json')

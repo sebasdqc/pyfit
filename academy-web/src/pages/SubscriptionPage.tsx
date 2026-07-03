@@ -11,6 +11,7 @@ import { cancelSubscription, getSubscriptionStatus } from '@/api/academy'
 import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Icon } from '@/components/Icon'
 import type { AcademyPlanTipo, AcademySubscriptionStatus } from '@/types'
 
@@ -45,6 +46,8 @@ export function SubscriptionPage() {
   const { refreshUser } = useAuth()
   const [status, setStatus] = useState<AcademySubscriptionStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [proximamente, setProximamente] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
@@ -52,14 +55,16 @@ export function SubscriptionPage() {
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError(false)
     getSubscriptionStatus()
       .then((s) => active && setStatus(s))
-      .catch(() => {})
+      .catch(() => active && setError(true))
       .finally(() => active && setLoading(false))
     return () => {
       active = false
     }
-  }, [])
+  }, [reloadKey])
 
   async function handleCancel() {
     setCancelling(true)
@@ -83,7 +88,23 @@ export function SubscriptionPage() {
       </div>
     )
   }
-  if (!status) return null
+  if (error || !status) {
+    return (
+      <EmptyState
+        icon="lock"
+        title="No se pudo cargar tu suscripción"
+        description="Revisa tu conexión e inténtalo de nuevo."
+        action={
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
+          >
+            Reintentar
+          </button>
+        }
+      />
+    )
+  }
 
   const activa = status.estado === 'activa'
   const enGracia = status.estado === 'cancelada' && status.nivel === 'pro'

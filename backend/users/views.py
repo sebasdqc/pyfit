@@ -44,6 +44,15 @@ def register(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     user = serializer.save()
+    # Estampa el tenant de Academy resuelto por TenantMiddleware (X-Tenant-Slug
+    # del sitio blanco-etiquetado desde el que se registró, si corresponde) —
+    # SOLO al crear la cuenta, nunca después. Cuentas registradas sin tenant
+    # (p. ej. desde la app móvil) quedan con academy_tenant=None = sin
+    # restricción, igual que todas las cuentas anteriores a este campo.
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        user.academy_tenant = tenant
+        user.save(update_fields=['academy_tenant'])
     refresh = RefreshToken.for_user(user)
     _migrar_progreso_academy_anonimo(user, request)
     return Response({

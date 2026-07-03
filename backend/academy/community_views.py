@@ -3,9 +3,11 @@ TODA la lógica de negocio (moderación, scoping, permisos, umbral de reportes)
 en `community_service`, siguiendo el mismo patrón que el resto de `academy`."""
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+
+from pyfit.throttles import CommunityRateThrottle
 
 from . import community_service
 from .permissions import IsAcademyUser
@@ -29,6 +31,7 @@ def _optional_int(data, campo):
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAcademyUser])
+@throttle_classes([CommunityRateThrottle])
 def community_posts_view(request):
     """GET lista preguntas de una escuela (`?escuela=`, opcional `?curso=`,
     `?orden=recientes|top`); POST crea una pregunta nueva."""
@@ -65,6 +68,7 @@ def community_post_detail_view(request, post_id):
 
 @api_view(['POST'])
 @permission_classes([IsAcademyUser])
+@throttle_classes([CommunityRateThrottle])
 def community_replies_view(request, post_id):
     reply = community_service.crear_respuesta(
         request.user, post_id=post_id, contenido=request.data.get('contenido', ''),

@@ -4,7 +4,7 @@
 import { api } from './client'
 import type {
   AcademyBadgeCatalog, AcademySubscriptionStatus, Course, CourseDetail,
-  DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
+  DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
 } from '@/types'
 
@@ -90,6 +90,55 @@ export async function updateCourse(id: number, payload: Partial<CreateCoursePayl
   return res.data
 }
 
+// ── Módulos (autor/admin) ────────────────────────────────────────────────────
+
+export interface ModulePayload {
+  titulo?: string
+  descripcion?: string
+  es_gratuito?: boolean
+  orden?: number
+}
+
+export async function createModule(courseId: number, payload: ModulePayload): Promise<Module> {
+  const res = await api.post<Module>(`/academy/courses/${courseId}/modules/`, payload)
+  return res.data
+}
+
+export async function updateModule(
+  courseId: number, moduleId: number, payload: ModulePayload,
+): Promise<Module> {
+  const res = await api.patch<Module>(`/academy/courses/${courseId}/modules/${moduleId}/`, payload)
+  return res.data
+}
+
+export async function deleteModule(courseId: number, moduleId: number): Promise<void> {
+  await api.delete(`/academy/courses/${courseId}/modules/${moduleId}/`)
+}
+
+// ── Lecciones (autor/admin) — creación y borrado; la edición puntual (video,
+// título, contenido, tipo) ya la resuelve `updateLesson` de más abajo ────────
+
+export interface CreateLessonPayload {
+  titulo: string
+  tipo?: LessonTipo
+  contenido?: string
+  video_url?: string
+  orden?: number
+}
+
+export async function createLesson(
+  courseId: number, moduleId: number, payload: CreateLessonPayload,
+): Promise<Lesson> {
+  const res = await api.post<Lesson>(
+    `/academy/courses/${courseId}/modules/${moduleId}/lessons/`, payload,
+  )
+  return res.data
+}
+
+export async function deleteLesson(courseId: number, moduleId: number, lessonId: number): Promise<void> {
+  await api.delete(`/academy/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/`)
+}
+
 // Edición puntual de una lección (autor/admin). Lo usa la pantalla "Contenido"
 // del instructor para anexar/quitar el video de una lección o retiparla.
 export interface UpdateLessonPayload {
@@ -98,6 +147,7 @@ export interface UpdateLessonPayload {
   titulo?: string
   contenido?: string
   duracion_min?: number
+  orden?: number
 }
 
 export async function updateLesson(

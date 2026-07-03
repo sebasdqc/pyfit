@@ -42,6 +42,8 @@ export type IconName =
   | 'thumbUp'
   | 'thumbDown'
   | 'flag'
+  | 'trash'
+  | 'edit'
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -219,6 +221,22 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M5 3v18" />
       <path d="M5 4h13l-3 4 3 4H5" />
+    </>
+  ),
+  // Borrar módulo/lección (CourseContentPage).
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+      <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+      <path d="M10 11v6M14 11v6" />
+    </>
+  ),
+  // Editar título/contenido de módulo/lección (CourseContentPage).
+  edit: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </>
   ),
 }

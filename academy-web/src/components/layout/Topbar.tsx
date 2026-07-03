@@ -57,6 +57,8 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className="flex items-center gap-2 rounded-lg border border-surface-border bg-white py-1.5 pl-1.5 pr-2 transition-colors hover:bg-surface-soft"
       >
         <Avatar name={nombre} size={30} />
@@ -65,7 +67,7 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-cardHover">
+        <div role="menu" className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-cardHover">
           <div className="px-4 py-2.5">
             <p className="truncate text-sm font-medium text-ink">{nombre}</p>
             <p className="truncate text-xs text-ink-muted">{email}</p>
@@ -73,6 +75,7 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
           <div className="border-t border-surface-border" />
           <Link
             to="/perfil"
+            role="menuitem"
             onClick={() => setOpen(false)}
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
           >
@@ -80,6 +83,7 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
           </Link>
           <button
             type="button"
+            role="menuitem"
             onClick={onLogout}
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
           >

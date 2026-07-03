@@ -17,6 +17,7 @@ from django.conf import settings
 from django.db import transaction
 from groq import Groq
 
+from academy.access_service import nivel_academia_de
 from ai_workout.views import GROQ_TIMEOUT_SECONDS, GROQ_MAX_RETRIES
 
 from . import guardrails, prompt as prompt_mod
@@ -161,7 +162,11 @@ def answer(*, user, question, fecha, conversation_id=None, course=None, course_i
         )
 
     # 3) Recuperación (RAG): prioriza el curso activo, cae al catálogo global.
-    results, _scoped = retrieve_grounding(question, course_id=course_id)
+    # Se pasa el nivel de acceso YA RESUELTO del usuario para que el RAG nunca
+    # pueda citar contenido de un módulo Academy Pro a un usuario starter, ni
+    # de un curso sin publicar (ver access_service.puede_ver_leccion).
+    nivel = nivel_academia_de(user)
+    results, _scoped = retrieve_grounding(question, course_id=course_id, nivel=nivel)
     fuentes = [ch.fuente() for ch, _s in results]
 
     # 4) Prompt (grounding inyectado) + historial acotado + la pregunta nueva.
