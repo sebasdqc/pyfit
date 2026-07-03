@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { CourseOutline } from '@/components/player/CourseOutline'
 import { QuizLesson } from '@/components/player/QuizLesson'
 import { DeliverableLesson } from '@/components/player/DeliverableLesson'
+import { TutorChat } from '@/components/tutor/TutorChat'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useStreak } from '@/lib/useStreak'
 import type { EnrollmentDetail, Lesson, LessonTipo, Submission } from '@/types'
@@ -54,6 +55,7 @@ export function LessonPlayerPage() {
   const [earnedBadges, setEarnedBadges] = useState<Set<number>>(new Set())
   const [currentId, setCurrentId] = useState<number | null>(null)
   const [outlineOpen, setOutlineOpen] = useState(false)
+  const [tutorOpen, setTutorOpen] = useState(false)
   const [marking, setMarking] = useState(false)
   const [markError, setMarkError] = useState(false)
   const outlineRef = useRef<HTMLElement>(null)
@@ -70,6 +72,9 @@ export function LessonPlayerPage() {
         : [],
     [enr],
   )
+
+  // Ids de lección del curso: habilitan el salto desde una fuente citada por el tutor.
+  const courseLessonIds = useMemo(() => new Set(lessons.map((x) => x.lesson.id)), [lessons])
 
   useEffect(() => {
     let active = true
@@ -140,6 +145,9 @@ export function LessonPlayerPage() {
   const prev = idx > 0 ? lessons[idx - 1] : null
   const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
   const isDone = current ? completed.has(current.lesson.id) : false
+  const cursoActivo = current
+    ? `${enr.curso.titulo} · ${current.moduleTitle} · ${current.lesson.titulo}`
+    : enr.curso.titulo
 
   function applyProgress(p: number, e: string, lessonId?: number) {
     setProgreso(p)
@@ -355,6 +363,26 @@ export function LessonPlayerPage() {
           </div>
         </main>
       </div>
+
+      {/* Tutor IA flotante: acompaña el estudio sin sacar al alumno del reproductor. */}
+      {!tutorOpen && (
+        <button
+          onClick={() => setTutorOpen(true)}
+          className="fixed bottom-6 right-6 z-30 flex h-14 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-white shadow-cardHover transition-colors hover:bg-accent-dark"
+          aria-label="Abrir el tutor de Academy"
+        >
+          <Icon name="sparkles" size={20} /> Tutor
+        </button>
+      )}
+      <TutorChat
+        open={tutorOpen}
+        onClose={() => setTutorOpen(false)}
+        courseId={enr.curso.id}
+        cursoTitulo={enr.curso.titulo}
+        cursoActivo={cursoActivo}
+        courseLessonIds={courseLessonIds}
+        onSourceClick={(lid) => goTo(lid)}
+      />
     </div>
   )
 }

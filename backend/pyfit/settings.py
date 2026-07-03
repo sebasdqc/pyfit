@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     'performance',
     # Vertical e-learning "Zyfit Academy" (cursos en línea: web propia, próximamente).
     'academy',
+    # Tutor IA de Zyfit Academy (RAG sobre el contenido de los cursos + Groq).
+    'ai_tutor',
     # Celery beat schedule almacenado en Django DB
     'django_celery_beat',
 ]
@@ -217,6 +219,7 @@ REST_FRAMEWORK = {
         'impersonate': '5/hour',       # limita enumeración con token staff comprometido
         'exercise_catalog': '60/minute', # previene scraping masivo del catálogo público
         'ai_chat': '30/hour',          # cost guard: cada mensaje llama a Groq API
+        'academy_tutor': '30/hour',    # cost guard horario del tutor (el límite diario por tier lo aplica TutorDailyUsage)
     },
 }
 
@@ -305,6 +308,15 @@ DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# ─── Tutor IA de Zyfit Academy ─────────────────────────────────────────────────
+# Modelo de embeddings LOCAL (sentence-transformers) para el RAG del tutor. Los
+# vectores se guardan como JSON en TutorChunk y la búsqueda es coseno en proceso
+# (corpus pequeño y estático → sin pgvector). Configurable por entorno.
+TUTOR_EMBEDDING_MODEL = os.environ.get(
+    'TUTOR_EMBEDDING_MODEL',
+    'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+)
 
 # Secreto compartido para disparar jobs vía HTTP desde un cron externo (GitHub
 # Actions). Vacío = endpoints de cron deshabilitados (503). Ver academy.views.streak_sweep.

@@ -36,6 +36,10 @@ export type IconName =
   | 'heart'
   | 'flame'
   | 'snowflake'
+  | 'sparkles'
+  | 'send'
+  | 'thumbUp'
+  | 'thumbDown'
 
 const PATHS: Record<IconName, ReactNode> = {
   catalog: (
@@ -174,6 +178,32 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 2v20M4.2 7l15.6 10M19.8 7 4.2 17" />
       <path d="M12 5.5 9.5 4M12 5.5 14.5 4M12 18.5 9.5 20M12 18.5l2.5 1.5" />
+    </>
+  ),
+  // Tutor IA: destellos (respuesta generada).
+  sparkles: (
+    <>
+      <path d="M12 3l1.7 4.6L18.3 9.3 13.7 11 12 15.6 10.3 11 5.7 9.3l4.6-1.7z" />
+      <path d="M18.5 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
+    </>
+  ),
+  // Enviar: avión de papel.
+  send: (
+    <>
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4z" />
+    </>
+  ),
+  thumbUp: (
+    <>
+      <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z" />
+      <path d="M7 10 11 3a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16 21H7z" />
+    </>
+  ),
+  thumbDown: (
+    <>
+      <path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1z" />
+      <path d="M17 14 13 21a2 2 0 0 1-3-2l1-5H6a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 8 3h9z" />
     </>
   ),
 }

@@ -90,3 +90,10 @@ class AIChatRateThrottle(UserRateThrottle):
     El chat IA llama a Groq en cada mensaje; sin throttle un usuario puede
     disparar costes arbitrarios en sesiones largas."""
     scope = 'ai_chat'
+
+
+class AcademyTutorRateThrottle(UserRateThrottle):
+    """Tope HORARIO anti-ráfaga del Tutor de Academy — protege el gasto en Groq.
+    El límite diario real por tier (free 3 / pro 30) lo aplica TutorDailyUsage a
+    nivel de negocio; este throttle es un respaldo por hora."""
+    scope = 'academy_tutor'

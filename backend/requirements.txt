@@ -26,3 +26,9 @@ Pillow>=10.0,<12.0
 # Object storage (DO Spaces / S3) — fotos de atletas del panel Performance
 django-storages>=1.14,<2.0
 boto3>=1.34,<2.0
+# Tutor IA de Academy — embeddings LOCALES para el RAG (grounding sobre los cursos).
+# OJO: arrastra torch (pesado). El Dockerfile instala torch CPU-only para no bajar
+# los wheels CUDA (~GB) y pre-baja el modelo. Si el build de DO se complicara, se
+# puede quitar esta línea: el tutor degrada a recuperación por palabras
+# (ver ai_tutor/retrieval.py) hasta reactivarlo o migrar a embeddings por API.
+sentence-transformers>=3.0,<6.0
