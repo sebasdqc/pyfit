@@ -1,8 +1,9 @@
 // Mapa de rutas de la academia. Login público + rutas protegidas bajo el layout.
 
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ExploreCatalogPage } from '@/pages/ExploreCatalogPage'
@@ -24,6 +25,9 @@ import { SubscriptionPage } from '@/pages/SubscriptionPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
+  // Landing pública: visitantes sin sesión ven marketing + CTAs a login/registro/
+  // explorar; usuarios logueados son redirigidos a /inicio (useRedirectIfAuthenticated).
+  { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/registro', element: <RegisterPage /> },
   // Onboarding sin registro: catálogo y contenido gratis navegables sin cuenta
@@ -39,7 +43,6 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="/inicio" replace /> },
           { path: 'inicio', element: <HomePage /> },
           { path: 'catalogo', element: <CatalogPage /> },
           { path: 'cursos/:courseId', element: <CourseDetailPage /> },
