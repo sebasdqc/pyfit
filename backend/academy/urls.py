@@ -2,9 +2,17 @@
 
 from django.urls import path
 
-from . import community_views, subscription_views, views
+from . import anon_views, community_views, subscription_views, views
 
 urlpatterns = [
+    # Onboarding sin registro (visitante anónimo — probar antes de registrarse)
+    path('anon/sesion/', anon_views.anon_session),  # POST crea / GET estado
+    path('anon/catalogo/', anon_views.anon_catalogo),
+    path('anon/cursos/<int:pk>/', anon_views.anon_curso_detail),
+    path('anon/lecciones/<int:lesson_id>/', anon_views.anon_leccion_detail),
+    path('anon/lecciones/<int:lesson_id>/completar/', anon_views.anon_leccion_completar),
+    path('anon/sweep/', anon_views.anon_sweep),
+
     # Config pública del tenant (sin auth — llamada antes del login para el branding)
     path('tenant/config/', views.tenant_config),
 

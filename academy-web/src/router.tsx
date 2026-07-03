@@ -4,6 +4,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/LoginPage'
+import { RegisterPage } from '@/pages/RegisterPage'
+import { ExploreCatalogPage } from '@/pages/ExploreCatalogPage'
+import { ExploreCourseDetailPage } from '@/pages/ExploreCourseDetailPage'
+import { ExploreLessonPage } from '@/pages/ExploreLessonPage'
 import { HomePage } from '@/pages/HomePage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
@@ -21,6 +25,12 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/registro', element: <RegisterPage /> },
+  // Onboarding sin registro: catálogo y contenido gratis navegables sin cuenta
+  // (ver academy.anon_views, backend) — fuera de ProtectedRoute a propósito.
+  { path: '/explorar', element: <ExploreCatalogPage /> },
+  { path: '/explorar/cursos/:courseId', element: <ExploreCourseDetailPage /> },
+  { path: '/explorar/cursos/:courseId/lecciones/:lessonId', element: <ExploreLessonPage /> },
   {
     element: <ProtectedRoute />,
     children: [

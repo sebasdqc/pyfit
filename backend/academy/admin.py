@@ -11,7 +11,7 @@ from .models import (
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, EarnedBadge, Tenant, School,
     AcademyStreak, AcademyActivityDay, AcademyBadge, AcademyEarnedBadge,
-    AcademySubscription,
+    AcademySubscription, AnonymousSession, AnonymousProgress,
 )
 
 
@@ -183,6 +183,33 @@ class AcademyEarnedBadgeAdmin(ModelAdmin):
     list_display = ('user', 'badge', 'otorgada_at')
     search_fields = ('user__email', 'badge__nombre')
     autocomplete_fields = ('user',)
+
+
+# ─── Onboarding sin registro (visitante anónimo) ──────────────────────────────
+# Solo lectura: estas filas las crea/borra siempre el flujo anónimo o el
+# barrido de expiración (academy_anon_sweep) — el admin es para depurar, no
+# para operar (nunca hay que crear/editar una sesión anónima a mano).
+
+@admin.register(AnonymousSession)
+class AnonymousSessionAdmin(ModelAdmin):
+    list_display = ('id', 'created_at', 'expires_at', 'migrada_en', 'migrada_a')
+    list_filter = ('migrada_en',)
+    search_fields = ('id', 'migrada_a__email')
+    autocomplete_fields = ('migrada_a',)
+    readonly_fields = ('id', 'created_at', 'expires_at', 'migrada_en', 'migrada_a')
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(AnonymousProgress)
+class AnonymousProgressAdmin(ModelAdmin):
+    list_display = ('session', 'lesson', 'created_at')
+    search_fields = ('session__id', 'lesson__titulo')
+    readonly_fields = ('session', 'lesson', 'created_at')
+
+    def has_add_permission(self, request):
+        return False
 
 
 # ─── Comunidad (foro Q&A) ───────────────────────────────────────────────────────

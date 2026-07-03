@@ -233,3 +233,41 @@ export async function cancelSubscription(): Promise<AcademySubscriptionStatus> {
   const res = await api.post<AcademySubscriptionStatus>('/academy/subscription/cancelar/')
   return res.data
 }
+
+// ── Onboarding sin registro (visitante anónimo) ───────────────────────────────
+// Mismos serializers que el catálogo/curso autenticado, servidos por endpoints
+// AllowAny dedicados (ver academy.anon_views, backend) — un anónimo siempre
+// resuelve a nivel 'starter'. `api/client.ts` adjunta `X-Anon-Session`
+// automáticamente en estas llamadas.
+
+export interface AnonSessionStatus {
+  id: string
+  expires_at: string
+  migrada: boolean
+  lecciones_completadas: number[]
+  todo_gratis_completado: boolean
+}
+
+export async function getAnonSessionStatus(): Promise<AnonSessionStatus> {
+  const res = await api.get<AnonSessionStatus>('/academy/anon/sesion/')
+  return res.data
+}
+
+export async function listPublicCourses(): Promise<Course[]> {
+  const res = await api.get<Course[]>('/academy/anon/catalogo/')
+  return res.data
+}
+
+export async function getPublicCourse(id: number): Promise<CourseDetail> {
+  const res = await api.get<CourseDetail>(`/academy/anon/cursos/${id}/`)
+  return res.data
+}
+
+export async function getPublicLesson(lessonId: number): Promise<Lesson> {
+  const res = await api.get<Lesson>(`/academy/anon/lecciones/${lessonId}/`)
+  return res.data
+}
+
+export async function completePublicLesson(lessonId: number): Promise<void> {
+  await api.post(`/academy/anon/lecciones/${lessonId}/completar/`)
+}

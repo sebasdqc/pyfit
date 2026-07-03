@@ -3,6 +3,9 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export const ACCESS_TOKEN_KEY = 'zacad_access'
 export const REFRESH_TOKEN_KEY = 'zacad_refresh'
 
+// Onboarding sin registro: id de la sesión anónima (ver lib/anonSession.ts).
+export const ANON_SESSION_KEY = 'zacad_anon_session'
+
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || ''
 
 export const BRAND = {

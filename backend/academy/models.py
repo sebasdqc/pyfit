@@ -37,6 +37,7 @@ Principios (heredados del resto del backend y de Zyfit Performance):
   • Tablas con prefijo `academy_*`.
 """
 
+import uuid
 from datetime import date
 
 from django.conf import settings
@@ -823,6 +824,61 @@ class AcademySubscription(models.Model):
         if self.estado == self.ESTADO_CANCELADA and self.fecha_renovacion:
             return date.today() <= self.fecha_renovacion
         return False
+
+
+# ─── Onboarding sin registro (probar antes de registrarse) ────────────────────
+#
+# Un visitante sin cuenta consume contenido es_gratuito bajo un identificador
+# de sesión anónima (sin User asociado). Al registrarse, academy.migration_service
+# migra ese progreso a la cuenta nueva disparando el MISMO evento de "módulo
+# completado" que usan streak/badges/certificados — nunca lógica paralela. Ver
+# academy.access_service (el nivel de un anónimo siempre resuelve a starter) y
+# academy.anon_views (los únicos endpoints AllowAny que leen/escriben esto).
+
+
+class AnonymousSession(models.Model):
+    """Sesión de un visitante sin cuenta. El UUID ES el token — el cliente lo
+    persiste en localStorage y lo manda en el header `X-Anon-Session`.
+
+    Sin `user`: existe independientemente de cualquier cuenta hasta que se
+    migra. `migrada_en`/`migrada_a` son el guard de idempotencia de la
+    migración (además de que cada paso interno ya es idempotente por sí
+    mismo — ver migration_service.migrar_progreso_anonimo)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    # Ventana razonable para no acumular datos huérfanos indefinidamente
+    # (pedido explícito del brief); academy_anon_sweep borra lo vencido y no migrado.
+    expires_at = models.DateTimeField()
+    migrada_en = models.DateTimeField(null=True, blank=True)
+    migrada_a = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        db_table = 'academy_anonymous_sessions'
+
+    def __str__(self):
+        return str(self.id)
+
+
+class AnonymousProgress(models.Model):
+    """Lección completada dentro de una sesión anónima (equivalente informal
+    a LessonProgress, pero sin Enrollment porque no hay User). Solo existe
+    para lecciones de módulos es_gratuito — se valida en academy.anon_views,
+    no aquí."""
+
+    session = models.ForeignKey(AnonymousSession, on_delete=models.CASCADE, related_name='progresos')
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_anonymous_progress'
+        unique_together = [['session', 'lesson']]
+
+    def __str__(self):
+        return f'{self.session_id} · lesson {self.lesson_id}'
 
 
 # Comunidad (foro Q&A) — modelos en archivo propio para no seguir engordando

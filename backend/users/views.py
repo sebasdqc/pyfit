@@ -17,6 +17,25 @@ from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSeri
 User = get_user_model()
 
 
+def _migrar_progreso_academy_anonimo(user, request):
+    """Onboarding sin registro de Zyfit Academy: si el visitante navegó
+    contenido gratis como anónimo, migra ese progreso a la cuenta recién
+    creada (racha día 1, insignias, matrícula) — ver academy.migration_service.
+    Failure-safe e importado perezosamente (evita acoplar `users` a `academy`
+    a nivel de módulo, mismo patrón que ai_tutor.models.TutorDailyUsage.limit_for);
+    la inmensa mayoría de registros no traen este header y no hacen nada aquí."""
+    anon_id = request.headers.get('X-Anon-Session', '').strip()
+    if not anon_id:
+        return
+    try:
+        from academy.migration_service import migrar_progreso_anonimo
+        from academy.models import AnonymousSession
+        session = AnonymousSession.objects.filter(pk=anon_id).first()
+        migrar_progreso_anonimo(session, user)
+    except Exception:
+        logger.exception('No se pudo migrar progreso anónimo de Academy')
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
@@ -26,6 +45,7 @@ def register(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     user = serializer.save()
     refresh = RefreshToken.for_user(user)
+    _migrar_progreso_academy_anonimo(user, request)
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),

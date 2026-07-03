@@ -1,33 +1,56 @@
-// Login de Zyfit Academy — pantalla a viewport completo.
-// Panel izquierdo: branding del tenant activo (logo, nombre, tagline, colores CSS).
-// Panel derecho blanco: formulario de acceso.
-// La lógica de autenticación consume /api/academy/auth/login/.
+// Registro de Zyfit Academy — pantalla a viewport completo. Único punto de
+// conversión propio de academy-web (antes solo existía el onboarding móvil).
+// Llama al registro PRINCIPAL de pyfit (/api/auth/register/, no /academy/):
+// si el visitante navegó como anónimo, su progreso se migra automáticamente
+// en el backend (ver academy.migration_service) — aquí solo hay que guardar
+// los tokens y limpiar el id de sesión anónima ya consumido.
 
+import { isAxiosError } from 'axios'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
+import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
+import { registerRequest } from '@/api/auth'
+import { setTokens } from '@/api/client'
+import { clearAnonSession } from '@/lib/anonSession'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
+import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { useTenant } from '@/tenant/TenantContext'
 
-export function LoginPage() {
-  const { login } = useAuth()
+function extractErrorMessage(err: unknown): string {
+  if (isAxiosError(err) && err.response?.status === 400) {
+    const data = err.response.data as Record<string, string[] | string> | undefined
+    const mensajes = Object.values(data ?? {}).flatMap((v) => (Array.isArray(v) ? v : [v]))
+    if (mensajes.length) return mensajes.join(' ')
+  }
+  return 'No se pudo crear la cuenta. Verifica los datos e inténtalo de nuevo.'
+}
+
+export function RegisterPage() {
+  const redirecting = useRedirectIfAuthenticated('/inicio')
   const navigate = useNavigate()
   const tenant = useTenant()
+  const { refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  if (redirecting) return <LoadingScreen />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
     try {
-      await login(email, password)
+      const data = await registerRequest(email, password)
+      setTokens(data.access, data.refresh)
+      clearAnonSession() // ya se migró del lado del backend; no seguir mandándola
+      await refreshUser()
       navigate('/inicio', { replace: true })
-    } catch {
-      setError('No se pudo iniciar sesión. Verifica tu correo y contraseña.')
+    } catch (err) {
+      setError(extractErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -37,7 +60,6 @@ export function LoginPage() {
     <div className="flex min-h-[100dvh] w-full bg-white">
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
-        {/* Ráfaga decorativa de emblemas (muy tenue) */}
         <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
           <Emblem size={420} tone="dark" />
         </div>
@@ -45,16 +67,16 @@ export function LoginPage() {
 
         <div className="relative z-10 max-w-md">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Academia digital
+            Crea tu cuenta
           </p>
           <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white">
-            Formación de élite,
+            Tu progreso ya
             <br />
-            al alcance de todos.
+            está avanzando.
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-            Cursos, evaluaciones y certificaciones para llevar tu conocimiento al
-            siguiente nivel.
+            Regístrate gratis para conservarlo y desbloquear racha de estudio, insignias,
+            certificados, el tutor IA y la comunidad.
           </p>
           {tenant.tagline && (
             <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
@@ -69,25 +91,18 @@ export function LoginPage() {
       {/* Formulario (derecha) */}
       <main className="flex w-full flex-1 items-center justify-center px-6 py-10 sm:px-10">
         <div className="w-full max-w-[400px]">
-          {/* Marca compacta — visible en móvil/tablet donde se oculta el panel izq. */}
           <div className="mb-10 lg:hidden">
             <BrandLockup size={32} />
           </div>
 
-          <p className="za-eyebrow">Acceso a la academia</p>
+          <p className="za-eyebrow">Onboarding sin registro</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Inicia sesión<span className="text-accent">.</span>
+            Crea tu cuenta<span className="text-accent">.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-soft">
-            ¿No tienes cuenta aún?{' '}
-            <Link to="/registro" className="font-medium text-accent hover:text-accent-dark">
-              Crea una gratis
-            </Link>
-          </p>
-          <p className="mt-1.5 text-sm text-ink-soft">
-            ¿Solo quieres ver de qué se trata?{' '}
-            <Link to="/explorar" className="font-medium text-accent hover:text-accent-dark">
-              Explora el catálogo sin cuenta
+            ¿Ya tienes cuenta?{' '}
+            <Link to="/login" className="font-medium text-accent hover:text-accent-dark">
+              Inicia sesión
             </Link>
           </p>
 
@@ -107,7 +122,7 @@ export function LoginPage() {
               type="password"
               value={password}
               onChange={setPassword}
-              autoComplete="current-password"
+              autoComplete="new-password"
               icon={<Icon name="lock" size={18} />}
             />
 
@@ -122,7 +137,7 @@ export function LoginPage() {
               disabled={submitting}
               className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
             >
-              {submitting ? 'Accediendo…' : 'Acceder'}
+              {submitting ? 'Creando cuenta…' : 'Crear cuenta gratis'}
               {!submitting && <Icon name="arrowRight" size={17} />}
             </button>
           </form>
@@ -136,7 +151,7 @@ export function LoginPage() {
   )
 }
 
-// Campo con etiqueta flotante (sube al enfocar / al escribir). Foco → borde azul.
+// Campo con etiqueta flotante — mismo patrón que LoginPage.tsx.
 function Field({
   id,
   label,

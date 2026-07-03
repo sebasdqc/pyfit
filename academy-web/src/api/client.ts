@@ -8,6 +8,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios'
 import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TENANT_SLUG } from '@/lib/constants'
+import { ensureAnonSessionId } from '@/lib/anonSession'
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -45,9 +46,16 @@ function localDateISO(): string {
 }
 
 // ── Request: añade Authorization + la fecha local del dispositivo ────────────
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = getAccessToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  } else if (config.url?.startsWith('/academy/anon/')) {
+    // Onboarding sin registro: sin JWT, las llamadas de contenido anónimo se
+    // identifican por sesión (crea una perezosamente si aún no existe).
+    const anonId = await ensureAnonSessionId()
+    if (anonId) config.headers['X-Anon-Session'] = anonId
+  }
   // Mismo header que la app móvil (workouts): el servidor lo valida (±1 día) y
   // resuelve el "día" del streak de estudio en la zona horaria del alumno.
   config.headers['X-Local-Date'] = localDateISO()
