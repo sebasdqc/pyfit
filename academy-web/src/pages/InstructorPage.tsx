@@ -178,7 +178,7 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
     <Dialog
       onClose={onClose}
       labelledBy="create-course-title"
-      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
     >
         <div className="flex items-center justify-between">
           <h2 id="create-course-title" className="text-lg font-semibold text-ink">Crear curso</h2>

@@ -31,6 +31,22 @@
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
+/* Modo oscuro: solo se invierten los neutros (ink/surface). brand/accent/ok/warn/
+   danger se mantienen — son colores de marca del tenant y ya funcionan como acento
+   sobre fondos oscuros. El selector NO está anclado a :root a propósito: el
+   atributo lo estampan AppLayout/LessonPlayerPage en su propio nodo raíz (no en
+   <html>) para que el modo oscuro quede contenido al shell autenticado y nunca se
+   filtre a landing/login/registro/explorar, que comparten clases como `.za-card`. */
+[data-theme='dark'] {
+  --color-ink:          #f9fafb;
+  --color-ink-soft:     #d1d5db;
+  --color-ink-muted:    #9ca3af;
+  --color-ink-faint:    #6b7280;
+  --color-surface:        #1f2937;
+  --color-surface-soft:   #111827;
+  --color-surface-border: #374151;
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -61,9 +77,9 @@
 }
 
 @layer components {
-  /* Card base del producto: blanca, borde sutil, sombra suave. */
+  /* Card base del producto: superficie elevada, borde sutil, sombra suave. */
   .za-card {
-    @apply rounded-2xl border border-surface-border bg-white shadow-card;
+    @apply rounded-2xl border border-surface-border bg-surface shadow-card;
   }
   /* Etiqueta tipo "tag" en mayúsculas, tracking amplio (estética institucional). */
   .za-eyebrow {
@@ -72,7 +88,7 @@
   /* Campo de formulario base (inputs y selects de modales/formularios).
      Sin `outline-none`: así el foco de teclado muestra el anillo global. */
   .input {
-    @apply h-11 w-full rounded-xl border border-surface-border bg-surface-soft px-3.5 text-[15px] text-ink transition-colors focus:border-accent focus:bg-white;
+    @apply h-11 w-full rounded-xl border border-surface-border bg-surface-soft px-3.5 text-[15px] text-ink transition-colors focus:border-accent focus:bg-surface;
   }
 }
 

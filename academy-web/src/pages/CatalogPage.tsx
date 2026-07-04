@@ -29,7 +29,7 @@ const NIVEL_LABEL: Record<string, string> = {
 
 function SchoolTag({ nivel }: { nivel: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink-soft">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border bg-surface px-2.5 py-0.5 text-[11px] font-medium text-ink-soft">
       <span className={`h-1.5 w-1.5 rounded-full ${NIVEL_DOT[nivel] ?? 'bg-ink-muted'}`} />
       {NIVEL_LABEL[nivel] ?? nivel}
     </span>
@@ -165,7 +165,7 @@ export function CatalogPage() {
             placeholder="Buscar cursos…"
             type="search"
             aria-label="Buscar cursos"
-            className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
+            className="h-11 w-full rounded-xl border border-surface-border bg-surface pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
         <FilterSelect value={categoria} onChange={setCategoria} placeholder="Categoría">
@@ -181,7 +181,7 @@ export function CatalogPage() {
         {filtersActive && (
           <button
             onClick={() => { setQ(''); setCategoria(''); setNivel('') }}
-            className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-white px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-surface px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
           >
             <Icon name="close" size={14} />
             Limpiar
@@ -246,7 +246,7 @@ function FilterSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={placeholder}
-        className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-white pl-4 pr-9 text-sm text-ink transition-colors focus:border-accent sm:w-44"
+        className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-surface pl-4 pr-9 text-sm text-ink transition-colors focus:border-accent sm:w-44"
       >
         <option value="">{placeholder}: todas</option>
         {children}

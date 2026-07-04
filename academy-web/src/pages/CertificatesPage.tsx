@@ -227,7 +227,7 @@ function Verifier() {
           onChange={(e) => setCodigo(e.target.value)}
           placeholder="ZA-XXXXXXXX"
           aria-label="Código de certificado"
-          className="h-11 flex-1 rounded-xl border border-surface-border bg-surface-soft px-4 font-mono text-sm uppercase text-ink focus:border-accent focus:bg-white"
+          className="h-11 flex-1 rounded-xl border border-surface-border bg-surface-soft px-4 font-mono text-sm uppercase text-ink focus:border-accent focus:bg-surface"
         />
         <button
           type="submit"

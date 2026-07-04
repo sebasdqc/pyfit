@@ -101,7 +101,7 @@ export function SimuladorSesionPage() {
               className={`rounded-full border px-3.5 py-2.5 text-xs font-semibold transition-colors ${
                 casoId === c.id
                   ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-surface-border bg-white text-ink-soft hover:border-accent hover:text-accent'
+                  : 'border-surface-border bg-surface text-ink-soft hover:border-accent hover:text-accent'
               }`}
             >
               {c.titulo}

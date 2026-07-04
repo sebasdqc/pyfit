@@ -124,7 +124,7 @@ export function CommunityPage() {
                 <option key={c.id} value={c.id}>{c.titulo}</option>
               ))}
             </select>
-            <div className="flex gap-1 rounded-xl border border-surface-border bg-white p-1">
+            <div className="flex gap-1 rounded-xl border border-surface-border bg-surface p-1">
               {(['recientes', 'top'] as Orden[]).map((o) => (
                 <button
                   key={o}

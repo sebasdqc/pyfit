@@ -7,9 +7,11 @@ import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { StreakPill } from '@/components/StreakPill'
 import { useAuth } from '@/auth/useAuth'
+import { useTheme } from '@/theme/useTheme'
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const nombre = (user?.nombre ?? '').split(/\s+/)[0] || 'Estudiante'
 
   return (
@@ -18,7 +20,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <button
           type="button"
           onClick={onMenu}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-border bg-white text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-border bg-surface text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink md:hidden"
           aria-label="Abrir menú"
         >
           <Icon name="menu" size={18} />
@@ -33,6 +35,15 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
 
       <div className="flex shrink-0 items-center gap-2.5">
         {!user?.is_instructor && <StreakPill />}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-border bg-surface text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+        >
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
+        </button>
         <UserMenu nombre={user?.nombre ?? 'Usuario'} email={user?.email ?? ''} onLogout={logout} />
       </div>
     </header>
@@ -59,7 +70,7 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-lg border border-surface-border bg-white py-1.5 pl-1.5 pr-2 transition-colors hover:bg-surface-soft"
+        className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface py-1.5 pl-1.5 pr-2 transition-colors hover:bg-surface-soft"
       >
         <Avatar name={nombre} size={30} />
         <span className="hidden max-w-[120px] truncate text-sm text-ink lg:inline">{nombre}</span>
@@ -67,7 +78,7 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
       </button>
 
       {open && (
-        <div role="menu" className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-surface-border bg-white py-1 shadow-cardHover">
+        <div role="menu" className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-cardHover">
           <div className="px-4 py-2.5">
             <p className="truncate text-sm font-medium text-ink">{nombre}</p>
             <p className="truncate text-xs text-ink-muted">{email}</p>

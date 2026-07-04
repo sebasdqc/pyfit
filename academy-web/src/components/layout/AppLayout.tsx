@@ -7,13 +7,15 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { TutorChat } from '@/components/tutor/TutorChat'
+import { useTheme } from '@/theme/useTheme'
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tutorOpen, setTutorOpen] = useState(false)
+  const { theme } = useTheme()
 
   return (
-    <div className="min-h-[100dvh] bg-surface-soft text-ink">
+    <div data-theme={theme} className="min-h-[100dvh] bg-surface-soft text-ink">
       <Sidebar
         mobileOpen={mobileOpen}
         onNavigate={() => setMobileOpen(false)}

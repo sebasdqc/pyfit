@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/components/Icon'
 import { BrandLockup } from '@/components/Emblem'
 import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/auth/useAuth'
+import { useTheme } from '@/theme/useTheme'
 
 interface NavItem {
   id: string
@@ -42,13 +43,15 @@ export function Sidebar({
   onOpenTutor: () => void
 }) {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const nav = NAV.filter((item) => !item.instructorOnly || user?.puede_crear_cursos)
   const roleLabel = user?.is_instructor ? 'Instructor' : ROLE_LABEL[user?.role ?? ''] ?? 'Estudiante'
+  const emblemTone = theme === 'dark' ? 'dark' : 'light'
 
   return (
     <aside
       className={[
-        'fixed left-4 top-4 bottom-4 z-40 flex flex-col rounded-2xl border border-surface-border bg-white',
+        'fixed left-4 top-4 bottom-4 z-40 flex flex-col rounded-2xl border border-surface-border bg-surface',
         'shadow-card transition-transform duration-200',
         'w-60 md:w-[72px] lg:w-60',
         mobileOpen ? 'translate-x-0' : '-translate-x-[120%] md:translate-x-0',
@@ -57,10 +60,10 @@ export function Sidebar({
       {/* Marca + cerrar (móvil) */}
       <div className="flex items-center justify-between gap-2 px-5 pt-6 pb-5 md:justify-center md:px-0 lg:justify-start lg:px-5">
         <div className="md:hidden lg:block">
-          <BrandLockup size={30} />
+          <BrandLockup size={30} tone={emblemTone} />
         </div>
         <div className="hidden md:block lg:hidden">
-          <BrandLockup size={30} />
+          <BrandLockup size={30} tone={emblemTone} />
         </div>
         <button
           type="button"

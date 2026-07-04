@@ -170,7 +170,7 @@ export function TutorChat({
         aria-modal="true"
         aria-label="Tutor de Zyfit Academy"
         tabIndex={-1}
-        className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-cardHover"
+        className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-surface shadow-cardHover"
       >
         {/* Cabecera */}
         <header className="flex items-center gap-3 border-b border-surface-border px-4 py-3">
@@ -289,7 +289,7 @@ function MessageBubble({
             const clickable = onSourceClick && courseLessonIds?.has(f.lesson_id)
             const label = f.modulo ? `${f.modulo}` : f.leccion
             const chipClass =
-              'inline-flex items-center gap-1 rounded-full border border-surface-border bg-white px-2 py-0.5 text-[11px] text-ink-soft'
+              'inline-flex items-center gap-1 rounded-full border border-surface-border bg-surface px-2 py-0.5 text-[11px] text-ink-soft'
             return clickable ? (
               <button
                 key={f.chunk_id}

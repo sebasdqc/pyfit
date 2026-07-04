@@ -72,7 +72,7 @@ export function DeliverableLesson({
       {lesson.contenido && <TextBlock text={lesson.contenido} />}
 
       {/* Estado de la entrega */}
-      <div className="rounded-xl border border-surface-border bg-white p-5">
+      <div className="rounded-xl border border-surface-border bg-surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <Icon name="upload" size={17} className="text-accent" /> Tu entrega
@@ -190,7 +190,7 @@ export function DeliverableLesson({
 function TextBlock({ text }: { text: string }) {
   const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
   return (
-    <div className="rounded-xl border border-surface-border bg-white p-6">
+    <div className="rounded-xl border border-surface-border bg-surface p-6">
       <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
         {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
           <p key={i} className="whitespace-pre-line">

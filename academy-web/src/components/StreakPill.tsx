@@ -30,7 +30,7 @@ export function StreakPill() {
       to="/aprendizaje"
       title={label}
       aria-label={label}
-      className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border bg-white px-2.5 py-1.5 transition-colors hover:bg-surface-soft"
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border bg-surface px-2.5 py-1.5 transition-colors hover:bg-surface-soft"
     >
       <Icon name="flame" size={16} className={`${flame} ${activa ? 'za-flame' : ''}`} />
       <span className={`text-sm font-bold tabular-nums ${activa ? 'text-ink' : 'text-ink-muted'}`}>

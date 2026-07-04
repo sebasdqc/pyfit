@@ -19,6 +19,7 @@ import { TutorChat } from '@/components/tutor/TutorChat'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useStreak } from '@/lib/useStreak'
+import { useTheme } from '@/theme/useTheme'
 import type { EnrollmentDetail, Lesson, LessonTipo, NuevaInsigniaOtorgada, Submission } from '@/types'
 
 const TYPE_LABEL: Record<LessonTipo, string> = {
@@ -65,6 +66,7 @@ export function LessonPlayerPage() {
   const outlineRef = useRef<HTMLElement>(null)
   // Racha de estudio: cache compartido + confirmación al sumar el día.
   const { streak: myStreak, refresh: refreshStreak } = useStreak()
+  const { theme } = useTheme()
   const [rachaToast, setRachaToast] = useState<number | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Insignias de identidad recién otorgadas: se muestran de a una, en cola (si
@@ -138,14 +140,14 @@ export function LessonPlayerPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface-soft">
+      <div data-theme={theme} className="flex h-screen items-center justify-center bg-surface-soft">
         <Spinner size={44} />
       </div>
     )
   }
   if (error || !enr) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface-soft p-6">
+      <div data-theme={theme} className="flex h-screen items-center justify-center bg-surface-soft p-6">
         <EmptyState
           icon="learning"
           title="No se pudo abrir el curso"
@@ -238,11 +240,11 @@ export function LessonPlayerPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-soft">
+    <div data-theme={theme} className="flex h-screen flex-col overflow-hidden bg-surface-soft">
       {/* Confirmación al sumar el día de estudio (racha extendida). */}
       {rachaToast != null && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4" role="status" aria-live="polite">
-          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-white px-4 py-2.5 shadow-cardHover">
+          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-surface px-4 py-2.5 shadow-cardHover">
             <Icon name="flame" size={18} className="text-brand za-flame" />
             <span className="text-sm font-semibold text-ink">
               ¡Racha de {rachaToast} {rachaToast === 1 ? 'día' : 'días'}! Sumaste tu día de estudio.
@@ -255,7 +257,7 @@ export function LessonPlayerPage() {
           (bottom-24 vs bottom-6) para que ambos convivan sin solaparse. */}
       {insigniaQueue[0] && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4" role="status" aria-live="polite">
-          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-white px-4 py-2.5 shadow-cardHover">
+          <div className="za-pop flex items-center gap-2 rounded-full border border-surface-border bg-surface px-4 py-2.5 shadow-cardHover">
             <span className="text-lg leading-none">{insigniaQueue[0].icono}</span>
             <span className="text-sm font-semibold text-ink">¡Nueva insignia: {insigniaQueue[0].nombre}!</span>
           </div>
@@ -263,7 +265,7 @@ export function LessonPlayerPage() {
       )}
 
       {/* Barra superior del reproductor */}
-      <header className="flex items-center gap-2 border-b border-surface-border bg-white px-4 py-3 sm:gap-3 sm:px-6">
+      <header className="flex items-center gap-2 border-b border-surface-border bg-surface px-4 py-3 sm:gap-3 sm:px-6">
         <button
           onClick={() => navigate('/aprendizaje')}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
@@ -292,7 +294,7 @@ export function LessonPlayerPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Temario (fijo en desktop, drawer en móvil) */}
-        <aside className="hidden w-80 shrink-0 border-r border-surface-border bg-white lg:block">
+        <aside className="hidden w-80 shrink-0 border-r border-surface-border bg-surface lg:block">
           <CourseOutline
             course={enr.curso}
             completed={completed}
@@ -313,7 +315,7 @@ export function LessonPlayerPage() {
               aria-modal="true"
               aria-label="Temario del curso"
               tabIndex={-1}
-              className="fixed left-0 top-0 z-50 h-full w-80 max-w-[85%] bg-white shadow-cardHover lg:hidden"
+              className="fixed left-0 top-0 z-50 h-full w-80 max-w-[85%] bg-surface shadow-cardHover lg:hidden"
             >
               <CourseOutline
                 course={enr.curso}
@@ -385,7 +387,7 @@ export function LessonPlayerPage() {
                   <button
                     onClick={() => prev && goTo(prev.lesson.id)}
                     disabled={!prev}
-                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-white disabled:opacity-40"
+                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface disabled:opacity-40"
                   >
                     <Icon name="chevronLeft" size={16} /> Anterior
                   </button>
@@ -517,7 +519,7 @@ function LessonBody({
             href={lesson.video_url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl border border-surface-border bg-white p-4 text-sm text-accent hover:bg-surface-soft"
+            className="flex items-center gap-3 rounded-xl border border-surface-border bg-surface p-4 text-sm text-accent hover:bg-surface-soft"
           >
             <Icon name="play" size={18} /> Abrir el video en una pestaña nueva
           </a>
@@ -670,7 +672,7 @@ function TextBody({ text }: { text: string }) {
   // los saltos simples dentro de cada párrafo. Ancho de lectura cómodo.
   const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
   return (
-    <div className="rounded-xl border border-surface-border bg-white p-6">
+    <div className="rounded-xl border border-surface-border bg-surface p-6">
       <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
         {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
           <p key={i} className="whitespace-pre-line">

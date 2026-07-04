@@ -353,7 +353,7 @@ function ReorderButtons({
         onClick={onUp}
         disabled={disabled || !canUp}
         aria-label="Mover arriba"
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-surface hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         <Icon name="chevronDown" size={16} className="rotate-180" />
       </button>
@@ -362,7 +362,7 @@ function ReorderButtons({
         onClick={onDown}
         disabled={disabled || !canDown}
         aria-label="Mover abajo"
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-surface hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         <Icon name="chevronDown" size={16} />
       </button>
@@ -377,7 +377,7 @@ function IconButton({ icon, label, onClick }: { icon: IconName; label: string; o
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-white hover:text-ink"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink"
     >
       <Icon name={icon} size={16} />
     </button>
@@ -502,7 +502,7 @@ function ModuleFormDialog({
     <Dialog
       onClose={onClose}
       labelledBy="module-form-title"
-      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
     >
       <div className="flex items-center justify-between">
         <h2 id="module-form-title" className="text-lg font-semibold text-ink">
@@ -648,7 +648,7 @@ function LessonFormDialog({
     <Dialog
       onClose={onClose}
       labelledBy="lesson-form-title"
-      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
     >
       <div className="flex items-center justify-between">
         <h2 id="lesson-form-title" className="text-lg font-semibold text-ink">
@@ -780,7 +780,7 @@ function LessonInfoDialog({
     <Dialog
       onClose={onClose}
       labelledBy="lesson-info-title"
-      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
     >
       <div className="flex items-center justify-between">
         <h2 id="lesson-info-title" className="text-lg font-semibold text-ink">
@@ -943,7 +943,7 @@ function AttachVideoDialog({
     <Dialog
       onClose={onClose}
       labelledBy="attach-video-title"
-      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-white p-6 shadow-cardHover"
+      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
     >
       <div className="flex items-center justify-between">
         <h2 id="attach-video-title" className="text-lg font-semibold text-ink">

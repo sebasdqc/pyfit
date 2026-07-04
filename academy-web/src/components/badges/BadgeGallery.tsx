@@ -86,7 +86,7 @@ function IdentityTile({ badge, onShare }: { badge: AcademyBadgeItem; onShare: (b
     >
       <span className={obtenida ? '' : 'opacity-40'}>{badge.icono}</span>
       {!obtenida && (
-        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-surface-border bg-white text-ink-muted">
+        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-surface-border bg-surface text-ink-muted">
           <Icon name="lock" size={11} />
         </span>
       )}
