@@ -1,7 +1,9 @@
-// Panel del Tutor IA de Zyfit Academy. Vive como drawer lateral sobre el
-// reproductor de lecciones (no saca al alumno del flujo de estudio). Arranca con
-// el contexto del curso/lección activos y muestra, en cada respuesta, las fuentes
-// citadas (clicables si la lección pertenece a este curso) y feedback útil/no útil.
+// Panel del Tutor IA de Zyfit Academy. Se monta una vez en el layout principal
+// (accesible desde la barra lateral en toda la app) y también sobre el reproductor
+// de lecciones con el curso activo como contexto. Sin `courseId` el RAG busca en
+// todo el catálogo publicado (ver ai_tutor.retrieval.retrieve_grounding); con
+// `courseId` prioriza ese curso. Muestra, en cada respuesta, las fuentes citadas
+// (clicables si la lección pertenece al curso activo) y feedback útil/no útil.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AxiosError } from 'axios'
@@ -28,9 +30,10 @@ interface ChatMsg {
 interface TutorChatProps {
   open: boolean
   onClose: () => void
-  courseId: number
-  cursoTitulo: string
-  cursoActivo: string
+  /** Sin curso activo (p. ej. abierto desde la barra lateral): RAG global. */
+  courseId?: number | null
+  cursoTitulo?: string
+  cursoActivo?: string
   /** Ids de lección del curso actual — habilita el salto desde una fuente citada. */
   courseLessonIds?: Set<number>
   onSourceClick?: (lessonId: number) => void
@@ -42,9 +45,9 @@ const nextKey = () => `m${++_keySeq}`
 export function TutorChat({
   open,
   onClose,
-  courseId,
-  cursoTitulo,
-  cursoActivo,
+  courseId = null,
+  cursoTitulo = '',
+  cursoActivo = '',
   courseLessonIds,
   onSourceClick,
 }: TutorChatProps) {

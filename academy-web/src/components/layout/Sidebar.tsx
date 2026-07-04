@@ -32,7 +32,15 @@ const ROLE_LABEL: Record<string, string> = {
   athlete: 'Estudiante',
 }
 
-export function Sidebar({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNavigate: () => void }) {
+export function Sidebar({
+  mobileOpen,
+  onNavigate,
+  onOpenTutor,
+}: {
+  mobileOpen: boolean
+  onNavigate: () => void
+  onOpenTutor: () => void
+}) {
   const { user } = useAuth()
   const nav = NAV.filter((item) => !item.instructorOnly || user?.puede_crear_cursos)
   const roleLabel = user?.is_instructor ? 'Instructor' : ROLE_LABEL[user?.role ?? ''] ?? 'Estudiante'
@@ -66,6 +74,17 @@ export function Sidebar({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
 
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
+        <button
+          type="button"
+          onClick={onOpenTutor}
+          title="Tutor de Academy"
+          aria-label="Abrir el tutor de Academy"
+          aria-haspopup="dialog"
+          className="group relative mb-2 flex min-h-11 w-full items-center gap-3 rounded-xl bg-accent/10 px-3 py-2.5 text-sm font-medium text-brand transition-colors hover:bg-accent/15 md:justify-center md:px-0 lg:justify-start lg:px-3"
+        >
+          <Icon name="sparkles" size={19} className="text-accent" />
+          <span className="md:hidden lg:inline">Tutor</span>
+        </button>
         <ul className="flex flex-col gap-1">
           {nav.map((item) => (
             <li key={item.id}>
