@@ -48,7 +48,15 @@ from .serializers import SessionDetailSerializer, SessionListSerializer, Session
 def session_list(request):
     # HIS-2: prefetch de exercises para exponer el peso real (series_log) por
     # ejercicio en el listado/historial sin disparar N+1.
-    sessions = request.user.sessions.select_related('feedback', 'checkin').prefetch_related('exercises').all()
+    # Excluye placeholders todavía generándose (respuesta_ia=None, ver
+    # ai_workout.tasks.generate_session_task): no son una sesión real para el
+    # usuario, solo existen mientras el task de Celery corre en background.
+    sessions = (
+        request.user.sessions
+        .exclude(respuesta_ia__isnull=True)
+        .select_related('feedback', 'checkin')
+        .prefetch_related('exercises')
+    )
     # Filtro opcional por fecha: el dashboard solo necesita una ventana reciente
     # para el calendario (acota el payload). El historial los pide todos sin param
     # (pasando un page_size grande, ver SessionListPagination).
@@ -107,15 +115,21 @@ def session_today(request):
     """Sesión de hoy en la forma { sesion_id, sesion } que consume la pantalla de
     generación.
 
-    Sirve de respaldo cuando POST /api/sessions/generate/ supera el timeout de la
-    pasarela (504) PERO el backend sí terminó de crear la sesión: el cliente hace
-    polling de este endpoint hasta que la rutina esté lista. Devuelve la sesión
-    más reciente del día; el cliente la distingue de una previa por su id.
+    La generación con IA corre en un task de Celery (ai_workout.tasks.
+    generate_session_task): POST /api/sessions/generate/ solo valida, crea un
+    placeholder (respuesta_ia=None) y encola el task, devolviendo 202 de
+    inmediato. El cliente hace polling de este endpoint hasta que la rutina
+    esté lista (o falle) — devuelve la sesión más reciente del día; el cliente
+    la distingue de una previa por su id.
     """
     hoy = _get_local_date(request)
     s = request.user.sessions.filter(fecha=hoy).order_by('-created_at').first()
-    ia = s.respuesta_ia if s else None
-    if not s or not isinstance(ia, dict) or 'fases' not in ia:
+    if not s:
+        return Response({'status': 'pending'})
+    if s.generacion_error:
+        return Response({'status': 'error', 'error': s.generacion_error})
+    ia = s.respuesta_ia
+    if not isinstance(ia, dict) or 'fases' not in ia:
         return Response({'status': 'pending'})
     return Response({'status': 'ready', 'sesion_id': s.id, 'sesion': ia})
 

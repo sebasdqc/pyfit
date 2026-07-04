@@ -28,9 +28,10 @@ import EvidenciaCard, { type ResumenData, type ResumenDecision, type ResumenEvid
 // la pantalla de carga está montada, así que dura lo que dura la generación.
 const GEN_VIDEO = require('../../../assets/video_pantalla_generacion.mp4')
 
-// Polling de respaldo: la generación con IA puede tardar más que el timeout de la
-// pasarela (→ 504 en el POST) aunque el backend SÍ termine de crear la sesión.
-// En ese caso recuperamos la sesión nueva (id distinto al baseline previo).
+// La generación con IA corre en un task de Celery en el backend (puede tardar
+// hasta ~60s en el peor caso): el POST solo valida y encola, y la rutina se
+// recupera con polling de /api/sessions/today/ hasta que quede 'ready' (o
+// 'error', si Groq falló del lado del servidor).
 const TODAY_POLL_MAX_MS = 70000
 const TODAY_POLL_INTERVAL_MS = 3000
 
@@ -42,13 +43,19 @@ async function pollForNewSession(
   while (Date.now() - start < TODAY_POLL_MAX_MS) {
     await new Promise(r => setTimeout(r, TODAY_POLL_INTERVAL_MS))
     if (!shouldContinue()) throw new Error('cancelled')  // detener al desmontar
+    let res: any
     try {
-      const res: any = await apiGet('/api/sessions/today/')
-      if (res?.status === 'ready' && res.sesion && res.sesion_id !== baselineId) {
-        return { sesion_id: res.sesion_id, sesion: res.sesion }
-      }
+      res = await apiGet('/api/sessions/today/')
     } catch {
-      // Red intermitente — seguimos intentando dentro de la ventana.
+      continue // red intermitente — seguimos intentando dentro de la ventana
+    }
+    if (res?.status === 'error') {
+      // Falló la generación en el backend (Groq caído, respuesta inválida, etc.):
+      // no tiene sentido seguir esperando, se propaga de inmediato.
+      throw new Error(res.error || 'La IA no pudo generar tu rutina. Intenta de nuevo.')
+    }
+    if (res?.status === 'ready' && res.sesion && res.sesion_id !== baselineId) {
+      return { sesion_id: res.sesion_id, sesion: res.sesion }
     }
   }
   throw new Error('La generación está tardando demasiado. Revisa tu conexión e intenta de nuevo.')
@@ -1212,23 +1219,17 @@ export default function GenerateScreen() {
 
     // Snapshot de la sesión de hoy ANTES de generar. El baseline distingue la
     // sesión NUEVA de una previa del día durante el polling.
-    const baselineP = apiGet('/api/sessions/today/')
+    const baselineId = await apiGet('/api/sessions/today/')
       .then((r: any) => (r?.status === 'ready' ? r.sesion_id : null))
       .catch(() => null)
 
     try {
-      let data: SesionResponse
-      try {
-        data = await apiPost('/api/sessions/generate/', {})
-      } catch (postErr: any) {
-        // Límite diario alcanzado: NO es un timeout → no reintentar por polling, propagar.
-        if (postErr?.code === 'daily_limit' || postErr?.status === 429) throw postErr
-        // La pasarela puede devolver 504 aunque el backend SÍ haya creado la
-        // sesión (la generación tarda más que el timeout del proxy). En vez de
-        // fallar, recuperamos la sesión nueva por polling.
-        const baselineId = await baselineP
-        data = await pollForNewSession(baselineId, () => mountedRef.current)
-      }
+      // El POST solo valida y encola la generación (corre en Celery en
+      // background); si algo es inválido (perfil/check-in/límite diario/coach
+      // pausado) responde de inmediato con un error, si no, 202 aceptado. La
+      // rutina se recupera siempre por polling de /api/sessions/today/.
+      await apiPost('/api/sessions/generate/', {})
+      const data = await pollForNewSession(baselineId, () => mountedRef.current)
       if (!mountedRef.current) return   // se salió de la pantalla mientras generaba
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)

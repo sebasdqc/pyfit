@@ -278,6 +278,12 @@ class Session(models.Model):
     tokens_in     = models.IntegerField(null=True, blank=True)   # prompt_tokens del LLM
     tokens_out    = models.IntegerField(null=True, blank=True)   # completion_tokens del LLM
     uso_fallback  = models.BooleanField(default=False)           # True si cayó al pool legacy (motor degradado)
+    # La generación con IA corre en un task de Celery (ver ai_workout.tasks.
+    # generate_session_task): la vista crea esta Session como placeholder
+    # (respuesta_ia=None) y el task la completa in place. Si Groq falla, el task
+    # no puede devolver un error HTTP directo (el cliente ya recibió 202), así
+    # que lo deja acá para que /api/sessions/today/ lo reporte al polling.
+    generacion_error = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
