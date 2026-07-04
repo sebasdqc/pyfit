@@ -767,6 +767,34 @@ def simulador_sesion_evaluar(request):
     return Response(resultado)
 
 
+# ─── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─
+# Reutiliza la familia 'prevencion' del motor de Zyfit Performance — ver
+# academy.simulador_prevencion (los resultados de los tests SIEMPRE salen de
+# performance.calculators; la Academia solo añade la capa de decisión).
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def simulador_prevencion_casos(request):
+    """Catálogo de casos del simulador, sin resolver (sin decisión correcta)."""
+    from . import simulador_prevencion
+    return Response(simulador_prevencion.listar_casos())
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def simulador_prevencion_evaluar(request):
+    """Corrige la decisión del estudiante para un caso. Body: `{caso_id, decision}`."""
+    from . import simulador_prevencion
+
+    caso_id = (request.data.get('caso_id') or '').strip()
+    decision = (request.data.get('decision') or '').strip()
+    try:
+        resultado = simulador_prevencion.evaluar(caso_id, decision)
+    except simulador_prevencion.SimuladorPrevencionError as e:
+        return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(resultado)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def streak_sweep(request):

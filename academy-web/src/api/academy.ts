@@ -7,6 +7,7 @@ import type {
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
   SimuladorCargaResponse, SimuladorSesionCaso, SimuladorSesionResultado,
+  SimuladorPrevencionCaso, SimuladorPrevencionResultado,
 } from '@/types'
 
 // ── Racha de estudio ──────────────────────────────────────────────────────────
@@ -352,5 +353,20 @@ export async function evaluarSimuladorSesion(payload: {
   ejercicios_seleccionados: string[]
 }): Promise<SimuladorSesionResultado> {
   const res = await api.post<SimuladorSesionResultado>('/academy/simulador/sesion/evaluar/', payload)
+  return res.data
+}
+
+// ── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─
+
+export async function listSimuladorPrevencionCasos(): Promise<SimuladorPrevencionCaso[]> {
+  const res = await api.get<SimuladorPrevencionCaso[]>('/academy/simulador/prevencion/casos/')
+  return res.data
+}
+
+export async function evaluarSimuladorPrevencion(payload: {
+  caso_id: string
+  decision: string
+}): Promise<SimuladorPrevencionResultado> {
+  const res = await api.post<SimuladorPrevencionResultado>('/academy/simulador/prevencion/evaluar/', payload)
   return res.data
 }

@@ -473,6 +473,27 @@ export interface SimuladorSesionResultado {
   puntaje: number
 }
 
+// ── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─
+// Espeja performance.calculators (familia 'prevencion') — ver
+// academy.simulador_prevencion. Los resultados de los tests salen siempre de
+// ese motor; la Academia solo añade la capa de decisión (RTP / partido).
+
+export interface SimuladorPrevencionCaso {
+  id: string
+  tipo: 'rtp' | 'partido'
+  titulo: string
+  atleta: string
+  narrativa: string
+  tests: Record<string, Record<string, number>>
+  opciones: string[]
+}
+
+export interface SimuladorPrevencionResultado {
+  resultados: Record<string, Record<string, unknown>>
+  decision_correcta: string
+  acierto: boolean
+}
+
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
 // Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
 // ningún campo de aquí participa en progreso/certificación/racha/badges core.

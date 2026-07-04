@@ -60,6 +60,10 @@ urlpatterns = [
     path('simulador/sesion/casos/', views.simulador_sesion_casos),
     path('simulador/sesion/evaluar/', views.simulador_sesion_evaluar),
 
+    # Simulador de Return-to-Play — escuela Recuperación, Prevención y Wellness.
+    path('simulador/prevencion/casos/', views.simulador_prevencion_casos),
+    path('simulador/prevencion/evaluar/', views.simulador_prevencion_evaluar),
+
     # Aprendizaje (estudiante)
     path('enrollments/', views.my_enrollments),
     path('enrollments/<int:enrollment_id>/', views.enrollment_detail),

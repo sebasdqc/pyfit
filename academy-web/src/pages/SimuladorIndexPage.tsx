@@ -27,6 +27,13 @@ const SIMULADORES: SimuladorCard[] = [
     titulo: 'Planificación de sesión',
     descripcion: 'Resuelve un caso: calcula fatiga y RPE objetivo, y elige ejercicios seguros.',
   },
+  {
+    to: '/simulador/prevencion',
+    icon: 'heart',
+    escuela: 'Recuperación, Prevención y Wellness',
+    titulo: 'Return-to-play y decisiones en partido',
+    descripcion: 'Decide si autorizas la vuelta al juego o sacas a un jugador, con los tests reales.',
+  },
 ]
 
 export function SimuladorIndexPage() {
