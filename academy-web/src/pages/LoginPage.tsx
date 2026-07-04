@@ -5,10 +5,35 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { AxiosError } from 'axios'
 import { useAuth } from '@/auth/useAuth'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { useTenant } from '@/tenant/TenantContext'
+
+// El backend distingue tres motivos de rechazo (401 credenciales, 403 sin
+// acceso/tenant equivocado) con formas de payload distintas (`error` vs
+// `detail` — ver academy_login en backend/academy/views.py). Sin esto, un
+// catch genérico mostraba el mismo mensaje para los tres casos y hacía
+// imposible saber, por ejemplo, si una cuenta simplemente no existe en
+// producción o si existe pero pertenece a otra organización.
+function describeLoginError(err: unknown): string {
+  const ax = err as AxiosError<{ error?: string; detail?: string }>
+  if (!ax?.response) {
+    return 'No se pudo conectar con el servidor. Verificá tu conexión e intentá de nuevo.'
+  }
+  const { status, data } = ax.response
+  if (status === 401) {
+    return data?.error || 'Correo o contraseña incorrectos.'
+  }
+  if (status === 403) {
+    return data?.detail || 'Esta cuenta no tiene acceso a Zyfit Academy.'
+  }
+  if (status === 429) {
+    return 'Demasiados intentos. Esperá un momento antes de volver a intentar.'
+  }
+  return 'No se pudo iniciar sesión. Intentá de nuevo en unos minutos.'
+}
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -26,8 +51,8 @@ export function LoginPage() {
     try {
       await login(email, password)
       navigate('/inicio', { replace: true })
-    } catch {
-      setError('No se pudo iniciar sesión. Verifica tu correo y contraseña.')
+    } catch (err) {
+      setError(describeLoginError(err))
     } finally {
       setSubmitting(false)
     }
@@ -119,7 +144,7 @@ export function LoginPage() {
             </Link>
 
             {error && (
-              <p role="alert" className="text-sm text-danger">
+              <p role="alert" className="break-words text-sm text-danger">
                 {error}
               </p>
             )}
