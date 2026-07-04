@@ -25,5 +25,10 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=6, minute=0),  # 6:00 AM UTC todos los días
         'options':  {'expires': 3600},           # descarta si no se ejecutó en 1h
     },
+    'flush-expired-tokens-daily': {
+        'task':     'users.tasks.flush_expired_tokens',
+        'schedule': crontab(hour=3, minute=30),  # 3:30 AM UTC todos los días
+        'options':  {'expires': 3600},
+    },
 }
 app.conf.timezone = 'UTC'

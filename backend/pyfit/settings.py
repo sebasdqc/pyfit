@@ -119,7 +119,17 @@ WSGI_APPLICATION = 'pyfit.wsgi.application'
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
+    # conn_max_age reutiliza la conexión TCP+TLS entre requests en vez de abrir
+    # una nueva por request (el Postgres gestionado de DO tiene un límite bajo
+    # de conexiones concurrentes). conn_health_checks descarta conexiones muertas
+    # (p. ej. tras un failover) en vez de fallar el primer request que las usa.
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '600')),
+            conn_health_checks=True,
+        )
+    }
 else:
     DATABASES = {
         'default': {
@@ -230,6 +240,11 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    # Clave de firma dedicada, separada de SECRET_KEY: rotar la secret de Django
+    # (sesiones admin, CSRF, etc.) no debe invalidar de golpe todos los JWT
+    # emitidos a la app móvil. Sin JWT_SIGNING_KEY en el entorno, cae a
+    # SECRET_KEY (comportamiento anterior, sin romper despliegues existentes).
+    'SIGNING_KEY': os.environ.get('JWT_SIGNING_KEY') or SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 

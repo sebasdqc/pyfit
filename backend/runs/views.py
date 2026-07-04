@@ -26,6 +26,12 @@ class RunSessionPagination(PageNumberPagination):
     max_page_size = 100
 
 
+# Tope de puntos GPS que acepta un solo POST. El móvil manda batches pequeños
+# (segundos de tracking), así que este límite es generoso para uso legítimo y
+# evita que un solo request pueda insertar un volumen arbitrario de filas.
+MAX_POINTS_PER_REQUEST = 1000
+
+
 class RunSessionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = RunSessionPagination
@@ -70,7 +76,16 @@ def add_run_points(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    serializer = RunPointSerializer(data=request.data.get('points', []), many=True)
+    points = request.data.get('points', [])
+    if not isinstance(points, list):
+        return Response({'error': 'points debe ser una lista.'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(points) > MAX_POINTS_PER_REQUEST:
+        return Response(
+            {'error': f'Máximo {MAX_POINTS_PER_REQUEST} puntos por request.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = RunPointSerializer(data=points, many=True)
     if serializer.is_valid():
         RunPoint.objects.bulk_create([
             RunPoint(session=session, **point) for point in serializer.validated_data
