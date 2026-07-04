@@ -54,6 +54,16 @@ export function SimuladorCargaPage() {
   const [acwr, setAcwr] = useState<ACWRResultado | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // La semana "aguda" (más relevante) vive al final del array — en móvil el
+  // ecualizador no entra completo en pantalla, así que arrancamos con el
+  // scroll ya al final para no obligar a descubrir que hay que desplazarse.
+  function scrollToEnd() {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }
+  useEffect(scrollToEnd, [])
 
   // Debounce: cada cambio en `cargas` (drag o escenario) reprograma el cálculo;
   // el cleanup cancela el timeout anterior y descarta respuestas de una serie vieja.
@@ -111,8 +121,11 @@ export function SimuladorCargaPage() {
           <button
             key={e.id}
             type="button"
-            onClick={() => setCargas(e.cargas)}
-            className="rounded-full border border-surface-border bg-white px-3.5 py-1.5 text-xs font-semibold text-ink-soft transition-colors hover:border-accent hover:text-accent"
+            onClick={() => {
+              setCargas(e.cargas)
+              requestAnimationFrame(scrollToEnd)
+            }}
+            className="rounded-full border border-surface-border bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-soft transition-colors hover:border-accent hover:text-accent"
           >
             {e.label}
           </button>
@@ -126,7 +139,7 @@ export function SimuladorCargaPage() {
           <p className="text-xs text-ink-muted">Arrastra o usa ↑↓ sobre una barra para cambiar ese día</p>
         </div>
 
-        <div className="mt-5 overflow-x-auto pb-1">
+        <div ref={scrollRef} className="mt-5 overflow-x-auto pb-1">
           <div className="flex min-w-max items-end gap-1">
             {cargas.map((valor, i) => (
               <DiaBar
@@ -217,20 +230,32 @@ function DiaBar({
     return Math.min(MAX_UA, Math.max(0, round10(ratio * MAX_UA)))
   }
 
+  // En mouse, fijar el valor de inmediato (tipo slider clásico). En touch/pen NO
+  // mutamos en el pointerdown: la fila entera es un contenedor con scroll
+  // horizontal y esta barra mide ~20px, así que un swipe para desplazarse
+  // arranca casi siempre sobre una barra. Solo confirmamos el arrastre (y
+  // recién ahí tocamos el valor) cuando llega un pointermove vertical real —
+  // si el gesto termina siendo un pan horizontal, el navegador se queda con
+  // el scroll (touchAction: 'pan-x' lo permite) y dispara pointercancel.
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
     setActive(true)
-    onChange(valueFromPointer(e.clientY))
+    if (e.pointerType === 'mouse') {
+      onChange(valueFromPointer(e.clientY))
+    }
   }
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (!active) return
     onChange(valueFromPointer(e.clientY))
   }
+  function handlePointerEnd() {
+    setActive(false)
+  }
 
   const pct = Math.min(100, (valor / MAX_UA) * 100)
 
   return (
-    <div className="group relative flex w-4 flex-col items-center">
+    <div className="group relative flex w-5 flex-col items-center">
       <span
         className={`pointer-events-none absolute -top-6 whitespace-nowrap rounded-md bg-brand-deep px-1.5 py-0.5 text-[10px] font-semibold text-white transition-opacity ${
           active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -248,7 +273,8 @@ function DiaBar({
         tabIndex={0}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={() => setActive(false)}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp') {
             e.preventDefault()
@@ -259,8 +285,8 @@ function DiaBar({
             onChange(Math.max(0, valor - 10))
           }
         }}
-        style={{ height: BAR_TRACK_H, touchAction: 'none' }}
-        className="flex w-3 cursor-ns-resize items-end rounded-sm bg-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        style={{ height: BAR_TRACK_H, touchAction: 'pan-x' }}
+        className="flex w-4 cursor-ns-resize items-end rounded-sm bg-surface-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <div className={`w-full rounded-t-[3px] ${aguda ? 'bg-accent' : 'bg-brand'}`} style={{ height: `${pct}%` }} />
       </div>

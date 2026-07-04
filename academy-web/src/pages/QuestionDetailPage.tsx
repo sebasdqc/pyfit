@@ -100,7 +100,7 @@ export function QuestionDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link to="/comunidad" className="flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link to="/comunidad" className="flex w-fit items-center gap-1.5 py-2 text-sm text-ink-soft hover:text-ink">
         <Icon name="chevronLeft" size={16} />
         Comunidad
       </Link>
@@ -110,18 +110,18 @@ export function QuestionDetailPage() {
           {post.curso_titulo && <Badge tone="accent">{post.curso_titulo}</Badge>}
           {post.mejor_respuesta && <Badge tone="ok">Resuelta</Badge>}
         </div>
-        <h1 className="text-xl font-bold tracking-tight text-ink">{post.titulo}</h1>
-        <p className="whitespace-pre-wrap text-sm text-ink-soft">{post.contenido}</p>
+        <h1 className="break-words text-xl font-bold tracking-tight text-ink">{post.titulo}</h1>
+        <p className="whitespace-pre-wrap break-words text-sm text-ink-soft">{post.contenido}</p>
         <div className="flex items-center gap-2 pt-1 text-xs text-ink-muted">
           <Avatar name={post.autor_nombre} size={22} />
-          <span className="font-medium text-ink-soft">{post.autor_nombre}</span>
-          <span>·</span>
-          <span>{timeAgo(post.created_at)}</span>
+          <span className="min-w-0 truncate font-medium text-ink-soft">{post.autor_nombre}</span>
+          <span className="shrink-0">·</span>
+          <span className="shrink-0">{timeAgo(post.created_at)}</span>
           {!esAutor && (
             <button
               type="button"
               onClick={() => setReportTarget({ postId: post.id })}
-              className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-ink-muted transition-colors hover:text-danger"
+              className="ml-auto flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-ink-muted transition-colors hover:text-danger"
             >
               <Icon name="flag" size={13} />
               Reportar

@@ -107,7 +107,7 @@ export function CourseDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link to="/catalogo" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent">
+      <Link to="/catalogo" className="inline-flex items-center gap-1.5 py-2 text-sm font-medium text-ink-soft hover:text-accent">
         <Icon name="chevronLeft" size={16} /> Catálogo
       </Link>
 

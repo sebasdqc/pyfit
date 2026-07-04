@@ -44,7 +44,7 @@ export function ReportDialog({
   }
 
   return (
-    <Dialog onClose={onClose} labelledBy="reportar-titulo" className="za-card w-full max-w-sm p-6">
+    <Dialog onClose={onClose} labelledBy="reportar-titulo" className="za-card max-h-[90vh] w-full max-w-sm overflow-y-auto p-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <h2 id="reportar-titulo" className="text-base font-bold text-ink">Reportar contenido</h2>
         <label className="flex flex-col gap-1.5 text-sm text-ink-soft">

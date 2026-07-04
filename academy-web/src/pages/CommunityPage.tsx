@@ -176,7 +176,7 @@ export function CommunityPage() {
         <Dialog
           onClose={() => setShowNewPost(false)}
           labelledBy="nueva-pregunta-titulo"
-          className="za-card w-full max-w-lg p-6"
+          className="za-card max-h-[90vh] w-full max-w-lg overflow-y-auto p-6"
         >
           <NewPostForm
             escuelaId={escuelaId}

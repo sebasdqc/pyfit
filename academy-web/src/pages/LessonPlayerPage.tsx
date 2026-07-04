@@ -398,7 +398,7 @@ export function LessonPlayerPage() {
                       <button
                         onClick={markComplete}
                         disabled={marking}
-                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ok px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
+                        className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ok px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
                       >
                         <Icon name="check" size={16} /> {marking ? 'Guardando…' : 'Marcar como completada'}
                       </button>

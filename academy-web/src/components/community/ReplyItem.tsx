@@ -39,7 +39,7 @@ export function ReplyItem({
         )}
       </div>
 
-      <p className="whitespace-pre-wrap text-sm text-ink">{reply.contenido}</p>
+      <p className="whitespace-pre-wrap break-words text-sm text-ink">{reply.contenido}</p>
 
       <div className="flex items-center gap-3 pt-1 text-xs">
         <button
@@ -47,7 +47,7 @@ export function ReplyItem({
           onClick={onVote}
           disabled={isOwn}
           title={isOwn ? 'No podés votar tu propia respuesta' : 'Votar como útil'}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-ink-soft transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-ink-soft transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Icon name="thumbUp" size={14} />
           {reply.votos_count}
@@ -57,7 +57,7 @@ export function ReplyItem({
           <button
             type="button"
             onClick={onMarkBest}
-            className="rounded-lg px-2 py-1 font-medium text-accent transition-colors hover:bg-accent/10"
+            className="rounded-lg px-2.5 py-2 font-medium text-accent transition-colors hover:bg-accent/10"
           >
             Marcar como mejor respuesta
           </button>
@@ -67,7 +67,7 @@ export function ReplyItem({
           <button
             type="button"
             onClick={onReport}
-            className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-ink-muted transition-colors hover:text-danger"
+            className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-2 text-ink-muted transition-colors hover:text-danger"
           >
             <Icon name="flag" size={13} />
             Reportar

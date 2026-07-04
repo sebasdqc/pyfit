@@ -98,7 +98,7 @@ export function SimuladorSesionPage() {
               key={c.id}
               type="button"
               onClick={() => elegirCaso(c.id)}
-              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-full border px-3.5 py-2.5 text-xs font-semibold transition-colors ${
                 casoId === c.id
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-surface-border bg-white text-ink-soft hover:border-accent hover:text-accent'
@@ -134,7 +134,7 @@ export function SimuladorSesionPage() {
           <div className="za-card flex flex-col gap-5 p-5">
             <div>
               <p className="text-sm font-semibold text-ink">¿Cuál es la fatiga del atleta?</p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {FATIGAS.map((f) => (
                   <button
                     key={f}
@@ -160,7 +160,7 @@ export function SimuladorSesionPage() {
                     key={v}
                     type="button"
                     onClick={() => setRpe(v)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${
                       rpe === v
                         ? 'border-brand bg-brand/10 text-brand'
                         : 'border-surface-border text-ink-soft hover:border-brand'

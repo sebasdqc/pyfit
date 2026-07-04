@@ -51,7 +51,11 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
   }
 
   return (
-    <Dialog onClose={onClose} ariaLabel={`Compartir insignia ${badge.nombre}`} className="za-card w-full max-w-xs p-6">
+    <Dialog
+      onClose={onClose}
+      ariaLabel={`Compartir insignia ${badge.nombre}`}
+      className="za-card max-h-[90vh] w-full max-w-xs overflow-y-auto p-6"
+    >
       <div className="flex flex-col items-center gap-4">
         {/* Tarjeta capturable (formato story 9:16) */}
         <div
@@ -84,7 +88,7 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
               >
                 Insignia obtenida
               </p>
-              <p className="mt-1.5 text-lg font-bold leading-tight text-white">{badge.nombre}</p>
+              <p className="mt-1.5 line-clamp-2 text-lg font-bold leading-tight text-white">{badge.nombre}</p>
               {badge.contexto && <p className="mt-1 truncate text-[11px] text-white/50">{badge.contexto}</p>}
             </div>
           </div>

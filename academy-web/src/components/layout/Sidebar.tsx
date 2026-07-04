@@ -72,6 +72,8 @@ export function Sidebar({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
               <NavLink
                 to={item.to}
                 onClick={onNavigate}
+                title={item.label}
+                aria-label={item.label}
                 className={({ isActive }) =>
                   [
                     'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',

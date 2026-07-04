@@ -215,20 +215,28 @@ export function CourseContentPage() {
         )}
         {course.modulos.map((m, i) => (
           <section key={m.id} className="za-card overflow-hidden">
-            <header className="flex items-center gap-3 border-b border-surface-border bg-surface-soft px-4 py-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-white">
-                {i + 1}
-              </span>
-              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{m.titulo}</h2>
-              {m.es_gratuito && <Badge tone="ok">Gratis</Badge>}
-              <ReorderButtons
-                disabled={busy}
-                canUp={i > 0}
-                canDown={i < course.modulos.length - 1}
-                onUp={() => moveModule(course.modulos, i, -1)}
-                onDown={() => moveModule(course.modulos, i, 1)}
-              />
-              <IconButton icon="edit" label={`Editar módulo "${m.titulo}"`} onClick={() => setEditingModule(m)} />
+            <header className="flex flex-col gap-2 border-b border-surface-border bg-surface-soft px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{m.titulo}</h2>
+                {m.es_gratuito && (
+                  <Badge tone="ok">
+                    <span className="shrink-0">Gratis</span>
+                  </Badge>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto sm:ml-auto">
+                <ReorderButtons
+                  disabled={busy}
+                  canUp={i > 0}
+                  canDown={i < course.modulos.length - 1}
+                  onUp={() => moveModule(course.modulos, i, -1)}
+                  onDown={() => moveModule(course.modulos, i, 1)}
+                />
+                <IconButton icon="edit" label={`Editar módulo "${m.titulo}"`} onClick={() => setEditingModule(m)} />
+              </div>
             </header>
             <div className="divide-y divide-surface-border">
               {m.lecciones.map((l, li) => (
@@ -339,13 +347,13 @@ function ReorderButtons({
   disabled: boolean; canUp: boolean; canDown: boolean; onUp: () => void; onDown: () => void
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="flex shrink-0 items-center gap-1">
       <button
         type="button"
         onClick={onUp}
         disabled={disabled || !canUp}
         aria-label="Mover arriba"
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         <Icon name="chevronDown" size={16} className="rotate-180" />
       </button>
@@ -354,7 +362,7 @@ function ReorderButtons({
         onClick={onDown}
         disabled={disabled || !canDown}
         aria-label="Mover abajo"
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         <Icon name="chevronDown" size={16} />
       </button>
@@ -369,7 +377,7 @@ function IconButton({ icon, label, onClick }: { icon: IconName; label: string; o
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-white hover:text-ink"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-white hover:text-ink"
     >
       <Icon name={icon} size={16} />
     </button>

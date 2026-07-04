@@ -189,7 +189,7 @@ function CopyCodeButton({ codigo }: { codigo: string }) {
       type="button"
       onClick={copy}
       aria-label={`Copiar código ${codigo}`}
-      className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/10"
+      className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/10"
     >
       {copied ? 'Copiado ✓' : 'Copiar'}
     </button>

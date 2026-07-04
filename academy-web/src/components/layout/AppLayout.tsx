@@ -11,7 +11,7 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-surface-soft text-ink">
+    <div className="min-h-[100dvh] bg-surface-soft text-ink">
       <Sidebar mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
 
       {mobileOpen && (
@@ -22,7 +22,7 @@ export function AppLayout() {
         />
       )}
 
-      <div className="min-h-screen md:pl-[104px] lg:pl-[272px]">
+      <div className="min-h-[100dvh] md:pl-[104px] lg:pl-[272px]">
         <Topbar onMenu={() => setMobileOpen(true)} />
         <main className="mx-auto max-w-6xl px-6 pb-16 pt-6 sm:px-8 lg:px-10">
           <Outlet />

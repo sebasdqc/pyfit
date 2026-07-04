@@ -163,9 +163,9 @@ function SubmissionCard({
   return (
     <article className="za-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-ink">{submission.leccion_titulo}</p>
-          <p className="text-xs text-ink-muted">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink">{submission.leccion_titulo}</p>
+          <p className="truncate text-xs text-ink-muted">
             {submission.estudiante_nombre} ·{' '}
             {new Date(submission.updated_at).toLocaleString('es', {
               day: 'numeric',
@@ -198,7 +198,7 @@ function SubmissionCard({
             <Icon name="play" size={16} /> Ver el video entregado
           </a>
         ) : (
-          <p className="max-w-prose whitespace-pre-line rounded-lg border border-surface-border bg-surface-soft p-3.5 text-sm text-ink-soft">
+          <p className="max-w-prose whitespace-pre-line break-words rounded-lg border border-surface-border bg-surface-soft p-3.5 text-sm text-ink-soft">
             {submission.texto}
           </p>
         )}

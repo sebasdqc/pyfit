@@ -147,7 +147,7 @@ export function ForgotPasswordPage() {
                   </>
                 ) : (
                   <>
-                    Ingresa el código que enviamos a <strong className="text-ink">{email}</strong> junto
+                    Ingresa el código que enviamos a <strong className="break-words text-ink">{email}</strong> junto
                     con tu nueva contraseña.
                   </>
                 )}
@@ -288,7 +288,7 @@ function Field({
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
           aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
+          className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
         >
           {show ? 'Ocultar' : 'Mostrar'}
         </button>

@@ -13,10 +13,10 @@ export function PostCard({ post }: { post: CommunityPost }) {
       className="za-card flex flex-col gap-3 p-5 transition-shadow hover:shadow-lg"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[15px] font-semibold text-ink">{post.titulo}</h3>
+        <h3 className="min-w-0 break-words text-[15px] font-semibold text-ink">{post.titulo}</h3>
         {post.mejor_respuesta && <Badge tone="ok">Resuelta</Badge>}
       </div>
-      <p className="line-clamp-2 text-sm text-ink-soft">{post.contenido}</p>
+      <p className="line-clamp-2 break-words text-sm text-ink-soft">{post.contenido}</p>
       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
         <Avatar name={post.autor_nombre} size={20} />
         <span>{post.autor_nombre}</span>

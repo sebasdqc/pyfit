@@ -183,7 +183,7 @@ export function TutorChat({
           <button
             onClick={onClose}
             aria-label="Cerrar tutor"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
           >
             <Icon name="close" size={18} />
           </button>
@@ -312,7 +312,7 @@ function MessageBubble({
             onClick={() => onFeedback(msg, 'util')}
             aria-label="Respuesta útil"
             aria-pressed={msg.feedback === 'util'}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-soft ${
+            className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-surface-soft ${
               msg.feedback === 'util' ? 'text-ok' : 'text-ink-muted'
             }`}
           >
@@ -322,7 +322,7 @@ function MessageBubble({
             onClick={() => onFeedback(msg, 'no_util')}
             aria-label="Respuesta no útil"
             aria-pressed={msg.feedback === 'no_util'}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-soft ${
+            className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-surface-soft ${
               msg.feedback === 'no_util' ? 'text-danger' : 'text-ink-muted'
             }`}
           >
