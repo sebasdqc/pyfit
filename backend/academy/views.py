@@ -46,6 +46,7 @@ from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import PermissionDenied
@@ -812,6 +813,44 @@ def streak_sweep(request):
     if not hmac.compare_digest(provided, secret):
         return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
     return Response(streak_service.run_daily_maintenance())
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def bootstrap_admin(request):
+    """Crea o promueve una cuenta a admin de producto (`role='admin'`) sin
+    necesitar acceso a shell en producción. Mismo secreto compartido y mismo
+    patrón que `streak_sweep` (cabecera `X-Cron-Secret`, comparación en
+    tiempo constante, 503 si `CRON_SECRET` no está configurado) — pensado
+    para dispararse una vez a mano (curl/Postman), no desde un cron.
+
+    Idempotente por email: si la cuenta ya existe, solo la promueve (nunca
+    toca su contraseña). Si no existe, la crea con una contraseña aleatoria
+    devuelta UNA sola vez en la respuesta — no se guarda en texto plano en
+    ningún lado."""
+    secret = getattr(settings, 'CRON_SECRET', '') or ''
+    if not secret:
+        return Response({'detail': 'Deshabilitado (falta CRON_SECRET).'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    provided = request.headers.get('X-Cron-Secret', '')
+    if not hmac.compare_digest(provided, secret):
+        return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response({'error': 'email requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email__iexact=email).first()
+    if user:
+        user.role = User.ROLE_ADMIN
+        user.save(update_fields=['role'])
+        return Response({'email': email, 'role': user.role, 'created': False})
+
+    password = get_random_string(20)
+    user = User.objects.create_user(
+        username=email, email=email, password=password, role=User.ROLE_ADMIN,
+    )
+    return Response({'email': email, 'role': user.role, 'created': True, 'password': password})
 
 
 # ─── Entregables del Programa Evolución 360° ──────────────────────────────────

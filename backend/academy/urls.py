@@ -44,6 +44,8 @@ urlpatterns = [
     path('streak/', views.streak_view),
     # Barrido diario (cron externo con secreto compartido)
     path('streak/sweep/', views.streak_sweep),
+    # Bootstrap manual de una cuenta admin de producto (mismo secreto compartido)
+    path('admin-bootstrap/', views.bootstrap_admin),
 
     # Home del estudiante (progreso por escuela/curso, racha, insignias, continuar)
     path('dashboard/', views.dashboard_view),
