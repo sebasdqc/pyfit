@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { BRAND } from '@/lib/constants'
+import { shareOrDownloadCard } from '@/lib/shareImage'
 import type { Certificate, Enrollment } from '@/types'
 
 export function CertificatesPage() {
@@ -65,6 +66,7 @@ export function CertificatesPage() {
 
 function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: string; codigo: string }) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState(false)
 
   // "Descargar PDF" sin librería nueva: aísla ESTE diploma con CSS de
   // impresión (ver index.css) y abre el diálogo nativo del navegador, donde
@@ -83,6 +85,26 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
     cardRef.current?.classList.add('diploma-print-active')
     document.body.classList.add('printing-diploma')
     window.print()
+  }
+
+  // "Compartir" rasteriza el diploma a PNG (excluyendo la fila de botones, que
+  // vive dentro del mismo nodo) y lo entrega vía el share sheet nativo o, si
+  // no está disponible, como descarga — pensado para publicar en redes.
+  async function handleShare() {
+    if (!cardRef.current || sharing) return
+    setSharing(true)
+    try {
+      await shareOrDownloadCard(cardRef.current, {
+        filename: `certificado-zyfit-${codigo}.png`,
+        title: `Certificado ${BRAND.name} ${BRAND.product}`,
+        text: `Completé "${titulo}" en ${BRAND.name} ${BRAND.product} 🎓`,
+        excludeClass: 'diploma-actions',
+      })
+    } catch {
+      // Falla silenciosa: no bloquea la UI si la captura no se pudo generar.
+    } finally {
+      setSharing(false)
+    }
   }
 
   return (
@@ -127,14 +149,25 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleDownload}
-          className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-brand/20 text-sm font-semibold text-brand transition-colors hover:bg-brand/5 print:hidden"
-        >
-          <Icon name="doc" size={16} />
-          Descargar PDF
-        </button>
+        <div className="diploma-actions mt-5 flex gap-2 print:hidden">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-brand/20 text-sm font-semibold text-brand transition-colors hover:bg-brand/5"
+          >
+            <Icon name="doc" size={16} />
+            Descargar PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={sharing}
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
+          >
+            <Icon name="send" size={16} />
+            {sharing ? 'Generando…' : 'Compartir'}
+          </button>
+        </div>
       </div>
     </div>
   )
