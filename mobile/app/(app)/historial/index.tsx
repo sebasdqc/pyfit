@@ -1225,9 +1225,12 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const fetchAll = useCallback(async () => {
     try {
       setError(null)
+      // page_size grande y explícito: ambos endpoints están paginados en el
+      // backend (acota la query en servidor) pero el historial necesita el
+      // registro completo en una sola llamada, no una página de a poco.
       const [gymData, runData] = await Promise.all([
-        apiGet('/api/sessions/'),
-        apiGet('/api/runs/'),
+        apiGet('/api/sessions/?page_size=1000'),
+        apiGet('/api/runs/?page_size=1000'),
       ])
       setGymSessions(Array.isArray(gymData) ? gymData : (gymData.results ?? []))
       const rawRuns: any[] = Array.isArray(runData) ? runData : (runData.results ?? [])

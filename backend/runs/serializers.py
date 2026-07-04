@@ -262,7 +262,14 @@ class RunSessionDetailSerializer(serializers.ModelSerializer):
 
     def get_points(self, obj):
         """Devuelve la traza diezmada (máx. MAX_DETAIL_POINTS). Con ?full=1
-        se devuelve completa (útil para exportar GPX o recalcular)."""
+        se devuelve completa (útil para exportar GPX o recalcular).
+
+        Si la traza cruda ya fue purgada por retención (puntos_purgados=True,
+        ver runs.tasks.purge_old_gps_points), no quedan RunPoint en DB: se sirve
+        la snapshot diezmada guardada en gps_resumen (?full=1 no aplica — la
+        traza completa ya no existe)."""
+        if obj.puntos_purgados:
+            return obj.gps_resumen or []
         points = list(obj.points.all())  # ordenados por timestamp (Meta)
         request = self.context.get('request')
         full = request and request.query_params.get('full') in ('1', 'true', 'True')

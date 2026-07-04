@@ -6,11 +6,21 @@ from django.db import transaction
 from django.db.models import Avg, Count, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from pyfit.throttles import SessionResumenRateThrottle
 from rest_framework.response import Response
 from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle, SessionPhoto
 from .photo_service import create_session_photo, PhotoError
+
+
+class SessionListPagination(PageNumberPagination):
+    # Mismo patrón que RunSessionPagination (runs/views.py): historial pide
+    # explícitamente un page_size grande para traer "todo" en una sola llamada,
+    # pero la query queda acotada en vez de ser un SELECT * sin límite.
+    page_size = 100
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 def _get_local_date(request) -> date:
@@ -40,14 +50,18 @@ def session_list(request):
     # ejercicio en el listado/historial sin disparar N+1.
     sessions = request.user.sessions.select_related('feedback', 'checkin').prefetch_related('exercises').all()
     # Filtro opcional por fecha: el dashboard solo necesita una ventana reciente
-    # para el calendario (acota el payload). El historial los pide todos sin param.
+    # para el calendario (acota el payload). El historial los pide todos sin param
+    # (pasando un page_size grande, ver SessionListPagination).
     desde = request.query_params.get('desde')
     if desde:
         try:
             sessions = sessions.filter(fecha__gte=date.fromisoformat(desde))
         except ValueError:
             pass
-    return Response(SessionListSerializer(sessions, many=True).data)
+    paginator = SessionListPagination()
+    page = paginator.paginate_queryset(sessions, request)
+    serializer = SessionListSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(['GET'])

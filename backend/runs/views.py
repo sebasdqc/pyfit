@@ -23,7 +23,9 @@ from .serializers import (
 class RunSessionPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    # 1000: el historial pide explícitamente un page_size grande para traer todo
+    # el registro de carreras en una sola llamada (ver mobile historial/index.tsx).
+    max_page_size = 1000
 
 
 # Tope de puntos GPS que acepta un solo POST. El móvil manda batches pequeños

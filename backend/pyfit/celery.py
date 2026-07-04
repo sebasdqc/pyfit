@@ -30,5 +30,10 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=3, minute=30),  # 3:30 AM UTC todos los días
         'options':  {'expires': 3600},
     },
+    'purge-old-gps-points-weekly': {
+        'task':     'runs.tasks.purge_old_gps_points',
+        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # domingo 4:00 AM UTC
+        'options':  {'expires': 3600},
+    },
 }
 app.conf.timezone = 'UTC'
