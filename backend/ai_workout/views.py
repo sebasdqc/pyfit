@@ -116,6 +116,17 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None, return_usage=False):
 
 # ─── Fatiga & RPE helpers ─────────────────────────────────────────────────────
 
+def fatiga_from_count(count: int) -> str:
+    """Bucket puro de fatiga a partir del nº de sesiones entrenadas en 72h.
+    Extraído de calcular_fatiga para poder reutilizarlo sin QuerySet/BD (lo usa
+    también el simulador de planificación de Zyfit Academy)."""
+    if count >= 3:
+        return 'alto'
+    if count == 2:
+        return 'medio'
+    return 'bajo'
+
+
 def calcular_fatiga(sesiones_qs):
     from django.utils import timezone
     from django.db.models import Q
@@ -127,12 +138,7 @@ def calcular_fatiga(sesiones_qs):
     ultimas = sesiones_qs.filter(created_at__gte=hace_72h).filter(
         Q(inicio_real__isnull=False) | Q(feedback__isnull=False)
     )
-    count = ultimas.count()
-    if count >= 3:
-        return 'alto'
-    if count == 2:
-        return 'medio'
-    return 'bajo'
+    return fatiga_from_count(ultimas.count())
 
 
 def calcular_rpe_target(fatiga, estado_animo, hrv):

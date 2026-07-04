@@ -21,6 +21,9 @@ import { InstructorPage } from '@/pages/InstructorPage'
 import { CourseContentPage } from '@/pages/CourseContentPage'
 import { SubmissionsPage } from '@/pages/SubmissionsPage'
 import { CertificatesPage } from '@/pages/CertificatesPage'
+import { SimuladorIndexPage } from '@/pages/SimuladorIndexPage'
+import { SimuladorCargaPage } from '@/pages/SimuladorCargaPage'
+import { SimuladorSesionPage } from '@/pages/SimuladorSesionPage'
 import { CommunityPage } from '@/pages/CommunityPage'
 import { QuestionDetailPage } from '@/pages/QuestionDetailPage'
 import { ProfilePage } from '@/pages/ProfilePage'
@@ -54,6 +57,9 @@ export const router = createBrowserRouter([
           { path: 'cursos/:courseId', element: <CourseDetailPage /> },
           { path: 'aprendizaje', element: <MyLearningPage /> },
           { path: 'certificados', element: <CertificatesPage /> },
+          { path: 'simulador', element: <SimuladorIndexPage /> },
+          { path: 'simulador/carga', element: <SimuladorCargaPage /> },
+          { path: 'simulador/sesion', element: <SimuladorSesionPage /> },
           { path: 'comunidad', element: <CommunityPage /> },
           { path: 'comunidad/:postId', element: <QuestionDetailPage /> },
           { path: 'instructor', element: <InstructorPage /> },

@@ -6,6 +6,7 @@ import type {
   AcademyBadgeCatalog, AcademySubscriptionStatus, Course, CourseDetail,
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
+  SimuladorCargaResponse, SimuladorSesionCaso, SimuladorSesionResultado,
 } from '@/types'
 
 // ── Racha de estudio ──────────────────────────────────────────────────────────
@@ -320,4 +321,36 @@ export async function getPublicLesson(lessonId: number): Promise<Lesson> {
 
 export async function completePublicLesson(lessonId: number): Promise<void> {
   await api.post(`/academy/anon/lecciones/${lessonId}/completar/`)
+}
+
+// ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
+// Mismo motor que Zyfit Performance (performance.calculators); el cálculo
+// siempre ocurre en el servidor, este cliente solo envía los inputs crudos.
+
+export async function computeSimuladorCarga<T>(
+  testSlug: string,
+  inputs: Record<string, unknown>,
+): Promise<SimuladorCargaResponse<T>> {
+  const res = await api.post<SimuladorCargaResponse<T>>('/academy/simulador/carga/compute/', {
+    test_slug: testSlug,
+    inputs,
+  })
+  return res.data
+}
+
+// ── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──
+
+export async function listSimuladorSesionCasos(): Promise<SimuladorSesionCaso[]> {
+  const res = await api.get<SimuladorSesionCaso[]>('/academy/simulador/sesion/casos/')
+  return res.data
+}
+
+export async function evaluarSimuladorSesion(payload: {
+  caso_id: string
+  fatiga: string
+  rpe_target: number
+  ejercicios_seleccionados: string[]
+}): Promise<SimuladorSesionResultado> {
+  const res = await api.post<SimuladorSesionResultado>('/academy/simulador/sesion/evaluar/', payload)
+  return res.data
 }

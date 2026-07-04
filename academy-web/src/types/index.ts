@@ -397,6 +397,82 @@ export interface NuevaInsigniaOtorgada {
   icono: string
 }
 
+// ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
+// Espeja performance.calculators: MISMO motor que el panel Zyfit Performance,
+// solo la familia "carga" (sRPE → carga semanal → ACWR).
+
+export interface CargaSemanalResultado {
+  n_dias: number
+  carga_semanal_ua: number
+  carga_media_diaria_ua: number
+  desviacion_ua: number
+  monotonia: number | null
+  strain_ua: number | null
+  monotonia_alerta: boolean
+  nota?: string
+}
+
+export interface ACWRResultado {
+  n_dias: number
+  carga_aguda_ua: number
+  carga_cronica_ua: number
+  acwr_ra: number | null
+  acwr_ewma: number | null
+  zona: string
+  riesgo_alerta: boolean
+  nota?: string
+}
+
+export interface SimuladorCargaResponse<T> {
+  test_slug: string
+  nombre: string
+  familia: string
+  resultados: T
+}
+
+// ── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──
+// Espeja ai_workout.views (calcular_fatiga/calcular_rpe_target) — ver
+// academy.simulador_sesion. El número correcto sale siempre de esas funciones.
+
+export interface SimuladorSesionEjercicio {
+  nombre: string
+  patron: string
+  equipo: string[]
+}
+
+export interface SimuladorSesionCaso {
+  id: string
+  titulo: string
+  atleta: string
+  narrativa: string
+  sesiones_72h: number
+  estado_animo: number
+  hrv: number | null
+  dolor_hoy: string
+  ejercicios_evitar: string[]
+  implementos_disponibles: string[]
+  ejercicios_candidatos: SimuladorSesionEjercicio[]
+}
+
+export interface SimuladorSesionEjercicioFeedback {
+  nombre: string
+  elegido: boolean
+  valido: boolean
+  acierto: boolean
+  motivo_invalido: string | null
+}
+
+export interface SimuladorSesionResultado {
+  fatiga_correcta: 'bajo' | 'medio' | 'alto'
+  fatiga_ok: boolean
+  rpe_correcto: number
+  rpe_ok: boolean
+  ejercicios: SimuladorSesionEjercicioFeedback[]
+  aciertos_ejercicios: number
+  total_ejercicios: number
+  puntaje: number
+}
+
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
 // Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
 // ningún campo de aquí participa en progreso/certificación/racha/badges core.

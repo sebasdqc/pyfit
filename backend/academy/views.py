@@ -689,6 +689,84 @@ def badges_view(request):
     return Response(badges_service.catalog_state(request.user))
 
 
+# ─── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
+# Expone SOLO la familia "carga" (sRPE → carga semanal/monotonía/strain → ACWR)
+# del motor de calculadoras de Zyfit Performance (performance.calculators) como
+# herramienta pedagógica: mismo cálculo que corre en el panel B2B, sin exigir
+# cuenta de Performance (`performance_acceso`) — cualquier estudiante autenticado
+# de la Academia lo usa con datos de un caso ficticio. No expone el resto del
+# catálogo (físico/técnico/táctico), que es contenido propietario de Performance.
+
+SIMULADOR_CARGA_SLUGS = {'srpe', 'carga-semanal', 'acwr'}
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def simulador_carga_catalog(request):
+    """Esquema de inputs de las calculadoras de carga disponibles en el simulador."""
+    from performance.calculators import catalog as performance_catalog
+
+    items = [c for c in performance_catalog() if c['slug'] in SIMULADOR_CARGA_SLUGS]
+    return Response(items)
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def simulador_carga_compute(request):
+    """Calcula un test de la familia 'carga' sin persistir (previsualización en vivo).
+
+    Body: `{test_slug, inputs}`. Reutiliza el MISMO motor que Zyfit Performance
+    (single source of truth de las fórmulas); restringido a SIMULADOR_CARGA_SLUGS.
+    """
+    from performance.calculators import CalculatorError, get_calculator
+
+    slug = (request.data.get('test_slug') or '').strip()
+    if slug not in SIMULADOR_CARGA_SLUGS:
+        return Response(
+            {'errors': {'test_slug': 'Calculadora no disponible en este simulador.'}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        calc = get_calculator(slug)
+        resultados = calc.run(request.data.get('inputs') or {})
+    except CalculatorError as e:
+        return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'test_slug': calc.slug,
+        'nombre': calc.nombre,
+        'familia': calc.familia,
+        'resultados': resultados,
+    })
+
+
+# ─── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──
+# Práctica pedagógica sobre calcular_fatiga/calcular_rpe_target de ai_workout —
+# ver academy.simulador_sesion (el número correcto SIEMPRE sale de esas
+# funciones reales, nunca de una reimplementación propia de la Academia).
+
+@api_view(['GET'])
+@permission_classes([IsAcademyUser])
+def simulador_sesion_casos(request):
+    """Catálogo de casos del simulador, sin las respuestas correctas."""
+    from . import simulador_sesion
+    return Response(simulador_sesion.listar_casos())
+
+
+@api_view(['POST'])
+@permission_classes([IsAcademyUser])
+def simulador_sesion_evaluar(request):
+    """Corrige la propuesta del estudiante para un caso. Body:
+    `{caso_id, fatiga, rpe_target, ejercicios_seleccionados}`."""
+    from . import simulador_sesion
+
+    caso_id = (request.data.get('caso_id') or '').strip()
+    try:
+        resultado = simulador_sesion.evaluar(caso_id, request.data)
+    except simulador_sesion.SimuladorSesionError as e:
+        return Response({'errors': e.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(resultado)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def streak_sweep(request):

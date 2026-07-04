@@ -51,6 +51,15 @@ urlpatterns = [
     # Insignias de identidad (escuela completada, racha, inicio de recorrido)
     path('badges/', views.badges_view),
 
+    # Simulador de carga interna (sRPE → ACWR) — mismo motor que Zyfit Performance,
+    # expuesto para práctica pedagógica de la escuela Analítica y Rendimiento.
+    path('simulador/carga/catalog/', views.simulador_carga_catalog),
+    path('simulador/carga/compute/', views.simulador_carga_compute),
+
+    # Simulador de planificación de sesión — escuela Ciencia del Entrenamiento.
+    path('simulador/sesion/casos/', views.simulador_sesion_casos),
+    path('simulador/sesion/evaluar/', views.simulador_sesion_evaluar),
+
     # Aprendizaje (estudiante)
     path('enrollments/', views.my_enrollments),
     path('enrollments/<int:enrollment_id>/', views.enrollment_detail),
