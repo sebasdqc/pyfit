@@ -17,6 +17,7 @@ import { QuizLesson } from '@/components/player/QuizLesson'
 import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { TutorChat } from '@/components/tutor/TutorChat'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
+import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useStreak } from '@/lib/useStreak'
 import { useTheme } from '@/theme/useTheme'
@@ -335,7 +336,10 @@ export function LessonPlayerPage() {
           <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8">
             {/* Banner de curso completado */}
             {estado === 'completada' && (
-              <CompletionBanner certCode={certCode} onVerCertificados={() => navigate('/certificados')} />
+              <>
+                <CompletionBanner certCode={certCode} onVerCertificados={() => navigate('/certificados')} />
+                <PromoZyfitApp variant="inline" />
+              </>
             )}
 
             {current && (

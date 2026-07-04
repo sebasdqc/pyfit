@@ -15,6 +15,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { StreakCard } from '@/components/StreakCard'
 import { SchoolProgressRing } from '@/components/dashboard/SchoolProgressRing'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
+import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { schoolTheme } from '@/lib/schoolTheme'
 import type {
   Course, CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
@@ -122,6 +123,8 @@ export function HomePage() {
           </div>
 
           {objetivo && <ContinueHero target={objetivo} isResume={!!data.continuar} />}
+
+          <PromoZyfitApp />
 
           <div className="flex flex-col gap-4">
             {data.escuelas.map((escuela) => (
