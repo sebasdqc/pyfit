@@ -386,38 +386,41 @@ export function LessonPlayerPage() {
                   </p>
                 )}
 
-                {/* Pie de navegación */}
-                <div className="mt-10 flex flex-col gap-3 border-t border-surface-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    onClick={() => prev && goTo(prev.lesson.id)}
-                    disabled={!prev}
-                    className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface disabled:opacity-40"
-                  >
-                    <Icon name="chevronLeft" size={16} /> Anterior
-                  </button>
-
-                  <div className="flex items-center gap-3">
-                    {/* Video/texto/en vivo/práctica: marcar como completada. El quiz se
-                        completa al aprobar y el entregable cuando el instructor aprueba. */}
-                    {current.lesson.tipo !== 'quiz' && current.lesson.tipo !== 'entregable' &&
-                      !isDone && !current.lesson.bloqueado && (
-                      <button
-                        onClick={markComplete}
-                        disabled={marking}
-                        className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ok px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
-                      >
-                        <Icon name="check" size={16} /> {marking ? 'Guardando…' : 'Marcar como completada'}
-                      </button>
-                    )}
+                {/* Pie de navegación. Se oculta en quizzes: los botones Anterior/Siguiente
+                    permitían fugarse de la evaluación sin aprobarla. */}
+                {current.lesson.tipo !== 'quiz' && (
+                  <div className="mt-10 flex flex-col gap-3 border-t border-surface-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                     <button
-                      onClick={() => next && goTo(next.lesson.id)}
-                      disabled={!next}
-                      className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-40 sm:flex-none"
+                      onClick={() => prev && goTo(prev.lesson.id)}
+                      disabled={!prev}
+                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft transition-colors hover:bg-surface disabled:opacity-40"
                     >
-                      Siguiente <Icon name="chevronRight" size={16} />
+                      <Icon name="chevronLeft" size={16} /> Anterior
                     </button>
+
+                    <div className="flex items-center gap-3">
+                      {/* Video/texto/en vivo/práctica: marcar como completada. El entregable
+                          se completa cuando el instructor aprueba. */}
+                      {current.lesson.tipo !== 'entregable' &&
+                        !isDone && !current.lesson.bloqueado && (
+                        <button
+                          onClick={markComplete}
+                          disabled={marking}
+                          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ok px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
+                        >
+                          <Icon name="check" size={16} /> {marking ? 'Guardando…' : 'Marcar como completada'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => next && goTo(next.lesson.id)}
+                        disabled={!next}
+                        className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-40 sm:flex-none"
+                      >
+                        Siguiente <Icon name="chevronRight" size={16} />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>
