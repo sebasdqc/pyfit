@@ -517,18 +517,25 @@ class CalendarEvent(models.Model):
 
 class SessionPhoto(models.Model):
     """Foto adjunta a UNA sesión (de fuerza `Session` O de running `runs.RunSession`).
-    La imagen se guarda como data URI base64 directamente en la BD (mismo patrón que
-    `users.User.avatar`): evita depender de object storage de pago (DO Spaces) y de
-    Pillow. `user` se guarda para autorizar/listar sin joins."""
+
+    Si USE_SPACES está activo (ver pyfit.media_storage), el archivo se sube a DO
+    Spaces y `image_key` guarda su key (`image_data` queda vacío). Si no, se
+    preserva el comportamiento histórico: la imagen como data URI base64
+    directamente en la BD (evita depender de object storage de pago). `user` se
+    guarda para autorizar/listar sin joins."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                              related_name='session_photos')
     session = models.ForeignKey('workouts.Session', on_delete=models.CASCADE,
                                 null=True, blank=True, related_name='photos')
     run_session = models.ForeignKey('runs.RunSession', on_delete=models.CASCADE,
                                     null=True, blank=True, related_name='photos')
-    # data URI base64 (`data:image/jpeg;base64,...`). El móvil comprime antes de subir;
-    # la validación de mime/tamaño/SVG se hace en photo_service (Pillow opcional).
-    image_data = models.TextField()
+    # data URI base64 (`data:image/jpeg;base64,...`), solo cuando NO se usa Spaces.
+    # El móvil comprime antes de subir; la validación de mime/tamaño/SVG se hace
+    # en photo_service (Pillow opcional).
+    image_data = models.TextField(blank=True, default='')
+    # Key del objeto en DO Spaces cuando USE_SPACES está activo. Vacío = la
+    # imagen vive en `image_data` (legacy o Spaces sin configurar).
+    image_key = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

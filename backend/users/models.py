@@ -250,7 +250,11 @@ class Profile(models.Model):
     puntos_totales = models.IntegerField(default=0)
     logros = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil
+    avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil (legacy)
+    # Key del objeto en DO Spaces cuando USE_SPACES está activo (ver
+    # pyfit.media_storage). Nuevo avatar sube acá y `avatar` queda vacío; las
+    # filas viejas (subidas antes de activar Spaces) siguen usando `avatar`.
+    avatar_key = models.CharField(max_length=255, blank=True, default='')
     # Código de referido único por usuario. Se autogenera en save() si falta y se
     # rellena para las cuentas existentes vía migración de datos, de modo que
     # TODOS los perfiles tengan siempre uno. null permitido solo para no romper

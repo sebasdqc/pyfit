@@ -60,6 +60,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     edad = serializers.IntegerField(read_only=True)
     nivel_label = serializers.CharField(read_only=True)
     locations = UserLocationSerializer(source='user.locations', many=True, read_only=True)
+    # URL de Spaces si USE_SPACES subió el avatar ahí (ver users.views.upload_avatar),
+    # o el data URI base64 legacy — el cliente los usa igual como source.uri.
+    # Se sube exclusivamente vía POST /api/profile/avatar/, nunca por este PUT.
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -90,3 +94,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'goal_changed_at', 'previous_goal',
             'created_at', 'locations', 'codigo_referido',
         ]
+
+    def get_avatar(self, obj):
+        from pyfit.media_storage import resolve_image_url
+        return resolve_image_url(legacy_data_uri=obj.avatar, storage_key=obj.avatar_key) or None

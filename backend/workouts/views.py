@@ -105,7 +105,10 @@ def session_photo_delete(request, pk):
         photo = SessionPhoto.objects.get(pk=pk, user=request.user)
     except SessionPhoto.DoesNotExist:
         return Response({'error': 'Foto no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    photo.delete()   # la imagen es texto en la propia fila; no hay archivo aparte
+    if photo.image_key:
+        from pyfit.media_storage import delete_image
+        delete_image(photo.image_key)  # borra el objeto en Spaces si USE_SPACES lo subió ahí
+    photo.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1546,11 +1549,12 @@ def stats_dashboard(request):
     fatiga_pct = min(100, ultimas_72 * 33)
 
     try:
+        from pyfit.media_storage import resolve_image_url
         profile = request.user.profile
         nombre = profile.nombre
         sexo = profile.sexo or ''
         dias_objetivo = profile.dias_semana or 3
-        avatar = profile.avatar or ''
+        avatar = resolve_image_url(legacy_data_uri=profile.avatar, storage_key=profile.avatar_key)
     except Exception:
         nombre = request.user.email.split('@')[0]
         sexo = ''

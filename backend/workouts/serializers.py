@@ -113,8 +113,9 @@ class SessionListSerializer(serializers.ModelSerializer):
 
 
 class SessionPhotoSerializer(serializers.ModelSerializer):
-    """Foto de sesión (gym o running). `url` es el data URI base64 guardado en la BD
-    (el cliente lo usa directamente como `source.uri`)."""
+    """Foto de sesión (gym o running). `url` es la URL de Spaces (si USE_SPACES
+    subió el archivo, ver photo_service) o el data URI base64 legacy — el
+    cliente la usa igual como `source.uri` en ambos casos."""
     url = serializers.SerializerMethodField()
 
     class Meta:
@@ -122,7 +123,8 @@ class SessionPhotoSerializer(serializers.ModelSerializer):
         fields = ['id', 'url', 'created_at']
 
     def get_url(self, obj):
-        return obj.image_data or None
+        from pyfit.media_storage import resolve_image_url
+        return resolve_image_url(legacy_data_uri=obj.image_data, storage_key=obj.image_key) or None
 
 
 class SessionDetailSerializer(serializers.ModelSerializer):
