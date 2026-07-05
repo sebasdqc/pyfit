@@ -1,6 +1,43 @@
 name: pyfit-backend
 region: nyc
 
+# ─── App-Level Environment Variables ──────────────────────────────────────
+# Definidas UNA SOLA VEZ acá, disponibles automáticamente en todos los
+# componentes (services, workers, jobs) sin repetirlas. Un componente puede
+# pisar cualquiera de estas con su propia entrada en su `envs:` si necesitara
+# un valor distinto (no es el caso acá).
+envs:
+  - key: SECRET_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  - key: DEBUG
+    scope: RUN_AND_BUILD_TIME
+    value: "False"
+  - key: DATABASE_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${db.DATABASE_URL}
+  - key: GROQ_API_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  - key: ALLOWED_HOSTS
+    scope: RUN_AND_BUILD_TIME
+    value: ".ondigitalocean.app,localhost"
+  # Obligatoria: cifra datos médicos (Profile.lesiones/condiciones_medicas/
+  # notas_medicas/motivo_limitacion, DailyCheckin.dolor_hoy,
+  # UserInjury.descripcion, Session.prompt_usado). Sin ella Django NO
+  # arranca (falla con ImproperlyConfigured) — ni el servicio api, ni el
+  # worker de Celery, ni el job de migrate. Generar con:
+  #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  - key: FIELD_ENCRYPTION_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  # Broker de Celery — necesaria para que POST /api/sessions/generate/
+  # funcione (encola ai_workout.tasks.generate_session_task; sin Redis
+  # alcanzable, el POST falla con 500 al intentar conectarse al broker).
+  - key: REDIS_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${redis.DATABASE_URL}
+
 services:
   - name: api
     source_dir: /backend
@@ -15,21 +52,7 @@ services:
       timeout_seconds: 10
       failure_threshold: 3
     envs:
-      - key: SECRET_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: DEBUG
-        scope: RUN_AND_BUILD_TIME
-        value: "False"
-      - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.DATABASE_URL}
-      - key: GROQ_API_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: ALLOWED_HOSTS
-        scope: RUN_AND_BUILD_TIME
-        value: ".ondigitalocean.app,localhost"
+      # Específicas de este componente (nada de lo de arriba se repite acá).
       - key: CORS_ALLOWED_ORIGINS
         scope: RUN_AND_BUILD_TIME
         value: "https://pyfit.app,https://panel.pyfit.app,http://localhost:3000,http://localhost:8081,http://localhost:5180"
@@ -53,20 +76,6 @@ services:
       - key: FRONTEND_URL
         scope: RUN_AND_BUILD_TIME
         value: "https://pyfit.app"
-      # Obligatoria: cifra datos médicos (Profile.lesiones/condiciones_medicas/
-      # notas_medicas/motivo_limitacion, DailyCheckin.dolor_hoy,
-      # UserInjury.descripcion, Session.prompt_usado). Sin ella Django NO
-      # arranca (falla con ImproperlyConfigured). Generar con:
-      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-      - key: FIELD_ENCRYPTION_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      # Broker de Celery — necesaria para que POST /api/sessions/generate/
-      # funcione (encola ai_workout.tasks.generate_session_task; sin Redis
-      # alcanzable, el POST falla con 500 al intentar conectarse al broker).
-      - key: REDIS_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${redis.DATABASE_URL}
       # Opcionales — activan DO Spaces para avatares y fotos de sesión (ver
       # pyfit/media_storage.py). Sin configurar, todo sigue como hasta ahora
       # (imágenes en base64 en la propia fila).
@@ -86,7 +95,9 @@ services:
 # Worker de Celery (tasks async + beat embebido con -B: sync Garmin diario,
 # purga de refresh tokens, retención de trazas GPS, generación de sesiones
 # con IA). Un solo proceso combinado — el volumen actual no justifica separar
-# worker y beat en dos componentes.
+# worker y beat en dos componentes. No necesita envs propias: todo lo que usa
+# (SECRET_KEY, DATABASE_URL, GROQ_API_KEY, FIELD_ENCRYPTION_KEY, REDIS_URL)
+# ya le llega de las App-Level Environment Variables de arriba.
 workers:
   - name: celery-worker
     source_dir: /backend
@@ -94,28 +105,6 @@ workers:
     instance_count: 1
     instance_size_slug: basic-xxs
     run_command: celery -A pyfit worker -B --loglevel=info --concurrency=2
-    envs:
-      - key: SECRET_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: DEBUG
-        scope: RUN_AND_BUILD_TIME
-        value: "False"
-      - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.DATABASE_URL}
-      - key: GROQ_API_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: ALLOWED_HOSTS
-        scope: RUN_AND_BUILD_TIME
-        value: ".ondigitalocean.app,localhost"
-      - key: FIELD_ENCRYPTION_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: REDIS_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${redis.DATABASE_URL}
 
 jobs:
   - name: migrate
@@ -125,27 +114,9 @@ jobs:
     run_command: python manage.py migrate --noinput
     instance_count: 1
     instance_size_slug: basic-xxs
-    envs:
-      - key: SECRET_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.DATABASE_URL}
-      - key: DEBUG
-        scope: RUN_AND_BUILD_TIME
-        value: "False"
-      - key: ALLOWED_HOSTS
-        scope: RUN_TIME
-        value: ".ondigitalocean.app,localhost"
-      # Sin esto el job de migrate CRASHEA (DEBUG=False exige la key —
-      # ver settings.py) y el deploy entero se corta en el paso PRE_DEPLOY.
-      # Además es necesaria acá para que las migraciones de datos que
-      # re-encriptan filas existentes (users/checkins/workouts) cifren de
-      # verdad en vez de degradar a texto plano en silencio.
-      - key: FIELD_ENCRYPTION_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
+    # Tampoco necesita envs propias — SECRET_KEY/DATABASE_URL/DEBUG/
+    # ALLOWED_HOSTS/FIELD_ENCRYPTION_KEY ya le llegan de las App-Level
+    # Environment Variables de arriba (antes estaban repetidas acá a mano).
 
 databases:
   - name: db
