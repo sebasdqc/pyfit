@@ -16,10 +16,11 @@ import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales, CONTACT_URL } from '../../lib/coachTheme'
 import { fetchCoachMe, fetchCoachBilling, type CoachBilling } from '../../lib/coachApi'
 import { getCoachUser, clearCoachSession } from '../../lib/storage'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
-// Estado de la suscripción → etiqueta visible.
-const ESTADO_LABEL: Record<string, string> = {
-  activa: 'Activo', pausada: 'Pausado', vencida: 'Vencido',
+// Estado de la suscripción → clave de traducción visible.
+const ESTADO_LABEL_KEY: Record<string, ScalarKey> = {
+  activa: 'coach_estado_activo', pausada: 'coach_estado_pausado', vencida: 'coach_billing_vencido',
 }
 
 // '2026-07-15' → '15 jul 2026'.
@@ -146,6 +147,7 @@ function Row({
 
 export default function CoachAjustes() {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const [user, setUser] = useState<any>(null)
   const [codigo, setCodigo] = useState<string>('')
   const [totalAtletas, setTotalAtletas] = useState(0)
@@ -159,7 +161,7 @@ export default function CoachAjustes() {
     fetchCoachBilling().then(setBilling).catch(() => {})
   }, [])
 
-  const nombre = user?.nombre || 'Coach'
+  const nombre = user?.nombre || t('coach_fallback_coach')
   // Conteo real de atletas: billing manda (incluye slots_usados); fallback a /me.
   const activos = billing?.slots_usados ?? totalAtletas
   const planNombre = billing?.plan || 'Coach Pro'
@@ -168,7 +170,7 @@ export default function CoachAjustes() {
   const proRestantes = (billing?.atletas_pro?.length ?? 0) - proVisibles.length
 
   function proximamente(titulo: string) {
-    Alert.alert(titulo, 'Esta sección estará disponible próximamente.')
+    Alert.alert(titulo, t('coach_seccion_proximamente_msg'))
   }
 
   // Comparte el código de coach por la hoja nativa para que el atleta se vincule.
@@ -178,13 +180,13 @@ export default function CoachAjustes() {
       try { const me = await fetchCoachMe(); code = me.codigo_coach; setCodigo(code) } catch {}
     }
     if (!code) {
-      Alert.alert('Invitar atleta', 'No se pudo obtener tu código. Intenta de nuevo.')
+      Alert.alert(t('coach_row_invitar_atleta'), t('coach_no_pudo_obtener_codigo'))
       return
     }
     const message =
-      `¡Entrena conmigo en Zyfit! 💪\n\n` +
-      `Vincúlate a mi cartera con este código: ${code}\n\n` +
-      `En la app: Perfil → Registro con Coach → ingresa el código.`
+      `${t('coach_invite_msg_line1')}\n\n` +
+      `${t('coach_invite_msg_line2_prefix')} ${code}\n\n` +
+      `${t('coach_invite_msg_line3')}`
     try { await Share.share({ message }) } catch {}
   }
 
@@ -199,51 +201,51 @@ export default function CoachAjustes() {
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Ajustes</Text>
+        <Text style={styles.title}>{t('coach_tab_ajustes')}</Text>
 
         {/* Card de perfil del coach */}
-        <TouchableOpacity style={styles.profileCard} activeOpacity={0.8} onPress={() => proximamente('Editar perfil')}>
+        <TouchableOpacity style={styles.profileCard} activeOpacity={0.8} onPress={() => proximamente(t('coach_editar_perfil_title'))}>
           <View style={styles.profileAvatar}>
             <Text style={styles.profileAvatarText}>{iniciales(nombre)}</Text>
           </View>
           <View style={styles.profileMid}>
             <Text style={styles.profileName} numberOfLines={1}>{nombre}</Text>
-            <Text style={styles.profileRole}>Entrenador personal</Text>
-            <Text style={styles.profileSub} numberOfLines={1}>{planNombre} · {activos} {activos === 1 ? 'atleta activo' : 'atletas activos'}</Text>
+            <Text style={styles.profileRole}>{t('coach_profile_role')}</Text>
+            <Text style={styles.profileSub} numberOfLines={1}>{planNombre} · {activos} {activos === 1 ? t('coach_atleta_activo_singular') : t('coach_atletas_activos_plural')}</Text>
           </View>
           <Chevron />
         </TouchableOpacity>
 
         {/* Plan y facturación */}
-        <SectionLabel>Plan y facturación</SectionLabel>
+        <SectionLabel>{t('coach_plan_billing_title')}</SectionLabel>
         <View style={styles.card}>
           <View style={styles.planTop}>
             <Text style={styles.planNombre}>{planNombre}</Text>
             <View style={styles.planBadge}>
-              <Text style={styles.planBadgeText}>{ESTADO_LABEL[billing?.estado ?? 'activa'] || 'Activo'}</Text>
+              <Text style={styles.planBadgeText}>{t(ESTADO_LABEL_KEY[billing?.estado ?? 'activa'] || 'coach_estado_activo')}</Text>
             </View>
           </View>
 
           <View style={styles.planRow}>
-            <Text style={styles.planLabel}>Próxima fecha de corte</Text>
+            <Text style={styles.planLabel}>{t('coach_proxima_fecha_corte')}</Text>
             <Text style={styles.planValue}>{fmtFecha(billing?.fecha_corte ?? null)}</Text>
           </View>
           <View style={styles.planRow}>
-            <Text style={styles.planLabel}>Slots incluidos</Text>
-            <Text style={styles.planValue}>{slotsIncluidos} atletas</Text>
+            <Text style={styles.planLabel}>{t('coach_slots_incluidos')}</Text>
+            <Text style={styles.planValue}>{slotsIncluidos} {t('coach_slots_atletas_suffix')}</Text>
           </View>
           <View style={styles.planRow}>
-            <Text style={styles.planLabel}>Slots usados</Text>
+            <Text style={styles.planLabel}>{t('coach_slots_usados')}</Text>
             <Text style={[styles.planValue, activos > slotsIncluidos && { color: P.orange }]}>
               {activos} / {slotsIncluidos}
-              {activos > slotsIncluidos ? '  ⚠️ Límite superado' : ''}
+              {activos > slotsIncluidos ? t('coach_limite_superado') : ''}
             </Text>
           </View>
 
           {proVisibles.length > 0 && (
             <>
               <View style={styles.planDivider} />
-              <Text style={styles.proLabel}>Atletas con Pro activo</Text>
+              <Text style={styles.proLabel}>{t('coach_atletas_pro_activo')}</Text>
               <View style={styles.avatarStack}>
                 {proVisibles.map((a, i) => (
                   <View key={a.id} style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}>
@@ -256,26 +258,26 @@ export default function CoachAjustes() {
                   </View>
                 )}
               </View>
-              <Text style={styles.proNote}>Cada atleta vinculado tiene Zyfit Pro sin costo adicional</Text>
+              <Text style={styles.proNote}>{t('coach_pro_note')}</Text>
             </>
           )}
         </View>
 
         {/* Gestión */}
-        <SectionLabel>Gestión</SectionLabel>
+        <SectionLabel>{t('coach_gestion_title')}</SectionLabel>
         <View style={styles.card}>
           <Row
             tone="green"
             icon={<IconInvite c={TONES.green.fg} />}
-            title="Invitar atleta"
-            desc={codigo ? `Comparte tu código · ${codigo}` : 'Comparte tu código de vinculación'}
+            title={t('coach_row_invitar_atleta')}
+            desc={codigo ? `${t('coach_comparte_codigo_prefix')} ${codigo}` : t('coach_comparte_codigo_generico')}
             onPress={invitarAtleta}
           />
           <Row
             tone="purple"
             icon={<IconUsers c={TONES.purple.fg} />}
-            title="Gestionar atletas"
-            desc="Vincular, desvincular, pausar"
+            title={t('coach_gestionar_atletas_title')}
+            desc={t('coach_gestionar_atletas_desc')}
             count={`${activos}`}
             onPress={() => router.navigate('/(coach)/atletas' as any)}
             last
@@ -283,19 +285,19 @@ export default function CoachAjustes() {
         </View>
 
         {/* Cuenta */}
-        <SectionLabel>Cuenta</SectionLabel>
+        <SectionLabel>{t('coach_cuenta_title')}</SectionLabel>
         <View style={styles.card}>
           <Row
             tone="blue"
             icon={<IconLock c={TONES.blue.fg} />}
-            title="Cambiar contraseña"
-            onPress={() => proximamente('Cambiar contraseña')}
+            title={t('coach_row_cambiar_password')}
+            onPress={() => proximamente(t('coach_row_cambiar_password'))}
           />
           <Row
             tone="purple"
             icon={<IconSupport c={TONES.purple.fg} />}
-            title="Soporte"
-            desc="Contactar al equipo Zyfit"
+            title={t('coach_soporte_title')}
+            desc={t('coach_soporte_desc')}
             onPress={() => Linking.openURL(CONTACT_URL)}
             last
           />
@@ -303,7 +305,7 @@ export default function CoachAjustes() {
 
         {/* Cerrar sesión */}
         <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+          <Text style={styles.logoutText}>{t('coach_logout_btn')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

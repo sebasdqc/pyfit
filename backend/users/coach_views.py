@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.db.models import Avg, Count
 from django.utils import timezone
 from rest_framework import status
@@ -35,12 +36,24 @@ User = get_user_model()
 # ─── Permiso ──────────────────────────────────────────────────────────────────
 
 class IsCoach(BasePermission):
-    """Solo coaches con acceso activo (role='coach' + coach_activo + is_active)."""
+    """Solo coaches con acceso activo (role='coach' + coach_activo + is_active) y,
+    si ya tienen una suscripción (se crea perezosamente en `coach_billing`), con
+    estado 'activa'. Sin fila de suscripción todavía = acceso normal (staff no la
+    ha tocado); 'pausada'/'vencida' bloquean el portal sin desactivar la cuenta."""
     message = 'Necesitas una cuenta de coach activa.'
 
     def has_permission(self, request, view):
         u = request.user
-        return bool(u and u.is_authenticated and u.coach_acceso_activo)
+        if not bool(u and u.is_authenticated and u.coach_acceso_activo):
+            return False
+        try:
+            sub = u.coach_subscription
+        except CoachSubscription.DoesNotExist:
+            return True
+        if sub.estado != CoachSubscription.ESTADO_ACTIVA:
+            self.message = 'Tu suscripción de coach no está activa. Contacta a soporte.'
+            return False
+        return True
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -556,11 +569,18 @@ def _session_bloqueada(sess):
     return bool(sess and (sess.inicio_real is not None or _feedback_de(sess) is not None))
 
 
-def _materializar_session(assigned):
+def _materializar_session(assigned, sess=None):
     """Crea o refresca la `Session` real (origen='coach') desde el contenido del
-    borrador. No reescribe si el atleta ya la empezó. Devuelve (session, escrita)."""
+    borrador. No reescribe si el atleta ya la empezó. Devuelve (session, escrita).
+
+    `sess` debe ser la fila ya releída con `select_for_update()` dentro de la misma
+    transacción que hizo el caller (ver `coach_atleta_rutina`) — nunca el objeto
+    cacheado de un `select_related` anterior, para no pisar con datos viejos un
+    `inicio_real`/`series_log` que el atleta acaba de fijar entre la lectura y esta
+    escritura."""
     c = assigned.contenido or {}
-    sess = assigned.session
+    if sess is None:
+        sess = assigned.session
     if _session_bloqueada(sess):
         return sess, False
     if sess is None:
@@ -629,17 +649,19 @@ def coach_atleta_rutina(request, pk):
         return Response({'rutina': _serialize_rutina(a) if a else None, 'fecha': fecha.isoformat()})
 
     if request.method == 'DELETE':
-        a = (CoachAssignedSession.objects
-             .filter(coach=request.user, athlete=athlete, fecha=fecha)
-             .select_related('session', 'session__feedback').first())
-        if not a:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        if _session_bloqueada(a.session):
-            return Response({'error': 'El atleta ya empezó esta sesión; no se puede eliminar.'},
-                            status=status.HTTP_409_CONFLICT)
-        if a.session_id:
-            a.session.delete()
-        a.delete()
+        with transaction.atomic():
+            a = (CoachAssignedSession.objects.select_for_update()
+                 .filter(coach=request.user, athlete=athlete, fecha=fecha).first())
+            if not a:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            sess_actual = (Session.objects.select_for_update().filter(pk=a.session_id).first()
+                           if a.session_id else None)
+            if _session_bloqueada(sess_actual):
+                return Response({'error': 'El atleta ya empezó esta sesión; no se puede eliminar.'},
+                                status=status.HTTP_409_CONFLICT)
+            if sess_actual:
+                sess_actual.delete()
+            a.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # PUT — guardar borrador o publicar
@@ -657,29 +679,45 @@ def coach_atleta_rutina(request, pk):
         if total_ej == 0:
             return Response({'error': 'Agrega al menos un ejercicio para publicarla.'},
                             status=status.HTTP_400_BAD_REQUEST)
+        # Otro coach ya publicó una rutina para este atleta en esta fecha: bloquear
+        # en vez de pisarla en silencio (un atleta puede tener varios coaches
+        # activos y CoachAssignedSession no restringe la fecha a un solo coach).
+        conflicto = (Session.objects
+                     .filter(user=athlete, fecha=fecha, origen=Session.ORIGEN_COACH)
+                     .exclude(creado_por=request.user)
+                     .exists())
+        if conflicto:
+            return Response(
+                {'error': 'Otro coach ya publicó una rutina para este atleta en esta fecha.'},
+                status=status.HTTP_409_CONFLICT)
 
-    a, _ = CoachAssignedSession.objects.select_related('session', 'session__feedback').get_or_create(
-        coach=request.user, athlete=athlete, fecha=fecha,
-        defaults={'estado': CoachAssignedSession.ESTADO_BORRADOR},
-    )
-    if _session_bloqueada(a.session):
-        return Response({'error': 'El atleta ya empezó esta sesión; no se puede editar.'},
-                        status=status.HTTP_409_CONFLICT)
+    with transaction.atomic():
+        a, _ = CoachAssignedSession.objects.select_for_update().get_or_create(
+            coach=request.user, athlete=athlete, fecha=fecha,
+            defaults={'estado': CoachAssignedSession.ESTADO_BORRADOR},
+        )
+        # Releer la Session vinculada con lock fresco (ver docstring de
+        # `_materializar_session`) — no confiar en el `select_related` de arriba.
+        sess_actual = (Session.objects.select_for_update().filter(pk=a.session_id).first()
+                       if a.session_id else None)
+        if _session_bloqueada(sess_actual):
+            return Response({'error': 'El atleta ya empezó esta sesión; no se puede editar.'},
+                            status=status.HTTP_409_CONFLICT)
 
-    a.titulo = contenido['titulo']
-    a.contenido = contenido
-    if publicar:
-        sess, _ = _materializar_session(a)
-        a.session = sess
-        a.estado = CoachAssignedSession.ESTADO_PUBLICADA
-    else:
-        # Volver a borrador: si había una Session publicada SIN iniciar, se quita
-        # de la vista del atleta (borrador = no visible).
-        if a.session_id and not _session_bloqueada(a.session):
-            a.session.delete()
-            a.session = None
-        a.estado = CoachAssignedSession.ESTADO_BORRADOR
-    a.save()
+        a.titulo = contenido['titulo']
+        a.contenido = contenido
+        if publicar:
+            sess, _ = _materializar_session(a, sess_actual)
+            a.session = sess
+            a.estado = CoachAssignedSession.ESTADO_PUBLICADA
+        else:
+            # Volver a borrador: si había una Session publicada SIN iniciar, se quita
+            # de la vista del atleta (borrador = no visible).
+            if sess_actual and not _session_bloqueada(sess_actual):
+                sess_actual.delete()
+                a.session = None
+            a.estado = CoachAssignedSession.ESTADO_BORRADOR
+        a.save()
     return Response({'rutina': _serialize_rutina(a)})
 
 
@@ -885,6 +923,15 @@ def coach_vincular(request):
         return Response({'error': 'Ese coach no tiene una cuenta activa.'}, status=status.HTTP_400_BAD_REQUEST)
     if coach.id == request.user.id:
         return Response({'error': 'No puedes vincularte a tu propia cuenta.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    existing = CoachAthlete.objects.filter(coach=coach, athlete=request.user).first()
+    necesita_activar = not existing or existing.estado != CoachAthlete.ESTADO_ACTIVO
+    if necesita_activar:
+        sub = _ensure_subscription(coach)
+        activos = CoachAthlete.objects.filter(coach=coach, estado=CoachAthlete.ESTADO_ACTIVO).count()
+        if activos >= sub.slots_incluidos:
+            return Response({'error': 'Ese coach alcanzó el límite de atletas de su plan.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
     link, created = CoachAthlete.objects.get_or_create(
         coach=coach, athlete=request.user,

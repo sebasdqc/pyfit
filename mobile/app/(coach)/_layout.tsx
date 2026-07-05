@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { P } from '../../lib/coachTheme'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
 // ─── Iconos del bottom nav ──────────────────────────────────────────────────────
 
@@ -50,15 +51,16 @@ function IconAjustes({ color }: { color: string }) {
 
 // ─── Tab bar morado ─────────────────────────────────────────────────────────────
 
-const TABS: Record<string, { label: string; icon: (c: string) => React.ReactNode }> = {
-  inicio:    { label: 'Inicio',    icon: (c) => <IconHome color={c} /> },
-  analytics: { label: 'Analytics', icon: (c) => <IconAnalytics color={c} /> },
-  atletas:   { label: 'Atletas',   icon: (c) => <IconAtletas color={c} /> },
-  ajustes:   { label: 'Ajustes',   icon: (c) => <IconAjustes color={c} /> },
+const TABS: Record<string, { labelKey: ScalarKey; icon: (c: string) => React.ReactNode }> = {
+  inicio:    { labelKey: 'coach_tab_inicio',    icon: (c) => <IconHome color={c} /> },
+  analytics: { labelKey: 'coach_tab_analytics', icon: (c) => <IconAnalytics color={c} /> },
+  atletas:   { labelKey: 'coach_tab_atletas',   icon: (c) => <IconAtletas color={c} /> },
+  ajustes:   { labelKey: 'coach_tab_ajustes',   icon: (c) => <IconAjustes color={c} /> },
 }
 
 function CoachTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const bottomPad = insets.bottom > 0 ? insets.bottom + 4 : 12
 
   const visibleRoutes = state.routes.filter((r: any) => TABS[r.name])
@@ -85,7 +87,7 @@ function CoachTabBar({ state, descriptors, navigation }: any) {
         return (
           <TouchableOpacity key={route.key} onPress={onPress} style={styles.tabItem} activeOpacity={0.7}>
             <View style={styles.iconWrapper}>{meta.icon(color)}</View>
-            <Text style={[styles.tabLabel, { color }]}>{meta.label}</Text>
+            <Text style={[styles.tabLabel, { color }]}>{t(meta.labelKey)}</Text>
           </TouchableOpacity>
         )
       })}

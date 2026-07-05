@@ -273,7 +273,10 @@ def exercise_create(request):
     """
     body = request.data if isinstance(request.data, dict) else {}
 
-    nombre = str(body.get('nombre') or '').strip()[:200]
+    # Sin saltos de línea: este nombre entra al catálogo GLOBAL (activo de inmediato,
+    # sin revisión) y se interpola literalmente en el prompt de generación de
+    # CUALQUIER usuario de la app, no solo de los atletas de este coach.
+    nombre = str(body.get('nombre') or '').replace('\n', ' ').replace('\r', ' ').strip()[:200]
     if not nombre:
         return Response({'error': 'El nombre es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
 

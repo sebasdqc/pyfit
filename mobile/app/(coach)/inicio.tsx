@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -8,28 +8,29 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle, Rect } from 'react-native-svg'
 import { P, iniciales } from '../../lib/coachTheme'
 import { getCoachUser } from '../../lib/storage'
 import { Estado, Atleta, hasAlert } from '../../lib/coachTypes'
 import { fetchCartera, fetchCoachMe, type CarteraMetrics } from '../../lib/coachApi'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
-function saludoHora(): string {
+function saludoKey(): 'coach_greeting_morning' | 'coach_greeting_afternoon' | 'coach_greeting_evening' {
   const h = new Date().getHours()
-  if (h < 12) return 'Buen día,'
-  if (h < 19) return 'Buenas tardes,'
-  return 'Buenas noches,'
+  if (h < 12) return 'coach_greeting_morning'
+  if (h < 19) return 'coach_greeting_afternoon'
+  return 'coach_greeting_evening'
 }
 
 type Filtro = 'atencion' | 'todos' | 'sin_rutina' | 'inactivos'
 
-const FILTROS: { key: Filtro; label: string }[] = [
-  { key: 'atencion',   label: 'Atención' },
-  { key: 'todos',      label: 'Todos' },
-  { key: 'sin_rutina', label: 'Sin rutina' },
-  { key: 'inactivos',  label: 'Inactivos' },
+const FILTROS: { key: Filtro; labelKey: ScalarKey }[] = [
+  { key: 'atencion',   labelKey: 'coach_filter_atencion' },
+  { key: 'todos',      labelKey: 'coach_filter_todos' },
+  { key: 'sin_rutina', labelKey: 'coach_filter_sin_rutina' },
+  { key: 'inactivos',  labelKey: 'coach_filter_inactivos' },
 ]
 
 function matchesFiltro(a: Atleta, f: Filtro): boolean {
@@ -85,10 +86,11 @@ function Avatar({ nombre, estado, size = 44 }: { nombre: string; estado: Estado;
 }
 
 function EstadoBadge({ estado }: { estado: Estado }) {
+  const { t } = useTranslation()
   const map = {
-    alerta:    { label: 'Alerta',    bg: P.orangeSoft, fg: P.orange },
-    pendiente: { label: 'Pendiente', bg: P.amberSoft,  fg: P.amber },
-    al_dia:    { label: 'Al día',    bg: P.greenSoft,  fg: P.green },
+    alerta:    { label: t('coach_estado_alerta'),    bg: P.orangeSoft, fg: P.orange },
+    pendiente: { label: t('coach_estado_pendiente'), bg: P.amberSoft,  fg: P.amber },
+    al_dia:    { label: t('coach_estado_al_dia'),    bg: P.greenSoft,  fg: P.green },
   }[estado]
   return (
     <View style={[styles.badge, { backgroundColor: map.bg }]}>
@@ -117,14 +119,14 @@ function Tag({ label, tone }: { label: string; tone: Tone }) {
 }
 
 // Tags que describen cada atleta (problema si tiene alerta; rutina + score si no).
-function tagsDe(a: Atleta): { label: string; tone: Tone }[] {
+function tagsDe(a: Atleta, t: (key: ScalarKey) => string): { label: string; tone: Tone }[] {
   if (hasAlert(a)) {
     return (a.problemas || []).map((p) => ({ label: p, tone: 'orange' as Tone }))
   }
-  const t: { label: string; tone: Tone }[] = []
-  if (a.rutinaActiva) t.push({ label: 'Rutina activa', tone: 'purple' })
-  if (a.score != null) t.push({ label: `Zyfit Score ${a.score}`, tone: 'green' })
-  return t
+  const tags: { label: string; tone: Tone }[] = []
+  if (a.rutinaActiva) tags.push({ label: t('coach_tag_rutina_activa'), tone: 'purple' })
+  if (a.score != null) tags.push({ label: `Zyfit Score ${a.score}`, tone: 'green' })
+  return tags
 }
 
 function goToAtleta(a: Atleta) {
@@ -133,6 +135,7 @@ function goToAtleta(a: Atleta) {
 
 // Card de la vista lista (fila horizontal).
 function ListCard({ a }: { a: Atleta }) {
+  const { t } = useTranslation()
   const alert = hasAlert(a)
   return (
     <TouchableOpacity
@@ -144,13 +147,13 @@ function ListCard({ a }: { a: Atleta }) {
         <Avatar nombre={a.nombre} estado={a.estado} />
         <View style={styles.listCenter}>
           <Text style={styles.nombre} numberOfLines={1}>{a.nombre}</Text>
-          <Text style={styles.ultima} numberOfLines={1}>Última actividad {a.ultima}</Text>
+          <Text style={styles.ultima} numberOfLines={1}>{t('coach_ultima_actividad_prefix')} {a.ultima}</Text>
         </View>
         {!!a.no_leidos && <UnreadBadge n={a.no_leidos} />}
         <EstadoBadge estado={a.estado} />
       </View>
       <View style={styles.tagsRow}>
-        {tagsDe(a).map((t) => <Tag key={t.label} label={t.label} tone={t.tone} />)}
+        {tagsDe(a, t).map((tg) => <Tag key={tg.label} label={tg.label} tone={tg.tone} />)}
       </View>
     </TouchableOpacity>
   )
@@ -158,10 +161,11 @@ function ListCard({ a }: { a: Atleta }) {
 
 // Card de la vista grid (compacta, centrada).
 function GridCard({ a }: { a: Atleta }) {
+  const { t } = useTranslation()
   const alert = hasAlert(a)
   // En grid el Zyfit Score es el tag principal de las cards sin alerta.
-  const tags = alert ? tagsDe(a).slice(0, 2) : tagsDe(a).filter((t) => t.label.startsWith('Zyfit')).concat(
-    tagsDe(a).filter((t) => !t.label.startsWith('Zyfit'))
+  const tags = alert ? tagsDe(a, t).slice(0, 2) : tagsDe(a, t).filter((tg) => tg.label.startsWith('Zyfit')).concat(
+    tagsDe(a, t).filter((tg) => !tg.label.startsWith('Zyfit'))
   ).slice(0, 2)
   return (
     <TouchableOpacity
@@ -177,7 +181,7 @@ function GridCard({ a }: { a: Atleta }) {
         {!!a.no_leidos && <UnreadBadge n={a.no_leidos} />}
       </View>
       <View style={styles.gridTags}>
-        {tags.map((t) => <Tag key={t.label} label={t.label} tone={t.tone} />)}
+        {tags.map((tg) => <Tag key={tg.label} label={tg.label} tone={tg.tone} />)}
       </View>
     </TouchableOpacity>
   )
@@ -191,6 +195,7 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function CoachInicio() {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const [nombre, setNombre] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [vista, setVista] = useState<'lista' | 'grid'>('lista')
@@ -211,20 +216,30 @@ export default function CoachInicio() {
       setAtletas(res.atletas)
       setMetrics(res.metrics)
     } catch (e: any) {
-      setError(e?.message || 'No se pudo cargar tu cartera.')
+      setError(e?.message || t('coach_error_cartera'))
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
-    getCoachUser().then((u) => setNombre(u?.nombre || 'Coach'))
+    getCoachUser().then((u) => setNombre(u?.nombre || t('coach_fallback_coach')))
     fetchCoachMe()
       .then((me) => { setNombre(me.nombre); setCodigo(me.codigo_coach) })
       .catch(() => {})
-    cargar(true)
-  }, [cargar])
+  }, [])
+
+  // Refresca la cartera cada vez que este tab vuelve a foco (p. ej. tras pausar o
+  // desvincular a alguien desde el tab Atletas) — antes solo cargaba una vez al
+  // montar y el pull-to-refresh manual era la única forma de verlo actualizado.
+  const primerFoco = useRef(true)
+  useFocusEffect(
+    useCallback(() => {
+      cargar(primerFoco.current)
+      primerFoco.current = false
+    }, [cargar]),
+  )
 
   const activos = metrics?.activos ?? 0
   const atencionHoy = metrics?.atencion_hoy ?? 0
@@ -251,7 +266,7 @@ export default function CoachInicio() {
         {/* Barra superior */}
         <View style={styles.topBar}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.saludo}>{saludoHora()}</Text>
+            <Text style={styles.saludo}>{t(saludoKey())}</Text>
             <Text style={styles.coachNombre} numberOfLines={1}>{nombre}</Text>
           </View>
           <View style={styles.coachAvatar}>
@@ -278,15 +293,15 @@ export default function CoachInicio() {
             <>
               <View style={styles.metricCard}>
                 <Text style={styles.metricValue}>{activos}</Text>
-                <Text style={styles.metricLabel}>Atletas activos</Text>
-                <Text style={styles.metricNote}>{atencionHoy} necesitan atención hoy</Text>
+                <Text style={styles.metricLabel}>{t('coach_inicio_metric_atletas_activos')}</Text>
+                <Text style={styles.metricNote}>{atencionHoy} {t('coach_inicio_need_attention_today')}</Text>
               </View>
               <View style={styles.metricCard}>
                 <Text style={styles.metricValue}>{adherencia}%</Text>
-                <Text style={styles.metricLabel}>Adherencia semanal</Text>
+                <Text style={styles.metricLabel}>{t('coach_inicio_metric_adherencia_semanal')}</Text>
                 <Text style={[styles.metricNote, { color: adherenciaDelta > 0 ? P.green : adherenciaDelta < 0 ? P.red : P.purpleMid }]}>
                   {adherenciaDelta > 0 ? '▲' : adherenciaDelta < 0 ? '▼' : '—'}{' '}
-                  {adherenciaDelta !== 0 ? `${Math.abs(adherenciaDelta)}% vs semana anterior` : 'igual que la semana anterior'}
+                  {adherenciaDelta !== 0 ? `${Math.abs(adherenciaDelta)}% ${t('coach_vs_semana_anterior')}` : t('coach_same_as_prev_week')}
                 </Text>
               </View>
             </>
@@ -317,7 +332,7 @@ export default function CoachInicio() {
                   activeOpacity={0.75}
                   onPress={() => setFiltro(f.key)}
                 >
-                  <Text style={[styles.chipText, { color: textColor }]}>{f.label}</Text>
+                  <Text style={[styles.chipText, { color: textColor }]}>{t(f.labelKey)}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -350,35 +365,35 @@ export default function CoachInicio() {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity onPress={() => cargar(true)} activeOpacity={0.8}>
-              <Text style={styles.retryText}>Reintentar</Text>
+              <Text style={styles.retryText}>{t('common_retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : atletas.length === 0 ? (
           <View style={styles.emptyCartera}>
-            <Text style={styles.emptyTitle}>Aún no tienes atletas</Text>
+            <Text style={styles.emptyTitle}>{t('coach_empty_atletas_title')}</Text>
             <Text style={styles.emptySub}>
-              Comparte tu código de coach para que tus atletas se vinculen a tu cartera.
+              {t('coach_inicio_empty_sub')}
             </Text>
             {!!codigo && (
               <View style={styles.codeBox}>
-                <Text style={styles.codeLabel}>TU CÓDIGO</Text>
+                <Text style={styles.codeLabel}>{t('coach_inicio_code_label')}</Text>
                 <Text style={styles.codeValue}>{codigo}</Text>
               </View>
             )}
           </View>
         ) : filtrados.length === 0 ? (
-          <Text style={styles.empty}>No hay atletas en este filtro.</Text>
+          <Text style={styles.empty}>{t('coach_inicio_empty_filtro')}</Text>
         ) : vista === 'lista' ? (
           <>
             {conAlerta.length > 0 && (
               <View style={styles.section}>
-                <SectionLabel>Requieren atención hoy</SectionLabel>
+                <SectionLabel>{t('coach_inicio_section_atencion')}</SectionLabel>
                 {conAlerta.map((a) => <ListCard key={a.id} a={a} />)}
               </View>
             )}
             {resto.length > 0 && (
               <View style={styles.section}>
-                <SectionLabel>Resto de cartera</SectionLabel>
+                <SectionLabel>{t('coach_inicio_section_resto')}</SectionLabel>
                 {resto.map((a) => <ListCard key={a.id} a={a} />)}
               </View>
             )}

@@ -11,6 +11,8 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  BackHandler,
+  Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -30,6 +32,7 @@ import {
   type Mensaje,
 } from '../../../lib/coachApi'
 import { getCoachUser } from '../../../lib/storage'
+import { useTranslation, type ScalarKey } from '../../../lib/i18n'
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
 
@@ -55,9 +58,9 @@ function IconSend({ color }: { color: string }) {
 // de verdad en el flujo del atleta (ver coach_mi_coach / generate_session).
 
 const TOGGLES = [
-  { key: 'checkin',  nombre: 'Check-in diario',     desc: 'El atleta reporta ánimo, sueño y energía cada día. Si lo apagas, entrena sin completarlo.' },
-  { key: 'feedback', nombre: 'Feedback post-sesión', desc: 'Pide RPE y notas al terminar cada entrenamiento. Si lo apagas, no se le pide.' },
-  { key: 'ia',       nombre: 'Rutinas con IA',       desc: 'Genera rutinas automáticas adaptadas al atleta. Si lo apagas, pausas su generación.' },
+  { key: 'checkin',  nombreKey: 'coach_toggle_checkin_nombre',  descKey: 'coach_toggle_checkin_desc' },
+  { key: 'feedback', nombreKey: 'coach_toggle_feedback_nombre', descKey: 'coach_toggle_feedback_desc' },
+  { key: 'ia',       nombreKey: 'coach_toggle_ia_nombre',       descKey: 'coach_toggle_ia_desc' },
 ] as const
 type ToggleKey = (typeof TOGGLES)[number]['key']
 
@@ -68,13 +71,13 @@ function horaDe(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function fechaDe(iso: string): string {
+function fechaDe(iso: string, t: (key: ScalarKey) => string, lang: string): string {
   const d = new Date(iso)
   const hoy = new Date()
   const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
-  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
-  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
-  return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
+  if (d.toDateString() === hoy.toDateString()) return t('coach_date_today')
+  if (d.toDateString() === ayer.toDateString()) return t('coach_date_yesterday')
+  return d.toLocaleDateString(lang, { day: 'numeric', month: 'short' })
 }
 
 // ─── Subcomponentes ─────────────────────────────────────────────────────────────
@@ -94,15 +97,16 @@ function MiniBars({ barras }: { barras: Barra[] }) {
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 type Tab = 'perfil' | 'rutina' | 'historial' | 'chat'
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'perfil', label: 'Perfil' },
-  { key: 'rutina', label: 'Rutina' },
-  { key: 'historial', label: 'Historial' },
-  { key: 'chat', label: 'Chat' },
+const TABS: { key: Tab; labelKey: ScalarKey }[] = [
+  { key: 'perfil', labelKey: 'coach_tab_perfil' },
+  { key: 'rutina', labelKey: 'coach_tab_rutina' },
+  { key: 'historial', labelKey: 'coach_tab_historial' },
+  { key: 'chat', labelKey: 'coach_tab_chat' },
 ]
 
 export default function CoachAtletaDetalle() {
   const insets = useSafeAreaInsets()
+  const { t, lang } = useTranslation()
   const params = useLocalSearchParams<{ id?: string; nombre?: string }>()
 
   const [detalle, setDetalle] = useState<AtletaDetalle | null>(null)
@@ -110,13 +114,14 @@ export default function CoachAtletaDetalle() {
   const [errDet, setErrDet] = useState<string | null>(null)
   const [sesiones, setSesiones] = useState<SesionHist[] | null>(null)
   const [loadingSes, setLoadingSes] = useState(true)
+  const [errSes, setErrSes] = useState<string | null>(null)
 
-  const nombre = detalle?.nombre || params.nombre || 'Atleta'
+  const nombre = detalle?.nombre || params.nombre || t('coach_fallback_atleta')
   const estado = detalle?.estado ?? 'al_dia'
   const alerta = detalle ? hasAlert(detalle) : false
 
   const [tab, setTab] = useState<Tab>('perfil')
-  const [coachNombre, setCoachNombre] = useState('Coach')
+  const [coachNombre, setCoachNombre] = useState(t('coach_fallback_coach'))
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
     checkin: true, feedback: true, ia: true,
   })
@@ -125,6 +130,9 @@ export default function CoachAtletaDetalle() {
   const [dFoco, setDFoco] = useState('')
   const [dEvitar, setDEvitar] = useState('')
   const [dNota, setDNota] = useState('')
+  // Snapshot de la última directiva guardada, para detectar cambios sin guardar
+  // al salir de la pantalla (ver `directivaDirty` / `confirmarSalir`).
+  const [dOriginal, setDOriginal] = useState({ objetivo: '', foco: '', evitar: '', nota: '' })
   const [savingDir, setSavingDir] = useState(false)
   const [dirMsg, setDirMsg] = useState<string | null>(null)
   const [dirError, setDirError] = useState(false)
@@ -134,19 +142,63 @@ export default function CoachAtletaDetalle() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
   const chatRef = useRef<ScrollView>(null)
 
-  useEffect(() => { getCoachUser().then((u) => setCoachNombre(u?.nombre || 'Coach')) }, [])
+  const directivaDirty = tab === 'rutina' && !errDet && (
+    dObjetivo !== dOriginal.objetivo || dFoco !== dOriginal.foco ||
+    dEvitar !== dOriginal.evitar || dNota !== dOriginal.nota
+  )
+
+  function confirmarSalir() {
+    if (directivaDirty) {
+      Alert.alert(t('coach_unsaved_changes_title'), t('coach_atleta_unsaved_msg'), [
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('coach_btn_salir'), style: 'destructive', onPress: () => router.back() },
+      ])
+    } else {
+      router.back()
+    }
+  }
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (directivaDirty) {
+        Alert.alert(t('coach_unsaved_changes_title'), t('coach_atleta_unsaved_msg'), [
+          { text: t('common_cancel'), style: 'cancel' },
+          { text: t('coach_btn_salir'), style: 'destructive', onPress: () => router.back() },
+        ])
+        return true
+      }
+      return false
+    })
+    return () => sub.remove()
+  }, [directivaDirty, t])
+
+  useEffect(() => { getCoachUser().then((u) => setCoachNombre(u?.nombre || t('coach_fallback_coach'))) }, [])
 
   // Chat: carga al abrir el tab y hace polling cada 5s mientras está abierto.
+  // Si el vínculo se rompe (atleta pausado/desvinculado a mitad de conversación),
+  // el backend empieza a devolver 404 — antes eso se tragaba en silencio y el
+  // coach seguía viendo el chat como si funcionara. Ahora se corta el polling y
+  // se muestra el motivo.
   useEffect(() => {
     if (tab !== 'chat' || !params.id) return
     let alive = true
-    const cargar = () => fetchAtletaMensajes(params.id!).then((r) => { if (alive) setMensajes(r.mensajes) }).catch(() => {})
+    let timer: ReturnType<typeof setInterval> | null = null
+    setChatError(null)
+    const cargar = () =>
+      fetchAtletaMensajes(params.id!)
+        .then((r) => { if (alive) setMensajes(r.mensajes) })
+        .catch((e: any) => {
+          if (!alive) return
+          setChatError(e?.message || t('coach_error_actualizar_chat'))
+          if (timer) { clearInterval(timer); timer = null }
+        })
     cargar()
-    const t = setInterval(cargar, 5000)
-    return () => { alive = false; clearInterval(t) }
-  }, [tab, params.id])
+    timer = setInterval(cargar, 5000)
+    return () => { alive = false; if (timer) clearInterval(timer) }
+  }, [tab, params.id, t])
 
   // Persiste un toggle de configuración (optimista; revierte si el backend falla).
   function onToggle(key: ToggleKey, v: boolean) {
@@ -166,12 +218,13 @@ export default function CoachAtletaDetalle() {
         objetivo: dObjetivo.trim(), foco: dFoco.trim(), evitar: dEvitar.trim(), nota: dNota.trim(),
       })
       setDirUpdatedAt(res.directiva_updated_at)
+      setDOriginal({ objetivo: dObjetivo.trim(), foco: dFoco.trim(), evitar: dEvitar.trim(), nota: dNota.trim() })
       setDirError(false)
-      setDirMsg('Directiva guardada · el atleta la verá en su próxima rutina.')
+      setDirMsg(t('coach_dir_guardada_msg'))
       dirTimer.current = setTimeout(() => setDirMsg(null), 4000)
     } catch (e: any) {
       setDirError(true)
-      setDirMsg(e?.message || 'No se pudo guardar la directiva.')
+      setDirMsg(e?.message || t('coach_error_guardar_directiva'))
     } finally {
       setSavingDir(false)
     }
@@ -183,18 +236,24 @@ export default function CoachAtletaDetalle() {
     const id = params.id
     if (!id) return
     setRefreshing(true)
-    try {
-      const [d, r] = await Promise.all([fetchAtletaDetalle(id), fetchAtletaSesiones(id)])
-      setDetalle(d)
-      if (d.config) setToggles(d.config)
-      const dir = d.directiva || {}
-      setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
-      setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
-      setDirUpdatedAt(d.directiva_updated_at)
-      setSesiones(r.sesiones)
-    } catch {}
-    finally { setRefreshing(false) }
-  }, [params.id])
+    // Independientes (no Promise.all): si una falla, la otra igual actualiza su
+    // parte en vez de perderse ambas por el reject conjunto.
+    await Promise.allSettled([
+      fetchAtletaDetalle(id).then((d) => {
+        setDetalle(d)
+        setErrDet(null)
+        if (d.config) setToggles(d.config)
+        const dir = d.directiva || {}
+        setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
+        setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
+        setDOriginal({ objetivo: dir.objetivo || '', foco: dir.foco || '', evitar: dir.evitar || '', nota: dir.nota || '' })
+        setDirUpdatedAt(d.directiva_updated_at)
+      }).catch((e: any) => setErrDet(e?.message || t('coach_error_cargar_atleta'))),
+      fetchAtletaSesiones(id).then((r) => { setSesiones(r.sesiones); setErrSes(null) })
+        .catch((e: any) => setErrSes(e?.message || t('coach_error_cargar_historial'))),
+    ])
+    setRefreshing(false)
+  }, [params.id, t])
 
   useEffect(() => {
     const id = params.id
@@ -206,31 +265,32 @@ export default function CoachAtletaDetalle() {
         const dir = d.directiva || {}
         setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
         setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
+        setDOriginal({ objetivo: dir.objetivo || '', foco: dir.foco || '', evitar: dir.evitar || '', nota: dir.nota || '' })
         setDirUpdatedAt(d.directiva_updated_at)
       })
-      .catch((e: any) => setErrDet(e?.message || 'No se pudo cargar el atleta.'))
+      .catch((e: any) => setErrDet(e?.message || t('coach_error_cargar_atleta')))
       .finally(() => setLoadingDet(false))
     fetchAtletaSesiones(id)
       .then((r) => setSesiones(r.sesiones))
-      .catch(() => setSesiones([]))
+      .catch((e: any) => setErrSes(e?.message || t('coach_error_cargar_historial')))
       .finally(() => setLoadingSes(false))
-  }, [params.id])
+  }, [params.id, t])
 
   const m = detalle?.metrics
   const metricas = m ? [
-    { label: 'Consistencia',     value: `${m.consistencia}%`, extra: m.consistencia >= 70 ? '▲' : '▼', extraColor: m.consistencia >= 70 ? P.green : P.red },
-    { label: 'Sesiones del mes', value: `${m.sesiones_mes}`, extra: `/ ${m.sesiones_target}`, extraColor: P.purpleFaint },
-    { label: 'RPE promedio',     value: m.rpe_promedio != null ? m.rpe_promedio.toFixed(1) : '—', extra: 'últimas 5', extraColor: P.purpleFaint },
-    { label: 'Con este coach',   value: m.antiguedad, extra: '', extraColor: P.purpleFaint },
+    { label: t('coach_word_consistencia'), value: `${m.consistencia}%`, extra: m.consistencia >= 70 ? '▲' : '▼', extraColor: m.consistencia >= 70 ? P.green : P.red },
+    { label: t('coach_metric_sesiones_mes'), value: `${m.sesiones_mes}`, extra: `/ ${m.sesiones_target}`, extraColor: P.purpleFaint },
+    { label: t('coach_rpe_promedio_label'), value: m.rpe_promedio != null ? m.rpe_promedio.toFixed(1) : '—', extra: t('coach_metric_ultimas_5'), extraColor: P.purpleFaint },
+    { label: t('coach_metric_con_este_coach'), value: m.antiguedad, extra: '', extraColor: P.purpleFaint },
   ] : []
 
   const avatarFg = estado === 'alerta' ? P.orange : estado === 'pendiente' ? P.amber : P.green
   const avatarBg = estado === 'alerta' ? P.orangeSoft : estado === 'pendiente' ? P.amberSoft : P.greenSoft
   const topBadge = estado === 'alerta'
-    ? { bg: P.orangeSoft, fg: P.orange, label: 'Alerta' }
+    ? { bg: P.orangeSoft, fg: P.orange, label: t('coach_estado_alerta') }
     : estado === 'pendiente'
-    ? { bg: P.amberSoft, fg: P.amber, label: 'Pendiente' }
-    : { bg: P.greenSoft, fg: P.green, label: 'Al día' }
+    ? { bg: P.amberSoft, fg: P.amber, label: t('coach_estado_pendiente') }
+    : { bg: P.greenSoft, fg: P.green, label: t('coach_estado_al_dia') }
 
   async function enviar() {
     const text = input.trim()
@@ -240,9 +300,11 @@ export default function CoachAtletaDetalle() {
     try {
       const msg = await sendAtletaMensaje(params.id, text)
       setMensajes((prev) => [...prev, msg])
+      setChatError(null)
       setTimeout(() => chatRef.current?.scrollToEnd({ animated: true }), 50)
-    } catch {
+    } catch (e: any) {
       setInput(text)   // restaura el texto si falla el envío
+      setChatError(e?.message || t('coach_error_enviar_mensaje'))
     } finally {
       setSending(false)
     }
@@ -252,7 +314,7 @@ export default function CoachAtletaDetalle() {
     <View style={styles.root}>
       {/* Barra superior */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.6} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} activeOpacity={0.6} onPress={confirmarSalir}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.topName} numberOfLines={1}>{nombre}</Text>
@@ -269,7 +331,7 @@ export default function CoachAtletaDetalle() {
         <View style={styles.heroCenter}>
           <Text style={styles.heroName} numberOfLines={1}>{nombre}</Text>
           <Text style={styles.heroSub} numberOfLines={2}>
-            {detalle?.situacion || (loadingDet ? 'Cargando…' : 'Sin datos')}
+            {detalle?.situacion || (loadingDet ? t('coach_cargando_ellipsis') : t('coach_sin_datos'))}
           </Text>
         </View>
         <View style={styles.heroScore}>
@@ -280,16 +342,16 @@ export default function CoachAtletaDetalle() {
 
       {/* Tabs internos */}
       <View style={styles.tabsBar}>
-        {TABS.map((t) => {
-          const active = tab === t.key
+        {TABS.map((tabItem) => {
+          const active = tab === tabItem.key
           return (
             <TouchableOpacity
-              key={t.key}
+              key={tabItem.key}
               style={[styles.tabBtn, active && styles.tabBtnActive]}
               activeOpacity={0.8}
-              onPress={() => setTab(t.key)}
+              onPress={() => setTab(tabItem.key)}
             >
-              <Text style={[styles.tabText, { color: active ? P.white : P.purpleFaint }]}>{t.label}</Text>
+              <Text style={[styles.tabText, { color: active ? P.white : P.purpleFaint }]}>{t(tabItem.labelKey)}</Text>
             </TouchableOpacity>
           )
         })}
@@ -328,12 +390,12 @@ export default function CoachAtletaDetalle() {
             </View>
             )}
 
-            <Text style={styles.sectionLabel}>Configuración del atleta</Text>
+            <Text style={styles.sectionLabel}>{t('coach_section_config_atleta')}</Text>
             {TOGGLES.map((tg) => (
               <View key={tg.key} style={styles.toggleRow}>
                 <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={styles.toggleName}>{tg.nombre}</Text>
-                  <Text style={styles.toggleDesc}>{tg.desc}</Text>
+                  <Text style={styles.toggleName}>{t(tg.nombreKey)}</Text>
+                  <Text style={styles.toggleDesc}>{t(tg.descKey)}</Text>
                 </View>
                 <Switch
                   value={toggles[tg.key]}
@@ -354,50 +416,54 @@ export default function CoachAtletaDetalle() {
             keyboardVerticalOffset={insets.top + 80}
           >
             <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {errDet ? (
+                <Text style={styles.emptyText}>{errDet}</Text>
+              ) : (
+              <>
               {/* Rutina manual — el coach arma la sesión del día */}
               <View style={styles.manualCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.manualTitle}>Rutina manual</Text>
-                  <Text style={styles.manualDesc}>Arma tú la sesión de un día. Los días sin rutina los genera la IA con tu directiva.</Text>
+                  <Text style={styles.manualTitle}>{t('coach_rutina_manual_title')}</Text>
+                  <Text style={styles.manualDesc}>{t('coach_manual_desc')}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.manualBtn}
                   activeOpacity={0.85}
                   onPress={() => router.push({ pathname: '/(coach)/rutina-builder', params: { id: params.id, nombre } } as any)}
                 >
-                  <Text style={styles.manualBtnText}>Armar</Text>
+                  <Text style={styles.manualBtnText}>{t('coach_armar_btn')}</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.manualDivider} />
 
-              <Text style={styles.rutinaTitle}>Directiva de la semana</Text>
+              <Text style={styles.rutinaTitle}>{t('coach_directiva_semana_title')}</Text>
               <Text style={styles.dirHint}>
-                Define la guía de entrenamiento. La IA del atleta la usará para generar su próxima rutina.
+                {t('coach_dir_hint')}
               </Text>
 
-              <Text style={styles.fieldLabel}>OBJETIVO</Text>
+              <Text style={styles.fieldLabel}>{t('coach_field_objetivo')}</Text>
               <TextInput style={styles.dirInput} value={dObjetivo} onChangeText={setDObjetivo}
-                placeholder="Ej: Fuerza de tren inferior" placeholderTextColor={P.purpleFaint} maxLength={120} />
+                placeholder={t('coach_placeholder_objetivo_atleta')} placeholderTextColor={P.purpleFaint} maxLength={120} />
 
-              <Text style={styles.fieldLabel}>ÉNFASIS / FOCO</Text>
+              <Text style={styles.fieldLabel}>{t('coach_field_foco')}</Text>
               <TextInput style={styles.dirInput} value={dFoco} onChangeText={setDFoco}
-                placeholder="Ej: Sentadilla, peso muerto" placeholderTextColor={P.purpleFaint} maxLength={200} />
+                placeholder={t('coach_placeholder_foco')} placeholderTextColor={P.purpleFaint} maxLength={200} />
 
-              <Text style={styles.fieldLabel}>EVITAR</Text>
+              <Text style={styles.fieldLabel}>{t('coach_field_evitar')}</Text>
               <TextInput style={styles.dirInput} value={dEvitar} onChangeText={setDEvitar}
-                placeholder="Ej: Cardio de impacto" placeholderTextColor={P.purpleFaint} maxLength={200} />
+                placeholder={t('coach_placeholder_evitar')} placeholderTextColor={P.purpleFaint} maxLength={200} />
 
-              <Text style={styles.fieldLabel}>NOTA</Text>
+              <Text style={styles.fieldLabel}>{t('coach_field_nota')}</Text>
               <TextInput style={[styles.dirInput, styles.dirInputMulti]} value={dNota} onChangeText={setDNota}
-                placeholder="Ej: Subir carga ~5% si RPE < 7" placeholderTextColor={P.purpleFaint}
+                placeholder={t('coach_placeholder_nota_directiva')} placeholderTextColor={P.purpleFaint}
                 multiline maxLength={400} />
 
               <TouchableOpacity style={[styles.guardarBtn, savingDir && { opacity: 0.6 }]}
                 activeOpacity={0.85} disabled={savingDir} onPress={guardarDirectiva}>
                 {savingDir
                   ? <ActivityIndicator color={P.white} />
-                  : (<><IconCheck color={P.white} /><Text style={styles.guardarBtnText}>Guardar directiva</Text></>)}
+                  : (<><IconCheck color={P.white} /><Text style={styles.guardarBtnText}>{t('coach_guardar_directiva_btn')}</Text></>)}
               </TouchableOpacity>
 
               {!!dirMsg && (
@@ -405,8 +471,10 @@ export default function CoachAtletaDetalle() {
               )}
               {!dirMsg && !!dirUpdatedAt && (
                 <Text style={styles.dirUpdatedAt}>
-                  Actualizada el {new Date(dirUpdatedAt).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {t('coach_actualizada_el_prefix')} {new Date(dirUpdatedAt).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })}
                 </Text>
+              )}
+              </>
               )}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -420,8 +488,10 @@ export default function CoachAtletaDetalle() {
           >
             {loadingSes ? (
               <View style={styles.loadingWrap}><ActivityIndicator color={P.purpleMid} /></View>
+            ) : errSes ? (
+              <Text style={styles.emptyText}>{errSes}</Text>
             ) : !sesiones || sesiones.length === 0 ? (
-              <Text style={styles.emptyText}>Sin sesiones registradas todavía.</Text>
+              <Text style={styles.emptyText}>{t('coach_hist_sin_sesiones')}</Text>
             ) : (
               sesiones.map((s, i) => (
                 <View key={i} style={styles.sesionCard}>
@@ -431,7 +501,7 @@ export default function CoachAtletaDetalle() {
                   </View>
                   <MiniBars barras={s.barras} />
                   <Text style={styles.sesionResumen}>
-                    {s.completados} de {s.total} ejercicios · {s.min} min
+                    {s.completados} {t('coach_word_de')} {s.total} {t('coach_word_ejercicios')} · {s.min} {t('common_mins')}
                   </Text>
                 </View>
               ))
@@ -439,12 +509,21 @@ export default function CoachAtletaDetalle() {
           </ScrollView>
         )}
 
-        {tab === 'chat' && (
+        {tab === 'chat' && errDet && (
+          <View style={styles.tabContent}><Text style={styles.emptyText}>{errDet}</Text></View>
+        )}
+
+        {tab === 'chat' && !errDet && (
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={insets.top + 80}
           >
+            {!!chatError && (
+              <View style={styles.chatErrorBanner}>
+                <Text style={styles.chatErrorText}>{chatError}</Text>
+              </View>
+            )}
             <ScrollView
               ref={chatRef}
               contentContainerStyle={styles.chatContent}
@@ -452,7 +531,7 @@ export default function CoachAtletaDetalle() {
               onContentSizeChange={() => chatRef.current?.scrollToEnd({ animated: false })}
             >
               {mensajes.length === 0 && (
-                <Text style={styles.chatEmpty}>Aún no hay mensajes. Escribe el primero 👋</Text>
+                <Text style={styles.chatEmpty}>{t('coach_chat_sin_mensajes')}</Text>
               )}
               {mensajes.map((m, idx) => {
                 const showDate = idx === 0 ||
@@ -462,7 +541,7 @@ export default function CoachAtletaDetalle() {
                   <React.Fragment key={m.id}>
                     {showDate && (
                       <View style={styles.dateSep}>
-                        <Text style={styles.dateSepText}>{fechaDe(m.created_at)}</Text>
+                        <Text style={styles.dateSepText}>{fechaDe(m.created_at, t, lang)}</Text>
                       </View>
                     )}
                     <View style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
@@ -481,14 +560,16 @@ export default function CoachAtletaDetalle() {
             <View style={[styles.inputBar, { paddingBottom: 10 }]}>
               <TextInput
                 style={styles.input}
-                placeholder="Escribe un mensaje..."
+                placeholder={t('coach_chat_placeholder')}
                 placeholderTextColor={P.purpleFaint}
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={enviar}
                 returnKeyType="send"
+                maxLength={2000}
+                editable={!chatError}
               />
-              <TouchableOpacity style={styles.sendBtn} activeOpacity={0.85} onPress={enviar}>
+              <TouchableOpacity style={styles.sendBtn} activeOpacity={0.85} onPress={enviar} disabled={!!chatError}>
                 <IconSend color={P.white} />
               </TouchableOpacity>
             </View>
@@ -698,6 +779,11 @@ const styles = StyleSheet.create({
   // Chat
   chatContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
   chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.purpleFaint, textAlign: 'center', marginTop: 40 },
+  chatErrorBanner: {
+    marginHorizontal: 20, marginTop: 10, padding: 10, borderRadius: 10,
+    backgroundColor: 'rgba(255,138,61,0.12)', borderWidth: 1, borderColor: 'rgba(255,138,61,0.3)',
+  },
+  chatErrorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: P.orange, textAlign: 'center' },
   msgRow: { marginBottom: 14, maxWidth: '100%' },
   bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleCoach: { backgroundColor: P.purple, borderTopRightRadius: 4 },

@@ -14,13 +14,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { P, iniciales } from '../../lib/coachTheme'
 import { type Estado } from '../../lib/coachTypes'
 import { fetchAnalytics, type AnalyticsResponse, type AnalyticsAtleta } from '../../lib/coachApi'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
 // ─── Config ─────────────────────────────────────────────────────────────────────
 
 const PERIODOS = [
-  { key: '4s',  label: 'Últimas 4 sem.',  semanas: 4 },
-  { key: '8s',  label: 'Últimas 8 sem.',  semanas: 8 },
-  { key: '12s', label: 'Últimas 12 sem.', semanas: 12 },
+  { key: '4s',  labelKey: 'coach_periodo_4s' as ScalarKey,  semanas: 4 },
+  { key: '8s',  labelKey: 'coach_periodo_8s' as ScalarKey,  semanas: 8 },
+  { key: '12s', labelKey: 'coach_periodo_12s' as ScalarKey, semanas: 12 },
 ] as const
 type PeriodoKey = (typeof PERIODOS)[number]['key']
 
@@ -108,6 +109,7 @@ type Vista = 'cartera' | 'individual'
 
 export default function CoachAnalytics() {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const [vista, setVista] = useState<Vista>('cartera')
   const [periodoKey, setPeriodoKey] = useState<PeriodoKey>('4s')
   const [periodoOpen, setPeriodoOpen] = useState(false)
@@ -131,12 +133,12 @@ export default function CoachAnalytics() {
       setAtletaId((prev) =>
         prev && res.atletas.some((a) => a.id === prev) ? prev : (res.atletas[0]?.id ?? null))
     } catch (e: any) {
-      setError(e?.message || 'No se pudo cargar analytics.')
+      setError(e?.message || t('coach_error_analytics'))
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [periodo.semanas])
+  }, [periodo.semanas, t])
 
   useEffect(() => { cargar(true) }, [cargar])
 
@@ -175,9 +177,9 @@ export default function CoachAnalytics() {
       >
         {/* Barra superior */}
         <View style={styles.topBar}>
-          <Text style={styles.title}>Analytics</Text>
+          <Text style={styles.title}>{t('coach_tab_analytics')}</Text>
           <TouchableOpacity style={styles.periodPill} activeOpacity={0.75} onPress={() => setPeriodoOpen(true)}>
-            <Text style={styles.periodText}>{periodo.label}</Text>
+            <Text style={styles.periodText}>{t(periodo.labelKey)}</Text>
             <Text style={styles.periodCaret}>▾</Text>
           </TouchableOpacity>
         </View>
@@ -192,7 +194,7 @@ export default function CoachAnalytics() {
               onPress={() => setVista(v)}
             >
               <Text style={[styles.toggleText, { color: vista === v ? P.white : P.purpleFaint }]}>
-                {v === 'cartera' ? 'Cartera' : 'Individual'}
+                {v === 'cartera' ? t('coach_toggle_cartera') : t('coach_toggle_individual')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -203,27 +205,27 @@ export default function CoachAnalytics() {
         ) : error ? (
           <Text style={styles.emptyText}>{error}</Text>
         ) : atletas.length === 0 ? (
-          <Text style={styles.emptyText}>Aún no tienes atletas en tu cartera.</Text>
+          <Text style={styles.emptyText}>{t('coach_analytics_empty')}</Text>
         ) : vista === 'cartera' ? (
           <>
             {/* Métricas agregadas */}
             <View style={styles.grid}>
-              <MetricCard value={`${adherenciaMedia}%`} label="Adherencia media"
-                extra={adherenciaDelta !== 0 ? `${adherenciaDelta > 0 ? '▲' : '▼'} ${Math.abs(adherenciaDelta)}%` : 'estable'}
+              <MetricCard value={`${adherenciaMedia}%`} label={t('coach_metric_adherencia_media')}
+                extra={adherenciaDelta !== 0 ? `${adherenciaDelta > 0 ? '▲' : '▼'} ${Math.abs(adherenciaDelta)}%` : t('coach_estable')}
                 extraColor={adherenciaDelta >= 0 ? P.green : P.orange} />
-              <MetricCard value={`${consistenciaMedia}%`} label="Consistencia media" />
-              <MetricCard value={`${totalSesiones}`} label="Sesiones ejecutadas" extra={`${activos} activos`} extraColor={P.purpleFaint} />
-              <MetricCard value={`${scorePromedio}`} label="Zyfit Score medio" />
+              <MetricCard value={`${consistenciaMedia}%`} label={t('coach_metric_consistencia_media')} />
+              <MetricCard value={`${totalSesiones}`} label={t('coach_metric_sesiones_ejecutadas')} extra={`${activos} ${t('coach_activos_suffix')}`} extraColor={P.purpleFaint} />
+              <MetricCard value={`${scorePromedio}`} label={t('coach_metric_zyfit_score_medio')} />
             </View>
 
             {/* Sesiones por semana */}
             <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Sesiones por semana — cartera</Text>
+              <Text style={styles.chartTitle}>{t('coach_chart_sesiones_semana_cartera')}</Text>
               <VBars data={sesionesData} />
             </View>
 
             {/* Ranking de adherencia */}
-            <Text style={styles.sectionLabel}>Ranking de adherencia</Text>
+            <Text style={styles.sectionLabel}>{t('coach_ranking_adherencia')}</Text>
             <View style={styles.rankCard}>
               {ranking.map((a, i) => {
                 const pct = a.adherencia ?? 0
@@ -261,9 +263,9 @@ export default function CoachAnalytics() {
               <Text style={styles.scoreLabel}>Zyfit Score</Text>
 
               {[
-                { nombre: 'Consistencia', valor: sel.consistencia, peso: '45%', color: P.green },
-                { nombre: 'Adherencia',   valor: sel.adherencia,   peso: '40%', color: P.purpleMid },
-                { nombre: 'Recencia',     valor: sel.recencia,     peso: '15%', color: P.purpleLight },
+                { nombre: t('coach_word_consistencia'), valor: sel.consistencia, peso: '45%', color: P.green },
+                { nombre: t('coach_word_adherencia'),    valor: sel.adherencia,   peso: '40%', color: P.purpleMid },
+                { nombre: t('coach_word_recencia'),      valor: sel.recencia,     peso: '15%', color: P.purpleLight },
               ].map((cp) => (
                 <View key={cp.nombre} style={styles.compRow}>
                   <View style={styles.compTop}>
@@ -279,8 +281,8 @@ export default function CoachAnalytics() {
             <View style={styles.grid}>
               <MetricCard
                 value={`${sel.adherencia}%`}
-                label="Adherencia"
-                extra={sel.recencia >= 80 ? 'activo' : 'irregular'}
+                label={t('coach_word_adherencia')}
+                extra={sel.recencia >= 80 ? t('coach_activo_word') : t('coach_irregular_word')}
                 extraColor={sel.recencia >= 80 ? P.green : P.orange}
               />
               {(() => {
@@ -289,8 +291,8 @@ export default function CoachAnalytics() {
                 return (
                   <MetricCard
                     value={rpe != null ? rpe.toFixed(1) : '—'}
-                    label="RPE promedio"
-                    extra={rpe == null ? 'sin datos' : optima ? 'zona óptima' : 'fuera de zona'}
+                    label={t('coach_rpe_promedio_label')}
+                    extra={rpe == null ? t('coach_sin_datos_lower') : optima ? t('coach_zona_optima') : t('coach_fuera_de_zona')}
                     extraColor={rpe == null ? P.purpleFaint : optima ? P.green : P.orange}
                   />
                 )
@@ -299,7 +301,7 @@ export default function CoachAnalytics() {
 
             {/* Carga semanal (sesiones/semana reales) */}
             <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Carga semanal — sesiones/sem (últimas {periodo.semanas})</Text>
+              <Text style={styles.chartTitle}>{t('coach_carga_semanal_title')} {periodo.semanas})</Text>
               {(() => {
                 const carga = sel.carga_semanal
                 const max = Math.max(...carga, 1)
@@ -316,7 +318,7 @@ export default function CoachAnalytics() {
       </ScrollView>
 
       {/* Selector de período */}
-      <PickerSheet visible={periodoOpen} title="Período de análisis" onClose={() => setPeriodoOpen(false)}>
+      <PickerSheet visible={periodoOpen} title={t('coach_periodo_analisis_title')} onClose={() => setPeriodoOpen(false)}>
         {PERIODOS.map((p) => {
           const active = p.key === periodoKey
           return (
@@ -326,7 +328,7 @@ export default function CoachAnalytics() {
               activeOpacity={0.8}
               onPress={() => { setPeriodoKey(p.key); setPeriodoOpen(false) }}
             >
-              <Text style={[styles.optionText, { color: active ? P.white : P.ink }]}>{p.label}</Text>
+              <Text style={[styles.optionText, { color: active ? P.white : P.ink }]}>{t(p.labelKey)}</Text>
               {active && <Text style={styles.optionCheck}>✓</Text>}
             </TouchableOpacity>
           )
@@ -334,7 +336,7 @@ export default function CoachAnalytics() {
       </PickerSheet>
 
       {/* Selector de atleta */}
-      <PickerSheet visible={atletaOpen} title="Selecciona un atleta" onClose={() => setAtletaOpen(false)}>
+      <PickerSheet visible={atletaOpen} title={t('coach_selecciona_atleta_title')} onClose={() => setAtletaOpen(false)}>
         <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
           {atletas.map((a) => {
             const active = a.id === atletaId

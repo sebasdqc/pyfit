@@ -21,25 +21,27 @@ import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
 import { fetchMiCoachChat, sendMiCoachMensaje, desvincularMiCoach, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
 import { iniciales as coachIniciales } from '../../../lib/coachTheme'
+import { useTranslation, type ScalarKey } from '../../../lib/i18n'
 
 function horaDe(iso: string): string {
   const d = new Date(iso)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function fechaDe(iso: string): string {
+function fechaDe(iso: string, t: (key: ScalarKey) => string, lang: string): string {
   const d = new Date(iso)
   const hoy = new Date()
   const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
-  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
-  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
-  return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
+  if (d.toDateString() === hoy.toDateString()) return t('coach_date_today')
+  if (d.toDateString() === ayer.toDateString()) return t('coach_date_yesterday')
+  return d.toLocaleDateString(lang, { day: 'numeric', month: 'short' })
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RegistroCoachScreen() {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -54,6 +56,7 @@ export default function RegistroCoachScreen() {
   // Chat
   const [input, setInput]   = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const chatRef = useRef<ScrollView>(null)
 
   const coach = chat?.coach || null
@@ -90,7 +93,7 @@ export default function RegistroCoachScreen() {
       setCodigo('')
       await cargarChat()   // tras vincular, el GET ya trae al coach → cambia a modo chat
     } catch (e: any) {
-      setError(e?.message || 'No se pudo vincular. Verifica el código.')
+      setError(e?.message || t('coach_error_vincular'))
     } finally {
       setLinking(false)
     }
@@ -98,11 +101,11 @@ export default function RegistroCoachScreen() {
 
   function confirmarDesvincular() {
     Alert.alert(
-      'Desvincular coach',
-      `Dejarás de estar en la cartera de ${coach?.nombre ?? 'tu coach'} y se borrará este chat. Podrás volver a vincularte con un código.`,
+      t('coach_desvincular_coach_title'),
+      `${t('coach_desvincular_msg_prefix')} ${coach?.nombre ?? t('coach_tu_coach_fallback')} ${t('coach_desvincular_msg_suffix')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Desvincular', style: 'destructive', onPress: desvincular },
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('coach_btn_desvincular'), style: 'destructive', onPress: desvincular },
       ],
     )
   }
@@ -113,7 +116,7 @@ export default function RegistroCoachScreen() {
       setChat({ coach: null, mensajes: [] })   // vuelve al modo de ingreso de código
       setInput('')
     } catch (e: any) {
-      Alert.alert('No se pudo desvincular', e?.message || 'Intenta de nuevo.')
+      Alert.alert(t('coach_error_desvincular_title'), e?.message || t('coach_intenta_de_nuevo'))
     }
   }
 
@@ -122,12 +125,17 @@ export default function RegistroCoachScreen() {
     if (!text || sending) return
     setSending(true)
     setInput('')
+    setSendError(null)
     try {
       const msg = await sendMiCoachMensaje(text)
       setChat((prev) => prev ? { ...prev, mensajes: [...prev.mensajes, msg] } : prev)
       setTimeout(() => chatRef.current?.scrollToEnd({ animated: true }), 50)
-    } catch {
+    } catch (e: any) {
       setInput(text)
+      setSendError(e?.message || t('coach_error_enviar_mensaje'))
+      // Puede haberse desvinculado del lado del coach: refrescamos para volver
+      // al modo de ingreso de código si ya no hay vínculo.
+      cargarChat(true)
     } finally {
       setSending(false)
     }
@@ -144,7 +152,7 @@ export default function RegistroCoachScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{coach ? 'Tu coach' : 'Registro con Coach'}</Text>
+        <Text style={styles.headerTitle}>{coach ? t('coach_tu_coach_header') : t('perfil_section_coach_signup')}</Text>
       </View>
 
       {loadingChat ? (
@@ -161,11 +169,11 @@ export default function RegistroCoachScreen() {
               <Text style={styles.coachAvatarText}>{coachIniciales(coach.nombre)}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.coachLabel}>VINCULADO CON</Text>
+              <Text style={styles.coachLabel}>{t('coach_vinculado_con')}</Text>
               <Text style={styles.coachName} numberOfLines={1}>{coach.nombre}</Text>
             </View>
             <TouchableOpacity onPress={confirmarDesvincular} activeOpacity={0.7} style={styles.unlinkBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.unlinkText}>Desvincular</Text>
+              <Text style={styles.unlinkText}>{t('coach_btn_desvincular')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -176,7 +184,7 @@ export default function RegistroCoachScreen() {
             onContentSizeChange={() => chatRef.current?.scrollToEnd({ animated: false })}
           >
             {mensajes.length === 0 && (
-              <Text style={styles.chatEmpty}>Aún no hay mensajes. Salúdalo 👋</Text>
+              <Text style={styles.chatEmpty}>{t('coach_chat_empty_saludalo')}</Text>
             )}
             {mensajes.map((m: Mensaje, idx: number) => {
               const showDate = idx === 0 ||
@@ -186,30 +194,33 @@ export default function RegistroCoachScreen() {
                 <React.Fragment key={m.id}>
                   {showDate && (
                     <View style={styles.dateSep}>
-                      <Text style={styles.dateSepText}>{fechaDe(m.created_at)}</Text>
+                      <Text style={styles.dateSepText}>{fechaDe(m.created_at, t, lang)}</Text>
                     </View>
                   )}
                   <View style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
                     <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
                       <Text style={[styles.bubbleText, { color: mine ? colors.white : colors.inkPrimary }]}>{m.texto}</Text>
                     </View>
-                    <Text style={styles.msgMeta}>{horaDe(m.created_at)} · {mine ? 'Tú' : coach.nombre.split(' ')[0]}</Text>
+                    <Text style={styles.msgMeta}>{horaDe(m.created_at)} · {mine ? t('coach_tu_pronoun') : coach.nombre.split(' ')[0]}</Text>
                   </View>
                 </React.Fragment>
               )
             })}
           </ScrollView>
 
+          {!!sendError && <Text style={styles.sendErrorText}>{sendError}</Text>}
+
           <View style={[styles.inputBar, { paddingBottom: insets.bottom + 10 }]}>
             <TextInput
               style={styles.chatInput}
-              placeholder="Escribe un mensaje..."
+              placeholder={t('coach_chat_placeholder')}
               placeholderTextColor={colors.inkMuted}
               value={input}
               onChangeText={setInput}
               onSubmitEditing={enviar}
               returnKeyType="send"
               editable={!sending}
+              maxLength={2000}
             />
             <TouchableOpacity style={styles.sendBtn} activeOpacity={0.85} onPress={enviar} disabled={sending}>
               {sending ? <ActivityIndicator size="small" color={colors.white} /> : (
@@ -232,12 +243,12 @@ export default function RegistroCoachScreen() {
             <View style={styles.iconCircle}>
               <Text style={{ fontSize: 40 }}>🧑‍🏫</Text>
             </View>
-            <Text style={styles.title}>Vincúlate con tu coach</Text>
+            <Text style={styles.title}>{t('coach_vinculate_title')}</Text>
             <Text style={styles.description}>
-              Ingresa el código que te compartió tu entrenador para unirte a su cartera.
+              {t('coach_vinculate_desc')}
             </Text>
 
-            <Text style={styles.sectionLabel}>CÓDIGO DE COACH</Text>
+            <Text style={styles.sectionLabel}>{t('coach_codigo_label')}</Text>
             <TextInput
               style={styles.codeInput}
               value={codigo}
@@ -260,11 +271,11 @@ export default function RegistroCoachScreen() {
               disabled={codigo.trim().length < 4 || linking}
               onPress={vincular}
             >
-              {linking ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryBtnText}>VINCULARME</Text>}
+              {linking ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryBtnText}>{t('coach_vincularme_btn')}</Text>}
             </TouchableOpacity>
 
             <Text style={styles.hint}>
-              ¿No tienes un código? Pídeselo a tu coach: lo encuentra en su portal.
+              {t('coach_vincular_hint')}
             </Text>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -327,6 +338,7 @@ function makeStyles(c: Colors) {
 
     chatContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
     chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted, textAlign: 'center', marginTop: 40 },
+    sendErrorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff8585', textAlign: 'center', paddingHorizontal: 20, marginBottom: 6 },
     dateSep: { alignItems: 'center', marginVertical: 12 },
     dateSepText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkFaint, letterSpacing: 0.5 },
     msgRow: { marginBottom: 14, maxWidth: '100%' },

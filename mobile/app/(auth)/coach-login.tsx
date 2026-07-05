@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg'
 import { coachLogin } from '../../lib/auth'
 import { P, CONTACT_URL } from '../../lib/coachTheme'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
 
@@ -130,15 +131,16 @@ const auraStyles = StyleSheet.create({
 
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
-const BENEFICIOS = [
-  'Pro incluido para tus atletas',
-  'Rutinas generadas con IA',
-  'Dashboard de rendimiento',
-  'Historial detallado',
+const BENEFICIOS: ScalarKey[] = [
+  'coach_benefit_pro',
+  'coach_benefit_ia',
+  'coach_benefit_dashboard',
+  'coach_benefit_historial',
 ]
 
 export default function CoachLoginScreen() {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -147,7 +149,7 @@ export default function CoachLoginScreen() {
 
   async function handleAccess() {
     if (!email.trim() || !password.trim()) {
-      setMessage('Ingresa tu correo y contraseña para continuar.')
+      setMessage(t('coach_login_error_fields'))
       return
     }
     setMessage('')
@@ -156,11 +158,11 @@ export default function CoachLoginScreen() {
     setLoading(false)
 
     if (res.status === 'invalid') {
-      setMessage('Correo o contraseña incorrectos.')
+      setMessage(t('coach_login_error_invalid'))
       return
     }
     if (res.status === 'error') {
-      setMessage('No pudimos conectar. Verifica tu red e intenta de nuevo.')
+      setMessage(t('coach_login_error_network'))
       return
     }
     if (res.status === 'ok') {
@@ -168,9 +170,7 @@ export default function CoachLoginScreen() {
       return
     }
     // pending → la cuenta no es un coach con acceso activado
-    setMessage(
-      'Tu acceso está pendiente de activación. Si ya nos contactaste, te escribiremos pronto.',
-    )
+    setMessage(t('coach_login_pending'))
   }
 
   return (
@@ -193,7 +193,7 @@ export default function CoachLoginScreen() {
           {/* Badge superior */}
           <View style={styles.badge}>
             <View style={styles.badgeDot} />
-            <Text style={styles.badgeText}>Portal de entrenador</Text>
+            <Text style={styles.badgeText}>{t('coach_login_badge')}</Text>
           </View>
 
           {/* Logo + subtítulo */}
@@ -203,7 +203,7 @@ export default function CoachLoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.subtitle}>Tu portal inteligente de entrenamientos</Text>
+            <Text style={styles.subtitle}>{t('coach_login_subtitle')}</Text>
           </View>
 
           {/* Recuadro del formulario — mismo estilo que el login del atleta */}
@@ -213,10 +213,10 @@ export default function CoachLoginScreen() {
               <EnvelopeIcon />
               <TextInput
                 style={styles.input}
-                placeholder="Correo electrónico"
+                placeholder={t('coach_login_email_placeholder')}
                 placeholderTextColor={P.purpleFaint}
                 value={email}
-                onChangeText={(t) => { setEmail(t); setMessage('') }}
+                onChangeText={(txt) => { setEmail(txt); setMessage('') }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -227,10 +227,10 @@ export default function CoachLoginScreen() {
               <LockIcon />
               <TextInput
                 style={styles.input}
-                placeholder="Contraseña"
+                placeholder={t('coach_login_password_placeholder')}
                 placeholderTextColor={P.purpleFaint}
                 value={password}
-                onChangeText={(t) => { setPassword(t); setMessage('') }}
+                onChangeText={(txt) => { setPassword(txt); setMessage('') }}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -243,7 +243,7 @@ export default function CoachLoginScreen() {
               activeOpacity={0.6}
               onPress={() => router.push('/(auth)/forgot-password' as any)}
             >
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+              <Text style={styles.forgotText}>{t('login_forgot_password')}</Text>
             </TouchableOpacity>
 
             {/* Botón de acceso */}
@@ -256,7 +256,7 @@ export default function CoachLoginScreen() {
               {loading ? (
                 <ActivityIndicator color={P.white} size="small" />
               ) : (
-                <Text style={styles.accessBtnText}>Acceder al portal</Text>
+                <Text style={styles.accessBtnText}>{t('coach_login_access_btn')}</Text>
               )}
             </TouchableOpacity>
 
@@ -267,24 +267,24 @@ export default function CoachLoginScreen() {
           {/* Separador "¿aún no eres coach?" */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>¿aún no eres coach?</Text>
+            <Text style={styles.dividerText}>{t('coach_login_divider')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           {/* Card de beneficios */}
           <View style={styles.benefitsCard}>
-            <Text style={styles.benefitsTitle}>Lleva tu cartera al siguiente nivel</Text>
+            <Text style={styles.benefitsTitle}>{t('coach_login_benefits_title')}</Text>
 
             {BENEFICIOS.map((b) => (
               <View key={b} style={styles.benefitRow}>
                 <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>{b}</Text>
+                <Text style={styles.benefitText}>{t(b)}</Text>
               </View>
             ))}
 
             <View style={styles.benefitsDivider} />
             <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(CONTACT_URL)}>
-              <Text style={styles.contactLink}>Contáctanos para conocer más →</Text>
+              <Text style={styles.contactLink}>{t('coach_login_contact_link')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -294,7 +294,7 @@ export default function CoachLoginScreen() {
             activeOpacity={0.6}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login'))}
           >
-            <Text style={styles.backText}>← Volver al login</Text>
+            <Text style={styles.backText}>{t('coach_login_back')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

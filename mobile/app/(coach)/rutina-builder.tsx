@@ -12,6 +12,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -28,14 +29,18 @@ import {
   type EjercicioCatalog,
   type EjercicioCatalogItem,
 } from '../../lib/coachApi'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
 
 // ─── Fases canónicas (mismas que el resto de la app) ─────────────────────────────
+// `nombre` es el texto CANÓNICO en español que viaja al backend (buildPayload) y
+// que clasifFase() reconoce al recargar una rutina existente — NUNCA se traduce.
+// `labelKey` es solo para lo que ve el coach en pantalla.
 
 type FaseKey = 'calentamiento' | 'principal' | 'enfriamiento'
-const FASES: { key: FaseKey; nombre: string; color: string }[] = [
-  { key: 'calentamiento', nombre: 'Calentamiento',     color: P.orange },
-  { key: 'principal',     nombre: 'Bloque principal',  color: P.purpleMid },
-  { key: 'enfriamiento',  nombre: 'Vuelta a la calma', color: P.green },
+const FASES: { key: FaseKey; nombre: string; labelKey: ScalarKey; color: string }[] = [
+  { key: 'calentamiento', nombre: 'Calentamiento',     labelKey: 'coach_fase_calentamiento', color: P.orange },
+  { key: 'principal',     nombre: 'Bloque principal',  labelKey: 'coach_fase_principal',     color: P.purpleMid },
+  { key: 'enfriamiento',  nombre: 'Vuelta a la calma', labelKey: 'coach_fase_enfriamiento',  color: P.green },
 ]
 
 function clasifFase(nombre: string): FaseKey {
@@ -47,14 +52,14 @@ function clasifFase(nombre: string): FaseKey {
 
 // ─── Fechas (hoy + 6) ────────────────────────────────────────────────────────────
 
-const DIAS_ABBR = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
-function buildDias(): { iso: string; label: string }[] {
+function buildDias(t: (key: ScalarKey) => string, ta: (key: 'coach_dias_abbr') => string[]): { iso: string; label: string }[] {
+  const diasAbbr = ta('coach_dias_abbr')
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i)
-    const label = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${DIAS_ABBR[d.getDay()]} ${d.getDate()}`
+    const label = i === 0 ? t('coach_date_today') : i === 1 ? t('coach_dia_manana') : `${diasAbbr[d.getDay()]} ${d.getDate()}`
     return { iso: isoLocal(d), label }
   })
 }
@@ -99,10 +104,11 @@ const fasesVacias = (): FaseState[] => FASES.map((f) => ({ key: f.key, ejercicio
 
 export default function RutinaBuilder() {
   const insets = useSafeAreaInsets()
+  const { t, ta } = useTranslation()
   const params = useLocalSearchParams<{ id?: string; nombre?: string }>()
-  const nombre = params.nombre || 'Atleta'
+  const nombre = params.nombre || t('coach_fallback_atleta')
 
-  const dias = React.useMemo(buildDias, [])
+  const dias = React.useMemo(() => buildDias(t, ta), [t, ta])
   const [fecha, setFecha] = useState(dias[0].iso)
 
   const [titulo, setTitulo] = useState('')
@@ -126,6 +132,8 @@ export default function RutinaBuilder() {
 
   // Catálogo de ejercicios (para búsqueda + formulario personalizado)
   const [catalog, setCatalog] = useState<EjercicioCatalog | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<EjercicioCatalogItem[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -182,18 +190,26 @@ export default function RutinaBuilder() {
       }
       setIsDirty(false)
     } catch (e: any) {
-      showMsg(e?.message || 'No se pudo cargar la rutina.', true)
+      showMsg(e?.message || t('coach_error_cargar_rutina'), true)
     } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [params.id, t])
 
   useEffect(() => { cargar(fecha) }, [fecha, cargar])
 
-  // Carga el catálogo de dropdowns al montar
-  useEffect(() => {
-    fetchExerciseCatalog().then(setCatalog).catch(() => {})
+  // Carga el catálogo de dropdowns al montar. Si falla (blip de red), el paso
+  // "custom" del editor muestra un estado de reintento en vez de quedar vacío.
+  const cargarCatalogo = useCallback(() => {
+    setCatalogLoading(true)
+    setCatalogError(false)
+    fetchExerciseCatalog()
+      .then((c) => setCatalog(c))
+      .catch(() => setCatalogError(true))
+      .finally(() => setCatalogLoading(false))
   }, [])
+
+  useEffect(() => { cargarCatalogo() }, [cargarCatalogo])
 
   // Búsqueda con debounce de 350ms
   useEffect(() => {
@@ -230,25 +246,25 @@ export default function RutinaBuilder() {
 
   async function guardar(publicar: boolean) {
     if (!params.id || saving) return
-    if (publicar && !titulo.trim()) { showMsg('Ponle un título a la sesión para publicarla.', true); return }
-    if (publicar && total === 0) { showMsg('Agrega al menos un ejercicio para publicar.', true); return }
+    if (publicar && !titulo.trim()) { showMsg(t('coach_titulo_para_publicar'), true); return }
+    if (publicar && total === 0) { showMsg(t('coach_ejercicio_para_publicar'), true); return }
     setSaving(publicar ? 'publicar' : 'borrador'); showMsg(null)
     try {
       const { rutina } = await saveAtletaRutina(params.id, buildPayload(publicar))
       setEstado(rutina.estado); setBloqueada(rutina.bloqueada)
       setIsDirty(false)
-      showMsg(publicar ? '✅ Publicada · el atleta la verá en su sesión de ese día.' : '✅ Borrador guardado.')
+      showMsg(publicar ? t('coach_publicada_msg') : t('coach_borrador_guardado_msg'))
     } catch (e: any) {
-      showMsg(e?.message || 'No se pudo guardar.', true)
+      showMsg(e?.message || t('coach_error_guardar_generico'), true)
     } finally {
       setSaving(null)
     }
   }
 
   function confirmarQuitar() {
-    Alert.alert('Quitar rutina', 'Se eliminará la sesión de ese día. Esta acción no se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Quitar', style: 'destructive', onPress: quitar },
+    Alert.alert(t('coach_quitar_rutina_title'), t('coach_quitar_rutina_msg'), [
+      { text: t('common_cancel'), style: 'cancel' },
+      { text: t('coach_btn_quitar'), style: 'destructive', onPress: quitar },
     ])
   }
   async function quitar() {
@@ -258,9 +274,9 @@ export default function RutinaBuilder() {
       await deleteAtletaRutina(params.id, fecha)
       setTitulo(''); setObjetivo(''); setDuracion('45'); setRpe('7'); setNota('')
       setFases(fasesVacias()); setEstado(null); setBloqueada(false)
-      showMsg('✅ Rutina eliminada.')
+      showMsg(t('coach_rutina_eliminada_msg'))
     } catch (e: any) {
-      Alert.alert('No se pudo quitar', e?.message || 'Intenta de nuevo.')
+      Alert.alert(t('coach_error_quitar'), e?.message || t('coach_intenta_de_nuevo'))
     } finally {
       setSaving(null)
     }
@@ -312,14 +328,14 @@ export default function RutinaBuilder() {
         analizar_con_ia: true,
       })
       if (warning) {
-        Alert.alert('Ejercicio existente', warning)
+        Alert.alert(t('coach_ejercicio_existente_title'), warning)
       }
       // Usar el nombre canónico del ejercicio creado/encontrado
       setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: ejercicio.nombre } }))
       setEditorStep('search')
       setSearchQuery(ejercicio.nombre)
     } catch (e: any) {
-      Alert.alert('No se pudo crear', e?.message || 'Intenta de nuevo.')
+      Alert.alert(t('coach_error_crear_title'), e?.message || t('coach_intenta_de_nuevo'))
     } finally {
       setCustomSaving(false)
     }
@@ -355,24 +371,50 @@ export default function RutinaBuilder() {
       ;[list[idx], list[j]] = [list[j], list[idx]]
       return next
     })
+    setIsDirty(true)
   }
 
   const readOnly = bloqueada
   const e = editor?.draft
 
+  function confirmarSalir() {
+    if (isDirty && !readOnly) {
+      Alert.alert(t('coach_unsaved_changes_title'), t('coach_rutina_changes_msg'), [
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('coach_btn_salir'), style: 'destructive', onPress: () => router.back() },
+      ])
+    } else {
+      router.back()
+    }
+  }
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isDirty && !readOnly) {
+        Alert.alert(t('coach_unsaved_changes_title'), t('coach_rutina_changes_msg'), [
+          { text: t('common_cancel'), style: 'cancel' },
+          { text: t('coach_btn_salir'), style: 'destructive', onPress: () => router.back() },
+        ])
+        return true
+      }
+      return false
+    })
+    return () => sub.remove()
+  }, [isDirty, readOnly, t])
+
   return (
     <View style={styles.root}>
       {/* Header */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.6} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} activeOpacity={0.6} onPress={confirmarSalir}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.topTitle} numberOfLines={1}>Rutina manual</Text>
+          <Text style={styles.topTitle} numberOfLines={1}>{t('coach_rutina_manual_title')}</Text>
           <Text style={styles.topSub} numberOfLines={1}>{nombre}</Text>
         </View>
         {estado === 'publicada' && (
-          <View style={styles.pubBadge}><Text style={styles.pubBadgeText}>Publicada</Text></View>
+          <View style={styles.pubBadge}><Text style={styles.pubBadgeText}>{t('coach_publicada_badge')}</Text></View>
         )}
       </View>
 
@@ -384,11 +426,11 @@ export default function RutinaBuilder() {
             <TouchableOpacity key={d.iso} style={[styles.diaChip, active && styles.diaChipActive]} activeOpacity={0.8} onPress={() => {
                 if (isDirty && !readOnly && d.iso !== fecha) {
                   Alert.alert(
-                    'Cambios sin guardar',
-                    '¿Descartar los cambios de este día y cambiar de fecha?',
+                    t('coach_unsaved_changes_title'),
+                    t('coach_descartar_fecha_msg'),
                     [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Descartar', style: 'destructive', onPress: () => { setIsDirty(false); setFecha(d.iso) } },
+                      { text: t('common_cancel'), style: 'cancel' },
+                      { text: t('coach_btn_descartar'), style: 'destructive', onPress: () => { setIsDirty(false); setFecha(d.iso) } },
                     ]
                   )
                   return
@@ -408,27 +450,27 @@ export default function RutinaBuilder() {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {readOnly && (
               <View style={styles.lockedBanner}>
-                <Text style={styles.lockedText}>El atleta ya empezó esta sesión. Quedó de solo lectura.</Text>
+                <Text style={styles.lockedText}>{t('coach_locked_banner')}</Text>
               </View>
             )}
 
             {/* Meta */}
-            <Text style={styles.fieldLabel}>TÍTULO</Text>
+            <Text style={styles.fieldLabel}>{t('coach_field_titulo')}</Text>
             <TextInput style={styles.input} value={titulo} onChangeText={v => { setTitulo(v); setIsDirty(true) }} editable={!readOnly}
-              placeholder="Ej: Empuje pesado" placeholderTextColor={P.purpleFaint} maxLength={200} />
+              placeholder={t('coach_placeholder_titulo_sesion')} placeholderTextColor={P.purpleFaint} maxLength={200} />
 
-            <Text style={styles.fieldLabel}>OBJETIVO</Text>
+            <Text style={styles.fieldLabel}>{t('coach_field_objetivo')}</Text>
             <TextInput style={styles.input} value={objetivo} onChangeText={v => { setObjetivo(v); setIsDirty(true) }} editable={!readOnly}
-              placeholder="Ej: Fuerza de tren superior" placeholderTextColor={P.purpleFaint} maxLength={200} />
+              placeholder={t('coach_placeholder_objetivo_superior')} placeholderTextColor={P.purpleFaint} maxLength={200} />
 
             <View style={styles.row2}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>DURACIÓN (MIN)</Text>
+                <Text style={styles.fieldLabel}>{t('coach_field_duracion_min')}</Text>
                 <TextInput style={styles.input} value={duracion} onChangeText={v => { setDuracion(v); setIsDirty(true) }} editable={!readOnly}
                   keyboardType="number-pad" maxLength={3} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>RPE OBJETIVO</Text>
+                <Text style={styles.fieldLabel}>{t('coach_field_rpe_objetivo')}</Text>
                 <TextInput style={styles.input} value={rpe} onChangeText={v => { setRpe(v); setIsDirty(true) }} editable={!readOnly}
                   keyboardType="decimal-pad" maxLength={4} />
               </View>
@@ -441,7 +483,7 @@ export default function RutinaBuilder() {
                 <View key={f.key} style={styles.faseBlock}>
                   <View style={styles.faseHeader}>
                     <View style={[styles.faseDot, { backgroundColor: meta.color }]} />
-                    <Text style={styles.faseNombre}>{meta.nombre}</Text>
+                    <Text style={styles.faseNombre}>{t(meta.labelKey)}</Text>
                     <Text style={styles.faseCount}>{f.ejercicios.length}</Text>
                   </View>
 
@@ -471,7 +513,7 @@ export default function RutinaBuilder() {
 
                   {!readOnly && (
                     <TouchableOpacity style={styles.addEj} activeOpacity={0.7} onPress={() => abrirEditor(fi, null)}>
-                      <Text style={styles.addEjText}>+ Agregar ejercicio</Text>
+                      <Text style={styles.addEjText}>{t('coach_add_ejercicio_btn')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -479,9 +521,9 @@ export default function RutinaBuilder() {
             })}
 
             {/* Nota */}
-            <Text style={styles.fieldLabel}>NOTA DEL ENTRENADOR</Text>
+            <Text style={styles.fieldLabel}>{t('coach_field_nota_entrenador')}</Text>
             <TextInput style={[styles.input, styles.inputMulti]} value={nota} onChangeText={v => { setNota(v); setIsDirty(true) }} editable={!readOnly}
-              placeholder="Ej: Sube la carga ~5% si el RPE queda bajo." placeholderTextColor={P.purpleFaint} multiline maxLength={600} />
+              placeholder={t('coach_placeholder_nota_entrenador2')} placeholderTextColor={P.purpleFaint} multiline maxLength={600} />
 
             {!!msg && (
               <Text style={[styles.msg, msgIsError ? styles.msgError : styles.msgSuccess]}>
@@ -494,11 +536,11 @@ export default function RutinaBuilder() {
               <View style={styles.actions}>
                 <TouchableOpacity style={[styles.btnSecond, (saving === 'borrador' || saving === 'quitar') && { opacity: 0.6 }]} activeOpacity={0.85}
                   disabled={!!saving} onPress={() => guardar(false)}>
-                  {saving === 'borrador' ? <ActivityIndicator color={P.purpleMid} /> : <Text style={styles.btnSecondText}>Guardar borrador</Text>}
+                  {saving === 'borrador' ? <ActivityIndicator color={P.purpleMid} /> : <Text style={styles.btnSecondText}>{t('coach_guardar_borrador_btn')}</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.btnPrimary, saving === 'publicar' && { opacity: 0.6 }]} activeOpacity={0.85}
                   disabled={!!saving} onPress={() => guardar(true)}>
-                  {saving === 'publicar' ? <ActivityIndicator color={P.white} /> : <Text style={styles.btnPrimaryText}>{estado === 'publicada' ? 'Actualizar' : 'Publicar'}</Text>}
+                  {saving === 'publicar' ? <ActivityIndicator color={P.white} /> : <Text style={styles.btnPrimaryText}>{estado === 'publicada' ? t('coach_btn_actualizar') : t('coach_btn_publicar')}</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -506,7 +548,7 @@ export default function RutinaBuilder() {
               <TouchableOpacity style={[styles.btnDelete, saving === 'quitar' && { opacity: 0.6 }]} activeOpacity={0.7} onPress={confirmarQuitar} disabled={!!saving}>
                 {saving === 'quitar'
                   ? <ActivityIndicator color={P.orange} />
-                  : <Text style={styles.btnDeleteText}>Quitar rutina</Text>}
+                  : <Text style={styles.btnDeleteText}>{t('coach_quitar_rutina_title')}</Text>}
               </TouchableOpacity>
             )}
 
@@ -525,17 +567,17 @@ export default function RutinaBuilder() {
               {/* ── STEP: búsqueda + parámetros del ejercicio ── */}
               {editorStep === 'search' && e && (
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  <Text style={styles.sheetTitle}>{editor?.idx === null ? 'Nuevo ejercicio' : 'Editar ejercicio'}</Text>
+                  <Text style={styles.sheetTitle}>{editor?.idx === null ? t('coach_nuevo_ejercicio_title') : t('coach_editar_ejercicio_title')}</Text>
 
                   {/* Nombre / búsqueda */}
-                  <Text style={styles.fieldLabel}>BUSCAR O ESCRIBIR NOMBRE</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_buscar_nombre')}</Text>
                   <TextInput
                     style={styles.input} value={searchQuery} autoFocus
                     onChangeText={(v) => {
                       setSearchQuery(v)
                       setEditor((p) => p && ({ ...p, draft: { ...p.draft, nombre: v } }))
                     }}
-                    placeholder="Ej: Press banca" placeholderTextColor={P.purpleFaint} maxLength={200}
+                    placeholder={t('coach_placeholder_press_banca')} placeholderTextColor={P.purpleFaint} maxLength={200}
                   />
 
                   {/* Resultados de búsqueda */}
@@ -554,14 +596,15 @@ export default function RutinaBuilder() {
                   {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
                     <View style={styles.noResultsBox}>
                       <Text style={styles.noResultsText}>
-                        "{searchQuery.length > 30 ? searchQuery.slice(0, 30) + '…' : searchQuery}" no está en el catálogo.
+                        "{searchQuery.length > 30 ? searchQuery.slice(0, 30) + '…' : searchQuery}" {t('coach_no_esta_en_catalogo')}
                       </Text>
                       <TouchableOpacity style={styles.createCustomBtn} activeOpacity={0.85}
                         onPress={() => {
                           setCustomForm(customFormVacio(searchQuery.trim()))
                           setEditorStep('custom')
+                          if (!catalog && !catalogLoading) cargarCatalogo()
                         }}>
-                        <Text style={styles.createCustomBtnText}>+ Crear ejercicio personalizado</Text>
+                        <Text style={styles.createCustomBtnText}>{t('coach_crear_ejercicio_personalizado_btn')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -572,12 +615,12 @@ export default function RutinaBuilder() {
                   {/* Parámetros del ejercicio en la rutina */}
                   <View style={styles.row2}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.fieldLabel}>SERIES</Text>
+                      <Text style={styles.fieldLabel}>{t('coach_field_series')}</Text>
                       <TextInput style={styles.input} value={String(e.series)} keyboardType="number-pad" maxLength={2}
                         onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, series: parseInt(v, 10) || 0 } }))} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.fieldLabel}>REPS</Text>
+                      <Text style={styles.fieldLabel}>{t('coach_field_reps')}</Text>
                       <TextInput style={styles.input} value={e.repeticiones} maxLength={50}
                         onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, repeticiones: v } }))}
                         placeholder="8-10" placeholderTextColor={P.purpleFaint} />
@@ -586,57 +629,78 @@ export default function RutinaBuilder() {
 
                   <View style={styles.row2}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.fieldLabel}>DESCANSO (S)</Text>
+                      <Text style={styles.fieldLabel}>{t('coach_field_descanso_s')}</Text>
                       <TextInput style={styles.input} value={String(e.descanso_segundos)} keyboardType="number-pad" maxLength={4}
                         onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, descanso_segundos: parseInt(v, 10) || 0 } }))} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.fieldLabel}>RPE (OPC.)</Text>
+                      <Text style={styles.fieldLabel}>{t('coach_field_rpe_opc')}</Text>
                       <TextInput style={styles.input} value={e.rpe_sugerido != null ? String(e.rpe_sugerido) : ''}
                         keyboardType="decimal-pad" maxLength={4} placeholder="—" placeholderTextColor={P.purpleFaint}
                         onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, rpe_sugerido: v.trim() ? parseFloat(v) : null } }))} />
                     </View>
                   </View>
 
-                  <Text style={styles.fieldLabel}>NOTAS (OPC.)</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_notas_opc')}</Text>
                   <TextInput style={styles.input} value={e.notas} maxLength={500}
                     onChangeText={(v) => setEditor((p) => p && ({ ...p, draft: { ...p.draft, notas: v } }))}
-                    placeholder="Ej: Controla la fase excéntrica" placeholderTextColor={P.purpleFaint} />
+                    placeholder={t('coach_placeholder_controla_excentrica')} placeholderTextColor={P.purpleFaint} />
 
                   <TouchableOpacity
                     style={[styles.btnPrimary, { marginTop: 10 }, !e.nombre.trim() && { opacity: 0.5 }]}
                     activeOpacity={0.85} disabled={!e.nombre.trim()} onPress={guardarEjercicio}>
-                    <Text style={styles.btnPrimaryText}>{editor?.idx === null ? 'Agregar' : 'Guardar'}</Text>
+                    <Text style={styles.btnPrimaryText}>{editor?.idx === null ? t('common_add') : t('common_save')}</Text>
                   </TouchableOpacity>
                   <View style={{ height: 8 }} />
                 </ScrollView>
               )}
 
               {/* ── STEP: formulario de ejercicio personalizado ── */}
+              {editorStep === 'custom' && !catalog && (
+                <View>
+                  <View style={styles.customHeader}>
+                    <TouchableOpacity onPress={() => setEditorStep('search')} hitSlop={8}>
+                      <Text style={styles.customBack}>{t('coach_back_arrow_volver')}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.sheetTitle} numberOfLines={1}>{t('coach_ejercicio_personalizado_title')}</Text>
+                  </View>
+                  {catalogLoading ? (
+                    <ActivityIndicator color={P.purpleMid} style={{ marginVertical: 28 }} />
+                  ) : (
+                    <View style={{ paddingVertical: 20, alignItems: 'center', gap: 12 }}>
+                      <Text style={styles.noResultsText}>{t('coach_form_no_disponible')}</Text>
+                      <TouchableOpacity style={styles.createCustomBtn} activeOpacity={0.85} onPress={cargarCatalogo}>
+                        <Text style={styles.createCustomBtnText}>{t('common_retry')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
               {editorStep === 'custom' && catalog && (
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   {/* Header con botón de volver */}
                   <View style={styles.customHeader}>
                     <TouchableOpacity onPress={() => setEditorStep('search')} hitSlop={8}>
-                      <Text style={styles.customBack}>← Volver</Text>
+                      <Text style={styles.customBack}>{t('coach_back_arrow_volver')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.sheetTitle} numberOfLines={1}>Ejercicio personalizado</Text>
+                    <Text style={styles.sheetTitle} numberOfLines={1}>{t('coach_ejercicio_personalizado_title')}</Text>
                   </View>
 
                   {/* Nombre */}
-                  <Text style={styles.fieldLabel}>NOMBRE DEL EJERCICIO *</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_nombre_ejercicio')}</Text>
                   <TextInput style={styles.input} value={customForm.nombre} maxLength={200}
                     onChangeText={(v) => setCustomForm((p) => ({ ...p, nombre: v }))}
-                    placeholder="Ej: Sentadilla búlgara con mancuernas" placeholderTextColor={P.purpleFaint} />
+                    placeholder={t('coach_placeholder_sentadilla_bulgara')} placeholderTextColor={P.purpleFaint} />
 
                   {/* Patrón de movimiento */}
-                  <Text style={styles.fieldLabel}>PATRÓN DE MOVIMIENTO *</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_patron_movimiento')}</Text>
                   <TouchableOpacity style={[styles.dropdownBtn, !customForm.patron && styles.dropdownBtnEmpty]}
                     activeOpacity={0.8} onPress={() => setOpenDropdown(openDropdown === 'patron' ? null : 'patron')}>
                     <Text style={[styles.dropdownBtnText, !customForm.patron && { color: P.purpleFaint }]}>
                       {customForm.patron
                         ? (catalog.patron_movimiento.find((p) => p.value === customForm.patron)?.label ?? customForm.patron)
-                        : 'Seleccionar patrón...'}
+                        : t('coach_seleccionar_patron')}
                     </Text>
                     <Text style={styles.dropdownArrow}>{openDropdown === 'patron' ? '▲' : '▼'}</Text>
                   </TouchableOpacity>
@@ -652,7 +716,7 @@ export default function RutinaBuilder() {
                   )}
 
                   {/* Dificultad */}
-                  <Text style={styles.fieldLabel}>DIFICULTAD</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_dificultad')}</Text>
                   <View style={styles.chipRow}>
                     {catalog.dificultad.map((opt) => {
                       const sel = customForm.dificultad === opt.value
@@ -666,9 +730,9 @@ export default function RutinaBuilder() {
                   </View>
 
                   {/* Tipo */}
-                  <Text style={styles.fieldLabel}>TIPO DE EJERCICIO</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_tipo_ejercicio')}</Text>
                   <View style={styles.chipRow}>
-                    {[{ value: true, label: 'Compuesto' }, { value: false, label: 'Aislamiento' }].map((opt) => {
+                    {[{ value: true, label: t('coach_tipo_compuesto') }, { value: false, label: t('coach_tipo_aislamiento') }].map((opt) => {
                       const sel = customForm.esCompuesto === opt.value
                       return (
                         <TouchableOpacity key={String(opt.value)} style={[styles.chip, sel && styles.chipSelected]}
@@ -680,7 +744,7 @@ export default function RutinaBuilder() {
                   </View>
 
                   {/* Músculos primarios */}
-                  <Text style={styles.fieldLabel}>MÚSCULOS PRIMARIOS</Text>
+                  <Text style={styles.fieldLabel}>{t('coach_field_musculos_primarios')}</Text>
                   {catalog.musculos.map((grupo) => (
                     <View key={grupo.grupo}>
                       <Text style={styles.grupoLabel}>{grupo.grupo}</Text>
@@ -703,7 +767,7 @@ export default function RutinaBuilder() {
                   ))}
 
                   {/* Músculos secundarios */}
-                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>MÚSCULOS SECUNDARIOS</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>{t('coach_field_musculos_secundarios')}</Text>
                   {catalog.musculos.map((grupo) => (
                     <View key={grupo.grupo + '_sec'}>
                       <Text style={styles.grupoLabel}>{grupo.grupo}</Text>
@@ -726,7 +790,7 @@ export default function RutinaBuilder() {
                   ))}
 
                   {/* Equipamiento */}
-                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>EQUIPAMIENTO</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>{t('coach_field_equipamiento')}</Text>
                   <View style={styles.chipWrap}>
                     {catalog.equipamiento.map((eq) => {
                       const sel = customForm.equipamiento.includes(eq)
@@ -744,8 +808,8 @@ export default function RutinaBuilder() {
                   </View>
 
                   {/* Contraindicaciones */}
-                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>CONTRAINDICACIONES (ZONAS DE LESIÓN)</Text>
-                  <Text style={styles.fieldHint}>Zonas del cuerpo donde este ejercicio puede ser problemático.</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>{t('coach_field_contraindicaciones')}</Text>
+                  <Text style={styles.fieldHint}>{t('coach_hint_contraindicaciones')}</Text>
                   <View style={styles.chipWrap}>
                     {catalog.contraindicaciones.map((c) => {
                       const sel = customForm.contraindicaciones.includes(c)
@@ -763,14 +827,14 @@ export default function RutinaBuilder() {
                   </View>
 
                   {/* Riesgo de error técnico */}
-                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>RIESGO DE ERROR TÉCNICO</Text>
-                  <Text style={styles.fieldHint}>¿Qué tan fácil es ejecutarlo mal? (1 = muy simple, 5 = técnica compleja)</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>{t('coach_field_riesgo_error')}</Text>
+                  <Text style={styles.fieldHint}>{t('coach_hint_riesgo_error')}</Text>
                   <TouchableOpacity style={[styles.dropdownBtn, customForm.errorRisk == null && styles.dropdownBtnEmpty]}
                     activeOpacity={0.8} onPress={() => setOpenDropdown(openDropdown === 'errorRisk' ? null : 'errorRisk')}>
                     <Text style={[styles.dropdownBtnText, customForm.errorRisk == null && { color: P.purpleFaint }]}>
                       {customForm.errorRisk != null
                         ? (catalog.error_risk.find((r) => r.value === customForm.errorRisk)?.label ?? String(customForm.errorRisk))
-                        : 'Seleccionar nivel...'}
+                        : t('coach_seleccionar_nivel')}
                     </Text>
                     <Text style={styles.dropdownArrow}>{openDropdown === 'errorRisk' ? '▲' : '▼'}</Text>
                   </TouchableOpacity>
@@ -786,7 +850,7 @@ export default function RutinaBuilder() {
                   )}
 
                   {/* Espacio requerido */}
-                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>ESPACIO REQUERIDO</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: 10 }]}>{t('coach_field_espacio_requerido')}</Text>
                   <View style={styles.chipRow}>
                     {catalog.space_required.map((opt) => {
                       const sel = customForm.spaceRequired === opt.value
@@ -803,7 +867,7 @@ export default function RutinaBuilder() {
                   <View style={[styles.actions, { marginTop: 18 }]}>
                     <TouchableOpacity style={[styles.btnSecond, { flex: 0.45 }]} activeOpacity={0.85}
                       onPress={() => setEditorStep('search')}>
-                      <Text style={styles.btnSecondText}>Cancelar</Text>
+                      <Text style={styles.btnSecondText}>{t('common_cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.btnPrimary, { flex: 1 }, (!customForm.nombre.trim() || !customForm.patron || customSaving) && { opacity: 0.5 }]}
@@ -812,11 +876,11 @@ export default function RutinaBuilder() {
                       onPress={guardarEjercicioPersonalizado}>
                       {customSaving
                         ? <ActivityIndicator color={P.white} />
-                        : <Text style={styles.btnPrimaryText}>Analizar con IA y guardar</Text>
+                        : <Text style={styles.btnPrimaryText}>{t('coach_analizar_ia_btn')}</Text>
                       }
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.iaHint}>Groq analizará el ejercicio y completará los campos técnicos automáticamente.</Text>
+                  <Text style={styles.iaHint}>{t('coach_ia_hint')}</Text>
                   <View style={{ height: 12 }} />
                 </ScrollView>
               )}

@@ -18,16 +18,28 @@ import {
   desvincularAtleta,
   type AtletaGestion,
 } from '../../lib/coachApi'
+import { useTranslation } from '../../lib/i18n'
 
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function CoachAtletas() {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const [atletas, setAtletas] = useState<AtletaGestion[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)   // id en operación
+  // ids con una operación en curso. Es un Set (no un solo id) para que pausar a un
+  // atleta no bloquee silenciosamente una acción sobre OTRO atleta mientras la
+  // primera está en vuelo.
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
+  const setBusy = useCallback((id: string, v: boolean) => {
+    setBusyIds((prev) => {
+      const next = new Set(prev)
+      if (v) next.add(id); else next.delete(id)
+      return next
+    })
+  }, [])
 
   const cargar = useCallback(async (spinner = true) => {
     if (spinner) setLoading(true)
@@ -37,68 +49,68 @@ export default function CoachAtletas() {
       const res = await fetchCarteraGestion()
       setAtletas(res.atletas)
     } catch (e: any) {
-      setError(e?.message || 'No se pudo cargar tu cartera.')
+      setError(e?.message || t('coach_error_cartera'))
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => { cargar(true) }, [cargar])
 
   // Pausa / reactiva el vínculo (optimista; revierte si falla el backend).
   async function toggleEstado(a: AtletaGestion) {
-    if (busy) return
+    if (busyIds.has(a.id)) return
     const nuevo = a.estado === 'activo' ? 'pausado' : 'activo'
-    setBusy(a.id)
+    setBusy(a.id, true)
     setAtletas((prev) => prev.map((x) => (x.id === a.id ? { ...x, estado: nuevo } : x)))
     try {
       await patchAtletaEstado(a.id, nuevo)
     } catch (e: any) {
       setAtletas((prev) => prev.map((x) => (x.id === a.id ? { ...x, estado: a.estado } : x)))
-      Alert.alert('No se pudo actualizar', e?.message || 'Intenta de nuevo.')
+      Alert.alert(t('coach_error_actualizar_title'), e?.message || t('coach_intenta_de_nuevo'))
     } finally {
-      setBusy(null)
+      setBusy(a.id, false)
     }
   }
 
   function confirmarToggleEstado(a: AtletaGestion) {
     const pausando = a.estado === 'activo'
     Alert.alert(
-      pausando ? `Pausar a ${a.nombre}` : `Reactivar a ${a.nombre}`,
+      `${pausando ? t('coach_pausar_a_title') : t('coach_reactivar_a_title')} ${a.nombre}`,
       pausando
-        ? 'El atleta no recibirá nuevas rutinas ni directivas mientras esté pausado. Su historial se conserva.'
-        : 'El atleta volverá a recibir rutinas y directivas normalmente.',
+        ? t('coach_pausar_msg')
+        : t('coach_reactivar_msg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: pausando ? 'Pausar' : 'Reactivar', onPress: () => toggleEstado(a) },
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: pausando ? t('coach_btn_pausar') : t('coach_btn_reactivar'), onPress: () => toggleEstado(a) },
       ],
     )
   }
 
   function confirmarDesvincular(a: AtletaGestion) {
     Alert.alert(
-      `Desvincular a ${a.nombre}`,
-      'Saldrá de tu cartera y se borrará su chat. Podrá volver a vincularse con tu código. Esta acción no se puede deshacer.',
+      `${t('coach_desvincular_a_title')} ${a.nombre}`,
+      t('coach_desvincular_atleta_msg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Desvincular', style: 'destructive', onPress: () => desvincular(a) },
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('coach_btn_desvincular'), style: 'destructive', onPress: () => desvincular(a) },
       ],
     )
   }
 
   async function desvincular(a: AtletaGestion) {
-    if (busy) return
-    setBusy(a.id)
+    if (busyIds.has(a.id)) return
+    setBusy(a.id, true)
     const prev = atletas
     setAtletas((p) => p.filter((x) => x.id !== a.id))
     try {
       await desvincularAtleta(a.id)
     } catch (e: any) {
       setAtletas(prev)
-      Alert.alert('No se pudo desvincular', e?.message || 'Intenta de nuevo.')
+      Alert.alert(t('coach_error_desvincular_title'), e?.message || t('coach_intenta_de_nuevo'))
     } finally {
-      setBusy(null)
+      setBusy(a.id, false)
     }
   }
 
@@ -114,20 +126,20 @@ export default function CoachAtletas() {
           <RefreshControl refreshing={refreshing} onRefresh={() => cargar(false)} tintColor={P.purpleSoft} />
         }
       >
-        <Text style={styles.title}>Atletas</Text>
+        <Text style={styles.title}>{t('coach_tab_atletas')}</Text>
         <Text style={styles.subtitle}>
-          Gestiona tu cartera · pausa, reactiva o desvincula
+          {t('coach_atletas_subtitle')}
         </Text>
 
         {!loading && !error && atletas.length > 0 && (
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryValue}>{activos}</Text>
-              <Text style={styles.summaryLabel}>Activos</Text>
+              <Text style={styles.summaryLabel}>{t('coach_atletas_summary_activos')}</Text>
             </View>
             <View style={styles.summaryCard}>
               <Text style={[styles.summaryValue, { color: P.amber }]}>{pausados}</Text>
-              <Text style={styles.summaryLabel}>Pausados</Text>
+              <Text style={styles.summaryLabel}>{t('coach_atletas_summary_pausados')}</Text>
             </View>
           </View>
         )}
@@ -138,20 +150,20 @@ export default function CoachAtletas() {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity onPress={() => cargar(true)} activeOpacity={0.8}>
-              <Text style={styles.retryText}>Reintentar</Text>
+              <Text style={styles.retryText}>{t('common_retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : atletas.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>Aún no tienes atletas</Text>
+            <Text style={styles.emptyTitle}>{t('coach_empty_atletas_title')}</Text>
             <Text style={styles.emptySub}>
-              Comparte tu código de coach desde Ajustes para que se vinculen a tu cartera.
+              {t('coach_atletas_empty_sub')}
             </Text>
           </View>
         ) : (
           atletas.map((a) => {
             const pausado = a.estado === 'pausado'
-            const enOp = busy === a.id
+            const enOp = busyIds.has(a.id)
             return (
               <View key={a.id} style={[styles.card, pausado && styles.cardPaused]}>
                 <TouchableOpacity
@@ -166,12 +178,12 @@ export default function CoachAtletas() {
                   <View style={styles.cardMid}>
                     <Text style={styles.nombre} numberOfLines={1}>{a.nombre}</Text>
                     <Text style={styles.meta} numberOfLines={1}>
-                      {pausado ? `Pausado · último entreno ${a.ultima}` : `Última actividad ${a.ultima}`}
+                      {pausado ? `${t('coach_atletas_pausado_ultimo_entreno_prefix')} ${a.ultima}` : `${t('coach_ultima_actividad_prefix')} ${a.ultima}`}
                     </Text>
                   </View>
                   <View style={[styles.estadoBadge, pausado ? styles.estadoPaused : styles.estadoActive]}>
                     <Text style={[styles.estadoText, { color: pausado ? P.amber : P.green }]}>
-                      {pausado ? 'Pausado' : 'Activo'}
+                      {pausado ? t('coach_estado_pausado') : t('coach_estado_activo')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -186,7 +198,7 @@ export default function CoachAtletas() {
                     {enOp ? (
                       <ActivityIndicator size="small" color={P.purpleMid} />
                     ) : (
-                      <Text style={styles.actionPauseText}>{pausado ? 'Reactivar' : 'Pausar'}</Text>
+                      <Text style={styles.actionPauseText}>{pausado ? t('coach_btn_reactivar') : t('coach_btn_pausar')}</Text>
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -195,7 +207,7 @@ export default function CoachAtletas() {
                     disabled={enOp}
                     onPress={() => confirmarDesvincular(a)}
                   >
-                    <Text style={styles.actionRemoveText}>Desvincular</Text>
+                    <Text style={styles.actionRemoveText}>{t('coach_btn_desvincular')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

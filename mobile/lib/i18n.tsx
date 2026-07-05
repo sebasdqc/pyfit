@@ -20,7 +20,7 @@ import {
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
-type ArrayKey = 'historial_months' | 'historial_days_abbr' | 'stats_months'
+type ArrayKey = 'historial_months' | 'historial_days_abbr' | 'stats_months' | 'coach_dias_abbr'
 export type ScalarKey = Exclude<TranslationKey, ArrayKey>
 
 interface I18nContextValue {

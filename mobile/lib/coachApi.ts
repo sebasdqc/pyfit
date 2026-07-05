@@ -10,6 +10,7 @@
  * por api.ts (apiPost), no por aquí.
  */
 
+import { Alert } from 'react-native'
 import { router } from 'expo-router'
 import {
   getCoachAccessToken,
@@ -44,6 +45,11 @@ export interface CoachMe {
 
 // Singleton: si varias requests reciben 401 a la vez, comparten un solo refresh.
 let _coachRefreshing: Promise<boolean> | null = null
+
+// Evita apilar varios Alert idénticos cuando más de una request (p. ej. el
+// polling del chat + una acción del usuario) expira al mismo tiempo. Se resetea
+// en cuanto una request vuelve a tener éxito (nueva sesión válida).
+let _sessionExpiredAlerted = false
 
 async function tryCoachRefresh(): Promise<boolean> {
   if (_coachRefreshing) return _coachRefreshing
@@ -90,18 +96,29 @@ async function coachRequest(method: string, path: string, body?: unknown, isRetr
 
   if (res.status === 401 && !isRetry) {
     const ok = await tryCoachRefresh()
-    if (ok) return coachRequest(method, path, body, true)
+    if (ok) {
+      _sessionExpiredAlerted = false
+      return coachRequest(method, path, body, true)
+    }
     await clearCoachSession()
+    // Se muestra SIEMPRE aquí (no en cada call site) porque varios call sites
+    // atrapan este error en silencio (polling de chat, revert de toggles, etc.)
+    // y el coach terminaba en la pantalla de login sin ningún aviso.
+    if (!_sessionExpiredAlerted) {
+      _sessionExpiredAlerted = true
+      Alert.alert('Sesión expirada', 'Tu sesión de coach expiró. Vuelve a iniciar sesión.')
+    }
     router.replace('/(auth)/coach-login' as any)
     throw new Error('Tu sesión de coach expiró. Vuelve a iniciar sesión.')
   }
 
-  if (res.status === 204) return null
+  if (res.status === 204) { _sessionExpiredAlerted = false; return null }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || err.detail || `Error ${res.status}`)
   }
+  _sessionExpiredAlerted = false
   return res.json()
 }
 
