@@ -12,7 +12,6 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { Icon, type IconName } from '@/components/Icon'
-import { NIVEL_LABEL } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
 import type { CourseDetail, Enrollment, Lesson } from '@/types'
 
@@ -122,17 +121,7 @@ export function CourseDetailPage() {
               {course.escuela_nombre}
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            {course.categoria && (
-              <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
-                {course.categoria}
-              </span>
-            )}
-            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
-              {NIVEL_LABEL[course.nivel] ?? course.nivel}
-            </span>
-          </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">{course.titulo}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{course.titulo}</h1>
           {course.resumen && <p className="mt-2 text-[15px] text-white/70">{course.resumen}</p>}
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60">
             <span>Por {course.instructor_nombre || 'Instructor'}</span>
