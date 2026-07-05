@@ -2,8 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+# redis-server: broker de Celery corriendo DENTRO de este mismo contenedor
+# (ver entrypoint.sh) para no depender de un Redis gestionado de DO (tiene
+# costo mensual y no hay presupuesto para eso todavía). Sin persistencia
+# (RDB/AOF desactivados en el arranque) — es solo cola de tasks
+# fire-and-forget, perder la cola en un restart del contenedor es aceptable.
 RUN apt-get update && apt-get install -y \
-    libpq-dev gcc --no-install-recommends && \
+    libpq-dev gcc redis-server redis-tools --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Embeddings del Tutor de Academy: instala torch CPU-only ANTES de requirements
