@@ -50,7 +50,17 @@ export async function fetchMe(): Promise<AuthUser> {
   return res.data
 }
 
-export async function updateMe(payload: { nombre?: string }): Promise<AuthUser> {
+export interface ProfilePatch {
+  nombre?: string
+  pais?: string
+  ciudad?: string
+  fecha_nacimiento?: string | null
+  profesion?: string
+  intereses?: string[]
+  redes_sociales?: Record<string, string>
+}
+
+export async function updateMe(payload: ProfilePatch): Promise<AuthUser> {
   const res = await api.patch<AuthUser>('/academy/me/', payload)
   return res.data
 }

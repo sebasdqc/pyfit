@@ -47,6 +47,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import PermissionDenied
@@ -221,28 +222,79 @@ def academy_login(request):
     })
 
 
+# Redes soportadas en "Datos personales". Claves libres fuera de esta lista se
+# descartan en el PATCH (el JSONField no tiene schema propio).
+_REDES_SOCIALES_KEYS = {'instagram', 'tiktok', 'linkedin', 'twitter', 'sitio_web'}
+
+
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAcademyUser])
 def academy_me(request):
     """Identidad del usuario en la academia: rol, flags y resumen. PATCH deja al
-    propio usuario actualizar su nombre visible (igual que el panel Performance)."""
+    propio usuario actualizar su nombre visible y sus datos personales (país,
+    ciudad, fecha de nacimiento, profesión, intereses, redes sociales) — a la
+    espera de un onboarding propio de la academia."""
     user = request.user
-    if request.method == 'PATCH' and 'nombre' in request.data:
-        nombre = (request.data.get('nombre') or '').strip()
-        if not nombre:
-            return Response({'nombre': 'El nombre no puede estar vacío.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        user.first_name = nombre
-        user.last_name = ''
-        user.save(update_fields=['first_name', 'last_name'])
+    if request.method == 'PATCH':
         from users.models import Profile
-        Profile.objects.update_or_create(user=user, defaults={'nombre': nombre})
+
+        data = request.data
+        updates = {}
+        if 'nombre' in data:
+            nombre = (data.get('nombre') or '').strip()
+            if not nombre:
+                return Response({'nombre': 'El nombre no puede estar vacío.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            user.first_name = nombre
+            user.last_name = ''
+            user.save(update_fields=['first_name', 'last_name'])
+            updates['nombre'] = nombre
+        if 'pais' in data:
+            updates['pais'] = (data.get('pais') or '').strip()[:80]
+        if 'ciudad' in data:
+            updates['ciudad'] = (data.get('ciudad') or '').strip()[:120]
+        if 'profesion' in data:
+            updates['profesion'] = (data.get('profesion') or '').strip()[:150]
+        if 'fecha_nacimiento' in data:
+            raw = (data.get('fecha_nacimiento') or '').strip()
+            parsed = parse_date(raw) if raw else None
+            if raw and not parsed:
+                return Response({'fecha_nacimiento': 'Fecha inválida.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['fecha_nacimiento'] = parsed
+        if 'intereses' in data:
+            raw = data.get('intereses')
+            if not isinstance(raw, list):
+                return Response({'intereses': 'Debe ser una lista de textos.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['intereses'] = [str(x).strip()[:40] for x in raw if str(x).strip()][:20]
+        if 'redes_sociales' in data:
+            raw = data.get('redes_sociales')
+            if not isinstance(raw, dict):
+                return Response({'redes_sociales': 'Debe ser un objeto.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['redes_sociales'] = {
+                k: str(v).strip()[:200]
+                for k, v in raw.items()
+                if k in _REDES_SOCIALES_KEYS and str(v or '').strip()
+            }
+        if updates:
+            nombre_fallback = updates.get('nombre') or user.get_full_name() or user.first_name or user.email.split('@')[0]
+            Profile.objects.update_or_create(
+                user=user,
+                defaults=updates,
+                create_defaults={**updates, 'nombre': nombre_fallback},
+            )
     return Response(_user_payload(user))
 
 
 def _user_payload(user):
-    """Resumen del usuario para la futura web de la academia."""
+    """Resumen del usuario para la web de la academia, incluyendo los datos
+    personales que vive en Profile (compartido con la app móvil)."""
+    from users.models import Profile
+
     es_admin = user.is_admin or user.is_staff
+    profile = Profile.objects.filter(user=user).first()
     return {
         'id': user.id,
         'email': user.email,
@@ -254,6 +306,12 @@ def _user_payload(user):
         'total_inscripciones': Enrollment.objects.filter(student=user).count(),
         'total_cursos_creados': Course.objects.filter(instructor=user).count(),
         'nivel_academia': access_service.nivel_academia_de(user),
+        'pais': profile.pais if profile else '',
+        'ciudad': profile.ciudad if profile else '',
+        'fecha_nacimiento': profile.fecha_nacimiento.isoformat() if profile and profile.fecha_nacimiento else None,
+        'profesion': profile.profesion if profile else '',
+        'intereses': profile.intereses if profile else [],
+        'redes_sociales': profile.redes_sociales if profile else {},
     }
 
 

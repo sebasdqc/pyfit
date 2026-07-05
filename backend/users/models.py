@@ -171,6 +171,12 @@ class Profile(models.Model):
     )
     sexo = models.CharField(max_length=20, choices=SEXO_CHOICES, blank=True)
     pais = models.CharField(max_length=80, blank=True, default='')
+    ciudad = models.CharField(max_length=120, blank=True, default='')
+    profesion = models.CharField(max_length=150, blank=True, default='')
+    intereses = models.JSONField(default=list, blank=True)
+    # Handles/URLs por red: claves libres entre {instagram, tiktok, linkedin,
+    # twitter, sitio_web} — validadas en la vista, no aquí (JSONField sin schema).
+    redes_sociales = models.JSONField(default=dict, blank=True)
     dias_semana = models.IntegerField(
         default=3, validators=[MinValueValidator(1), MaxValueValidator(7)],
     )

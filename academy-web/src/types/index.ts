@@ -54,6 +54,13 @@ export interface AuthUser {
   total_cursos_creados: number
   // Nivel de acceso freemium: 'starter' (gratis) o 'pro' (Academy Pro activo).
   nivel_academia: AcademyNivel
+  // Datos personales — comparten columnas con el Profile de la app móvil.
+  pais: string
+  ciudad: string
+  fecha_nacimiento: string | null
+  profesion: string
+  intereses: string[]
+  redes_sociales: Record<string, string>
 }
 
 export interface LoginResponse {
