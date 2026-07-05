@@ -53,7 +53,7 @@ export function RegisterPage() {
       setTokens(data.access, data.refresh)
       clearAnonSession() // ya se migró del lado del backend; no seguir mandándola
       await refreshUser()
-      navigate('/inicio', { replace: true })
+      navigate('/bienvenida', { replace: true }) // cuenta nueva → onboarding siempre pendiente
     } catch (err) {
       setError(extractErrorMessage(err))
     } finally {

@@ -12,6 +12,7 @@ import { PrivacyPage } from '@/pages/PrivacyPage'
 import { ExploreCatalogPage } from '@/pages/ExploreCatalogPage'
 import { ExploreCourseDetailPage } from '@/pages/ExploreCourseDetailPage'
 import { ExploreLessonPage } from '@/pages/ExploreLessonPage'
+import { OnboardingPage } from '@/pages/OnboardingPage'
 import { HomePage } from '@/pages/HomePage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
@@ -50,6 +51,8 @@ export const router = createBrowserRouter([
     children: [
       // Reproductor a pantalla completa (modo enfoque): fuera de AppLayout.
       { path: 'aprender/:enrollmentId', element: <LessonPlayerPage /> },
+      // Onboarding inicial (wizard a pantalla completa): fuera de AppLayout.
+      { path: 'bienvenida', element: <OnboardingPage /> },
       {
         element: <AppLayout />,
         children: [

@@ -278,6 +278,46 @@ def academy_me(request):
                 for k, v in raw.items()
                 if k in _REDES_SOCIALES_KEYS and str(v or '').strip()
             }
+        if 'perfil_deportivo' in data:
+            valor = (data.get('perfil_deportivo') or '').strip()
+            if valor and valor not in dict(Profile.PERFIL_DEPORTIVO_CHOICES):
+                return Response({'perfil_deportivo': 'Valor inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            updates['perfil_deportivo'] = valor
+        if 'anios_experiencia_deporte' in data:
+            raw = data.get('anios_experiencia_deporte')
+            if raw in (None, ''):
+                updates['anios_experiencia_deporte'] = None
+            else:
+                try:
+                    anios = int(raw)
+                except (TypeError, ValueError):
+                    return Response({'anios_experiencia_deporte': 'Debe ser un número.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                if not 0 <= anios <= 80:
+                    return Response({'anios_experiencia_deporte': 'Debe estar entre 0 y 80.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                updates['anios_experiencia_deporte'] = anios
+        if 'modalidad_preferida' in data:
+            valor = (data.get('modalidad_preferida') or '').strip()
+            if valor and valor not in dict(Profile.MODALIDAD_ACADEMIA_CHOICES):
+                return Response({'modalidad_preferida': 'Valor inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            updates['modalidad_preferida'] = valor
+        if 'disponibilidad_estudio' in data:
+            valor = (data.get('disponibilidad_estudio') or '').strip()
+            if valor and valor not in dict(Profile.DISPONIBILIDAD_ACADEMIA_CHOICES):
+                return Response({'disponibilidad_estudio': 'Valor inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            updates['disponibilidad_estudio'] = valor
+        if 'escuelas_interes' in data:
+            raw = data.get('escuelas_interes')
+            if not isinstance(raw, list):
+                return Response({'escuelas_interes': 'Debe ser una lista.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                escuelas = sorted({int(x) for x in raw})[:20]
+            except (TypeError, ValueError):
+                return Response({'escuelas_interes': 'Debe ser una lista de IDs.'}, status=status.HTTP_400_BAD_REQUEST)
+            updates['escuelas_interes'] = escuelas
+        if data.get('onboarding_academia_completo') is True:
+            updates['onboarding_academia_completo'] = True
         if updates:
             nombre_fallback = updates.get('nombre') or user.get_full_name() or user.first_name or user.email.split('@')[0]
             Profile.objects.update_or_create(
@@ -312,6 +352,12 @@ def _user_payload(user):
         'profesion': profile.profesion if profile else '',
         'intereses': profile.intereses if profile else [],
         'redes_sociales': profile.redes_sociales if profile else {},
+        'perfil_deportivo': profile.perfil_deportivo if profile else '',
+        'anios_experiencia_deporte': profile.anios_experiencia_deporte if profile else None,
+        'modalidad_preferida': profile.modalidad_preferida if profile else '',
+        'disponibilidad_estudio': profile.disponibilidad_estudio if profile else '',
+        'escuelas_interes': profile.escuelas_interes if profile else [],
+        'onboarding_academia_completo': profile.onboarding_academia_completo if profile else False,
     }
 
 

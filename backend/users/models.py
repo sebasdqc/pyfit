@@ -177,6 +177,32 @@ class Profile(models.Model):
     # Handles/URLs por red: claves libres entre {instagram, tiktok, linkedin,
     # twitter, sitio_web} — validadas en la vista, no aquí (JSONField sin schema).
     redes_sociales = models.JSONField(default=dict, blank=True)
+
+    # ── Onboarding de Zyfit Academy (distinto del onboarding fitness de mobile,
+    #    ver is_onboarding_complete más abajo) ─────────────────────────────────
+    PERFIL_DEPORTIVO_CHOICES = [
+        ('atleta', 'Atleta'),
+        ('profesional', 'Profesional del deporte'),
+        ('entusiasta', 'Entusiasta'),
+    ]
+    perfil_deportivo = models.CharField(max_length=20, choices=PERFIL_DEPORTIVO_CHOICES, blank=True)
+    anios_experiencia_deporte = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(80)],
+    )
+    MODALIDAD_ACADEMIA_CHOICES = [('virtual', 'Virtual'), ('presencial', 'Presencial'), ('mixta', 'Mixta')]
+    modalidad_preferida = models.CharField(max_length=20, choices=MODALIDAD_ACADEMIA_CHOICES, blank=True)
+    DISPONIBILIDAD_ACADEMIA_CHOICES = [
+        ('manana', 'Mañana'), ('tarde', 'Tarde'), ('noche', 'Noche'),
+        ('fin_semana', 'Fin de semana'), ('flexible', 'Flexible'),
+    ]
+    disponibilidad_estudio = models.CharField(max_length=20, choices=DISPONIBILIDAD_ACADEMIA_CHOICES, blank=True)
+    # IDs de academy.School marcadas como de interés en el onboarding.
+    escuelas_interes = models.JSONField(default=list, blank=True)
+    # True apenas termina o SALTA el wizard de /bienvenida — no vuelve a
+    # mostrarse después, sin importar si quedaron campos vacíos.
+    onboarding_academia_completo = models.BooleanField(default=False)
+
     dias_semana = models.IntegerField(
         default=3, validators=[MinValueValidator(1), MaxValueValidator(7)],
     )

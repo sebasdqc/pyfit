@@ -61,6 +61,13 @@ export interface AuthUser {
   profesion: string
   intereses: string[]
   redes_sociales: Record<string, string>
+  // Onboarding de Academy (/bienvenida) — distinto del onboarding fitness móvil.
+  perfil_deportivo: '' | 'atleta' | 'profesional' | 'entusiasta'
+  anios_experiencia_deporte: number | null
+  modalidad_preferida: '' | 'virtual' | 'presencial' | 'mixta'
+  disponibilidad_estudio: '' | 'manana' | 'tarde' | 'noche' | 'fin_semana' | 'flexible'
+  escuelas_interes: number[]
+  onboarding_academia_completo: boolean
 }
 
 export interface LoginResponse {

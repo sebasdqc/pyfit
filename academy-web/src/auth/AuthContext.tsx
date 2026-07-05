@@ -10,7 +10,9 @@ import type { AuthUser } from '@/types'
 export interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  // Devuelve el usuario recién autenticado — LoginPage lo usa para decidir si
+  // redirige a /bienvenida (onboarding pendiente) o directo a /inicio.
+  login: (email: string, password: string) => Promise<AuthUser>
   logout: () => void
   refreshUser: () => Promise<void>
 }
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await loginRequest(email, password)
     setTokens(data.access, data.refresh)
     setUser(data.user)
+    return data.user
   }, [])
 
   const logout = useCallback(() => {

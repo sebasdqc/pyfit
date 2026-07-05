@@ -3,7 +3,7 @@
 // Muestra rol y métricas. Integración inicial simple — el onboarding propio de
 // la academia (más guiado) queda para una iteración futura.
 
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getBadges } from '@/api/academy'
 import { updateMe } from '@/api/auth'
@@ -11,19 +11,13 @@ import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Icon } from '@/components/Icon'
+import { TagInput } from '@/components/ui/TagInput'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
+import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
 import { COUNTRIES } from '@/lib/countries'
 import type { AcademyBadgeCatalog } from '@/types'
 
 const HOY = new Date().toISOString().slice(0, 10)
-
-const REDES = [
-  { key: 'instagram', label: 'Instagram', placeholder: '@usuario' },
-  { key: 'tiktok', label: 'TikTok', placeholder: '@usuario' },
-  { key: 'linkedin', label: 'LinkedIn', placeholder: 'linkedin.com/in/…' },
-  { key: 'twitter', label: 'X (Twitter)', placeholder: '@usuario' },
-  { key: 'sitio_web', label: 'Sitio web', placeholder: 'https://…' },
-] as const
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth()
@@ -33,7 +27,6 @@ export function ProfilePage() {
   const [profesion, setProfesion] = useState(user?.profesion ?? '')
   const [fechaNacimiento, setFechaNacimiento] = useState(user?.fecha_nacimiento ?? '')
   const [intereses, setIntereses] = useState<string[]>(user?.intereses ?? [])
-  const [interesInput, setInteresInput] = useState('')
   const [redes, setRedes] = useState<Record<string, string>>(user?.redes_sociales ?? {})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -65,28 +58,6 @@ export function ProfilePage() {
   function clearStatus() {
     setSaved(false)
     setSaveError(false)
-  }
-
-  function agregarInteres(raw: string) {
-    const tag = raw.trim()
-    if (!tag || intereses.includes(tag) || intereses.length >= 20) return
-    setIntereses((prev) => [...prev, tag])
-    clearStatus()
-  }
-
-  function quitarInteres(tag: string) {
-    setIntereses((prev) => prev.filter((x) => x !== tag))
-    clearStatus()
-  }
-
-  function handleInteresKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      agregarInteres(interesInput)
-      setInteresInput('')
-    } else if (e.key === 'Backspace' && interesInput === '' && intereses.length > 0) {
-      quitarInteres(intereses[intereses.length - 1])
-    }
   }
 
   async function handleSave() {
@@ -251,57 +222,27 @@ export function ProfilePage() {
 
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Intereses</span>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-surface-border bg-surface-soft px-3 py-2 focus-within:border-accent focus-within:bg-surface">
-              {intereses.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 rounded-full bg-accent/10 py-1 pl-3 pr-1.5 text-xs font-medium text-accent"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => quitarInteres(tag)}
-                    aria-label={`Quitar interés ${tag}`}
-                    className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-accent/20"
-                  >
-                    <Icon name="close" size={11} />
-                  </button>
-                </span>
-              ))}
-              <input
-                value={interesInput}
-                onChange={(e) => setInteresInput(e.target.value)}
-                onKeyDown={handleInteresKeyDown}
-                onBlur={() => {
-                  agregarInteres(interesInput)
-                  setInteresInput('')
-                }}
-                placeholder={intereses.length === 0 ? 'Ej. Fútbol, nutrición… (Enter para añadir)' : ''}
-                className="h-7 min-w-[140px] flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:text-ink-faint"
-              />
-            </div>
+            <TagInput
+              value={intereses}
+              onChange={(tags) => {
+                setIntereses(tags)
+                clearStatus()
+              }}
+              placeholder="Ej. Fútbol, nutrición… (Enter para añadir)"
+            />
           </label>
 
           <div>
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
               Redes sociales
             </span>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {REDES.map((red) => (
-                <label key={red.key} className="block">
-                  <span className="mb-1 block text-[11px] text-ink-muted">{red.label}</span>
-                  <input
-                    value={redes[red.key] ?? ''}
-                    placeholder={red.placeholder}
-                    onChange={(e) => {
-                      setRedes((prev) => ({ ...prev, [red.key]: e.target.value }))
-                      clearStatus()
-                    }}
-                    className="input"
-                  />
-                </label>
-              ))}
-            </div>
+            <RedesSocialesFields
+              value={redes}
+              onChange={(r) => {
+                setRedes(r)
+                clearStatus()
+              }}
+            />
           </div>
 
           <div className="flex items-center gap-3">

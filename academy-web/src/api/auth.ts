@@ -58,6 +58,12 @@ export interface ProfilePatch {
   profesion?: string
   intereses?: string[]
   redes_sociales?: Record<string, string>
+  perfil_deportivo?: string
+  anios_experiencia_deporte?: number | null
+  modalidad_preferida?: string
+  disponibilidad_estudio?: string
+  escuelas_interes?: number[]
+  onboarding_academia_completo?: true
 }
 
 export async function updateMe(payload: ProfilePatch): Promise<AuthUser> {

@@ -49,8 +49,8 @@ export function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(email, password)
-      navigate('/inicio', { replace: true })
+      const loggedInUser = await login(email, password)
+      navigate(loggedInUser.onboarding_academia_completo ? '/inicio' : '/bienvenida', { replace: true })
     } catch (err) {
       setError(describeLoginError(err))
     } finally {
