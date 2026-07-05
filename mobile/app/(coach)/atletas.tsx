@@ -166,7 +166,7 @@ export default function CoachAtletas() {
                   <View style={styles.cardMid}>
                     <Text style={styles.nombre} numberOfLines={1}>{a.nombre}</Text>
                     <Text style={styles.meta} numberOfLines={1}>
-                      {pausado ? `Pausado · vinculado ${a.ultima}` : `Última actividad ${a.ultima}`}
+                      {pausado ? `Pausado · último entreno ${a.ultima}` : `Última actividad ${a.ultima}`}
                     </Text>
                   </View>
                   <View style={[styles.estadoBadge, pausado ? styles.estadoPaused : styles.estadoActive]}>

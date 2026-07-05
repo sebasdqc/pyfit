@@ -16,6 +16,13 @@ import { getCoachUser } from '../../lib/storage'
 import { Estado, Atleta, hasAlert } from '../../lib/coachTypes'
 import { fetchCartera, fetchCoachMe, type CarteraMetrics } from '../../lib/coachApi'
 
+function saludoHora(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Buen día,'
+  if (h < 19) return 'Buenas tardes,'
+  return 'Buenas noches,'
+}
+
 type Filtro = 'atencion' | 'todos' | 'sin_rutina' | 'inactivos'
 
 const FILTROS: { key: Filtro; label: string }[] = [
@@ -244,7 +251,7 @@ export default function CoachInicio() {
         {/* Barra superior */}
         <View style={styles.topBar}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.saludo}>Buen día,</Text>
+            <Text style={styles.saludo}>{saludoHora()}</Text>
             <Text style={styles.coachNombre} numberOfLines={1}>{nombre}</Text>
           </View>
           <View style={styles.coachAvatar}>

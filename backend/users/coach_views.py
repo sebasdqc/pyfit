@@ -713,7 +713,7 @@ def coach_analytics(request):
             'score': c['score'], 'adherencia': c['adherencia'],
             'consistencia': c['consistencia'], 'recencia': c['recencia'],
             'rpe_promedio': round(float(rpe_raw), 1) if rpe_raw is not None else None,
-            'carga_semanal': _sesiones_por_semana([a.id], hoy, 4),
+            'carga_semanal': _sesiones_por_semana([a.id], hoy, semanas),
         })
 
     n = len(cards)
@@ -946,7 +946,7 @@ def coach_atleta_mensajes(request, pk):
 
     # GET: marca como leídos los mensajes que envió el atleta
     CoachMessage.objects.filter(link=link, from_coach=False, leido=False).update(leido=True)
-    mensajes = [_serialize_mensaje(m) for m in link.mensajes.all()[:200]]
+    mensajes = [_serialize_mensaje(m) for m in link.mensajes.order_by('created_at')[:200]]
     return Response({'mensajes': mensajes})
 
 
@@ -988,7 +988,7 @@ def coach_chat(request):
 
     # GET: marca como leídos los mensajes que envió el coach
     CoachMessage.objects.filter(link=link, from_coach=True, leido=False).update(leido=True)
-    mensajes = [_serialize_mensaje(m) for m in link.mensajes.all()[:200]]
+    mensajes = [_serialize_mensaje(m) for m in link.mensajes.order_by('created_at')[:200]]
     return Response({
         'coach': {'id': coach.id, 'nombre': coach_nombre},
         'mensajes': mensajes,

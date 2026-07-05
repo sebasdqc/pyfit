@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -67,16 +68,24 @@ function horaDe(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function fechaDe(iso: string): string {
+  const d = new Date(iso)
+  const hoy = new Date()
+  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
+  return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
+}
+
 // ─── Subcomponentes ─────────────────────────────────────────────────────────────
 
 function MiniBars({ barras }: { barras: Barra[] }) {
   return (
     <View style={styles.bars}>
       {barras.map((b, i) => {
-        const tall = b !== 'skip'
-        const h = b === 'skip' ? 9 : 18 + ((i * 7) % 3) * 5   // variación determinista
+        const h = b === 'alto' ? 26 : b === 'done' ? 18 : 9
         const color = b === 'alto' ? P.orange : b === 'done' ? P.purple : 'rgba(150,128,255,0.22)'
-        return <View key={i} style={{ width: 5, height: tall ? h : 9, borderRadius: 3, backgroundColor: color }} />
+        return <View key={i} style={{ width: 5, height: h, borderRadius: 3, backgroundColor: color }} />
       })}
     </View>
   )
@@ -118,6 +127,10 @@ export default function CoachAtletaDetalle() {
   const [dNota, setDNota] = useState('')
   const [savingDir, setSavingDir] = useState(false)
   const [dirMsg, setDirMsg] = useState<string | null>(null)
+  const [dirError, setDirError] = useState(false)
+  const [dirUpdatedAt, setDirUpdatedAt] = useState<string | null>(null)
+  const dirTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -146,18 +159,42 @@ export default function CoachAtletaDetalle() {
   async function guardarDirectiva() {
     if (!params.id || savingDir) return
     setSavingDir(true)
+    if (dirTimer.current) clearTimeout(dirTimer.current)
     setDirMsg(null)
     try {
-      await putAtletaDirectiva(params.id, {
+      const res = await putAtletaDirectiva(params.id, {
         objetivo: dObjetivo.trim(), foco: dFoco.trim(), evitar: dEvitar.trim(), nota: dNota.trim(),
       })
+      setDirUpdatedAt(res.directiva_updated_at)
+      setDirError(false)
       setDirMsg('Directiva guardada · el atleta la verá en su próxima rutina.')
+      dirTimer.current = setTimeout(() => setDirMsg(null), 4000)
     } catch (e: any) {
+      setDirError(true)
       setDirMsg(e?.message || 'No se pudo guardar la directiva.')
     } finally {
       setSavingDir(false)
     }
   }
+
+  useEffect(() => () => { if (dirTimer.current) clearTimeout(dirTimer.current) }, [])
+
+  const recargar = useCallback(async () => {
+    const id = params.id
+    if (!id) return
+    setRefreshing(true)
+    try {
+      const [d, r] = await Promise.all([fetchAtletaDetalle(id), fetchAtletaSesiones(id)])
+      setDetalle(d)
+      if (d.config) setToggles(d.config)
+      const dir = d.directiva || {}
+      setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
+      setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
+      setDirUpdatedAt(d.directiva_updated_at)
+      setSesiones(r.sesiones)
+    } catch {}
+    finally { setRefreshing(false) }
+  }, [params.id])
 
   useEffect(() => {
     const id = params.id
@@ -169,6 +206,7 @@ export default function CoachAtletaDetalle() {
         const dir = d.directiva || {}
         setDObjetivo(dir.objetivo || ''); setDFoco(dir.foco || '')
         setDEvitar(dir.evitar || ''); setDNota(dir.nota || '')
+        setDirUpdatedAt(d.directiva_updated_at)
       })
       .catch((e: any) => setErrDet(e?.message || 'No se pudo cargar el atleta.'))
       .finally(() => setLoadingDet(false))
@@ -186,8 +224,13 @@ export default function CoachAtletaDetalle() {
     { label: 'Con este coach',   value: m.antiguedad, extra: '', extraColor: P.purpleFaint },
   ] : []
 
-  const avatarFg = alerta ? P.orange : P.green
-  const avatarBg = alerta ? P.orangeSoft : P.greenSoft
+  const avatarFg = estado === 'alerta' ? P.orange : estado === 'pendiente' ? P.amber : P.green
+  const avatarBg = estado === 'alerta' ? P.orangeSoft : estado === 'pendiente' ? P.amberSoft : P.greenSoft
+  const topBadge = estado === 'alerta'
+    ? { bg: P.orangeSoft, fg: P.orange, label: 'Alerta' }
+    : estado === 'pendiente'
+    ? { bg: P.amberSoft, fg: P.amber, label: 'Pendiente' }
+    : { bg: P.greenSoft, fg: P.green, label: 'Al día' }
 
   async function enviar() {
     const text = input.trim()
@@ -213,10 +256,8 @@ export default function CoachAtletaDetalle() {
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.topName} numberOfLines={1}>{nombre}</Text>
-        <View style={[styles.topBadge, { backgroundColor: alerta ? P.orangeSoft : P.greenSoft }]}>
-          <Text style={[styles.topBadgeText, { color: alerta ? P.orange : P.green }]}>
-            {alerta ? 'Alerta' : 'Al día'}
-          </Text>
+        <View style={[styles.topBadge, { backgroundColor: topBadge.bg }]}>
+          <Text style={[styles.topBadgeText, { color: topBadge.fg }]}>{topBadge.label}</Text>
         </View>
       </View>
 
@@ -257,7 +298,11 @@ export default function CoachAtletaDetalle() {
       {/* Contenido del tab */}
       <View style={{ flex: 1 }}>
         {tab === 'perfil' && (
-          <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.tabContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={recargar} tintColor={P.purpleSoft} />}
+          >
             {loadingDet ? (
               <View style={styles.metricsGrid}>
                 {[0, 1, 2, 3].map(i => (
@@ -355,13 +400,24 @@ export default function CoachAtletaDetalle() {
                   : (<><IconCheck color={P.white} /><Text style={styles.guardarBtnText}>Guardar directiva</Text></>)}
               </TouchableOpacity>
 
-              {!!dirMsg && <Text style={styles.dirSavedMsg}>{dirMsg}</Text>}
+              {!!dirMsg && (
+                <Text style={[styles.dirSavedMsg, dirError && { color: P.red }]}>{dirMsg}</Text>
+              )}
+              {!dirMsg && !!dirUpdatedAt && (
+                <Text style={styles.dirUpdatedAt}>
+                  Actualizada el {new Date(dirUpdatedAt).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              )}
             </ScrollView>
           </KeyboardAvoidingView>
         )}
 
         {tab === 'historial' && (
-          <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.tabContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={recargar} tintColor={P.purpleSoft} />}
+          >
             {loadingSes ? (
               <View style={styles.loadingWrap}><ActivityIndicator color={P.purpleMid} /></View>
             ) : !sesiones || sesiones.length === 0 ? (
@@ -387,7 +443,7 @@ export default function CoachAtletaDetalle() {
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={insets.bottom + 60}
+            keyboardVerticalOffset={insets.top + 80}
           >
             <ScrollView
               ref={chatRef}
@@ -398,17 +454,26 @@ export default function CoachAtletaDetalle() {
               {mensajes.length === 0 && (
                 <Text style={styles.chatEmpty}>Aún no hay mensajes. Escribe el primero 👋</Text>
               )}
-              {mensajes.map((m) => {
+              {mensajes.map((m, idx) => {
+                const showDate = idx === 0 ||
+                  new Date(m.created_at).toDateString() !== new Date(mensajes[idx - 1].created_at).toDateString()
                 const mine = m.from_coach   // el coach es quien ve esta pantalla
                 return (
-                  <View key={m.id} style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
-                    <View style={[styles.bubble, mine ? styles.bubbleCoach : styles.bubbleAtleta]}>
-                      <Text style={styles.bubbleText}>{m.texto}</Text>
+                  <React.Fragment key={m.id}>
+                    {showDate && (
+                      <View style={styles.dateSep}>
+                        <Text style={styles.dateSepText}>{fechaDe(m.created_at)}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+                      <View style={[styles.bubble, mine ? styles.bubbleCoach : styles.bubbleAtleta]}>
+                        <Text style={styles.bubbleText}>{m.texto}</Text>
+                      </View>
+                      <Text style={styles.msgMeta}>
+                        {horaDe(m.created_at)} · {mine ? coachNombre : nombre.split(' ')[0]}
+                      </Text>
                     </View>
-                    <Text style={styles.msgMeta}>
-                      {horaDe(m.created_at)} · {mine ? coachNombre : nombre.split(' ')[0]}
-                    </Text>
-                  </View>
+                  </React.Fragment>
                 )
               })}
             </ScrollView>
@@ -562,6 +627,9 @@ const styles = StyleSheet.create({
   },
   guardarBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: P.white },
   dirSavedMsg: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: P.green, textAlign: 'center', marginTop: 14 },
+  dirUpdatedAt: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: P.purpleFaint, textAlign: 'center', marginTop: 10, letterSpacing: 0.3 },
+  dateSep: { alignItems: 'center', marginVertical: 10 },
+  dateSepText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: P.purpleFaint, letterSpacing: 0.5 },
   nuevaBtn: { backgroundColor: P.purple, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   nuevaBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 13, color: P.white },
   pendingPill: {

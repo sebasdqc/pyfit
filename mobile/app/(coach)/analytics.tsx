@@ -299,7 +299,7 @@ export default function CoachAnalytics() {
 
             {/* Carga semanal (sesiones/semana reales) */}
             <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Carga semanal — sesiones/sem (últimas 4)</Text>
+              <Text style={styles.chartTitle}>Carga semanal — sesiones/sem (últimas {periodo.semanas})</Text>
               {(() => {
                 const carga = sel.carga_semanal
                 const max = Math.max(...carga, 1)

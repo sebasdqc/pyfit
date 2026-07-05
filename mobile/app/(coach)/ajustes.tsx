@@ -190,7 +190,7 @@ export default function CoachAjustes() {
 
   async function handleLogout() {
     await clearCoachSession()
-    router.replace('/(auth)/login')
+    router.replace('/(auth)/coach-login' as any)
   }
 
   return (
@@ -234,7 +234,10 @@ export default function CoachAjustes() {
           </View>
           <View style={styles.planRow}>
             <Text style={styles.planLabel}>Slots usados</Text>
-            <Text style={styles.planValue}>{activos} / {slotsIncluidos}</Text>
+            <Text style={[styles.planValue, activos > slotsIncluidos && { color: P.orange }]}>
+              {activos} / {slotsIncluidos}
+              {activos > slotsIncluidos ? '  ⚠️ Límite superado' : ''}
+            </Text>
           </View>
 
           {proVisibles.length > 0 && (

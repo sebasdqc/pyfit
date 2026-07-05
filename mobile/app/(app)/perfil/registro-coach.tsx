@@ -20,10 +20,20 @@ import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
 import { fetchMiCoachChat, sendMiCoachMensaje, desvincularMiCoach, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
+import { iniciales as coachIniciales } from '../../../lib/coachTheme'
 
 function horaDe(iso: string): string {
   const d = new Date(iso)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function fechaDe(iso: string): string {
+  const d = new Date(iso)
+  const hoy = new Date()
+  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy'
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
+  return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -148,7 +158,7 @@ export default function RegistroCoachScreen() {
         >
           <View style={styles.coachCard}>
             <View style={styles.coachAvatar}>
-              <Text style={styles.coachAvatarText}>{(coach.nombre || '?').slice(0, 1).toUpperCase()}</Text>
+              <Text style={styles.coachAvatarText}>{coachIniciales(coach.nombre)}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.coachLabel}>VINCULADO CON</Text>
@@ -168,15 +178,24 @@ export default function RegistroCoachScreen() {
             {mensajes.length === 0 && (
               <Text style={styles.chatEmpty}>Aún no hay mensajes. Salúdalo 👋</Text>
             )}
-            {mensajes.map((m: Mensaje) => {
+            {mensajes.map((m: Mensaje, idx: number) => {
+              const showDate = idx === 0 ||
+                new Date(m.created_at).toDateString() !== new Date(mensajes[idx - 1].created_at).toDateString()
               const mine = !m.from_coach   // el atleta ve esta pantalla
               return (
-                <View key={m.id} style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
-                    <Text style={[styles.bubbleText, { color: mine ? colors.white : colors.inkPrimary }]}>{m.texto}</Text>
+                <React.Fragment key={m.id}>
+                  {showDate && (
+                    <View style={styles.dateSep}>
+                      <Text style={styles.dateSepText}>{fechaDe(m.created_at)}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+                    <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+                      <Text style={[styles.bubbleText, { color: mine ? colors.white : colors.inkPrimary }]}>{m.texto}</Text>
+                    </View>
+                    <Text style={styles.msgMeta}>{horaDe(m.created_at)} · {mine ? 'Tú' : coach.nombre.split(' ')[0]}</Text>
                   </View>
-                  <Text style={styles.msgMeta}>{horaDe(m.created_at)} · {mine ? 'Tú' : coach.nombre.split(' ')[0]}</Text>
-                </View>
+                </React.Fragment>
               )
             })}
           </ScrollView>
@@ -308,6 +327,8 @@ function makeStyles(c: Colors) {
 
     chatContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
     chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted, textAlign: 'center', marginTop: 40 },
+    dateSep: { alignItems: 'center', marginVertical: 12 },
+    dateSepText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkFaint, letterSpacing: 0.5 },
     msgRow: { marginBottom: 14, maxWidth: '100%' },
     bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
     bubbleMine: { backgroundColor: c.accent, borderTopRightRadius: 4 },

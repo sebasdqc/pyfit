@@ -12,7 +12,6 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  FlatList,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -116,7 +115,7 @@ export default function RutinaBuilder() {
   const [estado, setEstado] = useState<CoachRutina['estado'] | null>(null)
   const [bloqueada, setBloqueada] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<'borrador' | 'publicar' | null>(null)
+  const [saving, setSaving] = useState<'borrador' | 'publicar' | 'quitar' | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [msgIsError, setMsgIsError] = useState(false)
@@ -254,7 +253,7 @@ export default function RutinaBuilder() {
   }
   async function quitar() {
     if (!params.id) return
-    setSaving('borrador')
+    setSaving('quitar')
     try {
       await deleteAtletaRutina(params.id, fecha)
       setTitulo(''); setObjetivo(''); setDuracion('45'); setRpe('7'); setNota('')
@@ -493,7 +492,7 @@ export default function RutinaBuilder() {
             {/* Acciones */}
             {!readOnly && (
               <View style={styles.actions}>
-                <TouchableOpacity style={[styles.btnSecond, saving === 'borrador' && { opacity: 0.6 }]} activeOpacity={0.85}
+                <TouchableOpacity style={[styles.btnSecond, (saving === 'borrador' || saving === 'quitar') && { opacity: 0.6 }]} activeOpacity={0.85}
                   disabled={!!saving} onPress={() => guardar(false)}>
                   {saving === 'borrador' ? <ActivityIndicator color={P.purpleMid} /> : <Text style={styles.btnSecondText}>Guardar borrador</Text>}
                 </TouchableOpacity>
@@ -504,8 +503,10 @@ export default function RutinaBuilder() {
               </View>
             )}
             {!readOnly && estado === 'publicada' && (
-              <TouchableOpacity style={styles.btnDelete} activeOpacity={0.7} onPress={confirmarQuitar} disabled={!!saving}>
-                <Text style={styles.btnDeleteText}>Quitar rutina</Text>
+              <TouchableOpacity style={[styles.btnDelete, saving === 'quitar' && { opacity: 0.6 }]} activeOpacity={0.7} onPress={confirmarQuitar} disabled={!!saving}>
+                {saving === 'quitar'
+                  ? <ActivityIndicator color={P.orange} />
+                  : <Text style={styles.btnDeleteText}>Quitar rutina</Text>}
               </TouchableOpacity>
             )}
 
