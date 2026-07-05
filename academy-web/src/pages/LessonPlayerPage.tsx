@@ -303,6 +303,16 @@ export function LessonPlayerPage() {
         >
           <Icon name="layers" size={16} /> Temario
         </button>
+        {/* Tutor en móvil: vive en el header (icono) en vez del FAB flotante de
+            escritorio, que en pantallas chicas tapaba demasiado contenido. */}
+        <button
+          onClick={() => setTutorOpen(true)}
+          aria-label="Abrir el tutor de Academy"
+          title="Tutor"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-surface-border text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink lg:hidden"
+        >
+          <Icon name="sparkles" size={17} className="text-accent" />
+        </button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -444,11 +454,12 @@ export function LessonPlayerPage() {
         </main>
       </div>
 
-      {/* Tutor IA flotante: acompaña el estudio sin sacar al alumno del reproductor. */}
+      {/* Tutor IA flotante (solo escritorio): en móvil vive como ícono en el
+          header — el FAB de texto completo ocupaba demasiado espacio ahí. */}
       {!tutorOpen && (
         <button
           onClick={() => setTutorOpen(true)}
-          className="fixed bottom-6 right-6 z-30 flex h-14 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-white shadow-cardHover transition-colors hover:bg-accent-dark"
+          className="fixed bottom-6 right-6 z-30 hidden h-14 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-white shadow-cardHover transition-colors hover:bg-accent-dark lg:flex"
           aria-label="Abrir el tutor de Academy"
         >
           <Icon name="sparkles" size={20} /> Tutor

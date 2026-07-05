@@ -92,6 +92,22 @@
   }
 }
 
+/* ── Evitar el zoom automático de iOS al enfocar un campo ────────────────────
+   Safari en iOS hace zoom al foco de cualquier input/select/textarea con
+   font-size menor a 16px (no hay forma de desactivarlo sin bloquear el pinch-
+   zoom del usuario con `user-scalable=no`, que es mala práctica de accesibi-
+   lidad). La solución correcta es garantizar 16px en campos de formulario en
+   viewports móviles — `!important` porque debe ganarle a utilidades de
+   Tailwind aplicadas directamente en el elemento (text-sm, text-[15px], etc.),
+   que por especificidad de clase le ganarían a un selector de tipo plano. */
+@media screen and (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* ── Racha de estudio: micro-animaciones (tenue, no ansiógeno) ──────────────
    La llama respira suavemente; el número "salta" al extenderse la racha. El
    bloque de prefers-reduced-motion de abajo las neutraliza automáticamente. */
