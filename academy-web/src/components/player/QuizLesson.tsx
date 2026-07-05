@@ -13,14 +13,20 @@ import type { Quiz } from '@/types'
 export function QuizLesson({
   enrollmentId,
   quiz,
+  quizNumber,
   priorBest,
   onGraded,
 }: {
   enrollmentId: number
   quiz: Quiz
+  quizNumber: number
   priorBest: { puntaje: number; aprobado: boolean } | null
   onGraded: (r: AttemptResult) => void
 }) {
+  // Pantalla intermedia antes de las preguntas: evita que el quiz "aparezca"
+  // con el scroll heredado de la lección anterior y da contexto (preguntas,
+  // mínimo para aprobar, último intento) antes de arrancar.
+  const [started, setStarted] = useState(false)
   const [answers, setAnswers] = useState<Record<number, string[]>>({})
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -60,6 +66,18 @@ export function QuizLesson({
     setResult(null)
     setAnswers({})
     setSubmitError(false)
+  }
+
+  if (!started) {
+    return (
+      <QuizIntro
+        quizNumber={quizNumber}
+        totalPreguntas={preguntas.length}
+        puntajeAprobacion={quiz.puntaje_aprobacion}
+        priorBest={priorBest}
+        onStart={() => setStarted(true)}
+      />
+    )
   }
 
   return (
@@ -194,6 +212,45 @@ export function QuizLesson({
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+function QuizIntro({
+  quizNumber,
+  totalPreguntas,
+  puntajeAprobacion,
+  priorBest,
+  onStart,
+}: {
+  quizNumber: number
+  totalPreguntas: number
+  puntajeAprobacion: number
+  priorBest: { puntaje: number; aprobado: boolean } | null
+  onStart: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center gap-5 rounded-2xl border border-surface-border bg-surface p-8 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <Icon name="quiz" size={26} />
+      </span>
+      <div>
+        <p className="za-eyebrow">{quizNumber > 0 ? `Quiz ${quizNumber}` : 'Quiz'}</p>
+        <p className="mt-2 text-sm text-ink-soft">
+          {totalPreguntas} pregunta{totalPreguntas !== 1 ? 's' : ''} · {puntajeAprobacion}% para aprobar
+        </p>
+        {priorBest && (
+          <p className={`mt-1.5 text-sm font-semibold ${priorBest.aprobado ? 'text-ok' : 'text-danger'}`}>
+            Último intento: {priorBest.puntaje}% · {priorBest.aprobado ? 'Aprobado' : 'No aprobado'}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={onStart}
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-8 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
+      >
+        Comenzar quiz <Icon name="arrowRight" size={16} />
+      </button>
     </div>
   )
 }

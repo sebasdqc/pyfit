@@ -65,6 +65,7 @@ export function LessonPlayerPage() {
   // el paywall en vez de moverse ahí. Ver `goTo`, que centraliza el gating.
   const [paywallModulo, setPaywallModulo] = useState<string | null>(null)
   const outlineRef = useRef<HTMLElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
   // Racha de estudio: cache compartido + confirmación al sumar el día.
   const { streak: myStreak, refresh: refreshStreak } = useStreak()
   const { theme } = useTheme()
@@ -87,6 +88,9 @@ export function LessonPlayerPage() {
 
   // Ids de lección del curso: habilitan el salto desde una fuente citada por el tutor.
   const courseLessonIds = useMemo(() => new Set(lessons.map((x) => x.lesson.id)), [lessons])
+
+  // Numeración de quizzes dentro del curso (para la pantalla intermedia "Quiz N").
+  const quizLessons = useMemo(() => lessons.filter((x) => x.lesson.tipo === 'quiz'), [lessons])
 
   useEffect(() => {
     let active = true
@@ -139,6 +143,13 @@ export function LessonPlayerPage() {
   const closeOutline = useCallback(() => setOutlineOpen(false), [])
   useDialogA11y(outlineRef, { onClose: closeOutline, open: outlineOpen })
 
+  // Al cambiar de lección, el panel de contenido conserva el scroll de la
+  // anterior — si esta era más larga, la nueva lección (p.ej. un quiz corto)
+  // arranca ya desplazada hacia el fondo. Lo reseteamos en cada navegación.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [currentId])
+
   if (loading) {
     return (
       <div data-theme={theme} className="flex h-screen items-center justify-center bg-surface-soft">
@@ -168,6 +179,7 @@ export function LessonPlayerPage() {
   const prev = idx > 0 ? lessons[idx - 1] : null
   const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
   const isDone = current ? completed.has(current.lesson.id) : false
+  const quizNumber = current ? quizLessons.findIndex((x) => x.lesson.id === current.lesson.id) + 1 : 0
   const cursoActivo = current
     ? `${enr.curso.titulo} · ${current.moduleTitle} · ${current.lesson.titulo}`
     : enr.curso.titulo
@@ -332,7 +344,7 @@ export function LessonPlayerPage() {
         )}
 
         {/* Contenido de la lección */}
-        <main className="flex-1 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8">
             {/* Banner de curso completado */}
             {estado === 'completada' && (
@@ -370,11 +382,16 @@ export function LessonPlayerPage() {
                 </div>
 
                 <div className="mt-6">
+                  {/* `key` fuerza el remount al cambiar de lección: sin esto, el estado
+                      interno del quiz (respuestas, pantalla de inicio) se filtraba de
+                      una lección a la siguiente cuando ambas eran quizzes. */}
                   <LessonBody
+                    key={current.lesson.id}
                     lesson={current.lesson}
                     enrollmentId={id}
                     intentos={enr.intentos}
                     entregas={entregas}
+                    quizNumber={quizNumber}
                     onQuizGraded={onQuizGraded}
                     onSubmitted={onSubmitted}
                   />
@@ -465,6 +482,7 @@ function LessonBody({
   enrollmentId,
   intentos,
   entregas,
+  quizNumber,
   onQuizGraded,
   onSubmitted,
 }: {
@@ -472,6 +490,7 @@ function LessonBody({
   enrollmentId: number
   intentos: EnrollmentDetail['intentos']
   entregas: Submission[]
+  quizNumber: number
   onQuizGraded: (r: AttemptResult) => void
   onSubmitted: (s: Submission) => void
 }) {
@@ -595,7 +614,15 @@ function LessonBody({
           { puntaje: 0, aprobado: false },
         )
       : null
-    return <QuizLesson enrollmentId={enrollmentId} quiz={lesson.quiz} priorBest={priorBest} onGraded={onQuizGraded} />
+    return (
+      <QuizLesson
+        enrollmentId={enrollmentId}
+        quiz={lesson.quiz}
+        quizNumber={quizNumber}
+        priorBest={priorBest}
+        onGraded={onQuizGraded}
+      />
+    )
   }
 
   // texto
