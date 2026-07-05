@@ -228,7 +228,9 @@ class UserLocationAdmin(ModelAdmin):
 class UserInjuryAdmin(ModelAdmin):
     list_display   = ['user', 'zona', 'severidad_badge', 'activa', 'created_at']
     list_filter    = ['zona', 'severidad', 'activa']
-    search_fields  = ['user__email', 'descripcion']
+    # descripcion queda fuera de la búsqueda: está encriptada (dato de salud),
+    # buscar en el texto cifrado no encontraría nada.
+    search_fields  = ['user__email']
     readonly_fields = ['created_at']
 
     @admin.display(description='Severidad', ordering='severidad')

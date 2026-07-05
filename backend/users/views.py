@@ -394,6 +394,21 @@ def upload_avatar(request):
     except Exception:
         return Response({'error': 'Perfil no encontrado'}, status=404)
 
+    from django.conf import settings
+    if settings.USE_SPACES:
+        from pyfit.media_storage import delete_image, resolve_image_url, save_image_to_spaces
+        if prof.avatar_key:
+            # Borra la key anterior primero: si cambia de extensión (jpg→png)
+            # el nombre nuevo no coincide con el viejo y quedaría huérfano.
+            delete_image(prof.avatar_key)
+        key = save_image_to_spaces(
+            raw_bytes, f'image/{fmt}', folder='avatars', stable_name=str(request.user.id),
+        )
+        prof.avatar_key = key
+        prof.avatar = ''
+        prof.save(update_fields=['avatar_key', 'avatar'])
+        return Response({'ok': True, 'avatar': resolve_image_url(legacy_data_uri='', storage_key=key)})
+
     prof.avatar = avatar_data
     prof.save(update_fields=['avatar'])
     return Response({'ok': True, 'avatar': avatar_data})
@@ -733,11 +748,14 @@ def _check_alertas_criticas(user, ahora):
     # Injury pattern — 3+ pain reports in check-ins in 7 days
     try:
         from checkins.models import DailyCheckin
-        pain_count = DailyCheckin.objects.filter(
+        # dolor_hoy está encriptado: no se puede filtrar "no vacío" en SQL
+        # (el texto cifrado nunca es literalmente ''), así que se cuenta en
+        # Python tras traer la ventana (acotada a ~7 filas por usuario).
+        checkins_recientes = DailyCheckin.objects.filter(
             user=user,
             fecha__gte=(ahora - timedelta(days=7)).date(),
-            dolor_hoy__isnull=False,
-        ).exclude(dolor_hoy='').count()
+        ).only('dolor_hoy')
+        pain_count = sum(1 for c in checkins_recientes if c.dolor_hoy and c.dolor_hoy.strip())
         if pain_count >= 3:
             ya_existe = user.notifications.filter(
                 tipo='alerta',

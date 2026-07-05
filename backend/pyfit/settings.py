@@ -119,7 +119,17 @@ WSGI_APPLICATION = 'pyfit.wsgi.application'
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
+    # conn_max_age reutiliza la conexión TCP+TLS entre requests en vez de abrir
+    # una nueva por request (el Postgres gestionado de DO tiene un límite bajo
+    # de conexiones concurrentes). conn_health_checks descarta conexiones muertas
+    # (p. ej. tras un failover) en vez de fallar el primer request que las usa.
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '600')),
+            conn_health_checks=True,
+        )
+    }
 else:
     DATABASES = {
         'default': {
@@ -230,6 +240,11 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    # Clave de firma dedicada, separada de SECRET_KEY: rotar la secret de Django
+    # (sesiones admin, CSRF, etc.) no debe invalidar de golpe todos los JWT
+    # emitidos a la app móvil. Sin JWT_SIGNING_KEY en el entorno, cae a
+    # SECRET_KEY (comportamiento anterior, sin romper despliegues existentes).
+    'SIGNING_KEY': os.environ.get('JWT_SIGNING_KEY') or SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
@@ -365,14 +380,16 @@ GARMIN_REDIRECT_URI  = os.environ.get('GARMIN_REDIRECT_URI', 'zyfit://garmin/cal
 # ─── django-cryptography — clave de encriptación de campos ───────────────────
 # Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
-# Solo es obligatoria cuando Garmin está configurado (GARMIN_CLIENT_ID presente):
-# sus tokens OAuth se guardan encriptados. Sin Garmin activo no se almacenan tokens,
-# así que NO debe bloquear el build (collectstatic) ni el arranque. Apple Health no
-# usa tokens server-side. Al activar Garmin, el requisito de la key se reactiva.
-if GARMIN_CLIENT_ID and not FIELD_ENCRYPTION_KEY and not DEBUG:
+# Obligatoria en producción: ya no es solo para los tokens OAuth de Garmin —
+# protege datos médicos (Profile.lesiones/condiciones_medicas/notas_medicas/
+# motivo_limitacion, DailyCheckin.dolor_hoy, UserInjury.descripcion,
+# Session.prompt_usado). Sin ella, EncryptedTextField/EncryptedJSONField
+# degradan a texto plano en silencio (ver devices/fields.py) — preferible
+# fallar el arranque a que la app corra creyendo que cifra y no lo hace.
+if not FIELD_ENCRYPTION_KEY and not DEBUG:
     raise ImproperlyConfigured(
-        'FIELD_ENCRYPTION_KEY is required when Garmin is enabled (GARMIN_CLIENT_ID set) '
-        'to encrypt OAuth tokens. Generate one with: '
+        'FIELD_ENCRYPTION_KEY is required when DEBUG=False — it encrypts medical '
+        'data and (if Garmin is enabled) OAuth tokens. Generate one with: '
         'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
     )
 

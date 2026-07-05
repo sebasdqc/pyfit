@@ -56,6 +56,15 @@ class RunSession(models.Model):
     feedback_notas = models.TextField(null=True, blank=True)
     feedback_at = models.DateTimeField(null=True, blank=True)
 
+    # ── Retención de la traza GPS cruda (RunPoint) ──────────────────────────
+    # Pasado el período de retención, un task periódico (runs.tasks.purge_old_gps_points)
+    # comprime la traza a esta snapshot diezmada (mismo formato que devuelve
+    # RunSessionDetailSerializer.get_points sin ?full=1) y BORRA las filas de
+    # RunPoint. gps_resumen queda como único registro de la ruta para carreras
+    # viejas; la traza completa (?full=1) deja de estar disponible tras la purga.
+    gps_resumen = models.JSONField(null=True, blank=True)
+    puntos_purgados = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

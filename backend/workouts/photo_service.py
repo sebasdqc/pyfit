@@ -1,10 +1,14 @@
 """Servicio de fotos de sesión: valida un dataURI base64 (mismo transporte que el
-avatar, ver users/views.upload_avatar) y lo guarda como texto en la BD. No usa object
-storage (DO Spaces): la foto vive en la columna `image_data`, igual que el avatar.
-Reutilizado por los endpoints de fotos de fuerza (workouts) y running (runs)."""
+avatar, ver users/views.upload_avatar) y la persiste. Si USE_SPACES está activo
+sube el archivo a DO Spaces (image_key); si no, guarda el data URI directamente
+en la columna image_data, como antes. Reutilizado por los endpoints de fotos de
+fuerza (workouts) y running (runs)."""
 import base64
 from io import BytesIO
 
+from django.conf import settings
+
+from pyfit.media_storage import save_image_to_spaces
 from .models import SessionPhoto
 
 MAX_PHOTOS_PER_SESSION = 6
@@ -63,11 +67,16 @@ def create_session_photo(user, data_uri, *, session=None, run_session=None) -> S
     except Exception:
         raise PhotoError('El archivo no es una imagen válida.')
 
-    # Se reescribe el dataURI de forma canónica (mime validado + base64 limpio) en vez
-    # de confiar en el header entrante. `ext` queda validado arriba aunque no se use al
-    # guardar como texto.
-    canonical = f'data:{mime};base64,{base64.b64encode(raw).decode("ascii")}'
-    photo = SessionPhoto(user=user, session=session, run_session=run_session,
-                         image_data=canonical)
+    if settings.USE_SPACES:
+        owner_kind = 'gym' if session is not None else 'running'
+        owner_id = session.id if session is not None else run_session.id
+        key = save_image_to_spaces(raw, mime, folder=f'session_photos/{owner_kind}/{owner_id}')
+        photo = SessionPhoto(user=user, session=session, run_session=run_session, image_key=key)
+    else:
+        # Se reescribe el dataURI de forma canónica (mime validado + base64 limpio)
+        # en vez de confiar en el header entrante.
+        canonical = f'data:{mime};base64,{base64.b64encode(raw).decode("ascii")}'
+        photo = SessionPhoto(user=user, session=session, run_session=run_session,
+                             image_data=canonical)
     photo.save()
     return photo

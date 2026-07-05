@@ -1065,19 +1065,39 @@ JSON requerido:
 """
 
 
+def _resolve_location(user, checkin):
+    """Ubicación a usar para la sesión: la del check-in, o la más reciente del
+    usuario, o un placeholder 'sin ubicación' si no tiene ninguna registrada.
+    Compartido por la vista (placeholder) y el task (contexto completo)."""
+    if checkin.location:
+        return checkin.location
+    loc = user.locations.order_by('-created_at').first()
+    if loc:
+        return loc
+    return SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
+
+
 # ─── Main generate view ───────────────────────────────────────────────────────
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([GenerateSessionRateThrottle])
 def generate_session(request):
+    """Valida, crea la Session placeholder y encola la generación real en Celery.
+
+    La generación (contexto + Groq + redes de seguridad + persistencia) vive en
+    ai_workout.tasks.generate_session_task: llamar a Groq puede tardar hasta
+    ~60s en el peor caso (GROQ_TIMEOUT_SECONDS × reintentos) y hacerlo inline
+    bloqueaba un worker de gunicorn todo ese tiempo. El cliente recibe 202 de
+    inmediato y recupera la rutina por polling de /api/sessions/today/ (mismo
+    mecanismo que ya existía como respaldo ante un 504 de la pasarela — ver el
+    comentario de GROQ_TIMEOUT_SECONDS más arriba).
+    """
     user = request.user
-    _gen_t0 = _time.monotonic()  # cronómetro de generación (salud del motor)
     hoy = _get_local_date(request)  # fecha local del dispositivo, no UTC
-    hace_14_dias = hoy - timedelta(days=14)
 
     try:
-        perfil = user.profile
+        user.profile
     except Exception:
         return Response({'error': 'Perfil no encontrado. Completa el onboarding.'}, status=400)
 
@@ -1104,166 +1124,13 @@ def generate_session(request):
         else:
             return Response({'error': 'Necesitas completar el check-in de hoy primero.'}, status=400)
 
-    if checkin.location:
-        loc = checkin.location
-    else:
-        loc = user.locations.order_by('-created_at').first()
-        if not loc:
-            loc = SimpleNamespace(nombre='Sin ubicación', tipo='casa', implementos=[])
+    # Cuenta contra el límite diario en cuanto se acepta el pedido — mismo
+    # momento que el flujo síncrono anterior (justo antes de generar), para no
+    # abrir una ventana donde ráfagas de requests concurrentes se cuelen
+    # mientras la generación real corre en background.
+    DailyGenerationCount.record(user, hoy)
 
-    sesiones_recientes = user.sessions.filter(created_at__date__gte=hace_14_dias)
-    fatiga = calcular_fatiga(sesiones_recientes)
-
-    # ── Datos de dispositivo (Garmin / Apple Health) ──────────────────────────
-    checkin_hrv, calidad_sueno_efectiva, device_context = process_device_data(user, checkin)
-    # ¿El sueño viene de un dispositivo (escala 1–4) en vez del check-in (horas)?
-    # Si el valor efectivo difiere del manual, lo sobrescribió el dispositivo.
-    sueno_es_score = calidad_sueno_efectiva != checkin.calidad_sueno
-
-    rpe_target = calcular_rpe_target(fatiga, checkin.estado_animo, checkin_hrv)
-
-    competicion = user.competitions.filter(
-        fecha__gte=hoy,
-        fecha__lte=hoy + timedelta(days=14)
-    ).order_by('fecha').first()
-
-    # Adaptive engine: Pasos 3, 4, 5
-    engine = AdaptiveEngineService(user, checkin, loc, perfil)
-    exercise_pool_enriched = engine.get_exercise_pool()
-
-    # Fallback to legacy pool if normalized tables return too few exercises
-    uso_fallback = False
-    if len(exercise_pool_enriched) < 5:
-        logger.warning(
-            'adaptive_engine pool too small (%d) for user %s — falling back to legacy pool',
-            len(exercise_pool_enriched), user.id,
-        )
-        exercise_pool_enriched = None  # signal build_prompt to use legacy formatter
-        uso_fallback = True            # motor degradado: salud del motor lo monitorea
-
-    pattern_priorities = engine.get_pattern_priorities()
-
-    # Adaptation context (existing function, unchanged)
-    adaptation_context = _build_adaptation_context(user)
-
-    # Mesocycle / periodization state (existing function, unchanged)
-    estado_mesociclo = _calcular_estado_mesociclo(user)
-
-    # Step 6: periodization params from active TrainingCycle
-    periodizacion = engine.get_periodization_params()
-
-    # Enrich with load data
-    is_deload_session = estado_mesociclo.get('necesita_deload', False) or periodizacion.get('is_deload', False)
-    if exercise_pool_enriched is not None:
-        exercise_pool_enriched, session_meta = engine.enrich_with_load(
-            exercise_pool_enriched,
-            deload_session=is_deload_session,
-            rpe_target=rpe_target,
-            fatiga=fatiga,
-            periodizacion=periodizacion,
-        )
-        exercise_pool_legacy = {}
-    else:
-        # Legacy fallback: build grouped dict and skip enrichment
-        exercise_pool_legacy, _ = _get_exercise_pool(user, loc, dolor_hoy=checkin.dolor_hoy or '')
-        session_meta = {'deload_session': False, 'max_sets_sesion': 20}
-
-    ctx = {
-        'nombre': perfil.nombre,
-        'objetivo': perfil.objetivo or 'salud general',
-        'nivel': perfil.nivel,
-        'nivel_experiencia': perfil.nivel_experiencia,
-        'lesiones': perfil.lesiones,
-        'condiciones_medicas': perfil.condiciones_medicas or [],
-        'notas_medicas': perfil.notas_medicas or '',
-        'experiencia_deportiva': perfil.experiencia_deportiva,
-        'edad': perfil.edad,
-        'sexo': perfil.sexo,
-        'peso': perfil.peso,
-        'altura': perfil.altura,
-        'dias_semana': perfil.dias_semana,
-        'horario_preferido': perfil.horario_preferido,
-        'nivel_estres': perfil.nivel_estres,
-        'tipo_trabajo': perfil.tipo_trabajo,
-        'estilo_entrenamiento': perfil.estilo_entrenamiento,
-        'ejercicios_favoritos': perfil.ejercicios_favoritos,
-        'ejercicios_evitar': perfil.ejercicios_evitar,
-        'rm_sentadilla': perfil.rm_sentadilla,
-        'rm_peso_muerto': perfil.rm_peso_muerto,
-        'rm_press_banca': perfil.rm_press_banca,
-        'rm_press_hombro': perfil.rm_press_hombro,
-        'estado_animo': checkin.estado_animo,
-        'calidad_sueno': calidad_sueno_efectiva,
-        'sueno_es_score': sueno_es_score,
-        'hrv': checkin_hrv,
-        'notas': checkin.notas,
-        'garmin_context': device_context,
-        'fatiga': fatiga,
-        'rpe_target': rpe_target,
-        'duracion': checkin.duracion_disponible,
-        'ubicacion_nombre': loc.nombre,
-        'ubicacion_tipo': loc.tipo,
-        'implementos': loc.implementos or [],
-        'competicion_nombre': competicion.nombre if competicion else None,
-        'competicion_fecha': str(competicion.fecha) if competicion else None,
-        'fases_ciclo': _calcular_fase_ciclo(user),
-        'dolor_hoy': checkin.dolor_hoy,
-        'foco_entrenamiento': checkin.foco_entrenamiento or [],
-        'exercise_pool': exercise_pool_legacy,
-        'exercise_pool_enriched': exercise_pool_enriched,
-        'pattern_priorities': pattern_priorities,
-        'session_meta': session_meta,
-        'adaptation_context': adaptation_context,
-        'estado_mesociclo': estado_mesociclo,
-        'periodizacion': periodizacion,
-        'coach_directiva': _get_coach_directiva(user),
-    }
-
-    prompt = build_prompt(ctx)
-
-    try:
-        # Fase 4: con el banco comprimido (1 línea/ejercicio) y los valores ya
-        # prescritos, el LLM razona menos y produce salida más corta. max_tokens=3000
-        # deja margen contra truncado y mantiene prompt+salida bajo el 12k TPM de Groq.
-        sesion_generada, _groq_usage = _call_groq(
-            prompt, max_tokens=3000, user_id=user.id, return_usage=True,
-        )
-    except json.JSONDecodeError:
-        logger.exception('Groq returned invalid JSON for user %s', user.id)
-        return Response(
-            {'error': 'La IA devolvió una respuesta inválida. Intenta de nuevo.'},
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
-    except (ValueError, RuntimeError) as e:
-        logger.exception('AI generation failed for user %s', user.id)
-        return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    except Exception:
-        logger.exception('Unexpected error during AI generation for user %s', user.id)
-        return Response(
-            {'error': 'Servicio de IA no disponible. Intenta de nuevo en unos segundos.'},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-
-    # Basic shape validation — the prompt asks for these keys; reject if missing.
-    if not isinstance(sesion_generada, dict) or 'fases' not in sesion_generada:
-        logger.error('Groq response missing "fases" for user %s: %s', user.id, sesion_generada)
-        return Response(
-            {'error': 'La IA devolvió una respuesta incompleta. Intenta de nuevo.'},
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
-
-    # GEN-3: red de seguridad — descarta ejercicios contraindicados que el LLM haya
-    # elegido fuera del pool ya filtrado (lesiones activas / dolor de hoy).
-    _drop_contraindicated_exercises(
-        sesion_generada, engine._get_injury_zones(), user.id,
-        body_zones=engine._get_body_zones(),
-    )
-    # GEN-5: red de seguridad de equipamiento — descarta ejercicios que requieran
-    # implementos no disponibles (coherencia casa/gimnasio), simétrica a la anterior.
-    engine.drop_unavailable_equipment(sesion_generada, user.id)
-
-    volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
-
+    loc = _resolve_location(user, checkin)
     db_location = loc if isinstance(loc, user.locations.model) else None
 
     with transaction.atomic():
@@ -1272,47 +1139,22 @@ def generate_session(request):
         user.sessions.filter(
             fecha=hoy, inicio_real__isnull=True, feedback__isnull=True,
         ).delete()
+        # Placeholder: respuesta_ia=None → /api/sessions/today/ (y session_list)
+        # la tratan como "todavía generándose" hasta que el task la complete (o
+        # falle y marque generacion_error).
         sesion = Session.objects.create(
             user=user,
             checkin=checkin,
             location=db_location,
             fecha=hoy,
             duracion_planificada=checkin.duracion_disponible,
-            rpe_target=rpe_target,
-            volumen_relativo=volumen,
-            prompt_usado=prompt,
-            respuesta_ia=sesion_generada,
-            decisiones=sesion_generada.get('decisions_log'),
-            # Salud del motor: duración total server-side + tokens + flag de fallback.
-            generacion_ms=int((_time.monotonic() - _gen_t0) * 1000),
-            tokens_in=_groq_usage.get('tokens_in'),
-            tokens_out=_groq_usage.get('tokens_out'),
-            uso_fallback=uso_fallback,
+            rpe_target=0,
         )
-        _persist_session_exercises(sesion, sesion_generada)
 
-    # Generación exitosa → cuenta para el límite diario.
-    DailyGenerationCount.record(user, hoy)
+    from ai_workout.tasks import generate_session_task
+    generate_session_task.delay(sesion.id)
 
-    # Invalidar caché del insight y del saludo para regenerarlos con la nueva sesión
-    from workouts.models import DailyCoachInsight, DailySaludo
-    DailyCoachInsight.objects.filter(user=user, fecha=hoy).delete()
-    DailySaludo.objects.filter(user=user, fecha=hoy).delete()
-
-    # Push notification: avisar al usuario que su rutina está lista (fire-and-forget)
-    try:
-        from users.push import send_push
-        titulo_sesion = sesion_generada.get('titulo', 'Tu sesión')
-        send_push(
-            user,
-            title='¡Tu sesión está lista! 💪',
-            body=titulo_sesion,
-            data={'sesion_id': sesion.id},
-        )
-    except Exception:
-        pass
-
-    return Response({'sesion': sesion_generada, 'sesion_id': sesion.id})
+    return Response({'status': 'accepted', 'sesion_id': sesion.id}, status=202)
 
 
 def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id, body_zones=None):

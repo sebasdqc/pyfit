@@ -7,6 +7,9 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
+from devices.fields import EncryptedTextField
+from users.fields import EncryptedJSONField
+
 
 # Alfabeto sin caracteres ambiguos (sin 0/O, 1/I/L) para códigos de referido
 # cortos y legibles al dictarlos o escribirlos a mano.
@@ -157,7 +160,8 @@ class Profile(models.Model):
         null=True, blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
-    lesiones = models.TextField(blank=True)
+    # Encriptado (dato de salud sensible) — ver devices.fields.EncryptedTextField.
+    lesiones = EncryptedTextField(blank=True)
     experiencia_deportiva = models.TextField(blank=True)
     estilo_entrenamiento = models.CharField(max_length=100, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
@@ -232,9 +236,11 @@ class Profile(models.Model):
 
     # Onboarding extended fields
     calidad_sueno_habitual = models.CharField(max_length=30, blank=True)
-    condiciones_medicas = models.JSONField(default=list, blank=True)
-    notas_medicas = models.TextField(blank=True)
-    motivo_limitacion = models.TextField(blank=True)
+    # Encriptados (datos de salud sensibles) — ver users.fields.EncryptedJSONField
+    # y devices.fields.EncryptedTextField.
+    condiciones_medicas = EncryptedJSONField(default=list, blank=True)
+    notas_medicas = EncryptedTextField(blank=True)
+    motivo_limitacion = EncryptedTextField(blank=True)
     lugares_entrenamiento = models.JSONField(default=list, blank=True)
     implementos_perfil = models.JSONField(default=list, blank=True)
     duracion_disponible = models.IntegerField(
@@ -276,7 +282,11 @@ class Profile(models.Model):
     puntos_totales = models.IntegerField(default=0)
     logros = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil
+    avatar = models.TextField(blank=True, default='')  # base64 dataURI de la foto de perfil (legacy)
+    # Key del objeto en DO Spaces cuando USE_SPACES está activo (ver
+    # pyfit.media_storage). Nuevo avatar sube acá y `avatar` queda vacío; las
+    # filas viejas (subidas antes de activar Spaces) siguen usando `avatar`.
+    avatar_key = models.CharField(max_length=255, blank=True, default='')
     # Código de referido único por usuario. Se autogenera en save() si falta y se
     # rellena para las cuentas existentes vía migración de datos, de modo que
     # TODOS los perfiles tengan siempre uno. null permitido solo para no romper
@@ -390,7 +400,8 @@ class UserInjury(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='injuries')
     zona = models.CharField(max_length=20, choices=ZONA_CHOICES)
     severidad = models.CharField(max_length=20, choices=SEVERIDAD_CHOICES)
-    descripcion = models.TextField(blank=True)
+    # Encriptado (dato de salud sensible) — ver devices.fields.EncryptedTextField.
+    descripcion = EncryptedTextField(blank=True)
     activa = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

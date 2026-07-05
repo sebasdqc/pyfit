@@ -6,11 +6,21 @@ from django.db import transaction
 from django.db.models import Avg, Count, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from pyfit.throttles import SessionResumenRateThrottle
 from rest_framework.response import Response
 from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle, SessionPhoto
 from .photo_service import create_session_photo, PhotoError
+
+
+class SessionListPagination(PageNumberPagination):
+    # Mismo patrón que RunSessionPagination (runs/views.py): historial pide
+    # explícitamente un page_size grande para traer "todo" en una sola llamada,
+    # pero la query queda acotada en vez de ser un SELECT * sin límite.
+    page_size = 100
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 def _get_local_date(request) -> date:
@@ -38,16 +48,28 @@ from .serializers import SessionDetailSerializer, SessionListSerializer, Session
 def session_list(request):
     # HIS-2: prefetch de exercises para exponer el peso real (series_log) por
     # ejercicio en el listado/historial sin disparar N+1.
-    sessions = request.user.sessions.select_related('feedback', 'checkin').prefetch_related('exercises').all()
+    # Excluye placeholders todavía generándose (respuesta_ia=None, ver
+    # ai_workout.tasks.generate_session_task): no son una sesión real para el
+    # usuario, solo existen mientras el task de Celery corre en background.
+    sessions = (
+        request.user.sessions
+        .exclude(respuesta_ia__isnull=True)
+        .select_related('feedback', 'checkin')
+        .prefetch_related('exercises')
+    )
     # Filtro opcional por fecha: el dashboard solo necesita una ventana reciente
-    # para el calendario (acota el payload). El historial los pide todos sin param.
+    # para el calendario (acota el payload). El historial los pide todos sin param
+    # (pasando un page_size grande, ver SessionListPagination).
     desde = request.query_params.get('desde')
     if desde:
         try:
             sessions = sessions.filter(fecha__gte=date.fromisoformat(desde))
         except ValueError:
             pass
-    return Response(SessionListSerializer(sessions, many=True).data)
+    paginator = SessionListPagination()
+    page = paginator.paginate_queryset(sessions, request)
+    serializer = SessionListSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(['GET'])
@@ -83,7 +105,10 @@ def session_photo_delete(request, pk):
         photo = SessionPhoto.objects.get(pk=pk, user=request.user)
     except SessionPhoto.DoesNotExist:
         return Response({'error': 'Foto no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-    photo.delete()   # la imagen es texto en la propia fila; no hay archivo aparte
+    if photo.image_key:
+        from pyfit.media_storage import delete_image
+        delete_image(photo.image_key)  # borra el objeto en Spaces si USE_SPACES lo subió ahí
+    photo.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -93,15 +118,21 @@ def session_today(request):
     """Sesión de hoy en la forma { sesion_id, sesion } que consume la pantalla de
     generación.
 
-    Sirve de respaldo cuando POST /api/sessions/generate/ supera el timeout de la
-    pasarela (504) PERO el backend sí terminó de crear la sesión: el cliente hace
-    polling de este endpoint hasta que la rutina esté lista. Devuelve la sesión
-    más reciente del día; el cliente la distingue de una previa por su id.
+    La generación con IA corre en un task de Celery (ai_workout.tasks.
+    generate_session_task): POST /api/sessions/generate/ solo valida, crea un
+    placeholder (respuesta_ia=None) y encola el task, devolviendo 202 de
+    inmediato. El cliente hace polling de este endpoint hasta que la rutina
+    esté lista (o falle) — devuelve la sesión más reciente del día; el cliente
+    la distingue de una previa por su id.
     """
     hoy = _get_local_date(request)
     s = request.user.sessions.filter(fecha=hoy).order_by('-created_at').first()
-    ia = s.respuesta_ia if s else None
-    if not s or not isinstance(ia, dict) or 'fases' not in ia:
+    if not s:
+        return Response({'status': 'pending'})
+    if s.generacion_error:
+        return Response({'status': 'error', 'error': s.generacion_error})
+    ia = s.respuesta_ia
+    if not isinstance(ia, dict) or 'fases' not in ia:
         return Response({'status': 'pending'})
     return Response({'status': 'ready', 'sesion_id': s.id, 'sesion': ia})
 
@@ -1518,11 +1549,12 @@ def stats_dashboard(request):
     fatiga_pct = min(100, ultimas_72 * 33)
 
     try:
+        from pyfit.media_storage import resolve_image_url
         profile = request.user.profile
         nombre = profile.nombre
         sexo = profile.sexo or ''
         dias_objetivo = profile.dias_semana or 3
-        avatar = profile.avatar or ''
+        avatar = resolve_image_url(legacy_data_uri=profile.avatar, storage_key=profile.avatar_key)
     except Exception:
         nombre = request.user.email.split('@')[0]
         sexo = ''
