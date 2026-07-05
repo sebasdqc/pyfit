@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from devices.fields import EncryptedTextField
+
 
 class DailyCheckin(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='checkins')
@@ -28,7 +30,8 @@ class DailyCheckin(models.Model):
         null=True, blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
-    dolor_hoy = models.TextField(blank=True, null=True)
+    # Encriptado (dato de salud sensible) — ver devices.fields.EncryptedTextField.
+    dolor_hoy = EncryptedTextField(blank=True, null=True)
     notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from devices.fields import EncryptedTextField
+
 
 class Exercise(models.Model):
     PATRON_CHOICES = [
@@ -261,7 +263,11 @@ class Session(models.Model):
     duracion_planificada = models.IntegerField()
     rpe_target = models.DecimalField(max_digits=3, decimal_places=1)
     volumen_relativo = models.CharField(max_length=10, choices=VOLUMEN_CHOICES, blank=True)
-    prompt_usado = models.TextField(blank=True)
+    # Encriptado: el prompt incluye el contexto médico completo del usuario
+    # (lesiones, condiciones médicas, dolor del día) — ver devices.fields.
+    # EncryptedTextField. Es el campo con más copias de ese dato (una fila por
+    # sesión generada), por eso es el primero en cifrarse.
+    prompt_usado = EncryptedTextField(blank=True)
     respuesta_ia = models.JSONField(null=True, blank=True)
     decisiones = models.JSONField(null=True, blank=True)  # [{"icon": "...", "text": "..."}]
     evidencia = models.JSONField(null=True, blank=True)   # {"text": "...", "reference": "..."}

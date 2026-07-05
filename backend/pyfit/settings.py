@@ -380,14 +380,16 @@ GARMIN_REDIRECT_URI  = os.environ.get('GARMIN_REDIRECT_URI', 'zyfit://garmin/cal
 # ─── django-cryptography — clave de encriptación de campos ───────────────────
 # Generar con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
-# Solo es obligatoria cuando Garmin está configurado (GARMIN_CLIENT_ID presente):
-# sus tokens OAuth se guardan encriptados. Sin Garmin activo no se almacenan tokens,
-# así que NO debe bloquear el build (collectstatic) ni el arranque. Apple Health no
-# usa tokens server-side. Al activar Garmin, el requisito de la key se reactiva.
-if GARMIN_CLIENT_ID and not FIELD_ENCRYPTION_KEY and not DEBUG:
+# Obligatoria en producción: ya no es solo para los tokens OAuth de Garmin —
+# protege datos médicos (Profile.lesiones/condiciones_medicas/notas_medicas/
+# motivo_limitacion, DailyCheckin.dolor_hoy, UserInjury.descripcion,
+# Session.prompt_usado). Sin ella, EncryptedTextField/EncryptedJSONField
+# degradan a texto plano en silencio (ver devices/fields.py) — preferible
+# fallar el arranque a que la app corra creyendo que cifra y no lo hace.
+if not FIELD_ENCRYPTION_KEY and not DEBUG:
     raise ImproperlyConfigured(
-        'FIELD_ENCRYPTION_KEY is required when Garmin is enabled (GARMIN_CLIENT_ID set) '
-        'to encrypt OAuth tokens. Generate one with: '
+        'FIELD_ENCRYPTION_KEY is required when DEBUG=False — it encrypts medical '
+        'data and (if Garmin is enabled) OAuth tokens. Generate one with: '
         'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
     )
 

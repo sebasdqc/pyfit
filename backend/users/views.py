@@ -733,11 +733,14 @@ def _check_alertas_criticas(user, ahora):
     # Injury pattern — 3+ pain reports in check-ins in 7 days
     try:
         from checkins.models import DailyCheckin
-        pain_count = DailyCheckin.objects.filter(
+        # dolor_hoy está encriptado: no se puede filtrar "no vacío" en SQL
+        # (el texto cifrado nunca es literalmente ''), así que se cuenta en
+        # Python tras traer la ventana (acotada a ~7 filas por usuario).
+        checkins_recientes = DailyCheckin.objects.filter(
             user=user,
             fecha__gte=(ahora - timedelta(days=7)).date(),
-            dolor_hoy__isnull=False,
-        ).exclude(dolor_hoy='').count()
+        ).only('dolor_hoy')
+        pain_count = sum(1 for c in checkins_recientes if c.dolor_hoy and c.dolor_hoy.strip())
         if pain_count >= 3:
             ya_existe = user.notifications.filter(
                 tipo='alerta',
