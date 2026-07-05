@@ -5,3 +5,10 @@ __pycache__/
 db.sqlite3
 staticfiles/
 .DS_Store
+
+# Estado local de Celery Beat (se regenera solo; correrlo localmente con
+# celery -A pyfit worker -B crea estos archivos en el directorio de trabajo).
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+celerybeat.pid
