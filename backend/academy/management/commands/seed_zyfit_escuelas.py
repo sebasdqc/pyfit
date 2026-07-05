@@ -108,18 +108,54 @@ ESCUELAS = [
                 'slug': 'de-los-datos-a-la-decision-zyfit-score',
                 'nivel': NIVEL_AVANZADO,
                 'categoria': 'analítica',
-                'resumen': 'El marco consistencia/adaptabilidad/progresión para individualizar el entrenamiento.',
+                'resumen': 'Qué mide con evidencia real cada pilar del Zyfit Score, y qué parte es diseño de producto.',
                 'descripcion': (
-                    'El marco de consistencia/adaptabilidad/progresión aplicado a la '
-                    'individualización real del entrenamiento.'
+                    'Los tres pilares del Zyfit Score (consistencia, adaptabilidad, progresión) '
+                    'con su respaldo científico individual, por qué la ponderación 40/35/25 es una '
+                    'decisión de diseño y no un hallazgo de laboratorio, y cómo usar la puntuación '
+                    'para decidir sin tratarla como un oráculo.'
                 ),
                 'modulos': [
-                    'El marco del Zyfit Score: consistencia, adaptabilidad, progresión',
-                    'Cómo se mide la consistencia del atleta',
-                    'Cómo se mide la adaptabilidad a la carga',
-                    'Cómo se mide la progresión real',
-                    'Individualizar el entrenamiento con datos combinados',
-                    'Caso integrador: de los datos crudos a la decisión',
+                    'Los tres pilares: qué dice la ciencia de cada uno por separado',
+                    'La ponderación 40/35/25: diseño de producto, no hallazgo científico',
+                    'De la puntuación a la decisión: usar el score sin tratarlo como oráculo',
+                    'Capstone: explica el Zyfit Score a un cliente escéptico',
+                ],
+            },
+            {
+                'titulo': 'Entrenamiento Concurrente: Fuerza y Resistencia sin Interferencia',
+                'slug': 'entrenamiento-concurrente-fuerza-resistencia',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'entrenamiento',
+                'resumen': 'De dónde viene el "efecto interferencia" y qué variables sí ayudan a minimizarlo.',
+                'descripcion': (
+                    'Por qué el hallazgo original de 1980 fue confirmado en 2012 y luego matizado '
+                    'por una revisión más reciente y rigurosa, y qué variables de modalidad, '
+                    'secuencia y tiempo entre sesiones tienen respaldo real en la práctica.'
+                ),
+                'modulos': [
+                    'El "efecto interferencia": de dónde viene y por qué tendría sentido fisiológico',
+                    'La controversia actualizada: cuando un meta-análisis más reciente contradice al anterior',
+                    'Qué hacer en la práctica: modalidad, secuencia y tiempo entre sesiones',
+                    'Capstone: diseña el bloque de entrenamiento concurrente de un atleta',
+                ],
+            },
+            {
+                'titulo': 'Métricas Externas de Carga: GPS y Análisis de Movimiento',
+                'slug': 'metricas-externas-carga-gps',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'analítica',
+                'resumen': 'Qué métricas de GPS son fiables, cuáles no tanto, y por qué el umbral de velocidad importa.',
+                'descripcion': (
+                    'Carga externa vía GPS: qué tan precisas son la distancia total, la velocidad '
+                    'pico y la carrera de alta intensidad, y por qué elegir un umbral absoluto o '
+                    'individualizado puede cambiar por completo una conclusión sobre demandas de posición.'
+                ),
+                'modulos': [
+                    'Qué mide bien el GPS y qué mide mal',
+                    'Umbrales absolutos vs. individualizados: un debate real y no resuelto',
+                    'Qué hacer en la práctica: confiar en la métrica correcta para la pregunta correcta',
+                    'Capstone: interpreta el panel de GPS de un equipo',
                 ],
             },
         ],
@@ -138,17 +174,17 @@ ESCUELAS = [
                 'slug': 'acwr-y-prevencion-de-picos-de-carga',
                 'nivel': NIVEL_INTERMEDIO,
                 'categoria': 'analítica',
-                'resumen': 'El ratio agudo:crónico para detectar riesgo antes de la lesión.',
+                'resumen': 'El tema más disputado del catálogo: de dónde viene el ACWR y por qué se cuestiona.',
                 'descripcion': (
-                    'El ratio agudo:crónico como herramienta para detectar riesgo antes '
-                    'de la lesión.'
+                    'Por qué una parte seria de la comunidad científica pide descartar el ACWR '
+                    'como predictor de lesión, y qué hacer en la práctica con datos de carga sin '
+                    'apoyarse en un ratio con problemas estadísticos documentados.'
                 ),
                 'modulos': [
-                    'Qué es el ratio agudo:crónico (ACWR)',
-                    'Cómo calcular carga aguda y crónica',
-                    'Zonas de riesgo y su interpretación',
-                    'Detectar picos de carga antes de la lesión',
-                    'Ajustar el plan de entrenamiento según el ACWR',
+                    'Qué es el ACWR y de dónde viene',
+                    'La controversia real: por qué se cuestiona seriamente el ACWR',
+                    'Qué hacer en la práctica, dado el estado real del debate',
+                    'Capstone: interpreta el caso de un jugador con "ACWR en zona roja"',
                 ],
             },
             {
@@ -179,7 +215,26 @@ ESCUELAS = [
             'pérdida de grasa, ganancia muscular y mantenimiento a largo plazo.'
         ),
         'orden': 3,
-        'cursos': [],
+        'cursos': [
+            {
+                'titulo': 'Composición Corporal: Medición y Manipulación Basada en Datos',
+                'slug': 'composicion-corporal-medicion-y-manipulacion',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'recomposición',
+                'resumen': 'Qué método de medición usar según contexto, y por qué el peso diario engaña.',
+                'descripcion': (
+                    'Jerarquía real de métodos de medición (DEXA, BIA, skinfolds), el mito de '
+                    'bulk o cut, y cómo leer datos de tendencia en vez de reaccionar al peso '
+                    'de un solo día.'
+                ),
+                'modulos': [
+                    'Jerarquía de métodos de medición',
+                    'El mito de "bulk o cut": recomposición corporal',
+                    'Manipulación basada en datos: seguimiento real, no solo la báscula',
+                    'Capstone: diseña el protocolo de seguimiento y ajuste',
+                ],
+            },
+        ],
     },
     {
         'nombre': 'Salud y Bienestar Deportivo',
@@ -208,6 +263,24 @@ ESCUELAS = [
                     'Errores comunes al monitorear HRV',
                 ],
             },
+            {
+                'titulo': 'Sueño y Rendimiento Deportivo',
+                'slug': 'sueno-y-rendimiento-deportivo',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'recuperación',
+                'resumen': 'Qué tan sólida es realmente la evidencia detrás de "dormir más mejora tu rendimiento".',
+                'descripcion': (
+                    'La privación de sueño perjudica el rendimiento con evidencia sólida; que '
+                    'dormir más de lo habitual lo mejore está mucho menos probado de lo que su '
+                    'popularidad sugiere. Incluye cuánto confiar en los dispositivos de seguimiento.'
+                ),
+                'modulos': [
+                    'Privación de sueño y rendimiento: la evidencia más sólida del dominio',
+                    'Extensión de sueño: el estudio más citado tiene menos peso del que parece',
+                    'Dispositivos de seguimiento de sueño: buenos para una cosa, débiles para otra',
+                    'Capstone: aconseja a un atleta sobre su estrategia de sueño',
+                ],
+            },
         ],
     },
     {
@@ -224,17 +297,85 @@ ESCUELAS = [
                 'slug': 'carga-psicologica-y-wellness-del-atleta',
                 'nivel': NIVEL_INTERMEDIO,
                 'categoria': 'wellness',
-                'resumen': 'Cuestionarios de bienestar y su conexión con el rendimiento físico.',
+                'resumen': 'El estrés como factor de riesgo de lesión documentado, y qué tan bien predicen los cuestionarios.',
                 'descripcion': (
-                    'Cuestionarios de bienestar y cómo conectar el estado mental del atleta '
-                    'con su rendimiento físico.'
+                    'El modelo de estrés y lesión, la evidencia real detrás de los cuestionarios '
+                    'de bienestar más usados en la práctica, y cómo usarlos como facilitadores de '
+                    'conversación en vez de oráculos de decisión.'
                 ),
                 'modulos': [
-                    'Qué es el bienestar del atleta y por qué medirlo',
-                    'Cuestionarios de wellness: diseño e interpretación',
-                    'Estrés percibido y su relación con el rendimiento',
-                    'Conectar lo mental con la carga física',
-                    'Construir un panel de wellness del atleta',
+                    'El modelo de estrés y lesión: la conexión real entre lo psicológico y lo físico',
+                    'Cuestionarios de bienestar: qué tan sólida es la herramienta más usada',
+                    'De la puntuación a la conversación: usar los datos de wellness sin sobre-interpretar',
+                    'Capstone: interpreta el caso de la jugadora en periodo de estrés',
+                ],
+            },
+            {
+                'titulo': 'Fundamentos de Psicología Deportiva',
+                'slug': 'fundamentos-de-psicologia-deportiva',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'psicología',
+                'resumen': 'Qué mueve realmente la motivación de un atleta y cómo se relaciona la activación con el rendimiento.',
+                'descripcion': (
+                    'Teoría de la Autodeterminación, por qué el modelo clásico de la U invertida '
+                    'quedó superado, y la distinción entre ansiedad cognitiva y somática.'
+                ),
+                'modulos': [
+                    'Motivación: por qué compite realmente un atleta',
+                    'Activación y rendimiento: del mito de la U invertida a modelos más completos',
+                    'Ansiedad competitiva: cognitiva vs. somática',
+                    'Capstone: diseña el perfil de activación de un atleta',
+                ],
+            },
+            {
+                'titulo': 'Construcción Mental de Rutinas de Alto Rendimiento',
+                'slug': 'rutinas-mentales-de-alto-rendimiento',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'psicología',
+                'resumen': 'Rutinas pre-competitivas, visualización PETTLEP y quiet eye: la versión con evidencia real.',
+                'descripcion': (
+                    'De la rutina pre-competitiva con respaldo meta-analítico al modelo PETTLEP '
+                    'de visualización y el entrenamiento de foco atencional (quiet eye).'
+                ),
+                'modulos': [
+                    'Rutinas pre-competitivas: qué dice la evidencia real',
+                    'Visualización: del "imagina tu éxito" genérico al modelo PETTLEP',
+                    'Foco atencional: qué hacer con los ojos y la mente bajo presión',
+                    'Capstone: diseña la rutina completa de un atleta',
+                ],
+            },
+            {
+                'titulo': 'Liderazgo y Dinámica de Grupo en Equipos Deportivos',
+                'slug': 'liderazgo-y-dinamica-de-grupo-en-equipos',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'psicología',
+                'resumen': 'Cohesión de tarea, pereza social y liderazgo situacional, sin confundir correlación con causalidad.',
+                'descripcion': (
+                    'Por qué la cohesión de tarea predice rendimiento mejor que la social, el '
+                    'efecto Ringelmann, y los límites reales del liderazgo transformacional.'
+                ),
+                'modulos': [
+                    'Cohesión de equipo: el mito de "más unión social = más rendimiento"',
+                    'Pereza social: por qué los equipos grandes rinden menos per cápita',
+                    'Liderazgo del entrenador: marco y sus límites',
+                    'Capstone: diseña la intervención de equipo',
+                ],
+            },
+            {
+                'titulo': 'Retorno Psicológico al Deporte tras Lesión',
+                'slug': 'retorno-psicologico-al-deporte-tras-lesion',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'psicología',
+                'resumen': 'Qué tan bien predice realmente el ACL-RSI, y por qué ninguna prueba aislada basta.',
+                'descripcion': (
+                    'El ACL-RSI y su evidencia real, la kinesiofobia como riesgo mecánico, y '
+                    'por qué combinar criterios físicos y psicológicos es la práctica más defendible.'
+                ),
+                'modulos': [
+                    'El ACL-RSI: qué tan bien predice realmente el retorno al deporte',
+                    'Kinesiofobia: el miedo a moverse que puede perpetuar el riesgo',
+                    'Combinar pruebas físicas y psicológicas: ninguna sola basta',
+                    'Capstone: evalúa el retorno de un jugador tras reconstrucción de LCA',
                 ],
             },
         ],
@@ -257,7 +398,63 @@ ESCUELAS = [
             'programas de entrenamiento.'
         ),
         'orden': 7,
-        'cursos': [],
+        'cursos': [
+            {
+                'titulo': 'Bioenergética Aplicada al Entrenamiento',
+                'slug': 'bioenergetica-aplicada-al-entrenamiento',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'fisiología',
+                'resumen': 'Identifica qué sistema energético predomina en cada tarea y ajusta la sesión en consecuencia.',
+                'descripcion': (
+                    'Los tres sistemas energéticos (fosfágeno, glucolítico, oxidativo) como un '
+                    'continuo, no compartimentos estancos, y cómo esa predominancia relativa '
+                    'debe cambiar el diseño de descansos, series y microciclos.'
+                ),
+                'modulos': [
+                    'Los tres sistemas: qué son y cuándo se activan',
+                    'Sistema ATP-PC: potencia y fuerza máxima',
+                    'Sistema glucolítico y el lactato como combustible',
+                    'Sistema oxidativo: la base que sostiene todo',
+                    'Capstone: diseña el microciclo según predominancia energética',
+                ],
+            },
+            {
+                'titulo': 'Nutrición para Rendimiento: Mitos vs. Evidencia',
+                'slug': 'nutricion-para-rendimiento-mitos-vs-evidencia',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'nutrición',
+                'resumen': 'La ventana anabólica, los carbohidratos y los suplementos: qué separa el mito de la evidencia.',
+                'descripcion': (
+                    'Por qué la ventana anabólica estricta no tiene el respaldo que se le '
+                    'atribuye, el rol del glucógeno en esfuerzos intermitentes, y la jerarquía '
+                    'real de evidencia en suplementación.'
+                ),
+                'modulos': [
+                    'El mito de la ventana anabólica',
+                    'Carbohidratos: disponibilidad de glucógeno y rendimiento',
+                    'Suplementos: jerarquía real de evidencia',
+                    'Capstone: diseña el plan nutricional de un caso mixto',
+                ],
+            },
+            {
+                'titulo': 'Hidratación y Termorregulación en el Rendimiento',
+                'slug': 'hidratacion-y-termorregulacion-en-el-rendimiento',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'fisiología',
+                'resumen': 'El umbral del 2% de deshidratación y el riesgo real, a veces mortal, del extremo opuesto.',
+                'descripcion': (
+                    'Qué tan sólida es la evidencia del umbral de deshidratación, el riesgo '
+                    'documentado de hiponatremia por exceso de líquidos, y cuándo planificar la '
+                    'hidratación en vez de solo beber según la sed.'
+                ),
+                'modulos': [
+                    'El umbral del 2% de deshidratación: ciencia real con un matiz metodológico importante',
+                    'Hiponatremia: el riesgo real del extremo opuesto',
+                    'Hidratación planificada vs. beber según la sed: cuándo usar cada enfoque',
+                    'Capstone: diseña el plan de hidratación de una corredora de maratón',
+                ],
+            },
+        ],
     },
     {
         'nombre': 'Poblaciones Especiales',
@@ -267,7 +464,80 @@ ESCUELAS = [
             'adultos mayores, embarazo, patologías crónicas y más.'
         ),
         'orden': 8,
-        'cursos': [],
+        'cursos': [
+            {
+                'titulo': 'Entrenamiento en Poblaciones con Enfermedad Crónica',
+                'slug': 'entrenamiento-en-poblaciones-con-enfermedad-cronica',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'salud clínica',
+                'resumen': 'Qué beneficios del ejercicio están bien documentados en cardiovascular, diabetes y cáncer.',
+                'descripcion': (
+                    'Rehabilitación cardíaca basada en ejercicio, control glucémico en diabetes '
+                    'tipo 2, y el giro de "reposo total" a "ejercicio seguro" en pacientes '
+                    'oncológicos — siempre en coordinación con el equipo médico tratante.'
+                ),
+                'modulos': [
+                    'Enfermedad cardiovascular: rehabilitación basada en ejercicio',
+                    'Enfermedad metabólica: ejercicio y control glucémico en diabetes tipo 2',
+                    'Cáncer: ejercicio durante y después del tratamiento oncológico',
+                    'Capstone: diseña el marco de decisión para un caso con comorbilidad',
+                ],
+            },
+            {
+                'titulo': 'Ejercicio y Envejecimiento: Sarcopenia y Funcionalidad',
+                'slug': 'ejercicio-y-envejecimiento-sarcopenia-y-funcionalidad',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'salud clínica',
+                'resumen': 'Diagnóstico real de sarcopenia, fuerza vs. potencia, y qué ejercicio previene caídas de verdad.',
+                'descripcion': (
+                    'Criterios EWGSOP2 para sarcopenia, el debate fuerza vs. potencia en '
+                    'adultos mayores, y por qué solo los programas con componente de equilibrio '
+                    'reducen caídas de forma consistente.'
+                ),
+                'modulos': [
+                    'Sarcopenia: qué es y cómo se diagnostica con criterios reales',
+                    'Entrenamiento de fuerza vs. potencia: qué dice la evidencia comparada',
+                    'Prevención de caídas: no todo ejercicio previene caídas por igual',
+                    'Capstone: diseña el programa para un adulto mayor con sarcopenia y riesgo de caídas',
+                ],
+            },
+            {
+                'titulo': 'Adaptaciones para Embarazo, Postparto y Poblaciones Pediátricas',
+                'slug': 'adaptaciones-embarazo-postparto-y-poblaciones-pediatricas',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'salud clínica',
+                'resumen': 'El mito del límite de frecuencia cardíaca, la diástasis abdominal y el entrenamiento de fuerza infantil.',
+                'descripcion': (
+                    'Seguridad real del ejercicio en el embarazo, qué sí funciona en '
+                    'rehabilitación postparto (y qué todavía no), y por qué el entrenamiento de '
+                    'fuerza pediátrico supervisado no detiene el crecimiento.'
+                ),
+                'modulos': [
+                    'Embarazo: seguridad real y el mito del límite de frecuencia cardíaca',
+                    'Postparto: diástasis abdominal y piso pélvico — qué sí funciona y qué todavía no',
+                    'Poblaciones pediátricas: el mito de que el entrenamiento de fuerza "detiene el crecimiento"',
+                    'Capstone: diseña el marco de comunicación para las tres poblaciones',
+                ],
+            },
+            {
+                'titulo': 'Entrenamiento Adaptado para Personas con Discapacidad',
+                'slug': 'entrenamiento-adaptado-para-personas-con-discapacidad',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'salud clínica',
+                'resumen': 'Guías de ejercicio para lesión medular y un riesgo de seguridad poco conocido: la autodisreflexia.',
+                'descripcion': (
+                    'Guías internacionales de ejercicio para lesión medular, el riesgo real del '
+                    '"boosting" por autodisreflexia, y por qué esta población exige más '
+                    'coordinación interdisciplinaria que cualquier otra.'
+                ),
+                'modulos': [
+                    'Guías de ejercicio basadas en evidencia para lesión medular',
+                    'Autodisreflexia y "boosting": un riesgo real y poco conocido fuera del deporte paralímpico',
+                    'Por qué el entrenamiento adaptado exige más coordinación interdisciplinaria que cualquier otra población',
+                    'Capstone: diseña el enfoque para un nuevo cliente con lesión medular',
+                ],
+            },
+        ],
     },
     {
         'nombre': 'Negocio y Marca Personal en el Deporte',
@@ -277,7 +547,81 @@ ESCUELAS = [
             'entrenadores y profesionales del deporte.'
         ),
         'orden': 9,
-        'cursos': [],
+        'cursos': [
+            {
+                'titulo': 'Construcción de Marca Personal para Profesionales del Deporte',
+                'slug': 'construccion-de-marca-personal-para-profesionales-del-deporte',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'negocio',
+                'resumen': 'Qué dice la investigación real sobre marca personal, y qué es promesa de marketing.',
+                'descripcion': (
+                    'Evidencia correlacional real sobre marca personal y carrera, el valor y '
+                    'los límites de la especialización de nicho, y por qué autenticidad y '
+                    'consistencia son los dos pilares que más se repiten entre fuentes.'
+                ),
+                'modulos': [
+                    'Marca personal: qué dice la investigación real, no la anécdota',
+                    'Diferenciación y especialización: ventajas documentadas, con cautela de fuente',
+                    'Autenticidad y consistencia: los dos pilares que sí se repiten entre fuentes',
+                    'Capstone: diseña el posicionamiento de un profesional del deporte',
+                ],
+            },
+            {
+                'titulo': 'Modelos de Negocio para Entrenadores Independientes',
+                'slug': 'modelos-de-negocio-para-entrenadores-independientes',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'negocio',
+                'resumen': 'Precio por hora vs. basado en valor, el mito de "retener es más barato", y cómo escalar sin perder calidad.',
+                'descripcion': (
+                    'Por qué cobrar por hora desalinea incentivos, de dónde viene realmente la '
+                    'cifra viral de retención vs. adquisición, y por qué la disyuntiva real al '
+                    'escalar es con acompañamiento humano o sin él.'
+                ),
+                'modulos': [
+                    'Modelos de precio: por hora vs. basado en valor',
+                    'Retención de clientes: el mito del "5 veces más barato retener"',
+                    'Escalar sin perder calidad: la disyuntiva real no es grupal vs. individual',
+                    'Capstone: diseña el modelo de negocio de un entrenador independiente',
+                ],
+            },
+            {
+                'titulo': 'Comunicación con el Cliente/Atleta: De la Ciencia a la Adherencia',
+                'slug': 'comunicacion-con-el-cliente-atleta-de-la-ciencia-a-la-adherencia',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'negocio',
+                'resumen': 'Entrevista motivacional, framing de mensajes y por qué combinar técnicas de autorregulación funciona mejor.',
+                'descripcion': (
+                    'Qué tan sólida es realmente la evidencia de la entrevista motivacional, '
+                    'una controversia real y no resuelta sobre framing de ganancia/pérdida, y '
+                    'por qué ninguna técnica de autorregulación aislada basta.'
+                ),
+                'modulos': [
+                    'Entrevista motivacional: qué tan sólida es la evidencia realmente',
+                    'Framing de mensajes: ganancia vs. pérdida — una controversia real, no resuelta',
+                    'Autorregistro y metas: el combo que funciona, no la técnica aislada',
+                    'Capstone: diseña la estrategia de comunicación para un caso real',
+                ],
+            },
+            {
+                'titulo': 'Ética Profesional y Responsabilidad Legal para Entrenadores Independientes',
+                'slug': 'etica-profesional-y-responsabilidad-legal-para-entrenadores',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'negocio',
+                'resumen': 'Alcance de práctica, negligencia y qué protege realmente un descargo de responsabilidad.',
+                'descripcion': (
+                    'El riesgo legal de exceder el alcance de práctica (especialmente en '
+                    'nutrición), los patrones recurrentes en demandas reales de negligencia, y '
+                    'qué cubre y qué no un waiver — con la salvedad de que el marco legal varía '
+                    'por país.'
+                ),
+                'modulos': [
+                    'Alcance de práctica: el hallazgo más preocupante del catálogo',
+                    'Negligencia y deber de cuidado: qué muestran los casos reales',
+                    'Descargos de responsabilidad (waivers): qué protegen y qué no',
+                    'Capstone: evalúa el riesgo legal de un caso real',
+                ],
+            },
+        ],
     },
 ]
 
