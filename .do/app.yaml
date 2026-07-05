@@ -1,11 +1,11 @@
 name: pyfit-backend
 region: nyc
 
-# ─── App-Level Environment Variables ──────────────────────────────────────
-# Definidas UNA SOLA VEZ acá, disponibles automáticamente en todos los
-# componentes (services, workers, jobs) sin repetirlas. Un componente puede
-# pisar cualquiera de estas con su propia entrada en su `envs:` si necesitara
-# un valor distinto (no es el caso acá).
+# App-Level Environment Variables.
+# Defined ONCE here, available automatically to every component below
+# (services, workers, jobs) without repeating them. A component can still
+# override any of these with its own entry in its "envs:" list if it needs
+# a different value (not the case here).
 envs:
   - key: SECRET_KEY
     scope: RUN_AND_BUILD_TIME
@@ -22,18 +22,18 @@ envs:
   - key: ALLOWED_HOSTS
     scope: RUN_AND_BUILD_TIME
     value: ".ondigitalocean.app,localhost"
-  # Obligatoria: cifra datos médicos (Profile.lesiones/condiciones_medicas/
+  # Required: encrypts medical data (Profile.lesiones/condiciones_medicas/
   # notas_medicas/motivo_limitacion, DailyCheckin.dolor_hoy,
-  # UserInjury.descripcion, Session.prompt_usado). Sin ella Django NO
-  # arranca (falla con ImproperlyConfigured) — ni el servicio api, ni el
-  # worker de Celery, ni el job de migrate. Generar con:
+  # UserInjury.descripcion, Session.prompt_usado). Without it Django will
+  # NOT start (raises ImproperlyConfigured) - not the api service, not the
+  # Celery worker, not the migrate job. Generate with:
   #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
   - key: FIELD_ENCRYPTION_KEY
     scope: RUN_AND_BUILD_TIME
     type: SECRET
-  # Broker de Celery — necesaria para que POST /api/sessions/generate/
-  # funcione (encola ai_workout.tasks.generate_session_task; sin Redis
-  # alcanzable, el POST falla con 500 al intentar conectarse al broker).
+  # Celery broker - required for POST /api/sessions/generate/ to work (it
+  # enqueues ai_workout.tasks.generate_session_task; without a reachable
+  # Redis, the POST fails with 500 trying to connect to the broker).
   - key: REDIS_URL
     scope: RUN_AND_BUILD_TIME
     value: ${redis.DATABASE_URL}
@@ -52,12 +52,12 @@ services:
       timeout_seconds: 10
       failure_threshold: 3
     envs:
-      # Específicas de este componente (nada de lo de arriba se repite acá).
+      # Specific to this component (nothing above is repeated here).
       - key: CORS_ALLOWED_ORIGINS
         scope: RUN_AND_BUILD_TIME
         value: "https://pyfit.app,https://panel.pyfit.app,http://localhost:3000,http://localhost:8081,http://localhost:5180"
-      # Permite la URL autogenerada del Static Site del panel en DO
-      # (zyfit-performance-xxxxx.ondigitalocean.app) sin fijar el subdominio.
+      # Allows the auto-generated URL of the Performance panel Static Site
+      # (zyfit-performance-xxxxx.ondigitalocean.app) without pinning the subdomain.
       - key: CORS_ALLOWED_ORIGIN_REGEXES
         scope: RUN_AND_BUILD_TIME
         value: '^https://zyfit-performance-.*\.ondigitalocean\.app$'
@@ -76,9 +76,9 @@ services:
       - key: FRONTEND_URL
         scope: RUN_AND_BUILD_TIME
         value: "https://pyfit.app"
-      # Opcionales — activan DO Spaces para avatares y fotos de sesión (ver
-      # pyfit/media_storage.py). Sin configurar, todo sigue como hasta ahora
-      # (imágenes en base64 en la propia fila).
+      # Optional - enables DO Spaces for avatars and session photos (see
+      # pyfit/media_storage.py). Without them, everything keeps working as
+      # today (images stored as base64 in the row).
       # - key: SPACES_KEY
       #   scope: RUN_AND_BUILD_TIME
       #   type: SECRET
@@ -92,12 +92,12 @@ services:
       #   scope: RUN_AND_BUILD_TIME
       #   value: "nyc3"
 
-# Worker de Celery (tasks async + beat embebido con -B: sync Garmin diario,
-# purga de refresh tokens, retención de trazas GPS, generación de sesiones
-# con IA). Un solo proceso combinado — el volumen actual no justifica separar
-# worker y beat en dos componentes. No necesita envs propias: todo lo que usa
-# (SECRET_KEY, DATABASE_URL, GROQ_API_KEY, FIELD_ENCRYPTION_KEY, REDIS_URL)
-# ya le llega de las App-Level Environment Variables de arriba.
+# Celery worker (async tasks + embedded beat via -B: daily Garmin sync,
+# expired refresh token cleanup, GPS trace retention, AI session generation).
+# One combined process - current volume does not justify a separate beat
+# component. No envs of its own needed: everything it uses (SECRET_KEY,
+# DATABASE_URL, GROQ_API_KEY, FIELD_ENCRYPTION_KEY, REDIS_URL) already comes
+# from the App-Level Environment Variables above.
 workers:
   - name: celery-worker
     source_dir: /backend
@@ -114,9 +114,9 @@ jobs:
     run_command: python manage.py migrate --noinput
     instance_count: 1
     instance_size_slug: basic-xxs
-    # Tampoco necesita envs propias — SECRET_KEY/DATABASE_URL/DEBUG/
-    # ALLOWED_HOSTS/FIELD_ENCRYPTION_KEY ya le llegan de las App-Level
-    # Environment Variables de arriba (antes estaban repetidas acá a mano).
+    # Also needs no envs of its own - SECRET_KEY/DATABASE_URL/DEBUG/
+    # ALLOWED_HOSTS/FIELD_ENCRYPTION_KEY already come from the App-Level
+    # Environment Variables above (previously repeated here by hand).
 
 databases:
   - name: db
@@ -124,7 +124,7 @@ databases:
     version: "16"
     size: db-s-dev-database
     num_nodes: 1
-  # Broker de Celery (generación async de sesiones + tasks periódicos).
+  # Celery broker (async session generation + periodic tasks).
   - name: redis
     engine: REDIS
     version: "7"
