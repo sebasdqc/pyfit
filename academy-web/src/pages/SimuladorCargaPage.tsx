@@ -1,5 +1,5 @@
-// Simulador de carga interna (sRPE → carga semanal → ACWR). Escuela Analítica y
-// Rendimiento Deportivo: el estudiante arrastra 28 "días" de carga de un atleta
+// Simulador de carga interna (sRPE → carga semanal → ACWR). Escuela Entrenamiento
+// y Rendimiento Deportivo: el estudiante arrastra 28 "días" de carga de un atleta
 // ficticio y ve en vivo cómo reaccionan la carga semanal (monotonía/strain) y el
 // ACWR — el MISMO motor que corre en el panel Zyfit Performance
 // (academy.views.simulador_carga_compute delega en performance.calculators),
@@ -106,7 +106,7 @@ export function SimuladorCargaPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Simulador · Analítica y Rendimiento Deportivo</p>
+        <p className="za-eyebrow">Simulador · Entrenamiento y Rendimiento Deportivo</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Carga interna y ACWR</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
           Ajusta la carga diaria (sRPE, en UA) de un atleta ficticio y observa en vivo cómo cambian

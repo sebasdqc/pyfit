@@ -1,4 +1,4 @@
-// Simulador de planificación de sesión. Escuela Ciencia del Entrenamiento: el
+// Simulador de planificación de sesión. Escuela Entrenamiento y Rendimiento Deportivo: el
 // estudiante resuelve un caso (calcula fatiga y RPE objetivo, elige ejercicios
 // seguros) y el servidor corrige con las MISMAS funciones del motor de
 // generación real (ai_workout.views.calcular_fatiga/calcular_rpe_target) — ver
@@ -80,7 +80,7 @@ export function SimuladorSesionPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Simulador · Ciencia del Entrenamiento</p>
+        <p className="za-eyebrow">Simulador · Entrenamiento y Rendimiento Deportivo</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Planificación de sesión</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
           Lee el caso, calcula la fatiga y el RPE objetivo, y elige qué ejercicios incluirías hoy. El

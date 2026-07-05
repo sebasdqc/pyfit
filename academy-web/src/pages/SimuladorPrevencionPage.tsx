@@ -1,5 +1,5 @@
-// Simulador de Return-to-Play / decisiones en partido. Escuela Recuperación,
-// Prevención y Wellness: el estudiante decide (autorizar RTP / sacar del
+// Simulador de Return-to-Play / decisiones en partido. Escuela Readaptación
+// Deportiva y Prevención de Lesiones: el estudiante decide (autorizar RTP / sacar del
 // partido) y el servidor corrige con la MISMA familia de calculadoras que
 // corre en Zyfit Performance (nordic-asimetria, lsi, hidratacion) — ver
 // academy.simulador_prevencion. La decisión "correcta" combina las banderas
@@ -82,7 +82,7 @@ export function SimuladorPrevencionPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Simulador · Recuperación, Prevención y Wellness</p>
+        <p className="za-eyebrow">Simulador · Readaptación Deportiva y Prevención de Lesiones</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Return-to-play y decisiones en partido</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
           Lee el caso y toma la decisión sobre el jugador. El servidor corrige con la misma familia de

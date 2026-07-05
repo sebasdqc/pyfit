@@ -58,11 +58,11 @@ urlpatterns = [
     path('simulador/carga/catalog/', views.simulador_carga_catalog),
     path('simulador/carga/compute/', views.simulador_carga_compute),
 
-    # Simulador de planificación de sesión — escuela Ciencia del Entrenamiento.
+    # Simulador de planificación de sesión — escuela Entrenamiento y Rendimiento Deportivo.
     path('simulador/sesion/casos/', views.simulador_sesion_casos),
     path('simulador/sesion/evaluar/', views.simulador_sesion_evaluar),
 
-    # Simulador de Return-to-Play — escuela Recuperación, Prevención y Wellness.
+    # Simulador de Return-to-Play — escuela Readaptación Deportiva y Prevención de Lesiones.
     path('simulador/prevencion/casos/', views.simulador_prevencion_casos),
     path('simulador/prevencion/evaluar/', views.simulador_prevencion_evaluar),
 

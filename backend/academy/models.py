@@ -206,7 +206,7 @@ class Tenant(models.Model):
 
 
 class School(models.Model):
-    """Escuela — agrupa cursos por área temática (ej. Ciencia del Entrenamiento).
+    """Escuela — agrupa cursos por área temática (ej. Entrenamiento y Rendimiento Deportivo).
 
     Es el nivel superior de la jerarquía: Escuela → Curso → Módulo → Lección.
     Opcional: un curso puede existir sin escuela (school=NULL).

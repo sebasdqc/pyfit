@@ -411,7 +411,7 @@ export interface NuevaInsigniaOtorgada {
   icono: string
 }
 
-// ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
+// ── Simulador de carga interna (escuela Entrenamiento y Rendimiento Deportivo) ─
 // Espeja performance.calculators: MISMO motor que el panel Zyfit Performance,
 // solo la familia "carga" (sRPE → carga semanal → ACWR).
 
@@ -444,7 +444,7 @@ export interface SimuladorCargaResponse<T> {
   resultados: T
 }
 
-// ── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──
+// ── Simulador de planificación de sesión (escuela Entrenamiento y Rendimiento Deportivo) ──
 // Espeja ai_workout.views (calcular_fatiga/calcular_rpe_target) — ver
 // academy.simulador_sesion. El número correcto sale siempre de esas funciones.
 
@@ -487,7 +487,7 @@ export interface SimuladorSesionResultado {
   puntaje: number
 }
 
-// ── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─
+// ── Simulador de Return-to-Play (escuela Readaptación Deportiva y Prevención de Lesiones) ─
 // Espeja performance.calculators (familia 'prevencion') — ver
 // academy.simulador_prevencion. Los resultados de los tests salen siempre de
 // ese motor; la Academia solo añade la capa de decisión (RTP / partido).

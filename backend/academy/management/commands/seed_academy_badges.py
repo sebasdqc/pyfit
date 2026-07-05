@@ -1,7 +1,7 @@
 """Seed del catálogo inicial de insignias de identidad de Zyfit Academy.
 
 Idempotente: re-ejecutar el comando sincroniza nombre/descripción/criterio sin
-duplicar filas (`update_or_create` por `identificador`). Depende de que las 3
+duplicar filas (`update_or_create` por `identificador`). Depende de que las
 escuelas reales ya existan (ver `seed_zyfit_escuelas`) — si falta alguna, avisa
 por stdout y sigue con el resto en vez de fallar.
 
@@ -17,28 +17,45 @@ BADGES = [
     {
         'identificador': 'fisiologo',
         'nombre': 'Fisiólogo',
-        'descripcion': 'Completaste todos los cursos de Ciencia del Entrenamiento.',
+        'descripcion': 'Completaste todos los cursos de Entrenamiento y Rendimiento Deportivo.',
         'icono': '🧬',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'ciencia-del-entrenamiento',
+        'escuela_slug': 'entrenamiento-y-rendimiento-deportivo',
         'orden': 1,
     },
+    # Retirada: su escuela de origen ("Analítica y Rendimiento Deportivo") se
+    # fusionó en otras escuelas y dejó de existir como entidad propia. Se
+    # mantiene aquí con activo=False para no perder el historial de quien ya
+    # la ganó (ver docstring de AcademyBadge) y para que el seed no la reviva.
     {
         'identificador': 'analista-de-datos',
         'nombre': 'Analista de Datos',
         'descripcion': 'Completaste todos los cursos de Analítica y Rendimiento Deportivo.',
         'icono': '📊',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'analitica-y-rendimiento-deportivo',
+        'escuela_slug': 'entrenamiento-y-rendimiento-deportivo',
+        'orden': 2,
+        'activo': False,
+    },
+    {
+        'identificador': 'especialista-en-prevencion',
+        'nombre': 'Especialista en Prevención',
+        'descripcion': (
+            'Completaste todos los cursos de Readaptación Deportiva y Prevención '
+            'de Lesiones.'
+        ),
+        'icono': '🛡️',
+        'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
+        'escuela_slug': 'readaptacion-deportiva-y-prevencion-de-lesiones',
         'orden': 2,
     },
     {
         'identificador': 'especialista-en-recuperacion',
         'nombre': 'Especialista en Recuperación',
-        'descripcion': 'Completaste todos los cursos de Recuperación, Prevención y Wellness.',
+        'descripcion': 'Completaste todos los cursos de Salud y Bienestar Deportivo.',
         'icono': '🧘',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'recuperacion-prevencion-y-wellness',
+        'escuela_slug': 'salud-y-bienestar-deportivo',
         'orden': 3,
     },
     {
