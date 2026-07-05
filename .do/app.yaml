@@ -53,6 +53,69 @@ services:
       - key: FRONTEND_URL
         scope: RUN_AND_BUILD_TIME
         value: "https://pyfit.app"
+      # Obligatoria: cifra datos médicos (Profile.lesiones/condiciones_medicas/
+      # notas_medicas/motivo_limitacion, DailyCheckin.dolor_hoy,
+      # UserInjury.descripcion, Session.prompt_usado). Sin ella Django NO
+      # arranca (falla con ImproperlyConfigured). Generar con:
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: FIELD_ENCRYPTION_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      # Broker de Celery — necesaria para que POST /api/sessions/generate/
+      # funcione (encola ai_workout.tasks.generate_session_task; sin Redis
+      # alcanzable, el POST falla con 500 al intentar conectarse al broker).
+      - key: REDIS_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${redis.DATABASE_URL}
+      # Opcionales — activan DO Spaces para avatares y fotos de sesión (ver
+      # pyfit/media_storage.py). Sin configurar, todo sigue como hasta ahora
+      # (imágenes en base64 en la propia fila).
+      # - key: SPACES_KEY
+      #   scope: RUN_AND_BUILD_TIME
+      #   type: SECRET
+      # - key: SPACES_SECRET
+      #   scope: RUN_AND_BUILD_TIME
+      #   type: SECRET
+      # - key: SPACES_BUCKET
+      #   scope: RUN_AND_BUILD_TIME
+      #   value: "pyfit-media"
+      # - key: SPACES_REGION
+      #   scope: RUN_AND_BUILD_TIME
+      #   value: "nyc3"
+
+# Worker de Celery (tasks async + beat embebido con -B: sync Garmin diario,
+# purga de refresh tokens, retención de trazas GPS, generación de sesiones
+# con IA). Un solo proceso combinado — el volumen actual no justifica separar
+# worker y beat en dos componentes.
+workers:
+  - name: celery-worker
+    source_dir: /backend
+    dockerfile_path: Dockerfile
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    run_command: celery -A pyfit worker -B --loglevel=info --concurrency=2
+    envs:
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: DEBUG
+        scope: RUN_AND_BUILD_TIME
+        value: "False"
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE_URL}
+      - key: GROQ_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: ALLOWED_HOSTS
+        scope: RUN_AND_BUILD_TIME
+        value: ".ondigitalocean.app,localhost"
+      - key: FIELD_ENCRYPTION_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: REDIS_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${redis.DATABASE_URL}
 
 jobs:
   - name: migrate
@@ -75,10 +138,24 @@ jobs:
       - key: ALLOWED_HOSTS
         scope: RUN_TIME
         value: ".ondigitalocean.app,localhost"
+      # Sin esto el job de migrate CRASHEA (DEBUG=False exige la key —
+      # ver settings.py) y el deploy entero se corta en el paso PRE_DEPLOY.
+      # Además es necesaria acá para que las migraciones de datos que
+      # re-encriptan filas existentes (users/checkins/workouts) cifren de
+      # verdad en vez de degradar a texto plano en silencio.
+      - key: FIELD_ENCRYPTION_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
 
 databases:
   - name: db
     engine: PG
     version: "16"
+    size: db-s-dev-database
+    num_nodes: 1
+  # Broker de Celery (generación async de sesiones + tasks periódicos).
+  - name: redis
+    engine: REDIS
+    version: "7"
     size: db-s-dev-database
     num_nodes: 1
