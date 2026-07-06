@@ -42,6 +42,13 @@ class AjustarSesionRateThrottle(UserRateThrottle):
     scope = 'ajustar_sesion'
 
 
+class GenerateTeamSessionRateThrottle(UserRateThrottle):
+    """20 generaciones por hora por usuario (técnico) — protege el gasto en Groq
+    API. Más holgado que generate_session (10/hora) porque hay muchos menos
+    técnicos que atletas llamando a este endpoint."""
+    scope = 'generate_team_session'
+
+
 class CoachChatRateThrottle(UserRateThrottle):
     """60 mensajes por minuto por usuario — anti-spam del chat coach↔atleta.
     Solo cuenta los envíos (POST): el GET hace polling cada 5s y no debe gastar

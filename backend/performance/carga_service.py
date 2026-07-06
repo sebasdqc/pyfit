@@ -10,30 +10,12 @@ Encuadre honesto: el ACWR es un indicador CONTEXTUAL de gestión de carga, no un
 predictor causal de lesión. Sólo se calcula con ≥ 7 días de registro.
 """
 
-from collections import defaultdict
-from datetime import timedelta
-
 from .calculators import get_calculator
 from .calculators import constants as C
+from .timeseries import serie_diaria as _serie_diaria
 
 # Mínimo de días de historial (desde el primer registro) para un ACWR con sentido.
 MIN_DIAS_ACWR = C.ACWR_VENTANA_AGUDA  # 7
-
-
-def _serie_diaria(loads, end_date, dias):
-    """Serie de carga diaria (UA) de `dias` días terminando en end_date.
-
-    `loads` = iterable de (fecha:date, carga:float). Suma las del mismo día y
-    rellena con 0 los días sin registro (días de descanso = 0 de carga)."""
-    por_dia = defaultdict(float)
-    for f, v in loads:
-        por_dia[f] += float(v)
-    inicio = end_date - timedelta(days=dias - 1)
-    serie, d = [], inicio
-    while d <= end_date:
-        serie.append(round(por_dia.get(d, 0.0), 2))
-        d += timedelta(days=1)
-    return serie
 
 
 def athlete_carga(loads, today):

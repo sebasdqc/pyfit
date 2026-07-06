@@ -214,6 +214,7 @@ REST_FRAMEWORK = {
         'generate_session': '10/hour',
         'regenerar_ejercicio': '20/hour',
         'ajustar_sesion': '15/hour',   # cost guard: each call hits Groq API
+        'generate_team_session': '20/hour',  # cost guard: Zyfit Performance, IA de sesión de equipo
         'coach_chat': '60/minute',     # anti-spam del chat coach↔atleta
         'coach_vincular': '20/hour',   # frena el barrido de códigos de coach
         'token_refresh': '20/minute',  # frena volcado masivo desde refresh token robado

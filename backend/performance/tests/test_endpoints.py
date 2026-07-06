@@ -45,9 +45,9 @@ class CatalogEndpointTests(_Base):
         res = self.client.get('/api/performance/tests/catalog/')
         self.assertEqual(res.status_code, 200)
         slugs = {c['slug'] for c in res.json()}
-        self.assertEqual(len(slugs), 24)
+        self.assertEqual(len(slugs), 25)
         # Presencia de slugs representativos de cada familia (incl. carga y prevención).
-        for slug in ('yoyo-ir1', 'ift-30-15', 'tsap', 'srpe', 'acwr', 'nordic-asimetria', 'lsi'):
+        for slug in ('yoyo-ir1', 'ift-30-15', 'tsap', 'srpe', 'acwr', 'forma', 'nordic-asimetria', 'lsi'):
             self.assertIn(slug, slugs)
         # Cada item trae el esquema de inputs para que el frontend pinte el form.
         self.assertTrue(all('input_schema' in c for c in res.json()))
@@ -57,7 +57,7 @@ class CatalogEndpointTests(_Base):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
             {c['slug'] for c in res.json()},
-            {'srpe', 'carga-semanal', 'acwr', 'trimp-edwards'},
+            {'srpe', 'carga-semanal', 'acwr', 'trimp-edwards', 'forma'},
         )
 
     def test_filtra_por_familia(self):
@@ -698,16 +698,16 @@ class SeedTestsCommandTests(TestCase):
     def test_siembra_catalogo(self):
         out = StringIO()
         call_command('seed_tests', stdout=out)
-        self.assertEqual(TestDefinition.objects.count(), 24)
+        self.assertEqual(TestDefinition.objects.count(), 25)
         self.assertTrue(TestDefinition.objects.filter(slug='lspt', familia='tecnico').exists())
         self.assertTrue(TestDefinition.objects.filter(slug='acwr', familia='carga').exists())
-        self.assertIn('24 creados', out.getvalue())
+        self.assertIn('25 creados', out.getvalue())
 
     def test_idempotente(self):
         call_command('seed_tests', stdout=StringIO())
         out = StringIO()
         call_command('seed_tests', stdout=out)
-        self.assertEqual(TestDefinition.objects.count(), 24)  # no duplica
+        self.assertEqual(TestDefinition.objects.count(), 25)  # no duplica
         self.assertIn('0 creados', out.getvalue())
 
     def test_desactiva_huerfano(self):

@@ -31,6 +31,8 @@ urlpatterns = [
     # Carga interna (sRPE → ACWR). Reutiliza PerformanceMetric; gateado por Rendimiento.
     path('centers/<int:pk>/carga/', views.carga_view),
     path('centers/<int:pk>/carga/<int:record_id>/', views.carga_detail),
+    # Forma (fitness-fatiga / TSB) — mismo dato de Carga interna, sin POST propio.
+    path('centers/<int:pk>/forma/', views.forma_view),
     path('centers/<int:pk>/lesiones/', views.module_lesiones),
     path('centers/<int:pk>/lesiones/<int:record_id>/', views.lesiones_detail),
     path('centers/<int:pk>/test/', views.module_test),
@@ -49,10 +51,15 @@ urlpatterns = [
     path('centers/<int:pk>/calendario/', views.center_events),
     path('centers/<int:pk>/calendario/<int:event_id>/', views.event_detail),
 
-    # Planificación — periodización (macrociclo → mesociclos → microciclos)
+    # Planificación — periodización (macrociclo → mesociclos → microciclos → sesiones)
     path('centers/<int:pk>/planificacion/<int:plan_id>/', views.plan_detail),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/', views.plan_mesociclos),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/', views.mesociclo_detail),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/', views.meso_microciclos),
     path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/', views.microciclo_detail),
+    # Sesiones (días) del microciclo — granularidad para IA de equipo y el asesor.
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/sesiones/', views.micro_sesiones),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/sesiones/<int:sesion_id>/', views.sesion_detail),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/sesiones/<int:sesion_id>/generar/', views.sesion_generar),
+    path('centers/<int:pk>/planificacion/<int:plan_id>/mesociclos/<int:meso_id>/microciclos/<int:micro_id>/advisor/', views.microciclo_advisor),
 ]

@@ -7,7 +7,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
-    CalendarEvent,
+    CalendarEvent, PlannedSession,
 )
 
 
@@ -83,6 +83,14 @@ class MicrocycleAdmin(ModelAdmin):
     list_display = ('__str__', 'mesociclo', 'orden', 'tipo', 'carga_relativa', 'volumen', 'intensidad')
     list_filter = ('tipo', 'volumen', 'intensidad')
     search_fields = ('nombre', 'mesociclo__nombre')
+
+
+@admin.register(PlannedSession)
+class PlannedSessionAdmin(ModelAdmin):
+    list_display = ('__str__', 'microciclo', 'fecha', 'tipo', 'origen', 'estado', 'creado_por')
+    list_filter = ('tipo', 'origen', 'estado')
+    search_fields = ('nombre', 'microciclo__mesociclo__plan__nombre')
+    autocomplete_fields = ('evento', 'creado_por')
 
 
 @admin.register(PsychAssessment)

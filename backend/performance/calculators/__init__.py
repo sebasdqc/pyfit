@@ -22,6 +22,7 @@ from . import fisicos  # noqa: F401  — registra la Familia 1 (Físicos)
 from . import tecnicos  # noqa: F401  — registra la Familia 2 (Técnicos)
 from . import tacticos  # noqa: F401  — registra la Familia 3 (Tácticos)
 from . import carga  # noqa: F401  — registra la Familia 4 (Carga interna)
+from . import forma  # noqa: F401  — registra 'forma' (fitness-fatiga / TSB) en Carga interna
 from . import prevencion  # noqa: F401  — registra la Familia 5 (Prevención / RTP)
 
 __all__ = [

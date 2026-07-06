@@ -338,6 +338,57 @@ export type MicroTipo =
 export type Nivel = 'bajo' | 'medio' | 'alto'
 export type CargaObjetivo = 'baja' | 'media' | 'alta' | 'pico'
 
+// Sesión (día) dentro de un microciclo — módulo PLANIFICACIÓN.
+export type SesionTipo =
+  | 'fuerza' | 'tecnico_tactico' | 'fisico' | 'recuperacion' | 'partido' | 'descanso' | 'otro'
+export type SesionEstado = 'borrador' | 'generada' | 'publicada'
+export type SesionOrigen = 'manual' | 'ia'
+
+export interface PlannedSessionContenido {
+  titulo?: string
+  objetivo_sesion?: string
+  fases?: Array<{
+    nombre: string
+    bloques: Array<{
+      nombre: string
+      duracion_min?: number
+      descripcion?: string
+      jugadores?: string
+      espacio?: string
+      objetivo?: string
+    }>
+  }>
+  variantes_individuales?: Array<{ athlete_id: number; motivo: string; ajuste: string }>
+  nota_del_cuerpo_tecnico?: string
+}
+
+export interface PlannedSession {
+  id: number
+  microciclo: number
+  dia_semana: number // 0=lunes .. 6=domingo
+  fecha: string | null
+  orden: number
+  tipo: SesionTipo
+  nombre: string
+  duracion_min: number | null
+  rpe_objetivo: number | null
+  carga_objetivo_ua: number | null
+  evento: number | null
+  evento_titulo: string | null
+  evento_tipo: EventTipo | null
+  origen: SesionOrigen
+  contenido: PlannedSessionContenido
+  respuesta_ia: PlannedSessionContenido | null
+  generacion_ms: number | null
+  tokens_in: number | null
+  tokens_out: number | null
+  estado: SesionEstado
+  notas: string
+  creado_por: number | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Microcycle {
   id: number
   mesociclo: number
@@ -350,6 +401,58 @@ export interface Microcycle {
   intensidad: Nivel
   notas: string
   created_at: string
+  sesiones: PlannedSession[]
+}
+
+// Sugerencia de solo lectura del motor asesor — GET .../microciclos/<id>/advisor/
+export interface AdvisorSugerencia {
+  nivel: 'microciclo' | 'mesociclo'
+  campo: string
+  valor_actual: string | number
+  valor_sugerido: string | number
+  motivo: string
+}
+
+export interface AdvisorResponse {
+  disponible: boolean
+  motivo?: string
+  rango?: [string, string]
+  real?: {
+    carga: { n_con_datos: number; pct_riesgo_acwr: number; pct_monotonia_alerta: number }
+    bienestar: { n_con_datos: number; indice_promedio: number | null }
+  }
+  sugerencias?: AdvisorSugerencia[]
+}
+
+// ── Forma (fitness-fatiga / TSB) — módulo Carga interna ───────────────────────
+export type FormaZona = 'Fresco' | 'Neutro / transición' | 'Fatigado' | 'Acumulando datos'
+
+export interface FormaMetrics {
+  dias_con_datos: number
+  suficiente: boolean
+  zona: FormaZona
+  tsb: number | null
+  fitness_ua: number | null
+  fatiga_ua: number | null
+  fitness_serie: number[]
+  fatiga_serie: number[]
+  tsb_serie: number[]
+  nota?: string
+}
+
+export interface FormaTeamRow extends FormaMetrics {
+  athlete: number
+}
+
+export interface FormaTeamResponse {
+  atletas: FormaTeamRow[]
+  resumen_zonas: Record<'Fresco' | 'Neutro / transición' | 'Fatigado', number>
+}
+
+export interface FormaAthleteResponse {
+  athlete: number
+  forma: FormaMetrics
+  registros: CargaRecord[]
 }
 
 export interface Mesocycle {

@@ -47,6 +47,23 @@ def round2(x):
     return None if x is None else round(float(x), 2)
 
 
+def ewma_series(serie: list[float], ventana: int) -> list[float]:
+    """Media móvil exponencial de la serie completa (más antiguo→más reciente).
+    λ = 2/(N+1). Se siembra con el primer valor; devuelve el EWMA día a día
+    (misma longitud que `serie`), no solo el último punto — lo necesitan las
+    calculadoras que grafican una tendencia (p. ej. `forma`, fitness/fatiga)."""
+    lam = 2.0 / (ventana + 1)
+    out = [serie[0]]
+    for x in serie[1:]:
+        out.append(x * lam + (1 - lam) * out[-1])
+    return out
+
+
+def ewma(serie: list[float], ventana: int) -> float:
+    """EWMA del último día de la serie. Wrapper delgado sobre `ewma_series`."""
+    return ewma_series(serie, ventana)[-1]
+
+
 class TestCalculator:
     """Base de toda calculadora de test.
 

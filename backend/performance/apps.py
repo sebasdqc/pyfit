@@ -22,7 +22,7 @@ class PerformanceConfig(AppConfig):
             SportsCenter, CenterMembership, CenterAthlete,
             PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan,
             PsychAssessment, TestDefinition, Mesocycle, Microcycle, WellnessCheckin,
-            TacticalPlay, CalendarEvent,
+            TacticalPlay, CalendarEvent, PlannedSession,
         )
 
         auditlog.register(SportsCenter)
@@ -36,6 +36,8 @@ class PerformanceConfig(AppConfig):
         auditlog.register(TrainingPlan)
         auditlog.register(Mesocycle)
         auditlog.register(Microcycle)
+        # Sesión de un día del microciclo (manual o generada con IA).
+        auditlog.register(PlannedSession)
         auditlog.register(PsychAssessment)
         auditlog.register(WellnessCheckin)
         # Jugadas de la pizarra táctica (módulo Simulador).

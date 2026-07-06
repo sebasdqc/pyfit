@@ -515,6 +515,112 @@ class Microcycle(models.Model):
         return f'{self.nombre or self.tipo} ({self.carga_relativa}%)'
 
 
+class PlannedSession(models.Model):
+    """Sesión de UN día dentro de un microciclo (semana).
+
+    Resuelve la granularidad que faltaba en la periodización clásica
+    (Micro/Meso/TrainingPlan solo tenían metadatos de fase, sin días ni
+    contenido) y da un lugar donde colgar sesiones generadas con IA. La
+    prescripción numérica (tipo/duración/RPE objetivo) la fija el cuerpo
+    técnico; si se genera con IA, el LLM solo redacta/completa `contenido` y
+    `respuesta_ia` — igual patrón que `runs.PlannedRunSession` (el motor manda
+    los números, el LLM redacta).
+
+    La comparación con carga/bienestar REAL nunca se cachea aquí: se calcula
+    en caliente (team_session_generator.py / planning_advisor.py) a partir de
+    `microciclo.fecha_inicio` + `dia_semana`, para no arrastrar datos viejos si
+    el técnico reordena o edita la semana después.
+    """
+
+    ORIGEN_MANUAL = 'manual'
+    ORIGEN_IA = 'ia'
+    ORIGEN_CHOICES = [(ORIGEN_MANUAL, 'Manual'), (ORIGEN_IA, 'IA')]
+
+    TIPO_FUERZA = 'fuerza'
+    TIPO_TECNICO_TACTICO = 'tecnico_tactico'
+    TIPO_FISICO = 'fisico'
+    TIPO_RECUPERACION = 'recuperacion'
+    TIPO_PARTIDO = 'partido'
+    TIPO_DESCANSO = 'descanso'
+    TIPO_OTRO = 'otro'
+    TIPO_CHOICES = [
+        (TIPO_FUERZA, 'Fuerza'),
+        (TIPO_TECNICO_TACTICO, 'Técnico-táctico'),
+        (TIPO_FISICO, 'Físico / condicional'),
+        (TIPO_RECUPERACION, 'Recuperación'),
+        (TIPO_PARTIDO, 'Partido'),
+        (TIPO_DESCANSO, 'Descanso'),
+        (TIPO_OTRO, 'Otro'),
+    ]
+
+    ESTADO_BORRADOR = 'borrador'
+    ESTADO_GENERADA = 'generada'
+    ESTADO_PUBLICADA = 'publicada'
+    ESTADO_CHOICES = [
+        (ESTADO_BORRADOR, 'Borrador'),
+        (ESTADO_GENERADA, 'Generada con IA'),
+        (ESTADO_PUBLICADA, 'Publicada'),
+    ]
+
+    microciclo = models.ForeignKey(
+        Microcycle, on_delete=models.CASCADE, related_name='sesiones',
+    )
+    # 0=lunes .. 6=domingo.
+    dia_semana = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(6)],
+    )
+    # Calculada por el serializer/view desde microciclo.fecha_inicio + dia_semana
+    # (no vía señales). Null si el microciclo no tiene fecha_inicio.
+    fecha = models.DateField(null=True, blank=True)
+    # Desempate para doble sesión el mismo día (mañana/tarde).
+    orden = models.PositiveSmallIntegerField(default=0)
+
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_TECNICO_TACTICO)
+    nombre = models.CharField(max_length=160, blank=True)
+    duracion_min = models.PositiveIntegerField(null=True, blank=True)
+    rpe_objetivo = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+    # RPE × duración previsto, comparable con el sRPE real del módulo Carga interna.
+    carga_objetivo_ua = models.PositiveIntegerField(null=True, blank=True)
+
+    # Vínculo formal opcional día↔evento (a diferencia de TrainingPlan.grupo,
+    # que sigue siendo un string suelto porque a ese nivel la relación es difusa).
+    evento = models.ForeignKey(
+        'performance.CalendarEvent', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sesiones_planificadas',
+    )
+
+    origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES, default=ORIGEN_MANUAL)
+    # Estructura final: fases/bloques + variantes individuales (RTP/ACWR alto).
+    # JSON, no filas hijas: no hay necesidad de analítica cruzada por ejercicio
+    # como en el consumo individual (workouts.SessionExercise).
+    contenido = models.JSONField(default=dict, blank=True)
+    respuesta_ia = models.JSONField(null=True, blank=True)
+    prompt_usado = models.TextField(blank=True)
+    generacion_ms = models.IntegerField(null=True, blank=True)
+    tokens_in = models.IntegerField(null=True, blank=True)
+    tokens_out = models.IntegerField(null=True, blank=True)
+
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default=ESTADO_BORRADOR)
+    notas = models.TextField(blank=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_planned_sessions'
+        ordering = ['microciclo', 'dia_semana', 'orden']
+        indexes = [
+            models.Index(fields=['microciclo', 'dia_semana']),
+            models.Index(fields=['fecha']),
+        ]
+
+    def __str__(self):
+        return f'{self.nombre or self.tipo} (día {self.dia_semana})'
+
+
 # ─── Módulo PSICOLÓGICO ───────────────────────────────────────────────────────
 
 class PsychAssessment(CenterRecord):

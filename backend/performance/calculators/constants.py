@@ -100,6 +100,18 @@ ACWR_OPTIMA_MAX = 1.3    # 0.8–1.3 → sweet spot (riesgo más bajo)
 ACWR_PRECAUCION_MAX = 1.5  # 1.3–1.5 → precaución
 ACWR_RIESGO_ALTO = 2.0   # > 2.0  → riesgo relativo muy elevado
 
+# Forma (fitness-fatiga, Banister 1975 / TSB "Training Stress Balance" popularizado
+# por Coggan en ciclismo). Dos EWMA de la misma serie diaria de carga con distinta
+# constante de tiempo: "fitness" (crónica, cambia lento) y "fatiga" (aguda, cambia
+# rápido). TSB = fitness − fatiga: positivo = fresco/con forma, negativo = fatigado.
+# IMPORTANTE (encuadre honesto, igual que ACWR): es una TENDENCIA de gestión de
+# carga, no una predicción exacta de "el día del pico" — ni para forma física ni,
+# menos aún, para equilibrio psicológico (no existe modelo validado para eso).
+FORMA_VENTANA_FATIGA = 7     # EWMA corta ("fatiga aguda")
+FORMA_VENTANA_FITNESS = 42   # EWMA larga ("fitness crónico"); se estabiliza ~6 semanas
+FORMA_TSB_FRESCO = 5         # TSB > 5   → fresco / con forma
+FORMA_TSB_NEUTRO_MIN = -10   # -10..5    → neutro/transición ; < -10 → fatigado
+
 # ── PREVENCIÓN / RETURN-TO-PLAY ───────────────────────────────────────────────
 # Nordic Hamstring — asimetría de fuerza excéntrica entre piernas (NordBord y
 # similares). Umbral de asimetría relevante igual que en el resto del panel.

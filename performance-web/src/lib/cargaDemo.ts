@@ -3,7 +3,7 @@
 // (ACWR RA/EWMA, monotonía, strain) para poblar la demo y permitir registrar en
 // vivo sin backend. Con roster real NUNCA se usa: ahí manda el servidor.
 
-import type { CargaMetrics, CargaRecord, CargaTeamRow } from '@/types'
+import type { CargaMetrics, CargaRecord, CargaTeamRow, FormaMetrics, FormaTeamRow, FormaZona } from '@/types'
 
 // Hash determinista (mismo id → misma serie). Sin Math.random para reproducibilidad.
 function seedFrom(s: string): number {
@@ -87,6 +87,66 @@ export function metricsFromSerie(serie: number[]): CargaMetrics {
 
 export function demoTeamRow(athleteId: string, userId: number): CargaTeamRow {
   return { athlete: userId, ...metricsFromSerie(demoSeries(athleteId)) }
+}
+
+// ── Forma (fitness-fatiga / TSB) — espejo cliente de calculators/forma.py sobre
+// la MISMA serie de 28 días de demoSeries (misma columna vertebral que Carga).
+const FORMA_VENTANA_FATIGA = 7
+const FORMA_VENTANA_FITNESS = 42
+const FORMA_TSB_FRESCO = 5
+const FORMA_TSB_NEUTRO_MIN = -10
+
+function ewmaSeries(serie: number[], n: number): number[] {
+  const lam = 2 / (n + 1)
+  const out = [serie[0]]
+  for (let i = 1; i < serie.length; i++) out.push(serie[i] * lam + (1 - lam) * out[out.length - 1])
+  return out
+}
+
+export function formaZona(tsb: number): FormaZona {
+  if (tsb > FORMA_TSB_FRESCO) return 'Fresco'
+  if (tsb >= FORMA_TSB_NEUTRO_MIN) return 'Neutro / transición'
+  return 'Fatigado'
+}
+
+export function formaTone(zona: FormaZona): 'ok' | 'warn' | 'danger' | 'accent' {
+  if (zona === 'Fresco') return 'ok'
+  if (zona === 'Fatigado') return 'danger'
+  if (zona === 'Neutro / transición') return 'warn'
+  return 'accent' // Acumulando datos
+}
+
+export function formaFromSerie(serie: number[]): FormaMetrics {
+  const n = serie.length
+  const r2 = (x: number) => Math.round(x * 100) / 100
+  if (n < FORMA_VENTANA_FATIGA) {
+    return {
+      dias_con_datos: serie.filter((v) => v > 0).length, suficiente: false, zona: 'Acumulando datos',
+      tsb: null, fitness_ua: null, fatiga_ua: null, fitness_serie: [], fatiga_serie: [], tsb_serie: [],
+    }
+  }
+  const fatigaSerie = ewmaSeries(serie, FORMA_VENTANA_FATIGA)
+  const ventanaFit = Math.min(FORMA_VENTANA_FITNESS, n)
+  const fitnessSerie = ewmaSeries(serie.slice(-ventanaFit), ventanaFit)
+  const fatigaAlineada = fatigaSerie.slice(-fitnessSerie.length)
+  const tsbSerie = fitnessSerie.map((f, i) => r2(f - fatigaAlineada[i]))
+  const tsb = tsbSerie[tsbSerie.length - 1]
+  return {
+    dias_con_datos: serie.filter((v) => v > 0).length,
+    suficiente: true,
+    zona: formaZona(tsb),
+    tsb,
+    fitness_ua: r2(fitnessSerie[fitnessSerie.length - 1]),
+    fatiga_ua: r2(fatigaAlineada[fatigaAlineada.length - 1]),
+    fitness_serie: fitnessSerie.map(r2),
+    fatiga_serie: fatigaAlineada.map(r2),
+    tsb_serie: tsbSerie,
+    ...(n < FORMA_VENTANA_FITNESS ? { nota: `Ventana de fitness parcial: ${n} de ${FORMA_VENTANA_FITNESS} días.` } : {}),
+  }
+}
+
+export function demoFormaTeamRow(athleteId: string, userId: number): FormaTeamRow {
+  return { athlete: userId, ...formaFromSerie(demoSeries(athleteId)) }
 }
 
 // Convierte una serie en registros visibles (un sRPE por día con carga > 0).

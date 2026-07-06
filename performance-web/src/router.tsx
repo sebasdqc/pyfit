@@ -23,6 +23,7 @@ import { PostSessionPage } from '@/pages/gps/PostSessionPage'
 import { WeeklyLoadPage } from '@/pages/gps/WeeklyLoadPage'
 import { PlayerProfilePage } from '@/pages/gps/PlayerProfilePage'
 import { CargaPage } from '@/pages/carga/CargaPage'
+import { FormaPage } from '@/pages/forma/FormaPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
           { path: 'lesiones', element: <LesionesPage /> },
           { path: 'tests', element: <TestPage /> },
           { path: 'carga', element: <CargaPage /> },
+          { path: 'forma', element: <FormaPage /> },
           { path: 'gps', element: <GpsPage /> },
           { path: 'gps/match-day', element: <MatchDayPage /> },
           { path: 'gps/post-sesion', element: <PostSessionPage /> },

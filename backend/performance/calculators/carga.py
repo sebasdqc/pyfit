@@ -13,7 +13,7 @@ la decisión, no cortes diagnósticos.
 import statistics
 
 from . import constants as C
-from .base import FAMILIA_CARGA, CalculatorError, TestCalculator, register, round2
+from .base import FAMILIA_CARGA, CalculatorError, TestCalculator, ewma, register, round2
 
 
 @register
@@ -112,16 +112,6 @@ class TRIMPEdwardsCalculator(TestCalculator):
         return out
 
 
-def _ewma(serie, ventana):
-    """Media móvil exponencial de la serie (más antiguo→más reciente). λ = 2/(N+1).
-    Se siembra con el primer valor; devuelve el EWMA del último día."""
-    lam = 2.0 / (ventana + 1)
-    ewma = serie[0]
-    for x in serie[1:]:
-        ewma = x * lam + (1 - lam) * ewma
-    return ewma
-
-
 @register
 class ACWRCalculator(TestCalculator):
     slug = 'acwr'
@@ -165,8 +155,8 @@ class ACWRCalculator(TestCalculator):
         cronica_ra = sum(cronica_serie) / len(cronica_serie)
 
         # Modelo EWMA (más sensible al riesgo): decaimiento exponencial.
-        aguda_ewma = _ewma(cargas, C.ACWR_VENTANA_AGUDA)
-        cronica_ewma = _ewma(cargas, C.ACWR_VENTANA_CRONICA)
+        aguda_ewma = ewma(cargas, C.ACWR_VENTANA_AGUDA)
+        cronica_ewma = ewma(cargas, C.ACWR_VENTANA_CRONICA)
 
         out = {
             'n_dias': n,

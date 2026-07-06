@@ -20,6 +20,8 @@ Las vistas implementan el esqueleto: auth, scoping por centro y permisos. El
 filtrado avanzado, paginación y la UI quedan fuera de alcance de este andamiaje.
 """
 
+import logging
+
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
@@ -30,12 +32,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from pyfit.throttles import LoginRateThrottle
+from pyfit.throttles import GenerateTeamSessionRateThrottle, LoginRateThrottle
 from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
-    Mesocycle, Microcycle, WellnessCheckin, TacticalPlay, CalendarEvent,
+    Mesocycle, Microcycle, PlannedSession, WellnessCheckin, TacticalPlay, CalendarEvent,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -44,11 +46,12 @@ from .serializers import (
     SportsCenterSerializer, CenterMembershipSerializer, CenterAthleteSerializer,
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
-    MesocycleSerializer, MicrocycleSerializer, WellnessCheckinSerializer,
-    TacticalPlaySerializer, CalendarEventSerializer,
+    MesocycleSerializer, MicrocycleSerializer, PlannedSessionSerializer,
+    WellnessCheckinSerializer, TacticalPlaySerializer, CalendarEventSerializer,
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ─── Helpers de scope ─────────────────────────────────────────────────────────
@@ -516,6 +519,49 @@ def carga_detail(request, pk, record_id):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def forma_view(request, pk):
+    """Forma (fitness-fatiga / TSB) del centro. Se alimenta del mismo dato de
+    Carga interna (`PerformanceMetric` tipo='carga') — sin POST propio.
+
+    GET            → vista de equipo: TSB/zona por atleta con datos + conteo por zona.
+    GET ?athlete=  → vista por atleta: serie fitness/fatiga/TSB + registros de carga.
+    """
+    from collections import defaultdict
+    from datetime import date
+
+    from .forma_service import athlete_forma, team_forma_rollup
+
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_RENDIMIENTO)
+
+    qs = PerformanceMetric.objects.filter(center=center, tipo=CARGA_TIPO)
+    today = date.today()
+    athlete = request.query_params.get('athlete')
+    if athlete:
+        recs = list(qs.filter(athlete=athlete).order_by('fecha', 'created_at'))
+        loads = [(r.fecha, float(r.valor)) for r in recs]
+        return Response({
+            'athlete': int(athlete),
+            'forma': athlete_forma(loads, today),
+            'registros': [_carga_row(r) for r in recs],
+        })
+
+    por_atleta = defaultdict(list)
+    for r in qs.only('athlete', 'fecha', 'valor'):
+        por_atleta[r.athlete_id].append((r.fecha, float(r.valor)))
+    filas = []
+    for aid, loads in por_atleta.items():
+        f = athlete_forma(loads, today)
+        if f:
+            filas.append({'athlete': aid, **f})
+    return Response({
+        'atletas': filas,
+        'resumen_zonas': team_forma_rollup([f for f in filas if f.get('suficiente')]),
+    })
+
+
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsPerformanceUser])
 def lesiones_detail(request, pk, record_id):
@@ -726,6 +772,112 @@ def microciclo_detail(request, pk, plan_id, meso_id, micro_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
     return Response(serializer.data)
+
+
+def _dia_a_fecha(microciclo, dia_semana):
+    """Fecha calendario de un día del microciclo, o None si la semana no tiene
+    `fecha_inicio` todavía. Se recalcula aquí (no vía señales) cada vez que se
+    crea/edita una PlannedSession, para que quede siempre consistente con el
+    valor actual de `microciclo.fecha_inicio`."""
+    if not microciclo.fecha_inicio:
+        return None
+    from datetime import timedelta
+    return microciclo.fecha_inicio + timedelta(days=dia_semana)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def micro_sesiones(request, pk, plan_id, meso_id, micro_id):
+    """Lista / crea las sesiones (días) de un microciclo."""
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
+    if request.method == 'POST':
+        serializer = PlannedSessionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        dia_semana = serializer.validated_data['dia_semana']
+        serializer.save(
+            microciclo=micro, fecha=_dia_a_fecha(micro, dia_semana), creado_por=request.user,
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(PlannedSessionSerializer(micro.sesiones.all(), many=True).data)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def sesion_detail(request, pk, plan_id, meso_id, micro_id, sesion_id):
+    """Consulta, edita o elimina una sesión (día) del microciclo."""
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
+    sesion = get_object_or_404(PlannedSession, pk=sesion_id, microciclo=micro)
+    if request.method == 'GET':
+        return Response(PlannedSessionSerializer(sesion).data)
+    if request.method == 'DELETE':
+        sesion.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = PlannedSessionSerializer(sesion, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Si cambió dia_semana, la fecha calculada debe seguirlo.
+    nuevo_dia = serializer.validated_data.get('dia_semana', sesion.dia_semana)
+    serializer.save(fecha=_dia_a_fecha(micro, nuevo_dia))
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsPerformanceUser])
+@throttle_classes([GenerateTeamSessionRateThrottle])
+def sesion_generar(request, pk, plan_id, meso_id, micro_id, sesion_id):
+    """Genera con IA el contenido de una sesión de equipo (fases/bloques +
+    variantes individuales). Ver `team_session_generator.generate_team_session`
+    — el motor manda tipo/duración/RPE, la IA solo redacta."""
+    from .team_session_generator import generate_team_session
+
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
+    sesion = get_object_or_404(PlannedSession, pk=sesion_id, microciclo=micro)
+
+    if not micro.fecha_inicio or not sesion.fecha:
+        return Response(
+            {'detail': 'Define la fecha de inicio de esta semana antes de generar sesiones con IA.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        sesion = generate_team_session(sesion, request.user)
+    except ValueError as e:
+        logger.warning('sesion_generar: formato inesperado de la IA (sesión %s): %s', sesion_id, e)
+        return Response({'detail': str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+    except Exception:
+        logger.exception('sesion_generar: fallo generando sesión %s', sesion_id)
+        return Response(
+            {'detail': 'No se pudo generar la sesión con IA. Intenta de nuevo en unos minutos.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    return Response(PlannedSessionSerializer(sesion).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def microciclo_advisor(request, pk, plan_id, meso_id, micro_id):
+    """Sugerencias de solo lectura para este microciclo (carga/bienestar real
+    del plantel vs. lo planeado). Nunca escribe: ver `planning_advisor`."""
+    from .planning_advisor import suggest_for_microciclo
+
+    center = _get_center_or_404(request.user, pk)
+    _assert_module(request.user, center, MODULE_PLANIFICACION)
+    plan = _get_plan_or_404(center, plan_id)
+    meso = get_object_or_404(Mesocycle, pk=meso_id, plan=plan)
+    micro = get_object_or_404(Microcycle, pk=micro_id, mesociclo=meso)
+    return Response(suggest_for_microciclo(micro))
 
 
 @api_view(['GET'])

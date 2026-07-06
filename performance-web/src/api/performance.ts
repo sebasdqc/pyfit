@@ -5,10 +5,11 @@
 import { api } from './client'
 import type {
   CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
-  TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
+  TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle, PlannedSession, AdvisorResponse,
   TacticalPlay, Escena, WellnessRecord, CalendarEvent,
   InjuryReport, PhysicalTestRecord, PsychRecord,
   CargaTeamRow, CargaAthleteResponse, CargaRecord,
+  FormaTeamResponse, FormaAthleteResponse,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -241,6 +242,21 @@ export async function deleteCarga(centerId: number, recordId: number): Promise<v
   await api.delete(`${cargaBase(centerId)}/${recordId}/`)
 }
 
+// ── Forma (fitness-fatiga / TSB) — mismo dato de Carga interna, sin POST propio ──
+const formaBase = (centerId: number) => `/performance/centers/${centerId}/forma`
+
+export async function listFormaTeam(centerId: number): Promise<FormaTeamResponse> {
+  const res = await api.get<FormaTeamResponse>(`${formaBase(centerId)}/`)
+  return res.data
+}
+
+export async function getFormaAthlete(centerId: number, athleteUserId: number): Promise<FormaAthleteResponse> {
+  const res = await api.get<FormaAthleteResponse>(`${formaBase(centerId)}/`, {
+    params: { athlete: athleteUserId },
+  })
+  return res.data
+}
+
 // ── Módulo TEST: catálogo de calculadoras y cálculo en servidor ──────────────
 // El catálogo trae el `input_schema` con el que el frontend pinta cada formulario;
 // el cálculo SIEMPRE ocurre en el servidor (el cliente solo envía inputs crudos).
@@ -327,6 +343,61 @@ export async function deleteMicro(
   centerId: number, planId: number, mesoId: number, microId: number,
 ): Promise<void> {
   await api.delete(`${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}/`)
+}
+
+// ── Sesiones (días) del microciclo — granularidad para IA de equipo y el asesor ──
+const microBase = (centerId: number, planId: number, mesoId: number, microId: number) =>
+  `${planBase(centerId)}/${planId}/mesociclos/${mesoId}/microciclos/${microId}`
+
+export async function listSesiones(
+  centerId: number, planId: number, mesoId: number, microId: number,
+): Promise<PlannedSession[]> {
+  const res = await api.get<PlannedSession[]>(`${microBase(centerId, planId, mesoId, microId)}/sesiones/`)
+  return res.data
+}
+
+export async function createSesion(
+  centerId: number, planId: number, mesoId: number, microId: number, payload: Partial<PlannedSession>,
+): Promise<PlannedSession> {
+  const res = await api.post<PlannedSession>(
+    `${microBase(centerId, planId, mesoId, microId)}/sesiones/`, payload,
+  )
+  return res.data
+}
+
+export async function updateSesion(
+  centerId: number, planId: number, mesoId: number, microId: number, sesionId: number,
+  payload: Partial<PlannedSession>,
+): Promise<PlannedSession> {
+  const res = await api.patch<PlannedSession>(
+    `${microBase(centerId, planId, mesoId, microId)}/sesiones/${sesionId}/`, payload,
+  )
+  return res.data
+}
+
+export async function deleteSesion(
+  centerId: number, planId: number, mesoId: number, microId: number, sesionId: number,
+): Promise<void> {
+  await api.delete(`${microBase(centerId, planId, mesoId, microId)}/sesiones/${sesionId}/`)
+}
+
+// Genera el contenido de la sesión con IA (motor manda tipo/duración/RPE, la IA redacta).
+export async function generarSesion(
+  centerId: number, planId: number, mesoId: number, microId: number, sesionId: number,
+): Promise<PlannedSession> {
+  const res = await api.post<PlannedSession>(
+    `${microBase(centerId, planId, mesoId, microId)}/sesiones/${sesionId}/generar/`,
+  )
+  return res.data
+}
+
+// Sugerencias de solo lectura del motor asesor (el botón "Aplicar" del frontend
+// reusa updateMeso/updateMicro con el payload sugerido — no hay endpoint de "aplicar").
+export async function getMicrocicloAdvisor(
+  centerId: number, planId: number, mesoId: number, microId: number,
+): Promise<AdvisorResponse> {
+  const res = await api.get<AdvisorResponse>(`${microBase(centerId, planId, mesoId, microId)}/advisor/`)
+  return res.data
 }
 
 // ── Simulador: pizarra táctica (jugadas con coordenadas normalizadas) ─────────

@@ -11,7 +11,7 @@ from performance.calculators import REGISTRY, CalculatorError, get_calculator
 
 class RegistryTests(SimpleTestCase):
     def test_familia_carga_registrada(self):
-        for slug in ('srpe', 'carga-semanal', 'acwr', 'trimp-edwards'):
+        for slug in ('srpe', 'carga-semanal', 'acwr', 'trimp-edwards', 'forma'):
             self.assertIn(slug, REGISTRY, f'{slug} no está registrado')
             self.assertEqual(REGISTRY[slug].familia, 'carga')
 

@@ -60,6 +60,7 @@ const NAV: NavItem[] = [
     children: [
       { id: 'fisicos', label: 'Físicos', icon: 'tests', to: '/tests', moduleId: 'test' },
       { id: 'carga', label: 'Carga interna', icon: 'carga', to: '/carga', moduleId: 'rendimiento' },
+      { id: 'forma', label: 'Forma', icon: 'gauge', to: '/forma', moduleId: 'rendimiento' },
       { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
     ],
   },

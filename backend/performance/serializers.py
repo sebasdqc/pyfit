@@ -6,7 +6,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
-    CalendarEvent,
+    CalendarEvent, PlannedSession,
 )
 
 
@@ -243,12 +243,46 @@ class PhysicalTestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'registrado_por']
 
 
+class PlannedSessionSerializer(serializers.ModelSerializer):
+    """Sesión de un día del microciclo. `fecha` la deriva la VISTA desde
+    `microciclo.fecha_inicio + dia_semana` (no hay campo editable directo);
+    `origen`/`respuesta_ia`/`tokens_*`/`generacion_ms` los escribe el generador
+    de IA sobre la instancia, no llegan por PATCH de un formulario manual."""
+
+    evento_titulo = serializers.SerializerMethodField()
+    evento_tipo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PlannedSession
+        fields = [
+            'id', 'microciclo', 'dia_semana', 'fecha', 'orden', 'tipo', 'nombre',
+            'duracion_min', 'rpe_objetivo', 'carga_objetivo_ua', 'evento',
+            'evento_titulo', 'evento_tipo', 'origen', 'contenido', 'respuesta_ia',
+            'generacion_ms', 'tokens_in', 'tokens_out',
+            'estado', 'notas', 'creado_por', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'microciclo', 'fecha', 'origen', 'respuesta_ia',
+            'generacion_ms', 'tokens_in', 'tokens_out', 'creado_por',
+            'created_at', 'updated_at',
+        ]
+
+    def get_evento_titulo(self, obj):
+        return obj.evento.titulo if obj.evento_id else None
+
+    def get_evento_tipo(self, obj):
+        return obj.evento.tipo if obj.evento_id else None
+
+
 class MicrocycleSerializer(serializers.ModelSerializer):
+    sesiones = PlannedSessionSerializer(many=True, read_only=True)
+
     class Meta:
         model = Microcycle
         fields = [
             'id', 'mesociclo', 'orden', 'fecha_inicio', 'nombre', 'tipo',
             'carga_relativa', 'volumen', 'intensidad', 'notas', 'created_at',
+            'sesiones',
         ]
         # `mesociclo` lo fija la vista a partir de la ruta.
         read_only_fields = ['id', 'created_at', 'mesociclo']

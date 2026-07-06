@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
+import { Dialog } from '@/components/ui/Dialog'
 import { Icon } from '@/components/Icon'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { useActiveCenter } from '@/centers/useActiveCenter'
@@ -18,10 +19,12 @@ import {
   listPlans, createPlan, getPlanTree, deletePlan,
   createMeso, updateMeso, deleteMeso,
   createMicro, updateMicro, deleteMicro,
+  listSesiones, createSesion, deleteSesion, generarSesion, getMicrocicloAdvisor,
 } from '@/api/performance'
 import type {
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle,
   MesoTipo, MicroTipo, CargaObjetivo, Nivel,
+  PlannedSession, SesionTipo, AdvisorResponse, AdvisorSugerencia,
 } from '@/types'
 
 // ── Catálogos de etiquetas y colores ────────────────────────────────────────
@@ -42,6 +45,16 @@ const MICRO_TIPO: Record<MicroTipo, { label: string; hex: string }> = {
 }
 const CARGA_OBJ: Record<CargaObjetivo, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', pico: 'Pico' }
 const NIVEL: Record<Nivel, string> = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto' }
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const SESION_TIPO: Record<SesionTipo, { label: string; hex: string }> = {
+  fuerza: { label: 'Fuerza', hex: '#4f8cff' },
+  tecnico_tactico: { label: 'Técnico-táctico', hex: '#6ce5ff' },
+  fisico: { label: 'Físico', hex: '#ffaa32' },
+  recuperacion: { label: 'Recuperación', hex: '#32c896' },
+  partido: { label: 'Partido', hex: '#ff4444' },
+  descanso: { label: 'Descanso', hex: '#5a6b8c' },
+  otro: { label: 'Otro', hex: '#7ab6ff' },
+}
 
 const today = () => new Date().toISOString().slice(0, 10)
 const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0))
@@ -50,6 +63,32 @@ function addWeeks(iso: string, weeks: number): string {
   const d = new Date(`${iso}T00:00:00`)
   d.setDate(d.getDate() + weeks * 7)
   return d.toISOString().slice(0, 10)
+}
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+function daysBetween(a: string, b: string): number {
+  const da = new Date(`${a}T00:00:00`).getTime()
+  const db = new Date(`${b}T00:00:00`).getTime()
+  return Math.round((db - da) / 86400000)
+}
+// Microciclo cuya semana está más cerca de hoy (prioriza el que la contiene),
+// para no disparar un GET del asesor por cada semana del plan (v1: solo 1).
+function nearestMicrocicloToToday(plan: TrainingPlanDetail): { meso: Mesocycle; micro: Microcycle } | null {
+  const hoy = today()
+  let best: { meso: Mesocycle; micro: Microcycle; dist: number } | null = null
+  for (const meso of plan.mesociclos) {
+    for (const micro of meso.microciclos) {
+      if (!micro.fecha_inicio) continue
+      const fin = addDaysIso(micro.fecha_inicio, 6)
+      const dentro = micro.fecha_inicio <= hoy && hoy <= fin
+      const dist = dentro ? 0 : Math.abs(daysBetween(micro.fecha_inicio, hoy))
+      if (!best || dist < best.dist) best = { meso, micro, dist }
+    }
+  }
+  return best ? { meso: best.meso, micro: best.micro } : null
 }
 
 export function PlanificacionPage() {
@@ -283,6 +322,7 @@ function PlanDetail({
   const [addingMeso, setAddingMeso] = useState(false)
   const totalWeeks = plan.mesociclos.reduce((acc, m) => acc + m.microciclos.length, 0)
   const finEstimado = totalWeeks ? addWeeks(plan.fecha_inicio, totalWeeks) : null
+  const nearest = useMemo(() => nearestMicrocicloToToday(plan), [plan])
 
   // Onda de carga: todos los microciclos en orden, con su fase.
   const wave = useMemo(() => {
@@ -373,6 +413,16 @@ function PlanDetail({
         )}
       </Panel>
 
+      {nearest && (
+        <AdvisorBanner
+          centerId={centerId}
+          planId={plan.id}
+          meso={nearest.meso}
+          micro={nearest.micro}
+          onApplied={onChanged}
+        />
+      )}
+
       {plan.mesociclos.map((m, idx) => (
         <MesoBand
           key={m.id}
@@ -407,6 +457,69 @@ function PlanDetail({
         >
           + Añadir fase (mesociclo)
         </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Banner del asesor: sugerencias de solo lectura para la semana más cercana ─
+// a hoy. Nunca escribe por su cuenta: "Aplicar" reusa el mismo PATCH manual de
+// updateMeso/updateMicro que ya usa el formulario — no hay un segundo camino
+// de escritura que auditar.
+function AdvisorBanner({
+  centerId, planId, meso, micro, onApplied,
+}: {
+  centerId: number
+  planId: number
+  meso: Mesocycle
+  micro: Microcycle
+  onApplied: () => void
+}) {
+  const [data, setData] = useState<AdvisorResponse | null>(null)
+  const [applyingIdx, setApplyingIdx] = useState<number | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getMicrocicloAdvisor(centerId, planId, meso.id, micro.id)
+      .then((d) => { if (alive) setData(d) })
+      .catch(() => { if (alive) setData(null) })
+    return () => { alive = false }
+  }, [centerId, planId, meso.id, micro.id])
+
+  if (!data?.disponible || !data.sugerencias?.length) return null
+
+  async function aplicar(idx: number, s: AdvisorSugerencia) {
+    setApplyingIdx(idx)
+    try {
+      if (s.nivel === 'mesociclo') await updateMeso(centerId, planId, meso.id, { [s.campo]: s.valor_sugerido })
+      else await updateMicro(centerId, planId, meso.id, micro.id, { [s.campo]: s.valor_sugerido })
+      onApplied()
+    } finally {
+      setApplyingIdx(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-perf-warn/30 bg-perf-warn/5 p-4">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-perf-warn">
+        <Icon name="alert" size={14} />
+        Sugerencias del asesor · semana del {shortDate(micro.fecha_inicio)}
+      </p>
+      {data.sugerencias.map((s, idx) => (
+        <div
+          key={idx}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-perf-border bg-perf-surface2 p-2.5 text-xs"
+        >
+          <p className="text-white/70">{s.motivo}</p>
+          <button
+            type="button"
+            onClick={() => aplicar(idx, s)}
+            disabled={applyingIdx === idx}
+            className="shrink-0 rounded-md border border-accent/40 px-2.5 py-1 text-[11px] font-medium text-accentLight hover:bg-accent/10 disabled:opacity-50"
+          >
+            {applyingIdx === idx ? 'Aplicando…' : `Aplicar: ${s.valor_sugerido}`}
+          </button>
+        </div>
       ))}
     </div>
   )
@@ -554,8 +667,21 @@ function MicroCell({
 }) {
   const [carga, setCarga] = useState(String(micro.carga_relativa))
   const [editing, setEditing] = useState(false)
+  const [showWeek, setShowWeek] = useState(false)
   const t = MICRO_TIPO[micro.tipo]
   const fecha = shortDate(micro.fecha_inicio)
+  const nSesiones = micro.sesiones?.length ?? 0
+
+  const weekDrawer = showWeek && (
+    <WeekDrawer
+      centerId={centerId}
+      planId={planId}
+      mesoId={mesoId}
+      micro={micro}
+      onClose={() => setShowWeek(false)}
+      onChanged={onChanged}
+    />
+  )
 
   async function commitCarga() {
     const n = clamp(Number(carga))
@@ -599,6 +725,14 @@ function MicroCell({
           <span>Vol {NIVEL[micro.volumen]} · Int {NIVEL[micro.intensidad]}</span>
         </div>
         {fecha && <span className="mt-0.5 text-[10px] text-white/35">{fecha}</span>}
+        <button
+          type="button"
+          onClick={() => setShowWeek(true)}
+          className="mt-1 text-left text-[10px] text-accentLight hover:text-accent"
+        >
+          {nSesiones}/7 sesiones →
+        </button>
+        {weekDrawer}
       </div>
     )
   }
@@ -625,12 +759,197 @@ function MicroCell({
         />
         <span className="text-[10px] text-white/40">% {NIVEL[micro.intensidad]}</span>
       </div>
+      <button
+        type="button"
+        onClick={() => setShowWeek(true)}
+        className="mt-1.5 text-left text-[10px] text-accentLight hover:text-accent"
+      >
+        {nSesiones}/7 sesiones →
+      </button>
       <div className="mt-1.5 flex items-center justify-between">
         <IconBtn onClick={onMoveLeft} disabled={!canLeft} title="Mover izquierda">◀</IconBtn>
         <IconBtn onClick={() => setEditing(true)} title="Editar semana">✎</IconBtn>
         <IconBtn onClick={() => deleteMicro(centerId, planId, mesoId, micro.id).then(onChanged)} title="Quitar semana" danger>✕</IconBtn>
         <IconBtn onClick={onMoveRight} disabled={!canRight} title="Mover derecha">▶</IconBtn>
       </div>
+      {weekDrawer}
+    </div>
+  )
+}
+
+// ── Drawer de la semana: 7 días con sus sesiones (manual o generadas con IA) ──
+function WeekDrawer({
+  centerId, planId, mesoId, micro, onClose, onChanged,
+}: {
+  centerId: number
+  planId: number
+  mesoId: number
+  micro: Microcycle
+  onClose: () => void
+  onChanged: () => void
+}) {
+  const [sesiones, setSesiones] = useState<PlannedSession[]>(micro.sesiones ?? [])
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const [errores, setErrores] = useState<Record<number, string>>({})
+
+  useEffect(() => {
+    listSesiones(centerId, planId, mesoId, micro.id).then(setSesiones).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerId, planId, mesoId, micro.id])
+
+  async function handleCreate(dia: number) {
+    const s = await createSesion(centerId, planId, mesoId, micro.id, { dia_semana: dia })
+    setSesiones((prev) => [...prev, s])
+    onChanged()
+  }
+
+  async function handleDelete(s: PlannedSession) {
+    await deleteSesion(centerId, planId, mesoId, micro.id, s.id)
+    setSesiones((prev) => prev.filter((x) => x.id !== s.id))
+    onChanged()
+  }
+
+  async function handleGenerar(s: PlannedSession) {
+    setBusyId(s.id)
+    setErrores((prev) => ({ ...prev, [s.id]: '' }))
+    try {
+      const updated = await generarSesion(centerId, planId, mesoId, micro.id, s.id)
+      setSesiones((prev) => prev.map((x) => (x.id === s.id ? updated : x)))
+      onChanged()
+    } catch (e) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setErrores((prev) => ({ ...prev, [s.id]: detail || 'No se pudo generar la sesión. Intenta de nuevo.' }))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <Dialog
+      onClose={onClose}
+      labelledBy="week-drawer-title"
+      className="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-perf-border bg-perf-surface p-5"
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <h2 id="week-drawer-title" className="text-sm font-semibold text-white">
+          {micro.nombre || MICRO_TIPO[micro.tipo].label}
+          {micro.fecha_inicio ? ` · semana del ${shortDate(micro.fecha_inicio)}` : ''}
+        </h2>
+        <button type="button" onClick={onClose} className="text-white/40 hover:text-white" aria-label="Cerrar">
+          <Icon name="close" size={18} />
+        </button>
+      </div>
+      {!micro.fecha_inicio && (
+        <p className="mb-3 rounded-lg border border-perf-warn/30 bg-perf-warn/10 px-3 py-2 text-xs text-perf-warn">
+          Esta semana no tiene fecha de inicio: puedes crear sesiones, pero la generación con IA necesita
+          una fecha para leer la carga y el return-to-play real del plantel.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        {DIAS_SEMANA.map((label, dia) => {
+          const delDia = sesiones.filter((s) => s.dia_semana === dia).sort((a, b) => a.orden - b.orden)
+          const fechaDia = micro.fecha_inicio ? shortDate(addDaysIso(micro.fecha_inicio, dia)) : null
+          return (
+            <div key={dia} className="flex flex-col gap-2 rounded-xl border border-perf-border bg-perf-surface2 p-2.5">
+              <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-white/45">
+                <span>{label}</span>
+                {fechaDia && <span>{fechaDia}</span>}
+              </div>
+              {delDia.map((s) => (
+                <DayCard
+                  key={s.id}
+                  sesion={s}
+                  busy={busyId === s.id}
+                  error={errores[s.id]}
+                  onGenerar={() => handleGenerar(s)}
+                  onDelete={() => handleDelete(s)}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() => handleCreate(dia)}
+                className="rounded-lg border border-dashed border-perf-border py-1.5 text-[11px] text-white/40 transition-colors hover:border-accent/50 hover:text-white"
+              >
+                + sesión
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </Dialog>
+  )
+}
+
+// ── Tarjeta de una sesión dentro del día ──────────────────────────────────────
+function DayCard({
+  sesion, busy, error, onGenerar, onDelete,
+}: {
+  sesion: PlannedSession
+  busy: boolean
+  error?: string
+  onGenerar: () => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const t = SESION_TIPO[sesion.tipo]
+  const estadoCls =
+    sesion.estado === 'generada' ? 'bg-accent/15 text-accentLight'
+    : sesion.estado === 'publicada' ? 'bg-perf-ok/15 text-perf-ok'
+    : 'bg-white/5 text-white/40'
+
+  return (
+    <div className="rounded-lg border border-perf-border bg-perf-surface p-2 text-xs">
+      <div className="flex items-center justify-between gap-1">
+        <span className="font-medium" style={{ color: t.hex }}>{t.label}</span>
+        <button type="button" onClick={onDelete} title="Quitar sesión" className="text-white/30 hover:text-perf-danger">✕</button>
+      </div>
+      <p className="mt-0.5 text-white/45">
+        {sesion.duracion_min ? `${sesion.duracion_min} min` : '—'} · RPE {sesion.rpe_objetivo ?? '—'}
+      </p>
+      <span className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${estadoCls}`}>
+        {sesion.estado}
+      </span>
+
+      {sesion.contenido?.fases && sesion.contenido.fases.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="mt-1 block text-[10px] text-accentLight hover:text-accent"
+          >
+            {open ? 'Ocultar contenido ▲' : 'Ver contenido ▼'}
+          </button>
+          {open && (
+            <div className="mt-1.5 flex flex-col gap-1 border-t border-perf-border pt-1.5">
+              {sesion.contenido.titulo && <p className="font-medium text-white/70">{sesion.contenido.titulo}</p>}
+              {sesion.contenido.fases.map((f, i) => (
+                <div key={i}>
+                  <p className="text-white/55">{f.nombre}</p>
+                  <ul className="ml-3 list-disc text-white/40">
+                    {f.bloques.map((b, j) => (
+                      <li key={j}>{b.nombre}{b.duracion_min ? ` (${b.duracion_min}′)` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {sesion.contenido.nota_del_cuerpo_tecnico && (
+                <p className="italic text-white/40">&ldquo;{sesion.contenido.nota_del_cuerpo_tecnico}&rdquo;</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      <button
+        type="button"
+        onClick={onGenerar}
+        disabled={busy}
+        className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-md border border-accent/40 py-1 text-[10px] font-medium text-accentLight transition-colors hover:bg-accent/10 disabled:opacity-50"
+      >
+        <Icon name="carga" size={10} />
+        {busy ? 'Generando…' : sesion.origen === 'ia' ? 'Regenerar con IA' : 'Generar con IA'}
+      </button>
+      {error && <p className="mt-1 text-[10px] text-perf-danger">{error}</p>}
     </div>
   )
 }
