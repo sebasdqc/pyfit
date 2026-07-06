@@ -12,9 +12,11 @@ import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { StreakCard } from '@/components/StreakCard'
 import { useStreak } from '@/lib/useStreak'
+import { useT } from '@/locale/useT'
 import type { Enrollment } from '@/types'
 
 export function MyLearningPage() {
+  const t = useT()
   const [items, setItems] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -34,8 +36,8 @@ export function MyLearningPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Mi aprendizaje</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Continúa donde lo dejaste</h1>
+        <p className="za-eyebrow">{t('myLearning.eyebrow')}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">{t('myLearning.title')}</h1>
       </header>
 
       <StreakCard streak={streak} />
@@ -47,20 +49,20 @@ export function MyLearningPage() {
       ) : error ? (
         <EmptyState
           icon="learning"
-          title="No se pudo cargar tu progreso"
-          description="Revisa tu conexión e inténtalo de nuevo."
+          title={t('myLearning.loadError')}
+          description={t('myLearning.loadErrorBody')}
         />
       ) : items.length === 0 ? (
         <EmptyState
           icon="learning"
-          title="Todavía no te has inscrito a ningún curso"
-          description="Explora el catálogo y empieza tu primera formación."
+          title={t('myLearning.noEnrollmentsTitle')}
+          description={t('myLearning.noEnrollmentsBody')}
           action={
             <Link
               to="/catalogo"
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
             >
-              Ir al catálogo <Icon name="arrowRight" size={16} />
+              {t('myLearning.goToCatalog')} <Icon name="arrowRight" size={16} />
             </Link>
           }
         />
@@ -81,15 +83,15 @@ export function MyLearningPage() {
                     {e.curso_titulo}
                   </h3>
                   <Badge tone={e.estado === 'completada' ? 'ok' : 'accent'}>
-                    {e.estado === 'completada' ? 'Completado' : 'En curso'}
+                    {e.estado === 'completada' ? t('myLearning.completed') : t('myLearning.inProgress')}
                   </Badge>
                 </div>
                 <div className="mt-4">
-                  <ProgressBar value={e.progreso} label={`Progreso de ${e.curso_titulo}`} />
+                  <ProgressBar value={e.progreso} label={t('myLearning.progressOfCourse', { course: e.curso_titulo })} />
                 </div>
                 {e.certificado && (
                   <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-ok">
-                    <Icon name="certificate" size={14} /> Certificado {e.certificado}
+                    <Icon name="certificate" size={14} /> {t('myLearning.certificateLabel', { code: e.certificado })}
                   </p>
                 )}
               </div>

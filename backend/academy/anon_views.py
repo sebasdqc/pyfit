@@ -30,7 +30,7 @@ from rest_framework.response import Response
 
 from . import access_service
 from .models import AnonymousProgress, AnonymousSession, Course, Lesson
-from .serializers import CourseDetailSerializer, CourseSerializer, LessonSerializer
+from .serializers import CourseDetailSerializer, CourseSerializer, LessonSerializer, localized_text
 from pyfit.throttles import AnonSessionRateThrottle
 
 # Ventana razonable antes de purgar una sesión anónima nunca convertida (ver
@@ -38,7 +38,12 @@ from pyfit.throttles import AnonSessionRateThrottle
 # pierda su progreso, ni indefinida (acumularía datos huérfanos).
 ANON_SESSION_TTL_DIAS = 30
 
-_CONTEXTO_ANONIMO = {'include_answers': False, 'nivel_academia': access_service.NIVEL_STARTER}
+def _contexto_anonimo(request):
+    return {
+        'include_answers': False,
+        'nivel_academia': access_service.NIVEL_STARTER,
+        'locale': getattr(request, 'locale', 'es'),
+    }
 
 
 def _get_session(request):
@@ -96,7 +101,7 @@ def anon_catalogo(request):
     catálogo autenticado, sin datos de matrícula."""
     tenant = getattr(request, 'tenant', None)
     qs = Course.objects.filter(tenant=tenant, publicado=True)
-    return Response(CourseSerializer(qs, many=True, context=_CONTEXTO_ANONIMO).data)
+    return Response(CourseSerializer(qs, many=True, context=_contexto_anonimo(request)).data)
 
 
 @api_view(['GET'])
@@ -106,7 +111,7 @@ def anon_curso_detail(request, pk):
     que ve un estudiante Free autenticado — un anónimo SIEMPRE es starter."""
     tenant = getattr(request, 'tenant', None)
     course = get_object_or_404(Course, pk=pk, tenant=tenant, publicado=True)
-    return Response(CourseDetailSerializer(course, context=_CONTEXTO_ANONIMO).data)
+    return Response(CourseDetailSerializer(course, context=_contexto_anonimo(request)).data)
 
 
 def _leccion_gratis_o_404(lesson_id, tenant):
@@ -115,14 +120,19 @@ def _leccion_gratis_o_404(lesson_id, tenant):
     )
 
 
-def _bloqueo_registro(lesson):
+def _bloqueo_registro(request, lesson):
     """403 si `lesson` no pertenece a un módulo gratis. Mensaje `requiere_registro`
     (distinto de `requiere_academy_pro`) para que el frontend sepa qué modal
     mostrar — pedir cuenta, no pedir suscripción."""
     if access_service.puede_ver_leccion(access_service.NIVEL_STARTER, lesson):
         return None
+    context = {'locale': getattr(request, 'locale', 'es')}
     return Response(
-        {'detail': 'requiere_registro', 'modulo': lesson.module.titulo, 'curso': lesson.module.course.titulo},
+        {
+            'detail': 'requiere_registro',
+            'modulo': localized_text(lesson.module, 'titulo', context),
+            'curso': localized_text(lesson.module.course, 'titulo', context),
+        },
         status=status.HTTP_403_FORBIDDEN,
     )
 
@@ -132,10 +142,10 @@ def _bloqueo_registro(lesson):
 def anon_leccion_detail(request, lesson_id):
     """Contenido de una lección de un módulo gratis."""
     lesson = _leccion_gratis_o_404(lesson_id, getattr(request, 'tenant', None))
-    bloqueo = _bloqueo_registro(lesson)
+    bloqueo = _bloqueo_registro(request, lesson)
     if bloqueo:
         return bloqueo
-    return Response(LessonSerializer(lesson, context=_CONTEXTO_ANONIMO).data)
+    return Response(LessonSerializer(lesson, context=_contexto_anonimo(request)).data)
 
 
 @api_view(['POST'])
@@ -151,7 +161,7 @@ def anon_leccion_completar(request, lesson_id):
         return Response({'detail': 'Falta X-Anon-Session o la sesión no existe.'},
                         status=status.HTTP_400_BAD_REQUEST)
     lesson = _leccion_gratis_o_404(lesson_id, getattr(request, 'tenant', None))
-    bloqueo = _bloqueo_registro(lesson)
+    bloqueo = _bloqueo_registro(request, lesson)
     if bloqueo:
         return bloqueo
     AnonymousProgress.objects.get_or_create(session=session, lesson=lesson)

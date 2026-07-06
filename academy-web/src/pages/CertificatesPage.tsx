@@ -12,9 +12,11 @@ import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { BRAND } from '@/lib/constants'
 import { shareOrDownloadCard } from '@/lib/shareImage'
+import { useT } from '@/locale/useT'
 import type { Certificate, Enrollment } from '@/types'
 
 export function CertificatesPage() {
+  const t = useT()
   const [items, setItems] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -32,8 +34,8 @@ export function CertificatesPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Certificados</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Tus logros</h1>
+        <p className="za-eyebrow">{t('certificates.eyebrow')}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">{t('certificates.title')}</h1>
       </header>
 
       <Verifier />
@@ -45,11 +47,11 @@ export function CertificatesPage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="certificate"
-          title="Aún no tienes certificados"
-          description="Completa un curso y aprueba sus evaluaciones para obtener tu certificado."
+          title={t('certificates.noCertificatesTitle')}
+          description={t('certificates.noCertificatesBody')}
           action={
             <Link to="/catalogo" className="text-sm font-medium text-accent hover:text-accent-dark">
-              Explorar cursos →
+              {t('certificates.exploreCourses')}
             </Link>
           }
         />
@@ -65,6 +67,7 @@ export function CertificatesPage() {
 }
 
 function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: string; codigo: string }) {
+  const t = useT()
   const cardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
 
@@ -96,8 +99,8 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
     try {
       await shareOrDownloadCard(cardRef.current, {
         filename: `certificado-zyfit-${codigo}.png`,
-        title: `Certificado ${BRAND.name} ${BRAND.product}`,
-        text: `Completé "${titulo}" en ${BRAND.name} ${BRAND.product} 🎓`,
+        title: t('certificates.shareTitle', { brand: BRAND.name, product: BRAND.product }),
+        text: t('certificates.shareText', { course: titulo, brand: BRAND.name, product: BRAND.product }),
         excludeClass: 'diploma-actions',
       })
     } catch {
@@ -120,13 +123,13 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
       <div className="relative z-10 px-7 py-7">
         <div className="flex items-center justify-between">
           <Emblem size={30} tone="light" />
-          <span className="za-eyebrow">Certificado de finalización</span>
+          <span className="za-eyebrow">{t('certificates.completionCertificate')}</span>
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">Se certifica que</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{t('certificates.certifiesThat')}</p>
           <p className="mt-1.5 text-xl font-bold tracking-tight text-ink">{nombre}</p>
-          <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-ink-muted">completó satisfactoriamente</p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-ink-muted">{t('certificates.completedSuccessfully')}</p>
           <p className="mt-1.5 text-[15px] font-semibold text-brand">{titulo}</p>
           {/* Filete central con sello */}
           <div className="mx-auto mt-4 flex items-center justify-center gap-2 text-brand/40">
@@ -138,7 +141,7 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
 
         <div className="mt-5 flex items-end justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-ink-muted">Código de verificación</p>
+            <p className="text-[10px] uppercase tracking-wide text-ink-muted">{t('certificates.verificationCode')}</p>
             <div className="flex min-w-0 items-center gap-2">
               <span className="truncate font-mono text-xs font-medium text-ink">{codigo}</span>
               <CopyCodeButton codigo={codigo} />
@@ -156,7 +159,7 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-brand/20 text-sm font-semibold text-brand transition-colors hover:bg-brand/5"
           >
             <Icon name="doc" size={16} />
-            Descargar PDF
+            {t('certificates.downloadPdf')}
           </button>
           <button
             type="button"
@@ -165,7 +168,7 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
           >
             <Icon name="send" size={16} />
-            {sharing ? 'Generando…' : 'Compartir'}
+            {sharing ? t('certificates.generating') : t('certificates.share')}
           </button>
         </div>
       </div>
@@ -174,6 +177,7 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
 }
 
 function CopyCodeButton({ codigo }: { codigo: string }) {
+  const t = useT()
   const [copied, setCopied] = useState(false)
   async function copy() {
     try {
@@ -188,15 +192,16 @@ function CopyCodeButton({ codigo }: { codigo: string }) {
     <button
       type="button"
       onClick={copy}
-      aria-label={`Copiar código ${codigo}`}
+      aria-label={t('certificates.copyCodeAria', { code: codigo })}
       className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/10"
     >
-      {copied ? 'Copiado ✓' : 'Copiar'}
+      {copied ? t('certificates.copied') : t('certificates.copy')}
     </button>
   )
 }
 
 function Verifier() {
+  const t = useT()
   const [codigo, setCodigo] = useState('')
   const [result, setResult] = useState<Certificate | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'notfound' | 'error'>('idle')
@@ -219,39 +224,39 @@ function Verifier() {
 
   return (
     <div className="za-card p-5">
-      <h2 className="text-sm font-semibold text-ink">Verificar un certificado</h2>
-      <p className="mt-1 text-sm text-ink-soft">Introduce un código para comprobar su validez.</p>
+      <h2 className="text-sm font-semibold text-ink">{t('certificates.verifyTitle')}</h2>
+      <p className="mt-1 text-sm text-ink-soft">{t('certificates.verifyBody')}</p>
       <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 sm:flex-row">
         <input
           value={codigo}
           onChange={(e) => setCodigo(e.target.value)}
           placeholder="ZA-XXXXXXXX"
-          aria-label="Código de certificado"
+          aria-label={t('certificates.codeAria')}
           className="h-11 flex-1 rounded-xl border border-surface-border bg-surface-soft px-4 font-mono text-sm uppercase text-ink focus:border-accent focus:bg-surface"
         />
         <button
           type="submit"
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
-          <Icon name="search" size={16} /> Verificar
+          <Icon name="search" size={16} /> {t('certificates.verify')}
         </button>
       </form>
       <div aria-live="polite">
-        {status === 'loading' && <p className="mt-3 text-sm text-ink-muted">Verificando…</p>}
+        {status === 'loading' && <p className="mt-3 text-sm text-ink-muted">{t('certificates.verifying')}</p>}
         {status === 'notfound' && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-danger">
-            <Icon name="close" size={15} /> No se encontró un certificado con ese código.
+            <Icon name="close" size={15} /> {t('certificates.notFound')}
           </p>
         )}
         {status === 'error' && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-danger">
-            <Icon name="close" size={15} /> No se pudo verificar ahora. Revisa tu conexión e inténtalo de nuevo.
+            <Icon name="close" size={15} /> {t('certificates.verifyError')}
           </p>
         )}
         {result && (
           <div className="mt-3 rounded-xl border border-ok/30 bg-ok/5 p-4">
             <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-ok">
-              <Icon name="check" size={16} /> Certificado válido
+              <Icon name="check" size={16} /> {t('certificates.validCertificate')}
             </p>
             <p className="mt-1 text-sm text-ink">
               <span className="font-medium">{result.estudiante_nombre}</span> · {result.curso_titulo}

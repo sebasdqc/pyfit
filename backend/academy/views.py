@@ -66,7 +66,7 @@ from .serializers import (
     CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
     QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
     QuizAttemptSerializer, CertificateSerializer, SubmissionSerializer,
-    SchoolSerializer, SchoolWithCoursesSerializer,
+    SchoolSerializer, SchoolWithCoursesSerializer, localized_text,
 )
 
 User = get_user_model()
@@ -160,12 +160,18 @@ def _course_for_edit(user, pk, tenant=None):
     return course
 
 
-def _author_context(user, course):
-    """Contexto para serializar: incluye la clave de respuestas y el nivel de
-    acceso a Academy (gating freemium) — autor/admin nunca ven bloqueado."""
+def _author_context(request, course):
+    """Contexto para serializar: incluye la clave de respuestas, el nivel de
+    acceso a Academy (gating freemium — autor/admin nunca ven bloqueado) y el
+    idioma resuelto por LocaleMiddleware."""
+    user = request.user
     puede_editar = can_edit_course(user, course)
     nivel = access_service.NIVEL_PRO if puede_editar else access_service.nivel_academia_de(user)
-    return {'include_answers': puede_editar, 'nivel_academia': nivel}
+    return {
+        'include_answers': puede_editar,
+        'nivel_academia': nivel,
+        'locale': getattr(request, 'locale', 'es'),
+    }
 
 
 # ─── Config pública del tenant (sin auth) ─────────────────────────────────────
@@ -436,7 +442,7 @@ def course_detail(request, pk):
     tenant = getattr(request, 'tenant', None)
     if request.method == 'GET':
         course = _course_for_read(request.user, pk, tenant)
-        return Response(CourseDetailSerializer(course, context=_author_context(request.user, course)).data)
+        return Response(CourseDetailSerializer(course, context=_author_context(request, course)).data)
 
     course = _course_for_edit(request.user, pk, tenant)
     if request.method == 'DELETE':
@@ -447,7 +453,7 @@ def course_detail(request, pk):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
-    return Response(CourseDetailSerializer(course, context=_author_context(request.user, course)).data)
+    return Response(CourseDetailSerializer(course, context=_author_context(request, course)).data)
 
 
 # ─── Módulos ──────────────────────────────────────────────────────────────────
@@ -467,7 +473,7 @@ def course_modules(request, pk):
 
     course = _course_for_read(request.user, pk, tenant)
     return Response(ModuleSerializer(course.modulos.all(), many=True,
-                                     context=_author_context(request.user, course)).data)
+                                     context=_author_context(request, course)).data)
 
 
 @api_view(['PUT', 'PATCH', 'DELETE'])
@@ -505,21 +511,27 @@ def module_lessons(request, pk, module_id):
     course = _course_for_read(request.user, pk, tenant)
     module = get_object_or_404(Module, pk=module_id, course=course)
     return Response(LessonSerializer(module.lecciones.all(), many=True,
-                                     context=_author_context(request.user, course)).data)
+                                     context=_author_context(request, course)).data)
 
 
-def _bloqueo_academy_pro(user, course, lesson):
+def _bloqueo_academy_pro(request, course, lesson):
     """403 si `lesson` requiere Academy Pro y el usuario no tiene acceso
     (defensa en profundidad: aunque el árbol ya sirve la lección bloqueada sin
     contenido, esto evita leerla/completarla llamando al endpoint directo por
     id). Autor/admin del curso nunca están bloqueados. None si puede continuar."""
+    user = request.user
     if can_edit_course(user, course):
         return None
     nivel = access_service.nivel_academia_de(user)
     if access_service.puede_ver_leccion(nivel, lesson):
         return None
+    context = {'locale': getattr(request, 'locale', 'es')}
     return Response(
-        {'detail': 'requiere_academy_pro', 'modulo': lesson.module.titulo, 'curso': course.titulo},
+        {
+            'detail': 'requiere_academy_pro',
+            'modulo': localized_text(lesson.module, 'titulo', context),
+            'curso': localized_text(course, 'titulo', context),
+        },
         status=status.HTTP_403_FORBIDDEN,
     )
 
@@ -533,10 +545,10 @@ def lesson_detail(request, pk, module_id, lesson_id):
         course = _course_for_read(request.user, pk, tenant)
         module = get_object_or_404(Module, pk=module_id, course=course)
         lesson = get_object_or_404(Lesson, pk=lesson_id, module=module)
-        bloqueo = _bloqueo_academy_pro(request.user, course, lesson)
+        bloqueo = _bloqueo_academy_pro(request, course, lesson)
         if bloqueo:
             return bloqueo
-        return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
+        return Response(LessonSerializer(lesson, context=_author_context(request, course)).data)
 
     course = _course_for_edit(request.user, pk, tenant)
     module = get_object_or_404(Module, pk=module_id, course=course)
@@ -548,7 +560,7 @@ def lesson_detail(request, pk, module_id, lesson_id):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
-    return Response(LessonSerializer(lesson, context=_author_context(request.user, course)).data)
+    return Response(LessonSerializer(lesson, context=_author_context(request, course)).data)
 
 
 # ─── Quiz y preguntas ─────────────────────────────────────────────────────────
@@ -569,13 +581,13 @@ def lesson_quiz(request, lesson_id):
         # Lectura: visible si el curso es legible para el usuario.
         if not (course.publicado or can_edit_course(request.user, course)):
             raise Http404
-        bloqueo = _bloqueo_academy_pro(request.user, course, lesson)
+        bloqueo = _bloqueo_academy_pro(request, course, lesson)
         if bloqueo:
             return bloqueo
         quiz = getattr(lesson, 'quiz', None)
         if not quiz:
             return Response({'detail': 'Esta lección no tiene quiz.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(QuizSerializer(quiz, context=_author_context(request.user, course)).data)
+        return Response(QuizSerializer(quiz, context=_author_context(request, course)).data)
 
     # PUT (autor): upsert.
     if not can_edit_course(request.user, course):
@@ -608,7 +620,7 @@ def quiz_questions(request, quiz_id):
     if not (course.publicado or can_edit_course(request.user, course)):
         raise Http404
     return Response(QuestionSerializer(quiz.preguntas.all(), many=True,
-                                       context=_author_context(request.user, course)).data)
+                                       context=_author_context(request, course)).data)
 
 
 @api_view(['PUT', 'PATCH', 'DELETE'])
@@ -643,7 +655,7 @@ def course_enroll(request, pk):
     enrollment, _created = Enrollment.objects.get_or_create(student=request.user, course=course)
     grading.recompute_progress(enrollment)
     return Response(
-        EnrollmentSerializer(enrollment).data,
+        EnrollmentSerializer(enrollment, context={'locale': getattr(request, 'locale', 'es')}).data,
         status=status.HTTP_201_CREATED if _created else status.HTTP_200_OK,
     )
 
@@ -654,7 +666,8 @@ def course_enrollments(request, pk):
     """Inscritos de un curso (solo autor/admin): quién está y su progreso."""
     course = _course_for_edit(request.user, pk, getattr(request, 'tenant', None))
     qs = course.enrollments.select_related('student').all()
-    return Response(EnrollmentSerializer(qs, many=True).data)
+    context = {'locale': getattr(request, 'locale', 'es')}
+    return Response(EnrollmentSerializer(qs, many=True, context=context).data)
 
 
 # ─── Aprendizaje (matrículas del estudiante) ──────────────────────────────────
@@ -672,7 +685,8 @@ def _my_enrollment_or_404(user, enrollment_id):
 def my_enrollments(request):
     """Mis matrículas (mis cursos en curso / completados)."""
     qs = Enrollment.objects.filter(student=request.user).select_related('course')
-    return Response(EnrollmentSerializer(qs, many=True).data)
+    context = {'locale': getattr(request, 'locale', 'es')}
+    return Response(EnrollmentSerializer(qs, many=True, context=context).data)
 
 
 @api_view(['GET'])
@@ -680,7 +694,7 @@ def my_enrollments(request):
 def enrollment_detail(request, enrollment_id):
     """Matrícula con el árbol del curso, lecciones completadas e intentos."""
     enrollment = _my_enrollment_or_404(request.user, enrollment_id)
-    context = _author_context(request.user, enrollment.course)
+    context = _author_context(request, enrollment.course)
     return Response(EnrollmentDetailSerializer(enrollment, context=context).data)
 
 
@@ -693,7 +707,7 @@ def lesson_complete(request, enrollment_id, lesson_id):
     la entrega (submission_review)."""
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
     lesson = get_object_or_404(Lesson, pk=lesson_id, module__course=enrollment.course)
-    bloqueo = _bloqueo_academy_pro(request.user, enrollment.course, lesson)
+    bloqueo = _bloqueo_academy_pro(request, enrollment.course, lesson)
     if bloqueo:
         return bloqueo
     if lesson.tipo == 'entregable':
@@ -725,7 +739,7 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     Body: `{respuestas: {question_id: [opcion_ids]}}`."""
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id, student=request.user)
     quiz = get_object_or_404(Quiz, pk=quiz_id, lesson__module__course=enrollment.course)
-    bloqueo = _bloqueo_academy_pro(request.user, enrollment.course, quiz.lesson)
+    bloqueo = _bloqueo_academy_pro(request, enrollment.course, quiz.lesson)
     if bloqueo:
         return bloqueo
 
@@ -1086,7 +1100,7 @@ def enrollment_certificate(request, enrollment_id):
     if not cert:
         return Response({'detail': 'Aún no hay certificado para esta matrícula.'},
                         status=status.HTTP_404_NOT_FOUND)
-    return Response(CertificateSerializer(cert).data)
+    return Response(CertificateSerializer(cert, context={'locale': getattr(request, 'locale', 'es')}).data)
 
 
 @api_view(['GET'])
@@ -1094,4 +1108,4 @@ def enrollment_certificate(request, enrollment_id):
 def certificate_verify(request, codigo):
     """Verifica un certificado por su código: devuelve curso + estudiante + fecha."""
     cert = get_object_or_404(Certificate, codigo=codigo.upper())
-    return Response(CertificateSerializer(cert).data)
+    return Response(CertificateSerializer(cert, context={'locale': getattr(request, 'locale', 'es')}).data)

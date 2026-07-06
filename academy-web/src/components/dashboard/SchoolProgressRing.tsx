@@ -3,6 +3,7 @@
 // con stroke-dasharray, sin librería de gráficos ni animación.
 
 import { Icon, type IconName } from '@/components/Icon'
+import { useT } from '@/locale/useT'
 
 export function SchoolProgressRing({
   value,
@@ -15,6 +16,7 @@ export function SchoolProgressRing({
   icon: IconName
   size?: number
 }) {
+  const t = useT()
   const pct = Math.round(Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0)))
   const stroke = 6
   const radius = (size - stroke) / 2
@@ -29,7 +31,7 @@ export function SchoolProgressRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
         role="img"
-        aria-label={`Progreso general: ${pct}%`}
+        aria-label={t('schoolProgressRing.ariaLabel', { pct })}
       >
         <circle
           cx={size / 2}

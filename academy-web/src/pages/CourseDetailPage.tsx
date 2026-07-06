@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { Icon, type IconName } from '@/components/Icon'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
+import { useT } from '@/locale/useT'
 import type { CourseDetail, Enrollment, Lesson } from '@/types'
 
 const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
@@ -24,17 +25,9 @@ const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
   practica: 'pitch',
   entregable: 'upload',
 }
-const LESSON_LABEL: Record<Lesson['tipo'], string> = {
-  video: 'Video',
-  texto: 'Lectura',
-  audio: 'Audio',
-  quiz: 'Evaluación',
-  en_vivo: 'Sesión en vivo',
-  practica: 'Práctica presencial',
-  entregable: 'Entregable',
-}
 
 export function CourseDetailPage() {
+  const t = useT()
   const { courseId } = useParams()
   const navigate = useNavigate()
   const id = Number(courseId)
@@ -90,11 +83,11 @@ export function CourseDetailPage() {
     return (
       <EmptyState
         icon="catalog"
-        title="Curso no disponible"
-        description="No pudimos cargar este curso."
+        title={t('courseDetail.courseNotAvailable')}
+        description={t('courseDetail.couldNotLoad')}
         action={
           <Link to="/catalogo" className="text-sm font-medium text-accent hover:text-accent-dark">
-            ← Volver al catálogo
+            {t('courseDetail.backToCatalog')}
           </Link>
         }
       />
@@ -107,7 +100,7 @@ export function CourseDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <Link to="/catalogo" className="inline-flex items-center gap-1.5 py-2 text-sm font-medium text-ink-soft hover:text-accent">
-        <Icon name="chevronLeft" size={16} /> Catálogo
+        <Icon name="chevronLeft" size={16} /> {t('courseDetail.catalog')}
       </Link>
 
       {/* Hero (color propio de la escuela) */}
@@ -124,27 +117,27 @@ export function CourseDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{course.titulo}</h1>
           {course.resumen && <p className="mt-2 text-[15px] text-white/70">{course.resumen}</p>}
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60">
-            <span>Por {course.instructor_nombre || 'Instructor'}</span>
+            <span>{t('courseDetail.byInstructor', { instructor: course.instructor_nombre || t('courseDetail.instructorFallback') })}</span>
             <span className="inline-flex items-center gap-1.5">
-              <Icon name="layers" size={15} /> {course.modulos.length} módulos
+              <Icon name="layers" size={15} /> {t('courseDetail.modules', { count: course.modulos.length })}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Icon name="doc" size={15} /> {totalLecciones} lecciones
+              <Icon name="doc" size={15} /> {t('courseDetail.lessons', { count: totalLecciones })}
             </span>
             {course.duracion_estimada_min > 0 && (
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="clock" size={15} /> {course.duracion_estimada_min} min
+                <Icon name="clock" size={15} /> {t('courseDetail.minutes', { count: course.duracion_estimada_min })}
               </span>
             )}
             {course.carga_horaria_h > 0 && (
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="clock" size={15} /> {course.carga_horaria_h} horas
+                <Icon name="clock" size={15} /> {t('courseDetail.hours', { count: course.carga_horaria_h })}
               </span>
             )}
           </div>
           {course.acredita_renovacion && (
             <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/80">
-              <Icon name="check" size={14} /> Acredita horas de actualización para renovar la licencia
+              <Icon name="check" size={14} /> {t('courseDetail.accreditsRenewal')}
             </p>
           )}
         </div>
@@ -155,7 +148,7 @@ export function CourseDetailPage() {
         <div className="flex flex-col gap-6">
           {course.descripcion && (
             <section className="za-card p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Sobre el curso</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t('courseDetail.aboutCourse')}</h2>
               <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
                 {course.descripcion}
               </p>
@@ -166,11 +159,10 @@ export function CourseDetailPage() {
           {course.insignias.length > 0 && (
             <section className="za-card p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
-                Check-list de competencias
+                {t('courseDetail.competencyChecklist')}
               </h2>
               <p className="mt-2 text-sm text-ink-soft">
-                Este programa se evalúa por hitos: cada entrega aprobada por tu instructor
-                desbloquea una insignia, y la evaluación final emite tu Certificado Digital.
+                {t('courseDetail.competencyChecklistBody')}
               </p>
               <ol className="mt-4 flex flex-col gap-3">
                 {[...course.insignias]
@@ -180,7 +172,7 @@ export function CourseDetailPage() {
                       <span aria-hidden className="text-xl leading-none">{b.icono || '🏅'}</span>
                       <span>
                         <span className="block text-sm font-semibold text-ink">
-                          Hito {i + 1} · {b.nombre}
+                          {t('courseDetail.milestone', { n: i + 1, name: b.nombre })}
                         </span>
                         {b.descripcion && (
                           <span className="block text-sm text-ink-soft">{b.descripcion}</span>
@@ -192,10 +184,10 @@ export function CourseDetailPage() {
                   <span aria-hidden className="text-xl leading-none">🎓</span>
                   <span>
                     <span className="block text-sm font-semibold text-ink">
-                      Hito final · Certificado Digital
+                      {t('courseDetail.finalMilestone')}
                     </span>
                     <span className="block text-sm text-ink-soft">
-                      Completa todas las lecciones y aprueba las evaluaciones para emitirlo.
+                      {t('courseDetail.finalMilestoneBody')}
                     </span>
                   </span>
                 </li>
@@ -204,10 +196,10 @@ export function CourseDetailPage() {
           )}
 
           <section className="za-card p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Contenido</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t('courseDetail.content')}</h2>
             <div className="mt-4 flex flex-col gap-3">
               {course.modulos.length === 0 && (
-                <p className="text-sm text-ink-muted">Este curso aún no tiene módulos.</p>
+                <p className="text-sm text-ink-muted">{t('courseDetail.noModulesYet')}</p>
               )}
               {course.modulos.map((m, i) => (
                 <ModuleBlock
@@ -234,7 +226,7 @@ export function CourseDetailPage() {
               {course.portada ? (
                 <img
                   src={course.portada}
-                  alt={`Portada de ${course.titulo}`}
+                  alt={t('courseDetail.coverAlt', { title: course.titulo })}
                   loading="lazy"
                   className="h-full w-full object-cover"
                 />
@@ -248,46 +240,46 @@ export function CourseDetailPage() {
               {enrollment ? (
                 <>
                   <Badge tone={enrollment.estado === 'completada' ? 'ok' : 'accent'}>
-                    {enrollment.estado === 'completada' ? 'Completado' : 'Inscrito'}
+                    {enrollment.estado === 'completada' ? t('courseDetail.completed') : t('courseDetail.enrolled')}
                   </Badge>
                   <div className="mt-4">
-                    <ProgressBar value={enrollment.progreso} label={`Progreso de ${course.titulo}`} />
+                    <ProgressBar value={enrollment.progreso} label={t('courseDetail.progressOfCourse', { course: course.titulo })} />
                   </div>
                   <button
                     onClick={() => navigate(`/aprender/${enrollment.id}`)}
                     className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
                   >
-                    Continuar aprendiendo <Icon name="arrowRight" size={16} />
+                    {t('courseDetail.continueLearning')} <Icon name="arrowRight" size={16} />
                   </button>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-ink-soft">
-                    Inscríbete gratis y empieza a aprender a tu ritmo.
+                    {t('courseDetail.enrollPitch')}
                   </p>
                   <button
                     onClick={handleEnroll}
                     disabled={enrolling}
                     className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
                   >
-                    {enrolling ? 'Inscribiendo…' : 'Inscribirme'}
+                    {enrolling ? t('courseDetail.enrolling') : t('courseDetail.enrollCta')}
                   </button>
                   {enrollError && (
                     <p role="alert" className="mt-2 text-xs text-danger">
-                      No se pudo completar la inscripción. Inténtalo de nuevo.
+                      {t('courseDetail.enrollError')}
                     </p>
                   )}
                 </>
               )}
               <ul className="mt-5 flex flex-col gap-2.5 text-sm text-ink-soft">
                 <li className="flex items-center gap-2">
-                  <Icon name="check" size={16} className="text-ok" /> Acceso completo al contenido
+                  <Icon name="check" size={16} className="text-ok" /> {t('courseDetail.perkFullAccess')}
                 </li>
                 <li className="flex items-center gap-2">
-                  <Icon name="check" size={16} className="text-ok" /> Evaluaciones con calificación
+                  <Icon name="check" size={16} className="text-ok" /> {t('courseDetail.perkGradedAssessments')}
                 </li>
                 <li className="flex items-center gap-2">
-                  <Icon name="check" size={16} className="text-ok" /> Certificado al completar
+                  <Icon name="check" size={16} className="text-ok" /> {t('courseDetail.perkCertificate')}
                 </li>
               </ul>
             </div>
@@ -322,6 +314,7 @@ function ModuleBlock({
   onLockedLessonClick: () => void
 }) {
   const [open, setOpen] = useState(index === 1)
+  const t = useT()
   return (
     <div className="overflow-hidden rounded-xl border border-surface-border">
       <button
@@ -339,7 +332,7 @@ function ModuleBlock({
             <span className="block text-sm font-semibold text-ink">{titulo}</span>
             {!esGratuito && <Badge tone="brand">PRO</Badge>}
           </span>
-          <span className="block text-xs text-ink-muted">{lecciones.length} lecciones</span>
+          <span className="block text-xs text-ink-muted">{t('courseDetail.lessons', { count: lecciones.length })}</span>
         </span>
         <Icon name="chevronDown" size={18} className={`text-ink-muted transition-transform ${open ? '' : '-rotate-90'}`} />
       </button>
@@ -358,11 +351,11 @@ function ModuleBlock({
                 className={`shrink-0 ${l.bloqueado ? 'text-ink-muted' : 'text-accent'}`}
               />
               <span className={`flex-1 text-sm ${l.bloqueado ? 'text-ink-muted' : 'text-ink'}`}>{l.titulo}</span>
-              <span className="text-xs text-ink-muted">{LESSON_LABEL[l.tipo]}</span>
-              {l.duracion_min > 0 && <span className="text-xs text-ink-muted">{l.duracion_min} min</span>}
+              <span className="text-xs text-ink-muted">{t(`lessonType.${l.tipo}`)}</span>
+              {l.duracion_min > 0 && <span className="text-xs text-ink-muted">{t('courseDetail.minutes', { count: l.duracion_min })}</span>}
             </div>
           ))}
-          {lecciones.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">Sin lecciones aún.</p>}
+          {lecciones.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">{t('courseDetail.noLessonsYet')}</p>}
         </div>
       )}
     </div>

@@ -5,11 +5,12 @@
 import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { Badge } from './Badge'
-import { NIVEL_LABEL } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
+import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
 
 export function CourseCard({ course, to }: { course: Course; to: string }) {
+  const t = useT()
   const hasPortada = Boolean(course.portada)
   const theme = schoolTheme(course.escuela_slug)
   return (
@@ -22,7 +23,7 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
         {hasPortada ? (
           <img
             src={course.portada}
-            alt={`Portada del curso ${course.titulo}`}
+            alt={t('courseCard.coverAlt', { title: course.titulo })}
             loading="lazy"
             className="h-full w-full object-cover"
           />
@@ -46,7 +47,7 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
         )}
         {!course.publicado && (
           <span className="absolute right-3 top-3 rounded-full bg-warn px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
-            Borrador
+            {t('courseCard.draft')}
           </span>
         )}
       </div>
@@ -55,7 +56,7 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
       <div className="p-4">
         <div className="flex flex-wrap items-center gap-2">
           {course.categoria && <Badge tone="accent">{course.categoria}</Badge>}
-          <Badge tone="neutral">{NIVEL_LABEL[course.nivel] ?? course.nivel}</Badge>
+          <Badge tone="neutral">{t(`level.${course.nivel}`)}</Badge>
         </div>
 
         <h3 className="mt-3 line-clamp-2 text-[15px] font-semibold leading-snug text-ink transition-colors group-hover:text-accent">
@@ -63,24 +64,26 @@ export function CourseCard({ course, to }: { course: Course; to: string }) {
         </h3>
         {course.resumen && <p className="mt-1.5 line-clamp-2 text-sm text-ink-soft">{course.resumen}</p>}
 
-        <p className="mt-3 text-xs text-ink-muted">Por {course.instructor_nombre || 'Instructor'}</p>
+        <p className="mt-3 text-xs text-ink-muted">
+          {t('courseCard.byInstructor', { instructor: course.instructor_nombre || t('courseCard.instructorFallback') })}
+        </p>
 
         {/* Stats */}
         <div className="mt-3 flex items-center gap-4 border-t border-surface-border pt-3 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-1">
-            <Icon name="layers" size={14} /> {course.total_modulos} mód.
+            <Icon name="layers" size={14} /> {t('courseCard.modulesAbbr', { count: course.total_modulos })}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Icon name="doc" size={14} /> {course.total_lecciones} lec.
+            <Icon name="doc" size={14} /> {t('courseCard.lessonsAbbr', { count: course.total_lecciones })}
           </span>
           {course.carga_horaria_h > 0 ? (
             <span className="inline-flex items-center gap-1">
-              <Icon name="clock" size={14} /> {course.carga_horaria_h} h
+              <Icon name="clock" size={14} /> {t('courseCard.hoursAbbr', { count: course.carga_horaria_h })}
             </span>
           ) : (
             course.duracion_estimada_min > 0 && (
               <span className="inline-flex items-center gap-1">
-                <Icon name="clock" size={14} /> {course.duracion_estimada_min} min
+                <Icon name="clock" size={14} /> {t('courseCard.minutesAbbr', { count: course.duracion_estimada_min })}
               </span>
             )
           )}

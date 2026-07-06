@@ -215,6 +215,11 @@ class School(models.Model):
     nombre = models.CharField(max_length=160)
     slug = models.SlugField(max_length=90, unique=True)
     descripcion = models.TextField(blank=True)
+    # Traducción al inglés (generada por academy.translation_service / el comando
+    # translate_academy_info). Vacío = sin traducir aún; el serializer cae al
+    # español en ese caso, nunca muestra un campo en blanco.
+    nombre_en = models.CharField(max_length=160, blank=True, default='')
+    descripcion_en = models.TextField(blank=True, default='')
     orden = models.PositiveIntegerField(default=0, help_text='Orden de aparición en el catálogo.')
     tenant = models.ForeignKey(
         Tenant, on_delete=models.SET_NULL, null=True, blank=True,
@@ -261,6 +266,10 @@ class Course(models.Model):
     slug = models.SlugField(max_length=90, unique=True)
     resumen = models.CharField(max_length=300, blank=True, help_text='Una línea de gancho.')
     descripcion = models.TextField(blank=True)
+    # Traducción al inglés (ver nota en School.nombre_en más arriba).
+    titulo_en = models.CharField(max_length=180, blank=True, default='')
+    resumen_en = models.CharField(max_length=300, blank=True, default='')
+    descripcion_en = models.TextField(blank=True, default='')
     categoria = models.CharField(
         max_length=80, blank=True,
         help_text='Temática del curso (entrenamiento, nutrición, salud, movilidad…).',
@@ -317,6 +326,9 @@ class Module(models.Model):
     orden = models.PositiveIntegerField(default=0)
     titulo = models.CharField(max_length=160)
     descripcion = models.TextField(blank=True)
+    # Traducción al inglés (ver nota en School.nombre_en).
+    titulo_en = models.CharField(max_length=160, blank=True, default='')
+    descripcion_en = models.TextField(blank=True, default='')
     # Freemium: módulos con es_gratuito=True son consumibles por cualquier
     # estudiante (tier starter). El resto exige AcademySubscription activa.
     # Ver academy.access_service para el único punto de verdad del gating.

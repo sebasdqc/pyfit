@@ -82,6 +82,8 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     # Resuelve el tenant de Academy por Host header → request.tenant.
     'academy.middleware.TenantMiddleware',
+    # Resuelve el idioma de Academy (header X-Locale) → request.locale.
+    'academy.middleware.LocaleMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

@@ -14,9 +14,12 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { Emblem, BrandLockup } from '@/components/Emblem'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
 
 export function ExploreCatalogPage() {
+  const t = useT()
   const redirecting = useRedirectIfAuthenticated('/catalogo')
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,12 +51,15 @@ export function ExploreCatalogPage() {
     <div className="min-h-[100dvh] bg-surface-soft">
       <header className="flex items-center justify-between border-b border-surface-border bg-white px-6 py-4 sm:px-10">
         <BrandLockup size={28} />
-        <Link
-          to="/login"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
-        >
-          Iniciar sesión
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/login"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
+          >
+            {t('explore.login')}
+          </Link>
+          <LocaleToggle />
+        </div>
       </header>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8 sm:px-10">
@@ -63,14 +69,13 @@ export function ExploreCatalogPage() {
           </div>
           <div className="relative z-10 max-w-2xl">
             <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">
-              Explora sin cuenta
+              {t('explore.eyebrow')}
             </p>
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Aprende gratis, sin registrarte todavía
+              {t('explore.title')}
             </h1>
             <p className="mt-2 text-sm text-white/65">
-              Navega el catálogo completo y consume el contenido gratis de cada escuela.
-              Cuando quieras más, crea tu cuenta y seguimos justo donde quedaste.
+              {t('explore.body')}
             </p>
           </div>
         </section>
@@ -80,9 +85,9 @@ export function ExploreCatalogPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar cursos…"
+            placeholder={t('explore.searchPlaceholder')}
             type="search"
-            aria-label="Buscar cursos"
+            aria-label={t('explore.searchAria')}
             className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
@@ -94,15 +99,15 @@ export function ExploreCatalogPage() {
         ) : error ? (
           <EmptyState
             icon="catalog"
-            title="No se pudo cargar el catálogo"
-            description="Revisa tu conexión e inténtalo de nuevo."
+            title={t('explore.loadError')}
+            description={t('explore.loadErrorBody')}
           />
         ) : visible.length === 0 ? (
           <EmptyState
             icon="catalog"
-            title={q.trim() ? 'Sin resultados' : 'Sin cursos por ahora'}
+            title={q.trim() ? t('explore.noResults') : t('explore.noCoursesYet')}
             description={
-              q.trim() ? `No encontramos cursos que coincidan con "${q.trim()}".` : 'Vuelve pronto.'
+              q.trim() ? t('explore.noResultsBody', { term: q.trim() }) : t('explore.comeBackSoon')
             }
           />
         ) : (

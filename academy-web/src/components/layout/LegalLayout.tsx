@@ -5,6 +5,8 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { BrandLockup } from '@/components/Emblem'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 
 export function LegalLayout({
   title,
@@ -15,22 +17,26 @@ export function LegalLayout({
   lastUpdated: string
   children: ReactNode
 }) {
+  const t = useT()
   return (
     <div className="min-h-[100dvh] bg-white">
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-surface-border bg-white/90 px-6 py-4 backdrop-blur sm:px-10">
         <Link to="/">
           <BrandLockup size={30} />
         </Link>
-        <Link to="/" className="text-sm font-medium text-ink-soft transition-colors hover:text-accent">
-          Volver al inicio
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="text-sm font-medium text-ink-soft transition-colors hover:text-accent">
+            {t('legal.backHome')}
+          </Link>
+          <LocaleToggle />
+        </div>
       </header>
 
       <div className="mx-auto max-w-[680px] px-6 py-14 sm:px-10">
-        <p className="za-eyebrow">Legal</p>
+        <p className="za-eyebrow">{t('legal.eyebrow')}</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h1>
         <p className="mt-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
-          Última actualización: {lastUpdated}
+          {t('legal.lastUpdated', { date: lastUpdated })}
         </p>
         <div className="mt-10 flex flex-col gap-8">{children}</div>
       </div>

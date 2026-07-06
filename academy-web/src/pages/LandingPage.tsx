@@ -11,32 +11,19 @@ import { Icon, type IconName } from '@/components/Icon'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
 
-const FEATURES: { icon: IconName; title: string; body: string }[] = [
-  {
-    icon: 'certificate',
-    title: 'Certificados verificables',
-    body: 'Al completar un curso obtienes un certificado con código único que cualquiera puede verificar.',
-  },
-  {
-    icon: 'quiz',
-    title: 'Evaluaciones calificadas',
-    body: 'Quizzes corregidos en el servidor con feedback pregunta por pregunta y reintentos.',
-  },
-  {
-    icon: 'flame',
-    title: 'Racha de estudio',
-    body: 'Un sistema de rachas e insignias que premia la constancia, no solo terminar un curso.',
-  },
-  {
-    icon: 'users',
-    title: 'Comunidad',
-    body: 'Preguntas y respuestas entre alumnos, moderadas automáticamente para mantener la calidad.',
-  },
+const FEATURES: { icon: IconName; titleKey: string; bodyKey: string }[] = [
+  { icon: 'certificate', titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
+  { icon: 'quiz', titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
+  { icon: 'flame', titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
+  { icon: 'users', titleKey: 'landing.feature4Title', bodyKey: 'landing.feature4Body' },
 ]
 
 export function LandingPage() {
+  const t = useT()
   const redirecting = useRedirectIfAuthenticated('/inicio')
   const [courses, setCourses] = useState<Course[]>([])
   const [loadingCourses, setLoadingCourses] = useState(true)
@@ -64,20 +51,21 @@ export function LandingPage() {
             to="/explorar"
             className="hidden rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent sm:inline-block"
           >
-            Explorar cursos
+            {t('landing.exploreCourses')}
           </Link>
           <Link
             to="/login"
             className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
           >
-            Iniciar sesión
+            {t('landing.login')}
           </Link>
           <Link
             to="/registro"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
           >
-            Crear cuenta
+            {t('landing.createAccount')}
           </Link>
+          <LocaleToggle />
         </nav>
       </header>
 
@@ -88,36 +76,35 @@ export function LandingPage() {
         </div>
         <div className="relative z-10 mx-auto max-w-3xl text-center">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Academia digital · Ciencia en movimiento
+            {t('landing.eyebrow')}
           </p>
           <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl">
-            Formación de élite,
+            {t('landing.heroTitleLine1')}
             <br />
-            al alcance de todos.
+            {t('landing.heroTitleLine2')}
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-            Cursos, evaluaciones y certificaciones con base científica real para llevar tu
-            conocimiento del entrenamiento al siguiente nivel.
+            {t('landing.heroBody')}
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               to="/registro"
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-brand transition-colors hover:bg-white/90 sm:w-auto"
             >
-              Crear cuenta gratis
+              {t('landing.createAccountFree')}
               <Icon name="arrowRight" size={17} />
             </Link>
             <Link
               to="/explorar"
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/25 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
             >
-              Explorar catálogo sin cuenta
+              {t('landing.exploreNoAccount')}
             </Link>
           </div>
           <p className="mt-6 text-sm text-white/55">
-            ¿Ya tienes cuenta?{' '}
+            {t('landing.alreadyHaveAccount')}{' '}
             <Link to="/login" className="font-medium text-white underline underline-offset-2 hover:text-white/80">
-              Inicia sesión
+              {t('landing.loginCta')}
             </Link>
           </p>
         </div>
@@ -127,12 +114,12 @@ export function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 py-16 sm:px-10">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
-            <div key={f.title} className="za-card p-5">
+            <div key={f.titleKey} className="za-card p-5">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
                 <Icon name={f.icon} size={20} />
               </span>
-              <h3 className="mt-4 text-[15px] font-semibold text-ink">{f.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{f.body}</p>
+              <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
             </div>
           ))}
         </div>
@@ -143,14 +130,14 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="za-eyebrow">Catálogo</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Cursos destacados</h2>
+              <p className="za-eyebrow">{t('landing.catalogEyebrow')}</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.featuredCourses')}</h2>
             </div>
             <Link
               to="/explorar"
               className="hidden shrink-0 items-center gap-1 text-sm font-medium text-accent hover:text-accent-dark sm:inline-flex"
             >
-              Ver todo el catálogo
+              {t('landing.seeFullCatalog')}
               <Icon name="chevronRight" size={16} />
             </Link>
           </div>
@@ -160,7 +147,7 @@ export function LandingPage() {
               <Spinner size={32} />
             </div>
           ) : courses.length === 0 ? (
-            <p className="mt-8 text-sm text-ink-soft">Muy pronto vas a encontrar cursos aquí.</p>
+            <p className="mt-8 text-sm text-ink-soft">{t('landing.comingSoon')}</p>
           ) : (
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courses.map((c) => (
@@ -173,7 +160,7 @@ export function LandingPage() {
             to="/explorar"
             className="mt-8 flex items-center justify-center gap-1 text-sm font-medium text-accent hover:text-accent-dark sm:hidden"
           >
-            Ver todo el catálogo
+            {t('landing.seeFullCatalog')}
             <Icon name="chevronRight" size={16} />
           </Link>
         </div>
@@ -181,15 +168,15 @@ export function LandingPage() {
 
       {/* CTA final */}
       <section className="px-6 py-16 text-center sm:px-10">
-        <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">¿Listo para empezar?</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.readyTitle')}</h2>
         <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
-          Crea tu cuenta gratis y arranca hoy mismo con el primer módulo de cada escuela.
+          {t('landing.readyBody')}
         </p>
         <Link
           to="/registro"
           className="mx-auto mt-7 flex h-12 w-fit items-center justify-center gap-2 rounded-xl bg-accent px-7 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
         >
-          Crear cuenta gratis
+          {t('landing.createAccountFree')}
           <Icon name="arrowRight" size={17} />
         </Link>
       </section>
@@ -200,13 +187,13 @@ export function LandingPage() {
           <BrandLockup size={24} />
           <nav className="flex items-center gap-5">
             <Link to="/terminos" className="text-xs font-medium text-ink-soft hover:text-accent">
-              Términos de Servicio
+              {t('landing.termsOfService')}
             </Link>
             <Link to="/privacidad" className="text-xs font-medium text-ink-soft hover:text-accent">
-              Política de Privacidad
+              {t('landing.privacyPolicy')}
             </Link>
           </nav>
-          <p className="text-xs text-ink-muted">© {new Date().getFullYear()} Zyfit Academy</p>
+          <p className="text-xs text-ink-muted">{t('landing.copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>
     </div>

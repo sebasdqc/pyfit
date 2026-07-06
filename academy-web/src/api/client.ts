@@ -9,6 +9,7 @@ import axios, {
 } from 'axios'
 import { API_URL, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TENANT_SLUG } from '@/lib/constants'
 import { ensureAnonSessionId } from '@/lib/anonSession'
+import { STORAGE_KEY as LOCALE_STORAGE_KEY } from '@/locale/LocaleContext'
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -59,6 +60,16 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   // Mismo header que la app móvil (workouts): el servidor lo valida (±1 día) y
   // resuelve el "día" del streak de estudio en la zona horaria del alumno.
   config.headers['X-Local-Date'] = localDateISO()
+  // Idioma elegido por el usuario (LocaleContext, ver locale/LocaleContext.tsx):
+  // se lee directo de localStorage porque un interceptor de axios corre fuera
+  // del árbol de React. El backend (academy.middleware.LocaleMiddleware) lo usa
+  // para devolver título/resumen/descripción de curso/módulo/escuela en inglés.
+  try {
+    const locale = localStorage.getItem(LOCALE_STORAGE_KEY)
+    if (locale) config.headers['X-Locale'] = locale
+  } catch {
+    // Sin localStorage: se sirve en español (default del backend).
+  }
   return config
 })
 

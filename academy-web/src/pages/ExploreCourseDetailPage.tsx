@@ -16,8 +16,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { RegisterPromptDialog } from '@/components/academy/RegisterPromptDialog'
 import { Icon, type IconName } from '@/components/Icon'
-import { NIVEL_LABEL } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
+import { useT } from '@/locale/useT'
 import type { CourseDetail, Lesson } from '@/types'
 
 const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
@@ -29,17 +29,9 @@ const LESSON_ICON: Record<Lesson['tipo'], IconName> = {
   practica: 'pitch',
   entregable: 'upload',
 }
-const LESSON_LABEL: Record<Lesson['tipo'], string> = {
-  video: 'Video',
-  texto: 'Lectura',
-  audio: 'Audio',
-  quiz: 'Evaluación',
-  en_vivo: 'Sesión en vivo',
-  practica: 'Práctica presencial',
-  entregable: 'Entregable',
-}
 
 export function ExploreCourseDetailPage() {
+  const t = useT()
   const { courseId } = useParams()
   const id = Number(courseId)
   const redirecting = useRedirectIfAuthenticated(`/cursos/${id}`)
@@ -83,11 +75,11 @@ export function ExploreCourseDetailPage() {
     return (
       <EmptyState
         icon="catalog"
-        title="Curso no disponible"
-        description="No pudimos cargar este curso."
+        title={t('exploreCourseDetail.courseNotAvailable')}
+        description={t('exploreCourseDetail.couldNotLoad')}
         action={
           <Link to="/explorar" className="text-sm font-medium text-accent hover:text-accent-dark">
-            ← Volver al catálogo
+            {t('exploreCourseDetail.backToCatalog')}
           </Link>
         }
       />
@@ -104,7 +96,7 @@ export function ExploreCourseDetailPage() {
           to="/explorar"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent"
         >
-          <Icon name="chevronLeft" size={16} /> Catálogo
+          <Icon name="chevronLeft" size={16} /> {t('exploreCourseDetail.catalog')}
         </Link>
 
         <section
@@ -121,35 +113,34 @@ export function ExploreCourseDetailPage() {
               </p>
             )}
             <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
-              {NIVEL_LABEL[course.nivel] ?? course.nivel}
+              {t(`level.${course.nivel}`)}
             </span>
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">{course.titulo}</h1>
             {course.resumen && <p className="mt-2 text-[15px] text-white/70">{course.resumen}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60">
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="layers" size={15} /> {course.modulos.length} módulos
+                <Icon name="layers" size={15} /> {t('exploreCourseDetail.modules', { count: course.modulos.length })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="doc" size={15} /> {totalLecciones} lecciones
+                <Icon name="doc" size={15} /> {t('exploreCourseDetail.lessons', { count: totalLecciones })}
               </span>
             </div>
           </div>
         </section>
 
         <p className="rounded-xl bg-brand/5 px-4 py-3 text-sm text-ink-soft">
-          Estás explorando sin cuenta. El contenido gratis lo puedes ver ya mismo — el resto
-          requiere{' '}
+          {t('exploreCourseDetail.exploringNoAccount')}{' '}
           <Link to="/registro" className="font-medium text-accent hover:text-accent-dark">
-            crear una cuenta
+            {t('exploreCourseDetail.createAccount')}
           </Link>
           .
         </p>
 
         <section className="za-card p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Contenido</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t('exploreCourseDetail.content')}</h2>
           <div className="mt-4 flex flex-col gap-3">
             {course.modulos.length === 0 && (
-              <p className="text-sm text-ink-muted">Este curso aún no tiene módulos.</p>
+              <p className="text-sm text-ink-muted">{t('exploreCourseDetail.noModulesYet')}</p>
             )}
             {course.modulos.map((m, i) => (
               <ModuleBlock
@@ -196,6 +187,7 @@ function ModuleBlock({
   onSelect: (l: Lesson) => void
 }) {
   const [open, setOpen] = useState(index === 1)
+  const t = useT()
   return (
     <div className="overflow-hidden rounded-xl border border-surface-border">
       <button
@@ -213,7 +205,7 @@ function ModuleBlock({
             <span className="block text-sm font-semibold text-ink">{titulo}</span>
             {!esGratuito && <Badge tone="brand">PRO</Badge>}
           </span>
-          <span className="block text-xs text-ink-muted">{lecciones.length} lecciones</span>
+          <span className="block text-xs text-ink-muted">{t('exploreCourseDetail.lessons', { count: lecciones.length })}</span>
         </span>
         <Icon name="chevronDown" size={18} className={`text-ink-muted transition-transform ${open ? '' : '-rotate-90'}`} />
       </button>
@@ -234,11 +226,11 @@ function ModuleBlock({
                   className={`shrink-0 ${l.bloqueado ? 'text-ink-muted' : hecha ? 'text-ok' : 'text-accent'}`}
                 />
                 <span className={`flex-1 text-sm ${l.bloqueado ? 'text-ink-muted' : 'text-ink'}`}>{l.titulo}</span>
-                <span className="text-xs text-ink-muted">{LESSON_LABEL[l.tipo]}</span>
+                <span className="text-xs text-ink-muted">{t(`lessonType.${l.tipo}`)}</span>
               </div>
             )
           })}
-          {lecciones.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">Sin lecciones aún.</p>}
+          {lecciones.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">{t('exploreCourseDetail.noLessonsYet')}</p>}
         </div>
       )}
     </div>

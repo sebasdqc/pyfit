@@ -42,3 +42,27 @@ class TenantMiddleware:
             request.tenant = None
 
         return self.get_response(request)
+
+
+# Idiomas soportados por Academy (información general de cursos + UI). Cualquier
+# otro valor de X-Locale (o su ausencia) cae al español, que es el idioma nativo
+# de todo el contenido — nunca se muestra un campo vacío.
+LOCALES_SOPORTADOS = {'es', 'en'}
+
+
+class LocaleMiddleware:
+    """Resuelve `request.locale` a partir del header `X-Locale` que manda el
+    frontend (academy-web guarda la elección del usuario en localStorage y la
+    reenvía en cada request, igual que hace con X-Tenant-Slug/X-Local-Date).
+
+    No depende de Accept-Language: se usa un header propio para mantener el
+    mismo estilo que el resto de headers custom de este proyecto.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        locale = request.META.get('HTTP_X_LOCALE', '').strip().lower()
+        request.locale = locale if locale in LOCALES_SOPORTADOS else 'es'
+        return self.get_response(request)

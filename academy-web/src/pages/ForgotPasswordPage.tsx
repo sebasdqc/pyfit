@@ -12,20 +12,23 @@ import { confirmPasswordReset, requestPasswordReset } from '@/api/auth'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 import { useTenant } from '@/tenant/TenantContext'
 
-function extractErrorMessage(err: unknown): string {
+function extractErrorMessage(err: unknown, t: ReturnType<typeof useT>): string {
   if (isAxiosError(err) && err.response?.status === 400) {
     const data = err.response.data as { error?: string } | undefined
     if (data?.error) return data.error
   }
-  return 'No se pudo actualizar la contraseña. Inténtalo de nuevo.'
+  return t('forgotPassword.errorGeneric')
 }
 
 export function ForgotPasswordPage() {
   const redirecting = useRedirectIfAuthenticated('/inicio')
   const navigate = useNavigate()
   const tenant = useTenant()
+  const t = useT()
 
   const [step, setStep] = useState<'email' | 'verify' | 'listo'>('email')
   const [email, setEmail] = useState('')
@@ -55,11 +58,11 @@ export function ForgotPasswordPage() {
     e.preventDefault()
     setError(null)
     if (newPassword.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
+      setError(t('forgotPassword.errorPasswordLength'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
+      setError(t('forgotPassword.errorPasswordMismatch'))
       return
     }
     setSubmitting(true)
@@ -67,7 +70,7 @@ export function ForgotPasswordPage() {
       await confirmPasswordReset(email.trim().toLowerCase(), code.trim(), newPassword)
       setStep('listo')
     } catch (err) {
-      setError(extractErrorMessage(err))
+      setError(extractErrorMessage(err, t))
     } finally {
       setSubmitting(false)
     }
@@ -75,6 +78,9 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-white">
+      <div className="fixed right-4 top-4 z-30">
+        <LocaleToggle />
+      </div>
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
         <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
@@ -84,16 +90,15 @@ export function ForgotPasswordPage() {
 
         <div className="relative z-10 max-w-md">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Recuperar acceso
+            {t('forgotPassword.brandEyebrow')}
           </p>
           <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white">
-            Vuelve a entrar
+            {t('forgotPassword.brandTitleLine1')}
             <br />
-            en un par de pasos.
+            {t('forgotPassword.brandTitleLine2')}
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-            Te enviamos un código de un solo uso a tu correo para que elijas una
-            contraseña nueva.
+            {t('forgotPassword.brandBody')}
           </p>
           {tenant.tagline && (
             <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
@@ -101,7 +106,7 @@ export function ForgotPasswordPage() {
         </div>
 
         <p className="relative z-10 text-xs text-white/40">
-          © {new Date().getFullYear()} {tenant.nombre_plataforma}
+          {t('forgotPassword.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
         </p>
       </aside>
 
@@ -118,37 +123,37 @@ export function ForgotPasswordPage() {
                 <Icon name="check" size={26} />
               </span>
               <h1 className="mt-5 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                Contraseña actualizada<span className="text-accent">.</span>
+                {t('forgotPassword.doneTitle')}<span className="text-accent">.</span>
               </h1>
               <p className="mt-3 text-sm text-ink-soft">
-                Ya puedes iniciar sesión con tu nueva contraseña.
+                {t('forgotPassword.doneBody')}
               </p>
               <button
                 onClick={() => navigate('/login', { replace: true })}
                 className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
               >
-                Ir a iniciar sesión
+                {t('forgotPassword.goToLogin')}
                 <Icon name="arrowRight" size={17} />
               </button>
             </>
           ) : (
             <>
-              <p className="za-eyebrow">Recuperar contraseña</p>
+              <p className="za-eyebrow">{t('forgotPassword.eyebrow')}</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                {step === 'email' ? '¿Olvidaste tu contraseña?' : 'Revisa tu correo'}
+                {step === 'email' ? t('forgotPassword.stepEmailTitle') : t('forgotPassword.stepVerifyTitle')}
               </h1>
               <p className="mt-3 text-sm text-ink-soft">
                 {step === 'email' ? (
                   <>
-                    Escribe tu correo y te enviaremos un código para restablecerla.{' '}
+                    {t('forgotPassword.stepEmailBody')}{' '}
                     <Link to="/login" className="font-medium text-accent hover:text-accent-dark">
-                      Volver a iniciar sesión
+                      {t('forgotPassword.backToLogin')}
                     </Link>
                   </>
                 ) : (
                   <>
-                    Ingresa el código que enviamos a <strong className="break-words text-ink">{email}</strong> junto
-                    con tu nueva contraseña.
+                    {t('forgotPassword.stepVerifyBodyPrefix')} <strong className="break-words text-ink">{email}</strong>{' '}
+                    {t('forgotPassword.stepVerifyBodySuffix')}
                   </>
                 )}
               </p>
@@ -157,7 +162,7 @@ export function ForgotPasswordPage() {
                 <form onSubmit={handleSendCode} className="mt-8 flex flex-col gap-4">
                   <Field
                     id="email"
-                    label="Correo electrónico"
+                    label={t('auth.emailLabel')}
                     type="email"
                     value={email}
                     onChange={setEmail}
@@ -169,7 +174,7 @@ export function ForgotPasswordPage() {
                     disabled={submitting || !email.trim()}
                     className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
                   >
-                    {submitting ? 'Enviando…' : 'Enviar código'}
+                    {submitting ? t('forgotPassword.sending') : t('forgotPassword.sendCode')}
                     {!submitting && <Icon name="arrowRight" size={17} />}
                   </button>
                 </form>
@@ -177,7 +182,7 @@ export function ForgotPasswordPage() {
                 <form onSubmit={handleConfirm} className="mt-8 flex flex-col gap-4">
                   <Field
                     id="code"
-                    label="Código de verificación"
+                    label={t('forgotPassword.codeLabel')}
                     type="text"
                     value={code}
                     onChange={setCode}
@@ -186,7 +191,7 @@ export function ForgotPasswordPage() {
                   />
                   <Field
                     id="new-password"
-                    label="Contraseña nueva"
+                    label={t('forgotPassword.newPasswordLabel')}
                     type="password"
                     value={newPassword}
                     onChange={setNewPassword}
@@ -195,7 +200,7 @@ export function ForgotPasswordPage() {
                   />
                   <Field
                     id="confirm-password"
-                    label="Repite la contraseña"
+                    label={t('forgotPassword.confirmPasswordLabel')}
                     type="password"
                     value={confirmPassword}
                     onChange={setConfirmPassword}
@@ -214,7 +219,7 @@ export function ForgotPasswordPage() {
                     disabled={submitting}
                     className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
                   >
-                    {submitting ? 'Actualizando…' : 'Cambiar contraseña'}
+                    {submitting ? t('forgotPassword.updating') : t('forgotPassword.changePassword')}
                     {!submitting && <Icon name="arrowRight" size={17} />}
                   </button>
                   <button
@@ -226,7 +231,7 @@ export function ForgotPasswordPage() {
                     }}
                     className="text-center text-sm font-medium text-accent hover:text-accent-dark"
                   >
-                    ¿No te llegó? Reenviar código
+                    {t('forgotPassword.resendPrompt')}
                   </button>
                 </form>
               )}
@@ -234,7 +239,7 @@ export function ForgotPasswordPage() {
           )}
 
           <p className="mt-8 text-center text-xs text-ink-muted">
-            © {new Date().getFullYear()} {tenant.nombre_plataforma}
+            {t('forgotPassword.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
           </p>
         </div>
       </main>
@@ -261,6 +266,7 @@ function Field({
   icon: ReactNode
 }) {
   const [show, setShow] = useState(false)
+  const t = useT()
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
   return (
@@ -287,10 +293,10 @@ function Field({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
-          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-label={show ? t('auth.hidePasswordAria') : t('auth.showPasswordAria')}
           className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
         >
-          {show ? 'Ocultar' : 'Mostrar'}
+          {show ? t('auth.hidePassword') : t('auth.showPassword')}
         </button>
       ) : (
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>

@@ -36,6 +36,7 @@ def community_posts_view(request):
     """GET lista preguntas de una escuela (`?escuela=`, opcional `?curso=`,
     `?orden=recientes|top`); POST crea una pregunta nueva."""
     tenant = getattr(request, 'tenant', None)
+    context = {'locale': getattr(request, 'locale', 'es')}
 
     if request.method == 'POST':
         post = community_service.crear_post(
@@ -47,7 +48,7 @@ def community_posts_view(request):
             contenido=request.data.get('contenido', ''),
             tenant=tenant,
         )
-        return Response(CommunityPostSerializer(post).data, status=status.HTTP_201_CREATED)
+        return Response(CommunityPostSerializer(post, context=context).data, status=status.HTTP_201_CREATED)
 
     escuela_id = _int_or_400(request.query_params.get('escuela'), 'escuela')
     curso_param = request.query_params.get('curso')
@@ -56,14 +57,18 @@ def community_posts_view(request):
     qs = community_service.listar_posts(
         request.user, escuela_id=escuela_id, curso_id=curso_id, orden=orden,
     )
-    return Response({'results': CommunityPostSerializer(qs, many=True).data, 'count': qs.count()})
+    return Response({
+        'results': CommunityPostSerializer(qs, many=True, context=context).data,
+        'count': qs.count(),
+    })
 
 
 @api_view(['GET'])
 @permission_classes([IsAcademyUser])
 def community_post_detail_view(request, post_id):
     post = community_service.obtener_post_visible(request.user, post_id)
-    return Response(CommunityPostDetailSerializer(post).data)
+    context = {'locale': getattr(request, 'locale', 'es')}
+    return Response(CommunityPostDetailSerializer(post, context=context).data)
 
 
 @api_view(['POST'])
@@ -87,7 +92,8 @@ def community_vote_view(request, reply_id):
 def community_best_answer_view(request, post_id):
     reply_id = _int_or_400(request.data.get('reply_id'), 'reply_id')
     post = community_service.marcar_mejor_respuesta(request.user, post_id, reply_id)
-    return Response(CommunityPostDetailSerializer(post).data)
+    context = {'locale': getattr(request, 'locale', 'es')}
+    return Response(CommunityPostDetailSerializer(post, context=context).data)
 
 
 @api_view(['POST'])

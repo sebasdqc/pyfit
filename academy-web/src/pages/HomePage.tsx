@@ -17,11 +17,13 @@ import { SchoolProgressRing } from '@/components/dashboard/SchoolProgressRing'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { schoolTheme } from '@/lib/schoolTheme'
+import { useT } from '@/locale/useT'
 import type {
   Course, CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
 } from '@/types'
 
 export function HomePage() {
+  const t = useT()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -55,14 +57,14 @@ export function HomePage() {
     }
   }, [data, user])
 
-  const nombre = (user?.nombre ?? '').split(/\s+/)[0] || 'Estudiante'
+  const nombre = (user?.nombre ?? '').split(/\s+/)[0] || t('home.studentFallback')
   const objetivo = data?.continuar ?? data?.siguiente_paso ?? null
 
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Inicio</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Hola, {nombre}</h1>
+        <p className="za-eyebrow">{t('home.eyebrow')}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">{t('home.greeting', { name: nombre })}</h1>
       </header>
 
       {loading ? (
@@ -72,8 +74,8 @@ export function HomePage() {
       ) : error ? (
         <EmptyState
           icon="learning"
-          title="No se pudo cargar tu progreso"
-          description="Revisa tu conexión e inténtalo de nuevo."
+          title={t('home.loadError')}
+          description={t('home.loadErrorBody')}
         />
       ) : !data || !data.tiene_matriculas ? (
         <>
@@ -81,26 +83,26 @@ export function HomePage() {
             icon={user?.is_instructor ? 'instructor' : 'learning'}
             title={
               user?.is_instructor
-                ? 'Aún no tienes cursos como estudiante'
-                : 'Todavía no te has inscrito a ningún curso'
+                ? t('home.noEnrollmentsInstructorTitle')
+                : t('home.noEnrollmentsTitle')
             }
             description={
               user?.is_instructor
-                ? 'Gestiona tus cursos publicados o inscríbete en el catálogo para empezar a aprender.'
-                : 'Explora el catálogo y empieza tu primera formación.'
+                ? t('home.noEnrollmentsInstructorBody')
+                : t('home.noEnrollmentsBody')
             }
             action={
               <Link
                 to={user?.is_instructor ? '/instructor' : '/catalogo'}
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
               >
-                {user?.is_instructor ? 'Ir a mis cursos' : 'Ir al catálogo'} <Icon name="arrowRight" size={16} />
+                {user?.is_instructor ? t('home.goToMyCourses') : t('home.goToCatalog')} <Icon name="arrowRight" size={16} />
               </Link>
             }
           />
           {recomendados.length > 0 && (
             <div>
-              <p className="za-eyebrow">Para empezar, te recomendamos</p>
+              <p className="za-eyebrow">{t('home.recommendedForYou')}</p>
               <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {recomendados.map((c) => (
                   <CourseCard key={c.id} course={c} to={`/cursos/${c.id}`} />
@@ -115,7 +117,7 @@ export function HomePage() {
             <div className="za-card flex items-center gap-4 p-5">
               <SchoolProgressRing value={data.progreso_general} accent="rgb(var(--color-accent))" icon="learning" size={72} />
               <div>
-                <p className="za-eyebrow">Progreso general</p>
+                <p className="za-eyebrow">{t('home.generalProgress')}</p>
                 <p className="mt-1 text-2xl font-bold text-ink">{data.progreso_general}%</p>
               </div>
             </div>
@@ -142,6 +144,7 @@ export function HomePage() {
 }
 
 function ContinueHero({ target, isResume }: { target: DashboardNextStep; isResume: boolean }) {
+  const t = useT()
   return (
     <Link
       to={`/aprender/${target.enrollment_id}`}
@@ -151,7 +154,7 @@ function ContinueHero({ target, isResume }: { target: DashboardNextStep; isResum
         <Icon name="play" size={24} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="za-eyebrow">{isResume ? 'Continúa donde lo dejaste' : 'Tu próximo paso'}</p>
+        <p className="za-eyebrow">{isResume ? t('home.resumeWhereYouLeftOff') : t('home.nextStep')}</p>
         <h3 className="mt-1 truncate text-base font-semibold text-ink">{target.leccion.titulo}</h3>
         <p className="truncate text-sm text-ink-soft">
           {target.curso_titulo}
@@ -167,11 +170,6 @@ function ContinueHero({ target, isResume }: { target: DashboardNextStep; isResum
   )
 }
 
-const ESTADO_LABEL: Record<CourseEstado, string> = {
-  completado: 'Completado',
-  en_progreso: 'En curso',
-  no_iniciado: 'Sin iniciar',
-}
 const ESTADO_TONE: Record<CourseEstado, 'ok' | 'accent' | 'neutral'> = {
   completado: 'ok',
   en_progreso: 'accent',
@@ -179,6 +177,7 @@ const ESTADO_TONE: Record<CourseEstado, 'ok' | 'accent' | 'neutral'> = {
 }
 
 function SchoolSection({ escuela }: { escuela: DashboardSchool }) {
+  const t = useT()
   const theme = schoolTheme(escuela.slug)
   return (
     <div className="za-card p-5">
@@ -187,18 +186,19 @@ function SchoolSection({ escuela }: { escuela: DashboardSchool }) {
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-ink">{escuela.nombre}</h3>
           <p className="text-xs text-ink-muted">
-            {escuela.cursos_completados} completados · {escuela.cursos_en_progreso} en progreso ·{' '}
-            {escuela.cursos_no_iniciados} sin iniciar
+            {t('home.completedCoursesInSchool', { count: escuela.cursos_completados })} ·{' '}
+            {t('home.inProgressInSchool', { count: escuela.cursos_en_progreso })} ·{' '}
+            {t('home.notStartedInSchool', { count: escuela.cursos_no_iniciados })}
           </p>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-2.5">
         {escuela.cursos.map((curso) => (
           <div key={curso.id} className="flex items-center gap-3">
-            <Badge tone={ESTADO_TONE[curso.estado]}>{ESTADO_LABEL[curso.estado]}</Badge>
+            <Badge tone={ESTADO_TONE[curso.estado]}>{t(`courseEstado.${curso.estado}`)}</Badge>
             <span className="min-w-0 flex-1 truncate text-sm text-ink-soft">{curso.titulo}</span>
             <div className="w-28 shrink-0">
-              <ProgressBar value={curso.progreso} showLabel={false} label={`Progreso de ${curso.titulo}`} />
+              <ProgressBar value={curso.progreso} showLabel={false} label={t('home.progressOfCourse', { course: curso.titulo })} />
             </div>
           </div>
         ))}
@@ -208,11 +208,12 @@ function SchoolSection({ escuela }: { escuela: DashboardSchool }) {
 }
 
 function StatsFooter({ stats }: { stats: DashboardStats }) {
+  const t = useT()
   const items: { label: string; value: string | number }[] = [
-    { label: 'Cursos completados', value: stats.cursos_completados },
-    { label: 'Cursos en curso', value: stats.cursos_activos },
-    { label: 'Mejor racha', value: `${stats.mejor_racha} días` },
-    { label: 'Tiempo estimado', value: formatMinutos(stats.minutos_estimados_invertidos) },
+    { label: t('home.coursesCompleted'), value: stats.cursos_completados },
+    { label: t('home.coursesInProgress'), value: stats.cursos_activos },
+    { label: t('home.bestStreak'), value: t('home.days', { count: stats.mejor_racha }) },
+    { label: t('home.estimatedTime'), value: formatMinutos(stats.minutos_estimados_invertidos) },
   ]
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

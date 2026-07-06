@@ -9,6 +9,8 @@ import type { AxiosError } from 'axios'
 import { useAuth } from '@/auth/useAuth'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 import { useTenant } from '@/tenant/TenantContext'
 
 // El backend distingue tres motivos de rechazo (401 credenciales, 403 sin
@@ -17,28 +19,29 @@ import { useTenant } from '@/tenant/TenantContext'
 // catch genérico mostraba el mismo mensaje para los tres casos y hacía
 // imposible saber, por ejemplo, si una cuenta simplemente no existe en
 // producción o si existe pero pertenece a otra organización.
-function describeLoginError(err: unknown): string {
+function describeLoginError(err: unknown, t: ReturnType<typeof useT>): string {
   const ax = err as AxiosError<{ error?: string; detail?: string }>
   if (!ax?.response) {
-    return 'No se pudo conectar con el servidor. Verificá tu conexión e intentá de nuevo.'
+    return t('login.errorNoConnection')
   }
   const { status, data } = ax.response
   if (status === 401) {
-    return data?.error || 'Correo o contraseña incorrectos.'
+    return data?.error || t('login.errorBadCredentials')
   }
   if (status === 403) {
-    return data?.detail || 'Esta cuenta no tiene acceso a Zyfit Academy.'
+    return data?.detail || t('login.errorNoAccess')
   }
   if (status === 429) {
-    return 'Demasiados intentos. Esperá un momento antes de volver a intentar.'
+    return t('login.errorTooManyAttempts')
   }
-  return 'No se pudo iniciar sesión. Intentá de nuevo en unos minutos.'
+  return t('login.errorGeneric')
 }
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const tenant = useTenant()
+  const t = useT()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +55,7 @@ export function LoginPage() {
       const loggedInUser = await login(email, password)
       navigate(loggedInUser.onboarding_academia_completo ? '/inicio' : '/bienvenida', { replace: true })
     } catch (err) {
-      setError(describeLoginError(err))
+      setError(describeLoginError(err, t))
     } finally {
       setSubmitting(false)
     }
@@ -60,6 +63,9 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-white">
+      <div className="fixed right-4 top-4 z-30">
+        <LocaleToggle />
+      </div>
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
         {/* Ráfaga decorativa de emblemas (muy tenue) */}
@@ -70,16 +76,15 @@ export function LoginPage() {
 
         <div className="relative z-10 max-w-md">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Academia digital
+            {t('login.brandEyebrow')}
           </p>
           <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white">
-            Formación de élite,
+            {t('login.brandTitleLine1')}
             <br />
-            al alcance de todos.
+            {t('login.brandTitleLine2')}
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-            Cursos, evaluaciones y certificaciones para llevar tu conocimiento al
-            siguiente nivel.
+            {t('login.brandBody')}
           </p>
           {tenant.tagline && (
             <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
@@ -87,7 +92,7 @@ export function LoginPage() {
         </div>
 
         <p className="relative z-10 text-xs text-white/40">
-          © {new Date().getFullYear()} {tenant.nombre_plataforma}
+          {t('login.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
         </p>
       </aside>
 
@@ -99,27 +104,27 @@ export function LoginPage() {
             <BrandLockup size={32} />
           </div>
 
-          <p className="za-eyebrow">Acceso a la academia</p>
+          <p className="za-eyebrow">{t('login.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Inicia sesión<span className="text-accent">.</span>
+            {t('login.title')}<span className="text-accent">.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-soft">
-            ¿No tienes cuenta aún?{' '}
+            {t('login.noAccountYet')}{' '}
             <Link to="/registro" className="font-medium text-accent hover:text-accent-dark">
-              Crea una gratis
+              {t('login.createFree')}
             </Link>
           </p>
           <p className="mt-1.5 text-sm text-ink-soft">
-            ¿Solo quieres ver de qué se trata?{' '}
+            {t('login.justLooking')}{' '}
             <Link to="/explorar" className="font-medium text-accent hover:text-accent-dark">
-              Explora el catálogo sin cuenta
+              {t('login.exploreNoAccount')}
             </Link>
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <Field
               id="email"
-              label="Correo electrónico"
+              label={t('auth.emailLabel')}
               type="email"
               value={email}
               onChange={setEmail}
@@ -128,7 +133,7 @@ export function LoginPage() {
             />
             <Field
               id="password"
-              label="Contraseña"
+              label={t('auth.passwordLabel')}
               type="password"
               value={password}
               onChange={setPassword}
@@ -140,7 +145,7 @@ export function LoginPage() {
               to="/recuperar"
               className="-mt-2 self-end text-xs font-medium text-accent hover:text-accent-dark"
             >
-              ¿Olvidaste tu contraseña?
+              {t('login.forgotPassword')}
             </Link>
 
             {error && (
@@ -154,13 +159,13 @@ export function LoginPage() {
               disabled={submitting}
               className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
             >
-              {submitting ? 'Accediendo…' : 'Acceder'}
+              {submitting ? t('login.submitting') : t('login.submit')}
               {!submitting && <Icon name="arrowRight" size={17} />}
             </button>
           </form>
 
           <p className="mt-8 text-center text-xs text-ink-muted">
-            © {new Date().getFullYear()} {tenant.nombre_plataforma}
+            {t('login.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
           </p>
         </div>
       </main>
@@ -187,6 +192,7 @@ function Field({
   icon: ReactNode
 }) {
   const [show, setShow] = useState(false)
+  const t = useT()
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
   return (
@@ -213,10 +219,10 @@ function Field({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
-          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-label={show ? t('auth.hidePasswordAria') : t('auth.showPasswordAria')}
           className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
         >
-          {show ? 'Ocultar' : 'Mostrar'}
+          {show ? t('auth.hidePassword') : t('auth.showPassword')}
         </button>
       ) : (
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>

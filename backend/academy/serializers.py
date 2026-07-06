@@ -25,6 +25,39 @@ def _display_name(user):
     return full or user.first_name or user.email.split('@')[0]
 
 
+def localized_text(instance, field, context):
+    """Valor de `field` en el idioma de `context['locale']` (lo fija
+    `academy.middleware.LocaleMiddleware` vía las vistas). Cae siempre al
+    español si no hay traducción todavía, o si `instance` es None (ej. un
+    post de comunidad sin curso asociado)."""
+    if instance is None:
+        return None
+    value = getattr(instance, field, '')
+    if context.get('locale') == 'en':
+        en_value = getattr(instance, f'{field}_en', '')
+        if en_value:
+            return en_value
+    return value
+
+
+class LocalizedFieldsMixin:
+    """Para cada nombre de campo en `LOCALIZED_FIELDS`, sustituye el valor en
+    español por su `<campo>_en` cuando el contexto pide inglés (`locale='en'`)
+    y existe traducción; si no, deja el español. El contexto lo arma la vista
+    a partir de `request.locale`."""
+
+    LOCALIZED_FIELDS = ()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if self.context.get('locale') == 'en':
+            for field in self.LOCALIZED_FIELDS:
+                en_value = getattr(instance, f'{field}_en', '')
+                if en_value:
+                    data[field] = en_value
+        return data
+
+
 # ─── Preguntas / Quiz ─────────────────────────────────────────────────────────
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -116,7 +149,9 @@ class LessonSerializer(serializers.ModelSerializer):
         return data
 
 
-class ModuleSerializer(serializers.ModelSerializer):
+class ModuleSerializer(LocalizedFieldsMixin, serializers.ModelSerializer):
+    LOCALIZED_FIELDS = ('titulo', 'descripcion')
+
     lecciones = LessonSerializer(many=True, read_only=True)
 
     class Meta:
@@ -138,7 +173,9 @@ class CourseBadgeSerializer(serializers.ModelSerializer):
 
 # ─── Cursos ───────────────────────────────────────────────────────────────────
 
-class SchoolSerializer(serializers.ModelSerializer):
+class SchoolSerializer(LocalizedFieldsMixin, serializers.ModelSerializer):
+    LOCALIZED_FIELDS = ('nombre', 'descripcion')
+
     total_cursos = serializers.SerializerMethodField()
 
     class Meta:
@@ -163,8 +200,10 @@ class SchoolWithCoursesSerializer(SchoolSerializer):
         return CourseSerializer(cursos, many=True, context=self.context).data
 
 
-class CourseSerializer(serializers.ModelSerializer):
+class CourseSerializer(LocalizedFieldsMixin, serializers.ModelSerializer):
     """Resumen de curso para el catálogo y la autoría."""
+
+    LOCALIZED_FIELDS = ('titulo', 'resumen', 'descripcion')
 
     instructor_nombre = serializers.SerializerMethodField()
     escuela_nombre = serializers.SerializerMethodField()
@@ -187,7 +226,7 @@ class CourseSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'instructor', 'created_at', 'updated_at']
 
     def get_escuela_nombre(self, obj):
-        return obj.school.nombre if obj.school_id else None
+        return localized_text(obj.school, 'nombre', self.context) if obj.school_id else None
 
     def get_escuela_slug(self, obj):
         return obj.school.slug if obj.school_id else None
@@ -243,13 +282,16 @@ class CourseDetailSerializer(CourseSerializer):
 # ─── Aprendizaje (matrículas / progreso / intentos / certificados) ────────────
 
 class CertificateSerializer(serializers.ModelSerializer):
-    curso_titulo = serializers.CharField(source='enrollment.course.titulo', read_only=True)
+    curso_titulo = serializers.SerializerMethodField()
     estudiante_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = Certificate
         fields = ['id', 'enrollment', 'codigo', 'curso_titulo', 'estudiante_nombre', 'emitido_at']
         read_only_fields = fields
+
+    def get_curso_titulo(self, obj):
+        return localized_text(obj.enrollment.course, 'titulo', self.context)
 
     def get_estudiante_nombre(self, obj):
         return _display_name(obj.enrollment.student)
@@ -295,7 +337,7 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 class EnrollmentSerializer(serializers.ModelSerializer):
     """Resumen de matrícula (lista 'mis cursos' / inscritos de un curso)."""
 
-    curso_titulo = serializers.CharField(source='course.titulo', read_only=True)
+    curso_titulo = serializers.SerializerMethodField()
     curso_slug = serializers.CharField(source='course.slug', read_only=True)
     estudiante_nombre = serializers.SerializerMethodField()
     certificado = serializers.SerializerMethodField()
@@ -308,6 +350,9 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'created_at', 'completado_at',
         ]
         read_only_fields = fields
+
+    def get_curso_titulo(self, obj):
+        return localized_text(obj.course, 'titulo', self.context)
 
     def get_estudiante_nombre(self, obj):
         return _display_name(obj.student)
@@ -337,10 +382,13 @@ class EnrollmentDetailSerializer(EnrollmentSerializer):
 
     def get_curso(self, obj):
         # Estudiante: nunca incluir la clave de respuestas; propaga el nivel
-        # de acceso a Academy ya resuelto por la vista (gating freemium).
+        # de acceso a Academy ya resuelto por la vista (gating freemium) y el
+        # idioma para que el árbol del curso (módulos incluidos) también salga
+        # traducido.
         return CourseDetailSerializer(obj.course, context={
             'include_answers': False,
             'nivel_academia': self.context.get('nivel_academia'),
+            'locale': self.context.get('locale'),
         }).data
 
     def get_lecciones_completadas(self, obj):
@@ -376,8 +424,8 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     """Resumen de post para el listado."""
 
     autor_nombre = serializers.SerializerMethodField()
-    escuela_nombre = serializers.CharField(source='escuela.nombre', read_only=True)
-    curso_titulo = serializers.CharField(source='curso.titulo', read_only=True, default=None)
+    escuela_nombre = serializers.SerializerMethodField()
+    curso_titulo = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityPost
@@ -387,6 +435,12 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'respuestas_count', 'mejor_respuesta', 'created_at', 'updated_at',
         ]
         read_only_fields = fields
+
+    def get_escuela_nombre(self, obj):
+        return localized_text(obj.escuela, 'nombre', self.context)
+
+    def get_curso_titulo(self, obj):
+        return localized_text(obj.curso, 'titulo', self.context)
 
     def get_autor_nombre(self, obj):
         return _display_name(obj.autor)

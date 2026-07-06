@@ -15,9 +15,11 @@ import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
 import { toEmbedUrl } from '@/lib/videoEmbed'
+import { useT } from '@/locale/useT'
 import type { Lesson } from '@/types'
 
 export function ExploreLessonPage() {
+  const t = useT()
   const { courseId, lessonId } = useParams()
   const cId = Number(courseId)
   const lId = Number(lessonId)
@@ -76,7 +78,7 @@ export function ExploreLessonPage() {
           to={`/explorar/cursos/${cId}`}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent"
         >
-          <Icon name="chevronLeft" size={16} /> Volver al curso
+          <Icon name="chevronLeft" size={16} /> {t('exploreLesson.backToCourse')}
         </Link>
 
         {loading ? (
@@ -103,18 +105,18 @@ export function ExploreLessonPage() {
             >
               {completada ? (
                 <>
-                  <Icon name="check" size={16} /> Completada
+                  <Icon name="check" size={16} /> {t('exploreLesson.completed')}
                 </>
               ) : completing ? (
-                'Guardando…'
+                t('exploreLesson.saving')
               ) : (
-                'Marcar como completada'
+                t('exploreLesson.markComplete')
               )}
             </button>
 
             {completeError && (
               <p role="alert" className="text-sm text-danger">
-                No se pudo guardar tu progreso. Revisa tu conexión e inténtalo de nuevo.
+                {t('exploreLesson.saveError')}
               </p>
             )}
           </>
@@ -129,6 +131,7 @@ export function ExploreLessonPage() {
 }
 
 function VideoBody({ url, titulo }: { url: string; titulo: string }) {
+  const t = useT()
   const embed = toEmbedUrl(url)
   return (
     <div className="aspect-video overflow-hidden rounded-xl border border-surface-border bg-black">
@@ -147,10 +150,10 @@ function VideoBody({ url, titulo }: { url: string; titulo: string }) {
           rel="noreferrer"
           className="flex h-full items-center justify-center text-sm font-medium text-white/80 hover:text-white"
         >
-          Abrir el video en una pestaña nueva
+          {t('exploreLesson.openVideoNewTab')}
         </a>
       ) : (
-        <div className="flex h-full items-center justify-center text-sm text-white/50">Video en producción.</div>
+        <div className="flex h-full items-center justify-center text-sm text-white/50">{t('exploreLesson.videoInProduction')}</div>
       )}
     </div>
   )

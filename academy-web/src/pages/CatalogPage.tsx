@@ -11,6 +11,7 @@ import { Icon } from '@/components/Icon'
 import { Emblem } from '@/components/Emblem'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
+import { useT } from '@/locale/useT'
 import type { Course, School } from '@/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -21,17 +22,12 @@ const NIVEL_DOT: Record<string, string> = {
   avanzado: 'bg-danger',
 }
 
-const NIVEL_LABEL: Record<string, string> = {
-  principiante: 'Principiante',
-  intermedio: 'Intermedio',
-  avanzado: 'Avanzado',
-}
-
 function SchoolTag({ nivel }: { nivel: string }) {
+  const t = useT()
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border bg-surface px-2.5 py-0.5 text-[11px] font-medium text-ink-soft">
       <span className={`h-1.5 w-1.5 rounded-full ${NIVEL_DOT[nivel] ?? 'bg-ink-muted'}`} />
-      {NIVEL_LABEL[nivel] ?? nivel}
+      {t(`level.${nivel}`)}
     </span>
   )
 }
@@ -39,6 +35,7 @@ function SchoolTag({ nivel }: { nivel: string }) {
 // ── Vista agrupada por escuela ────────────────────────────────────────────────
 
 function SchoolSection({ school }: { school: School }) {
+  const t = useT()
   const theme = schoolTheme(school.slug)
   return (
     <section aria-labelledby={`school-${school.id}`}>
@@ -60,7 +57,7 @@ function SchoolSection({ school }: { school: School }) {
               <SchoolTag key={n} nivel={n} />
             ))}
             <span className="text-xs text-ink-muted">
-              {school.total_cursos} {school.total_cursos === 1 ? 'curso' : 'cursos'}
+              {t(school.total_cursos === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', { count: school.total_cursos })}
             </span>
           </div>
         </div>
@@ -68,7 +65,7 @@ function SchoolSection({ school }: { school: School }) {
 
       {/* Grid de cursos de la escuela */}
       {school.cursos.length === 0 ? (
-        <p className="text-sm text-ink-muted">Sin cursos publicados aún.</p>
+        <p className="text-sm text-ink-muted">{t('catalog.noCoursesPublished')}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {school.cursos.map((c) => (
@@ -83,6 +80,7 @@ function SchoolSection({ school }: { school: School }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function CatalogPage() {
+  const t = useT()
   const [schools, setSchools] = useState<School[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,12 +143,12 @@ export function CatalogPage() {
           <Emblem size={260} tone="dark" />
         </div>
         <div className="relative z-10 max-w-2xl">
-          <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">Catálogo</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">{t('catalog.eyebrow')}</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Explora los cursos de la academia
+            {t('catalog.title')}
           </h1>
           <p className="mt-2 text-sm text-white/65">
-            Aprende a tu ritmo, supera las evaluaciones y obtén tu certificado.
+            {t('catalog.body')}
           </p>
         </div>
       </section>
@@ -162,20 +160,20 @@ export function CatalogPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar cursos…"
+            placeholder={t('catalog.searchPlaceholder')}
             type="search"
-            aria-label="Buscar cursos"
+            aria-label={t('catalog.searchAria')}
             className="h-11 w-full rounded-xl border border-surface-border bg-surface pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
-        <FilterSelect value={categoria} onChange={setCategoria} placeholder="Categoría">
+        <FilterSelect value={categoria} onChange={setCategoria} placeholder={t('catalog.categoryPlaceholder')}>
           {CATEGORIAS.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </FilterSelect>
-        <FilterSelect value={nivel} onChange={setNivel} placeholder="Nivel">
+        <FilterSelect value={nivel} onChange={setNivel} placeholder={t('catalog.levelPlaceholder')}>
           {NIVELES.map((n) => (
-            <option key={n.id} value={n.id}>{n.label}</option>
+            <option key={n.id} value={n.id}>{t(`level.${n.id}`)}</option>
           ))}
         </FilterSelect>
         {filtersActive && (
@@ -184,7 +182,7 @@ export function CatalogPage() {
             className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-surface px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
           >
             <Icon name="close" size={14} />
-            Limpiar
+            {t('catalog.clear')}
           </button>
         )}
       </div>
@@ -197,17 +195,17 @@ export function CatalogPage() {
       ) : error ? (
         <EmptyState
           icon="catalog"
-          title="No se pudo cargar el catálogo"
-          description="Revisa tu conexión e inténtalo de nuevo."
+          title={t('catalog.loadError')}
+          description={t('catalog.loadErrorBody')}
         />
       ) : isEmpty ? (
         <EmptyState
           icon="catalog"
-          title={q.trim() ? 'Sin resultados' : 'Sin cursos por ahora'}
+          title={q.trim() ? t('catalog.noResults') : t('catalog.noCoursesYet')}
           description={
             q.trim()
-              ? `No encontramos cursos que coincidan con "${q.trim()}".`
-              : 'Aún no hay cursos publicados con estos filtros.'
+              ? t('catalog.noResultsBody', { term: q.trim() })
+              : t('catalog.noResultsWithFilters')
           }
         />
       ) : filtersActive ? (
@@ -240,6 +238,7 @@ function FilterSelect({
   placeholder: string
   children: React.ReactNode
 }) {
+  const t = useT()
   return (
     <div className="relative">
       <select
@@ -248,7 +247,7 @@ function FilterSelect({
         aria-label={placeholder}
         className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-surface pl-4 pr-9 text-sm text-ink transition-colors focus:border-accent sm:w-44"
       >
-        <option value="">{placeholder}: todas</option>
+        <option value="">{placeholder}: {t('catalog.all')}</option>
         {children}
       </select>
       <Icon

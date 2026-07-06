@@ -16,21 +16,24 @@ import { clearAnonSession } from '@/lib/anonSession'
 import { Emblem, BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 import { useTenant } from '@/tenant/TenantContext'
 
-function extractErrorMessage(err: unknown): string {
+function extractErrorMessage(err: unknown, t: ReturnType<typeof useT>): string {
   if (isAxiosError(err) && err.response?.status === 400) {
     const data = err.response.data as Record<string, string[] | string> | undefined
     const mensajes = Object.values(data ?? {}).flatMap((v) => (Array.isArray(v) ? v : [v]))
     if (mensajes.length) return mensajes.join(' ')
   }
-  return 'No se pudo crear la cuenta. Verifica los datos e inténtalo de nuevo.'
+  return t('register.errorGeneric')
 }
 
 export function RegisterPage() {
   const redirecting = useRedirectIfAuthenticated('/inicio')
   const navigate = useNavigate()
   const tenant = useTenant()
+  const t = useT()
   const { refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -43,7 +46,7 @@ export function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!acceptedTerms) {
-      setError('Debes aceptar los Términos de Servicio y la Política de Privacidad.')
+      setError(t('register.errorTerms'))
       return
     }
     setError(null)
@@ -55,7 +58,7 @@ export function RegisterPage() {
       await refreshUser()
       navigate('/bienvenida', { replace: true }) // cuenta nueva → onboarding siempre pendiente
     } catch (err) {
-      setError(extractErrorMessage(err))
+      setError(extractErrorMessage(err, t))
     } finally {
       setSubmitting(false)
     }
@@ -63,6 +66,9 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-white">
+      <div className="fixed right-4 top-4 z-30">
+        <LocaleToggle />
+      </div>
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
         <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
@@ -72,16 +78,15 @@ export function RegisterPage() {
 
         <div className="relative z-10 max-w-md">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Crea tu cuenta
+            {t('register.brandEyebrow')}
           </p>
           <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white">
-            Tu progreso ya
+            {t('register.brandTitleLine1')}
             <br />
-            está avanzando.
+            {t('register.brandTitleLine2')}
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-            Regístrate gratis para conservarlo y desbloquear racha de estudio, insignias,
-            certificados, el tutor IA y la comunidad.
+            {t('register.brandBody')}
           </p>
           {tenant.tagline && (
             <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
@@ -89,7 +94,7 @@ export function RegisterPage() {
         </div>
 
         <p className="relative z-10 text-xs text-white/40">
-          © {new Date().getFullYear()} {tenant.nombre_plataforma}
+          {t('register.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
         </p>
       </aside>
 
@@ -100,21 +105,21 @@ export function RegisterPage() {
             <BrandLockup size={32} />
           </div>
 
-          <p className="za-eyebrow">Onboarding sin registro</p>
+          <p className="za-eyebrow">{t('register.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Crea tu cuenta<span className="text-accent">.</span>
+            {t('register.title')}<span className="text-accent">.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-soft">
-            ¿Ya tienes cuenta?{' '}
+            {t('register.alreadyHaveAccount')}{' '}
             <Link to="/login" className="font-medium text-accent hover:text-accent-dark">
-              Inicia sesión
+              {t('register.login')}
             </Link>
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <Field
               id="email"
-              label="Correo electrónico"
+              label={t('auth.emailLabel')}
               type="email"
               value={email}
               onChange={setEmail}
@@ -123,7 +128,7 @@ export function RegisterPage() {
             />
             <Field
               id="password"
-              label="Contraseña"
+              label={t('auth.passwordLabel')}
               type="password"
               value={password}
               onChange={setPassword}
@@ -142,13 +147,13 @@ export function RegisterPage() {
                 className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border text-accent focus:ring-accent"
               />
               <span>
-                Acepto los{' '}
+                {t('register.acceptPrefix')}{' '}
                 <Link to="/terminos" target="_blank" rel="noreferrer" className="font-medium text-accent hover:text-accent-dark">
-                  Términos de Servicio
+                  {t('register.termsOfService')}
                 </Link>{' '}
-                y la{' '}
+                {t('register.and')}{' '}
                 <Link to="/privacidad" target="_blank" rel="noreferrer" className="font-medium text-accent hover:text-accent-dark">
-                  Política de Privacidad
+                  {t('register.privacyPolicy')}
                 </Link>
                 .
               </span>
@@ -165,13 +170,13 @@ export function RegisterPage() {
               disabled={submitting || !acceptedTerms}
               className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
             >
-              {submitting ? 'Creando cuenta…' : 'Crear cuenta gratis'}
+              {submitting ? t('register.submitting') : t('register.submit')}
               {!submitting && <Icon name="arrowRight" size={17} />}
             </button>
           </form>
 
           <p className="mt-8 text-center text-xs text-ink-muted">
-            © {new Date().getFullYear()} {tenant.nombre_plataforma}
+            {t('register.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
           </p>
         </div>
       </main>
@@ -198,6 +203,7 @@ function Field({
   icon: ReactNode
 }) {
   const [show, setShow] = useState(false)
+  const t = useT()
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
   return (
@@ -224,10 +230,10 @@ function Field({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
-          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-label={show ? t('auth.hidePasswordAria') : t('auth.showPasswordAria')}
           className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
         >
-          {show ? 'Ocultar' : 'Mostrar'}
+          {show ? t('auth.hidePassword') : t('auth.showPassword')}
         </button>
       ) : (
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>
