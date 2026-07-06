@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from .community_models import (
     ESTADO_OCULTO_MANUAL, ESTADO_VISIBLE, CommunityPost, CommunityReply, CommunityReport,
 )
+from .library_models import LibraryFavorite, LibraryResource
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
@@ -258,3 +259,28 @@ class CommunityReportAdmin(ModelAdmin):
     list_filter = ('motivo',)
     search_fields = ('detalle', 'reportado_por__email')
     autocomplete_fields = ('post', 'reply', 'reportado_por')
+
+
+# ─── Biblioteca de recursos ─────────────────────────────────────────────────────
+# Contenido 100% administrado por staff (sin autoría de instructor en la web
+# todavía, a diferencia de Course) — mismo patrón que AcademyBadge.
+
+@admin.register(LibraryResource)
+class LibraryResourceAdmin(ModelAdmin):
+    list_display = ('titulo', 'tipo', 'school', 'course', 'es_gratuito',
+                     'destacado', 'vistas', 'activo', 'created_at')
+    list_filter = ('tipo', 'es_gratuito', 'destacado', 'activo', 'tenant', 'school')
+    search_fields = ('titulo', 'descripcion', 'fuente')
+    autocomplete_fields = ('school', 'course')
+    readonly_fields = ('vistas', 'created_at', 'updated_at')
+
+
+@admin.register(LibraryFavorite)
+class LibraryFavoriteAdmin(ModelAdmin):
+    list_display = ('user', 'resource', 'created_at')
+    search_fields = ('user__email', 'resource__titulo')
+    autocomplete_fields = ('user', 'resource')
+    readonly_fields = ('user', 'resource', 'created_at')
+
+    def has_add_permission(self, request):
+        return False

@@ -18,6 +18,7 @@ import { CatalogPage } from '@/pages/CatalogPage'
 import { CourseDetailPage } from '@/pages/CourseDetailPage'
 import { LessonPlayerPage } from '@/pages/LessonPlayerPage'
 import { MyLearningPage } from '@/pages/MyLearningPage'
+import { LibraryPage } from '@/pages/LibraryPage'
 import { InstructorPage } from '@/pages/InstructorPage'
 import { CourseContentPage } from '@/pages/CourseContentPage'
 import { SubmissionsPage } from '@/pages/SubmissionsPage'
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
           { path: 'catalogo', element: <CatalogPage /> },
           { path: 'cursos/:courseId', element: <CourseDetailPage /> },
           { path: 'aprendizaje', element: <MyLearningPage /> },
+          { path: 'biblioteca', element: <LibraryPage /> },
           { path: 'certificados', element: <CertificatesPage /> },
           { path: 'simulador', element: <SimuladorIndexPage /> },
           { path: 'simulador/carga', element: <SimuladorCargaPage /> },

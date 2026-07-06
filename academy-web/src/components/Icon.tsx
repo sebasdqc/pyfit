@@ -46,6 +46,10 @@ export type IconName =
   | 'edit'
   | 'sun'
   | 'moon'
+  | 'library'
+  | 'bookmark'
+  | 'external'
+  | 'tool'
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -250,6 +254,27 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   // Toggle de tema: modo oscuro.
   moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />,
+  // Biblioteca: pila de libros.
+  library: (
+    <>
+      <path d="M4 19.5V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14.5" />
+      <path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19a1.5 1.5 0 0 0 1.5-1.5" />
+      <path d="M8 3v18M12 3v6l2-1.3L16 9V3" />
+    </>
+  ),
+  // Favorito de un recurso de la biblioteca (relleno vía fill en el consumidor).
+  bookmark: <path d="M6 3.5h12a.5.5 0 0 1 .5.5v16.4a.4.4 0 0 1-.62.34L12 16.5l-5.88 4.24A.4.4 0 0 1 5.5 20.4V4a.5.5 0 0 1 .5-.5Z" />,
+  // Abrir recurso externo (documento/link fuera de la app).
+  external: (
+    <>
+      <path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
+      <path d="M15 3h6v6M10 14 21 3" />
+    </>
+  ),
+  // Recurso tipo "herramienta" de la biblioteca.
+  tool: (
+    <path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18l3 3 6.1-6.1a4 4 0 0 0 5.6-5.6l-2 2-2.5-.5-.5-2.5Z" />
+  ),
 }
 
 export function Icon({

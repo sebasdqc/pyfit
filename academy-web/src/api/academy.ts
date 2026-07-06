@@ -4,7 +4,8 @@
 import { api } from './client'
 import type {
   AcademyBadgeCatalog, AcademySubscriptionStatus, Course, CourseDetail,
-  DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo, Module,
+  DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
+  LibraryResource, LibraryTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
   SimuladorCargaResponse, SimuladorSesionCaso, SimuladorSesionResultado,
   SimuladorPrevencionCaso, SimuladorPrevencionResultado,
@@ -322,6 +323,41 @@ export async function getPublicLesson(lessonId: number): Promise<Lesson> {
 
 export async function completePublicLesson(lessonId: number): Promise<void> {
   await api.post(`/academy/anon/lecciones/${lessonId}/completar/`)
+}
+
+// ── Biblioteca de recursos ────────────────────────────────────────────────────
+
+export interface LibraryFilters {
+  tipo?: LibraryTipo
+  school?: number
+  course?: number
+  q?: string
+  destacados?: boolean
+  favoritos?: boolean
+}
+
+export async function listLibrary(filters: LibraryFilters = {}): Promise<LibraryResource[]> {
+  const params: Record<string, string> = {}
+  if (filters.tipo) params.tipo = filters.tipo
+  if (filters.school) params.school = String(filters.school)
+  if (filters.course) params.course = String(filters.course)
+  if (filters.q) params.q = filters.q
+  if (filters.destacados) params.destacados = '1'
+  if (filters.favoritos) params.favoritos = '1'
+  const res = await api.get<LibraryResource[]>('/academy/library/', { params })
+  return res.data
+}
+
+export async function toggleLibraryFavorite(resourceId: number): Promise<{ favorito: boolean }> {
+  const res = await api.post<{ favorito: boolean }>(`/academy/library/${resourceId}/favorito/`)
+  return res.data
+}
+
+// Registra la apertura (suma una vista en el servidor) y devuelve la URL real
+// del recurso — 403 si es de pago y el usuario no tiene Zyfit Academy Pro.
+export async function openLibraryResource(resourceId: number): Promise<{ url: string }> {
+  const res = await api.post<{ url: string }>(`/academy/library/${resourceId}/abrir/`)
+  return res.data
 }
 
 // ── Simulador de carga interna (escuela Entrenamiento y Rendimiento Deportivo) ─

@@ -508,6 +508,38 @@ export interface SimuladorPrevencionResultado {
   acierto: boolean
 }
 
+// ── Biblioteca de recursos ────────────────────────────────────────────────────
+// Espeja academy.library_models.LibraryResource + LibraryResourceSerializer.
+// Catálogo PLANO (a diferencia de Course/Module/Lesson, que es contenido
+// secuencial con progreso): documentos, plantillas, videos, guías,
+// infografías, herramientas y enlaces que el estudiante busca/filtra/favorita.
+
+export type LibraryTipo =
+  | 'documento' | 'video' | 'plantilla' | 'guia' | 'infografia' | 'herramienta' | 'enlace'
+
+export interface LibraryResource {
+  id: number
+  tipo: LibraryTipo
+  school: number | null
+  escuela_nombre: string | null
+  course: number | null
+  curso_titulo: string | null
+  titulo: string
+  descripcion: string
+  fuente: string
+  // '' cuando bloqueado=true (freemium) — nunca confiar en esto si bloqueado.
+  url: string
+  miniatura: string // data URL, URL http(s) o '' (placeholder en UI)
+  etiquetas: string[]
+  es_gratuito: boolean
+  destacado: boolean
+  vistas: number
+  favorito: boolean
+  // true si el usuario actual no tiene acceso (recurso pago sin Academy Pro).
+  bloqueado: boolean
+  created_at: string
+}
+
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
 // Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
 // ningún campo de aquí participa en progreso/certificación/racha/badges core.

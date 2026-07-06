@@ -898,3 +898,6 @@ class AnonymousProgress(models.Model):
 from .community_models import (  # noqa: E402,F401
     CommunityPost, CommunityReply, CommunityVote, CommunityReport,
 )
+
+# Biblioteca de recursos — modelos en archivo propio; ver library_models.py.
+from .library_models import LibraryResource, LibraryFavorite  # noqa: E402,F401

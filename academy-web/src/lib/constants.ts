@@ -25,6 +25,10 @@ export const NIVEL_LABEL: Record<string, string> = {
   avanzado:     'Avanzado',
 }
 
+export const LIBRARY_TIPOS = [
+  'documento', 'video', 'plantilla', 'guia', 'infografia', 'herramienta', 'enlace',
+] as const
+
 export const CATEGORIAS = [
   'entrenamiento personal',
   'nutrición deportiva',

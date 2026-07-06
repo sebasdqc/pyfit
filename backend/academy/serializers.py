@@ -10,6 +10,7 @@ from rest_framework import serializers
 
 from . import access_service
 from .community_models import CommunityPost, CommunityReply, CommunityReport
+from .library_models import LibraryResource
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
@@ -468,3 +469,48 @@ class CommunityReportSerializer(serializers.ModelSerializer):
         model = CommunityReport
         fields = ['id', 'post', 'reply', 'reportado_por', 'motivo', 'detalle', 'created_at']
         read_only_fields = fields
+
+
+# ─── Biblioteca de recursos ─────────────────────────────────────────────────────
+
+class LibraryResourceSerializer(LocalizedFieldsMixin, serializers.ModelSerializer):
+    """Recurso de la biblioteca. `bloqueado`/`favorito` dependen del USUARIO de
+    la request — el contexto trae `nivel` (nivel_academia_de) y `favoritos_ids`
+    (calculado en bloque por la vista, sin una query por fila). Cuando
+    `bloqueado=True` la URL real no se expone (mismo criterio que
+    Lesson.contenido/video_url con bloqueado=True)."""
+
+    LOCALIZED_FIELDS = ('titulo', 'descripcion')
+
+    escuela_nombre = serializers.SerializerMethodField()
+    curso_titulo = serializers.SerializerMethodField()
+    favorito = serializers.SerializerMethodField()
+    bloqueado = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LibraryResource
+        fields = [
+            'id', 'tipo', 'school', 'escuela_nombre', 'course', 'curso_titulo',
+            'titulo', 'descripcion', 'fuente', 'url', 'miniatura', 'etiquetas',
+            'es_gratuito', 'destacado', 'vistas', 'favorito', 'bloqueado', 'created_at',
+        ]
+        read_only_fields = ['id', 'vistas', 'created_at']
+
+    def get_escuela_nombre(self, obj):
+        return localized_text(obj.school, 'nombre', self.context) if obj.school_id else None
+
+    def get_curso_titulo(self, obj):
+        return localized_text(obj.course, 'titulo', self.context) if obj.course_id else None
+
+    def get_favorito(self, obj):
+        return obj.id in self.context.get('favoritos_ids', set())
+
+    def get_bloqueado(self, obj):
+        nivel = self.context.get('nivel', access_service.NIVEL_STARTER)
+        return not (obj.es_gratuito or nivel == access_service.NIVEL_PRO)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('bloqueado'):
+            data['url'] = ''
+        return data
