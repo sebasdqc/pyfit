@@ -251,12 +251,13 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
     'x-tenant-slug',
-    # Enviados por academy-web en CADA request (racha de estudio y onboarding
-    # anónimo) — sin listar acá, el navegador bloquea el preflight CORS y la
-    # request nunca llega al servidor (se ve como "no se pudo conectar", no
-    # como un error de credenciales).
+    # Enviados por academy-web en CADA request (racha de estudio, onboarding
+    # anónimo e idioma) — sin listar acá, el navegador bloquea el preflight
+    # CORS y la request nunca llega al servidor (se ve como "no se pudo
+    # conectar", no como un error de credenciales).
     'x-local-date',
     'x-anon-session',
+    'x-locale',
 ]
 
 CORS_ALLOWED_ORIGINS = [
