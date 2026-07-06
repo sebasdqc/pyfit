@@ -117,6 +117,7 @@ const en: DeepPartial<Dictionary> = {
     justLooking: 'Just want to see what it\'s about?',
     exploreNoAccount: 'Explore the catalog without an account',
     forgotPassword: 'Forgot your password?',
+    backToHome: 'Back to home',
     submitting: 'Logging in…',
     submit: 'Log in',
     copyright: '© {{year}} {{platform}}',

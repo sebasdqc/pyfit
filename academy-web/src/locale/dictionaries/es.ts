@@ -113,6 +113,7 @@ const es = {
     justLooking: '¿Solo quieres ver de qué se trata?',
     exploreNoAccount: 'Explora el catálogo sin cuenta',
     forgotPassword: '¿Olvidaste tu contraseña?',
+    backToHome: 'Volver al inicio',
     submitting: 'Accediendo…',
     submit: 'Acceder',
     copyright: '© {{year}} {{platform}}',

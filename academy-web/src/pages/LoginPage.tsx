@@ -1,17 +1,28 @@
 // Login de Zyfit Academy — pantalla a viewport completo.
-// Panel izquierdo: branding del tenant activo (logo, nombre, tagline, colores CSS).
-// Panel derecho blanco: formulario de acceso.
+// Panel izquierdo: branding ANIMADO del tenant activo (aurora + textura de
+// puntos + carrusel de features, todo en los colores del tenant vía variables
+// CSS — funciona igual para cualquier organización blanco-etiquetada).
+// Panel derecho blanco: formulario de acceso, sin cambios de lógica.
 // La lógica de autenticación consume /api/academy/auth/login/.
 
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuth } from '@/auth/useAuth'
 import { Emblem, BrandLockup } from '@/components/Emblem'
-import { Icon } from '@/components/Icon'
+import { Icon, type IconName } from '@/components/Icon'
 import { LocaleToggle } from '@/components/ui/LocaleToggle'
 import { useT } from '@/locale/useT'
 import { useTenant } from '@/tenant/TenantContext'
+
+// Mismas 4 features que la landing (certificate/quiz/flame/users) — se
+// reutilizan sus claves de traducción para no duplicar copy.
+const FEATURES: { icon: IconName; titleKey: string; bodyKey: string }[] = [
+  { icon: 'certificate', titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
+  { icon: 'quiz', titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
+  { icon: 'flame', titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
+  { icon: 'users', titleKey: 'landing.feature4Title', bodyKey: 'landing.feature4Body' },
+]
 
 // El backend distingue tres motivos de rechazo (401 credenciales, 403 sin
 // acceso/tenant equivocado) con formas de payload distintas (`error` vs
@@ -66,39 +77,69 @@ export function LoginPage() {
       <div className="fixed right-4 top-4 z-30">
         <LocaleToggle />
       </div>
-      {/* Panel de marca (izquierda) — solo en escritorio */}
-      <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
-        {/* Ráfaga decorativa de emblemas (muy tenue) */}
+      {/* Panel de marca (izquierda) — animado, solo en escritorio */}
+      <aside className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-10 lg:flex lg:p-12">
+        {/* Aurora animada (blobs con blur, colores del tenant) */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="za-blob-a absolute -left-24 -top-24 h-[420px] w-[420px] rounded-full bg-accent-light/30 blur-[90px]" />
+          <div className="za-blob-b absolute -right-20 bottom-0 h-[380px] w-[380px] rounded-full bg-accent/25 blur-[90px]" />
+        </div>
+        {/* Textura de puntos, muy tenue */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+        />
+        {/* Ráfaga decorativa de emblema (muy tenue) */}
         <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
           <Emblem size={420} tone="dark" />
         </div>
-        <BrandLockup size={34} tone="dark" />
+
+        {/* Header: logo + volver al inicio */}
+        <div className="za-fade-up relative z-10 flex items-center justify-between">
+          <BrandLockup size={34} tone="dark" />
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 text-xs font-medium text-white/60 transition-colors hover:text-white"
+          >
+            <Icon name="chevronLeft" size={14} />
+            {t('login.backToHome')}
+          </Link>
+        </div>
 
         <div className="relative z-10 max-w-md">
-          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
+          <p className="za-fade-up text-[11px] font-medium uppercase tracking-[0.28em] text-white/55" style={{ animationDelay: '80ms' }}>
             {t('login.brandEyebrow')}
           </p>
-          <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white">
+          <h2 className="za-fade-up mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white" style={{ animationDelay: '150ms' }}>
             {t('login.brandTitleLine1')}
             <br />
             {t('login.brandTitleLine2')}
           </h2>
-          <p className="mt-5 text-[15px] leading-relaxed text-white/65">
+          <p className="za-fade-up mt-5 text-[15px] leading-relaxed text-white/65" style={{ animationDelay: '230ms' }}>
             {t('login.brandBody')}
           </p>
           {tenant.tagline && (
-            <p className="mt-10 text-2xl font-light italic text-white/80">"{tenant.tagline}."</p>
+            <p className="za-fade-up mt-6 text-xl font-light italic text-white/80" style={{ animationDelay: '300ms' }}>
+              "{tenant.tagline}."
+            </p>
           )}
+
+          <div className="za-fade-up za-float" style={{ animationDelay: '380ms' }}>
+            <FeatureCarousel />
+          </div>
         </div>
 
-        <p className="relative z-10 text-xs text-white/40">
+        <p className="za-fade-up relative z-10 text-xs text-white/40" style={{ animationDelay: '450ms' }}>
           {t('login.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
         </p>
       </aside>
 
       {/* Formulario (derecha) */}
-      <main className="flex w-full flex-1 items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-[400px]">
+      <main className="relative flex w-full flex-1 items-center justify-center overflow-hidden px-6 py-10 sm:px-10">
+        {/* Glow ambiental muy sutil detrás de la card (también visible en móvil) */}
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-accent/[0.06] blur-[110px]" />
+
+        <div className="za-fade-up relative z-10 w-full max-w-[400px]">
           {/* Marca compacta — visible en móvil/tablet donde se oculta el panel izq. */}
           <div className="mb-10 lg:hidden">
             <BrandLockup size={32} />
@@ -157,7 +198,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60"
+              className="mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white shadow-[0_8px_20px_-6px_rgb(var(--color-accent)/0.55)] transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-[0_12px_24px_-6px_rgb(var(--color-accent)/0.6)] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
             >
               {submitting ? t('login.submitting') : t('login.submit')}
               {!submitting && <Icon name="arrowRight" size={17} />}
@@ -169,6 +210,46 @@ export function LoginPage() {
           </p>
         </div>
       </main>
+    </div>
+  )
+}
+
+// Card de vidrio que rota entre las mismas 4 features de la landing, con
+// indicador de progreso tipo carrusel. `key={index}` fuerza el remount para
+// que `za-fade-up` se retriggeree en cada cambio (fade sutil, no un salto).
+function FeatureCarousel() {
+  const t = useT()
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % FEATURES.length), 4200)
+    return () => clearInterval(id)
+  }, [])
+
+  const feature = FEATURES[index]
+
+  return (
+    <div className="mt-8">
+      <div
+        key={index}
+        className="za-fade-up flex items-start gap-3 rounded-2xl border border-white/15 bg-white/[0.08] p-4 backdrop-blur-sm"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
+          <Icon name={feature.icon} size={18} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{t(feature.titleKey)}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-white/60">{t(feature.bodyKey)}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-1.5">
+        {FEATURES.map((_, i) => (
+          <span
+            key={i}
+            className={`h-1 rounded-full transition-all duration-300 ${i === index ? 'w-6 bg-white/80' : 'w-2.5 bg-white/25'}`}
+          />
+        ))}
+      </div>
     </div>
   )
 }
