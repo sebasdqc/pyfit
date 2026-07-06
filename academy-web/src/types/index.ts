@@ -540,6 +540,23 @@ export interface LibraryResource {
   created_at: string
 }
 
+// ── Administración de usuarios (SOLO admin) ───────────────────────────────────
+// Espeja academy.serializers.AcademyUserSerializer/AcademyUserCreateSerializer.
+// `rol` es una vista derivada de User.role/academy_instructor — no un campo
+// propio: 'admin' (role=admin), 'profesor' (academy_instructor=True) o
+// 'estudiante' (cuenta normal, academy_acceso ya es abierto a cualquiera).
+
+export type AcademyUserRol = 'admin' | 'profesor' | 'estudiante'
+
+export interface AcademyUserAccount {
+  id: number
+  email: string
+  nombre: string
+  rol: AcademyUserRol
+  is_active: boolean
+  date_joined: string
+}
+
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
 // Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
 // ningún campo de aquí participa en progreso/certificación/racha/badges core.

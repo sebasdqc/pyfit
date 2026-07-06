@@ -54,6 +54,21 @@ class IsInstructorOrAdmin(BasePermission):
         return u.academy_instructor or u.is_admin or u.is_staff
 
 
+class IsAcademyAdmin(BasePermission):
+    """Solo el admin de producto (o staff de Django): a diferencia de
+    IsInstructorOrAdmin, un instructor NO puede gestionar cuentas — crear un
+    admin/instructor/estudiante es una acción de privilegio distinto a la
+    autoría de contenido."""
+
+    message = 'Solo un administrador puede gestionar usuarios de la academia.'
+
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated and u.is_active and (u.is_admin or u.is_staff)):
+            return False
+        return not tenant_mismatch(u, request)
+
+
 def is_author(user) -> bool:
     """¿Puede esta cuenta CREAR/gestionar contenido (no necesariamente este curso)?"""
     return bool(

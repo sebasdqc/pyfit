@@ -6,6 +6,7 @@ Para el estudiante se serializa sin ese campo. El interruptor es el flag de
 contexto `include_answers` (lo fija la vista según el rol).
 """
 
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from . import access_service
@@ -16,6 +17,8 @@ from .models import (
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, School,
 )
+
+User = get_user_model()
 
 
 def _display_name(user):
@@ -514,3 +517,87 @@ class LibraryResourceSerializer(LocalizedFieldsMixin, serializers.ModelSerialize
         if data.get('bloqueado'):
             data['url'] = ''
         return data
+
+
+# ─── Administración de usuarios (SOLO admin, ver academy.permissions.IsAcademyAdmin) ──
+
+ACADEMY_ROL_ADMIN = 'admin'
+ACADEMY_ROL_PROFESOR = 'profesor'
+ACADEMY_ROL_ESTUDIANTE = 'estudiante'
+ACADEMY_ROL_CHOICES = [ACADEMY_ROL_ADMIN, ACADEMY_ROL_PROFESOR, ACADEMY_ROL_ESTUDIANTE]
+
+
+def _academy_rol_de(user) -> str:
+    if user.is_admin:
+        return ACADEMY_ROL_ADMIN
+    if user.academy_instructor:
+        return ACADEMY_ROL_PROFESOR
+    return ACADEMY_ROL_ESTUDIANTE
+
+
+class AcademyUserCreateSerializer(serializers.Serializer):
+    """Alta de una cuenta desde el panel de administración de Academy.
+
+    `rol` decide a qué combinación de `User.role`/`academy_instructor` mapea
+    la cuenta nueva:
+      - 'admin'      → role=ROLE_ADMIN (administrador de producto).
+      - 'profesor'   → academy_instructor=True (autoría de cursos).
+      - 'estudiante' → cuenta normal (academy_acceso ya es abierto a cualquiera).
+    Crea también el Profile mínimo en el mismo paso — sin él, otras pantallas
+    del producto que asumen `user.profile` (dashboard, perfil) fallarían,
+    igual que hace `users.RegisterSerializer` en el registro público."""
+
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    nombre = serializers.CharField(max_length=100)
+    rol = serializers.ChoiceField(choices=ACADEMY_ROL_CHOICES)
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('Ya existe una cuenta con este correo.')
+        return value
+
+    def validate_password(self, value):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value
+
+    def create(self, validated_data):
+        from users.models import Profile
+
+        email = validated_data['email']
+        rol = validated_data['rol']
+        user = User.objects.create_user(
+            username=email, email=email, password=validated_data['password'],
+            role=User.ROLE_ADMIN if rol == ACADEMY_ROL_ADMIN else User.ROLE_ATHLETE,
+            academy_instructor=(rol == ACADEMY_ROL_PROFESOR),
+        )
+        tenant = self.context.get('tenant')
+        if tenant:
+            user.academy_tenant = tenant
+            user.save(update_fields=['academy_tenant'])
+        Profile.objects.create(user=user, nombre=validated_data['nombre'])
+        return user
+
+
+class AcademyUserSerializer(serializers.Serializer):
+    """Fila de la lista de usuarios del panel de administración."""
+
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    nombre = serializers.SerializerMethodField()
+    rol = serializers.SerializerMethodField()
+    is_active = serializers.BooleanField()
+    date_joined = serializers.DateTimeField()
+
+    def get_nombre(self, obj):
+        profile = getattr(obj, 'profile', None)
+        return profile.nombre if profile else _display_name(obj)
+
+    def get_rol(self, obj):
+        return _academy_rol_de(obj)

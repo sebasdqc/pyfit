@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import anon_views, community_views, library_views, subscription_views, views
+from . import admin_users_views, anon_views, community_views, library_views, subscription_views, views
 
 urlpatterns = [
     # Onboarding sin registro (visitante anónimo — probar antes de registrarse)
@@ -46,6 +46,9 @@ urlpatterns = [
     path('streak/sweep/', views.streak_sweep),
     # Bootstrap manual de una cuenta admin de producto (mismo secreto compartido)
     path('admin-bootstrap/', views.bootstrap_admin),
+
+    # Panel de administración de usuarios (crear/listar admin/profesor/estudiante) — SOLO admin
+    path('admin/usuarios/', admin_users_views.admin_users_view),
 
     # Home del estudiante (progreso por escuela/curso, racha, insignias, continuar)
     path('dashboard/', views.dashboard_view),

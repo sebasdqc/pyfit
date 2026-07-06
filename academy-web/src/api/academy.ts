@@ -3,7 +3,8 @@
 
 import { api } from './client'
 import type {
-  AcademyBadgeCatalog, AcademySubscriptionStatus, Course, CourseDetail,
+  AcademyBadgeCatalog, AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
+  Course, CourseDetail,
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
   LibraryResource, LibraryTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
@@ -357,6 +358,33 @@ export async function toggleLibraryFavorite(resourceId: number): Promise<{ favor
 // del recurso — 403 si es de pago y el usuario no tiene Zyfit Academy Pro.
 export async function openLibraryResource(resourceId: number): Promise<{ url: string }> {
   const res = await api.post<{ url: string }>(`/academy/library/${resourceId}/abrir/`)
+  return res.data
+}
+
+// ── Administración de usuarios (SOLO admin) ───────────────────────────────────
+
+export interface AcademyUserFilters {
+  rol?: AcademyUserRol
+  q?: string
+}
+
+export async function listAcademyUsers(filters: AcademyUserFilters = {}): Promise<AcademyUserAccount[]> {
+  const params: Record<string, string> = {}
+  if (filters.rol) params.rol = filters.rol
+  if (filters.q) params.q = filters.q
+  const res = await api.get<AcademyUserAccount[]>('/academy/admin/usuarios/', { params })
+  return res.data
+}
+
+export interface CreateAcademyUserPayload {
+  email: string
+  password: string
+  nombre: string
+  rol: AcademyUserRol
+}
+
+export async function createAcademyUser(payload: CreateAcademyUserPayload): Promise<AcademyUserAccount> {
+  const res = await api.post<AcademyUserAccount>('/academy/admin/usuarios/', payload)
   return res.data
 }
 

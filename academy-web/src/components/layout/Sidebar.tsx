@@ -15,6 +15,7 @@ interface NavItem {
   icon: IconName
   to: string
   instructorOnly?: boolean
+  adminOnly?: boolean
 }
 
 const NAV: NavItem[] = [
@@ -26,6 +27,7 @@ const NAV: NavItem[] = [
   { id: 'simulador', labelKey: 'sidebar.navSimulador', icon: 'activity', to: '/simulador' },
   { id: 'comunidad', labelKey: 'sidebar.navComunidad', icon: 'users', to: '/comunidad' },
   { id: 'instructor', labelKey: 'sidebar.navInstructor', icon: 'instructor', to: '/instructor', instructorOnly: true },
+  { id: 'usuarios', labelKey: 'sidebar.navUsuarios', icon: 'shield', to: '/admin/usuarios', adminOnly: true },
 ]
 
 const ROLE_LABEL_KEY: Record<string, string> = {
@@ -47,7 +49,11 @@ export function Sidebar({
   const { user } = useAuth()
   const { theme } = useTheme()
   const t = useT()
-  const nav = NAV.filter((item) => !item.instructorOnly || user?.puede_crear_cursos)
+  const nav = NAV.filter((item) => {
+    if (item.instructorOnly && !user?.puede_crear_cursos) return false
+    if (item.adminOnly && !user?.is_admin) return false
+    return true
+  })
   const roleLabel = user?.is_instructor
     ? t('sidebar.roleInstructor')
     : t(ROLE_LABEL_KEY[user?.role ?? ''] ?? 'sidebar.roleAthlete')

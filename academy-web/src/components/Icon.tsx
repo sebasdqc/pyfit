@@ -50,6 +50,7 @@ export type IconName =
   | 'bookmark'
   | 'external'
   | 'tool'
+  | 'shield'
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -274,6 +275,13 @@ const PATHS: Record<IconName, ReactNode> = {
   // Recurso tipo "herramienta" de la biblioteca.
   tool: (
     <path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18l3 3 6.1-6.1a4 4 0 0 0 5.6-5.6l-2 2-2.5-.5-.5-2.5Z" />
+  ),
+  // Administración de usuarios (solo admin).
+  shield: (
+    <>
+      <path d="M12 3 4 6.5V12c0 5 3.4 7.6 8 9 4.6-1.4 8-4 8-9V6.5Z" />
+      <path d="m9 12 2.2 2.2L15.5 10" />
+    </>
   ),
 }
 
