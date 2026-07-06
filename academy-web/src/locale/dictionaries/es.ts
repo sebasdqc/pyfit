@@ -116,6 +116,9 @@ const es = {
     backToHome: 'Volver al inicio',
     submitting: 'Accediendo…',
     submit: 'Acceder',
+    pauseFeatures: 'Pausar el carrusel de funciones',
+    playFeatures: 'Reanudar el carrusel de funciones',
+    goToFeature: 'Ir a la función {{number}}',
     copyright: '© {{year}} {{platform}}',
   },
   register: {

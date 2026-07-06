@@ -120,6 +120,9 @@ const en: DeepPartial<Dictionary> = {
     backToHome: 'Back to home',
     submitting: 'Logging in…',
     submit: 'Log in',
+    pauseFeatures: 'Pause the feature carousel',
+    playFeatures: 'Resume the feature carousel',
+    goToFeature: 'Go to feature {{number}}',
     copyright: '© {{year}} {{platform}}',
   },
   register: {

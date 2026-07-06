@@ -5,7 +5,7 @@
 // Panel derecho blanco: formulario de acceso, sin cambios de lógica.
 // La lógica de autenticación consume /api/academy/auth/login/.
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuth } from '@/auth/useAuth'
@@ -57,6 +57,14 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const errorId = useId()
+  const errorRef = useRef<HTMLParagraphElement>(null)
+
+  // Mueve el foco al error al fallar el login: sin esto, un usuario de teclado
+  // que se queda con el foco en el botón "Acceder" puede no notar el mensaje.
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -93,13 +101,16 @@ export function LoginPage() {
         <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
           <Emblem size={420} tone="dark" />
         </div>
+        {/* Scrim: oscurece el fondo para garantizar contraste AA del texto en
+            blanco/opacidad sin importar el color de marca del tenant activo. */}
+        <div className="pointer-events-none absolute inset-0 bg-black/20" />
 
         {/* Header: logo + volver al inicio */}
         <div className="za-fade-up relative z-10 flex items-center justify-between">
           <BrandLockup size={34} tone="dark" />
           <Link
             to="/"
-            className="flex items-center gap-1.5 text-xs font-medium text-white/60 transition-colors hover:text-white"
+            className="flex items-center gap-1.5 text-xs font-medium text-white/80 transition-colors hover:text-white"
           >
             <Icon name="chevronLeft" size={14} />
             {t('login.backToHome')}
@@ -107,7 +118,7 @@ export function LoginPage() {
         </div>
 
         <div className="relative z-10 max-w-md">
-          <p className="za-fade-up text-[11px] font-medium uppercase tracking-[0.28em] text-white/55" style={{ animationDelay: '80ms' }}>
+          <p className="za-fade-up text-[11px] font-medium uppercase tracking-[0.28em] text-white/80" style={{ animationDelay: '80ms' }}>
             {t('login.brandEyebrow')}
           </p>
           <h2 className="za-fade-up mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white" style={{ animationDelay: '150ms' }}>
@@ -115,11 +126,11 @@ export function LoginPage() {
             <br />
             {t('login.brandTitleLine2')}
           </h2>
-          <p className="za-fade-up mt-5 text-[15px] leading-relaxed text-white/65" style={{ animationDelay: '230ms' }}>
+          <p className="za-fade-up mt-5 text-[15px] leading-relaxed text-white/85" style={{ animationDelay: '230ms' }}>
             {t('login.brandBody')}
           </p>
           {tenant.tagline && (
-            <p className="za-fade-up mt-6 text-xl font-light italic text-white/80" style={{ animationDelay: '300ms' }}>
+            <p className="za-fade-up mt-6 text-xl font-light italic text-white/90" style={{ animationDelay: '300ms' }}>
               "{tenant.tagline}."
             </p>
           )}
@@ -129,7 +140,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        <p className="za-fade-up relative z-10 text-xs text-white/40" style={{ animationDelay: '450ms' }}>
+        <p className="za-fade-up relative z-10 text-xs text-white/75" style={{ animationDelay: '450ms' }}>
           {t('login.copyright', { year: new Date().getFullYear(), platform: tenant.nombre_plataforma })}
         </p>
       </aside>
@@ -170,6 +181,10 @@ export function LoginPage() {
               value={email}
               onChange={setEmail}
               autoComplete="username"
+              autoFocus
+              required
+              invalid={!!error}
+              describedBy={error ? errorId : undefined}
               icon={<Icon name="mail" size={18} />}
             />
             <Field
@@ -179,7 +194,9 @@ export function LoginPage() {
               value={password}
               onChange={setPassword}
               autoComplete="current-password"
-              icon={<Icon name="lock" size={18} />}
+              required
+              invalid={!!error}
+              describedBy={error ? errorId : undefined}
             />
 
             <Link
@@ -190,7 +207,7 @@ export function LoginPage() {
             </Link>
 
             {error && (
-              <p role="alert" className="break-words text-sm text-danger">
+              <p id={errorId} ref={errorRef} tabIndex={-1} role="alert" className="break-words text-sm text-danger outline-none">
                 {error}
               </p>
             )}
@@ -220,11 +237,17 @@ export function LoginPage() {
 function FeatureCarousel() {
   const t = useT()
   const [index, setIndex] = useState(0)
+  // Arranca en pausa si el sistema pide movimiento reducido (WCAG 2.3.3) —
+  // además del control manual de abajo (WCAG 2.2.2, ver `playing`).
+  const [playing, setPlaying] = useState(
+    () => typeof window === 'undefined' || !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
 
   useEffect(() => {
+    if (!playing) return
     const id = setInterval(() => setIndex((i) => (i + 1) % FEATURES.length), 4200)
     return () => clearInterval(id)
-  }, [])
+  }, [playing])
 
   const feature = FEATURES[index]
 
@@ -239,16 +262,34 @@ function FeatureCarousel() {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">{t(feature.titleKey)}</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-white/60">{t(feature.bodyKey)}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-white/80">{t(feature.bodyKey)}</p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1.5">
-        {FEATURES.map((_, i) => (
-          <span
-            key={i}
-            className={`h-1 rounded-full transition-all duration-300 ${i === index ? 'w-6 bg-white/80' : 'w-2.5 bg-white/25'}`}
-          />
-        ))}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setPlaying((p) => !p)}
+          aria-label={playing ? t('login.pauseFeatures') : t('login.playFeatures')}
+          aria-pressed={!playing}
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white"
+        >
+          <Icon name={playing ? 'pause' : 'play'} size={11} />
+        </button>
+        <div className="flex items-center gap-1.5">
+          {FEATURES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                setIndex(i)
+                setPlaying(false)
+              }}
+              aria-label={t('login.goToFeature', { number: i + 1 })}
+              aria-current={i === index}
+              className={`h-1 rounded-full transition-all duration-300 ${i === index ? 'w-6 bg-white/80' : 'w-2.5 bg-white/25'}`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -262,6 +303,10 @@ function Field({
   value,
   onChange,
   autoComplete,
+  autoFocus,
+  required,
+  invalid,
+  describedBy,
   icon,
 }: {
   id: string
@@ -270,7 +315,11 @@ function Field({
   value: string
   onChange: (v: string) => void
   autoComplete: string
-  icon: ReactNode
+  autoFocus?: boolean
+  required?: boolean
+  invalid?: boolean
+  describedBy?: string
+  icon?: ReactNode
 }) {
   const [show, setShow] = useState(false)
   const t = useT()
@@ -284,6 +333,10 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        required={required}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         placeholder=" "
         className={`peer h-14 w-full rounded-xl border border-surface-border bg-surface-soft px-4 pt-2 text-[15px] text-ink transition-colors placeholder:text-transparent focus:border-accent focus:bg-white ${
           isPassword ? 'pr-20' : 'pr-12'
