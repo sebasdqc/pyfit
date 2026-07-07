@@ -255,7 +255,7 @@ class Profile(models.Model):
     # estos campos son la fuente de verdad que el cliente consume para mostrar
     # banners de upgrade vs gestión.
     PLAN_CHOICES = [('starter', 'Starter'), ('pro', 'Pro')]
-    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('anual', 'Anual')]
+    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('semestral', 'Semestral'), ('anual', 'Anual')]
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='starter')
     plan_tipo = models.CharField(max_length=20, choices=PLAN_TIPO_CHOICES, blank=True)
     plan_renovacion = models.DateField(null=True, blank=True)

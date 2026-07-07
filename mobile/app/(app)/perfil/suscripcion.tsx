@@ -12,15 +12,27 @@
 
 import React, { useEffect, useState } from 'react'
 import {
-  Linking, Modal, Pressable, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View,
+  ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line, Path } from 'react-native-svg'
+import { apiGet, apiPost } from '../../../lib/api'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+
+interface SolicitudSuscripcion {
+  id: number
+  plan_tipo: string
+  codigo: string | null
+  precio_lista: string
+  descuento_aplicado: string
+  precio_final: string
+  estado: 'pendiente' | 'confirmada' | 'rechazada'
+  created_at: string
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -371,8 +383,86 @@ export default function SuscripcionScreen() {
 
   // (cancel flow ahora es una pantalla separada)
 
+  // código de descuento (influencer)
+  const [codigoExpanded, setCodigoExpanded] = useState(false)
+  const [codigoInput, setCodigoInput]       = useState('')
+  const [codigoEstado, setCodigoEstado]     = useState<'idle' | 'validando' | 'valido' | 'invalido'>('idle')
+  const [codigoMensaje, setCodigoMensaje]   = useState('')
+  const [precioFinalCodigo, setPrecioFinalCodigo] = useState<number | null>(null)
+
+  // solicitud de suscripción (reemplaza el mockup "Próximamente")
+  const [cargandoSolicitud, setCargandoSolicitud] = useState(modo === 'upgrade')
+  const [solicitudPendiente, setSolicitudPendiente] = useState<SolicitudSuscripcion | null>(null)
+  const [enviandoSolicitud, setEnviandoSolicitud]   = useState(false)
+  const [solicitudExito, setSolicitudExito]         = useState(false)
+
+  useEffect(() => {
+    if (modo !== 'upgrade') return
+    let vivo = true
+    apiGet('/api/promos/solicitudes/mias/')
+      .then((data: SolicitudSuscripcion | null) => {
+        if (vivo && data?.estado === 'pendiente') setSolicitudPendiente(data)
+      })
+      .catch(() => {})
+      .finally(() => { if (vivo) setCargandoSolicitud(false) })
+    return () => { vivo = false }
+  }, [modo])
+
+  async function validarCodigo(codigo: string) {
+    const limpio = codigo.trim()
+    if (!limpio) {
+      setCodigoEstado('idle')
+      setPrecioFinalCodigo(null)
+      return
+    }
+    setCodigoEstado('validando')
+    try {
+      const data = await apiPost('/api/promos/validar/', { codigo: limpio, plan_tipo: planActivo })
+      if (data.valido) {
+        setCodigoEstado('valido')
+        setCodigoMensaje(`Código aplicado: -USD ${Number(data.descuento_aplicado).toFixed(2)}`)
+        setPrecioFinalCodigo(Number(data.precio_final))
+      } else {
+        setCodigoEstado('invalido')
+        setCodigoMensaje(data.mensaje || 'Código inválido.')
+        setPrecioFinalCodigo(null)
+      }
+    } catch {
+      setCodigoEstado('invalido')
+      setCodigoMensaje('No pudimos validar el código. Intenta de nuevo.')
+      setPrecioFinalCodigo(null)
+    }
+  }
+
+  // Si el usuario cambia de plan con un código ya aplicado, recalcula el precio.
+  useEffect(() => {
+    if (codigoEstado === 'valido' || codigoEstado === 'invalido') validarCodigo(codigoInput)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planActivo])
+
+  async function handleContinuar() {
+    if (enviandoSolicitud) return
+    setEnviandoSolicitud(true)
+    try {
+      const body: { plan_tipo: PlanId; codigo?: string } = { plan_tipo: planActivo }
+      if (codigoEstado === 'valido') body.codigo = codigoInput.trim()
+      const data: SolicitudSuscripcion = await apiPost('/api/promos/solicitudes/', body)
+      setSolicitudPendiente(data)
+      setSolicitudExito(true)
+    } catch (e: any) {
+      setProxMsg(e?.message || 'No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.')
+    } finally {
+      setEnviandoSolicitud(false)
+    }
+  }
+
   const planInfo = PLANES.find(p => p.id === planActivo)!
-  const ctaText  = `Continuar con ${planInfo.nombre} (USD ${planInfo.entero}.${planInfo.decimal})`
+  const precioMostrado = codigoEstado === 'valido' && precioFinalCodigo != null
+    ? precioFinalCodigo.toFixed(2)
+    : `${planInfo.entero}.${planInfo.decimal}`
+  const ctaText = enviandoSolicitud
+    ? 'Enviando solicitud…'
+    : `Continuar con ${planInfo.nombre} (USD ${precioMostrado})`
 
   const subtituloHero =
     nombre && semanas > 0
@@ -431,110 +521,178 @@ export default function SuscripcionScreen() {
               <Text style={styles.heroSubtitle}>{subtituloHero}</Text>
             </View>
 
-            {/* Beneficios */}
-            <View style={styles.beneficiosSection}>
-              <BeneficioRow
-                Icon={IconBrain}
-                titulo="Memoria sin límite"
-                descripcion="Tu entrenador recuerda cada sesión, patrón y progreso tuyo."
-                colors={colors}
-                styles={styles}
-              />
-              <View style={styles.beneficioDivider} />
-              <BeneficioRow
-                Icon={IconShield}
-                titulo="Protección activa"
-                descripcion="Alertas de fatiga, lesiones emergentes y sobrecarga antes de que escalen."
-                colors={colors}
-                styles={styles}
-              />
-              <View style={styles.beneficioDivider} />
-              <BeneficioRow
-                Icon={IconDNA}
-                titulo="Tu perfil como atleta"
-                descripcion="ADN de entrenamiento actualizado mensualmente con tus datos reales."
-                colors={colors}
-                styles={styles}
-              />
-            </View>
+            {cargandoSolicitud ? (
+              <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
+            ) : solicitudPendiente ? (
 
-            {/* Selector de planes */}
-            <View style={styles.planesSection}>
-              <Text style={styles.sectionLabel}>ELIGE TU PLAN</Text>
-              <View style={styles.planesStack}>
-                {PLANES.map(plan => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    selected={planActivo === plan.id}
-                    onSelect={setPlanActivo}
+              // ── Solicitud ya enviada, esperando confirmación de pago ──
+              <View style={styles.planActivoCard}>
+                <View style={styles.planActivoHeaderRow}>
+                  <Text style={styles.planActivoNombre}>
+                    {PLAN_DISPLAY[solicitudPendiente.plan_tipo]?.nombre ?? 'Zyfit Pro'}
+                  </Text>
+                  <View style={[styles.proActivoBadge, { borderColor: colors.accent }]}>
+                    <Text style={[styles.proActivoText, { color: colors.accent }]}>Pendiente</Text>
+                  </View>
+                </View>
+                <Text style={styles.planActivoPrecio}>
+                  USD {solicitudPendiente.precio_final}
+                  {solicitudPendiente.codigo ? ` · código ${solicitudPendiente.codigo}` : ''}
+                </Text>
+                <Text style={styles.planActivoRenovacion}>
+                  Tu solicitud está pendiente de confirmación de pago. Nuestro equipo te contactará
+                  a tu correo registrado para completar el proceso.
+                </Text>
+              </View>
+
+            ) : (
+              <>
+                {/* Beneficios */}
+                <View style={styles.beneficiosSection}>
+                  <BeneficioRow
+                    Icon={IconBrain}
+                    titulo="Memoria sin límite"
+                    descripcion="Tu entrenador recuerda cada sesión, patrón y progreso tuyo."
                     colors={colors}
                     styles={styles}
                   />
-                ))}
-              </View>
-            </View>
+                  <View style={styles.beneficioDivider} />
+                  <BeneficioRow
+                    Icon={IconShield}
+                    titulo="Protección activa"
+                    descripcion="Alertas de fatiga, lesiones emergentes y sobrecarga antes de que escalen."
+                    colors={colors}
+                    styles={styles}
+                  />
+                  <View style={styles.beneficioDivider} />
+                  <BeneficioRow
+                    Icon={IconDNA}
+                    titulo="Tu perfil como atleta"
+                    descripcion="ADN de entrenamiento actualizado mensualmente con tus datos reales."
+                    colors={colors}
+                    styles={styles}
+                  />
+                </View>
 
-            {/* Nota LATAM */}
-            <TouchableOpacity
-              style={styles.latamContainer}
-              onPress={() => setLatamExpanded(v => !v)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.latamRow}>
-                <Text style={styles.latamText}>
-                  Precio en USD. Disponible en moneda local según tu región.
-                </Text>
-                {latamExpanded
-                  ? <IconChevronUp color={colors.inkMuted} />
-                  : <IconChevronDown color={colors.inkMuted} />}
-              </View>
-              {latamExpanded && (
-                <Text style={styles.latamExpanded}>
-                  En Venezuela, Colombia y México el precio se ajusta automáticamente al equivalente local. Se mostrará en tu moneda al proceder al pago.
-                </Text>
-              )}
-            </TouchableOpacity>
+                {/* Selector de planes */}
+                <View style={styles.planesSection}>
+                  <Text style={styles.sectionLabel}>ELIGE TU PLAN</Text>
+                  <View style={styles.planesStack}>
+                    {PLANES.map(plan => (
+                      <PlanCard
+                        key={plan.id}
+                        plan={plan}
+                        selected={planActivo === plan.id}
+                        onSelect={setPlanActivo}
+                        colors={colors}
+                        styles={styles}
+                      />
+                    ))}
+                  </View>
+                </View>
 
-            {/* CTA */}
-            <TouchableOpacity
-              style={styles.ctaBtn}
-              onPress={() => setProxMsg('Los pagos estarán disponibles muy pronto. Te notificaremos cuando puedas suscribirte.')}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[colors.accent, colors.accentDark]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={styles.ctaBtnGradient}
-              >
-                <Text style={styles.ctaBtnText}>{ctaText}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+                {/* Código de descuento */}
+                <View style={styles.latamContainer}>
+                  <TouchableOpacity
+                    onPress={() => setCodigoExpanded(v => !v)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.latamRow}>
+                      <Text style={styles.latamText}>¿Tienes un código de descuento?</Text>
+                      {codigoExpanded
+                        ? <IconChevronUp color={colors.inkMuted} />
+                        : <IconChevronDown color={colors.inkMuted} />}
+                    </View>
+                  </TouchableOpacity>
+                  {codigoExpanded && (
+                    <View style={{ gap: 6, marginTop: 4 }}>
+                      <TextInput
+                        value={codigoInput}
+                        onChangeText={(t) => { setCodigoInput(t); if (codigoEstado !== 'idle') setCodigoEstado('idle') }}
+                        onBlur={() => validarCodigo(codigoInput)}
+                        onSubmitEditing={() => validarCodigo(codigoInput)}
+                        placeholder="Ej: MARIA20"
+                        placeholderTextColor={colors.inkMuted}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        style={styles.codigoInput}
+                      />
+                      {codigoEstado === 'validando' && (
+                        <Text style={styles.latamText}>Validando código…</Text>
+                      )}
+                      {codigoEstado === 'valido' && (
+                        <Text style={[styles.latamText, { color: colors.green }]}>{codigoMensaje}</Text>
+                      )}
+                      {codigoEstado === 'invalido' && (
+                        <Text style={[styles.latamText, { color: colors.red }]}>{codigoMensaje}</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
 
-            {/* Link secundario */}
-            <TouchableOpacity
-              style={styles.starterLink}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.starterLinkText}>Continuar con Starter</Text>
-            </TouchableOpacity>
+                {/* Nota LATAM */}
+                <TouchableOpacity
+                  style={styles.latamContainer}
+                  onPress={() => setLatamExpanded(v => !v)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.latamRow}>
+                    <Text style={styles.latamText}>
+                      Precio en USD. Disponible en moneda local según tu región.
+                    </Text>
+                    {latamExpanded
+                      ? <IconChevronUp color={colors.inkMuted} />
+                      : <IconChevronDown color={colors.inkMuted} />}
+                  </View>
+                  {latamExpanded && (
+                    <Text style={styles.latamExpanded}>
+                      En Venezuela, Colombia y México el precio se ajusta automáticamente al equivalente local. Se mostrará en tu moneda al proceder al pago.
+                    </Text>
+                  )}
+                </TouchableOpacity>
 
-            {/* Footer legal */}
-            <View style={styles.legalFooter}>
-              <Text style={styles.legalText}>Cancela cuando quieras. Sin permanencia.</Text>
-              <Text style={styles.legalText}>
-                {'Al suscribirte aceptas los '}
-                <Text style={styles.legalLink} onPress={() => router.push('/(auth)/terminos' as any)}>
-                  Términos de servicio
-                </Text>
-                {' y la '}
-                <Text style={styles.legalLink} onPress={() => router.push('/(auth)/privacidad' as any)}>
-                  Política de privacidad
-                </Text>
-                .
-              </Text>
-            </View>
+                {/* CTA */}
+                <TouchableOpacity
+                  style={[styles.ctaBtn, enviandoSolicitud && { opacity: 0.7 }]}
+                  onPress={handleContinuar}
+                  disabled={enviandoSolicitud}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={[colors.accent, colors.accentDark]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={styles.ctaBtnGradient}
+                  >
+                    <Text style={styles.ctaBtnText}>{ctaText}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Link secundario */}
+                <TouchableOpacity
+                  style={styles.starterLink}
+                  onPress={() => router.back()}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.starterLinkText}>Continuar con Starter</Text>
+                </TouchableOpacity>
+
+                {/* Footer legal */}
+                <View style={styles.legalFooter}>
+                  <Text style={styles.legalText}>Cancela cuando quieras. Sin permanencia.</Text>
+                  <Text style={styles.legalText}>
+                    {'Al suscribirte aceptas los '}
+                    <Text style={styles.legalLink} onPress={() => router.push('/(auth)/terminos' as any)}>
+                      Términos de servicio
+                    </Text>
+                    {' y la '}
+                    <Text style={styles.legalLink} onPress={() => router.push('/(auth)/privacidad' as any)}>
+                      Política de privacidad
+                    </Text>
+                    .
+                  </Text>
+                </View>
+              </>
+            )}
           </>
 
         ) : (
@@ -625,6 +783,24 @@ export default function SuscripcionScreen() {
             <Text style={styles.modalTitle}>Próximamente</Text>
             <Text style={styles.modalBody}>{proxMsg ?? ''}</Text>
             <TouchableOpacity style={styles.modalBtn} onPress={() => setProxMsg(null)} activeOpacity={0.8}>
+              <Text style={styles.modalBtnText}>Entendido</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Modal de éxito al enviar la solicitud de suscripción ── */}
+      <Modal visible={solicitudExito} transparent animationType="fade" statusBarTranslucent>
+        <Pressable style={styles.modalOverlay} onPress={() => setSolicitudExito(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalEmoji}>✅</Text>
+            <Text style={styles.modalTitle}>Solicitud recibida</Text>
+            <Text style={styles.modalBody}>
+              Nuestro equipo te contactará a tu correo registrado en las próximas 24-48h para
+              completar el pago y activar tu Zyfit Pro.
+            </Text>
+            <TouchableOpacity style={styles.modalBtn} onPress={() => setSolicitudExito(false)} activeOpacity={0.8}>
               <Text style={styles.modalBtnText}>Entendido</Text>
             </TouchableOpacity>
           </Pressable>
@@ -782,6 +958,12 @@ function makeStyles(c: Colors) {
     latamExpanded: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 11,
       lineHeight: 17, color: c.inkMuted, paddingTop: 2,
+    },
+    codigoInput: {
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, letterSpacing: 1,
+      color: c.inkPrimary,
     },
 
     // ── CTA (upgrade) ──

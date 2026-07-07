@@ -183,6 +183,9 @@ urlpatterns = [
     # Tutor IA de Zyfit Academy (RAG + Groq; montado dentro del namespace academy)
     path('api/academy/tutor/', include('ai_tutor.urls')),
 
+    # Códigos de descuento de influencers + solicitudes de suscripción a Zyfit Pro
+    path('api/promos/', include('promos.urls')),
+
     # Admin API (Modo Admin en la app móvil — endpoints solo-staff)
     path('api/admin/me/',                       admin_api_views.admin_me),
     path('api/admin/users/',                    admin_api_views.admin_users_list),

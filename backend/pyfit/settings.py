@@ -72,6 +72,8 @@ INSTALLED_APPS = [
     'academy',
     # Tutor IA de Zyfit Academy (RAG sobre el contenido de los cursos + Groq).
     'ai_tutor',
+    # Códigos de descuento de influencers para Zyfit Pro (suscripción administrada).
+    'promos',
     # Celery beat schedule almacenado en Django DB
     'django_celery_beat',
 ]
