@@ -9,7 +9,7 @@ from django.utils import timezone
 from unfold.admin import ModelAdmin
 
 from .models import CodigoPromocional, Influencer, SolicitudSuscripcion
-from .payments import activar_pro
+from .payments import activar
 
 
 @admin.register(Influencer)
@@ -37,10 +37,10 @@ class InfluencerAdmin(ModelAdmin):
 @admin.register(CodigoPromocional)
 class CodigoPromocionalAdmin(ModelAdmin):
     list_display = [
-        'codigo', 'influencer', 'tipo_descuento', 'valor_descuento',
+        'codigo', 'influencer', 'producto', 'tipo_descuento', 'valor_descuento',
         'comision_monto', 'activo', 'usos_confirmados', 'valido_hasta', 'created_at',
     ]
-    list_filter = ['activo', 'tipo_descuento']
+    list_filter = ['producto', 'activo', 'tipo_descuento']
     search_fields = ['codigo', 'influencer__nombre']
     autocomplete_fields = ['influencer']
 
@@ -59,15 +59,16 @@ class CodigoPromocionalAdmin(ModelAdmin):
 @admin.register(SolicitudSuscripcion)
 class SolicitudSuscripcionAdmin(ModelAdmin):
     """Cola de trabajo del staff: cada fila es un pedido de suscripción a
-    Zyfit Pro. El staff cobra por fuera de la app y usa las acciones de abajo
-    para confirmar (activa Pro) o rechazar. Los campos de precio/comisión son
-    de solo lectura porque son cálculos de servidor hechos al crear el pedido."""
+    Zyfit Pro o Zyfit Academy Pro (`producto`). El staff cobra por fuera de
+    la app y usa las acciones de abajo para confirmar (activa el producto
+    correspondiente) o rechazar. Los campos de precio/comisión son de solo
+    lectura porque son cálculos de servidor hechos al crear el pedido."""
 
     list_display = [
-        'user', 'plan_tipo', 'codigo_promocional', 'precio_final',
+        'user', 'producto', 'plan_tipo', 'codigo_promocional', 'precio_final',
         'comision_influencer', 'estado', 'comision_pagada', 'created_at',
     ]
-    list_filter = ['estado', 'plan_tipo', 'comision_pagada']
+    list_filter = ['producto', 'estado', 'plan_tipo', 'comision_pagada']
     search_fields = ['user__email', 'codigo_promocional__codigo']
     autocomplete_fields = ['user', 'codigo_promocional']
     readonly_fields = ['precio_lista', 'descuento_aplicado', 'precio_final', 'comision_influencer', 'created_at', 'confirmada_at']
@@ -80,7 +81,7 @@ class SolicitudSuscripcionAdmin(ModelAdmin):
     def confirmar_y_activar(self, request, queryset):
         n = 0
         for solicitud in queryset.filter(estado=SolicitudSuscripcion.ESTADO_PENDIENTE):
-            activar_pro(solicitud.user, solicitud.plan_tipo)
+            activar(solicitud.producto, solicitud.user, solicitud.plan_tipo)
             solicitud.estado = SolicitudSuscripcion.ESTADO_CONFIRMADA
             solicitud.confirmada_at = timezone.now()
             solicitud.save(update_fields=['estado', 'confirmada_at'])

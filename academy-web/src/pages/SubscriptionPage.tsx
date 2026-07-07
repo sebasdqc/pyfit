@@ -2,18 +2,22 @@
 // Paquete separado de la suscripción "Zyfit Pro" del entrenador principal
 // (app mobile) — ver academy.access_service en el backend.
 //
-// No hay cobrador conectado todavía: "Suscribirme" muestra el mismo mensaje
-// honesto que ya usa mobile/(app)/perfil/suscripcion.tsx en vez de fingir un
-// checkout. Cancelar SÍ es real (no otorga nada gratis, así que es seguro).
+// No hay cobrador conectado todavía: elegir un plan crea una solicitud real
+// (mismo backend administrado `promos/` que usa mobile para Zyfit Pro, con
+// `producto: 'academy_pro'`) — el staff confirma el pago desde Django Admin.
+// Cancelar SÍ es real (no otorga nada gratis, así que es seguro exponerlo).
 
 import { useEffect, useState } from 'react'
-import { cancelSubscription, getSubscriptionStatus } from '@/api/academy'
+import {
+  cancelSubscription, crearSolicitudSuscripcion, getMiSolicitudSuscripcion,
+  getSubscriptionStatus, validarCodigoPromocional,
+} from '@/api/academy'
 import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Icon } from '@/components/Icon'
-import type { AcademyPlanTipo, AcademySubscriptionStatus } from '@/types'
+import type { AcademyPlanTipo, AcademySolicitudSuscripcion, AcademySubscriptionStatus } from '@/types'
 
 const ESTADO_LABEL: Record<AcademySubscriptionStatus['estado'], string> = {
   sin_suscripcion: 'Sin suscripción',
@@ -30,10 +34,12 @@ const ESTADO_TONE: Record<AcademySubscriptionStatus['estado'], 'ok' | 'warn' | '
   pago_fallido: 'warn',
 }
 
-const PLANES: { id: AcademyPlanTipo; nombre: string; precio: string; periodo: string; badge?: string }[] = [
-  { id: 'mensual', nombre: 'Mensual', precio: 'USD 9.99', periodo: '/ mes' },
-  { id: 'anual', nombre: 'Anual', precio: 'USD 79.99', periodo: '/ año', badge: 'Ahorra 33%' },
+const PLANES: { id: AcademyPlanTipo; nombre: string; precioNum: number; periodo: string; badge?: string }[] = [
+  { id: 'mensual', nombre: 'Mensual', precioNum: 9.99, periodo: '/ mes' },
+  { id: 'anual', nombre: 'Anual', precioNum: 79.99, periodo: '/ año', badge: 'Ahorra 33%' },
 ]
+
+type CodigoEstado = 'idle' | 'validando' | 'valido' | 'invalido'
 
 function formatFecha(iso: string | null): string {
   if (!iso) return ''
@@ -48,10 +54,21 @@ export function SubscriptionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
-  const [proximamente, setProximamente] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState(false)
+
+  // Solicitud de suscripción con código de descuento (reemplaza el mockup "Próximamente")
+  const [misSolicitud, setMisSolicitud] = useState<AcademySolicitudSuscripcion | null>(null)
+  const [misSolicitudLoading, setMisSolicitudLoading] = useState(true)
+  const [planSeleccionado, setPlanSeleccionado] = useState<AcademyPlanTipo | null>(null)
+  const [codigoExpanded, setCodigoExpanded] = useState(false)
+  const [codigoInput, setCodigoInput] = useState('')
+  const [codigoEstado, setCodigoEstado] = useState<CodigoEstado>('idle')
+  const [codigoMensaje, setCodigoMensaje] = useState('')
+  const [precioFinalCodigo, setPrecioFinalCodigo] = useState<number | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  const [envioError, setEnvioError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -65,6 +82,75 @@ export function SubscriptionPage() {
       active = false
     }
   }, [reloadKey])
+
+  useEffect(() => {
+    if (!status || status.nivel === 'pro') {
+      setMisSolicitudLoading(false)
+      return
+    }
+    let active = true
+    getMiSolicitudSuscripcion()
+      .then((s) => { if (active) setMisSolicitud(s?.estado === 'pendiente' ? s : null) })
+      .catch(() => {})
+      .finally(() => { if (active) setMisSolicitudLoading(false) })
+    return () => { active = false }
+  }, [status])
+
+  async function validarCodigo(codigo: string) {
+    const limpio = codigo.trim()
+    if (!limpio) {
+      setCodigoEstado('idle')
+      setPrecioFinalCodigo(null)
+      return
+    }
+    if (!planSeleccionado) return
+    setCodigoEstado('validando')
+    try {
+      const data = await validarCodigoPromocional(planSeleccionado, limpio)
+      if (data.valido) {
+        setCodigoEstado('valido')
+        setCodigoMensaje(`Código aplicado: -USD ${Number(data.descuento_aplicado).toFixed(2)}`)
+        setPrecioFinalCodigo(Number(data.precio_final))
+      } else {
+        setCodigoEstado('invalido')
+        setCodigoMensaje(data.mensaje || 'Código inválido.')
+        setPrecioFinalCodigo(null)
+      }
+    } catch {
+      setCodigoEstado('invalido')
+      setCodigoMensaje('No pudimos validar el código. Intenta de nuevo.')
+      setPrecioFinalCodigo(null)
+    }
+  }
+
+  // Si el usuario cambia de plan, recalcula el precio (si había un código
+  // aplicado) o limpia el bloque de código (si deselecciona el plan).
+  useEffect(() => {
+    if (!planSeleccionado) {
+      setCodigoExpanded(false)
+      setCodigoInput('')
+      setCodigoEstado('idle')
+      setPrecioFinalCodigo(null)
+      return
+    }
+    if (codigoEstado === 'valido' || codigoEstado === 'invalido') validarCodigo(codigoInput)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planSeleccionado])
+
+  async function handleEnviarSolicitud() {
+    if (!planSeleccionado || enviando) return
+    setEnviando(true)
+    setEnvioError(null)
+    try {
+      const codigo = codigoEstado === 'valido' ? codigoInput.trim() : undefined
+      const data = await crearSolicitudSuscripcion(planSeleccionado, codigo)
+      setMisSolicitud(data)
+    } catch {
+      setEnvioError('No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.')
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   async function handleCancel() {
     setCancelling(true)
@@ -197,30 +283,115 @@ export function SubscriptionPage() {
       {status.nivel !== 'pro' && (
         <section className="za-card p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Elige tu plan</h2>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {PLANES.map((p) => (
-              <div key={p.id} className="rounded-xl border border-surface-border p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-ink">{p.nombre}</p>
-                  {p.badge && <Badge tone="brand">{p.badge}</Badge>}
-                </div>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-ink">
-                  {p.precio} <span className="text-sm font-normal text-ink-muted">{p.periodo}</span>
-                </p>
-                <button
-                  onClick={() => setProximamente(true)}
-                  className="mt-4 h-10 w-full rounded-xl bg-brand text-sm font-semibold text-white hover:opacity-90"
-                >
-                  Suscribirme
-                </button>
+
+          {misSolicitudLoading ? (
+            <div className="mt-4 flex justify-center py-6">
+              <Spinner size={28} />
+            </div>
+          ) : misSolicitud ? (
+            <div className="mt-4 rounded-xl border border-surface-border p-4">
+              <p className="text-sm font-semibold text-ink">
+                Plan {PLANES.find((p) => p.id === misSolicitud.plan_tipo)?.nombre ?? misSolicitud.plan_tipo}
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-ink">
+                USD {Number(misSolicitud.precio_final).toFixed(2)}
+                {misSolicitud.codigo && (
+                  <span className="text-sm font-normal text-ink-muted"> · código {misSolicitud.codigo}</span>
+                )}
+              </p>
+              <p className="mt-3 text-sm text-ink-soft">
+                Tu solicitud está pendiente de confirmación de pago. Nuestro equipo te contactará a
+                tu correo registrado en las próximas 24-48h para completar el pago y activar tu
+                Zyfit Academy Pro.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {PLANES.map((p) => {
+                  const seleccionado = planSeleccionado === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPlanSeleccionado((cur) => (cur === p.id ? null : p.id))}
+                      className={`rounded-xl border p-4 text-left transition ${
+                        seleccionado ? 'border-brand ring-1 ring-brand' : 'border-surface-border hover:border-ink-muted'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-ink">{p.nombre}</p>
+                        {p.badge && <Badge tone="brand">{p.badge}</Badge>}
+                      </div>
+                      <p className="mt-2 text-2xl font-bold tracking-tight text-ink">
+                        USD {p.precioNum.toFixed(2)} <span className="text-sm font-normal text-ink-muted">{p.periodo}</span>
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-          {proximamente && (
-            <p role="status" className="mt-4 rounded-lg bg-surface-soft p-3 text-sm text-ink-soft">
-              🚀 Los pagos estarán disponibles muy pronto. Te avisaremos en cuanto puedas suscribirte a
-              Academy Pro desde aquí.
-            </p>
+
+              {planSeleccionado && (
+                <div className="mt-5 rounded-xl border border-surface-border p-4">
+                  <button
+                    type="button"
+                    onClick={() => setCodigoExpanded((v) => !v)}
+                    className="flex w-full items-center justify-between text-sm font-medium text-ink-soft"
+                  >
+                    ¿Tienes un código de descuento?
+                    <Icon name={codigoExpanded ? 'chevronDown' : 'chevronRight'} size={16} className="text-ink-muted" />
+                  </button>
+                  {codigoExpanded && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      <input
+                        value={codigoInput}
+                        onChange={(e) => {
+                          setCodigoInput(e.target.value)
+                          if (codigoEstado !== 'idle') setCodigoEstado('idle')
+                        }}
+                        onBlur={() => validarCodigo(codigoInput)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') validarCodigo(codigoInput) }}
+                        placeholder="Ej: MARIA20"
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        className="input uppercase tracking-wide"
+                      />
+                      {codigoEstado === 'validando' && (
+                        <p className="text-xs text-ink-muted">Validando código…</p>
+                      )}
+                      {codigoEstado === 'valido' && (
+                        <p className="text-xs text-ok">{codigoMensaje}</p>
+                      )}
+                      {codigoEstado === 'invalido' && (
+                        <p className="text-xs text-danger">{codigoMensaje}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-sm text-ink-soft">
+                      Total:{' '}
+                      <span className="font-semibold text-ink">
+                        USD {(codigoEstado === 'valido' && precioFinalCodigo != null
+                          ? precioFinalCodigo
+                          : PLANES.find((p) => p.id === planSeleccionado)?.precioNum ?? 0
+                        ).toFixed(2)}
+                      </span>
+                    </p>
+                    <button
+                      onClick={handleEnviarSolicitud}
+                      disabled={enviando}
+                      className="h-10 shrink-0 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                    >
+                      {enviando ? 'Enviando…' : 'Enviar solicitud'}
+                    </button>
+                  </div>
+                  {envioError && (
+                    <p role="alert" className="mt-2 text-sm text-danger">{envioError}</p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

@@ -4,6 +4,13 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+PRODUCTO_ZYFIT_PRO = 'zyfit_pro'
+PRODUCTO_ACADEMY_PRO = 'academy_pro'
+PRODUCTO_CHOICES = [
+    (PRODUCTO_ZYFIT_PRO, 'Zyfit Pro'),
+    (PRODUCTO_ACADEMY_PRO, 'Zyfit Academy Pro'),
+]
+
 
 class Influencer(models.Model):
     """Creador de contenido con el que se acuerda un código de descuento a
@@ -40,6 +47,7 @@ class CodigoPromocional(models.Model):
 
     codigo = models.CharField(max_length=20, unique=True)
     influencer = models.ForeignKey(Influencer, on_delete=models.CASCADE, related_name='codigos')
+    producto = models.CharField(max_length=20, choices=PRODUCTO_CHOICES, default=PRODUCTO_ZYFIT_PRO)
     tipo_descuento = models.CharField(max_length=20, choices=TIPO_DESCUENTO_CHOICES, default=TIPO_PORCENTAJE)
     valor_descuento = models.DecimalField(
         max_digits=6, decimal_places=2,
@@ -83,11 +91,15 @@ class CodigoPromocional(models.Model):
 
 
 class SolicitudSuscripcion(models.Model):
-    """Pedido de un usuario para suscribirse a Zyfit Pro. Sin cobrador
-    conectado todavía (ver `promos.payments`): el staff cobra por fuera de la
-    app y confirma aquí, lo que activa `Profile.plan` y deja registrada la
-    comisión que se le debe al influencer del código usado, si hubo uno."""
+    """Pedido de un usuario para suscribirse a Zyfit Pro o a Zyfit Academy
+    Pro (`producto`). Sin cobrador conectado todavía (ver `promos.payments`):
+    el staff cobra por fuera de la app y confirma aquí, lo que activa el
+    producto correspondiente (`Profile.plan` o `AcademySubscription`) y deja
+    registrada la comisión que se le debe al influencer del código usado, si
+    hubo uno."""
 
+    # Unión de los plan_tipo válidos de ambos productos — cuál subconjunto
+    # aplica lo decide `promos.payments.PRECIOS[producto]`, no este choices.
     PLAN_TIPO_CHOICES = [
         ('mensual', 'Mensual'),
         ('semestral', 'Semestral'),
@@ -106,6 +118,7 @@ class SolicitudSuscripcion(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solicitudes_suscripcion',
     )
+    producto = models.CharField(max_length=20, choices=PRODUCTO_CHOICES, default=PRODUCTO_ZYFIT_PRO)
     plan_tipo = models.CharField(max_length=20, choices=PLAN_TIPO_CHOICES)
     codigo_promocional = models.ForeignKey(
         CodigoPromocional, on_delete=models.SET_NULL, null=True, blank=True, related_name='solicitudes',

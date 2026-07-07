@@ -632,3 +632,29 @@ export interface AcademySubscriptionStatus {
   fecha_renovacion: string | null
   nivel: AcademyNivel
 }
+
+// ── Códigos de descuento de influencer (promos/, producto 'academy_pro') ────
+// Espeja promos.views._solicitud_payload(). Mismo backend que usa mobile
+// para Zyfit Pro, generalizado con un campo `producto`.
+
+export interface AcademyPromoValidation {
+  valido: boolean
+  mensaje: string
+  precio_lista?: number
+  descuento_aplicado?: number
+  precio_final?: number
+}
+
+export type AcademySolicitudEstado = 'pendiente' | 'confirmada' | 'rechazada'
+
+export interface AcademySolicitudSuscripcion {
+  id: number
+  producto: 'academy_pro'
+  plan_tipo: AcademyPlanTipo
+  codigo: string | null
+  precio_lista: number
+  descuento_aplicado: number
+  precio_final: number
+  estado: AcademySolicitudEstado
+  created_at: string
+}

@@ -3,7 +3,8 @@
 
 import { api } from './client'
 import type {
-  AcademyBadgeCatalog, AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
+  AcademyBadgeCatalog, AcademyPlanTipo, AcademyPromoValidation, AcademySolicitudSuscripcion,
+  AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
   Course, CourseDetail,
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
   LibraryResource, LibraryTipo, Module,
@@ -285,6 +286,32 @@ export async function getSubscriptionStatus(): Promise<AcademySubscriptionStatus
 
 export async function cancelSubscription(): Promise<AcademySubscriptionStatus> {
   const res = await api.post<AcademySubscriptionStatus>('/academy/subscription/cancelar/')
+  return res.data
+}
+
+// ── Códigos de descuento de influencer (`/api/promos/`, producto 'academy_pro') ──
+// Mismo backend administrado que usa mobile para Zyfit Pro (ver promos.views),
+// generalizado con un campo `producto` — no hay endpoint de "activar": eso solo
+// lo hace Django Admin al confirmar la solicitud.
+
+export async function validarCodigoPromocional(planTipo: AcademyPlanTipo, codigo?: string): Promise<AcademyPromoValidation> {
+  const res = await api.post<AcademyPromoValidation>('/promos/validar/', {
+    producto: 'academy_pro', plan_tipo: planTipo, codigo,
+  })
+  return res.data
+}
+
+export async function crearSolicitudSuscripcion(planTipo: AcademyPlanTipo, codigo?: string): Promise<AcademySolicitudSuscripcion> {
+  const body: Record<string, string> = { producto: 'academy_pro', plan_tipo: planTipo }
+  if (codigo) body.codigo = codigo
+  const res = await api.post<AcademySolicitudSuscripcion>('/promos/solicitudes/', body)
+  return res.data
+}
+
+export async function getMiSolicitudSuscripcion(): Promise<AcademySolicitudSuscripcion | null> {
+  const res = await api.get<AcademySolicitudSuscripcion | null>('/promos/solicitudes/mias/', {
+    params: { producto: 'academy_pro' },
+  })
   return res.data
 }
 

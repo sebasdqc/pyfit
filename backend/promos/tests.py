@@ -1,6 +1,6 @@
-"""Tests de códigos de descuento y solicitudes de suscripción a Zyfit Pro.
-Mismo estilo que academy/tests/test_library.py: BD real (TestCase) + APIClient
-con force_authenticate."""
+"""Tests de códigos de descuento y solicitudes de suscripción a Zyfit Pro y
+Zyfit Academy Pro (`producto`). Mismo estilo que academy/tests/test_library.py:
+BD real (TestCase) + APIClient con force_authenticate."""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -11,8 +11,11 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory, TestCase
 from rest_framework.test import APIClient, APITestCase
 
+from academy.models import AcademySubscription
 from promos.admin import SolicitudSuscripcionAdmin
-from promos.models import CodigoPromocional, Influencer, SolicitudSuscripcion
+from promos.models import (
+    PRODUCTO_ACADEMY_PRO, PRODUCTO_ZYFIT_PRO, CodigoPromocional, Influencer, SolicitudSuscripcion,
+)
 from promos.payments import CodigoInvalidoError, calcular_precio
 from users.models import Profile
 
@@ -47,38 +50,38 @@ def make_admin_request():
 
 class CalcularPrecioTests(TestCase):
     def test_sin_codigo_devuelve_precio_de_lista(self):
-        precio_lista, descuento, precio_final = calcular_precio('mensual', None)
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', None)
         self.assertEqual(precio_lista, Decimal('9.99'))
         self.assertEqual(descuento, Decimal('0'))
         self.assertEqual(precio_final, Decimal('9.99'))
 
     def test_descuento_porcentaje(self):
         codigo = make_codigo(tipo_descuento=CodigoPromocional.TIPO_PORCENTAJE, valor_descuento=Decimal('20'))
-        precio_lista, descuento, precio_final = calcular_precio('mensual', codigo)
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
         self.assertEqual(precio_lista, Decimal('9.99'))
         self.assertEqual(descuento, Decimal('2.00'))
         self.assertEqual(precio_final, Decimal('7.99'))
 
     def test_descuento_fijo(self):
         codigo = make_codigo(codigo='MARIA5', tipo_descuento=CodigoPromocional.TIPO_FIJO, valor_descuento=Decimal('3.00'))
-        precio_lista, descuento, precio_final = calcular_precio('mensual', codigo)
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
         self.assertEqual(descuento, Decimal('3.00'))
         self.assertEqual(precio_final, Decimal('6.99'))
 
     def test_descuento_no_puede_superar_el_precio(self):
         codigo = make_codigo(codigo='GRATIS', tipo_descuento=CodigoPromocional.TIPO_FIJO, valor_descuento=Decimal('999'))
-        _, descuento, precio_final = calcular_precio('mensual', codigo)
+        _, descuento, precio_final = calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
         self.assertEqual(precio_final, Decimal('0'))
 
     def test_codigo_inactivo_lanza_error(self):
         codigo = make_codigo(activo=False)
         with self.assertRaises(CodigoInvalidoError):
-            calcular_precio('mensual', codigo)
+            calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
 
     def test_codigo_vencido_lanza_error(self):
         codigo = make_codigo(valido_hasta=date.today() - timedelta(days=1))
         with self.assertRaises(CodigoInvalidoError):
-            calcular_precio('mensual', codigo)
+            calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
 
     def test_codigo_con_cupo_agotado_lanza_error(self):
         user = make_user()
@@ -88,7 +91,34 @@ class CalcularPrecioTests(TestCase):
             precio_lista=Decimal('9.99'), descuento_aplicado=Decimal('2.00'), precio_final=Decimal('7.99'),
         )
         with self.assertRaises(CodigoInvalidoError):
-            calcular_precio('mensual', codigo)
+            calcular_precio(PRODUCTO_ZYFIT_PRO, 'mensual', codigo)
+
+    def test_codigo_de_otro_producto_lanza_error(self):
+        codigo = make_codigo(producto=PRODUCTO_ZYFIT_PRO)
+        with self.assertRaises(CodigoInvalidoError):
+            calcular_precio(PRODUCTO_ACADEMY_PRO, 'mensual', codigo)
+
+
+class CalcularPrecioAcademyProTests(TestCase):
+    def test_sin_codigo_devuelve_precio_de_lista(self):
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ACADEMY_PRO, 'anual', None)
+        self.assertEqual(precio_lista, Decimal('79.99'))
+        self.assertEqual(descuento, Decimal('0'))
+        self.assertEqual(precio_final, Decimal('79.99'))
+
+    def test_no_ofrece_plan_semestral(self):
+        with self.assertRaises(KeyError):
+            calcular_precio(PRODUCTO_ACADEMY_PRO, 'semestral', None)
+
+    def test_codigo_del_producto_correcto_aplica_descuento(self):
+        codigo = make_codigo(
+            producto=PRODUCTO_ACADEMY_PRO, tipo_descuento=CodigoPromocional.TIPO_PORCENTAJE,
+            valor_descuento=Decimal('20'),
+        )
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ACADEMY_PRO, 'mensual', codigo)
+        self.assertEqual(precio_lista, Decimal('9.99'))
+        self.assertEqual(descuento, Decimal('2.00'))
+        self.assertEqual(precio_final, Decimal('7.99'))
 
 
 class ValidarCodigoEndpointTests(APITestCase):
@@ -111,6 +141,36 @@ class ValidarCodigoEndpointTests(APITestCase):
 
     def test_plan_invalido(self):
         res = self.client.post('/api/promos/validar/', {'plan_tipo': 'quincenal'})
+        self.assertEqual(res.status_code, 400)
+
+    def test_producto_default_es_zyfit_pro(self):
+        """Sin `producto` en el body (cliente mobile actual), se comporta
+        exactamente como antes de generalizar el endpoint."""
+        res = self.client.post('/api/promos/validar/', {'plan_tipo': 'anual'})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(Decimal(res.data['precio_final']), Decimal('79.99'))
+
+    def test_codigo_academy_pro_valida_con_producto_correcto(self):
+        make_codigo(producto=PRODUCTO_ACADEMY_PRO, valor_descuento=Decimal('20'))
+        res = self.client.post(
+            '/api/promos/validar/', {'producto': PRODUCTO_ACADEMY_PRO, 'codigo': 'MARIA20', 'plan_tipo': 'mensual'},
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data['valido'])
+        self.assertEqual(Decimal(res.data['precio_final']), Decimal('7.99'))
+
+    def test_codigo_de_zyfit_pro_no_aplica_a_academy_pro(self):
+        make_codigo(producto=PRODUCTO_ZYFIT_PRO)
+        res = self.client.post(
+            '/api/promos/validar/', {'producto': PRODUCTO_ACADEMY_PRO, 'codigo': 'MARIA20', 'plan_tipo': 'mensual'},
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.data['valido'])
+
+    def test_plan_semestral_invalido_para_academy_pro(self):
+        res = self.client.post(
+            '/api/promos/validar/', {'producto': PRODUCTO_ACADEMY_PRO, 'plan_tipo': 'semestral'},
+        )
         self.assertEqual(res.status_code, 400)
 
 
@@ -154,6 +214,34 @@ class CrearSolicitudEndpointTests(APITestCase):
         res = self.client.get('/api/promos/solicitudes/mias/')
         self.assertIsNone(res.data)
 
+    def test_crea_solicitud_academy_pro(self):
+        res = self.client.post(
+            '/api/promos/solicitudes/', {'producto': PRODUCTO_ACADEMY_PRO, 'plan_tipo': 'anual'},
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['producto'], PRODUCTO_ACADEMY_PRO)
+        self.assertEqual(Decimal(res.data['precio_final']), Decimal('79.99'))
+
+    def test_solicitud_pendiente_de_un_producto_no_bloquea_al_otro(self):
+        r_pro = self.client.post('/api/promos/solicitudes/', {'plan_tipo': 'mensual'})
+        r_academy = self.client.post(
+            '/api/promos/solicitudes/', {'producto': PRODUCTO_ACADEMY_PRO, 'plan_tipo': 'mensual'},
+        )
+        self.assertNotEqual(r_pro.data['id'], r_academy.data['id'])
+        self.assertEqual(SolicitudSuscripcion.objects.count(), 2)
+
+    def test_mi_solicitud_esta_aislada_por_producto(self):
+        self.client.post('/api/promos/solicitudes/', {'plan_tipo': 'mensual'})
+        self.client.post('/api/promos/solicitudes/', {'producto': PRODUCTO_ACADEMY_PRO, 'plan_tipo': 'anual'})
+
+        res_pro = self.client.get('/api/promos/solicitudes/mias/')
+        self.assertEqual(res_pro.data['producto'], PRODUCTO_ZYFIT_PRO)
+        self.assertEqual(res_pro.data['plan_tipo'], 'mensual')
+
+        res_academy = self.client.get('/api/promos/solicitudes/mias/', {'producto': PRODUCTO_ACADEMY_PRO})
+        self.assertEqual(res_academy.data['producto'], PRODUCTO_ACADEMY_PRO)
+        self.assertEqual(res_academy.data['plan_tipo'], 'anual')
+
 
 class ConfirmarSolicitudAdminActionTests(TestCase):
     def setUp(self):
@@ -196,5 +284,37 @@ class ConfirmarSolicitudAdminActionTests(TestCase):
         self.admin.rechazar(self.request, SolicitudSuscripcion.objects.filter(pk=self.solicitud.pk))
         self.solicitud.refresh_from_db()
         self.assertEqual(self.solicitud.estado, SolicitudSuscripcion.ESTADO_RECHAZADA)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.plan, 'starter')
+
+
+class ConfirmarSolicitudAcademyProAdminActionTests(TestCase):
+    """La misma acción de admin, pero para una solicitud de Academy Pro —
+    debe activar `AcademySubscription`, no `Profile`."""
+
+    def setUp(self):
+        self.user = make_user()
+        self.codigo = make_codigo(producto=PRODUCTO_ACADEMY_PRO)
+        self.solicitud = SolicitudSuscripcion.objects.create(
+            user=self.user, producto=PRODUCTO_ACADEMY_PRO, plan_tipo='anual', codigo_promocional=self.codigo,
+            precio_lista=Decimal('79.99'), descuento_aplicado=Decimal('16.00'), precio_final=Decimal('63.99'),
+            comision_influencer=Decimal('5.00'),
+        )
+        self.admin = SolicitudSuscripcionAdmin(SolicitudSuscripcion, None)
+        self.request = make_admin_request()
+
+    def test_confirmar_activa_academy_subscription_con_el_plan_correcto(self):
+        self.admin.confirmar_y_activar(self.request, SolicitudSuscripcion.objects.filter(pk=self.solicitud.pk))
+
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudSuscripcion.ESTADO_CONFIRMADA)
+
+        self.user.refresh_from_db()
+        sub = self.user.academy_subscription
+        self.assertEqual(sub.estado, AcademySubscription.ESTADO_ACTIVA)
+        self.assertEqual(sub.plan_tipo, 'anual')
+        self.assertEqual(sub.fecha_renovacion, date.today() + timedelta(days=365))
+
+        # No debe haber tocado Zyfit Pro.
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.plan, 'starter')
