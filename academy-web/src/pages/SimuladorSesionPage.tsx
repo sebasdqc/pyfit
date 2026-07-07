@@ -80,7 +80,7 @@ export function SimuladorSesionPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Simulador · Entrenamiento y Rendimiento Deportivo</p>
+        <p className="za-eyebrow">Simulador · Ciencia del Entrenamiento</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Planificación de sesión</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
           Lee el caso, calcula la fatiga y el RPE objetivo, y elige qué ejercicios incluirías hoy. El

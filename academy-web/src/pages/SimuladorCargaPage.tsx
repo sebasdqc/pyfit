@@ -106,7 +106,7 @@ export function SimuladorCargaPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Simulador · Entrenamiento y Rendimiento Deportivo</p>
+        <p className="za-eyebrow">Simulador · Analítica y Rendimiento Deportivo</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Carga interna y ACWR</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
           Ajusta la carga diaria (sRPE, en UA) de un atleta ficticio y observa en vivo cómo cambian

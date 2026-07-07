@@ -415,7 +415,7 @@ export async function createAcademyUser(payload: CreateAcademyUserPayload): Prom
   return res.data
 }
 
-// ── Simulador de carga interna (escuela Entrenamiento y Rendimiento Deportivo) ─
+// ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
 // Mismo motor que Zyfit Performance (performance.calculators); el cálculo
 // siempre ocurre en el servidor, este cliente solo envía los inputs crudos.
 
@@ -430,7 +430,7 @@ export async function computeSimuladorCarga<T>(
   return res.data
 }
 
-// ── Simulador de planificación de sesión (escuela Entrenamiento y Rendimiento Deportivo) ──
+// ── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──────────────
 
 export async function listSimuladorSesionCasos(): Promise<SimuladorSesionCaso[]> {
   const res = await api.get<SimuladorSesionCaso[]>('/academy/simulador/sesion/casos/')
@@ -447,7 +447,7 @@ export async function evaluarSimuladorSesion(payload: {
   return res.data
 }
 
-// ── Simulador de Return-to-Play (escuela Readaptación Deportiva y Prevención de Lesiones) ─
+// ── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─────────────
 
 export async function listSimuladorPrevencionCasos(): Promise<SimuladorPrevencionCaso[]> {
   const res = await api.get<SimuladorPrevencionCaso[]>('/academy/simulador/prevencion/casos/')

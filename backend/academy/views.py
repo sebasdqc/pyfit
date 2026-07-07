@@ -808,7 +808,7 @@ def badges_view(request):
     return Response(badges_service.catalog_state(request.user))
 
 
-# ─── Simulador de carga interna (escuela Entrenamiento y Rendimiento Deportivo) ─
+# ─── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────
 # Expone SOLO la familia "carga" (sRPE → carga semanal/monotonía/strain → ACWR)
 # del motor de calculadoras de Zyfit Performance (performance.calculators) como
 # herramienta pedagógica: mismo cálculo que corre en el panel B2B, sin exigir
@@ -858,7 +858,7 @@ def simulador_carga_compute(request):
     })
 
 
-# ─── Simulador de planificación de sesión (escuela Entrenamiento y Rendimiento Deportivo) ──
+# ─── Simulador de planificación de sesión (escuela Ciencia del Entrenamiento) ──────────────
 # Práctica pedagógica sobre calcular_fatiga/calcular_rpe_target de ai_workout —
 # ver academy.simulador_sesion (el número correcto SIEMPRE sale de esas
 # funciones reales, nunca de una reimplementación propia de la Academia).
@@ -886,7 +886,7 @@ def simulador_sesion_evaluar(request):
     return Response(resultado)
 
 
-# ─── Simulador de Return-to-Play (escuela Readaptación Deportiva y Prevención de Lesiones) ─
+# ─── Simulador de Return-to-Play (escuela Recuperación, Prevención y Wellness) ─────────────
 # Reutiliza la familia 'prevencion' del motor de Zyfit Performance — ver
 # academy.simulador_prevencion (los resultados de los tests SIEMPRE salen de
 # performance.calculators; la Academia solo añade la capa de decisión).

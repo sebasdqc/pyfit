@@ -17,26 +17,33 @@ BADGES = [
     {
         'identificador': 'fisiologo',
         'nombre': 'Fisiólogo',
-        'descripcion': 'Completaste todos los cursos de Entrenamiento y Rendimiento Deportivo.',
+        'descripcion': 'Completaste todos los cursos de Ciencia del Entrenamiento.',
         'icono': '🧬',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'entrenamiento-y-rendimiento-deportivo',
+        'escuela_slug': 'ciencia-del-entrenamiento',
         'orden': 1,
     },
-    # Retirada: su escuela de origen ("Analítica y Rendimiento Deportivo") se
-    # fusionó en otras escuelas y dejó de existir como entidad propia. Se
-    # mantiene aquí con activo=False para no perder el historial de quien ya
-    # la ganó (ver docstring de AcademyBadge) y para que el seed no la reviva.
+    # Retirada: su escuela de origen ("Analítica y Rendimiento Deportivo", en
+    # su identidad de la época) se fusionó en otras escuelas y dejó de existir
+    # como entidad propia. Se mantiene aquí con activo=False para no perder el
+    # historial de quien ya la ganó (ver docstring de AcademyBadge) y para que
+    # el seed no la reviva.
     {
         'identificador': 'analista-de-datos',
         'nombre': 'Analista de Datos',
         'descripcion': 'Completaste todos los cursos de Analítica y Rendimiento Deportivo.',
         'icono': '📊',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'entrenamiento-y-rendimiento-deportivo',
+        'escuela_slug': 'ciencia-del-entrenamiento',
         'orden': 2,
         'activo': False,
     },
+    # Retirada en la reestructura a 7 escuelas: su escuela de origen
+    # ("Readaptación Deportiva y Prevención de Lesiones") se disolvió — ACWR
+    # se fue a "Analítica y Rendimiento Deportivo" y "Prevención de Lesiones
+    # Basada en Datos" se fue a "Recuperación, Prevención y Wellness", así que
+    # ningún destino único representa ya el criterio original. Se mantiene con
+    # activo=False por la misma razón que "Analista de Datos" arriba.
     {
         'identificador': 'especialista-en-prevencion',
         'nombre': 'Especialista en Prevención',
@@ -46,16 +53,17 @@ BADGES = [
         ),
         'icono': '🛡️',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'readaptacion-deportiva-y-prevencion-de-lesiones',
+        'escuela_slug': 'recuperacion-prevencion-y-wellness',
         'orden': 2,
+        'activo': False,
     },
     {
         'identificador': 'especialista-en-recuperacion',
         'nombre': 'Especialista en Recuperación',
-        'descripcion': 'Completaste todos los cursos de Salud y Bienestar Deportivo.',
+        'descripcion': 'Completaste todos los cursos de Recuperación, Prevención y Wellness.',
         'icono': '🧘',
         'criterio_tipo': AcademyBadge.CRITERIO_ESCUELA_COMPLETADA,
-        'escuela_slug': 'salud-y-bienestar-deportivo',
+        'escuela_slug': 'recuperacion-prevencion-y-wellness',
         'orden': 3,
     },
     {

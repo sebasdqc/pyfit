@@ -62,15 +62,15 @@ urlpatterns = [
     path('library/<int:pk>/abrir/', library_views.library_open_view),
 
     # Simulador de carga interna (sRPE → ACWR) — mismo motor que Zyfit Performance,
-    # expuesto para práctica pedagógica de la escuela Analítica y Rendimiento.
+    # expuesto para práctica pedagógica de la escuela Analítica y Rendimiento Deportivo.
     path('simulador/carga/catalog/', views.simulador_carga_catalog),
     path('simulador/carga/compute/', views.simulador_carga_compute),
 
-    # Simulador de planificación de sesión — escuela Entrenamiento y Rendimiento Deportivo.
+    # Simulador de planificación de sesión — escuela Ciencia del Entrenamiento.
     path('simulador/sesion/casos/', views.simulador_sesion_casos),
     path('simulador/sesion/evaluar/', views.simulador_sesion_evaluar),
 
-    # Simulador de Return-to-Play — escuela Readaptación Deportiva y Prevención de Lesiones.
+    # Simulador de Return-to-Play — escuela Recuperación, Prevención y Wellness.
     path('simulador/prevencion/casos/', views.simulador_prevencion_casos),
     path('simulador/prevencion/evaluar/', views.simulador_prevencion_evaluar),
 

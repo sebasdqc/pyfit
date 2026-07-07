@@ -15,55 +15,43 @@ export interface SchoolTheme {
 }
 
 const THEMES: Record<string, SchoolTheme> = {
-  'entrenamiento-y-rendimiento-deportivo': {
+  'ciencia-del-entrenamiento': {
     from: '#1e3a8a',
     to: '#0b1e40',
     accent: '#3b6fd4',
     icon: 'layers',
   },
-  'readaptacion-deportiva-y-prevencion-de-lesiones': {
+  'analitica-y-rendimiento-deportivo': {
     from: '#0e7490',
     to: '#083641',
     accent: '#0e9bb8',
     icon: 'activity',
   },
-  'recomposicion-corporal': {
-    from: '#92400e',
-    to: '#2c1204',
-    accent: '#d97706',
-    icon: 'flame',
-  },
-  'salud-y-bienestar-deportivo': {
+  'recuperacion-prevencion-y-wellness': {
     from: '#047857',
     to: '#052e26',
     accent: '#0d9668',
     icon: 'heart',
   },
-  'psicologia-deportiva': {
-    from: '#5b21b6',
-    to: '#1e0a3c',
-    accent: '#8b5cf6',
-    icon: 'sparkles',
-  },
-  'biomecanica-y-readaptacion': {
-    from: '#86198f',
-    to: '#2c0a2f',
-    accent: '#c026d3',
-    icon: 'pitch',
-  },
-  'fisiologia-y-anatomia-aplicada': {
+  'fisiologia-y-nutricion-aplicada': {
     from: '#9f1239',
     to: '#2c0a17',
     accent: '#e11d48',
     icon: 'doc',
   },
-  'poblaciones-especiales': {
+  'psicologia-del-rendimiento': {
+    from: '#5b21b6',
+    to: '#1e0a3c',
+    accent: '#8b5cf6',
+    icon: 'sparkles',
+  },
+  'poblaciones-especiales-y-salud-clinica': {
     from: '#854d0e',
     to: '#271703',
     accent: '#ca8a04',
     icon: 'users',
   },
-  'negocio-y-marca-personal-en-el-deporte': {
+  'negocio-coaching-y-marca-profesional': {
     from: '#334155',
     to: '#0f172a',
     accent: '#64748b',

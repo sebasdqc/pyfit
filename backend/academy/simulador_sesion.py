@@ -1,4 +1,4 @@
-"""Simulador de planificación de sesión — escuela Entrenamiento y Rendimiento Deportivo.
+"""Simulador de planificación de sesión — escuela Ciencia del Entrenamiento.
 
 Práctica pedagógica sobre las funciones INSIGNIA del motor de generación de
 PyFit (ver CLAUDE.md § "Funciones a migrar"): calcular_fatiga/calcular_rpe_target

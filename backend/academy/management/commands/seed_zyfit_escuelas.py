@@ -1,4 +1,4 @@
-"""Seed de las 9 Escuelas de Zyfit Academy (catálogo definitivo por ahora).
+"""Seed de las 7 Escuelas de Zyfit Academy (catálogo definitivo por ahora).
 
 Jerarquía: Escuela → Curso → Módulo (sin contenido de lección — solo estructura
 para los cursos nuevos que se definan aquí; los cursos ya existentes con
@@ -7,10 +7,11 @@ lecciones reales no se tocan salvo su asignación de escuela/metadatos).
 Idempotente: re-ejecutar el comando sincroniza descripciones y módulos sin
 duplicar registros. No toca lecciones, quizzes ni matrículas existentes.
 
-Nota: en un entorno ya seedeado con las 3 escuelas originales, la migración de
-datos `0013_reestructura_escuelas` es la que hace el renombre/reubicación real
-la primera vez. Este comando sirve para entornos nuevos (bootstrap) y para
-resincronizar descripciones/orden más adelante.
+Nota: en un entorno ya seedeado con el catálogo de 9 escuelas anterior, la
+migración de datos `0016_reestructura_7_escuelas` es la que hace el
+renombre/reubicación/fusión real la primera vez. Este comando sirve para
+entornos nuevos (bootstrap) y para resincronizar descripciones/orden más
+adelante.
 
 Uso:
     python manage.py seed_zyfit_escuelas
@@ -23,12 +24,12 @@ from academy.models import Course, Module, School, NIVEL_PRINCIPIANTE, NIVEL_INT
 
 ESCUELAS = [
     {
-        'nombre': 'Entrenamiento y Rendimiento Deportivo',
-        'slug': 'entrenamiento-y-rendimiento-deportivo',
+        'nombre': 'Ciencia del Entrenamiento',
+        'slug': 'ciencia-del-entrenamiento',
         'descripcion': (
-            'Bases científicas de la programación del entrenamiento: periodización, '
-            'gestión de la carga, analítica del rendimiento y toma de decisiones '
-            'basada en datos.'
+            'Bases científicas de la programación del entrenamiento: '
+            'periodización, gestión de la carga y manejo de la fatiga a lo '
+            'largo del ciclo de entrenamiento.'
         ),
         'orden': 1,
         'cursos': [
@@ -86,6 +87,36 @@ ESCUELAS = [
                 ],
             },
             {
+                'titulo': 'Entrenamiento Concurrente: Fuerza y Resistencia sin Interferencia',
+                'slug': 'entrenamiento-concurrente-fuerza-resistencia',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'entrenamiento',
+                'resumen': 'De dónde viene el "efecto interferencia" y qué variables sí ayudan a minimizarlo.',
+                'descripcion': (
+                    'Por qué el hallazgo original de 1980 fue confirmado en 2012 y luego matizado '
+                    'por una revisión más reciente y rigurosa, y qué variables de modalidad, '
+                    'secuencia y tiempo entre sesiones tienen respaldo real en la práctica.'
+                ),
+                'modulos': [
+                    'El "efecto interferencia": de dónde viene y por qué tendría sentido fisiológico',
+                    'La controversia actualizada: cuando un meta-análisis más reciente contradice al anterior',
+                    'Qué hacer en la práctica: modalidad, secuencia y tiempo entre sesiones',
+                    'Capstone: diseña el bloque de entrenamiento concurrente de un atleta',
+                ],
+            },
+        ],
+    },
+    {
+        'nombre': 'Analítica y Rendimiento Deportivo',
+        'slug': 'analitica-y-rendimiento-deportivo',
+        'descripcion': (
+            'Cuantificación de la carga interna y externa, herramientas de '
+            'monitoreo como el ACWR e individualización del rendimiento '
+            'basada en datos con el Zyfit Score.'
+        ),
+        'orden': 2,
+        'cursos': [
+            {
                 'titulo': 'Carga Interna 101: sRPE y TRIMP',
                 'slug': 'carga-interna-101-srpe-y-trimp',
                 'nivel': NIVEL_PRINCIPIANTE,
@@ -101,6 +132,24 @@ ESCUELAS = [
                     'Cálculo e interpretación del TRIMP',
                     'De la percepción del esfuerzo a la decisión de entrenamiento',
                     'Errores comunes al medir carga interna',
+                ],
+            },
+            {
+                'titulo': 'ACWR y Prevención de Picos de Carga',
+                'slug': 'acwr-y-prevencion-de-picos-de-carga',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'analítica',
+                'resumen': 'El tema más disputado del catálogo: de dónde viene el ACWR y por qué se cuestiona.',
+                'descripcion': (
+                    'Por qué una parte seria de la comunidad científica pide descartar el ACWR '
+                    'como predictor de lesión, y qué hacer en la práctica con datos de carga sin '
+                    'apoyarse en un ratio con problemas estadísticos documentados.'
+                ),
+                'modulos': [
+                    'Qué es el ACWR y de dónde viene',
+                    'La controversia real: por qué se cuestiona seriamente el ACWR',
+                    'Qué hacer en la práctica, dado el estado real del debate',
+                    'Capstone: interpreta el caso de un jugador con "ACWR en zona roja"',
                 ],
             },
             {
@@ -120,24 +169,6 @@ ESCUELAS = [
                     'La ponderación 40/35/25: diseño de producto, no hallazgo científico',
                     'De la puntuación a la decisión: usar el score sin tratarlo como oráculo',
                     'Capstone: explica el Zyfit Score a un cliente escéptico',
-                ],
-            },
-            {
-                'titulo': 'Entrenamiento Concurrente: Fuerza y Resistencia sin Interferencia',
-                'slug': 'entrenamiento-concurrente-fuerza-resistencia',
-                'nivel': NIVEL_INTERMEDIO,
-                'categoria': 'entrenamiento',
-                'resumen': 'De dónde viene el "efecto interferencia" y qué variables sí ayudan a minimizarlo.',
-                'descripcion': (
-                    'Por qué el hallazgo original de 1980 fue confirmado en 2012 y luego matizado '
-                    'por una revisión más reciente y rigurosa, y qué variables de modalidad, '
-                    'secuencia y tiempo entre sesiones tienen respaldo real en la práctica.'
-                ),
-                'modulos': [
-                    'El "efecto interferencia": de dónde viene y por qué tendría sentido fisiológico',
-                    'La controversia actualizada: cuando un meta-análisis más reciente contradice al anterior',
-                    'Qué hacer en la práctica: modalidad, secuencia y tiempo entre sesiones',
-                    'Capstone: diseña el bloque de entrenamiento concurrente de un atleta',
                 ],
             },
             {
@@ -161,30 +192,31 @@ ESCUELAS = [
         ],
     },
     {
-        'nombre': 'Readaptación Deportiva y Prevención de Lesiones',
-        'slug': 'readaptacion-deportiva-y-prevencion-de-lesiones',
+        'nombre': 'Recuperación, Prevención y Wellness',
+        'slug': 'recuperacion-prevencion-y-wellness',
         'descripcion': (
-            'Factores de riesgo, señales tempranas y herramientas como el ACWR para '
-            'prevenir lesiones y acompañar el retorno seguro a la competencia.'
+            'Monitoreo de HRV y sueño, prevención de lesiones basada en '
+            'datos, y carga psicológica y wellness del atleta para sostener '
+            'el rendimiento en el tiempo.'
         ),
-        'orden': 2,
+        'orden': 3,
         'cursos': [
             {
-                'titulo': 'ACWR y Prevención de Picos de Carga',
-                'slug': 'acwr-y-prevencion-de-picos-de-carga',
-                'nivel': NIVEL_INTERMEDIO,
-                'categoria': 'analítica',
-                'resumen': 'El tema más disputado del catálogo: de dónde viene el ACWR y por qué se cuestiona.',
+                'titulo': 'Fundamentos de Recuperación y Monitoreo de HRV',
+                'slug': 'fundamentos-de-recuperacion-y-hrv',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'recuperación',
+                'resumen': 'Qué es el HRV y cómo leerlo día a día para tomar mejores decisiones.',
                 'descripcion': (
-                    'Por qué una parte seria de la comunidad científica pide descartar el ACWR '
-                    'como predictor de lesión, y qué hacer en la práctica con datos de carga sin '
-                    'apoyarse en un ratio con problemas estadísticos documentados.'
+                    'Qué es la variabilidad de la frecuencia cardíaca y cómo leerla día '
+                    'a día para tomar decisiones.'
                 ),
                 'modulos': [
-                    'Qué es el ACWR y de dónde viene',
-                    'La controversia real: por qué se cuestiona seriamente el ACWR',
-                    'Qué hacer en la práctica, dado el estado real del debate',
-                    'Capstone: interpreta el caso de un jugador con "ACWR en zona roja"',
+                    'Qué es la variabilidad de la frecuencia cardíaca (HRV)',
+                    'Cómo se mide el HRV día a día',
+                    'Interpretar tendencias de HRV',
+                    'HRV y decisiones de entrenamiento diario',
+                    'Errores comunes al monitorear HRV',
                 ],
             },
             {
@@ -205,62 +237,22 @@ ESCUELAS = [
                     'Casos prácticos de prevención basada en datos',
                 ],
             },
-        ],
-    },
-    {
-        'nombre': 'Recomposición Corporal',
-        'slug': 'recomposicion-corporal',
-        'descripcion': (
-            'Estrategias de nutrición y entrenamiento para la composición corporal: '
-            'pérdida de grasa, ganancia muscular y mantenimiento a largo plazo.'
-        ),
-        'orden': 3,
-        'cursos': [
             {
-                'titulo': 'Composición Corporal: Medición y Manipulación Basada en Datos',
-                'slug': 'composicion-corporal-medicion-y-manipulacion',
+                'titulo': 'Carga Psicológica y Wellness del Atleta',
+                'slug': 'carga-psicologica-y-wellness-del-atleta',
                 'nivel': NIVEL_INTERMEDIO,
-                'categoria': 'recomposición',
-                'resumen': 'Qué método de medición usar según contexto, y por qué el peso diario engaña.',
+                'categoria': 'wellness',
+                'resumen': 'El estrés como factor de riesgo de lesión documentado, y qué tan bien predicen los cuestionarios.',
                 'descripcion': (
-                    'Jerarquía real de métodos de medición (DEXA, BIA, skinfolds), el mito de '
-                    'bulk o cut, y cómo leer datos de tendencia en vez de reaccionar al peso '
-                    'de un solo día.'
+                    'El modelo de estrés y lesión, la evidencia real detrás de los cuestionarios '
+                    'de bienestar más usados en la práctica, y cómo usarlos como facilitadores de '
+                    'conversación en vez de oráculos de decisión.'
                 ),
                 'modulos': [
-                    'Jerarquía de métodos de medición',
-                    'El mito de "bulk o cut": recomposición corporal',
-                    'Manipulación basada en datos: seguimiento real, no solo la báscula',
-                    'Capstone: diseña el protocolo de seguimiento y ajuste',
-                ],
-            },
-        ],
-    },
-    {
-        'nombre': 'Salud y Bienestar Deportivo',
-        'slug': 'salud-y-bienestar-deportivo',
-        'descripcion': (
-            'Monitoreo de HRV, sueño y bienestar general del atleta para sostener '
-            'el rendimiento en el tiempo.'
-        ),
-        'orden': 4,
-        'cursos': [
-            {
-                'titulo': 'Fundamentos de Recuperación y Monitoreo de HRV',
-                'slug': 'fundamentos-de-recuperacion-y-hrv',
-                'nivel': NIVEL_PRINCIPIANTE,
-                'categoria': 'recuperación',
-                'resumen': 'Qué es el HRV y cómo leerlo día a día para tomar mejores decisiones.',
-                'descripcion': (
-                    'Qué es la variabilidad de la frecuencia cardíaca y cómo leerla día '
-                    'a día para tomar decisiones.'
-                ),
-                'modulos': [
-                    'Qué es la variabilidad de la frecuencia cardíaca (HRV)',
-                    'Cómo se mide el HRV día a día',
-                    'Interpretar tendencias de HRV',
-                    'HRV y decisiones de entrenamiento diario',
-                    'Errores comunes al monitorear HRV',
+                    'El modelo de estrés y lesión: la conexión real entre lo psicológico y lo físico',
+                    'Cuestionarios de bienestar: qué tan sólida es la herramienta más usada',
+                    'De la puntuación a la conversación: usar los datos de wellness sin sobre-interpretar',
+                    'Capstone: interpreta el caso de la jugadora en periodo de estrés',
                 ],
             },
             {
@@ -284,32 +276,100 @@ ESCUELAS = [
         ],
     },
     {
-        'nombre': 'Psicología Deportiva',
-        'slug': 'psicologia-deportiva',
+        'nombre': 'Fisiología y Nutrición Aplicada',
+        'slug': 'fisiologia-y-nutricion-aplicada',
         'descripcion': (
-            'Carga psicológica, motivación y herramientas mentales aplicadas al '
-            'rendimiento y al bienestar del atleta.'
+            'Bases fisiológicas del ejercicio, nutrición aplicada al '
+            'rendimiento y estrategias de composición corporal e '
+            'hidratación basadas en datos.'
+        ),
+        'orden': 4,
+        'cursos': [
+            {
+                'titulo': 'Bioenergética Aplicada al Entrenamiento',
+                'slug': 'bioenergetica-aplicada-al-entrenamiento',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'fisiología',
+                'resumen': 'Identifica qué sistema energético predomina en cada tarea y ajusta la sesión en consecuencia.',
+                'descripcion': (
+                    'Los tres sistemas energéticos (fosfágeno, glucolítico, oxidativo) como un '
+                    'continuo, no compartimentos estancos, y cómo esa predominancia relativa '
+                    'debe cambiar el diseño de descansos, series y microciclos.'
+                ),
+                'modulos': [
+                    'Los tres sistemas: qué son y cuándo se activan',
+                    'Sistema ATP-PC: potencia y fuerza máxima',
+                    'Sistema glucolítico y el lactato como combustible',
+                    'Sistema oxidativo: la base que sostiene todo',
+                    'Capstone: diseña el microciclo según predominancia energética',
+                ],
+            },
+            {
+                'titulo': 'Composición Corporal: Medición y Manipulación Basada en Datos',
+                'slug': 'composicion-corporal-medicion-y-manipulacion',
+                'nivel': NIVEL_INTERMEDIO,
+                'categoria': 'recomposición',
+                'resumen': 'Qué método de medición usar según contexto, y por qué el peso diario engaña.',
+                'descripcion': (
+                    'Jerarquía real de métodos de medición (DEXA, BIA, skinfolds), el mito de '
+                    'bulk o cut, y cómo leer datos de tendencia en vez de reaccionar al peso '
+                    'de un solo día.'
+                ),
+                'modulos': [
+                    'Jerarquía de métodos de medición',
+                    'El mito de "bulk o cut": recomposición corporal',
+                    'Manipulación basada en datos: seguimiento real, no solo la báscula',
+                    'Capstone: diseña el protocolo de seguimiento y ajuste',
+                ],
+            },
+            {
+                'titulo': 'Nutrición para Rendimiento: Mitos vs. Evidencia',
+                'slug': 'nutricion-para-rendimiento-mitos-vs-evidencia',
+                'nivel': NIVEL_PRINCIPIANTE,
+                'categoria': 'nutrición',
+                'resumen': 'La ventana anabólica, los carbohidratos y los suplementos: qué separa el mito de la evidencia.',
+                'descripcion': (
+                    'Por qué la ventana anabólica estricta no tiene el respaldo que se le '
+                    'atribuye, el rol del glucógeno en esfuerzos intermitentes, y la jerarquía '
+                    'real de evidencia en suplementación.'
+                ),
+                'modulos': [
+                    'El mito de la ventana anabólica',
+                    'Carbohidratos: disponibilidad de glucógeno y rendimiento',
+                    'Suplementos: jerarquía real de evidencia',
+                    'Capstone: diseña el plan nutricional de un caso mixto',
+                ],
+            },
+            {
+                'titulo': 'Hidratación y Termorregulación en el Rendimiento',
+                'slug': 'hidratacion-y-termorregulacion-en-el-rendimiento',
+                'nivel': NIVEL_AVANZADO,
+                'categoria': 'fisiología',
+                'resumen': 'El umbral del 2% de deshidratación y el riesgo real, a veces mortal, del extremo opuesto.',
+                'descripcion': (
+                    'Qué tan sólida es la evidencia del umbral de deshidratación, el riesgo '
+                    'documentado de hiponatremia por exceso de líquidos, y cuándo planificar la '
+                    'hidratación en vez de solo beber según la sed.'
+                ),
+                'modulos': [
+                    'El umbral del 2% de deshidratación: ciencia real con un matiz metodológico importante',
+                    'Hiponatremia: el riesgo real del extremo opuesto',
+                    'Hidratación planificada vs. beber según la sed: cuándo usar cada enfoque',
+                    'Capstone: diseña el plan de hidratación de una corredora de maratón',
+                ],
+            },
+        ],
+    },
+    {
+        'nombre': 'Psicología del Rendimiento',
+        'slug': 'psicologia-del-rendimiento',
+        'descripcion': (
+            'Motivación, activación, rutinas mentales, liderazgo de '
+            'equipos y retorno psicológico al deporte aplicados al '
+            'rendimiento del atleta.'
         ),
         'orden': 5,
         'cursos': [
-            {
-                'titulo': 'Carga Psicológica y Wellness del Atleta',
-                'slug': 'carga-psicologica-y-wellness-del-atleta',
-                'nivel': NIVEL_INTERMEDIO,
-                'categoria': 'wellness',
-                'resumen': 'El estrés como factor de riesgo de lesión documentado, y qué tan bien predicen los cuestionarios.',
-                'descripcion': (
-                    'El modelo de estrés y lesión, la evidencia real detrás de los cuestionarios '
-                    'de bienestar más usados en la práctica, y cómo usarlos como facilitadores de '
-                    'conversación en vez de oráculos de decisión.'
-                ),
-                'modulos': [
-                    'El modelo de estrés y lesión: la conexión real entre lo psicológico y lo físico',
-                    'Cuestionarios de bienestar: qué tan sólida es la herramienta más usada',
-                    'De la puntuación a la conversación: usar los datos de wellness sin sobre-interpretar',
-                    'Capstone: interpreta el caso de la jugadora en periodo de estrés',
-                ],
-            },
             {
                 'titulo': 'Fundamentos de Psicología Deportiva',
                 'slug': 'fundamentos-de-psicologia-deportiva',
@@ -381,89 +441,14 @@ ESCUELAS = [
         ],
     },
     {
-        'nombre': 'Biomecánica y Readaptación',
-        'slug': 'biomecanica-y-readaptacion',
+        'nombre': 'Poblaciones Especiales y Salud Clínica',
+        'slug': 'poblaciones-especiales-y-salud-clinica',
         'descripcion': (
-            'Análisis biomecánico del movimiento aplicado a la readaptación '
-            'funcional y la optimización técnica.'
+            'Entrenamiento adaptado a poblaciones con necesidades '
+            'específicas: enfermedad crónica, envejecimiento, embarazo, '
+            'poblaciones pediátricas y discapacidad.'
         ),
         'orden': 6,
-        'cursos': [],
-    },
-    {
-        'nombre': 'Fisiología y Anatomía Aplicada',
-        'slug': 'fisiologia-y-anatomia-aplicada',
-        'descripcion': (
-            'Bases fisiológicas y anatómicas del ejercicio aplicadas al diseño de '
-            'programas de entrenamiento.'
-        ),
-        'orden': 7,
-        'cursos': [
-            {
-                'titulo': 'Bioenergética Aplicada al Entrenamiento',
-                'slug': 'bioenergetica-aplicada-al-entrenamiento',
-                'nivel': NIVEL_PRINCIPIANTE,
-                'categoria': 'fisiología',
-                'resumen': 'Identifica qué sistema energético predomina en cada tarea y ajusta la sesión en consecuencia.',
-                'descripcion': (
-                    'Los tres sistemas energéticos (fosfágeno, glucolítico, oxidativo) como un '
-                    'continuo, no compartimentos estancos, y cómo esa predominancia relativa '
-                    'debe cambiar el diseño de descansos, series y microciclos.'
-                ),
-                'modulos': [
-                    'Los tres sistemas: qué son y cuándo se activan',
-                    'Sistema ATP-PC: potencia y fuerza máxima',
-                    'Sistema glucolítico y el lactato como combustible',
-                    'Sistema oxidativo: la base que sostiene todo',
-                    'Capstone: diseña el microciclo según predominancia energética',
-                ],
-            },
-            {
-                'titulo': 'Nutrición para Rendimiento: Mitos vs. Evidencia',
-                'slug': 'nutricion-para-rendimiento-mitos-vs-evidencia',
-                'nivel': NIVEL_PRINCIPIANTE,
-                'categoria': 'nutrición',
-                'resumen': 'La ventana anabólica, los carbohidratos y los suplementos: qué separa el mito de la evidencia.',
-                'descripcion': (
-                    'Por qué la ventana anabólica estricta no tiene el respaldo que se le '
-                    'atribuye, el rol del glucógeno en esfuerzos intermitentes, y la jerarquía '
-                    'real de evidencia en suplementación.'
-                ),
-                'modulos': [
-                    'El mito de la ventana anabólica',
-                    'Carbohidratos: disponibilidad de glucógeno y rendimiento',
-                    'Suplementos: jerarquía real de evidencia',
-                    'Capstone: diseña el plan nutricional de un caso mixto',
-                ],
-            },
-            {
-                'titulo': 'Hidratación y Termorregulación en el Rendimiento',
-                'slug': 'hidratacion-y-termorregulacion-en-el-rendimiento',
-                'nivel': NIVEL_AVANZADO,
-                'categoria': 'fisiología',
-                'resumen': 'El umbral del 2% de deshidratación y el riesgo real, a veces mortal, del extremo opuesto.',
-                'descripcion': (
-                    'Qué tan sólida es la evidencia del umbral de deshidratación, el riesgo '
-                    'documentado de hiponatremia por exceso de líquidos, y cuándo planificar la '
-                    'hidratación en vez de solo beber según la sed.'
-                ),
-                'modulos': [
-                    'El umbral del 2% de deshidratación: ciencia real con un matiz metodológico importante',
-                    'Hiponatremia: el riesgo real del extremo opuesto',
-                    'Hidratación planificada vs. beber según la sed: cuándo usar cada enfoque',
-                    'Capstone: diseña el plan de hidratación de una corredora de maratón',
-                ],
-            },
-        ],
-    },
-    {
-        'nombre': 'Poblaciones Especiales',
-        'slug': 'poblaciones-especiales',
-        'descripcion': (
-            'Entrenamiento adaptado a poblaciones con necesidades específicas: '
-            'adultos mayores, embarazo, patologías crónicas y más.'
-        ),
-        'orden': 8,
         'cursos': [
             {
                 'titulo': 'Entrenamiento en Poblaciones con Enfermedad Crónica',
@@ -540,13 +525,14 @@ ESCUELAS = [
         ],
     },
     {
-        'nombre': 'Negocio y Marca Personal en el Deporte',
-        'slug': 'negocio-y-marca-personal-en-el-deporte',
+        'nombre': 'Negocio, Coaching y Marca Profesional',
+        'slug': 'negocio-coaching-y-marca-profesional',
         'descripcion': (
-            'Herramientas de negocio, marca personal y crecimiento profesional para '
-            'entrenadores y profesionales del deporte.'
+            'Herramientas de negocio, marca personal, comunicación con el '
+            'cliente/atleta y ética profesional para entrenadores y '
+            'profesionales del deporte independientes.'
         ),
-        'orden': 9,
+        'orden': 7,
         'cursos': [
             {
                 'titulo': 'Construcción de Marca Personal para Profesionales del Deporte',
@@ -627,7 +613,7 @@ ESCUELAS = [
 
 
 class Command(BaseCommand):
-    help = 'Crea (o sincroniza) las 9 escuelas de Zyfit Academy con sus cursos y módulos.'
+    help = 'Crea (o sincroniza) las 7 escuelas de Zyfit Academy con sus cursos y módulos.'
 
     def add_arguments(self, parser):
         parser.add_argument(
