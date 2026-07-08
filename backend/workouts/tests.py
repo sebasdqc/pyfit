@@ -532,6 +532,27 @@ class FeedbackIntegrationTests(TestCase):
         cycle.refresh_from_db()
         self.assertEqual(cycle.week_number, 2)
 
+    def test_feedback_response_incluye_racha_hito_al_llegar_a_7(self):
+        # 6 días previos con feedback + el de hoy → racha llega a 7 justo en este POST.
+        for dias in range(6, 0, -1):
+            make_session_with_feedback(self.user, self.loc, days_ago=dias)
+        s = Session.objects.create(
+            user=self.user, fecha=date.today(),
+            duracion_planificada=60, rpe_target=7.0, location=self.loc,
+        )
+        response = self._post_feedback(s.id)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['racha_hito'], 7)
+
+    def test_feedback_response_racha_hito_null_sin_hito(self):
+        s = Session.objects.create(
+            user=self.user, fecha=date.today(),
+            duracion_planificada=60, rpe_target=7.0, location=self.loc,
+        )
+        response = self._post_feedback(s.id)
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.data['racha_hito'])
+
     def test_feedback_creates_rpe_trigger(self):
         init_cycle(self.user, 'hipertrofia')
         for days_ago in [5, 3]:

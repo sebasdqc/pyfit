@@ -171,9 +171,10 @@ def session_feedback(request, pk):
         feedback.cumplimiento = cumpl_real
         feedback.save(update_fields=['cumplimiento'])
 
+    racha_hito = None
     try:
         with transaction.atomic():
-            _actualizar_racha(request.user)
+            racha_hito = _actualizar_racha(request.user)
             _check_logros(request.user)
             _actualizar_adaptation_profile(request.user, session, feedback)
             _evaluate_and_advance(request.user, session, feedback)
@@ -186,8 +187,10 @@ def session_feedback(request, pk):
     DailyCoachInsight.objects.filter(user=request.user, fecha=_hoy).delete()
     DailySaludo.objects.filter(user=request.user, fecha=_hoy).delete()
 
+    payload = dict(SessionFeedbackSerializer(feedback).data)
+    payload['racha_hito'] = racha_hito  # ej. 7 si la racha acaba de llegar a 7 días; si no, null
     return Response(
-        SessionFeedbackSerializer(feedback).data,
+        payload,
         status=status.HTTP_200_OK if existing else status.HTTP_201_CREATED,
     )
 
@@ -462,11 +465,15 @@ def _actualizar_racha(user):
     Persiste la racha en profile.racha_actual para gamificación y logros.
     Se llama solo después de guardar un feedback.
     El dashboard NO debe leer de aquí — usa _calcular_racha_contexto() en tiempo real.
+
+    Devuelve el hito de racha (3/7/14/30) si se acaba de cruzar en esta llamada
+    (solo al crecer, no al recuperar), o None si no hay hito nuevo. Lo consume
+    session_feedback para disparar el modal de celebración en el móvil.
     """
     try:
         profile = user.profile
     except Exception:
-        return
+        return None
 
     racha_anterior = profile.racha_actual
     racha = _calcular_racha_realtime(user)
@@ -476,14 +483,17 @@ def _actualizar_racha(user):
     profile.puntos_totales = user.sessions.filter(feedback__isnull=False).count() * 10
     profile.save(update_fields=['racha_actual', 'mejor_racha', 'puntos_totales'])
 
-    # Push si la racha acaba de cruzar un hito (solo al crecer, no al recuperar)
+    # Hito si la racha acaba de cruzar un umbral (solo al crecer, no al recuperar)
+    hito = None
     if racha in _RACHA_HITOS and racha > racha_anterior:
+        hito = racha
         try:
             from users.push import send_push
             icono, titulo, cuerpo = _RACHA_HITOS[racha]
             send_push(user, title=titulo, body=cuerpo, data={'tipo': 'racha', 'dias': racha})
         except Exception:
             pass
+    return hito
 
 
 def _check_logros(user):

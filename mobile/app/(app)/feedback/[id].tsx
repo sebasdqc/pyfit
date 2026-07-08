@@ -494,12 +494,17 @@ export default function FeedbackScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
     const { rating, cumplimiento } = sensacionToMetrics(sensacion)
     try {
-      await apiPost(`/api/sessions/${id}/feedback/`, {
+      const result = await apiPost(`/api/sessions/${id}/feedback/`, {
         rpe_real: rpeChoice ?? 7, cumplimiento, rating,
         notas: notas.trim() || null,
         molestias: sensacion === 'molestia' ? zonasMolestia : [],
       })
-      router.replace('/(app)/dashboard')
+      // Racha recién llegó a 7 días → el dashboard muestra la celebración al volver.
+      if (result?.racha_hito === 7) {
+        router.replace({ pathname: '/(app)/dashboard', params: { rachaHito: '7', ts: String(Date.now()) } })
+      } else {
+        router.replace('/(app)/dashboard')
+      }
     } catch {
       submittingRef.current = false
       Alert.alert(

@@ -36,11 +36,12 @@ const RING_STROKE = 9
 const RING_CIRC   = 2 * Math.PI * RING_R
 const RING_CX     = RING_SIZE / 2
 const RING_CY     = RING_SIZE / 2
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { COLORS, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, localDateStr } from '../../../lib/api'
+import StreakMilestoneModal from '../../../components/StreakMilestoneModal'
 
 // ─── Daily motivational phrases ───────────────────────────────────────────────
 
@@ -275,6 +276,13 @@ function getWeekDates(monday: Date): string[] {
     d.setDate(monday.getDate() + i)
     return localDateStr(d)  // local date components, never toISOString()
   })
+}
+
+/** Suma (o resta) días a una fecha ISO usando fecha LOCAL, no UTC */
+function addDaysIso(iso: string, delta: number): string {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + delta)
+  return localDateStr(d)
 }
 
 /** "19–25 may" | "28 abr – 4 may" */
@@ -614,13 +622,16 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
 
 // ─── Tu Semana — sub-components ───────────────────────────────────────────────
 
-function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }: {
+function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo, inStreak }: {
   state: DayState
   isSelected: boolean
   dayNumber: number
   dayLetter: string
   colors: Colors
   eventTipo?: EventTipo
+  /** Forma parte del tramo activo de la racha — el sombreado corrido (StreakTrack)
+   * ya pinta el fondo compartido, así que esta pilla individual va transparente. */
+  inStreak?: boolean
 }) {
   const W = 34, H = 50, R = 14
 
@@ -679,8 +690,10 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo }:
     return (
       <View style={{
         width: W, height: H, borderRadius: R,
-        backgroundColor: 'rgba(79,140,255,0.12)',
-        borderWidth: isSelected ? 2 : 1.5,
+        // Dentro de un tramo de racha activa, el fondo/borde lo pinta el StreakTrack
+        // corrido detrás de la fila — esta pilla queda transparente para no cortarlo.
+        backgroundColor: inStreak ? 'transparent' : 'rgba(79,140,255,0.12)',
+        borderWidth: isSelected ? 2 : (inStreak ? 0 : 1.5),
         borderColor: isSelected ? colors.accent : 'rgba(79,140,255,0.45)',
         alignItems: 'center', justifyContent: 'center', gap: 2,
         shadowColor: isSelected ? colors.accent : 'transparent',
@@ -842,6 +855,22 @@ function TuSemanaCard({
     return map
   }, [sessions])
 
+  // "Día entrenado" para la racha = sesión CON feedback (mismo criterio que el backend
+  // en _calcular_racha_realtime — no cualquier Session, ver project_dia_entrenado_feedback).
+  const feedbackDates = useMemo(
+    () => new Set(sessions.filter(s => s.feedback != null).map(s => s.fecha)),
+    [sessions],
+  )
+
+  // Rango de fechas [inicio, fin] del tramo activo de la racha, para pintar el
+  // sombreado corrido en la semana actual. null si no hay racha activa.
+  const rachaRange = useMemo(() => {
+    if (!racha || racha <= 0) return null
+    const fin = feedbackDates.has(today) ? today : addDaysIso(today, -1)
+    const inicio = addDaysIso(fin, -(racha - 1))
+    return { inicio, fin }
+  }, [racha, feedbackDates, today])
+
   // Footer — se actualiza cuando onMomentumScrollEnd confirma la página nueva
   const currMonday = useMemo(() => getWeekMonday(currentOffset), [currentOffset])
   const currDates  = useMemo(() => getWeekDates(currMonday),     [currMonday])
@@ -906,15 +935,46 @@ function TuSemanaCard({
     ({ item: weekOffset }: { item: number }) => {
       const monday = getWeekMonday(weekOffset)
       const dates  = getWeekDates(monday)
+
+      // Tramo continuo de la racha activa dentro de esta semana — solo aplica a la
+      // semana actual, que es donde vive el concepto de "racha en curso".
+      let streakStartIdx = -1, streakEndIdx = -1
+      if (weekOffset === 0 && rachaRange) {
+        dates.forEach((iso, i) => {
+          if (iso >= rachaRange.inicio && iso <= rachaRange.fin) {
+            if (streakStartIdx === -1) streakStartIdx = i
+            streakEndIdx = i
+          }
+        })
+      }
+      const hasStreakTrack = streakStartIdx !== -1
+
       return (
         <View style={{ width: flatWidth, paddingHorizontal: 4 }}>
           <View style={styles.semDaysRow}>
+            {hasStreakTrack && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  height: 50,
+                  left: `${(streakStartIdx / 7) * 100}%`,
+                  width: `${((streakEndIdx - streakStartIdx + 1) / 7) * 100}%`,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(79,140,255,0.12)',
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(79,140,255,0.45)',
+                }}
+              />
+            )}
             {dates.map((iso, idx) => {
               const state      = getDayState(iso, today, sessionsByDate, semanaDetalle, weekOffset)
               const count      = sessionsByDate.get(iso)?.length ?? 0
               const isSelected = selectedDate === iso
               const dayNumber  = parseInt(iso.slice(8, 10), 10)
               const eventTipo  = eventMap.get(iso)
+              const inStreak   = hasStreakTrack && idx >= streakStartIdx && idx <= streakEndIdx
               return (
                 <TouchableOpacity
                   key={iso}
@@ -924,7 +984,7 @@ function TuSemanaCard({
                   activeOpacity={0.75}
                 >
                   <View style={{ position: 'relative' }}>
-                    <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} eventTipo={eventTipo} />
+                    <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} eventTipo={eventTipo} inStreak={inStreak} />
                     {state === 'past-done' && count >= 2 && (
                       <View style={styles.semBadge}>
                         <Text style={styles.semBadgeText}>{count}</Text>
@@ -941,7 +1001,7 @@ function TuSemanaCard({
         </View>
       )
     },
-    [flatWidth, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress, eventMap],
+    [flatWidth, today, sessionsByDate, semanaDetalle, selectedDate, styles, colors, handleDayPress, eventMap, rachaRange],
   )
 
   return (
@@ -1438,6 +1498,10 @@ function InsightCard({
   )
 }
 
+// Racha recién alcanzada → siguiente reto a mostrar en el modal de celebración.
+// Por ahora solo el hito de 7 días dispara la ventana (ver feedback/[id].tsx).
+const RACHA_SIGUIENTE_RETO: Record<number, number> = { 7: 15 }
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
@@ -1455,6 +1519,22 @@ export default function DashboardScreen() {
   const [runDates, setRunDates] = useState<Set<string>>(new Set())
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [checkinHoy, setCheckinHoy] = useState<CheckinHoy | null>(null)
+  const [streakMilestone, setStreakMilestone] = useState<{ racha: number; siguiente: number } | null>(null)
+  const lastMilestoneKeyRef = useRef<string | null>(null)
+
+  // ── Modal de racha al volver del feedback con un hito recién alcanzado ──────
+  const { rachaHito, ts: milestoneTs } = useLocalSearchParams<{ rachaHito?: string; ts?: string }>()
+  useEffect(() => {
+    if (!rachaHito) return
+    const key = milestoneTs ?? `once:${rachaHito}`
+    if (lastMilestoneKeyRef.current === key) return
+    lastMilestoneKeyRef.current = key
+    const hito = parseInt(rachaHito, 10)
+    const siguiente = RACHA_SIGUIENTE_RETO[hito]
+    if (!Number.isNaN(hito) && siguiente) {
+      setStreakMilestone({ racha: hito, siguiente })
+    }
+  }, [rachaHito, milestoneTs])
 
   const fetchSessions = useCallback(async () => {
     setSessionsError(false)
@@ -1716,6 +1796,13 @@ export default function DashboardScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      <StreakMilestoneModal
+        visible={!!streakMilestone}
+        racha={streakMilestone?.racha ?? 0}
+        siguiente={streakMilestone?.siguiente ?? 0}
+        onClose={() => setStreakMilestone(null)}
+      />
     </View>
   )
 }
