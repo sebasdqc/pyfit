@@ -38,6 +38,13 @@ const en: DeepPartial<Dictionary> = {
     myProfile: 'My profile',
     logout: 'Log out',
   },
+  streakWeekly: {
+    title: 'Weekly streak',
+    subtitle: 'Study at least once a week to keep it active.',
+    weekLabel: 'Week',
+    pointsShort: 'pts',
+    pointsTooltip: 'Study streak points',
+  },
   sidebar: {
     navInicio: 'Home',
     navCatalogo: 'Catalog',

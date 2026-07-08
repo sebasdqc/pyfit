@@ -297,6 +297,70 @@ def _romper_racha(streak, ahora):
           data={'tipo': 'academy_streak_rota', 'dias': perdida})
 
 
+SEMANAS_VISIBLES = 4  # ventana del resumen semanal (solo lectura, ver _semanas_recientes)
+
+
+def _semana_inicio(dia):
+    """Lunes de la semana ISO que contiene `dia`."""
+    return dia - timedelta(days=dia.isoweekday() - 1)
+
+
+def _semanas_recientes(user, hoy):
+    """Resumen de las últimas SEMANAS_VISIBLES semanas (lunes a domingo) para el
+    "cohete" de racha semanal de la Topbar: para cada una indica si hubo al menos
+    un día de actividad. A propósito NO es una mecánica de racha nueva (sin
+    freezes ni ruptura propios) — es otra lectura de los mismos AcademyActivityDay
+    que ya alimentan la racha diaria, para no desalinearse nunca de ella."""
+    inicio_actual = _semana_inicio(hoy)
+    primera_semana = inicio_actual - timedelta(weeks=SEMANAS_VISIBLES - 1)
+    fechas_activas = set(
+        AcademyActivityDay.objects.filter(user=user, fecha__gte=primera_semana, fecha__lte=hoy)
+        .values_list('fecha', flat=True)
+    )
+    semanas = []
+    for i in range(SEMANAS_VISIBLES):
+        inicio = primera_semana + timedelta(weeks=i)
+        fin = inicio + timedelta(days=6)
+        semanas.append({
+            'numero': i + 1,
+            'inicio': inicio.isoformat(),
+            'fin': fin.isoformat(),
+            'activa': any(inicio <= f <= fin for f in fechas_activas),
+            'actual': inicio == inicio_actual,
+        })
+    return semanas
+
+
+def _racha_semanas(semanas):
+    """Semanas consecutivas con actividad, contando desde la más reciente hacia
+    atrás. La semana actual, si todavía no tiene actividad, no rompe la cuenta
+    (sigue en curso, aún puede completarse) pero tampoco suma."""
+    consecutivas = 0
+    for semana in reversed(semanas):
+        if semana['actual'] and not semana['activa']:
+            continue
+        if not semana['activa']:
+            break
+        consecutivas += 1
+    return consecutivas
+
+
+def _alerta_semanal(semanas, racha_semanas):
+    """Mensaje motivacional del popover semanal (mismo tono que _alerta)."""
+    if not semanas[-1]['activa'] and racha_semanas == 0:
+        return {'tipo': 'iniciar',
+                'mensaje': 'Mira una clase para iniciar tu racha y medir tu progreso estudiando.',
+                'color': 'neutral'}
+    if semanas[-1]['activa']:
+        return {'tipo': 'en_curso',
+                'mensaje': f'Llevas {racha_semanas} semana{"s" if racha_semanas != 1 else ""} '
+                           'seguidas estudiando.',
+                'color': 'ok'}
+    return {'tipo': 'continuar',
+            'mensaje': 'Completa una lección esta semana para no perder el ritmo.',
+            'color': 'warn'}
+
+
 def streak_state(streak, hoy=None, ahora=None):
     """Estado enriquecido de la racha para la API/UI (calculado en tiempo real).
 
@@ -343,6 +407,9 @@ def streak_state(streak, hoy=None, ahora=None):
         horas = max(0, int((streak.recuperable_hasta - ahora).total_seconds() // 3600))
         recuperacion = {'racha_en_riesgo': streak.racha_en_riesgo, 'horas_restantes': horas}
 
+    semanas = _semanas_recientes(streak.user, hoy)
+    racha_semanas = _racha_semanas(semanas)
+
     return {
         'racha_actual': streak.racha_actual,
         'mejor_racha': streak.mejor_racha,
@@ -362,6 +429,11 @@ def streak_state(streak, hoy=None, ahora=None):
         'puntos_totales': streak.puntos_totales,
         'logros': streak.logros or [],
         'alerta': _alerta(estado, streak, entrenado_hoy),
+        'semanal': {
+            'racha_semanas': racha_semanas,
+            'semanas': semanas,
+            'alerta': _alerta_semanal(semanas, racha_semanas),
+        },
     }
 
 

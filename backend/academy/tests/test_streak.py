@@ -224,6 +224,48 @@ class EstadoTests(TestCase):
         self.assertEqual(st['proximo_freeze_en'], 2)
 
 
+# ─── Resumen semanal (cohete de la Topbar) ────────────────────────────────────
+# BASE es un lunes: facilita construir semanas exactas.
+
+class ResumenSemanalTests(TestCase):
+    def test_sin_actividad_ninguna_semana_activa(self):
+        u = _user()
+        streak, _ = AcademyStreak.objects.get_or_create(user=u)
+        st = streak_service.streak_state(streak, hoy=BASE)
+        self.assertEqual(st['semanal']['racha_semanas'], 0)
+        self.assertTrue(all(not s['activa'] for s in st['semanal']['semanas']))
+        self.assertEqual(st['semanal']['semanas'][-1]['numero'], 4)
+        self.assertTrue(st['semanal']['semanas'][-1]['actual'])
+        self.assertEqual(st['semanal']['alerta']['tipo'], 'iniciar')
+
+    def test_actividad_hoy_cuenta_la_semana_actual(self):
+        u = _user()
+        streak_service.record_study_activity(u, hoy=BASE)
+        st = streak_service.streak_state(AcademyStreak.objects.get(user=u), hoy=BASE)
+        self.assertTrue(st['semanal']['semanas'][-1]['activa'])
+        self.assertEqual(st['semanal']['racha_semanas'], 1)
+        self.assertEqual(st['semanal']['alerta']['tipo'], 'en_curso')
+
+    def test_semana_actual_sin_actividad_no_rompe_la_cuenta(self):
+        u = _user()
+        # 3 semanas consecutivas con actividad (una consecutiva, semanas 1-3);
+        # la semana actual (4) todavía no tiene actividad — sigue en curso.
+        for semanas_atras in (3, 2, 1):
+            streak_service.record_study_activity(u, hoy=BASE - timedelta(weeks=semanas_atras))
+        st = streak_service.streak_state(AcademyStreak.objects.get(user=u), hoy=BASE)
+        self.assertFalse(st['semanal']['semanas'][-1]['activa'])
+        self.assertEqual(st['semanal']['racha_semanas'], 3)
+
+    def test_hueco_entre_semanas_corta_la_cuenta(self):
+        u = _user()
+        # Actividad hace 3 semanas y hoy, pero NO hace 2 ni 1 semanas: el hueco
+        # corta la cuenta aunque hubo actividad más atrás.
+        streak_service.record_study_activity(u, hoy=BASE - timedelta(weeks=3))
+        streak_service.record_study_activity(u, hoy=BASE)
+        st = streak_service.streak_state(AcademyStreak.objects.get(user=u), hoy=BASE)
+        self.assertEqual(st['semanal']['racha_semanas'], 1)
+
+
 # ─── Integración por endpoints (dispara sin llamada extra del frontend) ───────
 
 class EndpointTests(TestCase):

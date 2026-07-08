@@ -6,10 +6,12 @@ import { Link } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { StreakPill } from '@/components/StreakPill'
+import { WeeklyStreakButton } from '@/components/WeeklyStreakButton'
 import { useAuth } from '@/auth/useAuth'
 import { useTheme } from '@/theme/useTheme'
 import { useT } from '@/locale/useT'
 import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useStreak } from '@/lib/useStreak'
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout } = useAuth()
@@ -40,6 +42,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
 
       <div className="flex shrink-0 items-center gap-2.5">
         {!user?.is_instructor && <StreakPill />}
+        {!user?.is_instructor && <WeeklyStreakButton />}
         <button
           type="button"
           onClick={toggleTheme}
@@ -50,16 +53,24 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
         </button>
         <LocaleToggle />
-        <UserMenu nombre={user?.nombre ?? t('topbar.userFallback')} email={user?.email ?? ''} onLogout={logout} />
+        <UserMenu
+          nombre={user?.nombre ?? t('topbar.userFallback')}
+          email={user?.email ?? ''}
+          onLogout={logout}
+          showPoints={!user?.is_instructor}
+        />
       </div>
     </header>
   )
 }
 
-function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; onLogout: () => void }) {
+function UserMenu({
+  nombre, email, onLogout, showPoints,
+}: { nombre: string; email: string; onLogout: () => void; showPoints: boolean }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const t = useT()
+  const { streak } = useStreak()
 
   useEffect(() => {
     if (!open) return
@@ -79,6 +90,15 @@ function UserMenu({ nombre, email, onLogout }: { nombre: string; email: string; 
         aria-expanded={open}
         className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface py-1.5 pl-1.5 pr-2 transition-colors hover:bg-surface-soft"
       >
+        {showPoints && streak && (
+          <span
+            title={t('streakWeekly.pointsTooltip')}
+            className="hidden items-center gap-1 border-r border-surface-border pr-2 text-xs font-bold tabular-nums text-ink-soft sm:flex"
+          >
+            {streak.puntos_totales.toLocaleString()}
+            <span className="font-medium text-ink-muted">{t('streakWeekly.pointsShort')}</span>
+          </span>
+        )}
         <Avatar name={nombre} size={30} />
         <span className="hidden max-w-[120px] truncate text-sm text-ink lg:inline">{nombre}</span>
         <Icon name="chevronDown" size={15} className="text-ink-muted" />

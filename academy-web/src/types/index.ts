@@ -280,6 +280,23 @@ export interface StreakRecuperacion {
   horas_restantes: number
 }
 
+// Resumen de las últimas 4 semanas (cohete de la Topbar). Solo lectura: otra
+// vista de los mismos días de actividad que alimentan la racha diaria, sin
+// mecánica de romper/freeze propia. Espeja streak_service._semanas_recientes.
+export interface StreakSemana {
+  numero: number // 1..4, 4 = semana actual
+  inicio: string
+  fin: string
+  activa: boolean
+  actual: boolean
+}
+
+export interface StreakSemanal {
+  racha_semanas: number
+  semanas: StreakSemana[]
+  alerta: StreakAlerta | null
+}
+
 export interface StreakState {
   racha_actual: number
   mejor_racha: number
@@ -299,6 +316,7 @@ export interface StreakState {
   puntos_totales: number
   logros: StreakLogro[]
   alerta: StreakAlerta | null
+  semanal: StreakSemanal
 }
 
 // ── Dashboard (Home del estudiante) ───────────────────────────────────────────

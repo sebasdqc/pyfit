@@ -34,6 +34,13 @@ const es = {
     myProfile: 'Mi perfil',
     logout: 'Cerrar sesión',
   },
+  streakWeekly: {
+    title: 'Racha semanal',
+    subtitle: 'Estudia al menos una vez por semana para mantenerla activa.',
+    weekLabel: 'Semana',
+    pointsShort: 'pts',
+    pointsTooltip: 'Puntos de racha de estudio',
+  },
   sidebar: {
     navInicio: 'Inicio',
     navCatalogo: 'Catálogo',
