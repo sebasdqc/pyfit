@@ -6,7 +6,7 @@ import {
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import Svg, { Rect, Circle, Ellipse } from 'react-native-svg'
+import Svg, { Rect, Circle, Ellipse, Path } from 'react-native-svg'
 import { router, useFocusEffect } from 'expo-router'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
@@ -81,19 +81,28 @@ const REST_COLOR_DARK = '#7c5cf0'
 // La frase del día de descanso viene de lib/restPhrases (15 frases, rota por día).
 
 const DISCIPLINA_OPTS = [
-  { id: 'running'      as const, label: 'Running',              sub: 'Trabajo aeróbico en ruta',        ...CAT_CARDIO },
-  { id: 'ciclismo'     as const, label: 'Ciclismo',             sub: 'Resistencia sobre la bici',       ...CAT_CARDIO },
-  { id: 'trail'        as const, label: 'Trail',                sub: 'Carrera en montaña o sendero',    ...CAT_CARDIO },
-  { id: 'natacion'     as const, label: 'Natación',             sub: 'Trabajo aeróbico en el agua',     ...CAT_CARDIO },
-  { id: 'gym'          as const, label: 'Gimnasio',             sub: 'Fuerza e hipertrofia con cargas', ...CAT_FUERZA },
-  { id: 'casa'         as const, label: 'En casa',              sub: 'Fuerza con poco material',        ...CAT_FUERZA },
-  { id: 'calistenia'   as const, label: 'Calistenia',          sub: 'Fuerza con tu propio peso',       ...CAT_FUERZA },
-  { id: 'stretching'   as const, label: 'Stretching',          sub: 'Estiramientos y flexibilidad',    ...CAT_MOVIL  },
-  { id: 'yoga'         as const, label: 'Yoga',                 sub: 'Movilidad y respiración',         ...CAT_MOVIL  },
-  { id: 'recuperacion' as const, label: 'Recuperación activa', sub: 'Movimiento suave para recuperar', ...CAT_MOVIL  },
+  { id: 'running'      as const, label: 'Running',              sub: 'Trabajo aeróbico en ruta',        icon: '🏃', ...CAT_CARDIO },
+  { id: 'ciclismo'     as const, label: 'Ciclismo',             sub: 'Resistencia sobre la bici',       icon: '🚴', ...CAT_CARDIO },
+  { id: 'trail'        as const, label: 'Trail',                sub: 'Carrera en montaña o sendero',    icon: '⛰️', ...CAT_CARDIO },
+  { id: 'natacion'     as const, label: 'Natación',             sub: 'Trabajo aeróbico en el agua',     icon: '🏊', ...CAT_CARDIO },
+  { id: 'caminata'     as const, label: 'Caminata',             sub: 'Cardio de baja intensidad',       icon: '🚶', ...CAT_CARDIO },
+  { id: 'gym'          as const, label: 'Gimnasio',             sub: 'Fuerza e hipertrofia con cargas', icon: '🏋️', ...CAT_FUERZA },
+  { id: 'casa'         as const, label: 'En casa',              sub: 'Fuerza con poco material',        icon: '🏠', ...CAT_FUERZA },
+  { id: 'calistenia'   as const, label: 'Calistenia',          sub: 'Fuerza con tu propio peso',       icon: '🤸', ...CAT_FUERZA },
+  // HIIT es full body: hereda cat/foco de FUERZA (bucket de stats) pero sobreescribe
+  // path a 'libre' para NO pedir grupo muscular (showGrupoMuscular = discPath === 'musculacion').
+  { id: 'hiit'         as const, label: 'HIIT',                 sub: 'Intervalos de alta intensidad',   icon: '🔥', ...CAT_FUERZA, path: 'libre' as const },
+  { id: 'stretching'   as const, label: 'Stretching',          sub: 'Estiramientos y flexibilidad',    icon: '🙆', ...CAT_MOVIL  },
+  { id: 'yoga'         as const, label: 'Yoga',                 sub: 'Movilidad y respiración',         icon: '🧘', ...CAT_MOVIL  },
+  { id: 'recuperacion' as const, label: 'Recuperación activa', sub: 'Movimiento suave para recuperar', icon: '🌿', ...CAT_MOVIL  },
 ]
 type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
 type DisciplinaCat = typeof DISCIPLINA_OPTS[number]['cat']
+
+// Layout circular de d4_sub: cada opción es un círculo posicionado por trigonometría
+// sobre un anillo (radio = 34% del contenedor cuadrado), no un listado vertical.
+const CIRCLE_ITEM_SIZE = 72
+const CIRCLE_ITEM_W = 92
 
 // Tarjetas de la primera pantalla (d4): SOLO las 3 categorías. Al tocar una, la
 // card parpadea 2 veces y se avanza a d4_sub, que muestra sus subdisciplinas.
@@ -396,6 +405,129 @@ function PointSlider({
   )
 }
 
+// ─── Dial slider (circular) ────────────────────────────────────────────────
+// Mismo patrón que PointSlider (N puntos discretos, mismos ids → no cambia el
+// mapeo a la BD) pero el arrastre ocurre sobre un arco circular en vez de una
+// barra horizontal (pantalla d3 — tiempo disponible). El arco deja un hueco de
+// 90° centrado abajo, como un dial de perilla.
+const DIAL_SIZE = 240
+const DIAL_STROKE = 14
+const DIAL_START_DEG = 135   // convención: -90=arriba, 0=derecha, 90=abajo (sentido horario)
+const DIAL_SWEEP_DEG = 270
+const DIAL_GAP_DEG = 360 - DIAL_SWEEP_DEG
+
+function polarPoint(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg * Math.PI) / 180
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
+  const start = polarPoint(cx, cy, r, startDeg)
+  const end = polarPoint(cx, cy, r, endDeg)
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`
+}
+
+function DialSlider({
+  opts, value, onChange, styles, colors, label = '', unit = 'min',
+}: {
+  opts: readonly (SliderOpt & { minutos?: number })[]
+  value: string | null
+  onChange: (id: string) => void
+  styles: ReturnType<typeof makeStyles>
+  colors: Colors
+  label?: string
+  unit?: string
+}) {
+  const steps = opts.length
+  const idx = opts.findIndex(o => o.id === value)
+  const hasValue = idx >= 0
+  const safeIdx = hasValue ? idx : 0
+  const current = opts[safeIdx]
+  const accent = hasValue ? current.color : colors.inkFaint
+  const frac = hasValue && steps > 1 ? safeIdx / (steps - 1) : 0
+
+  const stateRef = useRef({ idx: safeIdx, hasValue }); stateRef.current = { idx: safeIdx, hasValue }
+  const cx = DIAL_SIZE / 2
+  const cy = DIAL_SIZE / 2
+  const r = DIAL_SIZE / 2 - DIAL_STROKE
+
+  const commitFromVector = useCallback((dx: number, dy: number) => {
+    if (steps <= 1) return
+    const rawDeg = (Math.atan2(dy, dx) * 180) / Math.PI // (-180, 180]
+    let offset = (((rawDeg - DIAL_START_DEG) % 360) + 360) % 360 // [0, 360)
+    if (offset > DIAL_SWEEP_DEG) {
+      // Cae en el hueco de abajo: pega al extremo más cercano.
+      offset = offset - DIAL_SWEEP_DEG > DIAL_GAP_DEG / 2 ? 0 : DIAL_SWEEP_DEG
+    }
+    const f = offset / DIAL_SWEEP_DEG
+    const newIdx = Math.round(f * (steps - 1))
+    if (!stateRef.current.hasValue || newIdx !== stateRef.current.idx) {
+      onChange(opts[newIdx].id)
+      Haptics.selectionAsync().catch(() => {})
+    }
+  }, [opts, steps, onChange])
+
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: e => commitFromVector(e.nativeEvent.locationX - cx, e.nativeEvent.locationY - cy),
+    onPanResponderMove: e => commitFromVector(e.nativeEvent.locationX - cx, e.nativeEvent.locationY - cy),
+  }), [commitFromVector, cx, cy])
+
+  const trackD = arcPath(cx, cy, r, DIAL_START_DEG, DIAL_START_DEG + DIAL_SWEEP_DEG)
+  const currentDeg = DIAL_START_DEG + frac * DIAL_SWEEP_DEG
+  const fillD = hasValue && frac > 0 ? arcPath(cx, cy, r, DIAL_START_DEG, currentDeg) : null
+  const thumbPos = polarPoint(cx, cy, r, currentDeg)
+
+  return (
+    <View
+      style={styles.dialWrap}
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel={label}
+      accessibilityValue={{ now: safeIdx, min: 0, max: steps - 1, text: hasValue ? current.label : 'Sin seleccionar' }}
+      accessibilityActions={[
+        { name: 'increment', label: 'Incrementar' },
+        { name: 'decrement', label: 'Decrementar' },
+      ]}
+      onAccessibilityAction={({ nativeEvent: { actionName } }) => {
+        if (actionName === 'increment') onChange(opts[hasValue ? Math.min(idx + 1, steps - 1) : 0].id)
+        if (actionName === 'decrement') onChange(opts[hasValue ? Math.max(idx - 1, 0) : 0].id)
+      }}
+      {...pan.panHandlers}>
+      <Svg width={DIAL_SIZE} height={DIAL_SIZE}>
+        <Path d={trackD} stroke={colors.borderDefault} strokeWidth={DIAL_STROKE} strokeLinecap="round" fill="none" />
+        {fillD && <Path d={fillD} stroke={accent} strokeWidth={DIAL_STROKE} strokeLinecap="round" fill="none" opacity={0.85} />}
+        {opts.map((o, i) => {
+          const deg = DIAL_START_DEG + (steps > 1 ? i / (steps - 1) : 0) * DIAL_SWEEP_DEG
+          const p = polarPoint(cx, cy, r, deg)
+          const reached = hasValue && i <= safeIdx
+          return <Circle key={o.id} cx={p.x} cy={p.y} r={3.5} fill={reached ? accent : colors.borderBright} />
+        })}
+      </Svg>
+
+      <View pointerEvents="none"
+        style={[styles.dialThumb, { left: thumbPos.x - 15, top: thumbPos.y - 15, backgroundColor: accent, shadowColor: accent }]} />
+
+      <View pointerEvents="none" style={styles.dialCenter}>
+        {hasValue ? (
+          <>
+            <Text style={[styles.dialValue, { color: accent }]} numberOfLines={2}>{current.label}</Text>
+            {typeof current.minutos === 'number' && (
+              <Text style={styles.dialSub}>~{current.minutos} {unit}</Text>
+            )}
+          </>
+        ) : (
+          <Text style={styles.dialSub}>Elige un punto del dial</Text>
+        )}
+        <Text style={styles.dialHint}>DESLIZA PARA AJUSTAR</Text>
+      </View>
+    </View>
+  )
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckinScreen() {
@@ -510,6 +642,8 @@ export default function CheckinScreen() {
   // Idem para la disciplina concreta en d4_sub.
   const [pendingDisc, setPendingDisc] = useState<TipoDisciplina | null>(null)
   const flashAnim = useRef(new Animated.Value(1)).current
+  // Feedback inmediato al mantener presionado un círculo de disciplina (antes del flash de confirmación).
+  const [pressedDisc, setPressedDisc] = useState<TipoDisciplina | null>(null)
 
   // ── Nav state ─────────────────────────────────────────────────────────────
   const [screenIndex, setScreenIndex] = useState(0)
@@ -812,33 +946,42 @@ export default function CheckinScreen() {
   function renderSubDisciplina() {
     const opts = DISCIPLINA_OPTS.filter(o => o.cat === categoria)
     const catLabel = CATEGORIA_OPTS.find(c => c.cat === categoria)?.label ?? ''
+    const n = opts.length
     return (
       <>
         <Text style={styles.eyebrow}>{t('checkin_dim4_eyebrow')}</Text>
         <Text style={styles.question}>{catLabel}</Text>
         <Text style={styles.questionSub}>Elige tu disciplina de hoy.</Text>
 
-        <View style={styles.optionsWrap}>
-          {opts.map(opt => {
+        <View style={styles.circleRing}>
+          {opts.map((opt, i) => {
             const flashing = pendingDisc === opt.id
+            const pressed = pressedDisc === opt.id
+            const highlighted = flashing || pressed
+            const angle = (-90 + i * (360 / n)) * (Math.PI / 180)
+            const left = `${50 + 34 * Math.cos(angle)}%` as const
+            const top = `${50 + 34 * Math.sin(angle)}%` as const
             return (
-              <Animated.View key={opt.id} style={flashing ? { opacity: flashAnim } : undefined}>
+              <Animated.View
+                key={opt.id}
+                style={[
+                  styles.circleItemWrap,
+                  { left, top, transform: [{ translateX: -CIRCLE_ITEM_W / 2 }, { translateY: -CIRCLE_ITEM_SIZE / 2 }] },
+                  flashing ? { opacity: flashAnim } : undefined,
+                ]}>
                 <TouchableOpacity
-                  style={[styles.estadoCard, flashing && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
+                  style={[styles.circleBtn, highlighted && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 2 }]}
                   onPress={() => pickDisciplina(opt.id)}
+                  onPressIn={() => setPressedDisc(opt.id)}
+                  onPressOut={() => setPressedDisc(null)}
                   disabled={!!pendingDisc}
-                  activeOpacity={0.82}>
-                  <View style={[styles.estadoBar, { backgroundColor: flashing ? opt.color : 'transparent' }]} />
-                  <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 18 }}>
-                    <Text style={[styles.estadoLabel, { paddingVertical: 0, paddingHorizontal: 0 }, flashing && { color: opt.color }]}>
-                      {opt.label}
-                    </Text>
-                    <Text style={[styles.intencionNota, flashing && { color: opt.color, opacity: 0.75 }]}>
-                      {opt.sub}
-                    </Text>
-                  </View>
-                  <Text style={[styles.catChevron, { color: flashing ? opt.color : colors.inkMuted }]}>→</Text>
+                  activeOpacity={0.82}
+                  accessibilityLabel={`${opt.label}. ${opt.sub}`}>
+                  <Text style={styles.circleIcon}>{opt.icon}</Text>
                 </TouchableOpacity>
+                <Text style={[styles.circleLabel, highlighted && { color: opt.color }]} numberOfLines={2}>
+                  {opt.label}
+                </Text>
               </Animated.View>
             )
           })}
@@ -936,26 +1079,15 @@ export default function CheckinScreen() {
         <Text style={styles.question}>{t('checkin_dim3_question')}</Text>
         <Text style={styles.questionSub}>{t('checkin_dim3_sub')}</Text>
 
-        <View style={styles.optionsWrap}>
-          {TIEMPO_OPTS.map(opt => {
-            const on = tiempoDispo === opt.id
-            return (
-              <TouchableOpacity key={opt.id}
-                style={[styles.estadoCard, on && { backgroundColor: opt.bg, borderColor: opt.border, borderWidth: 1.5 }]}
-                onPress={() => { setTiempoDispo(opt.id); setError('') }}
-                activeOpacity={0.82}>
-                <View style={[styles.estadoBar, { backgroundColor: on ? opt.color : 'transparent' }]} />
-                <Text style={[styles.estadoLabel, on && { color: opt.color }]}>{opt.label}</Text>
-                <Text style={[styles.tiempoMinutos, on && { color: opt.color }]}>
-                  {opt.minutos} {t('checkin_min')}
-                </Text>
-                <View style={[styles.estadoRadio, on && { borderColor: opt.color }]}>
-                  {on && <View style={[styles.estadoRadioDot, { backgroundColor: opt.color }]} />}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <DialSlider
+          opts={TIEMPO_OPTS}
+          value={tiempoDispo}
+          onChange={v => { setTiempoDispo(v as TiempoDispo); setError('') }}
+          styles={styles}
+          colors={colors}
+          label="Tiempo disponible hoy"
+          unit={t('checkin_min')}
+        />
 
         <Text style={styles.tiempoNote}>
           Sin esto el sistema no puede calibrar volumen ni densidad de carga.
@@ -1664,6 +1796,23 @@ function makeStyles(c: Colors) {
 
     optionsWrap: { gap: 10 },
 
+    // Anillo circular de disciplinas (d4_sub) — reemplaza el listado vertical.
+    circleRing: {
+      width: '100%', aspectRatio: 1, maxWidth: 320,
+      alignSelf: 'center', marginTop: 12, marginBottom: 4,
+    },
+    circleItemWrap: { position: 'absolute', width: CIRCLE_ITEM_W, alignItems: 'center' },
+    circleBtn: {
+      width: CIRCLE_ITEM_SIZE, height: CIRCLE_ITEM_SIZE, borderRadius: CIRCLE_ITEM_SIZE / 2,
+      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    circleIcon: { fontSize: 28 },
+    circleLabel: {
+      marginTop: 8, fontFamily: 'SpaceGrotesk-Medium', fontSize: 12,
+      color: c.inkSecondary, textAlign: 'center', lineHeight: 15,
+    },
+
     // Chevron de las tarjetas de categoría (d4) — indica que avanzan al tocar.
     catChevron: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 22,
@@ -1701,6 +1850,34 @@ function makeStyles(c: Colors) {
       borderWidth: 2, borderColor: c.bg,
       shadowOpacity: 0.18, shadowRadius: 2.5,
       shadowOffset: { width: 0, height: 0 }, elevation: 2,
+    },
+
+    // Dial circular (d3 — tiempo disponible), reemplaza el listado vertical.
+    dialWrap: {
+      width: DIAL_SIZE, height: DIAL_SIZE, alignSelf: 'center',
+      marginTop: 12, marginBottom: 4, alignItems: 'center', justifyContent: 'center',
+    },
+    dialThumb: {
+      position: 'absolute', width: 30, height: 30, borderRadius: 15,
+      borderWidth: 3, borderColor: c.bg,
+      shadowOpacity: 0.3, shadowRadius: 4,
+      shadowOffset: { width: 0, height: 0 }, elevation: 3,
+    },
+    dialCenter: {
+      position: 'absolute', alignItems: 'center', justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    dialValue: {
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, letterSpacing: -0.3,
+      textAlign: 'center', lineHeight: 26,
+    },
+    dialSub: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 12, color: c.inkMuted,
+      marginTop: 4, textAlign: 'center',
+    },
+    dialHint: {
+      fontFamily: 'JetBrainsMono-Medium', fontSize: 9, color: c.inkFaint,
+      letterSpacing: 1.5, marginTop: 10, textAlign: 'center',
     },
 
     estadoCard: {
