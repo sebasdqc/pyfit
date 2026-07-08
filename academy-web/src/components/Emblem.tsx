@@ -43,6 +43,26 @@ export function Emblem({ size = 40, tone = 'light' }: { size?: number; tone?: 'l
   )
 }
 
+// Wordmark tipográfico puro (sin ícono) — para contextos donde el emblema
+// placeholder no encaja visualmente, p.ej. la landing pública, que quiere una
+// identidad más tipográfica y menos "escudo institucional".
+export function Wordmark({ size = 19, tone = 'light' }: { size?: number; tone?: 'light' | 'dark' }) {
+  const tenant = useTenant()
+  const strong = tone === 'dark' ? 'text-white' : 'text-ink'
+  const soft = tone === 'dark' ? 'text-white/50' : 'text-ink-muted'
+  const [first, ...rest] = tenant.nombre_plataforma.split(' ')
+
+  return (
+    <span className="flex items-center gap-2 select-none">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+      <span style={{ fontSize: size }} className={`font-bold leading-none tracking-tight ${strong}`}>
+        {first}
+        {rest.length > 0 && <span className={`ml-1 font-medium ${soft}`}>{rest.join(' ')}</span>}
+      </span>
+    </span>
+  )
+}
+
 // Lockup: logo del tenant (si existe) o emblema SVG + nombre de la plataforma.
 // Siempre lee el tenant activo; no necesita props de branding.
 export function BrandLockup({

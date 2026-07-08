@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import { listPublicCourses } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import Aurora from '@/components/Aurora'
-import { BrandLockup, Emblem } from '@/components/Emblem'
+import { Wordmark } from '@/components/Emblem'
 import { Icon, type IconName } from '@/components/Icon'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
@@ -97,49 +97,54 @@ export function LandingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-surface-border bg-white/90 px-6 py-4 backdrop-blur sm:px-10">
-        <BrandLockup size={30} />
-        <nav className="flex items-center gap-2 sm:gap-3">
+      {/* Header — barra de navegación flotante, siempre oscura (independiente
+          del tema claro del resto de la landing) */}
+      <header className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/55 px-4 py-3 shadow-lg shadow-black/30 backdrop-blur-xl sm:inset-x-6 sm:top-5 sm:px-6">
+        <Link to="/" className="shrink-0">
+          <Wordmark tone="dark" />
+        </Link>
+        <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             to="/explorar"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent sm:inline-block"
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
           >
             {t('landing.exploreCourses')}
           </Link>
           <Link
             to="/login"
-            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
+            className="rounded-lg px-2.5 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:px-3"
           >
             {t('landing.login')}
           </Link>
           <Link
             to="/registro"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
+            className="rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-brand transition-colors hover:bg-white/90 sm:px-4"
           >
             {t('landing.createAccount')}
           </Link>
-          <LocaleToggle />
+          <LocaleToggle className="!border-white/15 !bg-white/10 !text-white/75 hover:!bg-white/15 hover:!text-white" />
         </nav>
       </header>
 
-      {/* Hero */}
+      {/* Hero — altura de pantalla completa; el fondo aurora se mueve más que
+          antes y la barra de estadísticas vive dentro de este mismo frame,
+          tanto en desktop como en mobile */}
       <section
-        className="relative overflow-hidden px-6 pb-28 pt-20 sm:px-10 sm:pb-36 sm:pt-28"
+        className="relative flex min-h-[100dvh] flex-col px-6 pb-24 pt-28 sm:px-10 sm:pb-32 sm:pt-32"
         style={{ background: 'radial-gradient(120% 100% at 50% -10%, rgb(var(--color-brand-deep) / 0.6), #040406 65%)' }}
       >
-        <div className="pointer-events-none absolute inset-0">
-          <Aurora colorStops={auroraColors} blend={0.55} amplitude={1.3} speed={0.4} />
+        {/* overflow-hidden queda acá, y no en el <section>, para que el fondo
+            aurora se recorte a este frame pero la barra de estadísticas de más
+            abajo pueda seguir "flotando" fuera de este límite sin ser clipeada */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <Aurora colorStops={auroraColors} blend={0.6} amplitude={2.6} speed={1.1} />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#040406] to-transparent" />
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#040406] to-transparent" />
-        <div className="pointer-events-none absolute -right-16 -top-20 opacity-[0.07]">
-          <Emblem size={440} tone="dark" />
-        </div>
-        <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
             {t('landing.eyebrow')}
           </p>
-          <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl">
+          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl">
             {t('landing.heroTitleLine1')}
             <br />
             {t('landing.heroTitleLine2')}
@@ -169,26 +174,27 @@ export function LandingPage() {
             </Link>
           </p>
         </div>
-      </section>
 
-      {/* Barra de estadísticas — flota sobre el borde inferior del Hero */}
-      {showStats && (
-        <div className="relative z-10 mx-auto -mt-14 max-w-4xl px-6 sm:-mt-16 sm:px-10">
-          <div className="za-card za-fade-up grid grid-cols-1 divide-y divide-surface-border overflow-hidden rounded-3xl sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            {stats.map((s) => (
-              <div key={s.label} className="flex items-center gap-3 px-6 py-5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                  <Icon name={s.icon} size={19} />
-                </span>
-                <div>
-                  <p className="text-2xl font-bold leading-none tracking-tight text-ink">{s.value}</p>
-                  <p className="mt-1 text-xs text-ink-soft">{s.label}</p>
+        {/* Barra de estadísticas — flota sobre el borde inferior del Hero,
+            pero sigue viviendo dentro del mismo frame de pantalla completa */}
+        {showStats && (
+          <div className="relative z-10 mx-auto -mb-24 w-full max-w-4xl sm:-mb-28">
+            <div className="za-card za-fade-up grid grid-cols-1 divide-y divide-surface-border overflow-hidden rounded-3xl sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {stats.map((s) => (
+                <div key={s.label} className="flex items-center gap-3 px-6 py-5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <Icon name={s.icon} size={19} />
+                  </span>
+                  <div>
+                    <p className="text-2xl font-bold leading-none tracking-tight text-ink">{s.value}</p>
+                    <p className="mt-1 text-xs text-ink-soft">{s.label}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
       {/* Features */}
       <section className={`mx-auto max-w-6xl px-6 sm:px-10 ${showStats ? 'pb-16 pt-14' : 'py-16'}`}>
@@ -317,12 +323,8 @@ export function LandingPage() {
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-6 py-16 sm:px-10">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-brand-deep px-6 py-14 text-center sm:px-16 sm:py-16">
-          <div className="pointer-events-none absolute -left-16 -bottom-20 opacity-[0.08]">
-            <Emblem size={320} tone="dark" />
-          </div>
-          <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.08]">
-            <Emblem size={220} tone="dark" />
-          </div>
+          <div className="pointer-events-none absolute -left-16 -bottom-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-12 -top-20 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
           <div className="relative z-10">
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('landing.readyTitle')}</h2>
             <p className="mx-auto mt-3 max-w-md text-sm text-white/70">{t('landing.readyBody')}</p>
@@ -340,7 +342,7 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-surface-border px-6 py-8 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <BrandLockup size={24} />
+          <Wordmark size={16} />
           <nav className="flex items-center gap-5">
             <Link to="/terminos" className="text-xs font-medium text-ink-soft hover:text-accent">
               {t('landing.termsOfService')}
