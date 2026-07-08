@@ -5,7 +5,7 @@
 // ya en producción de la vista autenticada.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { listPublicCourses } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { CourseCard } from '@/components/ui/CourseCard'
@@ -25,6 +25,8 @@ export function ExploreCatalogPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [q, setQ] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const escuelaFiltro = searchParams.get('escuela')
 
   useEffect(() => {
     let active = true
@@ -37,13 +39,20 @@ export function ExploreCatalogPage() {
     }
   }, [])
 
+  const escuelaNombre = useMemo(
+    () => (escuelaFiltro ? courses.find((c) => c.escuela_slug === escuelaFiltro)?.escuela_nombre : null),
+    [courses, escuelaFiltro],
+  )
+
   const visible = useMemo(() => {
+    let list = courses
+    if (escuelaFiltro) list = list.filter((c) => c.escuela_slug === escuelaFiltro)
     const term = q.trim().toLowerCase()
-    if (!term) return courses
-    return courses.filter(
+    if (!term) return list
+    return list.filter(
       (c) => c.titulo.toLowerCase().includes(term) || c.resumen.toLowerCase().includes(term),
     )
-  }, [courses, q])
+  }, [courses, q, escuelaFiltro])
 
   if (redirecting) return <LoadingScreen />
 
@@ -91,6 +100,22 @@ export function ExploreCatalogPage() {
             className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
           />
         </div>
+
+        {escuelaFiltro && (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 py-1.5 pl-3 pr-2 text-xs font-medium text-accent">
+              {t('explore.filteredBySchool', { nombre: escuelaNombre || escuelaFiltro })}
+              <button
+                type="button"
+                onClick={() => setSearchParams((prev) => { prev.delete('escuela'); return prev })}
+                aria-label={t('explore.clearFilter')}
+                className="rounded-full p-0.5 hover:bg-accent/15"
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </span>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20">
