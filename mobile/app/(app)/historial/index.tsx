@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
 import { FASES, Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
-import { apiGet } from '../../../lib/api'
+import { apiGet, localDateStr } from '../../../lib/api'
 import { useTranslation } from '../../../lib/i18n'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -185,6 +185,16 @@ function getTipoConfig(ia?: RespuestaIA) {
   return TIPO_CONFIG[inferTipoSesion(ia)] ?? DEFAULT_TIPO
 }
 
+// Ícono + color de fondo para el ítem, reutilizado en la vista Calendario y en
+// el sheet de "sesiones del día" (mismo lenguaje visual que SessionCard/RunCard).
+function getItemVisual(item: HistorialItem): { icon: string; bg: string } {
+  if (item._tipo === 'run') {
+    return { icon: item.is_trail ? '🏔️' : '🏃', bg: 'rgba(108,229,255,0.15)' }
+  }
+  const conf = getTipoConfig(item.respuesta_ia)
+  return { icon: conf.icon, bg: conf.bg }
+}
+
 function getRpeColor(rpe: number): string {
   if (rpe < 6) return '#32c896'
   if (rpe < 8) return '#ffaa32'
@@ -283,6 +293,34 @@ function getMostFrequent(items: HistorialItem[]): { tipo: string; count: number 
     }
   }
   return best ? { tipo: best.tipo, count: best.count } : null
+}
+
+// ─── Calendar month grid ──────────────────────────────────────────────────────
+
+/** Mes actual + 5 anteriores, más reciente primero. */
+function getLast6Months(): { year: number; month: number }[] {
+  const result: { year: number; month: number }[] = []
+  const now = new Date()
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    result.push({ year: d.getFullYear(), month: d.getMonth() })
+  }
+  return result
+}
+
+function getDaysInMonth(year: number, month: number): Date[] {
+  const days: Date[] = []
+  const d = new Date(year, month, 1)
+  while (d.getMonth() === month) {
+    days.push(new Date(d))
+    d.setDate(d.getDate() + 1)
+  }
+  return days
+}
+
+// getDay() devuelve 0=Dom…6=Sáb; la grilla es lunes-primero (0=Lun…6=Dom).
+function mondayBasedDayIndex(d: Date): number {
+  return (d.getDay() + 6) % 7
 }
 
 // ─── Session Detail Modal ─────────────────────────────────────────────────────
@@ -1055,6 +1093,287 @@ function ListView({
   )
 }
 
+// ─── Calendar View ────────────────────────────────────────────────────────────
+// Grilla mensual (mes actual + 5 anteriores). Los días con sesión muestran el
+// ícono de la disciplina en vez del número (fuerza/tipo de gym o carrera/trail);
+// los días sin sesión muestran el número. Un punto indica más de una sesión ese día.
+
+function CalendarDayCell({
+  date,
+  items,
+  today,
+  colors,
+  calStyles,
+  onPress,
+}: {
+  date: Date
+  items: HistorialItem[]
+  today: string
+  colors: Colors
+  calStyles: ReturnType<typeof makeCalStyles>
+  onPress: () => void
+}) {
+  const iso = localDateStr(date)
+  const isToday = iso === today
+  const isFuture = iso > today
+  const hasItems = items.length > 0
+  const visual = hasItems ? getItemVisual(items[0]) : null
+
+  return (
+    <TouchableOpacity
+      style={calStyles.dayCell}
+      onPress={onPress}
+      disabled={!hasItems}
+      activeOpacity={hasItems ? 0.7 : 1}
+    >
+      <View style={{ position: 'relative' }}>
+        {hasItems ? (
+          <View style={[
+            calStyles.dayCircle,
+            { backgroundColor: visual!.bg },
+            isToday && { borderWidth: 2, borderColor: colors.accent },
+          ]}>
+            <Text style={calStyles.dayIcon}>{visual!.icon}</Text>
+          </View>
+        ) : (
+          <View style={[calStyles.dayCircle, isToday && { backgroundColor: colors.accent }]}>
+            <Text style={[
+              calStyles.dayNum,
+              { color: isToday ? colors.white : isFuture ? colors.inkFaint : colors.inkSecondary },
+              isToday && { fontFamily: 'SpaceGrotesk-Bold' },
+            ]}>
+              {date.getDate()}
+            </Text>
+          </View>
+        )}
+        {items.length > 1 && (
+          <View style={[calStyles.dayDot, { backgroundColor: colors.accent, borderColor: colors.cardBg }]} />
+        )}
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function CalendarView({
+  items,
+  onSelectDay,
+}: {
+  items: HistorialItem[]
+  onSelectDay: (dayItems: HistorialItem[]) => void
+}) {
+  const { colors } = useTheme()
+  const { t, ta } = useTranslation()
+  const calStyles = useMemo(() => makeCalStyles(colors), [colors])
+  const styles = useMemo(() => makeStyles(colors), [colors])
+
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, HistorialItem[]>()
+    for (const it of items) {
+      if (!map.has(it.fecha)) map.set(it.fecha, [])
+      map.get(it.fecha)!.push(it)
+    }
+    return map
+  }, [items])
+
+  const today      = useMemo(() => localDateStr(), [])
+  const months      = useMemo(() => getLast6Months(), [])
+  const monthNames  = ta('historial_months')
+  const dayCols     = ta('historial_days_abbr')
+
+  if (!items.length) {
+    return (
+      <EmptyState
+        icon="🏋️"
+        title={t('historial_empty')}
+        subtitle={t('historial_empty_sub')}
+      />
+    )
+  }
+
+  return (
+    <>
+      {months.map(({ year, month }) => {
+        const days = getDaysInMonth(year, month)
+        const firstOffset = mondayBasedDayIndex(days[0])
+        const totalCells = firstOffset + days.length
+        const rows = Math.ceil(totalCells / 7)
+
+        return (
+          <View key={`${year}-${month}`} style={calStyles.monthBlock}>
+            <Text style={calStyles.monthTitle}>{monthNames[month]} {year}</Text>
+            <View style={calStyles.weekHeader}>
+              {dayCols.map((d, idx) => (
+                <Text key={idx} style={calStyles.weekHeaderCell}>{d}</Text>
+              ))}
+            </View>
+            {Array.from({ length: rows }, (_, row) => (
+              <View key={row} style={calStyles.weekRow}>
+                {Array.from({ length: 7 }, (_, col) => {
+                  const cellIndex = row * 7 + col
+                  const dayIndex = cellIndex - firstOffset
+                  if (dayIndex < 0 || dayIndex >= days.length) {
+                    return <View key={col} style={calStyles.dayCell} />
+                  }
+                  const day = days[dayIndex]
+                  const dayItems = itemsByDate.get(localDateStr(day)) ?? []
+                  return (
+                    <CalendarDayCell
+                      key={col}
+                      date={day}
+                      items={dayItems}
+                      today={today}
+                      colors={colors}
+                      calStyles={calStyles}
+                      onPress={() => dayItems.length > 0 && onSelectDay(dayItems)}
+                    />
+                  )
+                })}
+              </View>
+            ))}
+          </View>
+        )
+      })}
+    </>
+  )
+}
+
+function makeCalStyles(c: Colors) {
+  return StyleSheet.create({
+    monthBlock: {
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 16,
+    },
+    monthTitle: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+      fontSize: 15,
+      letterSpacing: -0.3,
+      marginBottom: 12,
+    },
+    weekHeader: {
+      flexDirection: 'row',
+      marginBottom: 4,
+    },
+    weekHeaderCell: {
+      flex: 1,
+      textAlign: 'center',
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 9,
+      letterSpacing: 0.3,
+      paddingBottom: 6,
+    },
+    weekRow: {
+      flexDirection: 'row',
+    },
+    dayCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 3,
+    },
+    dayCircle: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayIcon: {
+      fontSize: 14,
+      lineHeight: 17,
+    },
+    dayNum: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 12,
+    },
+    dayDot: {
+      position: 'absolute',
+      top: -1,
+      right: -1,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      borderWidth: 1.5,
+    },
+  })
+}
+
+// ─── Calendar Day Items Modal ─────────────────────────────────────────────────
+// Sheet ligero para cuando un día del calendario tiene más de una sesión (gym +
+// run mezclados) — lista simple que abre el detalle correspondiente al tocar.
+
+function CalendarDayModal({
+  dayItems,
+  visible,
+  onClose,
+  onSelectItem,
+}: {
+  dayItems: HistorialItem[]
+  visible: boolean
+  onClose: () => void
+  onSelectItem: (item: HistorialItem) => void
+}) {
+  const { colors } = useTheme()
+  const { t, ta } = useTranslation()
+  const modalStyles = useMemo(() => makeModalStyles(colors), [colors])
+  const styles = useMemo(() => makeStyles(colors), [colors])
+
+  const monthShort   = ta('historial_months')
+  const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const fecha = dayItems[0]?.fecha ?? ''
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={modalStyles.overlay}>
+        <View style={[modalStyles.sheet, { maxHeight: '50%' }]}>
+          <View style={modalStyles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={modalStyles.titulo}>{formatDate(fecha, monthShort, weekdayShort)}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn} activeOpacity={0.7}>
+              <Text style={modalStyles.closeX}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+            {dayItems.map(item => {
+              const visual = getItemVisual(item)
+              const isRun  = item._tipo === 'run'
+              const titulo = isRun
+                ? `${formatDistanceKm(item.total_distance_m)}${item.is_trail ? '  🏔 Trail' : ''}`
+                : (item.respuesta_ia?.titulo ?? 'Sesión de entrenamiento')
+              const meta = isRun
+                ? `${formatDuration(item.total_duration_s)}${item.avg_pace_s_per_km > 0 ? ` · ${formatPace(item.avg_pace_s_per_km)}` : ''}`
+                : `${item.respuesta_ia?.duracion_total ?? item.duracion_planificada} ${t('historial_min')}${item.feedback ? ` · RPE ${item.feedback.rpe_real} · ${item.feedback.cumplimiento}%` : ''}`
+              return (
+                <TouchableOpacity
+                  key={`${item._tipo}-${item.id}`}
+                  style={styles.sessionCard}
+                  onPress={() => onSelectItem(item)}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: visual.bg, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 16 }}>{visual.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.sessionTitle} numberOfLines={1}>{titulo}</Text>
+                      <Text style={styles.sessionMeta} numberOfLines={1}>{meta}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ─── Day Sessions Modal ───────────────────────────────────────────────────────
 
 function DayModal({
@@ -1196,6 +1515,11 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const { fecha: paramFecha, ts: paramTs } = useLocalSearchParams<{ fecha?: string; ts?: string }>()
   const lastDeepLinkKey = useRef<string | null>(null)
 
+  // Timer para abrir el detalle tras cerrar el sheet de días del calendario;
+  // se cancela al desmontar (mismo patrón que DayModal más abajo).
+  const calendarSelectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (calendarSelectTimerRef.current) clearTimeout(calendarSelectTimerRef.current) }, [])
+
   // ── Data ───────────────────────────────────────────────────────────────────
   const [gymSessions, setGymSessions] = useState<Session[]>([])
   const [runSessions, setRunSessions] = useState<RunSessionNorm[]>([])
@@ -1208,6 +1532,9 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const [searchQuery, setSearchQuery] = useState('')
   const [tipoFilter,  setTipoFilter]  = useState<FilterTipo>('Todo')
 
+  // ── View: Lista / Calendario ────────────────────────────────────────────────
+  const [view, setView] = useState<'lista' | 'calendario'>('lista')
+
   // ── Modals ─────────────────────────────────────────────────────────────────
   const [selectedSession,     setSelectedSession]     = useState<GymItem | null>(null)
   const [sessionModalVisible, setSessionModalVisible] = useState(false)
@@ -1215,6 +1542,8 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const [runModalVisible,     setRunModalVisible]     = useState(false)
   const [daySessions,         setDaySessions]         = useState<Session[]>([])
   const [dayModalVisible,     setDayModalVisible]     = useState(false)
+  const [calendarDayItems,        setCalendarDayItems]        = useState<HistorialItem[]>([])
+  const [calendarDayModalVisible, setCalendarDayModalVisible] = useState(false)
 
   // i18n month names for week label formatter
   const monthNamesI18n = [
@@ -1347,6 +1676,26 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
     setRunModalVisible(true)
   }
 
+  function openCalendarDay(items: HistorialItem[]) {
+    if (items.length === 1) {
+      const only = items[0]
+      if (only._tipo === 'run') openRun(only)
+      else openSession(only)
+      return
+    }
+    setCalendarDayItems(items)
+    setCalendarDayModalVisible(true)
+  }
+
+  function selectFromCalendarDay(item: HistorialItem) {
+    setCalendarDayModalVisible(false)
+    if (calendarSelectTimerRef.current) clearTimeout(calendarSelectTimerRef.current)
+    calendarSelectTimerRef.current = setTimeout(() => {
+      if (item._tipo === 'run') openRun(item)
+      else openSession(item)
+    }, 300)
+  }
+
   return (
     <View style={[styles.root, embedded && { backgroundColor: 'transparent' }]}>
       {!embedded && (
@@ -1431,7 +1780,27 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
           <SummaryBlock sessions={allItems} styles={styles} colors={colors} />
         )}
 
-        {/* ── Content (solo vista Lista) ── */}
+        {/* ── View toggle ── */}
+        {!loading && !error && (
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, view === 'lista' && styles.toggleBtnActive]}
+              onPress={() => setView('lista')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, view === 'lista' && styles.toggleTextActive]}>{t('historial_view_list')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, view === 'calendario' && styles.toggleBtnActive]}
+              onPress={() => setView('calendario')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, view === 'calendario' && styles.toggleTextActive]}>{t('historial_view_calendar')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Content ── */}
         {loading ? (
           <View style={styles.loadingBox}>
             <Text style={styles.loadingText}>{t('historial_loading')}</Text>
@@ -1443,7 +1812,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
               <Text style={styles.retryText}>Reintentar</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : view === 'lista' ? (
           <ListView
             weeks={visibleWeeks}
             hasFilters={hasFilters}
@@ -1452,6 +1821,8 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
             onSelectSession={openSession}
             onSelectRun={openRun}
           />
+        ) : (
+          <CalendarView items={filteredItems} onSelectDay={openCalendarDay} />
         )}
 
         <View style={{ height: 40 }} />
@@ -1472,6 +1843,12 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
         visible={dayModalVisible}
         onClose={() => setDayModalVisible(false)}
         onSelectSession={(s) => openSession({ ...s, _tipo: 'gym' })}
+      />
+      <CalendarDayModal
+        dayItems={calendarDayItems}
+        visible={calendarDayModalVisible}
+        onClose={() => setCalendarDayModalVisible(false)}
+        onSelectItem={selectFromCalendarDay}
       />
     </View>
   )
