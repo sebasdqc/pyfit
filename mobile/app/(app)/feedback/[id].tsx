@@ -22,6 +22,7 @@ import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach } from '../../../lib/coachApi'
 import { useTranslation } from '../../../lib/i18n'
+import { getShareUserLabel } from '../../../lib/shareCard'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
 import SessionPhotos from '../../../components/SessionPhotos'
 
@@ -68,6 +69,32 @@ function sensacionToMetrics(s: string | null): { rating: number; cumplimiento: n
     case 'molestia': return { rating: 2, cumplimiento: 65 }
     default:         return { rating: 3, cumplimiento: 80 }
   }
+}
+
+// Categoriza el bloque principal por grupo muscular dominante para el título de
+// la tarjeta compartible — corto y consistente en vez del nombre creativo que
+// genera la IA (puede ser largo y no cabe bien en el título grande de la tarjeta).
+const SHARE_TITLE_CATEGORIES: { label: string; pattern: RegExp }[] = [
+  { label: 'piernas', pattern: /sentadilla|zancada|prensa|femoral|cuádricep|cuadricep|glúteo|gluteo|pantorrilla|peso muerto|hip thrust|squat|lunge|deadlift|leg press|leg curl|leg extension/i },
+  { label: 'pecho',   pattern: /pecho|press banca|press de banca|bench press|aperturas|fondos|pectoral|push[\s-]?up|flexion(es)? de brazos/i },
+  { label: 'espalda', pattern: /espalda|jalón|jalon|remo|dominada|pull[\s-]?up|pulldown|\brow\b|dorsal/i },
+  { label: 'hombros', pattern: /hombro|press militar|elevaciones laterales|deltoide|overhead press/i },
+  { label: 'brazos',  pattern: /bíceps|biceps|tríceps|triceps|curl/i },
+  { label: 'core',    pattern: /abdominal|\bcore\b|plancha|plank|oblicuo/i },
+]
+
+function getShareCardTitle(exerciseNames: string[]): string {
+  const counts = new Map<string, number>()
+  for (const nombre of exerciseNames) {
+    const cat = SHARE_TITLE_CATEGORIES.find(c => c.pattern.test(nombre))
+    if (cat) counts.set(cat.label, (counts.get(cat.label) ?? 0) + 1)
+  }
+  let best: string | null = null
+  let bestCount = 0
+  for (const [label, count] of counts) {
+    if (count > bestCount) { best = label; bestCount = count }
+  }
+  return best ? `Entrenamiento de ${best}` : 'Entrenamiento de fuerza'
 }
 
 // ─── Progress Bar ─────────────────────────────────────────────────────────────
@@ -369,6 +396,11 @@ export default function FeedbackScreen() {
 
   // ── Share card data ───────────────────────────────────────────────────────────
   const [sessionForShare, setSessionForShare] = useState<any>(null)
+  const [userLabel, setUserLabel] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    getShareUserLabel().then(setUserLabel)
+  }, [])
 
   useEffect(() => {
     apiGet(`/api/sessions/${id}/`)
@@ -380,13 +412,12 @@ export default function FeedbackScreen() {
     const ia = sessionForShare?.respuesta_ia
     if (!ia) return {}
     const fases = (ia.fases || []) as any[]
-    const flat = fases.flatMap((f: any) =>
-      (f.ejercicios || []).map((e: any) => ({ ...e, _main: String(f.nombre || '').toLowerCase().includes('principal') })),
-    )
-    const totalSeries = flat.reduce((sum: number, e: any) => sum + (parseInt(String(e.series)) || 0), 0)
-    // La tarjeta muestra hasta 6 ejercicios: prioriza el bloque principal (los
-    // lifts reales) sobre calentamiento/vuelta a la calma.
-    const ordered = [...flat].sort((a: any, b: any) => (b._main ? 1 : 0) - (a._main ? 1 : 0))
+    // Solo bloque principal — calentamiento y vuelta a la calma quedan fuera para
+    // que la tarjeta muestre únicamente los ejercicios reales de la sesión.
+    const principales = fases
+      .filter((f: any) => String(f.nombre || '').toLowerCase().includes('principal'))
+      .flatMap((f: any) => f.ejercicios || [])
+    const totalSeries = principales.reduce((sum: number, e: any) => sum + (parseInt(String(e.series)) || 0), 0)
     const fecha: string = sessionForShare?.fecha || ''
     const parts = fecha.split('-')
     const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
@@ -394,13 +425,13 @@ export default function FeedbackScreen() {
       ? `${parseInt(parts[2])} ${MONTHS[parseInt(parts[1]) - 1] ?? ''} ${parts[0]}`
       : undefined
     return {
-      title: (ia.titulo || ia.objetivo_sesion || undefined) as string | undefined,
+      title: getShareCardTitle(principales.map((e: any) => String(e.nombre || ''))),
       metrics: [
-        { label: 'EJERCICIOS', value: String(flat.length) },
+        { label: 'EJERCICIOS', value: String(principales.length) },
         { label: 'SERIES',     value: String(totalSeries) },
         { label: 'DURACIÓN',   value: `${ia.duracion_total || sessionForShare?.duracion_planificada || '--'} min` },
       ],
-      exercises: ordered.map((e: any) => ({
+      exercises: principales.map((e: any) => ({
         nombre: String(e.nombre || ''),
         series: parseInt(String(e.series)) || 0,
         repeticiones: String(e.repeticiones || ''),
@@ -772,7 +803,7 @@ export default function FeedbackScreen() {
             contentContainerStyle={styles.shareModalContent}
             showsVerticalScrollIndicator={false}
           >
-            <WorkoutShareCard sessionType="gym" {...shareCardProps} />
+            <WorkoutShareCard sessionType="gym" {...shareCardProps} userLabel={userLabel} />
           </ScrollView>
         </View>
       </Modal>

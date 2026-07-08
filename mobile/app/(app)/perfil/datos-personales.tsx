@@ -96,6 +96,7 @@ export default function DatosPersonalesScreen() {
   const savedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [nombre, setNombre] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [pais, setPais] = useState('')
   const [peso, setPeso] = useState('')
   const [altura, setAltura] = useState('')
@@ -122,6 +123,7 @@ export default function DatosPersonalesScreen() {
     apiGet('/api/profile/').then(data => {
       setFullProfile(data)
       setNombre(data.nombre ?? '')
+      setUsuario(data.usuario ?? '')
       setPais(data.pais ?? '')
       setPeso(data.peso ? toInputWeight(Number(data.peso)) : '')
       setAltura(data.altura ? toInputHeight(Number(data.altura)) : '')
@@ -133,6 +135,10 @@ export default function DatosPersonalesScreen() {
 
   async function save() {
     if (!fullProfile) return
+    if (usuario && !/^[a-z0-9_]{3,20}$/.test(usuario)) {
+      Alert.alert('Usuario inválido', 'Debe tener 3-20 caracteres: minúsculas, números y guion bajo.')
+      return
+    }
     // Convertir a métrico antes de validar y guardar
     const pesoMetric = fromInputWeight(peso)
     const alturaMetric = fromInputHeight(altura)
@@ -155,7 +161,7 @@ export default function DatosPersonalesScreen() {
       // PRF: PATCH parcial — solo los campos de esta pantalla, para no pisar
       // datos editados en otras pantallas (lost update).
       await apiPatch('/api/profile/', {
-        nombre, pais, peso: pesoMetric, altura: alturaMetric,
+        nombre, usuario, pais, peso: pesoMetric, altura: alturaMetric,
         nivel_estres: nivelEstres,
         tipo_trabajo: tipoTrabajo,
         experiencia_deportiva: experiencia,
@@ -227,6 +233,24 @@ export default function DatosPersonalesScreen() {
 
               <GlassInput label="NOMBRE" value={nombre} onChangeText={mark(setNombre)}
                 placeholder="Tu nombre" styles={styles} />
+
+              {/* Usuario — handle público para el footer de las tarjetas compartibles */}
+              <View style={styles.fieldGroup}>
+                <SectionLabel text="USUARIO" styles={styles} />
+                <View style={[styles.input, styles.usuarioRow]}>
+                  <Text style={styles.usuarioAt}>@</Text>
+                  <TextInput
+                    value={usuario}
+                    onChangeText={(v) => { setUsuario(v.toLowerCase().replace(/[^a-z0-9_]/g, '')); setIsDirty(true) }}
+                    placeholder="tu_usuario"
+                    placeholderTextColor={colors.inkMuted}
+                    style={styles.usuarioInput}
+                    autoCapitalize="none" autoCorrect={false}
+                    maxLength={20}
+                  />
+                </View>
+                <Text style={styles.fieldHint}>Se muestra en tus tarjetas para compartir entrenamientos.</Text>
+              </View>
 
               {/* País — selector buscable (mismo catálogo que el onboarding) */}
               <View style={styles.fieldGroup}>
@@ -353,6 +377,10 @@ function makeStyles(c: Colors) {
     inputTouch: { justifyContent: 'center', minHeight: 44 },
     inputText: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     inputPlaceholder: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
+    usuarioRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
+    usuarioAt: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, marginRight: 2 },
+    usuarioInput: { flex: 1, color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, paddingVertical: 12 },
+    fieldHint: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 11, marginTop: 6 },
 
     // Country picker
     sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },

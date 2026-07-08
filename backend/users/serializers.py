@@ -1,8 +1,12 @@
+import re
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Profile, UserLocation, UserInjury
 
 User = get_user_model()
+
+USUARIO_RE = re.compile(r'^[a-z0-9_]{3,20}$')
 
 
 class UserInjurySerializer(serializers.ModelSerializer):
@@ -60,11 +64,15 @@ class ProfileSerializer(serializers.ModelSerializer):
     edad = serializers.IntegerField(read_only=True)
     nivel_label = serializers.CharField(read_only=True)
     locations = UserLocationSerializer(source='user.locations', many=True, read_only=True)
+    # Declarado a mano (no autogenerado por el ModelSerializer) para controlar el
+    # orden de validación: normalizar a minúsculas ANTES de chequear unicidad,
+    # así "Juan" y "juan" no chocan por variar solo en mayúsculas.
+    usuario = serializers.CharField(required=False, allow_blank=True, max_length=20)
 
     class Meta:
         model = Profile
         fields = [
-            'id', 'email', 'nombre', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label', 'nivel_experiencia',
+            'id', 'email', 'nombre', 'usuario', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label', 'nivel_experiencia',
             'lesiones', 'experiencia_deportiva', 'estilo_entrenamiento',
             'fecha_nacimiento', 'edad', 'peso', 'altura', 'sexo', 'pais',
             'dias_semana', 'dias_fijos', 'horario_preferido', 'nivel_estres', 'tipo_trabajo',
@@ -90,3 +98,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             'goal_changed_at', 'previous_goal',
             'created_at', 'locations', 'codigo_referido',
         ]
+
+    def validate_usuario(self, value):
+        if not value:
+            return ''
+        normalized = value.strip().lower()
+        if not USUARIO_RE.match(normalized):
+            raise serializers.ValidationError(
+                'El usuario debe tener 3-20 caracteres: minúsculas, números y guion bajo.'
+            )
+        qs = Profile.objects.filter(usuario=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('Ese usuario ya está en uso.')
+        return normalized

@@ -19,7 +19,7 @@ import {
 } from '../../../../lib/runMetrics'
 import { useTheme } from '../../../../lib/theme'
 import { Colors } from '../../../../lib/colors'
-import { getUser } from '../../../../lib/storage'
+import { getShareUserLabel } from '../../../../lib/shareCard'
 import WorkoutShareCard from '../../../../components/WorkoutShareCard'
 import SessionPhotos from '../../../../components/SessionPhotos'
 
@@ -39,12 +39,6 @@ function formatShareDate(iso?: string | null): string | undefined {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return undefined
   return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
-}
-
-function handleFromUser(u: { nombre?: string; email?: string } | null): string | undefined {
-  if (!u) return undefined
-  const base = (u.nombre || u.email?.split('@')[0] || '').trim().toLowerCase().replace(/\s+/g, '')
-  return base ? `@${base}` : undefined
 }
 
 // Segundos/km → "M:SS".
@@ -102,7 +96,7 @@ export default function RunResumenScreen() {
   const mapRef = useRef<MapView>(null)
 
   useEffect(() => {
-    getUser().then(u => setUserLabel(handleFromUser(u))).catch(() => {})
+    getShareUserLabel().then(setUserLabel)
   }, [])
 
   useEffect(() => {

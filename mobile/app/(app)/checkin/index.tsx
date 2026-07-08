@@ -15,7 +15,7 @@ import { getRestPhrase } from '../../../lib/restPhrases'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
 import { runModeForEntorno } from '../../../lib/runMode'
-import { getUser } from '../../../lib/storage'
+import { getShareUserLabel } from '../../../lib/shareCard'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
 
 // ─── Types + Constants ────────────────────────────────────────────────────────
@@ -297,11 +297,6 @@ function formatShareDate(): string {
   const d = new Date()
   return `${String(d.getDate()).padStart(2, '0')} ${MESES_SHORT[d.getMonth()]} ${d.getFullYear()}`
 }
-function handleFromUser(u: { nombre?: string; email?: string } | null): string | undefined {
-  if (!u) return undefined
-  const base = (u.nombre || u.email?.split('@')[0] || '').trim().toLowerCase().replace(/\s+/g, '')
-  return base ? `@${base}` : undefined
-}
 
 // ─── Point slider ─────────────────────────────────────────────────────────────
 // Slider horizontal de N puntos discretos (mismo patrón que el DurationSlider del
@@ -563,7 +558,7 @@ export default function CheckinScreen() {
 
   // Handle del usuario para el footer de la tarjeta de descanso (failure-safe).
   useEffect(() => {
-    getUser().then(u => setUserLabel(handleFromUser(u))).catch(() => {})
+    getShareUserLabel().then(setUserLabel)
   }, [])
 
   // Coach vinculado (si existe) → aviso en la 1ª página. Failure-safe: sin coach

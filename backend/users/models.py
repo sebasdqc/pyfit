@@ -147,6 +147,12 @@ class Profile(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     nombre = models.CharField(max_length=100)
+    # Handle público (p. ej. "@sebastian") para el footer de las tarjetas
+    # compartibles (WorkoutShareCard). Distinto de User.username (interno,
+    # igual al email) — este lo elige el usuario y puede quedar vacío.
+    # Unicidad e formato ("^[a-z0-9_]{3,20}$") se validan en ProfileSerializer,
+    # no a nivel de BD, para no chocar con múltiples '' de quien no lo definió.
+    usuario = models.CharField(max_length=20, blank=True, default='')
     objetivo = models.CharField(max_length=200, blank=True)
     objetivos_multiples = models.JSONField(default=list, blank=True)
     nivel = models.CharField(max_length=20, choices=NIVEL_CHOICES, default='principiante')
