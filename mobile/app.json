@@ -71,6 +71,7 @@
       ],
       "@sentry/react-native/expo",
       "expo-video",
+      "expo-notifications",
       [
         "@react-native-google-signin/google-signin",
         {
