@@ -22,3 +22,15 @@ jobs:
             -H "X-Cron-Secret: $CRON_SECRET")
           echo "HTTP $code"; cat /tmp/sweep.json || true; echo ""
           test "$code" = "200"
+
+      # Onboarding sin registro: mismo cron, mismo secreto — borra sesiones
+      # anónimas vencidas que nunca se convirtieron en cuenta.
+      - name: Trigger daily anonymous session sweep
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o /tmp/anon-sweep.json -w "%{http_code}" -X POST \
+            "https://sea-lion-app-a2j4f.ondigitalocean.app/api/academy/anon/sweep/" \
+            -H "X-Cron-Secret: $CRON_SECRET")
+          echo "HTTP $code"; cat /tmp/anon-sweep.json || true; echo ""
+          test "$code" = "200"
