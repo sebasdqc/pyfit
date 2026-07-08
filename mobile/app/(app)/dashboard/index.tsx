@@ -1598,7 +1598,7 @@ export default function DashboardScreen() {
           if (cancelled.current) return
           if (d && typeof d === 'object' && !d.detail) {
             setCheckinHoy({
-              calidad_sueno: d.calidad_sueno ?? null,
+              calidad_sueno: d.calidad_sueno != null ? Number(d.calidad_sueno) : null,
               estado_animo:  d.estado_animo  ?? null,
               hrv:           d.hrv           ?? null,
             })
