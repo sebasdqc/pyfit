@@ -11,6 +11,7 @@ import { getAnonSessionStatus, getPublicCourse } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { clearAnonSession, getAnonSessionId } from '@/lib/anonSession'
 import { Badge } from '@/components/ui/Badge'
+import { ExploreHeader } from '@/components/layout/ExploreHeader'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
@@ -66,23 +67,29 @@ export function ExploreCourseDetailPage() {
   if (redirecting) return <LoadingScreen />
   if (loading) {
     return (
-      <div className="flex justify-center py-24">
-        <Spinner size={40} />
+      <div className="min-h-[100dvh] bg-surface-soft">
+        <ExploreHeader />
+        <div className="flex justify-center py-24">
+          <Spinner size={40} />
+        </div>
       </div>
     )
   }
   if (error || !course) {
     return (
-      <EmptyState
-        icon="catalog"
-        title={t('exploreCourseDetail.courseNotAvailable')}
-        description={t('exploreCourseDetail.couldNotLoad')}
-        action={
-          <Link to="/explorar" className="text-sm font-medium text-accent hover:text-accent-dark">
-            {t('exploreCourseDetail.backToCatalog')}
-          </Link>
-        }
-      />
+      <div className="min-h-[100dvh] bg-surface-soft">
+        <ExploreHeader />
+        <EmptyState
+          icon="catalog"
+          title={t('exploreCourseDetail.courseNotAvailable')}
+          description={t('exploreCourseDetail.couldNotLoad')}
+          action={
+            <Link to="/explorar" className="text-sm font-medium text-accent hover:text-accent-dark">
+              {t('exploreCourseDetail.backToCatalog')}
+            </Link>
+          }
+        />
+      </div>
     )
   }
 
@@ -91,6 +98,7 @@ export function ExploreCourseDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-soft">
+      <ExploreHeader />
       <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8 sm:px-10">
         <Link
           to="/explorar"

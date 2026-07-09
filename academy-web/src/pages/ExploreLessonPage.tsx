@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { completePublicLesson, getAnonSessionStatus, getPublicLesson } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { RegisterPromptDialog, type RegisterPromptReason } from '@/components/academy/RegisterPromptDialog'
+import { ExploreHeader } from '@/components/layout/ExploreHeader'
 import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
@@ -73,6 +74,7 @@ export function ExploreLessonPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-soft">
+      <ExploreHeader />
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8 sm:px-10">
         <Link
           to={`/explorar/cursos/${cId}`}

@@ -5,16 +5,16 @@
 // ya en producción de la vista autenticada.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { listPublicCourses } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ExploreHeader } from '@/components/layout/ExploreHeader'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
-import { Emblem, BrandLockup } from '@/components/Emblem'
-import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { Emblem } from '@/components/Emblem'
 import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
 
@@ -58,18 +58,7 @@ export function ExploreCatalogPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-soft">
-      <header className="flex items-center justify-between border-b border-surface-border bg-white px-6 py-4 sm:px-10">
-        <BrandLockup size={28} />
-        <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
-          >
-            {t('explore.login')}
-          </Link>
-          <LocaleToggle />
-        </div>
-      </header>
+      <ExploreHeader />
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8 sm:px-10">
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
