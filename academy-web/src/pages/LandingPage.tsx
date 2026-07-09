@@ -96,9 +96,9 @@ export function LandingPage() {
   if (redirecting) return <LoadingScreen />
 
   return (
-    <div className="min-h-[100dvh] bg-white">
-      {/* Header — barra de navegación flotante, siempre oscura (independiente
-          del tema claro del resto de la landing) */}
+    <div data-theme="dark" className="min-h-[100dvh] bg-surface-soft text-ink">
+      {/* Header — barra de navegación flotante, siempre oscura (ya lo era antes;
+          ahora coincide con el resto de la landing, que también es fija en oscuro) */}
       <header className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/55 px-4 py-3 shadow-lg shadow-black/30 backdrop-blur-xl sm:inset-x-6 sm:top-5 sm:px-6">
         <Link to="/" className="shrink-0">
           <Wordmark tone="dark" />
