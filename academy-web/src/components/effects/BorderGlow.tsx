@@ -1,6 +1,7 @@
 // Card con borde en degradé + resplandor que sigue el cursor (React Bits,
-// adaptado a TS). Se usa SOLO en los cards de la landing pública de Academy
-// (LandingPage.tsx) — no tocar componentes compartidos con pantallas internas.
+// adaptado a TS). Se usa SOLO en los cards de las pantallas públicas de
+// Academy (LandingPage.tsx, BlogPage.tsx) — no tocar componentes compartidos
+// con pantallas internas.
 import {
   useCallback,
   useEffect,

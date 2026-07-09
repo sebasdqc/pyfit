@@ -2,24 +2,43 @@
 // sin registro, redirige a un usuario logueado a /catalogo), el blog es
 // contenido de marketing/SEO visible con O sin cuenta: un estudiante logueado
 // llega aquí desde el Sidebar y no se lo redirige a ningún otro lado. El
-// header adapta su CTA según haya sesión activa (ver useAuth).
+// header (BlogHeader) adapta su CTA según haya sesión activa.
+//
+// Identidad visual: deliberadamente calcada de LandingPage.tsx (dark mode fijo
+// vía data-theme="dark", header/footer/Aurora/BorderGlow compartidos en look)
+// para que /blog se sienta la misma marca, no una pantalla aparte — ver
+// project_academy_landing_redesign en memoria antes de tocar esto.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { listBlogPosts } from '@/api/academy'
-import { useAuth } from '@/auth/useAuth'
+import Aurora from '@/components/Aurora'
+import { BlogFooter } from '@/components/blog/BlogFooter'
+import { BlogHeader } from '@/components/blog/BlogHeader'
+import BorderGlow from '@/components/effects/BorderGlow'
 import { BlogPostCard } from '@/components/ui/BlogPostCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
-import { Emblem, BrandLockup } from '@/components/Emblem'
-import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { cssVarToHex } from '@/lib/themeColor'
 import { useT } from '@/locale/useT'
 import type { BlogPost } from '@/types'
 
+// Mismo glow de marca que CARD_GLOW en LandingPage.tsx — se repite acá (en
+// vez de importarse) para no acoplar el blog a cambios futuros del hero de
+// la landing; si el valor deriva, es intencional mantenerlos en sync a mano.
+const CARD_GLOW = {
+  borderRadius: 16,
+  glowColor: '353 82 62',
+  colors: ['#f0626f', '#e63950', '#cc1f36'],
+  glowRadius: 28,
+  glowIntensity: 0.85,
+  coneSpread: 32,
+  minGlow: 0.5,
+}
+
 export function BlogPage() {
   const t = useT()
-  const { user } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   // Facetas de escuela derivadas del catálogo público (no de /academy/schools/,
   // que requiere sesión — el blog debe filtrar por escuela también sin cuenta).
@@ -66,34 +85,41 @@ export function BlogPage() {
     [schools, escuelaId],
   )
 
+  // Mismos colores de aurora que el Hero de la landing: derivados de las
+  // variables CSS del tenant activo, no hardcodeados.
+  const auroraColors = useMemo<[string, string, string]>(
+    () => [
+      cssVarToHex('--color-accent-light', '#f0626f'),
+      cssVarToHex('--color-accent', '#e63950'),
+      cssVarToHex('--color-brand', '#cc1f36'),
+    ],
+    [],
+  )
+
   return (
-    <div className="min-h-[100dvh] bg-surface-soft">
-      <header className="flex items-center justify-between border-b border-surface-border bg-white px-6 py-4 sm:px-10">
-        <Link to="/"><BrandLockup size={28} /></Link>
-        <div className="flex items-center gap-3">
-          <Link
-            to={user ? '/inicio' : '/login'}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
-          >
-            {user ? t('blog.goToDashboard') : t('blog.login')}
-          </Link>
-          <LocaleToggle />
+    <div data-theme="dark" className="min-h-[100dvh] bg-surface-soft text-ink">
+      <BlogHeader />
+
+      {/* Hero — mismo tratamiento que el Hero de la landing: gradiente radial
+          oscuro + Aurora, recortada a un <div> interno (no al <section>) para
+          que el panel de búsqueda pueda "flotar" sobre el borde inferior. */}
+      <section
+        className="relative overflow-hidden px-6 pb-16 pt-28 sm:px-10 sm:pb-20 sm:pt-32"
+        style={{ background: 'radial-gradient(120% 100% at 50% -10%, rgb(var(--color-brand-deep) / 0.6), #040406 65%)' }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <Aurora colorStops={auroraColors} blend={0.55} amplitude={2} speed={0.9} />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#040406] to-transparent" />
         </div>
-      </header>
+        <div className="relative z-10 mx-auto max-w-2xl text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">{t('blog.eyebrow')}</p>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">{t('blog.title')}</h1>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">{t('blog.body')}</p>
+        </div>
+      </section>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8 sm:px-10">
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
-          <div className="pointer-events-none absolute -right-10 -top-12 opacity-[0.08]">
-            <Emblem size={260} tone="dark" />
-          </div>
-          <div className="relative z-10 max-w-2xl">
-            <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">{t('blog.eyebrow')}</p>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('blog.title')}</h1>
-            <p className="mt-2 text-sm text-white/65">{t('blog.body')}</p>
-          </div>
-        </section>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 pb-16 sm:px-10">
+        <div className="za-card za-fade-up relative z-10 -mt-10 flex flex-col gap-3 rounded-3xl p-4 sm:-mt-12 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
           <div className="relative flex-1">
             <Icon name="search" size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
             <input
@@ -102,7 +128,7 @@ export function BlogPage() {
               placeholder={t('blog.searchPlaceholder')}
               type="search"
               aria-label={t('blog.searchAria')}
-              className="h-11 w-full rounded-xl border border-surface-border bg-white pl-11 pr-4 text-sm text-ink transition-colors focus:border-accent"
+              className="input pl-11"
             />
           </div>
           <div className="relative">
@@ -114,7 +140,7 @@ export function BlogPage() {
                 return prev
               })}
               aria-label={t('blog.schoolPlaceholder')}
-              className="h-11 w-full appearance-none rounded-xl border border-surface-border bg-white pl-4 pr-9 text-sm text-ink transition-colors focus:border-accent sm:w-52"
+              className="input appearance-none pr-9 sm:w-52"
             >
               <option value="">{t('blog.schoolPlaceholder')}: {t('blog.all')}</option>
               {schools.map((s) => (
@@ -127,7 +153,7 @@ export function BlogPage() {
             <button
               type="button"
               onClick={() => setSearchParams((prev) => { prev.delete('escuela'); return prev })}
-              className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-white px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
+              className="flex h-11 items-center gap-1.5 rounded-xl border border-surface-border bg-surface-soft px-4 text-sm text-ink-soft transition-colors hover:border-danger hover:text-danger"
             >
               <Icon name="close" size={14} />
               {escuelaNombre ?? t('blog.clear')}
@@ -150,11 +176,20 @@ export function BlogPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((p) => (
-              <BlogPostCard key={p.id} post={p} to={`/blog/${p.slug}`} />
+              <BorderGlow
+                key={p.id}
+                {...CARD_GLOW}
+                backgroundColor="transparent"
+                className="transition-transform hover:-translate-y-0.5"
+              >
+                <BlogPostCard post={p} to={`/blog/${p.slug}`} />
+              </BorderGlow>
             ))}
           </div>
         )}
       </main>
+
+      <BlogFooter />
     </div>
   )
 }

@@ -1,17 +1,20 @@
 // Detalle público de un artículo del blog — /blog/:slug. Un borrador solo lo
 // puede abrir su autor o un admin (preview antes de publicar, ver
 // academy.blog_views.blog_detail_view); cualquier otro visitante recibe 404.
+//
+// Identidad visual: mismo shell dark-mode que BlogPage.tsx/LandingPage.tsx
+// (BlogHeader/BlogFooter + data-theme="dark") — ver ese comentario para el
+// porqué.
 
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getBlogPost } from '@/api/academy'
-import { useAuth } from '@/auth/useAuth'
+import { BlogFooter } from '@/components/blog/BlogFooter'
+import { BlogHeader } from '@/components/blog/BlogHeader'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
-import { BrandLockup } from '@/components/Emblem'
-import { LocaleToggle } from '@/components/ui/LocaleToggle'
 import { schoolGradient, schoolTheme } from '@/lib/schoolTheme'
 import { useLocale } from '@/locale/useLocale'
 import { useT } from '@/locale/useT'
@@ -33,7 +36,6 @@ function ArticleBody({ text }: { text: string }) {
 export function BlogPostPage() {
   const t = useT()
   const { locale } = useLocale()
-  const { user } = useAuth()
   const { slug } = useParams()
   const [post, setPost] = useState<BlogPostDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,21 +60,10 @@ export function BlogPostPage() {
     : ''
 
   return (
-    <div className="min-h-[100dvh] bg-surface-soft">
-      <header className="flex items-center justify-between border-b border-surface-border bg-white px-6 py-4 sm:px-10">
-        <Link to="/"><BrandLockup size={28} /></Link>
-        <div className="flex items-center gap-3">
-          <Link
-            to={user ? '/inicio' : '/login'}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-accent"
-          >
-            {user ? t('blog.goToDashboard') : t('blog.login')}
-          </Link>
-          <LocaleToggle />
-        </div>
-      </header>
+    <div data-theme="dark" className="min-h-[100dvh] bg-surface-soft text-ink">
+      <BlogHeader />
 
-      <main className="mx-auto max-w-3xl px-6 py-8 sm:px-10">
+      <main className="mx-auto max-w-3xl px-6 pb-16 pt-28 sm:px-10 sm:pt-32">
         <Link to="/blog" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent">
           {t('blog.backToBlog')}
         </Link>
@@ -131,6 +122,8 @@ export function BlogPostPage() {
           </article>
         )}
       </main>
+
+      <BlogFooter />
     </div>
   )
 }
