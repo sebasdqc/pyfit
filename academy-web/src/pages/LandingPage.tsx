@@ -8,6 +8,8 @@ import { listPublicCourses } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import Aurora from '@/components/Aurora'
 import { Wordmark } from '@/components/Emblem'
+import BorderGlow from '@/components/effects/BorderGlow'
+import StarBorder from '@/components/effects/StarBorder'
 import { Icon, type IconName } from '@/components/Icon'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
@@ -35,6 +37,19 @@ interface SchoolSummary {
   slug: string
   nombre: string
   count: number
+}
+
+// Estilo del glow compartido por los 3 tipos de card de la landing — colores
+// derivados de la marca (accent-light/accent/brand) en vez de la paleta
+// morado/rosa/celeste genérica del componente original.
+const CARD_GLOW = {
+  borderRadius: 16,
+  glowColor: '353 82 62',
+  colors: ['#f0626f', '#e63950', '#cc1f36'],
+  glowRadius: 28,
+  glowIntensity: 0.85,
+  coneSpread: 32,
+  edgeSensitivity: 35,
 }
 
 export function LandingPage() {
@@ -153,13 +168,10 @@ export function LandingPage() {
             {t('landing.heroBody')}
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              to="/registro"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-brand transition-colors hover:bg-white/90 sm:w-auto"
-            >
+            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={2} className="w-full sm:w-fit">
               {t('landing.createAccountFree')}
               <Icon name="arrowRight" size={17} />
-            </Link>
+            </StarBorder>
             <Link
               to="/explorar"
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/25 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
@@ -200,16 +212,20 @@ export function LandingPage() {
       <section className={`mx-auto max-w-6xl px-6 sm:px-10 ${showStats ? 'pb-16 pt-14' : 'py-16'}`}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
-            <div
+            <BorderGlow
               key={f.titleKey}
-              className="group za-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
+              {...CARD_GLOW}
+              backgroundColor="#1f2937"
+              className="group h-full transition-transform hover:-translate-y-0.5"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
-                <Icon name={f.icon} size={20} />
-              </span>
-              <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
-            </div>
+              <div className="flex h-full flex-col p-5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+                  <Icon name={f.icon} size={20} />
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
+              </div>
+            </BorderGlow>
           ))}
         </div>
       </section>
@@ -229,28 +245,36 @@ export function LandingPage() {
               {schools.map((s) => {
                 const theme = schoolTheme(s.slug)
                 return (
-                  <Link
+                  <BorderGlow
                     key={s.slug}
-                    to={`/explorar?escuela=${s.slug}`}
-                    className="group za-card relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
+                    {...CARD_GLOW}
+                    backgroundColor="#1f2937"
+                    className="group h-full transition-transform hover:-translate-y-0.5"
                   >
-                    <div
-                      className="pointer-events-none absolute -right-6 -top-6 opacity-[0.07] transition-transform duration-300 group-hover:scale-110"
-                      style={{ color: theme.accent }}
+                    <Link
+                      to={`/explorar?escuela=${s.slug}`}
+                      className="relative flex h-full flex-col overflow-hidden p-5"
                     >
-                      <Icon name={theme.icon} size={110} strokeWidth={1.2} />
-                    </div>
-                    <span
-                      className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                      style={{ backgroundImage: schoolGradient(theme) }}
-                    >
-                      <Icon name={theme.icon} size={20} />
-                    </span>
-                    <h3 className="relative mt-4 text-[14px] font-semibold leading-snug text-ink">{s.nombre}</h3>
-                    <p className="relative mt-1 text-xs text-ink-muted">
-                      {t(s.count === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', { count: s.count })}
-                    </p>
-                  </Link>
+                      <div
+                        className="pointer-events-none absolute -right-6 -top-6 opacity-[0.07] transition-transform duration-300 group-hover:scale-110"
+                        style={{ color: theme.accent }}
+                      >
+                        <Icon name={theme.icon} size={110} strokeWidth={1.2} />
+                      </div>
+                      <span
+                        className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white"
+                        style={{ backgroundImage: schoolGradient(theme) }}
+                      >
+                        <Icon name={theme.icon} size={20} />
+                      </span>
+                      <h3 className="relative mt-4 text-[14px] font-semibold leading-snug text-ink">{s.nombre}</h3>
+                      <p className="relative mt-1 text-xs text-ink-muted">
+                        {t(s.count === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', {
+                          count: s.count,
+                        })}
+                      </p>
+                    </Link>
+                  </BorderGlow>
                 )
               })}
             </div>
@@ -284,7 +308,14 @@ export function LandingPage() {
           ) : (
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {featuredCourses.map((c) => (
-                <CourseCard key={c.id} course={c} to={`/explorar/cursos/${c.id}`} />
+                <BorderGlow
+                  key={c.id}
+                  {...CARD_GLOW}
+                  backgroundColor="transparent"
+                  className="transition-transform hover:-translate-y-0.5"
+                >
+                  <CourseCard course={c} to={`/explorar/cursos/${c.id}`} />
+                </BorderGlow>
               ))}
             </div>
           )}
@@ -328,13 +359,10 @@ export function LandingPage() {
           <div className="relative z-10">
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('landing.readyTitle')}</h2>
             <p className="mx-auto mt-3 max-w-md text-sm text-white/70">{t('landing.readyBody')}</p>
-            <Link
-              to="/registro"
-              className="mx-auto mt-7 flex h-12 w-fit items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-semibold text-brand transition-colors hover:bg-white/90"
-            >
+            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={2} className="mx-auto mt-7 w-fit">
               {t('landing.createAccountFree')}
               <Icon name="arrowRight" size={17} />
-            </Link>
+            </StarBorder>
           </div>
         </div>
       </section>
