@@ -89,7 +89,9 @@ function animateValue({
 export interface BorderGlowProps {
   children: ReactNode
   className?: string
-  edgeSensitivity?: number
+  /** Opacidad del glow apenas empieza el hover (0-1) — con esto el borde queda
+   * "encendido" desde que el cursor entra, y de ahí escala hasta 1 en el borde. */
+  minGlow?: number
   glowColor?: string
   backgroundColor?: string
   borderRadius?: number
@@ -104,7 +106,7 @@ export interface BorderGlowProps {
 export default function BorderGlow({
   children,
   className = '',
-  edgeSensitivity = 30,
+  minGlow = 0.45,
   glowColor = '40 80 80',
   backgroundColor = '#120F17',
   borderRadius = 28,
@@ -213,7 +215,7 @@ export default function BorderGlow({
   // castean al aplicarlas.
   const style = {
     '--card-bg': backgroundColor,
-    '--edge-sensitivity': edgeSensitivity,
+    '--min-glow': minGlow,
     '--border-radius': `${borderRadius}px`,
     '--glow-padding': `${glowRadius}px`,
     '--cone-spread': coneSpread,

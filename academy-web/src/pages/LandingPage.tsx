@@ -49,7 +49,7 @@ const CARD_GLOW = {
   glowRadius: 28,
   glowIntensity: 0.85,
   coneSpread: 32,
-  edgeSensitivity: 35,
+  minGlow: 0.5,
 }
 
 export function LandingPage() {
@@ -168,7 +168,7 @@ export function LandingPage() {
             {t('landing.heroBody')}
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={2} className="w-full sm:w-fit">
+            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={3} className="w-full sm:w-fit">
               {t('landing.createAccountFree')}
               <Icon name="arrowRight" size={17} />
             </StarBorder>
@@ -359,7 +359,7 @@ export function LandingPage() {
           <div className="relative z-10">
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('landing.readyTitle')}</h2>
             <p className="mx-auto mt-3 max-w-md text-sm text-white/70">{t('landing.readyBody')}</p>
-            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={2} className="mx-auto mt-7 w-fit">
+            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={3} className="mx-auto mt-7 w-fit">
               {t('landing.createAccountFree')}
               <Icon name="arrowRight" size={17} />
             </StarBorder>
