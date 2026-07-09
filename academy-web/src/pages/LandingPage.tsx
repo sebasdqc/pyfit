@@ -126,6 +126,12 @@ export function LandingPage() {
             {t('landing.exploreCourses')}
           </Link>
           <Link
+            to="/blog"
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
+          >
+            {t('blog.eyebrow')}
+          </Link>
+          <Link
             to="/login"
             className="rounded-lg px-2.5 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:px-3"
           >
@@ -372,6 +378,9 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
           <Wordmark size={16} />
           <nav className="flex items-center gap-5">
+            <Link to="/blog" className="text-xs font-medium text-ink-soft hover:text-accent">
+              {t('landing.blogLink')}
+            </Link>
             <Link to="/terminos" className="text-xs font-medium text-ink-soft hover:text-accent">
               {t('landing.termsOfService')}
             </Link>

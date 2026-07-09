@@ -85,3 +85,12 @@ def can_edit_course(user, course) -> bool:
     if user.is_admin or user.is_staff:
         return True
     return course.instructor_id == user.id
+
+
+def can_edit_post(user, post) -> bool:
+    """¿Puede este usuario editar/publicar ESTE post del blog? Mismo criterio
+    que `can_edit_course`: admin/staff edita cualquiera, un instructor solo
+    los suyos (los que figura como `autor`)."""
+    if user.is_admin or user.is_staff:
+        return True
+    return post.autor_id == user.id

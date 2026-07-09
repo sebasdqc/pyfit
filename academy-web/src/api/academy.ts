@@ -5,6 +5,7 @@ import { api } from './client'
 import type {
   AcademyBadgeCatalog, AcademyPlanTipo, AcademyPromoValidation, AcademySolicitudSuscripcion,
   AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
+  BlogPost, BlogPostDetail,
   Course, CourseDetail,
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
   LibraryResource, LibraryTipo, Module,
@@ -386,6 +387,67 @@ export async function toggleLibraryFavorite(resourceId: number): Promise<{ favor
 export async function openLibraryResource(resourceId: number): Promise<{ url: string }> {
   const res = await api.post<{ url: string }>(`/academy/library/${resourceId}/abrir/`)
   return res.data
+}
+
+// ── Blog editorial ────────────────────────────────────────────────────────────
+// Público sin cuenta (catálogo/detalle) + autoría de instructor (mias/crear/
+// editar/borrar) — ver academy.blog_views, backend.
+
+export interface BlogFilters {
+  school?: number
+  tag?: string
+  q?: string
+}
+
+export async function listBlogPosts(filters: BlogFilters = {}): Promise<BlogPost[]> {
+  const params: Record<string, string> = {}
+  if (filters.school) params.school = String(filters.school)
+  if (filters.tag) params.tag = filters.tag
+  if (filters.q) params.q = filters.q
+  const res = await api.get<BlogPost[]>('/academy/blog/', { params })
+  return res.data
+}
+
+export async function getBlogPost(slug: string): Promise<BlogPostDetail> {
+  const res = await api.get<BlogPostDetail>(`/academy/blog/${slug}/`)
+  return res.data
+}
+
+export async function listMyBlogPosts(): Promise<BlogPost[]> {
+  const res = await api.get<BlogPost[]>('/academy/blog/mias/')
+  return res.data
+}
+
+// A diferencia de getBlogPost (público, suma una vista), esta lee un post
+// propio por id sin afectar el contador — pensada para precargar el editor.
+export async function getMyBlogPost(id: number): Promise<BlogPostDetail> {
+  const res = await api.get<BlogPostDetail>(`/academy/blog/mias/${id}/`)
+  return res.data
+}
+
+export interface BlogPostPayload {
+  titulo: string
+  slug: string
+  resumen?: string
+  contenido?: string
+  portada?: string
+  etiquetas?: string[]
+  school?: number | null
+  publicado?: boolean
+}
+
+export async function createBlogPost(payload: BlogPostPayload): Promise<BlogPostDetail> {
+  const res = await api.post<BlogPostDetail>('/academy/blog/mias/', payload)
+  return res.data
+}
+
+export async function updateBlogPost(id: number, payload: Partial<BlogPostPayload>): Promise<BlogPostDetail> {
+  const res = await api.patch<BlogPostDetail>(`/academy/blog/mias/${id}/`, payload)
+  return res.data
+}
+
+export async function deleteBlogPost(id: number): Promise<void> {
+  await api.delete(`/academy/blog/mias/${id}/`)
 }
 
 // ── Administración de usuarios (SOLO admin) ───────────────────────────────────

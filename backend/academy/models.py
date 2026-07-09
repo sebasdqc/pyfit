@@ -901,3 +901,6 @@ from .community_models import (  # noqa: E402,F401
 
 # Biblioteca de recursos — modelos en archivo propio; ver library_models.py.
 from .library_models import LibraryResource, LibraryFavorite  # noqa: E402,F401
+
+# Blog editorial — modelo en archivo propio; ver blog_models.py.
+from .blog_models import BlogPost  # noqa: E402,F401

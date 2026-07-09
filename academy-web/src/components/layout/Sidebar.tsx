@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { id: 'certificados', labelKey: 'sidebar.navCertificados', icon: 'certificate', to: '/certificados' },
   { id: 'simulador', labelKey: 'sidebar.navSimulador', icon: 'activity', to: '/simulador' },
   { id: 'comunidad', labelKey: 'sidebar.navComunidad', icon: 'users', to: '/comunidad' },
+  { id: 'blog', labelKey: 'sidebar.navBlog', icon: 'blog', to: '/blog' },
   { id: 'instructor', labelKey: 'sidebar.navInstructor', icon: 'instructor', to: '/instructor', instructorOnly: true },
   { id: 'usuarios', labelKey: 'sidebar.navUsuarios', icon: 'shield', to: '/admin/usuarios', adminOnly: true },
 ]

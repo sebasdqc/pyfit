@@ -2,7 +2,9 @@
 
 from django.urls import path
 
-from . import admin_users_views, anon_views, community_views, library_views, subscription_views, views
+from . import (
+    admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views, views,
+)
 
 urlpatterns = [
     # Onboarding sin registro (visitante anónimo — probar antes de registrarse)
@@ -60,6 +62,12 @@ urlpatterns = [
     path('library/', library_views.library_view),
     path('library/<int:pk>/favorito/', library_views.library_favorite_view),
     path('library/<int:pk>/abrir/', library_views.library_open_view),
+
+    # Blog editorial (público, sin cuenta — autoría de instructor vía /mias/)
+    path('blog/', blog_views.blog_list_view),
+    path('blog/mias/', blog_views.blog_mine_view),
+    path('blog/mias/<int:pk>/', blog_views.blog_manage_detail_view),
+    path('blog/<slug:slug>/', blog_views.blog_detail_view),
 
     # Simulador de carga interna (sRPE → ACWR) — mismo motor que Zyfit Performance,
     # expuesto para práctica pedagógica de la escuela Analítica y Rendimiento Deportivo.

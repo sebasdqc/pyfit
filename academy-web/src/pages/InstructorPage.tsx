@@ -12,17 +12,8 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Icon } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
+import { slugify } from '@/lib/slugify'
 import type { Course } from '@/types'
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // quita acentos/diacríticos
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-}
 
 export function InstructorPage() {
   const { user } = useAuth()
@@ -64,12 +55,20 @@ export function InstructorPage() {
           <p className="za-eyebrow">Instructor</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Mis cursos</h1>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
-        >
-          <Icon name="plus" size={17} /> Crear curso
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/instructor/blog"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink"
+          >
+            <Icon name="blog" size={16} /> Gestionar blog
+          </Link>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
+          >
+            <Icon name="plus" size={17} /> Crear curso
+          </button>
+        </div>
       </header>
 
       {loading ? (

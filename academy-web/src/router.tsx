@@ -12,6 +12,8 @@ import { PrivacyPage } from '@/pages/PrivacyPage'
 import { ExploreCatalogPage } from '@/pages/ExploreCatalogPage'
 import { ExploreCourseDetailPage } from '@/pages/ExploreCourseDetailPage'
 import { ExploreLessonPage } from '@/pages/ExploreLessonPage'
+import { BlogPage } from '@/pages/BlogPage'
+import { BlogPostPage } from '@/pages/BlogPostPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
 import { HomePage } from '@/pages/HomePage'
 import { CatalogPage } from '@/pages/CatalogPage'
@@ -21,6 +23,7 @@ import { MyLearningPage } from '@/pages/MyLearningPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { InstructorPage } from '@/pages/InstructorPage'
+import { BlogInstructorPage } from '@/pages/BlogInstructorPage'
 import { CourseContentPage } from '@/pages/CourseContentPage'
 import { SubmissionsPage } from '@/pages/SubmissionsPage'
 import { CertificatesPage } from '@/pages/CertificatesPage'
@@ -48,6 +51,10 @@ export const router = createBrowserRouter([
   { path: '/explorar', element: <ExploreCatalogPage /> },
   { path: '/explorar/cursos/:courseId', element: <ExploreCourseDetailPage /> },
   { path: '/explorar/cursos/:courseId/lecciones/:lessonId', element: <ExploreLessonPage /> },
+  // Blog: contenido de marketing/SEO, público CON o SIN cuenta (a diferencia
+  // de /explorar, no redirige a un usuario logueado — ver BlogPage.tsx).
+  { path: '/blog', element: <BlogPage /> },
+  { path: '/blog/:slug', element: <BlogPostPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -71,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'comunidad', element: <CommunityPage /> },
           { path: 'comunidad/:postId', element: <QuestionDetailPage /> },
           { path: 'instructor', element: <InstructorPage /> },
+          { path: 'instructor/blog', element: <BlogInstructorPage /> },
           { path: 'admin/usuarios', element: <AdminUsersPage /> },
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },
           { path: 'instructor/cursos/:courseId/entregas', element: <SubmissionsPage /> },

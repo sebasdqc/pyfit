@@ -53,6 +53,7 @@ export type IconName =
   | 'external'
   | 'tool'
   | 'shield'
+  | 'blog'
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -293,6 +294,12 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 3 4 6.5V12c0 5 3.4 7.6 8 9 4.6-1.4 8-4 8-9V6.5Z" />
       <path d="m9 12 2.2 2.2L15.5 10" />
+    </>
+  ),
+  blog: (
+    <>
+      <path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3Z" />
+      <path d="M4 7a3 3 0 0 1 3-3M9 9h6M9 13h6M9 17h3" />
     </>
   ),
 }

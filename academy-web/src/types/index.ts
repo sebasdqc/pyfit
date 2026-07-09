@@ -558,6 +558,36 @@ export interface LibraryResource {
   created_at: string
 }
 
+// ── Blog editorial ────────────────────────────────────────────────────────────
+// Espeja academy.blog_models.BlogPost + BlogPostSerializer/BlogPostDetailSerializer.
+// Público sin cuenta (a diferencia de Course, sin gating freemium), con
+// autoría de instructor vía /instructor/blog.
+
+export interface BlogPost {
+  id: number
+  school: number | null
+  escuela_nombre: string | null
+  escuela_slug: string | null
+  autor: number | null
+  autor_nombre: string
+  titulo: string
+  slug: string
+  resumen: string
+  portada: string // data URL, URL http(s) o '' (placeholder en UI)
+  etiquetas: string[]
+  publicado: boolean
+  publicado_en: string | null
+  vistas: number
+  created_at: string
+  updated_at: string
+}
+
+// Detalle público/autoría: mismo shape + `contenido` (texto plano, ver
+// convención de Lesson.contenido — no renderiza markdown).
+export interface BlogPostDetail extends BlogPost {
+  contenido: string
+}
+
 // ── Administración de usuarios (SOLO admin) ───────────────────────────────────
 // Espeja academy.serializers.AcademyUserSerializer/AcademyUserCreateSerializer.
 // `rol` es una vista derivada de User.role/academy_instructor — no un campo

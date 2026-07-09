@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from .community_models import (
     ESTADO_OCULTO_MANUAL, ESTADO_VISIBLE, CommunityPost, CommunityReply, CommunityReport,
 )
+from .blog_models import BlogPost
 from .library_models import LibraryFavorite, LibraryResource
 from .models import (
     Course, Module, Lesson, Quiz, Question,
@@ -281,6 +282,20 @@ class LibraryFavoriteAdmin(ModelAdmin):
     search_fields = ('user__email', 'resource__titulo')
     autocomplete_fields = ('user', 'resource')
     readonly_fields = ('user', 'resource', 'created_at')
+
+
+# ─── Blog editorial ─────────────────────────────────────────────────────────
+# Autoría normal de instructor vía el editor de academy-web; el Admin queda
+# como respaldo/moderación de staff (mismo criterio que Course).
+
+@admin.register(BlogPost)
+class BlogPostAdmin(ModelAdmin):
+    list_display = ('titulo', 'autor', 'school', 'publicado', 'publicado_en', 'vistas', 'created_at')
+    list_filter = ('publicado', 'tenant', 'school')
+    search_fields = ('titulo', 'resumen', 'contenido', 'autor__email')
+    autocomplete_fields = ('school', 'autor')
+    prepopulated_fields = {'slug': ('titulo',)}
+    readonly_fields = ('vistas', 'publicado_en', 'created_at', 'updated_at')
 
     def has_add_permission(self, request):
         return False

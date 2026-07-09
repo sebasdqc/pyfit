@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from . import access_service
+from .blog_models import BlogPost
 from .community_models import CommunityPost, CommunityReply, CommunityReport
 from .library_models import LibraryResource
 from .models import (
@@ -517,6 +518,67 @@ class LibraryResourceSerializer(LocalizedFieldsMixin, serializers.ModelSerialize
         if data.get('bloqueado'):
             data['url'] = ''
         return data
+
+
+# ─── Blog editorial ─────────────────────────────────────────────────────────
+
+class BlogPostSerializer(serializers.ModelSerializer):
+    """Resumen de post para el catálogo público y el listado "mis publicaciones"
+    (sin `contenido`, igual criterio que CourseSerializer vs CourseDetailSerializer)."""
+
+    autor_nombre = serializers.SerializerMethodField()
+    escuela_nombre = serializers.SerializerMethodField()
+    escuela_slug = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BlogPost
+        fields = [
+            'id', 'school', 'escuela_nombre', 'escuela_slug', 'autor', 'autor_nombre',
+            'titulo', 'slug', 'resumen', 'portada', 'etiquetas',
+            'publicado', 'publicado_en', 'vistas', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'autor', 'publicado_en', 'vistas', 'created_at', 'updated_at']
+
+    def get_autor_nombre(self, obj):
+        return _display_name(obj.autor)
+
+    def get_escuela_nombre(self, obj):
+        return obj.school.nombre if obj.school_id else None
+
+    def get_escuela_slug(self, obj):
+        return obj.school.slug if obj.school_id else None
+
+    def validate_school(self, value):
+        """La escuela debe pertenecer al mismo tenant que el post — mismo
+        criterio que CourseSerializer.validate_school (evita colgar el post de
+        una escuela de OTRO tenant)."""
+        if value is None:
+            return value
+        tenant = self.context.get('tenant')
+        tenant_id = tenant.id if tenant else None
+        if value.tenant_id != tenant_id:
+            raise serializers.ValidationError('La escuela no pertenece a este tenant.')
+        return value
+
+    def validate_portada(self, value):
+        # Acepta vacío, un data URL de imagen o una URL http(s) — mismo
+        # criterio que CourseSerializer.validate_portada.
+        if not value:
+            return value
+        if value.startswith('data:image/'):
+            if len(value) > 1_500_000:  # ~1 MB de imagen — margen holgado en base64
+                raise serializers.ValidationError('La portada es demasiado grande.')
+            return value
+        if value.startswith('http://') or value.startswith('https://'):
+            return value
+        raise serializers.ValidationError('La portada debe ser un data URL de imagen o una URL.')
+
+
+class BlogPostDetailSerializer(BlogPostSerializer):
+    """Post completo (con `contenido`) — detalle público y autoría."""
+
+    class Meta(BlogPostSerializer.Meta):
+        fields = BlogPostSerializer.Meta.fields + ['contenido']
 
 
 # ─── Administración de usuarios (SOLO admin, ver academy.permissions.IsAcademyAdmin) ──
