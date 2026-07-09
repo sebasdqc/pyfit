@@ -34,7 +34,7 @@ export default function StarBorder({
 
   const wrapperStyle = {
     ...style,
-    padding: `${thickness}px 0`,
+    padding: `${thickness}px`,
     '--glow-color': color,
   }
 

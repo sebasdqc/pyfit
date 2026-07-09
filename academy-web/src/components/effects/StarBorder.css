@@ -3,6 +3,7 @@
   position: relative;
   border-radius: 12px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--glow-color, transparent) 20%, transparent);
   animation: star-glow-pulse 2.2s ease-in-out infinite;
 }
 
