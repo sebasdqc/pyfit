@@ -38,6 +38,12 @@ class BlogPost(models.Model):
     # Identificador legible para la URL pública (/blog/<slug>).
     slug = models.SlugField(max_length=140, unique=True)
     resumen = models.CharField(max_length=300, blank=True, help_text='Bajada para la tarjeta y el SEO.')
+    # SEO real, distinto de `titulo`/`resumen`: el H1 y la bajada priorizan
+    # legibilidad/enganche, estos dos respetan el largo que Google no trunca
+    # en el resultado de búsqueda. Si quedan vacíos, BlogPostPage cae a
+    # `titulo`/`resumen` (ver frontend).
+    meta_titulo = models.CharField(max_length=70, blank=True, help_text='<title> SEO (~55-60 caracteres). Vacío → usa `titulo`.')
+    meta_descripcion = models.CharField(max_length=170, blank=True, help_text='Meta description SEO (~150-155 caracteres). Vacío → usa `resumen`.')
     # Texto plano, mismo criterio que Lesson.contenido — no renderiza markdown,
     # se muestra dividido en párrafos por líneas en blanco (ver BlogPostPage.tsx).
     contenido = models.TextField(blank=True)

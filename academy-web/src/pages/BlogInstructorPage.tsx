@@ -170,6 +170,8 @@ function PostFormDialog({
   const [slug, setSlug] = useState(post?.slug ?? '')
   const [slugTouched, setSlugTouched] = useState(isEdit)
   const [resumen, setResumen] = useState(post?.resumen ?? '')
+  const [metaTitulo, setMetaTitulo] = useState(post?.meta_titulo ?? '')
+  const [metaDescripcion, setMetaDescripcion] = useState(post?.meta_descripcion ?? '')
   const [contenido, setContenido] = useState('')
   const [contenidoLoaded, setContenidoLoaded] = useState(!isEdit)
   const [schoolId, setSchoolId] = useState<string>(post?.school ? String(post.school) : '')
@@ -223,6 +225,8 @@ function PostFormDialog({
       titulo: titulo.trim(),
       slug: effectiveSlug,
       resumen: resumen.trim(),
+      meta_titulo: metaTitulo.trim(),
+      meta_descripcion: metaDescripcion.trim(),
       contenido,
       portada,
       etiquetas,
@@ -297,6 +301,27 @@ function PostFormDialog({
             className="input"
           />
         </Labeled>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Labeled label={`Meta título SEO (${metaTitulo.length}/70, opcional — si queda vacío usa el título)`}>
+            <input
+              value={metaTitulo}
+              onChange={(e) => setMetaTitulo(e.target.value)}
+              maxLength={70}
+              placeholder="Título optimizado para buscadores (~55-60 caracteres)"
+              className="input"
+            />
+          </Labeled>
+          <Labeled label={`Meta descripción SEO (${metaDescripcion.length}/170, opcional — si queda vacía usa el resumen)`}>
+            <input
+              value={metaDescripcion}
+              onChange={(e) => setMetaDescripcion(e.target.value)}
+              maxLength={170}
+              placeholder="Descripción para el resultado de búsqueda (~150-155 caracteres)"
+              className="input"
+            />
+          </Labeled>
+        </div>
+
         <Labeled label="Contenido">
           {!contenidoLoaded ? (
             <div className="flex h-32 items-center justify-center rounded-xl border border-surface-border">
@@ -307,8 +332,8 @@ function PostFormDialog({
               value={contenido}
               onChange={(e) => setContenido(e.target.value)}
               rows={12}
-              placeholder="Escribe el artículo. Deja una línea en blanco entre párrafos."
-              className="input resize-none"
+              placeholder={'Escribe el artículo. Línea en blanco entre párrafos. Soporta "## Subtítulo", "### Sub-subtítulo", tablas con | y [texto](url) para enlaces.'}
+              className="input resize-none font-mono text-sm"
             />
           )}
         </Labeled>

@@ -429,6 +429,8 @@ export interface BlogPostPayload {
   titulo: string
   slug: string
   resumen?: string
+  meta_titulo?: string
+  meta_descripcion?: string
   contenido?: string
   portada?: string
   etiquetas?: string[]

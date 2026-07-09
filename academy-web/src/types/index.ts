@@ -573,6 +573,10 @@ export interface BlogPost {
   titulo: string
   slug: string
   resumen: string
+  // SEO real (~55-60 / ~150-155 caracteres) — distinto de titulo/resumen,
+  // que priorizan legibilidad. Si vienen vacíos, BlogPostPage cae a titulo/resumen.
+  meta_titulo: string
+  meta_descripcion: string
   portada: string // data URL, URL http(s) o '' (placeholder en UI)
   etiquetas: string[]
   publicado: boolean
