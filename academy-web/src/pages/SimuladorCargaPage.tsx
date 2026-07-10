@@ -221,6 +221,11 @@ function DiaBar({
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(false)
+  // Punto de partida del gesto (touch/pen) y si ya se confirmó como arrastre
+  // vertical — ver handlePointerMove. null/false para mouse (se fija de
+  // inmediato, no necesita esta confirmación).
+  const startRef = useRef<{ x: number; y: number } | null>(null)
+  const committedRef = useRef(false)
 
   function valueFromPointer(clientY: number) {
     const track = trackRef.current
@@ -235,21 +240,38 @@ function DiaBar({
   // horizontal y esta barra mide ~20px, así que un swipe para desplazarse
   // arranca casi siempre sobre una barra. Solo confirmamos el arrastre (y
   // recién ahí tocamos el valor) cuando llega un pointermove vertical real —
-  // si el gesto termina siendo un pan horizontal, el navegador se queda con
-  // el scroll (touchAction: 'pan-x' lo permite) y dispara pointercancel.
+  // comparamos el desplazamiento acumulado en X vs Y desde el pointerdown, no
+  // alcanza con esperar a que el navegador ceda el scroll nativo
+  // (touchAction: 'pan-x' + pointercancel es un respaldo, no siempre gana la
+  // carrera a tiempo en gestos diagonales).
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
     setActive(true)
     if (e.pointerType === 'mouse') {
+      committedRef.current = true
       onChange(valueFromPointer(e.clientY))
+    } else {
+      committedRef.current = false
+      startRef.current = { x: e.clientX, y: e.clientY }
     }
   }
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (!active) return
+    if (!committedRef.current) {
+      const start = startRef.current
+      if (!start) return
+      const dx = Math.abs(e.clientX - start.x)
+      const dy = Math.abs(e.clientY - start.y)
+      if (dx < 4 && dy < 4) return // movimiento insuficiente para decidir todavía
+      if (dx >= dy) return         // más horizontal que vertical: probable pan de scroll
+      committedRef.current = true
+    }
     onChange(valueFromPointer(e.clientY))
   }
   function handlePointerEnd() {
     setActive(false)
+    committedRef.current = false
+    startRef.current = null
   }
 
   const pct = Math.min(100, (valor / MAX_UA) * 100)

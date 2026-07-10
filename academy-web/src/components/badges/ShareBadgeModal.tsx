@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Icon } from '@/components/Icon'
 import { BRAND } from '@/lib/constants'
 import { shareOrDownloadCard } from '@/lib/shareImage'
+import { useT } from '@/locale/useT'
 import { useTenant } from '@/tenant/TenantContext'
 import { useAuth } from '@/auth/useAuth'
 
@@ -22,6 +23,7 @@ export interface ShareBadgeData {
 }
 
 export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onClose: () => void }) {
+  const t = useT()
   const cardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
   const [result, setResult] = useState<'downloaded' | null>(null)
@@ -39,8 +41,8 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
     try {
       const r = await shareOrDownloadCard(cardRef.current, {
         filename: `insignia-${badge.nombre.toLowerCase().replace(/\s+/g, '-')}.png`,
-        title: `Insignia "${badge.nombre}" — ${BRAND.name} ${BRAND.product}`,
-        text: `Gané la insignia "${badge.nombre}" en ${tenant.nombre_plataforma} 🏅`,
+        title: t('shareBadge.shareTitle', { nombre: badge.nombre, brand: `${BRAND.name} ${BRAND.product}` }),
+        text: t('shareBadge.shareText', { nombre: badge.nombre, plataforma: tenant.nombre_plataforma }),
       })
       setResult(r === 'downloaded' ? 'downloaded' : null)
     } catch {
@@ -53,7 +55,7 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
   return (
     <Dialog
       onClose={onClose}
-      ariaLabel={`Compartir insignia ${badge.nombre}`}
+      ariaLabel={t('shareBadge.dialogAria', { nombre: badge.nombre })}
       className="za-card max-h-[90vh] w-full max-w-xs overflow-y-auto p-6"
     >
       <div className="flex flex-col items-center gap-4">
@@ -86,7 +88,7 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
                 className="text-[10px] font-semibold uppercase tracking-[0.22em]"
                 style={{ color: tenant.color_accent }}
               >
-                Insignia obtenida
+                {t('shareBadge.earnedLabel')}
               </p>
               <p className="mt-1.5 line-clamp-2 text-lg font-bold leading-tight text-white">{badge.nombre}</p>
               {badge.contexto && <p className="mt-1 truncate text-[11px] text-white/50">{badge.contexto}</p>}
@@ -94,7 +96,7 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
           </div>
 
           <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-3 text-[10px]">
-            <span className="truncate font-medium text-white/60">{user?.nombre ?? '@estudiante'}</span>
+            <span className="truncate font-medium text-white/60">{user?.nombre ?? t('shareBadge.studentFallback')}</span>
             {dateLabel && <span className="shrink-0 text-white/40">{dateLabel}</span>}
           </div>
         </div>
@@ -108,10 +110,10 @@ export function ShareBadgeModal({ badge, onClose }: { badge: ShareBadgeData; onC
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
         >
           <Icon name="send" size={16} />
-          {sharing ? 'Generando…' : 'Compartir imagen'}
+          {sharing ? t('shareBadge.generating') : t('shareBadge.shareImage')}
         </button>
         {result === 'downloaded' && (
-          <p className="text-xs text-ink-muted">Imagen descargada — ya puedes subirla a tu red favorita.</p>
+          <p className="text-xs text-ink-muted">{t('shareBadge.downloaded')}</p>
         )}
       </div>
     </Dialog>

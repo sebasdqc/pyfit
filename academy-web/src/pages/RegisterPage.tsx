@@ -6,10 +6,9 @@
 // los tokens y limpiar el id de sesión anónima ya consumido.
 
 import { isAxiosError } from 'axios'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
-import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { registerRequest } from '@/api/auth'
 import { setTokens } from '@/api/client'
 import { clearAnonSession } from '@/lib/anonSession'
@@ -30,18 +29,31 @@ function extractErrorMessage(err: unknown, t: ReturnType<typeof useT>): string {
 }
 
 export function RegisterPage() {
-  const redirecting = useRedirectIfAuthenticated('/inicio')
   const navigate = useNavigate()
   const tenant = useTenant()
   const t = useT()
-  const { refreshUser } = useAuth()
+  const { user, loading, refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  if (redirecting) return <LoadingScreen />
+  // Redirige lejos de /registro solo si YA había sesión al llegar a esta
+  // página (ej. bookmark viejo) — nunca en reacción a que handleSubmit
+  // autentique a alguien EN esta misma página. A diferencia del hook
+  // genérico useRedirectIfAuthenticated (usado en el resto del sitio),
+  // acá no podemos reaccionar sin más a que `user` deje de ser null: eso es
+  // exactamente lo que pasa al registrarse, y competía con el navigate
+  // explícito de handleSubmit — ambos disparaban en el mismo tick y el de
+  // este efecto ganaba la carrera, mandando a cualquier cuenta nueva a
+  // /inicio en vez de /bienvenida (hallazgo de auditoría, 2026-07-09).
+  useEffect(() => {
+    if (!loading && user && !submitting) navigate('/inicio', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
+  if (loading || (user && !submitting)) return <LoadingScreen />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -134,6 +146,8 @@ export function RegisterPage() {
               onChange={setPassword}
               autoComplete="new-password"
               icon={<Icon name="lock" size={18} />}
+              minLength={8}
+              hint={t('register.passwordHint')}
             />
 
             <label className="flex items-start gap-2.5 text-sm text-ink-soft">
@@ -193,6 +207,8 @@ function Field({
   onChange,
   autoComplete,
   icon,
+  minLength,
+  hint,
 }: {
   id: string
   label: string
@@ -201,42 +217,53 @@ function Field({
   onChange: (v: string) => void
   autoComplete: string
   icon: ReactNode
+  minLength?: number
+  hint?: string
 }) {
   const [show, setShow] = useState(false)
   const t = useT()
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
   return (
-    <div className="relative">
-      <input
-        id={id}
-        type={inputType}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete={autoComplete}
-        placeholder=" "
-        className={`peer h-14 w-full rounded-xl border border-surface-border bg-surface-soft px-4 pt-2 text-[15px] text-ink transition-colors placeholder:text-transparent focus:border-accent focus:bg-white ${
-          isPassword ? 'pr-20' : 'pr-12'
-        }`}
-      />
-      <label
-        htmlFor={id}
-        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-muted transition-all peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:text-accent"
-      >
-        {label}
-      </label>
-      {isPassword ? (
-        <button
-          type="button"
-          onClick={() => setShow((s) => !s)}
-          aria-pressed={show}
-          aria-label={show ? t('auth.hidePasswordAria') : t('auth.showPasswordAria')}
-          className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
+    <div>
+      <div className="relative">
+        <input
+          id={id}
+          type={inputType}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          placeholder=" "
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          className={`peer h-14 w-full rounded-xl border border-surface-border bg-surface-soft px-4 pt-2 text-[15px] text-ink transition-colors placeholder:text-transparent focus:border-accent focus:bg-white ${
+            isPassword ? 'pr-20' : 'pr-12'
+          }`}
+        />
+        <label
+          htmlFor={id}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-muted transition-all peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-[11px] peer-[:not(:placeholder-shown)]:text-accent"
         >
-          {show ? t('auth.hidePassword') : t('auth.showPassword')}
-        </button>
-      ) : (
-        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>
+          {label}
+        </label>
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            aria-pressed={show}
+            aria-label={show ? t('auth.hidePasswordAria') : t('auth.showPasswordAria')}
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-accent"
+          >
+            {show ? t('auth.hidePassword') : t('auth.showPassword')}
+          </button>
+        ) : (
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint">{icon}</span>
+        )}
+      </div>
+      {hint && (
+        <p id={`${id}-hint`} className="mt-1.5 pl-1 text-xs text-ink-faint">
+          {hint}
+        </p>
       )}
     </div>
   )

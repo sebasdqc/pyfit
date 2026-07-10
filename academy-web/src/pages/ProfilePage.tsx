@@ -15,11 +15,13 @@ import { TagInput } from '@/components/ui/TagInput'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
 import { COUNTRIES } from '@/lib/countries'
+import { useT } from '@/locale/useT'
 import type { AcademyBadgeCatalog } from '@/types'
 
 const HOY = new Date().toISOString().slice(0, 10)
 
 export function ProfilePage() {
+  const t = useT()
   const { user, refreshUser } = useAuth()
   const [nombre, setNombre] = useState(user?.nombre ?? '')
   const [pais, setPais] = useState(user?.pais ?? '')
@@ -86,8 +88,8 @@ export function ProfilePage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <p className="za-eyebrow">Perfil</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Mi cuenta</h1>
+        <p className="za-eyebrow">{t('profile.eyebrow')}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">{t('profile.title')}</h1>
       </header>
 
       {/* Cabecera de identidad */}
@@ -97,11 +99,11 @@ export function ProfilePage() {
           <p className="truncate text-lg font-semibold text-ink">{user.nombre}</p>
           <p className="truncate text-sm text-ink-muted">{user.email}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {user.is_admin && <Badge tone="brand">Administrador</Badge>}
-            {user.is_instructor && <Badge tone="accent">Instructor</Badge>}
-            {!user.is_admin && !user.is_instructor && <Badge tone="neutral">Estudiante</Badge>}
+            {user.is_admin && <Badge tone="brand">{t('profile.roleAdmin')}</Badge>}
+            {user.is_instructor && <Badge tone="accent">{t('profile.roleInstructor')}</Badge>}
+            {!user.is_admin && !user.is_instructor && <Badge tone="neutral">{t('profile.roleStudent')}</Badge>}
             <Badge tone={user.nivel_academia === 'pro' ? 'ok' : 'neutral'}>
-              {user.nivel_academia === 'pro' ? 'Academy Pro' : 'Starter'}
+              {user.nivel_academia === 'pro' ? t('profile.tierPro') : t('profile.tierStarter')}
             </Badge>
           </div>
         </div>
@@ -109,8 +111,8 @@ export function ProfilePage() {
 
       {/* Métricas */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Stat icon="learning" value={user.total_inscripciones} label="Inscripciones" />
-        <Stat icon="instructor" value={user.total_cursos_creados} label="Cursos creados" />
+        <Stat icon="learning" value={user.total_inscripciones} label={t('profile.statEnrollments')} />
+        <Stat icon="instructor" value={user.total_cursos_creados} label={t('profile.statCoursesCreated')} />
       </section>
 
       {/* Suscripción */}
@@ -122,9 +124,9 @@ export function ProfilePage() {
           <Icon name="star" size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-ink">Mi suscripción</p>
+          <p className="text-sm font-semibold text-ink">{t('profile.subscriptionTitle')}</p>
           <p className="text-xs text-ink-muted">
-            {user.nivel_academia === 'pro' ? 'Academy Pro activo — gestionar plan' : 'Desbloquea el catálogo completo con Academy Pro'}
+            {user.nivel_academia === 'pro' ? t('profile.subscriptionActiveBody') : t('profile.subscriptionInactiveBody')}
           </p>
         </div>
         <Icon name="chevronRight" size={18} className="shrink-0 text-ink-muted" />
@@ -135,11 +137,11 @@ export function ProfilePage() {
 
       {/* Datos editables */}
       <section className="za-card p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Datos personales</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t('profile.personalDataTitle')}</h2>
         <div className="mt-4 flex flex-col gap-4">
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-              Nombre visible
+              {t('profile.nameLabel')}
             </span>
             <input
               value={nombre}
@@ -150,10 +152,13 @@ export function ProfilePage() {
               }}
               className="input"
             />
+            {!nombreValido && (
+              <p className="mt-1.5 text-xs text-danger">{t('onboarding.nameRequiredError')}</p>
+            )}
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-              Correo electrónico
+              {t('profile.emailLabel')}
             </span>
             <input value={user.email} readOnly className="input cursor-not-allowed bg-surface-soft text-ink-muted" />
           </label>
@@ -161,7 +166,7 @@ export function ProfilePage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-                Fecha de nacimiento
+                {t('profile.birthDateLabel')}
               </span>
               <input
                 type="date"
@@ -176,11 +181,11 @@ export function ProfilePage() {
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-                Profesión
+                {t('profile.professionLabel')}
               </span>
               <input
                 value={profesion}
-                placeholder="Ej. Preparador físico"
+                placeholder={t('profile.professionPlaceholder')}
                 onChange={(e) => {
                   setProfesion(e.target.value)
                   clearStatus()
@@ -189,7 +194,7 @@ export function ProfilePage() {
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">País</span>
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">{t('profile.countryLabel')}</span>
               <select
                 value={pais}
                 onChange={(e) => {
@@ -198,7 +203,7 @@ export function ProfilePage() {
                 }}
                 className="input"
               >
-                <option value="">Selecciona un país</option>
+                <option value="">{t('profile.countryPlaceholder')}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -207,10 +212,10 @@ export function ProfilePage() {
               </select>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Ciudad</span>
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">{t('profile.cityLabel')}</span>
               <input
                 value={ciudad}
-                placeholder="Ej. Asunción"
+                placeholder={t('profile.cityPlaceholder')}
                 onChange={(e) => {
                   setCiudad(e.target.value)
                   clearStatus()
@@ -221,20 +226,20 @@ export function ProfilePage() {
           </div>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Intereses</span>
+            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">{t('profile.interestsLabel')}</span>
             <TagInput
               value={intereses}
               onChange={(tags) => {
                 setIntereses(tags)
                 clearStatus()
               }}
-              placeholder="Ej. Fútbol, nutrición… (Enter para añadir)"
+              placeholder={t('profile.interestsPlaceholder')}
             />
           </label>
 
           <div>
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-              Redes sociales
+              {t('profile.socialLabel')}
             </span>
             <RedesSocialesFields
               value={redes}
@@ -251,16 +256,16 @@ export function ProfilePage() {
               disabled={!dirty || saving}
               className="h-10 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
             >
-              {saving ? 'Guardando…' : 'Guardar cambios'}
+              {saving ? t('profile.saving') : t('profile.saveChanges')}
             </button>
             {saved && !dirty && (
               <span role="status" className="inline-flex items-center gap-1.5 text-sm text-ok">
-                <Icon name="check" size={16} /> Guardado
+                <Icon name="check" size={16} /> {t('profile.saved')}
               </span>
             )}
             {saveError && (
               <span role="alert" className="inline-flex items-center gap-1.5 text-sm text-danger">
-                <Icon name="close" size={16} /> No se pudo guardar.
+                <Icon name="close" size={16} /> {t('profile.saveError')}
               </span>
             )}
           </div>

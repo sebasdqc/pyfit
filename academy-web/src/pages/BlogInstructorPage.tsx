@@ -15,11 +15,13 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
 import { slugify } from '@/lib/slugify'
+import { useT } from '@/locale/useT'
 import type { BlogPost, School } from '@/types'
 
 const PORTADA_MAX_BYTES = 1_000_000 // ~1 MB de archivo (el data URL en base64 queda bajo el límite del backend, ~1.5 MB)
 
 export function BlogInstructorPage() {
+  const t = useT()
   const { user } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [schools, setSchools] = useState<School[]>([])
@@ -49,8 +51,8 @@ export function BlogInstructorPage() {
     return (
       <EmptyState
         icon="blog"
-        title="Área de instructores"
-        description="Tu cuenta no tiene permisos de instructor. Contacta al administrador para publicar en el blog."
+        title={t('blogInstructor.accessDeniedTitle')}
+        description={t('blogInstructor.accessDeniedBody')}
       />
     )
   }
@@ -60,16 +62,16 @@ export function BlogInstructorPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link to="/instructor" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent">
-            <Icon name="chevronLeft" size={16} /> Mis cursos
+            <Icon name="chevronLeft" size={16} /> {t('blogInstructor.myCourses')}
           </Link>
-          <p className="za-eyebrow mt-4">Instructor</p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Mis publicaciones del blog</h1>
+          <p className="za-eyebrow mt-4">{t('blogInstructor.eyebrow')}</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">{t('blogInstructor.title')}</h1>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
         >
-          <Icon name="plus" size={17} /> Nuevo artículo
+          <Icon name="plus" size={17} /> {t('blogInstructor.newPost')}
         </button>
       </header>
 
@@ -80,28 +82,28 @@ export function BlogInstructorPage() {
       ) : loadError ? (
         <EmptyState
           icon="blog"
-          title="No se pudieron cargar tus publicaciones"
-          description="Revisa tu conexión e inténtalo de nuevo."
+          title={t('blogInstructor.loadErrorTitle')}
+          description={t('blogInstructor.loadErrorBody')}
           action={
             <button
               onClick={reload}
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
             >
-              Reintentar
+              {t('blogInstructor.retry')}
             </button>
           }
         />
       ) : posts.length === 0 ? (
         <EmptyState
           icon="blog"
-          title="Aún no escribiste ningún artículo"
-          description="Publica el primer artículo del blog de Zyfit Academy."
+          title={t('blogInstructor.emptyTitle')}
+          description={t('blogInstructor.emptyBody')}
           action={
             <button
               onClick={() => setShowCreate(true)}
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
             >
-              <Icon name="plus" size={16} /> Nuevo artículo
+              <Icon name="plus" size={16} /> {t('blogInstructor.newPost')}
             </button>
           }
         />
@@ -111,17 +113,17 @@ export function BlogInstructorPage() {
             <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
               <Icon name="blog" size={17} className="shrink-0 text-accent" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{p.titulo}</span>
-              {p.publicado ? <Badge tone="ok">Publicado</Badge> : <Badge tone="warn">Borrador</Badge>}
+              {p.publicado ? <Badge tone="ok">{t('blogInstructor.published')}</Badge> : <Badge tone="warn">{t('blogInstructor.draft')}</Badge>}
               {p.escuela_nombre && <Badge tone="neutral">{p.escuela_nombre}</Badge>}
-              <span className="text-xs text-ink-muted">{p.vistas} vistas</span>
+              <span className="text-xs text-ink-muted">{t('blogInstructor.viewsCount', { count: p.vistas })}</span>
               {p.publicado && (
                 <a
                   href={`/blog/${p.slug}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-soft hover:text-ink"
-                  aria-label={`Ver "${p.titulo}" en el blog`}
-                  title="Ver en el blog"
+                  className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-soft hover:text-ink"
+                  aria-label={t('blogInstructor.viewAria', { titulo: p.titulo })}
+                  title={t('blogInstructor.viewTitle')}
                 >
                   <Icon name="external" size={15} />
                 </a>
@@ -129,9 +131,9 @@ export function BlogInstructorPage() {
               <button
                 type="button"
                 onClick={() => setEditing(p)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-soft hover:text-ink"
-                aria-label={`Editar "${p.titulo}"`}
-                title="Editar"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-soft hover:text-ink"
+                aria-label={t('blogInstructor.editAria', { titulo: p.titulo })}
+                title={t('blogInstructor.editTitle')}
               >
                 <Icon name="edit" size={15} />
               </button>
@@ -165,6 +167,7 @@ function PostFormDialog({
   onSaved: () => void
   onDeleted?: () => void
 }) {
+  const t = useT()
   const isEdit = !!post
   const [titulo, setTitulo] = useState(post?.titulo ?? '')
   const [slug, setSlug] = useState(post?.slug ?? '')
@@ -199,11 +202,11 @@ function PostFormDialog({
     e.target.value = ''
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      setError('El archivo debe ser una imagen.')
+      setError(t('blogInstructor.errorFileType'))
       return
     }
     if (file.size > PORTADA_MAX_BYTES) {
-      setError('La imagen es demasiado grande (máximo ~1 MB).')
+      setError(t('blogInstructor.errorFileSize'))
       return
     }
     setError(null)
@@ -215,7 +218,7 @@ function PostFormDialog({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!titulo.trim() || !effectiveSlug) {
-      setError('El título es obligatorio.')
+      setError(t('blogInstructor.errorTitleRequired'))
       return
     }
     setSaving(true)
@@ -241,7 +244,7 @@ function PostFormDialog({
       }
       onSaved()
     } catch {
-      setError('No se pudo guardar. Puede que el identificador (slug) ya exista.')
+      setError(t('blogInstructor.errorSave'))
       setSaving(false)
     }
   }
@@ -254,7 +257,7 @@ function PostFormDialog({
       await deleteBlogPost(post.id)
       onDeleted?.()
     } catch {
-      setError('No se pudo eliminar. Inténtalo de nuevo.')
+      setError(t('blogInstructor.errorDelete'))
       setSaving(false)
     }
   }
@@ -267,25 +270,25 @@ function PostFormDialog({
     >
       <div className="flex items-center justify-between">
         <h2 id="post-form-title" className="text-lg font-semibold text-ink">
-          {isEdit ? 'Editar artículo' : 'Nuevo artículo'}
+          {isEdit ? t('blogInstructor.editTitle2') : t('blogInstructor.newPost')}
         </h2>
-        <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink" aria-label="Cerrar">
+        <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink" aria-label={t('blogInstructor.close')}>
           <Icon name="close" size={20} />
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
-        <Labeled label="Título">
+        <Labeled label={t('blogInstructor.fieldTitle')}>
           <input
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ej. 5 claves para periodizar la pretemporada"
+            placeholder={t('blogInstructor.fieldTitlePlaceholder')}
             className="input"
             data-autofocus
             required
           />
         </Labeled>
-        <Labeled label="Identificador (slug)">
+        <Labeled label={t('blogInstructor.fieldSlug')}>
           <input
             value={effectiveSlug}
             onChange={(e) => { setSlug(e.target.value); setSlugTouched(true) }}
@@ -293,36 +296,36 @@ function PostFormDialog({
             className="input font-mono text-sm"
           />
         </Labeled>
-        <Labeled label="Resumen (bajada para la tarjeta y el buscador)">
+        <Labeled label={t('blogInstructor.fieldSummary')}>
           <input
             value={resumen}
             onChange={(e) => setResumen(e.target.value)}
-            placeholder="Una línea que enganche."
+            placeholder={t('blogInstructor.fieldSummaryPlaceholder')}
             className="input"
           />
         </Labeled>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Labeled label={`Meta título SEO (${metaTitulo.length}/70, opcional — si queda vacío usa el título)`}>
+          <Labeled label={t('blogInstructor.fieldMetaTitle', { count: metaTitulo.length })}>
             <input
               value={metaTitulo}
               onChange={(e) => setMetaTitulo(e.target.value)}
               maxLength={70}
-              placeholder="Título optimizado para buscadores (~55-60 caracteres)"
+              placeholder={t('blogInstructor.fieldMetaTitlePlaceholder')}
               className="input"
             />
           </Labeled>
-          <Labeled label={`Meta descripción SEO (${metaDescripcion.length}/170, opcional — si queda vacía usa el resumen)`}>
+          <Labeled label={t('blogInstructor.fieldMetaDescription', { count: metaDescripcion.length })}>
             <input
               value={metaDescripcion}
               onChange={(e) => setMetaDescripcion(e.target.value)}
               maxLength={170}
-              placeholder="Descripción para el resultado de búsqueda (~150-155 caracteres)"
+              placeholder={t('blogInstructor.fieldMetaDescriptionPlaceholder')}
               className="input"
             />
           </Labeled>
         </div>
 
-        <Labeled label="Contenido">
+        <Labeled label={t('blogInstructor.fieldContent')}>
           {!contenidoLoaded ? (
             <div className="flex h-32 items-center justify-center rounded-xl border border-surface-border">
               <Spinner size={24} />
@@ -332,32 +335,32 @@ function PostFormDialog({
               value={contenido}
               onChange={(e) => setContenido(e.target.value)}
               rows={12}
-              placeholder={'Escribe el artículo. Línea en blanco entre párrafos. Soporta "## Subtítulo", "### Sub-subtítulo", tablas con | y [texto](url) para enlaces.'}
+              placeholder={t('blogInstructor.fieldContentPlaceholder')}
               className="input resize-none font-mono text-sm"
             />
           )}
         </Labeled>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Labeled label="Escuela (opcional)">
+          <Labeled label={t('blogInstructor.fieldSchool')}>
             <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)} className="input">
-              <option value="">Sin escuela</option>
+              <option value="">{t('blogInstructor.fieldSchoolNone')}</option>
               {schools.map((s) => (
                 <option key={s.id} value={s.id}>{s.nombre}</option>
               ))}
             </select>
           </Labeled>
-          <Labeled label="Etiquetas (separadas por coma)">
+          <Labeled label={t('blogInstructor.fieldTags')}>
             <input
               value={etiquetasTexto}
               onChange={(e) => setEtiquetasTexto(e.target.value)}
-              placeholder="fuerza, pretemporada, planificación"
+              placeholder={t('blogInstructor.fieldTagsPlaceholder')}
               className="input"
             />
           </Labeled>
         </div>
 
-        <Labeled label="Portada (opcional)">
+        <Labeled label={t('blogInstructor.fieldCover')}>
           <div className="flex items-center gap-3">
             {portada && (
               <img src={portada} alt="" className="h-16 w-24 shrink-0 rounded-lg object-cover" />
@@ -370,7 +373,7 @@ function PostFormDialog({
                   onClick={() => setPortada('')}
                   className="w-fit text-xs font-medium text-danger hover:underline"
                 >
-                  Quitar portada
+                  {t('blogInstructor.removeCover')}
                 </button>
               )}
             </div>
@@ -384,7 +387,7 @@ function PostFormDialog({
             onChange={(e) => setPublicado(e.target.checked)}
             className="h-4 w-4 rounded border-surface-border text-accent focus:ring-accent"
           />
-          Publicar (visible en /blog sin cuenta)
+          {t('blogInstructor.publishCheckbox')}
         </label>
 
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
@@ -395,12 +398,12 @@ function PostFormDialog({
             onClick={() => setConfirmingDelete(true)}
             className="mr-auto text-sm font-medium text-danger hover:underline"
           >
-            Eliminar artículo
+            {t('blogInstructor.deletePost')}
           </button>
         )}
         {confirmingDelete && (
           <div className="rounded-xl border border-danger/20 bg-danger/5 p-3">
-            <p className="text-sm text-ink">Esta acción no se puede deshacer.</p>
+            <p className="text-sm text-ink">{t('blogInstructor.deleteConfirmBody')}</p>
             <div className="mt-2 flex gap-3">
               <button
                 type="button"
@@ -408,14 +411,14 @@ function PostFormDialog({
                 disabled={saving}
                 className="h-9 rounded-lg bg-danger px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
               >
-                Sí, eliminar
+                {t('blogInstructor.deleteConfirmYes')}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
                 className="h-9 rounded-lg px-4 text-sm text-ink-soft hover:bg-surface-soft"
               >
-                Cancelar
+                {t('blogInstructor.cancel')}
               </button>
             </div>
           </div>
@@ -427,14 +430,14 @@ function PostFormDialog({
             onClick={onClose}
             className="h-10 rounded-xl px-4 text-sm font-medium text-ink-soft hover:bg-surface-soft"
           >
-            Cancelar
+            {t('blogInstructor.cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="h-10 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-60"
           >
-            {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear artículo'}
+            {saving ? t('blogInstructor.saving') : isEdit ? t('blogInstructor.saveChanges') : t('blogInstructor.createPost')}
           </button>
         </div>
       </form>

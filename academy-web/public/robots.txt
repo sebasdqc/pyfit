@@ -5,3 +5,5 @@ Disallow: /instructor
 Disallow: /suscripcion
 Disallow: /perfil
 Disallow: /comunidad
+
+Sitemap: https://zyfit-academy-e8r4w.ondigitalocean.app/sitemap.xml

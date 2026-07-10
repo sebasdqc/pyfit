@@ -271,7 +271,7 @@ function ResourceCard({
           aria-label={resource.favorito ? t('library.removeFavoriteAria') : t('library.addFavoriteAria')}
           aria-pressed={resource.favorito}
           className={[
-            'absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg backdrop-blur-sm transition-colors',
+            'absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-lg backdrop-blur-sm transition-colors',
             resource.favorito ? 'bg-white text-brand' : 'bg-white/15 text-white hover:bg-white/25',
           ].join(' ')}
         >
