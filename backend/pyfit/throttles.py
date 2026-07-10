@@ -119,6 +119,26 @@ class AnonSessionRateThrottle(AnonRateThrottle):
         return super().allow_request(request, view)
 
 
+class SimuladorComputeRateThrottle(UserRateThrottle):
+    """30 cálculos por minuto por usuario — el simulador de carga de Academy
+    reutiliza el motor de calculadoras de Performance (`_coerce` acepta listas
+    de hasta LIST_MAX_LENGTH_DEFAULT elementos); antes solo lo alcanzaba staff
+    de Performance (población chica) y caía en el backstop genérico de
+    300/min. Ahora lo alcanza cualquier estudiante de Academy — sin este
+    throttle, payloads repetidos con listas grandes son un vector de OOM real
+    en la instancia basic-xxs de sea-lion-app."""
+    scope = 'simulador_compute'
+
+
+class PromoCodeValidateRateThrottle(UserRateThrottle):
+    """20 validaciones por hora por usuario — `validar_codigo` distingue "no
+    existe" / "no aplica a este producto" / "vencido" / válido en la
+    respuesta, así que sin throttle propio (antes caía al backstop de
+    300/min) es enumerable más rápido de lo esperado para un código de
+    descuento de influencer pensado como semi-público."""
+    scope = 'promo_validate'
+
+
 class CommunityRateThrottle(UserRateThrottle):
     """30 publicaciones (preguntas + respuestas) por hora por usuario — protege
     el gasto en Groq: cada post/respuesta que no cae en los guardrails baratos

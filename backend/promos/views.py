@@ -13,9 +13,11 @@ desde Django Admin — ver `promos.payments`.
 """
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from pyfit.throttles import PromoCodeValidateRateThrottle
 
 from .models import PRODUCTO_ZYFIT_PRO, CodigoPromocional, SolicitudSuscripcion
 from .payments import PRECIOS, CodigoInvalidoError, calcular_precio
@@ -51,6 +53,7 @@ def _solicitud_payload(solicitud):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([PromoCodeValidateRateThrottle])
 def validar_codigo(request):
     producto = request.data.get('producto') or PRODUCTO_ZYFIT_PRO
     plan_tipo = request.data.get('plan_tipo')

@@ -46,9 +46,14 @@ def favoritos_ids_de(user, qs) -> set:
     )
 
 
-def alternar_favorito(user, resource_id) -> bool:
-    """Marca/desmarca un recurso como favorito. Devuelve el nuevo estado."""
-    resource = get_object_or_404(LibraryResource, pk=resource_id, activo=True)
+def alternar_favorito(user, resource_id, tenant) -> bool:
+    """Marca/desmarca un recurso como favorito. Devuelve el nuevo estado.
+    Filtra por tenant igual que `abrir_recurso` — sin esto, un usuario podía
+    marcar como favorito un recurso de OTRO tenant adivinando/enumerando el
+    id (hallazgo de auditoría, 2026-07-09; no exponía datos — el catálogo
+    listado ya filtraba por tenant — pero rompía el aislamiento que el resto
+    del módulo sí respeta)."""
+    resource = get_object_or_404(LibraryResource, pk=resource_id, tenant=tenant, activo=True)
     fav, created = LibraryFavorite.objects.get_or_create(user=user, resource=resource)
     if not created:
         fav.delete()

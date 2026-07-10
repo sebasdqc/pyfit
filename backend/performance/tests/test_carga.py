@@ -7,6 +7,7 @@ puras → SimpleTestCase (sin base de datos).
 from django.test import SimpleTestCase
 
 from performance.calculators import REGISTRY, CalculatorError, get_calculator
+from performance.calculators.base import LIST_MAX_LENGTH_DEFAULT
 
 
 class RegistryTests(SimpleTestCase):
@@ -96,3 +97,20 @@ class ACWRTests(SimpleTestCase):
     def test_ventana_parcial_anota(self):
         out = self.calc().run({'cargas_diarias': [500, 600, 400, 700, 300, 650, 500]})
         self.assertIn('nota', out)  # < 28 días → ventana crónica parcial
+
+
+class ListMaxLengthTests(SimpleTestCase):
+    """Hallazgo de auditoría (2026-07-09): un input 'list' sin `max_length`
+    propio aceptaba cualquier tamaño — ahora cae al tope global
+    LIST_MAX_LENGTH_DEFAULT. Alcanzable desde Academy vía el simulador de
+    carga (antes solo staff de Performance)."""
+
+    def test_lista_dentro_del_limite_pasa(self):
+        cargas = [500] * LIST_MAX_LENGTH_DEFAULT
+        out = get_calculator('carga-semanal').run({'cargas_diarias': cargas})
+        self.assertEqual(out['n_dias'], LIST_MAX_LENGTH_DEFAULT)
+
+    def test_lista_por_encima_del_limite_rechazada(self):
+        cargas = [500] * (LIST_MAX_LENGTH_DEFAULT + 1)
+        with self.assertRaises(CalculatorError):
+            get_calculator('carga-semanal').run({'cargas_diarias': cargas})

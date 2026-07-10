@@ -51,7 +51,8 @@ def library_view(request):
 @api_view(['POST'])
 @permission_classes([IsAcademyUser])
 def library_favorite_view(request, pk):
-    favorito = library_service.alternar_favorito(request.user, pk)
+    tenant = getattr(request, 'tenant', None)
+    favorito = library_service.alternar_favorito(request.user, pk, tenant)
     return Response({'favorito': favorito})
 
 

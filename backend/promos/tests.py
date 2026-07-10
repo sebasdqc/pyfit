@@ -8,6 +8,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.messages.middleware import MessageMiddleware
 from django.contrib.sessions.middleware import SessionMiddleware
+from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from rest_framework.test import APIClient, APITestCase
 
@@ -172,6 +173,25 @@ class ValidarCodigoEndpointTests(APITestCase):
             '/api/promos/validar/', {'producto': PRODUCTO_ACADEMY_PRO, 'plan_tipo': 'semestral'},
         )
         self.assertEqual(res.status_code, 400)
+
+
+class ValidarCodigoThrottleTests(APITestCase):
+    """Hallazgo de auditoría (2026-07-09): sin throttle propio, `validar_codigo`
+    caía en el backstop genérico de 300/min — enumerable más rápido de lo
+    esperado para un código semi-público."""
+
+    def setUp(self):
+        cache.clear()  # GOTCHA: LocMemCache es por proceso, no por test
+        self.user = make_user()
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_corta_a_las_20_por_hora(self):
+        for _ in range(20):
+            res = self.client.post('/api/promos/validar/', {'codigo': 'NOEXISTE', 'plan_tipo': 'mensual'})
+            self.assertEqual(res.status_code, 200)
+        res = self.client.post('/api/promos/validar/', {'codigo': 'NOEXISTE', 'plan_tipo': 'mensual'})
+        self.assertEqual(res.status_code, 429)
 
 
 class CrearSolicitudEndpointTests(APITestCase):

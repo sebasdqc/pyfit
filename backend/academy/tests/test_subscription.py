@@ -256,6 +256,65 @@ class SubscriptionWebhookTests(_Base):
         self.assertEqual(nivel_academia_de(self.student), 'starter')
 
 
+@override_settings(ACADEMY_PAYMENT_WEBHOOK_SECRET='shh')
+class SubscriptionWebhookIdempotencyTests(_Base):
+    """Hallazgo de auditoría (2026-07-09): un evento 'renovacion' reenviado
+    (reintento del proveedor, o secreto filtrado) no debe correr
+    `fecha_renovacion` más de una vez."""
+
+    def _webhook(self, **body):
+        return self.client.post(
+            '/api/academy/subscription/webhook/', body, format='json',
+            HTTP_X_ACADEMY_PAYMENT_SECRET='shh',
+        )
+
+    def test_replay_de_la_misma_referencia_no_extiende_la_fecha_dos_veces(self):
+        sub = AcademySubscription.objects.create(
+            user=self.student, estado=AcademySubscription.ESTADO_ACTIVA,
+            fecha_renovacion=date.today(), referencia_externa='',
+        )
+        res1 = self._webhook(
+            evento='renovacion', email=self.student.email, referencia_externa='ev-1')
+        self.assertEqual(res1.status_code, 200)
+        sub.refresh_from_db()
+        fecha_tras_primera = sub.fecha_renovacion
+        self.assertGreater(fecha_tras_primera, date.today())
+
+        # Mismo evento, reenviado (mismo referencia_externa).
+        res2 = self._webhook(
+            evento='renovacion', email=self.student.email, referencia_externa='ev-1')
+        self.assertEqual(res2.status_code, 200)
+        self.assertTrue(res2.json().get('ya_procesado'))
+        sub.refresh_from_db()
+        self.assertEqual(sub.fecha_renovacion, fecha_tras_primera)  # no se movió de nuevo
+
+    def test_referencia_distinta_si_extiende(self):
+        sub = AcademySubscription.objects.create(
+            user=self.student, estado=AcademySubscription.ESTADO_ACTIVA,
+            fecha_renovacion=date.today(), referencia_externa='ev-1',
+        )
+        res = self._webhook(
+            evento='renovacion', email=self.student.email, referencia_externa='ev-2')
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn('ya_procesado', res.json())
+        sub.refresh_from_db()
+        self.assertGreater(sub.fecha_renovacion, date.today())
+        self.assertEqual(sub.referencia_externa, 'ev-2')
+
+    def test_sin_referencia_externa_procesa_igual_que_antes(self):
+        """Compatibilidad hacia atrás: si el proveedor (o una prueba manual)
+        no manda referencia_externa, no se puede deduplicar — sigue
+        aplicando la renovación como antes, sin bloquear."""
+        sub = AcademySubscription.objects.create(
+            user=self.student, estado=AcademySubscription.ESTADO_ACTIVA,
+            fecha_renovacion=date.today(),
+        )
+        res = self._webhook(evento='renovacion', email=self.student.email)
+        self.assertEqual(res.status_code, 200)
+        sub.refresh_from_db()
+        self.assertGreater(sub.fecha_renovacion, date.today())
+
+
 class SubscriptionWebhookDisabledTests(_Base):
     def test_webhook_disabled_without_secret_setting(self):
         res = self.client.post(

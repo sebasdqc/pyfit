@@ -65,13 +65,18 @@ class AdministeredGateway(PaymentGateway):
         subscription.save(update_fields=['estado', 'updated_at'])
         return subscription
 
-    def renovar(self, subscription: AcademySubscription) -> AcademySubscription:
-        """Evento de renovación exitosa (webhook futuro): reactiva y corre la fecha."""
+    def renovar(self, subscription: AcademySubscription, referencia_externa: str = '') -> AcademySubscription:
+        """Evento de renovación exitosa (webhook futuro): reactiva y corre la
+        fecha. La idempotencia por `referencia_externa` (¿ya se procesó este
+        evento?) se resuelve ANTES de llamar acá, en subscription_webhook —
+        este método asume que ya se decidió aplicar la renovación."""
         subscription.estado = AcademySubscription.ESTADO_ACTIVA
         subscription.fecha_renovacion = _calcular_renovacion(
             subscription.plan_tipo, desde=subscription.fecha_renovacion or date.today(),
         )
-        subscription.save(update_fields=['estado', 'fecha_renovacion', 'updated_at'])
+        if referencia_externa:
+            subscription.referencia_externa = referencia_externa
+        subscription.save(update_fields=['estado', 'fecha_renovacion', 'referencia_externa', 'updated_at'])
         return subscription
 
     def marcar_pago_fallido(self, subscription: AcademySubscription) -> AcademySubscription:

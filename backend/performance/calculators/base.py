@@ -27,6 +27,17 @@ FAMILIAS = (
     FAMILIA_CARGA, FAMILIA_PREVENCION,
 )
 
+# Tope de elementos para cualquier input 'list' que no declare su propio
+# `max_length` — generoso (más de un año de datos diarios) para no chocar con
+# ningún uso legítimo, pero acota el peor caso. Antes no había límite alguno:
+# antes solo llegaba a este motor personal de Performance (staff, población
+# chica); ahora también lo alcanza cualquier estudiante de Academy vía el
+# simulador de carga (academy.views.simulador_carga_compute), sin throttle
+# dedicado — un payload de listas enormes y repetidas es un vector de OOM
+# real en la instancia basic-xxs de sea-lion-app (hallazgo de auditoría,
+# 2026-07-09).
+LIST_MAX_LENGTH_DEFAULT = 400
+
 
 class CalculatorError(Exception):
     """Error de validación de inputs.
@@ -113,6 +124,9 @@ class TestCalculator:
             elif ftype == 'list':
                 if not isinstance(value, (list, tuple)) or len(value) == 0:
                     raise ValueError
+                max_length = field.get('max_length', LIST_MAX_LENGTH_DEFAULT)
+                if len(value) > max_length:
+                    raise CalculatorError(f'No puede tener más de {max_length} valores.')
                 v = [float(x) for x in value]
             else:  # 'number'
                 v = float(value)

@@ -227,6 +227,8 @@ REST_FRAMEWORK = {
         'academy_tutor': '30/hour',    # cost guard horario del tutor (el límite diario por tier lo aplica TutorDailyUsage)
         'community_write': '30/hour',  # cost guard: crear post/respuesta puede llamar a Groq (moderación)
         'anon_session': '20/hour',     # evita creación masiva de AnonymousSession sin cuenta
+        'simulador_compute': '30/minute',  # cost guard: listas grandes repetidas = riesgo de OOM
+        'promo_validate': '20/hour',   # frena la enumeración de códigos de descuento
     },
 }
 

@@ -93,17 +93,28 @@ def subscription_webhook(request):
     evento = request.data.get('evento')
     email = (request.data.get('email') or '').lower().strip()
     user = get_object_or_404(get_user_model(), email=email)
+    referencia_externa = (request.data.get('referencia_externa') or '').strip()
 
     if evento in ('activacion', 'renovacion'):
         plan_tipo = request.data.get('plan_tipo') or 'mensual'
         sub = getattr(user, 'academy_subscription', None)
         if evento == 'renovacion' and sub:
-            GATEWAY.renovar(sub)
+            # Idempotencia: un mismo evento de renovación reenviado (reintento
+            # del proveedor, o el secreto compartido filtrado) no debe correr
+            # `fecha_renovacion` más de una vez — `renovar()` la SUMA cada vez
+            # que se llama, así que sin este chequeo cada replay regala días
+            # de Pro gratis (hallazgo de auditoría, 2026-07-09). Solo protege
+            # si el proveedor manda `referencia_externa` (evento/transacción
+            # único) — sin ella no hay forma de distinguir un replay de un
+            # evento legítimo nuevo.
+            if referencia_externa and referencia_externa == sub.referencia_externa:
+                return Response({'detail': 'ok', 'ya_procesado': True})
+            GATEWAY.renovar(sub, referencia_externa=referencia_externa)
         else:
             GATEWAY.activar(
                 user, plan_tipo=plan_tipo,
                 proveedor_pago=request.data.get('proveedor_pago', ''),
-                referencia_externa=request.data.get('referencia_externa', ''),
+                referencia_externa=referencia_externa,
             )
     elif evento == 'cancelacion':
         sub = getattr(user, 'academy_subscription', None)

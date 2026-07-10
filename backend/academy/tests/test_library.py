@@ -7,7 +7,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from academy.library_models import LibraryFavorite, LibraryResource
-from academy.models import AcademySubscription, Course, School
+from academy.models import AcademySubscription, Course, School, Tenant
 
 User = get_user_model()
 
@@ -156,6 +156,18 @@ class FavoritosTests(_Base):
         res = self.client.get('/api/academy/library/')
 
         self.assertTrue(res.data[0]['favorito'])
+
+    def test_no_marca_favorito_un_recurso_de_otro_tenant(self):
+        """Hallazgo de auditoría (2026-07-09): alternar_favorito no filtraba
+        por tenant (a diferencia de abrir_recurso) — un usuario podía marcar
+        como favorito un recurso de OTRA organización adivinando el id."""
+        otro_tenant = Tenant.objects.create(nombre='Otro', slug='otro', dominio='otro.zyfit.app')
+        r = self._resource(tenant=otro_tenant)
+
+        res = self.client.post(f'/api/academy/library/{r.id}/favorito/')
+
+        self.assertEqual(res.status_code, 404)
+        self.assertFalse(LibraryFavorite.objects.filter(user=self.student, resource=r).exists())
 
     def test_favorito_es_por_usuario_no_global(self):
         r = self._resource()

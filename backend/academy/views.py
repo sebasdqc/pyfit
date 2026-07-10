@@ -55,7 +55,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from pyfit.throttles import LoginRateThrottle
+from pyfit.throttles import LoginRateThrottle, SimuladorComputeRateThrottle
 from . import access_service, badges_service, dashboard_service, grading, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
@@ -831,6 +831,7 @@ def simulador_carga_catalog(request):
 
 @api_view(['POST'])
 @permission_classes([IsAcademyUser])
+@throttle_classes([SimuladorComputeRateThrottle])
 def simulador_carga_compute(request):
     """Calcula un test de la familia 'carga' sin persistir (previsualización en vivo).
 
