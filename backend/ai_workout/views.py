@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateThrottle, AjustarSesionRateThrottle
 from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile, DailyGenerationCount
+from workouts.exercise_matching import resolve_exercise_fk, build_exercises_map
 from checkins.models import DailyCheckin
 
 
@@ -1380,6 +1381,7 @@ def _persist_session_exercises(sesion, sesion_generada):
     """Parse the AI response and create SessionExercise rows for analytics/history."""
     orden = 1
     to_create = []
+    exercises_map = build_exercises_map()
     for fase in sesion_generada.get('fases', []) or []:
         for ej in fase.get('ejercicios', []) or []:
             try:
@@ -1401,6 +1403,7 @@ def _persist_session_exercises(sesion, sesion_generada):
                     descanso_segundos=descanso,
                     rpe_sugerido=rpe,
                     notas=notas,
+                    exercise=resolve_exercise_fk(nombre, exercises_map),
                 ))
                 orden += 1
             except (TypeError, ValueError):

@@ -24,6 +24,7 @@ from rest_framework.response import Response
 
 from pyfit.throttles import CoachChatRateThrottle, CoachVincularRateThrottle
 from workouts.models import Session, SessionExercise, SessionFeedback
+from workouts.exercise_matching import resolve_exercise_fk, build_exercises_map
 from .models import (
     Profile, CoachAthlete, CoachMessage, CoachSubscription, CoachAssignedSession,
     generar_codigo_referido, default_coach_config, COACH_CONFIG_KEYS,
@@ -595,15 +596,18 @@ def _materializar_session(assigned, sess=None):
     sess.save()
     sess.exercises.all().delete()
     bulk, orden = [], 0
+    exercises_map = build_exercises_map()
     for fase in c.get('fases', []):
         for e in fase.get('ejercicios', []):
             orden += 1
+            nombre = str(e.get('nombre') or '')[:200]
             bulk.append(SessionExercise(
-                session=sess, orden=orden, nombre=str(e.get('nombre') or '')[:200],
+                session=sess, orden=orden, nombre=nombre,
                 series=_safe_int(e.get('series'), 1, 1, 20),
                 repeticiones=str(e.get('repeticiones') or '')[:50],
                 descanso_segundos=_safe_int(e.get('descanso_segundos'), 60, 0, 1200),
                 rpe_sugerido=e.get('rpe_sugerido'), notas=str(e.get('notas') or ''),
+                exercise=resolve_exercise_fk(nombre, exercises_map),
             ))
     if bulk:
         SessionExercise.objects.bulk_create(bulk)

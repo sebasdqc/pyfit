@@ -302,6 +302,16 @@ class SessionExercise(models.Model):
     rpe_sugerido = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     notas = models.TextField(blank=True)
     series_log = models.JSONField(null=True, blank=True)
+    # Identidad real del ejercicio (para comparar entre sesiones/bloques sin
+    # depender de coincidencias de texto libre en `nombre`). Nullable: se
+    # resuelve al crear la fila vía exercise_matching.resolve_exercise_fk();
+    # si no matchea ningún Exercise del catálogo queda en null (no bloquea
+    # la creación de la sesión). El histórico previo a este campo queda null
+    # para siempre — no hay backfill.
+    exercise = models.ForeignKey(
+        Exercise, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='session_exercises',
+    )
 
     class Meta:
         db_table = 'session_exercises'

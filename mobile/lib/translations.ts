@@ -366,7 +366,6 @@ const translations = {
   stats_intention_title:      { es: 'Intención de entrenamiento',         en: 'Training intention',                 pt: 'Intenção de treino',                  fr: "Intention d'entraînement" },
   stats_top_ex_title:         { es: 'Ejercicios frecuentes',              en: 'Frequent exercises',                 pt: 'Exercícios frequentes',               fr: 'Exercices fréquents' },
   stats_top_ex_times:         { es: 'veces',                              en: 'times',                              pt: 'vezes',                               fr: 'fois' },
-  stats_radar_title:          { es: 'Tu radar de rendimiento',            en: 'Your performance radar',             pt: 'Seu radar de desempenho',             fr: 'Votre radar de performance' },
   stats_events_title:         { es: 'EVENTOS DEL DÍA',                    en: 'EVENTS OF THE DAY',                  pt: 'EVENTOS DO DIA',                      fr: 'ÉVÉNEMENTS DU JOUR' },
   stats_add_event:            { es: 'AGREGAR EVENTO',                     en: 'ADD EVENT',                          pt: 'ADICIONAR EVENTO',                    fr: 'AJOUTER UN ÉVÉNEMENT' },
   stats_event_type_label:     { es: 'TIPO',                               en: 'TYPE',                               pt: 'TIPO',                                fr: 'TYPE' },

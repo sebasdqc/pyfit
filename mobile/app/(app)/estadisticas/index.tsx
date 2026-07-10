@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { apiGet, apiPost, apiDelete } from '../../../lib/api'
-import RadarBlock, { RadarBlockEmpty, RadarMetric } from '../../../components/RadarBlock'
+import ZyfitScoreCircle, { ZyfitScoreCircleEmpty, ZyfitScoreDetalle } from '../../../components/ZyfitScoreCircle'
 import { useTranslation } from '../../../lib/i18n'
 import HistorialView from '../historial'
 
@@ -870,9 +870,8 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
     otro:        '📌 Otro',
   }
 
-  // ── Block 0 state (Radar) ─────────────────────────────────────────────────
-  const [radarMetrics,   setRadarMetrics]   = useState<RadarMetric[] | null>(null)
-  const [radarEnoughData, setRadarEnoughData] = useState(true)
+  // ── Block 0 state (Zyfit Score) ───────────────────────────────────────────
+  const [zyfitScore, setZyfitScore] = useState<ZyfitScoreDetalle | null>(null)
 
   // ── Block 1 state ─────────────────────────────────────────────────────────
   const [filtro,       setFiltro]       = useState<Filtro>('todo')
@@ -914,11 +913,10 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
   const firstFocusRef = useRef(true)
 
   // ── Fetchers ───────────────────────────────────────────────────────────────
-  const fetchRadar = useCallback(async (isInitial = false) => {
+  const fetchZyfitScore = useCallback(async (isInitial = false) => {
     try {
-      const res = await apiGet('/api/stats/radar/')
-      setRadarEnoughData(res.enough_data)
-      if (res.enough_data) setRadarMetrics(res.metrics)
+      const res: ZyfitScoreDetalle = await apiGet('/api/stats/zyfit-score/')
+      setZyfitScore(res)
     } catch (e: any) {
       if (isInitial) setError(e.message ?? 'Error cargando estadísticas')
     }
@@ -988,7 +986,7 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     const { year, month } = mesActual
     Promise.all([
-      fetchRadar(true),
+      fetchZyfitScore(true),
       fetchRPE('todo', true),
       fetchConsist(year, month, true),
       fetchCuerpo(true),
@@ -1004,13 +1002,13 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
     useCallback(() => {
       if (firstFocusRef.current) { firstFocusRef.current = false; return }
       const { year, month } = mesRef.current
-      fetchRadar()
+      fetchZyfitScore()
       fetchRPE(filtroRef.current)
       fetchConsist(year, month)
       fetchCuerpo()
       fetchEjercicios()
       fetchEventos(year, month)
-    }, [fetchRadar, fetchRPE, fetchConsist, fetchCuerpo, fetchEjercicios, fetchEventos]),
+    }, [fetchZyfitScore, fetchRPE, fetchConsist, fetchCuerpo, fetchEjercicios, fetchEventos]),
   )
 
   // ── Month navigation ───────────────────────────────────────────────────────
@@ -1097,7 +1095,7 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
               setError(null)
               setInitialLoading(true)
               Promise.all([
-                fetchRadar(true),
+                fetchZyfitScore(true),
                 fetchRPE(filtro, true),
                 fetchConsist(mesActual.year, mesActual.month, true),
                 fetchCuerpo(true),
@@ -1139,10 +1137,10 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Bloque 0: Tu perfil atlético (Radar) ── */}
-        {radarEnoughData && radarMetrics
-          ? <RadarBlock metrics={radarMetrics} />
-          : <RadarBlockEmpty />
+        {/* ── Bloque 0: Tu Zyfit Score ── */}
+        {zyfitScore
+          ? <ZyfitScoreCircle data={zyfitScore} />
+          : <ZyfitScoreCircleEmpty />
         }
 
         {/* ── Bloque 1: Progreso del rendimiento ── */}

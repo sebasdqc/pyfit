@@ -511,7 +511,7 @@ function ZyfitScoreCard({
             {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo\ntu score'}
           </Text>
           <Text style={styles.zsDesc}>
-            {hasData && desc ? desc : 'Completa 7 sesiones para ver tu Zyfit Score.'}
+            {desc ?? 'Completa tu primera sesión con feedback para ver tu Zyfit Score.'}
           </Text>
         </View>
       </View>
@@ -563,14 +563,18 @@ function ZyfitScoreCard({
           <Pressable style={styles.zsModalCard} onPress={e => e.stopPropagation()}>
             <Text style={styles.zsModalTitle}>¿Cómo se calcula el Zyfit Score?</Text>
             <Text style={styles.zsModalBody}>
-              El <Text style={styles.zsModalAccent}>Zyfit Score</Text> es una puntuación del 0 al 100 que refleja tu consistencia y calidad de entrenamiento reciente.{'\n\n'}
-              <Text style={styles.zsModalBold}>📊 Consistencia (40%)</Text>{'\n'}
-              Porcentaje de días entrenados vs. tu objetivo semanal en las últimas 4 semanas.{'\n\n'}
-              <Text style={styles.zsModalBold}>💪 Calidad (35%)</Text>{'\n'}
-              Promedio de cumplimiento y rating de tus sesiones recientes.{'\n\n'}
-              <Text style={styles.zsModalBold}>🔥 Racha (25%)</Text>{'\n'}
-              Tu racha actual penaliza si llevas días sin entrenar y premia la continuidad.{'\n\n'}
-              El score se actualiza después de cada sesión completada.
+              El <Text style={styles.zsModalAccent}>Zyfit Score</Text> es una puntuación del 0 al 100 que combina tu nivel actual con tu tendencia (Momentum) de las últimas 4 semanas vs. las 4 anteriores.{'\n\n'}
+              <Text style={styles.zsModalBold}>📅 Consistencia (30%)</Text>{'\n'}
+              Sesiones entrenadas vs. las esperadas según tu objetivo semanal.{'\n\n'}
+              <Text style={styles.zsModalBold}>📈 Rendimiento (25%)</Text>{'\n'}
+              Progreso o mantenimiento de tu capacidad, adaptado a tu objetivo.{'\n\n'}
+              <Text style={styles.zsModalBold}>💪 Adherencia (20%)</Text>{'\n'}
+              Cumplimiento reportado en el feedback de tus sesiones.{'\n\n'}
+              <Text style={styles.zsModalBold}>🌙 Recuperación (15%)</Text>{'\n'}
+              Ánimo, sueño y estado físico de tus check-ins diarios.{'\n\n'}
+              <Text style={styles.zsModalBold}>⏱️ Recencia (10%)</Text>{'\n'}
+              Qué tan reciente fue tu última sesión.{'\n\n'}
+              Al principio verás un score preliminar mientras se construye tu historial — el score completo con tendencia está disponible desde las 8 semanas de actividad. Se actualiza después de cada sesión con feedback.
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.zsModalCloseBtn}>
               <Text style={styles.zsModalCloseText}>Entendido</Text>

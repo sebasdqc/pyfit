@@ -74,6 +74,9 @@ INSTALLED_APPS = [
     'ai_tutor',
     # Códigos de descuento de influencers para Zyfit Pro (suscripción administrada).
     'promos',
+    # Zyfit Score v2: motor de cálculo + persistencia (ScoreSnapshot/ScoreConfig),
+    # espejo de ai_workout/ai_running (app de "inteligencia" sobre datos de otras apps).
+    'scores',
     # Celery beat schedule almacenado en Django DB
     'django_celery_beat',
 ]
