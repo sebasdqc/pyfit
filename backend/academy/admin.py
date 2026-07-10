@@ -8,6 +8,7 @@ from .community_models import (
 )
 from .blog_models import BlogPost
 from .library_models import LibraryFavorite, LibraryResource
+from .support_models import SupportFAQ, SupportMessage
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate,
@@ -296,6 +297,31 @@ class BlogPostAdmin(ModelAdmin):
     autocomplete_fields = ('school', 'autor')
     prepopulated_fields = {'slug': ('titulo',)}
     readonly_fields = ('vistas', 'publicado_en', 'created_at', 'updated_at')
+
+    def has_add_permission(self, request):
+        return False
+
+
+# ─── Soporte (FAQ + chat) ─────────────────────────────────────────────────────
+# La FAQ la administra staff vía Django Admin (mismo patrón que
+# LibraryResource); el chat lo maneja el panel de Soporte de academy-web, acá
+# solo queda como respaldo de lectura/auditoría (sin edición de mensajes).
+
+@admin.register(SupportFAQ)
+class SupportFAQAdmin(ModelAdmin):
+    list_display = ('pregunta', 'categoria', 'orden', 'publicado', 'tenant', 'updated_at')
+    list_filter = ('publicado', 'tenant', 'categoria')
+    search_fields = ('pregunta', 'respuesta', 'categoria')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(SupportMessage)
+class SupportMessageAdmin(ModelAdmin):
+    list_display = ('student', 'from_admin', 'admin', 'leido', 'tenant', 'created_at')
+    list_filter = ('from_admin', 'leido', 'tenant')
+    search_fields = ('student__email', 'texto')
+    autocomplete_fields = ('student', 'admin')
+    readonly_fields = ('student', 'from_admin', 'admin', 'texto', 'tenant', 'created_at')
 
     def has_add_permission(self, request):
         return False

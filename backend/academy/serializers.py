@@ -18,6 +18,7 @@ from .models import (
     Enrollment, LessonProgress, QuizAttempt, Certificate,
     Submission, CourseBadge, School,
 )
+from .support_models import SupportFAQ
 
 User = get_user_model()
 
@@ -518,6 +519,16 @@ class LibraryResourceSerializer(LocalizedFieldsMixin, serializers.ModelSerialize
         if data.get('bloqueado'):
             data['url'] = ''
         return data
+
+
+# ─── Soporte (FAQ) ────────────────────────────────────────────────────────────
+
+class SupportFAQSerializer(LocalizedFieldsMixin, serializers.ModelSerializer):
+    LOCALIZED_FIELDS = ('pregunta', 'respuesta')
+
+    class Meta:
+        model = SupportFAQ
+        fields = ['id', 'pregunta', 'respuesta', 'categoria', 'orden']
 
 
 # ─── Blog editorial ─────────────────────────────────────────────────────────

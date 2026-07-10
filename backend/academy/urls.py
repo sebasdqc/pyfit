@@ -3,7 +3,8 @@
 from django.urls import path
 
 from . import (
-    admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views, views,
+    admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views,
+    support_views, views,
 )
 
 urlpatterns = [
@@ -111,4 +112,12 @@ urlpatterns = [
     path('community/respuestas/<int:reply_id>/votar/', community_views.community_vote_view),
     path('community/posts/<int:post_id>/mejor-respuesta/', community_views.community_best_answer_view),
     path('community/reportes/', community_views.community_report_view),
+
+    # Soporte: FAQ estática + chat estudiante↔staff (REST + polling, sin
+    # WebSockets — mismo criterio que el chat coach↔atleta de la app móvil).
+    path('support/faq/', support_views.support_faq_view),
+    path('support/chat/', support_views.support_chat_view),
+    path('support/chat/no-leidos/', support_views.support_chat_unread_view),
+    path('support/admin/hilos/', support_views.support_admin_hilos_view),
+    path('support/admin/hilos/<int:student_id>/', support_views.support_admin_hilo_detail_view),
 ]

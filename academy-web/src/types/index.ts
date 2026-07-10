@@ -188,6 +188,33 @@ export interface CourseDetail extends Course {
   insignias: CourseBadge[]
 }
 
+// ── Soporte (FAQ + chat) ───────────────────────────────────────────────────────
+
+export interface SupportFAQItem {
+  id: number
+  pregunta: string
+  respuesta: string
+  categoria: string
+  orden: number
+}
+
+export interface SupportMessageItem {
+  id: number
+  from_admin: boolean
+  texto: string
+  created_at: string
+}
+
+export interface SupportThreadSummary {
+  student_id: number
+  nombre: string
+  email: string
+  ultimo_mensaje: string
+  ultimo_from_admin: boolean | null
+  ultimo_at: string | null
+  no_leidos: number
+}
+
 // ── Aprendizaje ───────────────────────────────────────────────────────────────
 
 export interface QuizAttempt {

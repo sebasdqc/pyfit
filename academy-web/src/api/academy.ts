@@ -12,6 +12,7 @@ import type {
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
   SimuladorCargaResponse, SimuladorSesionCaso, SimuladorSesionResultado,
   SimuladorPrevencionCaso, SimuladorPrevencionResultado,
+  SupportFAQItem, SupportMessageItem, SupportThreadSummary,
 } from '@/types'
 
 // ── Racha de estudio ──────────────────────────────────────────────────────────
@@ -529,5 +530,49 @@ export async function evaluarSimuladorPrevencion(payload: {
   decision: string
 }): Promise<SimuladorPrevencionResultado> {
   const res = await api.post<SimuladorPrevencionResultado>('/academy/simulador/prevencion/evaluar/', payload)
+  return res.data
+}
+
+// ── Soporte (FAQ + chat) ───────────────────────────────────────────────────────
+// Chat por polling (sin WebSockets), mismo criterio que el chat coach↔atleta
+// de la app móvil — ver academy.support_service en el backend.
+
+export async function getSupportFAQ(): Promise<SupportFAQItem[]> {
+  const res = await api.get<SupportFAQItem[]>('/academy/support/faq/')
+  return res.data
+}
+
+export async function getSupportChat(): Promise<{ mensajes: SupportMessageItem[] }> {
+  const res = await api.get<{ mensajes: SupportMessageItem[] }>('/academy/support/chat/')
+  return res.data
+}
+
+export async function sendSupportMessage(texto: string): Promise<SupportMessageItem> {
+  const res = await api.post<SupportMessageItem>('/academy/support/chat/', { texto })
+  return res.data
+}
+
+export async function getSupportChatUnread(): Promise<number> {
+  const res = await api.get<{ no_leidos: number }>('/academy/support/chat/no-leidos/')
+  return res.data.no_leidos
+}
+
+// ── Soporte · inbox del admin ─────────────────────────────────────────────────
+
+export async function listSupportThreads(): Promise<SupportThreadSummary[]> {
+  const res = await api.get<SupportThreadSummary[]>('/academy/support/admin/hilos/')
+  return res.data
+}
+
+export async function getSupportThread(studentId: number): Promise<{
+  student: { id: number; nombre: string; email: string }
+  mensajes: SupportMessageItem[]
+}> {
+  const res = await api.get(`/academy/support/admin/hilos/${studentId}/`)
+  return res.data
+}
+
+export async function sendSupportThreadReply(studentId: number, texto: string): Promise<SupportMessageItem> {
+  const res = await api.post<SupportMessageItem>(`/academy/support/admin/hilos/${studentId}/`, { texto })
   return res.data
 }

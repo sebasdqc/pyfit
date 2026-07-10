@@ -27,8 +27,10 @@ const NAV: NavItem[] = [
   { id: 'simulador', labelKey: 'sidebar.navSimulador', icon: 'activity', to: '/simulador' },
   { id: 'comunidad', labelKey: 'sidebar.navComunidad', icon: 'users', to: '/comunidad' },
   { id: 'blog', labelKey: 'sidebar.navBlog', icon: 'blog', to: '/blog' },
+  { id: 'soporte', labelKey: 'sidebar.navSoporte', icon: 'mail', to: '/soporte' },
   { id: 'instructor', labelKey: 'sidebar.navInstructor', icon: 'instructor', to: '/instructor', instructorOnly: true },
   { id: 'usuarios', labelKey: 'sidebar.navUsuarios', icon: 'shield', to: '/admin/usuarios', adminOnly: true },
+  { id: 'soporteAdmin', labelKey: 'sidebar.navSoporteAdmin', icon: 'shield', to: '/admin/soporte', adminOnly: true },
 ]
 
 const ROLE_LABEL_KEY: Record<string, string> = {
