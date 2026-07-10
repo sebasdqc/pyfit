@@ -86,6 +86,8 @@ const es = {
     feature3Body: 'Un sistema de rachas e insignias que premia la constancia, no solo terminar un curso.',
     feature4Title: 'Comunidad',
     feature4Body: 'Preguntas y respuestas entre alumnos, moderadas automáticamente para mantener la calidad.',
+    feature5Title: 'Acceso gratis a Zyfit APP',
+    feature5Body: 'Al registrarte en Academy sumás acceso gratuito a Zyfit APP, la app hermana de entrenamiento con rutinas generadas por IA.',
     catalogEyebrow: 'Catálogo',
     featuredCourses: 'Cursos destacados',
     seeFullCatalog: 'Ver todo el catálogo',

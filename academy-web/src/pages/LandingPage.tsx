@@ -25,6 +25,7 @@ const FEATURES: { icon: IconName; titleKey: string; bodyKey: string }[] = [
   { icon: 'quiz', titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
   { icon: 'flame', titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
   { icon: 'users', titleKey: 'landing.feature4Title', bodyKey: 'landing.feature4Body' },
+  { icon: 'activity', titleKey: 'landing.feature5Title', bodyKey: 'landing.feature5Body' },
 ]
 
 const HOW_STEPS: { icon: IconName; titleKey: string; bodyKey: string }[] = [

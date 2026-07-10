@@ -90,6 +90,8 @@ const en: DeepPartial<Dictionary> = {
     feature3Body: 'A streak and badge system that rewards consistency, not just finishing a course.',
     feature4Title: 'Community',
     feature4Body: 'Questions and answers between students, automatically moderated to keep quality high.',
+    feature5Title: 'Free access to Zyfit APP',
+    feature5Body: 'Signing up for Academy also gets you free access to Zyfit APP, the sister training app with AI-generated routines.',
     catalogEyebrow: 'Catalog',
     featuredCourses: 'Featured courses',
     seeFullCatalog: 'See the full catalog',
