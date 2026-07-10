@@ -43,7 +43,8 @@ class IsAcademyUser(BasePermission):
 
 
 class IsInstructorOrAdmin(BasePermission):
-    """Solo instructores o admin de producto: crean y publican cursos."""
+    """Solo instructores o admin (de producto o de Academy): crean y publican
+    cursos."""
 
     message = 'Solo un instructor o un admin puede gestionar contenido de la academia.'
 
@@ -51,20 +52,26 @@ class IsInstructorOrAdmin(BasePermission):
         u = request.user
         if not (u and u.is_authenticated and u.is_active):
             return False
-        return u.academy_instructor or u.is_admin or u.is_staff
+        return u.academy_instructor or u.is_admin or u.is_staff or u.academy_admin
 
 
 class IsAcademyAdmin(BasePermission):
-    """Solo el admin de producto (o staff de Django): a diferencia de
-    IsInstructorOrAdmin, un instructor NO puede gestionar cuentas — crear un
-    admin/instructor/estudiante es una acción de privilegio distinto a la
-    autoría de contenido."""
+    """Admin de producto (o staff de Django) O admin scoped a Academy
+    (`User.academy_admin`, ver el modelo): a diferencia de IsInstructorOrAdmin,
+    un instructor NO puede gestionar cuentas — crear un admin/instructor/
+    estudiante es una acción de privilegio distinto a la autoría de contenido.
+
+    `academy_admin` es deliberadamente DISTINTO de `is_admin`/`role`: ese es
+    global entre los 3 productos (concede además acceso B2B completo a Zyfit
+    Performance). Un admin de Academy debe poder administrar su organización
+    de punta a punta sin heredar ningún acceso fuera de Academy."""
 
     message = 'Solo un administrador puede gestionar usuarios de la academia.'
 
     def has_permission(self, request, view):
         u = request.user
-        if not (u and u.is_authenticated and u.is_active and (u.is_admin or u.is_staff)):
+        if not (u and u.is_authenticated and u.is_active
+                and (u.is_admin or u.is_staff or u.academy_admin)):
             return False
         return not tenant_mismatch(u, request)
 
@@ -73,24 +80,24 @@ def is_author(user) -> bool:
     """¿Puede esta cuenta CREAR/gestionar contenido (no necesariamente este curso)?"""
     return bool(
         user and user.is_authenticated and user.is_active
-        and (user.academy_instructor or user.is_admin or user.is_staff)
+        and (user.academy_instructor or user.is_admin or user.is_staff or user.academy_admin)
     )
 
 
 def can_edit_course(user, course) -> bool:
     """¿Puede este usuario editar/publicar ESTE curso?
 
-    El admin/staff de producto edita cualquier curso; un instructor solo los
-    suyos (los que figura como `instructor`)."""
-    if user.is_admin or user.is_staff:
+    El admin/staff de producto o el admin de Academy edita cualquier curso;
+    un instructor solo los suyos (los que figura como `instructor`)."""
+    if user.is_admin or user.is_staff or user.academy_admin:
         return True
     return course.instructor_id == user.id
 
 
 def can_edit_post(user, post) -> bool:
     """¿Puede este usuario editar/publicar ESTE post del blog? Mismo criterio
-    que `can_edit_course`: admin/staff edita cualquiera, un instructor solo
-    los suyos (los que figura como `autor`)."""
-    if user.is_admin or user.is_staff:
+    que `can_edit_course`: admin/staff/admin de Academy edita cualquiera, un
+    instructor solo los suyos (los que figura como `autor`)."""
+    if user.is_admin or user.is_staff or user.academy_admin:
         return True
     return post.autor_id == user.id

@@ -59,6 +59,17 @@ class User(AbstractUser):
     # propiedad `academy_acceso`). El admin de producto (is_admin/is_staff) también
     # puede crear cursos sin necesitar este flag.
     academy_instructor = models.BooleanField(default=False)
+    # Acceso de ADMINISTRACIÓN dentro de Zyfit Academy (gestionar cuentas
+    # admin/instructor/estudiante desde su propio panel, moderar Comunidad,
+    # editar cualquier curso/post de su organización). Deliberadamente
+    # SEPARADO de `role`/`is_admin`: ese campo es GLOBAL entre los 3
+    # productos y concede además acceso B2B completo a Zyfit Performance
+    # (incluido el módulo Psicológico, datos de salud) en TODOS los centros.
+    # Antes de este flag, el panel de admin de Academy promovía cuentas a
+    # `role=ROLE_ADMIN` para representar "admin", filtrando sin querer ese
+    # acceso cruzado — hallazgo crítico de auditoría (2026-07-09). Aditivo,
+    # default False; ver academy.permissions.
+    academy_admin = models.BooleanField(default=False)
     # Organización de Academy (white-label) a la que pertenece esta cuenta —
     # NULL = sin restricción (catálogo raíz o cuenta anterior a este campo).
     # Se estampa SOLO al registrarse (ver users.views.register), según el

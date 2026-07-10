@@ -139,7 +139,8 @@ def obtener_post_visible(user, post_id) -> CommunityPost:
     """Un post oculto solo lo ve su autor o staff/admin (para que puedan verlo
     y, en su caso, reportarlo/editarlo vía admin); un tercero recibe 404."""
     post = get_object_or_404(CommunityPost, pk=post_id)
-    if post.estado == ESTADO_VISIBLE or post.autor_id == user.id or user.is_staff or user.is_admin:
+    if (post.estado == ESTADO_VISIBLE or post.autor_id == user.id
+            or user.is_staff or user.is_admin or user.academy_admin):
         return post
     raise Http404
 

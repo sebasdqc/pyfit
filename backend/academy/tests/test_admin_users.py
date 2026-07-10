@@ -90,8 +90,31 @@ class CreacionPorRolTests(_Base):
         self.assertEqual(res.status_code, 201)
         self.assertEqual(res.data['rol'], 'admin')
         user = User.objects.get(email='admin2@x.com')
-        self.assertTrue(user.is_admin)
-        self.assertEqual(user.role, User.ROLE_ADMIN)
+        self.assertTrue(user.academy_admin)
+
+    def test_crear_admin_no_otorga_role_global_ni_acceso_a_performance(self):
+        """Hallazgo crítico de auditoría (2026-07-09): crear un admin desde
+        el panel de Academy NO debe tocar `User.role`/`ROLE_ADMIN` (global,
+        compartido con Zyfit Performance) — solo `academy_admin`."""
+        res = self.client.post('/api/academy/admin/usuarios/', {
+            'email': 'admin3@x.com', 'password': 'contrasena123', 'nombre': 'Admin 3', 'rol': 'admin',
+        }, format='json')
+
+        self.assertEqual(res.status_code, 201)
+        user = User.objects.get(email='admin3@x.com')
+        self.assertFalse(user.is_admin)
+        self.assertEqual(user.role, User.ROLE_ATHLETE)
+        self.assertFalse(user.performance_acceso)
+
+    def test_admin_de_academy_puede_gestionar_usuarios_y_contenido(self):
+        """El flag `academy_admin` (sin role global) debe seguir alcanzando
+        para todo lo que un admin de Academy necesita: gestionar cuentas
+        (IsAcademyAdmin) y editar contenido (IsInstructorOrAdmin)."""
+        academy_admin = User.objects.create_user(
+            username='aadmin@x.com', email='aadmin@x.com', password='x', academy_admin=True,
+        )
+        self.client.force_authenticate(academy_admin)
+        self.assertEqual(self.client.get('/api/academy/admin/usuarios/').status_code, 200)
 
 
 class ValidacionTests(_Base):
@@ -167,6 +190,8 @@ class AislamientoPorTenantTests(_Base):
         self.assertEqual(res.status_code, 403)
 
     def test_usuario_creado_hereda_el_tenant_resuelto_de_la_request(self):
+        """Admin GLOBAL (sin tenant propio) dando de alta la primera cuenta
+        de una organización nueva: el tenant sí viene del header."""
         _tenant('conmebol')
 
         res = self.client.post(
@@ -178,3 +203,43 @@ class AislamientoPorTenantTests(_Base):
         self.assertEqual(res.status_code, 201)
         user = User.objects.get(email='nuevo@x.com')
         self.assertEqual(user.academy_tenant.slug, 'conmebol')
+
+    def test_omitir_el_header_no_fabrica_una_cuenta_admin_sin_tenant(self):
+        """Hallazgo crítico de auditoría (2026-07-09): un admin de un tenant
+        omitiendo X-Tenant-Slug ya NO puede fabricar una cuenta admin sin
+        tenant (que después navegaría/administraría cualquier organización)
+        — la cuenta nueva hereda el tenant del admin que la crea, no el
+        header."""
+        conmebol = _tenant('conmebol')
+        self.admin.academy_tenant = conmebol
+        self.admin.save(update_fields=['academy_tenant'])
+
+        res = self.client.post(
+            '/api/academy/admin/usuarios/',
+            {'email': 'fabricado@x.com', 'password': 'contrasena123', 'nombre': 'X', 'rol': 'admin'},
+            format='json',
+            # a propósito SIN HTTP_X_TENANT_SLUG
+        )
+
+        self.assertEqual(res.status_code, 201)
+        user = User.objects.get(email='fabricado@x.com')
+        self.assertIsNotNone(user.academy_tenant_id)
+        self.assertEqual(user.academy_tenant.slug, 'conmebol')
+
+    def test_admin_de_un_tenant_no_puede_crear_cuenta_para_otro_tenant_via_header(self):
+        """Ni siquiera enviando el header de OTRO tenant a propósito: el
+        tenant de la cuenta nueva es siempre el del admin que la crea."""
+        conmebol = _tenant('conmebol')
+        _tenant('otro')
+        self.admin.academy_tenant = conmebol
+        self.admin.save(update_fields=['academy_tenant'])
+
+        res = self.client.post(
+            '/api/academy/admin/usuarios/',
+            {'email': 'otro-fabricado@x.com', 'password': 'contrasena123', 'nombre': 'X', 'rol': 'estudiante'},
+            format='json', HTTP_X_TENANT_SLUG='otro',
+        )
+
+        # IsAcademyAdmin ya rechaza el choque real conmebol != otro.
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(User.objects.filter(email='otro-fabricado@x.com').exists())

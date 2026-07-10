@@ -590,7 +590,7 @@ ACADEMY_ROL_CHOICES = [ACADEMY_ROL_ADMIN, ACADEMY_ROL_PROFESOR, ACADEMY_ROL_ESTU
 
 
 def _academy_rol_de(user) -> str:
-    if user.is_admin:
+    if user.is_admin or user.academy_admin:
         return ACADEMY_ROL_ADMIN
     if user.academy_instructor:
         return ACADEMY_ROL_PROFESOR
@@ -600,11 +600,16 @@ def _academy_rol_de(user) -> str:
 class AcademyUserCreateSerializer(serializers.Serializer):
     """Alta de una cuenta desde el panel de administración de Academy.
 
-    `rol` decide a qué combinación de `User.role`/`academy_instructor` mapea
-    la cuenta nueva:
-      - 'admin'      → role=ROLE_ADMIN (administrador de producto).
+    `rol` decide a qué combinación de `User.academy_admin`/`academy_instructor`
+    mapea la cuenta nueva:
+      - 'admin'      → academy_admin=True (administrador SOLO de Academy).
       - 'profesor'   → academy_instructor=True (autoría de cursos).
       - 'estudiante' → cuenta normal (academy_acceso ya es abierto a cualquiera).
+    Deliberadamente NUNCA toca `User.role`/`ROLE_ADMIN` (ese campo es GLOBAL
+    entre los 3 productos y concede acceso B2B completo a Zyfit Performance,
+    incluido el módulo Psicológico) — hallazgo crítico de auditoría
+    (2026-07-09) corregido acá; el admin "de producto" real solo se crea vía
+    `academy.views.bootstrap_admin`, un flujo aparte y deliberado.
     Crea también el Profile mínimo en el mismo paso — sin él, otras pantallas
     del producto que asumen `user.profile` (dashboard, perfil) fallarían,
     igual que hace `users.RegisterSerializer` en el registro público."""
@@ -636,7 +641,7 @@ class AcademyUserCreateSerializer(serializers.Serializer):
         rol = validated_data['rol']
         user = User.objects.create_user(
             username=email, email=email, password=validated_data['password'],
-            role=User.ROLE_ADMIN if rol == ACADEMY_ROL_ADMIN else User.ROLE_ATHLETE,
+            academy_admin=(rol == ACADEMY_ROL_ADMIN),
             academy_instructor=(rol == ACADEMY_ROL_PROFESOR),
         )
         tenant = self.context.get('tenant')

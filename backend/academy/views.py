@@ -339,7 +339,7 @@ def _user_payload(user):
     personales que vive en Profile (compartido con la app móvil)."""
     from users.models import Profile
 
-    es_admin = user.is_admin or user.is_staff
+    es_admin = user.is_admin or user.is_staff or user.academy_admin
     profile = Profile.objects.filter(user=user).first()
     return {
         'id': user.id,

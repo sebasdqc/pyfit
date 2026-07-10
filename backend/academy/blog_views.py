@@ -93,7 +93,8 @@ def blog_mine_view(request):
     if not is_author(u):
         return Response({'detail': 'Solo un instructor o admin puede gestionar el blog.'},
                         status=status.HTTP_403_FORBIDDEN)
-    qs = BlogPost.objects.filter(tenant=tenant) if (u.is_admin or u.is_staff) else blog_service.mis_posts(u, tenant)
+    ve_todos = u.is_admin or u.is_staff or u.academy_admin
+    qs = BlogPost.objects.filter(tenant=tenant) if ve_todos else blog_service.mis_posts(u, tenant)
     return Response(BlogPostSerializer(qs, many=True).data)
 
 
