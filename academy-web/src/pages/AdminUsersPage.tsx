@@ -8,6 +8,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { createAcademyUser, listAcademyUsers } from '@/api/academy'
 import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
+import { Dialog } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
@@ -170,9 +171,9 @@ function CreateUserForm({ onCreated }: { onCreated: (u: AcademyUserAccount) => v
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [confirmingAdmin, setConfirmingAdmin] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function doCreate() {
     setError(null)
     setSuccess(false)
     setSubmitting(true)
@@ -189,6 +190,18 @@ function CreateUserForm({ onCreated }: { onCreated: (u: AcademyUserAccount) => v
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    // Otorgar el rol admin es una acción de alto privilegio (gestiona cuentas
+    // y contenido de toda la academia) — a diferencia de profesor/estudiante,
+    // pide confirmación explícita antes de crear la cuenta.
+    if (rol === 'admin') {
+      setConfirmingAdmin(true)
+      return
+    }
+    doCreate()
   }
 
   return (
@@ -251,7 +264,61 @@ function CreateUserForm({ onCreated }: { onCreated: (u: AcademyUserAccount) => v
       >
         {submitting ? t('adminUsers.submitting') : t('adminUsers.submit')}
       </button>
+
+      {confirmingAdmin && (
+        <ConfirmAdminDialog
+          email={email}
+          onCancel={() => setConfirmingAdmin(false)}
+          onConfirm={() => {
+            setConfirmingAdmin(false)
+            doCreate()
+          }}
+        />
+      )}
     </form>
+  )
+}
+
+function ConfirmAdminDialog({
+  email,
+  onCancel,
+  onConfirm,
+}: {
+  email: string
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const t = useT()
+  return (
+    <Dialog onClose={onCancel} labelledBy="confirm-admin-titulo" className="za-card max-h-[90vh] w-full max-w-md overflow-y-auto p-6">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 text-danger">
+          <Icon name="shield" size={26} />
+        </span>
+        <div>
+          <h2 id="confirm-admin-titulo" className="text-lg font-bold text-ink">
+            {t('adminUsers.confirmAdminTitle')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">{t('adminUsers.confirmAdminBody', { email })}</p>
+        </div>
+        <div className="flex w-full flex-col gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-xl bg-danger px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          >
+            {t('adminUsers.confirmAdminConfirm')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
+          >
+            {t('adminUsers.confirmAdminCancel')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   )
 }
 

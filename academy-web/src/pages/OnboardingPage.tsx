@@ -16,37 +16,30 @@ import { Icon, type IconName } from '@/components/Icon'
 import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
 import { TagInput } from '@/components/ui/TagInput'
 import { COUNTRIES } from '@/lib/countries'
+import { useT } from '@/locale/useT'
 import type { School } from '@/types'
 
 const HOY = new Date().toISOString().slice(0, 10)
 const TOTAL_PASOS = 4
 
-const PERFILES_DEPORTIVOS: {
-  value: 'atleta' | 'profesional' | 'entusiasta'
-  label: string
-  icon: IconName
-  description: string
-}[] = [
-  { value: 'atleta', label: 'Atleta', icon: 'activity', description: 'Compito o entreno de forma federada.' },
-  { value: 'profesional', label: 'Profesional del deporte', icon: 'star', description: 'Entrenador, preparador físico, kinesiólogo…' },
-  { value: 'entusiasta', label: 'Entusiasta', icon: 'heart', description: 'Me apasiona el deporte y quiero aprender más.' },
-]
+const PERFIL_DEPORTIVO_ICONS: Record<'atleta' | 'profesional' | 'entusiasta', IconName> = {
+  atleta: 'activity',
+  profesional: 'star',
+  entusiasta: 'heart',
+}
+const PERFIL_DEPORTIVO_VALUES = ['atleta', 'profesional', 'entusiasta'] as const
 
-const MODALIDADES: { value: 'virtual' | 'presencial' | 'mixta'; label: string; icon: IconName }[] = [
-  { value: 'virtual', label: 'Virtual', icon: 'play' },
-  { value: 'presencial', label: 'Presencial', icon: 'users' },
-  { value: 'mixta', label: 'Mixta', icon: 'layers' },
-]
+const MODALIDAD_ICONS: Record<'virtual' | 'presencial' | 'mixta', IconName> = {
+  virtual: 'play',
+  presencial: 'users',
+  mixta: 'layers',
+}
+const MODALIDAD_VALUES = ['virtual', 'presencial', 'mixta'] as const
 
-const DISPONIBILIDADES: { value: string; label: string }[] = [
-  { value: 'manana', label: 'Mañana' },
-  { value: 'tarde', label: 'Tarde' },
-  { value: 'noche', label: 'Noche' },
-  { value: 'fin_semana', label: 'Fin de semana' },
-  { value: 'flexible', label: 'Flexible' },
-]
+const DISPONIBILIDAD_VALUES = ['manana', 'tarde', 'noche', 'fin_semana', 'flexible'] as const
 
 export function OnboardingPage() {
+  const t = useT()
   const { user, refreshUser } = useAuth()
   const navigate = useNavigate()
   const [paso, setPaso] = useState(1)
@@ -88,6 +81,22 @@ export function OnboardingPage() {
 
   if (!user) return null
 
+  const perfilesDeportivos = PERFIL_DEPORTIVO_VALUES.map((value) => ({
+    value,
+    icon: PERFIL_DEPORTIVO_ICONS[value],
+    label: t(`onboarding.profile.${value}`),
+    description: t(`onboarding.profileDescription.${value}`),
+  }))
+  const modalidades = MODALIDAD_VALUES.map((value) => ({
+    value,
+    icon: MODALIDAD_ICONS[value],
+    label: t(`onboarding.modality.${value}`),
+  }))
+  const disponibilidades = DISPONIBILIDAD_VALUES.map((value) => ({
+    value,
+    label: t(`onboarding.availability.${value}`),
+  }))
+
   function toggleEscuela(id: number) {
     setEscuelasInteres((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
@@ -101,7 +110,7 @@ export function OnboardingPage() {
   async function guardarPasoYAvanzar() {
     setError(null)
     if (paso === 1 && nombre.trim() === '') {
-      setError('Ingresa tu nombre para continuar.')
+      setError(t('onboarding.nameRequiredError'))
       return
     }
     setSaving(true)
@@ -131,7 +140,7 @@ export function OnboardingPage() {
       }
       setPaso((p) => p + 1)
     } catch {
-      setError('No se pudo guardar. Intenta de nuevo.')
+      setError(t('onboarding.saveError'))
     } finally {
       setSaving(false)
     }
@@ -145,7 +154,7 @@ export function OnboardingPage() {
       await refreshUser()
       navigate('/inicio', { replace: true })
     } catch {
-      setError('No se pudo continuar. Intenta de nuevo.')
+      setError(t('onboarding.skipError'))
       setSaving(false)
     }
   }
@@ -160,7 +169,7 @@ export function OnboardingPage() {
           disabled={saving}
           className="text-sm font-medium text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
         >
-          Saltar por ahora
+          {t('onboarding.skip')}
         </button>
       </header>
 
@@ -168,9 +177,7 @@ export function OnboardingPage() {
         <div className="w-full max-w-xl">
           {/* Progreso */}
           <div className="mb-8">
-            <p className="za-eyebrow">
-              Paso {paso} de {TOTAL_PASOS}
-            </p>
+            <p className="za-eyebrow">{t('onboarding.stepOf', { step: paso, total: TOTAL_PASOS })}</p>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-border">
               <div
                 className="h-full rounded-full bg-accent transition-all"
@@ -180,12 +187,12 @@ export function OnboardingPage() {
           </div>
 
           {paso === 1 && (
-            <Paso titulo="Cuéntanos sobre ti" subtitulo="Así personalizamos tu experiencia en la academia.">
-              <Campo label="Nombre visible">
+            <Paso titulo={t('onboarding.step1Title')} subtitulo={t('onboarding.step1Subtitle')}>
+              <Campo label={t('onboarding.nameLabel')}>
                 <input value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="name" className="input" />
               </Campo>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Campo label="Fecha de nacimiento">
+                <Campo label={t('onboarding.birthDateLabel')}>
                   <input
                     type="date"
                     value={fechaNacimiento ?? ''}
@@ -194,17 +201,17 @@ export function OnboardingPage() {
                     className="input"
                   />
                 </Campo>
-                <Campo label="Profesión">
+                <Campo label={t('onboarding.professionLabel')}>
                   <input
                     value={profesion}
-                    placeholder="Ej. Preparador físico"
+                    placeholder={t('onboarding.professionPlaceholder')}
                     onChange={(e) => setProfesion(e.target.value)}
                     className="input"
                   />
                 </Campo>
-                <Campo label="País">
+                <Campo label={t('onboarding.countryLabel')}>
                   <select value={pais} onChange={(e) => setPais(e.target.value)} className="input">
-                    <option value="">Selecciona un país</option>
+                    <option value="">{t('onboarding.countryPlaceholder')}</option>
                     {COUNTRIES.map((c) => (
                       <option key={c} value={c}>
                         {c}
@@ -212,10 +219,10 @@ export function OnboardingPage() {
                     ))}
                   </select>
                 </Campo>
-                <Campo label="Ciudad">
+                <Campo label={t('onboarding.cityLabel')}>
                   <input
                     value={ciudad}
-                    placeholder="Ej. Asunción"
+                    placeholder={t('onboarding.cityPlaceholder')}
                     onChange={(e) => setCiudad(e.target.value)}
                     className="input"
                   />
@@ -225,9 +232,9 @@ export function OnboardingPage() {
           )}
 
           {paso === 2 && (
-            <Paso titulo="Tu perfil deportivo" subtitulo="¿Cómo te describirías dentro del deporte?">
+            <Paso titulo={t('onboarding.step2Title')} subtitulo={t('onboarding.step2Subtitle')}>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {PERFILES_DEPORTIVOS.map((p) => (
+                {perfilesDeportivos.map((p) => (
                   <OpcionCard
                     key={p.value}
                     active={perfilDeportivo === p.value}
@@ -238,14 +245,14 @@ export function OnboardingPage() {
                   />
                 ))}
               </div>
-              <Campo label="¿Cuántos años llevas en el deporte?">
+              <Campo label={t('onboarding.yearsLabel')}>
                 <input
                   type="number"
                   min={0}
                   max={80}
                   value={aniosExperiencia}
                   onChange={(e) => setAniosExperiencia(e.target.value)}
-                  placeholder="Ej. 5"
+                  placeholder={t('onboarding.yearsPlaceholder')}
                   className="input"
                 />
               </Campo>
@@ -253,15 +260,15 @@ export function OnboardingPage() {
           )}
 
           {paso === 3 && (
-            <Paso titulo="Preferencias de aprendizaje" subtitulo="Para recomendarte los cursos más relevantes.">
+            <Paso titulo={t('onboarding.step3Title')} subtitulo={t('onboarding.step3Subtitle')}>
               <div>
                 <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-                  Escuelas de interés
+                  {t('onboarding.schoolsLabel')}
                 </span>
                 {schools === null ? (
-                  <p className="text-sm text-ink-muted">Cargando escuelas…</p>
+                  <p className="text-sm text-ink-muted">{t('onboarding.schoolsLoading')}</p>
                 ) : schools.length === 0 ? (
-                  <p className="text-sm text-ink-muted">Aún no hay escuelas disponibles.</p>
+                  <p className="text-sm text-ink-muted">{t('onboarding.schoolsEmpty')}</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {schools.map((s) => {
@@ -288,10 +295,10 @@ export function OnboardingPage() {
               </div>
               <div>
                 <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-                  Modalidad preferida
+                  {t('onboarding.modalityLabel')}
                 </span>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {MODALIDADES.map((m) => (
+                  {modalidades.map((m) => (
                     <OpcionCard
                       key={m.value}
                       active={modalidad === m.value}
@@ -302,10 +309,10 @@ export function OnboardingPage() {
                   ))}
                 </div>
               </div>
-              <Campo label="Disponibilidad para estudiar">
+              <Campo label={t('onboarding.availabilityLabel')}>
                 <select value={disponibilidad} onChange={(e) => setDisponibilidad(e.target.value)} className="input">
-                  <option value="">Selecciona una opción</option>
-                  {DISPONIBILIDADES.map((d) => (
+                  <option value="">{t('onboarding.availabilityPlaceholder')}</option>
+                  {disponibilidades.map((d) => (
                     <option key={d.value} value={d.value}>
                       {d.label}
                     </option>
@@ -316,13 +323,13 @@ export function OnboardingPage() {
           )}
 
           {paso === 4 && (
-            <Paso titulo="Intereses y redes" subtitulo="Opcional — puedes completarlo después desde tu perfil.">
-              <Campo label="Intereses">
-                <TagInput value={intereses} onChange={setIntereses} placeholder="Ej. Fútbol, nutrición… (Enter para añadir)" />
+            <Paso titulo={t('onboarding.step4Title')} subtitulo={t('onboarding.step4Subtitle')}>
+              <Campo label={t('onboarding.interestsLabel')}>
+                <TagInput value={intereses} onChange={setIntereses} placeholder={t('onboarding.interestsPlaceholder')} />
               </Campo>
               <div>
                 <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-                  Redes sociales
+                  {t('onboarding.socialLabel')}
                 </span>
                 <RedesSocialesFields value={redes} onChange={setRedes} />
               </div>
@@ -343,7 +350,7 @@ export function OnboardingPage() {
                 disabled={saving}
                 className="h-12 rounded-xl border border-surface-border px-5 text-sm font-semibold text-ink-soft transition-colors hover:bg-surface disabled:opacity-50"
               >
-                Atrás
+                {t('onboarding.back')}
               </button>
             )}
             <button
@@ -352,7 +359,7 @@ export function OnboardingPage() {
               disabled={saving}
               className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark disabled:opacity-60 sm:flex-none sm:px-8"
             >
-              {saving ? 'Guardando…' : paso === TOTAL_PASOS ? 'Finalizar' : 'Siguiente'}
+              {saving ? t('onboarding.saving') : paso === TOTAL_PASOS ? t('onboarding.finish') : t('onboarding.next')}
               {!saving && <Icon name="arrowRight" size={17} />}
             </button>
           </div>

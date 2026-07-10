@@ -268,7 +268,7 @@ export function SubscriptionPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Qué incluye Pro</h2>
         <ul className="mt-4 flex flex-col gap-3 text-sm text-ink-soft">
           <li className="flex items-start gap-2.5">
-            <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" /> Catálogo completo de las 3 escuelas
+            <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" /> Catálogo completo de las 7 escuelas
           </li>
           <li className="flex items-start gap-2.5">
             <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" /> Certificado al completar cada curso
