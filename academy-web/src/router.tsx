@@ -25,6 +25,7 @@ import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { InstructorPage } from '@/pages/InstructorPage'
 import { BlogInstructorPage } from '@/pages/BlogInstructorPage'
 import { CourseContentPage } from '@/pages/CourseContentPage'
+import { CourseSettingsPage } from '@/pages/CourseSettingsPage'
 import { SubmissionsPage } from '@/pages/SubmissionsPage'
 import { CertificatesPage } from '@/pages/CertificatesPage'
 import { SimuladorIndexPage } from '@/pages/SimuladorIndexPage'
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
           { path: 'admin/usuarios', element: <AdminUsersPage /> },
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },
           { path: 'instructor/cursos/:courseId/entregas', element: <SubmissionsPage /> },
+          { path: 'instructor/cursos/:courseId/ajustes', element: <CourseSettingsPage /> },
           { path: 'perfil', element: <ProfilePage /> },
           { path: 'suscripcion', element: <SubscriptionPage /> },
         ],

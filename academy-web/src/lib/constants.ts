@@ -41,3 +41,29 @@ export const CATEGORIAS = [
   'preparación física',
   'metodología del entrenamiento',
 ] as const
+
+// Ejes de la formación CONMEBOL Evolución (academy.models: DISCIPLINA/LICENCIA/
+// MODALIDAD_CHOICES). Un curso "normal" (sin licencia) queda con disciplina
+// 'general', licencia '' y modalidad 'virtual' — son aditivos, no obligatorios.
+export const DISCIPLINAS = [
+  { id: 'general', label: 'General' },
+  { id: 'futbol', label: 'Fútbol' },
+  { id: 'futsal', label: 'Futsal' },
+  { id: 'futbol_playa', label: 'Fútbol Playa' },
+  { id: 'arqueros', label: 'Entrenadores de Arqueros' },
+  { id: 'preparacion_fisica', label: 'Preparación Física' },
+] as const
+
+export const LICENCIAS = [
+  { id: '', label: 'Sin licencia (curso/taller)' },
+  { id: 'C', label: 'Licencia C' },
+  { id: 'B', label: 'Licencia B' },
+  { id: 'A', label: 'Licencia A' },
+  { id: 'PRO', label: 'Licencia PRO' },
+] as const
+
+export const MODALIDADES = [
+  { id: 'presencial', label: 'Presencial' },
+  { id: 'virtual', label: 'Virtual' },
+  { id: 'semipresencial', label: 'Semipresencial (blended)' },
+] as const

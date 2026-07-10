@@ -77,11 +77,13 @@ export interface CreateCoursePayload {
   descripcion?: string
   categoria?: string
   nivel?: string
+  school?: number | null
   disciplina?: string
   licencia?: string
   modalidad?: string
   carga_horaria_h?: number
   acredita_renovacion?: boolean
+  portada?: string
   duracion_estimada_min?: number
   publicado?: boolean
 }
@@ -94,6 +96,10 @@ export async function createCourse(payload: CreateCoursePayload): Promise<Course
 export async function updateCourse(id: number, payload: Partial<CreateCoursePayload>): Promise<CourseDetail> {
   const res = await api.patch<CourseDetail>(`/academy/courses/${id}/`, payload)
   return res.data
+}
+
+export async function deleteCourse(id: number): Promise<void> {
+  await api.delete(`/academy/courses/${id}/`)
 }
 
 // ── Módulos (autor/admin) ────────────────────────────────────────────────────

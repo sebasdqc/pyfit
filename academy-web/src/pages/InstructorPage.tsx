@@ -2,9 +2,9 @@
 // y permite crear uno nuevo (POST /courses/). La edición fina del contenido
 // (módulos, lecciones, quizzes) se profundizará en próximas iteraciones.
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createCourse, listCourses } from '@/api/academy'
+import { createCourse, listCourses, listSchools } from '@/api/academy'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
@@ -13,11 +13,14 @@ import { Icon } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
 import { slugify } from '@/lib/slugify'
-import type { Course } from '@/types'
+import type { Course, School } from '@/types'
+
+const PORTADA_MAX_BYTES = 1_000_000 // ~1 MB de archivo (el data URL en base64 queda bajo el límite del backend, ~1.5 MB)
 
 export function InstructorPage() {
   const { user } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
+  const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
@@ -36,6 +39,7 @@ export function InstructorPage() {
 
   useEffect(() => {
     reload()
+    listSchools().then(setSchools).catch(() => {})
   }, [])
 
   if (!user?.puede_crear_cursos) {
@@ -108,18 +112,24 @@ export function InstructorPage() {
           {courses.map((c) => (
             <div key={c.id} className="flex flex-col gap-2">
               <CourseCard course={c} to={`/cursos/${c.id}`} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Link
                   to={`/instructor/cursos/${c.id}/contenido`}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
                 >
                   <Icon name="play" size={15} /> Videos
                 </Link>
                 <Link
                   to={`/instructor/cursos/${c.id}/entregas`}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
                 >
                   <Icon name="upload" size={15} /> Entregas
+                </Link>
+                <Link
+                  to={`/instructor/cursos/${c.id}/ajustes`}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                >
+                  <Icon name="tool" size={15} /> Ajustes
                 </Link>
               </div>
             </div>
@@ -127,12 +137,20 @@ export function InstructorPage() {
         </div>
       )}
 
-      {showCreate && <CreateCourseModal onClose={() => setShowCreate(false)} onCreated={reload} />}
+      {showCreate && (
+        <CreateCourseModal schools={schools} onClose={() => setShowCreate(false)} onCreated={reload} />
+      )}
     </div>
   )
 }
 
-function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateCourseModal({
+  schools, onClose, onCreated,
+}: {
+  schools: School[]
+  onClose: () => void
+  onCreated: () => void
+}) {
   const navigate = useNavigate()
   const [titulo, setTitulo] = useState('')
   const [slug, setSlug] = useState('')
@@ -140,11 +158,31 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [resumen, setResumen] = useState('')
   const [categoria, setCategoria] = useState<string>(CATEGORIAS[0])
   const [nivel, setNivel] = useState<string>(NIVELES[0].id)
+  const [schoolId, setSchoolId] = useState('')
+  const [portada, setPortada] = useState('')
   const [publicado, setPublicado] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const effectiveSlug = useMemo(() => (slugTouched ? slug : slugify(titulo)), [slug, slugTouched, titulo])
+
+  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('El archivo debe ser una imagen.')
+      return
+    }
+    if (file.size > PORTADA_MAX_BYTES) {
+      setError('La imagen es muy pesada (máx. 1 MB).')
+      return
+    }
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = () => setPortada(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -161,6 +199,8 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
         resumen: resumen.trim(),
         categoria,
         nivel,
+        school: schoolId ? Number(schoolId) : null,
+        portada,
         publicado,
       })
       onCreated()
@@ -235,6 +275,35 @@ function CreateCourseModal({ onClose, onCreated }: { onClose: () => void; onCrea
               </select>
             </Labeled>
           </div>
+
+          <Labeled label="Escuela (opcional)">
+            <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)} className="input">
+              <option value="">Sin escuela</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>{s.nombre}</option>
+              ))}
+            </select>
+          </Labeled>
+
+          <Labeled label="Portada (opcional)">
+            <div className="flex items-center gap-3">
+              {portada && (
+                <img src={portada} alt="" className="h-14 w-20 shrink-0 rounded-lg object-cover" />
+              )}
+              <div className="flex flex-1 flex-col gap-1.5">
+                <input type="file" accept="image/*" onChange={handleFile} className="text-sm text-ink-soft" />
+                {portada && (
+                  <button
+                    type="button"
+                    onClick={() => setPortada('')}
+                    className="w-fit text-xs font-medium text-danger hover:underline"
+                  >
+                    Quitar portada
+                  </button>
+                )}
+              </div>
+            </div>
+          </Labeled>
 
           <label className="flex items-center gap-2.5 text-sm text-ink-soft">
             <input
