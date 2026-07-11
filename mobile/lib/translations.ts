@@ -8,6 +8,9 @@
 export type Lang = 'es' | 'en' | 'pt' | 'fr'
 
 const translations = {
+  // ─── Intro ───────────────────────────────────────────────────────────────────
+  intro_tagline:               { es: 'El futuro del entrenamiento\nes ahora.', en: 'The future of training\nis now.', pt: 'O futuro do treinamento\né agora.', fr: "L'avenir de l'entraînement\nc'est maintenant." },
+
   // ─── Login ───────────────────────────────────────────────────────────────────
   login_tagline:              { es: 'Entrenamiento adaptativo con IA',    en: 'Adaptive AI training',               pt: 'Treinamento adaptativo com IA',       fr: 'Entraînement adaptatif avec IA' },
   login_tab_signin:           { es: 'Iniciar sesión',                     en: 'Sign in',                            pt: 'Entrar',                              fr: 'Se connecter' },
@@ -27,7 +30,10 @@ const translations = {
   login_error_generic:        { es: 'Ocurrió un error. Intenta de nuevo.', en: 'An error occurred. Try again.',    pt: 'Ocorreu um erro. Tente novamente.',    fr: 'Une erreur est survenue. Réessayez.' },
   login_google_unavailable:   { es: 'Inicio con Google no disponible ahora mismo.', en: 'Google sign-in is unavailable right now.', pt: 'Login com Google indisponível no momento.', fr: 'La connexion Google est indisponible.' },
   login_google_error:         { es: 'No se pudo iniciar sesión con Google. Intenta de nuevo.', en: 'Could not sign in with Google. Try again.', pt: 'Não foi possível entrar com Google. Tente novamente.', fr: 'Impossible de se connecter avec Google. Réessayez.' },
+  login_apple_unavailable:    { es: 'Inicio con Apple no disponible en este dispositivo.', en: 'Apple sign-in is unavailable on this device.', pt: 'Login com Apple indisponível neste dispositivo.', fr: "La connexion Apple n'est pas disponible sur cet appareil." },
+  login_apple_error:          { es: 'No se pudo iniciar sesión con Apple. Intenta de nuevo.', en: 'Could not sign in with Apple. Try again.', pt: 'Não foi possível entrar com Apple. Tente novamente.', fr: 'Impossible de se connecter avec Apple. Réessayez.' },
   login_lang_label:           { es: 'ES',                                 en: 'EN',                                 pt: 'PT',                                  fr: 'FR' },
+  login_lang_a11y:            { es: 'Cambiar idioma',                    en: 'Change language',                    pt: 'Mudar idioma',                        fr: "Changer de langue" },
   login_coach_portal:         { es: 'PORTAL ENTRENADOR',                  en: 'COACH PORTAL',                       pt: 'PORTAL DO TREINADOR',                 fr: 'PORTAIL ENTRAÎNEUR' },
 
   // ─── Forgot Password ─────────────────────────────────────────────────────────
@@ -237,6 +243,10 @@ const translations = {
   generate_coach_guided:      { es: 'Guiado por',                        en: 'Guided by',                           pt: 'Guiado por',                          fr: 'Guidé par' },
   generate_coach_paused_title:{ es: 'Tu coach gestiona tu plan',         en: 'Your coach manages your plan',        pt: 'Seu coach gerencia seu plano',        fr: 'Votre coach gère votre plan' },
   generate_coach_paused_body: { es: 'La generación con IA está en pausa por indicación de tu coach', en: 'AI generation is paused by your coach', pt: 'A geração com IA está em pausa por indicação do seu coach', fr: "La génération par IA est en pause sur indication de votre coach" },
+  generate_regen_limit_title: { es: 'Límite de sustituciones alcanzado', en: 'Substitution limit reached', pt: 'Limite de substituições atingido', fr: 'Limite de substitutions atteinte' },
+  generate_regen_limit_msg:   { es: 'Ya sustituiste este ejercicio 2 veces hoy. Puedes ajustar duración/intensidad de toda la sesión, o descartarla y volver a generar.', en: "You've already substituted this exercise twice today. You can adjust the whole session's duration/intensity, or discard it and generate again.", pt: 'Você já substituiu este exercício 2 vezes hoje. Pode ajustar duração/intensidade de toda a sessão, ou descartá-la e gerar novamente.', fr: "Vous avez déjà substitué cet exercice 2 fois aujourd'hui. Vous pouvez ajuster la durée/intensité de toute la séance, ou la supprimer et regénérer." },
+  generate_remaining_today:   { es: '{n} de {limit} generaciones disponibles hoy', en: '{n} of {limit} generations available today', pt: '{n} de {limit} gerações disponíveis hoje', fr: "{n} sur {limit} générations disponibles aujourd'hui" },
+  generate_remaining_last:    { es: 'Última generación disponible hoy', en: 'Last generation available today', pt: 'Última geração disponível hoje', fr: "Dernière génération disponible aujourd'hui" },
 
   // ─── Ejecutar ────────────────────────────────────────────────────────────────
   ejecutar_loading:           { es: 'Cargando sesión...',               en: 'Loading session...',                   pt: 'Carregando sessão...',                fr: 'Chargement de la séance...' },
@@ -246,9 +256,11 @@ const translations = {
   ejecutar_exit_msg:          { es: '¿Seguro que quieres salir? El progreso se perderá.', en: 'Are you sure you want to exit? Progress will be lost.', pt: 'Tem certeza que quer sair? O progresso será perdido.', fr: 'Êtes-vous sûr de vouloir quitter ? La progression sera perdue.' },
   ejecutar_exit_continue:     { es: 'Continuar',                        en: 'Continue',                             pt: 'Continuar',                           fr: 'Continuer' },
   ejecutar_exit_confirm:      { es: 'Salir',                             en: 'Exit',                                pt: 'Sair',                                fr: 'Quitter' },
+  ejecutar_exit_confirm_no_streak: { es: 'Salir sin feedback (no suma racha)', en: 'Exit without feedback (won\'t count toward streak)', pt: 'Sair sem feedback (não conta para a sequência)', fr: 'Quitter sans feedback (ne compte pas pour la série)' },
   ejecutar_nav_prev:          { es: 'ANT',                               en: 'PREV',                                pt: 'ANT',                                 fr: 'PRÉC' },
   ejecutar_nav_exit:          { es: 'SALIR',                             en: 'EXIT',                                pt: 'SAIR',                                fr: 'QUITTER' },
   ejecutar_tech_note:         { es: 'NOTA TÉCNICA',                      en: 'TECHNICAL NOTE',                     pt: 'NOTA TÉCNICA',                        fr: 'NOTE TECHNIQUE' },
+  ejecutar_ultima_vez:        { es: 'Última vez:',                       en: 'Last time:',                         pt: 'Última vez:',                         fr: 'Dernière fois :' },
   ejecutar_demo_show:         { es: 'Ver instrucciones ▾',               en: 'View instructions ▾',                pt: 'Ver instruções ▾',                    fr: 'Voir les instructions ▾' },
   ejecutar_demo_hide:         { es: 'Ocultar demo ▴',                    en: 'Hide demo ▴',                        pt: 'Ocultar demo ▴',                      fr: 'Masquer la démo ▴' },
   ejecutar_no_demo:           { es: 'Sin demo disponible',               en: 'No demo available',                   pt: 'Sem demo disponível',                 fr: 'Aucune démo disponible' },
@@ -307,10 +319,11 @@ const translations = {
   feedback_next_session:      { es: 'TU PRÓXIMA SESIÓN',                 en: 'YOUR NEXT SESSION',                   pt: 'SUA PRÓXIMA SESSÃO',                  fr: 'VOTRE PROCHAINE SÉANCE' },
   feedback_share_btn:         { es: '↗ Compartir mi sesión',             en: '↗ Share my session',                  pt: '↗ Compartilhar minha sessão',         fr: '↗ Partager ma séance' },
   feedback_done_btn:          { es: '✓ Listo',                           en: '✓ Done',                              pt: '✓ Pronto',                            fr: '✓ Terminé' },
-  feedback_skip_title:        { es: 'Saltar feedback',                   en: 'Skip feedback',                       pt: 'Pular feedback',                      fr: 'Passer le feedback' },
-  feedback_skip_msg:          { es: 'El feedback ayuda a mejorar tu próximo entrenamiento.', en: 'Feedback helps improve your next workout.', pt: 'O feedback ajuda a melhorar seu próximo treino.', fr: 'Le feedback aide à améliorer votre prochain entraînement.' },
-  feedback_skip_cancel:       { es: 'Cancelar',                          en: 'Cancel',                              pt: 'Cancelar',                            fr: 'Annuler' },
-  feedback_skip_confirm:      { es: 'Saltar',                            en: 'Skip',                                pt: 'Pular',                               fr: 'Passer' },
+  feedback_skip_title:        { es: '¿Saltar feedback?',                 en: 'Skip feedback?',                      pt: 'Pular feedback?',                     fr: 'Passer le feedback ?' },
+  feedback_skip_msg:          { es: 'Si sales sin completarlo, hoy NO contará para tu racha ni tu calendario de entrenamiento.', en: "If you leave without completing it, today WON'T count toward your streak or training calendar.", pt: 'Se sair sem concluir, hoje NÃO contará para sua sequência nem seu calendário de treino.', fr: "Si vous partez sans le remplir, aujourd'hui NE comptera PAS pour votre série ni votre calendrier d'entraînement." },
+  feedback_skip_cancel:       { es: 'Completar feedback',                en: 'Complete feedback',                   pt: 'Concluir feedback',                   fr: 'Compléter le feedback' },
+  feedback_skip_confirm:      { es: 'Saltar de todos modos',             en: 'Skip anyway',                         pt: 'Pular mesmo assim',                   fr: 'Passer quand même' },
+  run_feedback_skip_msg:      { es: 'Si sales sin completarlo, no quedará registrado el feedback de esta carrera.', en: "If you leave without completing it, this run's feedback won't be recorded.", pt: 'Se sair sem concluir, o feedback desta corrida não será registrado.', fr: "Si vous partez sans le remplir, le feedback de cette course ne sera pas enregistré." },
   feedback_save_error_title:  { es: 'No pudimos guardar tu feedback',     en: 'We couldn\'t save your feedback',    pt: 'Não conseguimos salvar seu feedback',  fr: 'Nous n\'avons pas pu sauvegarder votre feedback' },
   feedback_save_error_msg:    { es: 'Hubo un problema al conectar con el servidor.', en: 'There was a problem connecting to the server.', pt: 'Houve um problema ao conectar com o servidor.', fr: 'Il y a eu un problème de connexion au serveur.' },
   feedback_retry:             { es: 'Reintentar',                        en: 'Retry',                               pt: 'Tentar novamente',                    fr: 'Réessayer' },
@@ -480,15 +493,17 @@ const translations = {
 
   // ─── Coach / Chat ─────────────────────────────────────────────────────────────
   chat_online:                { es: '● En línea',                        en: '● Online',                            pt: '● Online',                            fr: '● En ligne' },
+  chat_ai_badge:               { es: 'Asistente con IA — no es tu coach humano', en: 'AI assistant — not your human coach', pt: 'Assistente com IA — não é seu coach humano', fr: "Assistant IA — pas votre coach humain" },
   chat_placeholder:           { es: 'Escribe algo...',                   en: 'Type something...',                   pt: 'Digite algo...',                      fr: 'Écrivez quelque chose...' },
   chat_initial_msg:           { es: 'Hola, soy tu Coach y tomo en cuenta tu historial, tus hábitos y tus preferencias. Pregunta lo que quieras.',
                                 en: 'Hi, I\'m your Coach. I take into account your history, habits and preferences. Ask me anything.',
                                 pt: 'Olá, sou seu Coach e levo em conta seu histórico, hábitos e preferências. Pergunte o que quiser.',
                                 fr: 'Bonjour, je suis votre Coach. Je prends en compte votre historique, vos habitudes et vos préférences. Posez-moi n\'importe quelle question.' },
-  chat_error_msg:             { es: 'Lo siento, no puedo responder ahora. Inténtalo de nuevo.',
-                                en: 'Sorry, I can\'t respond right now. Try again.',
-                                pt: 'Desculpe, não consigo responder agora. Tente novamente.',
-                                fr: 'Désolé, je ne peux pas répondre maintenant. Réessayez.' },
+  chat_error_msg:             { es: 'Lo siento, no puedo responder ahora.',
+                                en: 'Sorry, I can\'t respond right now.',
+                                pt: 'Desculpe, não consigo responder agora.',
+                                fr: 'Désolé, je ne peux pas répondre maintenant.' },
+  chat_error_retry:           { es: 'Reintentar',                        en: 'Retry',                                pt: 'Tentar novamente',                    fr: 'Réessayer' },
   chat_insight_label:         { es: 'INSIGHT DEL DÍA',                  en: 'DAILY INSIGHT',                       pt: 'INSIGHT DO DIA',                      fr: 'INSIGHT DU JOUR' },
   chat_recs_label:            { es: 'RECOMENDACIONES',                   en: 'RECOMMENDATIONS',                     pt: 'RECOMENDAÇÕES',                       fr: 'RECOMMANDATIONS' },
   chat_explore_label:         { es: 'EXPLORA CON TU COACH',              en: 'EXPLORE WITH YOUR COACH',             pt: 'EXPLORE COM SEU COACH',               fr: 'EXPLOREZ AVEC VOTRE COACH' },

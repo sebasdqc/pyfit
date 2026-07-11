@@ -120,6 +120,28 @@ class StatsDashboardScoreTests(TestCase):
         self.assertTrue(response.data['zyfit_score']['has_data'])
         self.assertEqual(response.data['zyfit_score']['valor'], 65)
 
+    def test_incluye_desglose_de_componentes(self):
+        # El widget del home mostraba 3 barras que nunca recibían datos reales
+        # (TODO histórico) — ahora expone el mismo desglose que /api/stats/zyfit-score/.
+        ScoreSnapshot.objects.create(
+            user=self.user, fecha_corte=date.today(),
+            nivel_p1=72.0, score_final=72.0, momentum=3.5,
+            componentes_json={
+                'consistencia': {'valor': 80.0, 'peso_aplicado': 0.3, 'activo': True},
+                'rendimiento': {'valor': None, 'peso_aplicado': None, 'activo': False},
+                'adherencia': {'valor': 65.0, 'peso_aplicado': 0.2, 'activo': True},
+                'recuperacion': {'valor': None, 'peso_aplicado': None, 'activo': False},
+                'recencia': {'valor': 100.0, 'peso_aplicado': 0.1, 'activo': True},
+            },
+            estado_cold_start={'stage': 'provisional', 'dias_historial': 15},
+        )
+        response = self.client.get('/api/stats/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        componentes = response.data['zyfit_score']['componentes']
+        self.assertEqual(componentes['consistencia']['valor'], 80.0)
+        self.assertTrue(componentes['consistencia']['activo'])
+        self.assertFalse(componentes['rendimiento']['activo'])
+
 
 class StatsZyfitScoreEndpointTests(TestCase):
     """El círculo de Estadísticas (reemplaza al Radar) consume este endpoint."""

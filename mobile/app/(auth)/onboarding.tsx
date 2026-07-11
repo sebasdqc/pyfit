@@ -774,17 +774,37 @@ export default function OnboardingScreen() {
     setError('')
   }
 
-  // Retroceder desde el primer paso = abandonar el registro. La cuenta ya existe
-  // (se crea al registrarse, antes del onboarding), así que confirmamos y, si
-  // acepta, la borramos para no dejar un perfil incompleto en la base de datos.
+  // Retroceder desde el primer paso ya no borra la cuenta por defecto — antes
+  // lo hacía siempre, y era demasiado agresivo para alguien que solo quería
+  // salir un momento. Ahora se puede salir dejando la cuenta pendiente de
+  // completar (se retoma el onboarding en el próximo login) o, si de verdad
+  // quiere irse sin dejar rastro, eliminarla por completo.
   function confirmCancelRegistration() {
     if (cancelling) return
     Alert.alert(
-      '¿Seguro que quieres cancelar tu registro?',
-      'Se eliminará tu cuenta y los datos que hayas introducido hasta ahora. Esta acción no se puede deshacer.',
+      'Registro sin completar',
+      'Puedes salir ahora y continuar más tarde — tu cuenta quedará pendiente de completar — o eliminarla por completo si no quieres seguir.',
       [
-        { text: 'No, seguir', style: 'cancel' },
-        { text: 'Sí, cancelar', style: 'destructive', onPress: cancelRegistration },
+        { text: 'Seguir aquí', style: 'cancel' },
+        { text: 'Salir por ahora', onPress: exitKeepingAccount },
+        { text: 'Eliminar mi cuenta', style: 'destructive', onPress: confirmDeleteAccount },
+      ],
+    )
+  }
+
+  async function exitKeepingAccount() {
+    await clearTokens()
+    await clearUser()
+    router.replace('/(auth)/login')
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(
+      '¿Eliminar tu cuenta?',
+      'Se borrará tu cuenta y los datos que hayas introducido hasta ahora. Esta acción no se puede deshacer.',
+      [
+        { text: 'No, mantenerla', style: 'cancel' },
+        { text: 'Sí, eliminar', style: 'destructive', onPress: cancelRegistration },
       ],
     )
   }
@@ -801,7 +821,7 @@ export default function OnboardingScreen() {
       setCancelling(false)
       Alert.alert(
         'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a hola@pyfit.app para que la eliminemos manualmente.',
+        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a hola@zyfit.app para que la eliminemos manualmente.',
         [
           {
             text: 'Salir de todas formas',
@@ -2059,7 +2079,7 @@ export default function OnboardingScreen() {
             </View>
           </View>
           <Text style={styles.betaBetaDesc}>
-            Estás entre los primeros en usar PyFit. Tu uso y feedback construyen
+            Estás entre los primeros en usar Zyfit. Tu uso y feedback construyen
             la versión final. Gracias por confiar desde el principio.
           </Text>
         </View>

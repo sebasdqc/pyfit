@@ -36,11 +36,18 @@ export interface UseRunTrackingReturn {
   totalElevationGain:  number   // metros acumulados de subida
   backgroundActive:    boolean  // true cuando el background GPS está corriendo
   error:               string | null
+  // true si, tras reintentar, no se pudo sincronizar el final de la carrera con
+  // el backend (puntos GPS finales y/o marca de fin) — la sesión igual se
+  // detiene localmente (no podemos retener el GPS indefinidamente), pero la
+  // pantalla debe avisarle al usuario en vez de festejar como si nada.
+  stopSyncFailed:      boolean
   startRun:  (isTrail?: boolean) => Promise<void>
   pauseRun:  () => Promise<void>
   resumeRun: () => Promise<void>
   stopRun:   () => Promise<void>
 }
+
+function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +61,7 @@ export function useRunTracking(): UseRunTrackingReturn {
   const [totalElevationGain,  setTotalElevationGain]  = useState(0)
   const [backgroundActive,    setBackgroundActive]    = useState(false)
   const [error,               setError]               = useState<string | null>(null)
+  const [stopSyncFailed,      setStopSyncFailed]      = useState(false)
 
   // Refs para intervals y datos acumulados
   const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -201,6 +209,7 @@ export function useRunTracking(): UseRunTrackingReturn {
     if (startingRef.current) return   // guard doble-tap: evita crear 2 RunSession
     startingRef.current = true
     setError(null)
+    setStopSyncFailed(false)
     try {
       // Permiso de foreground (mínimo necesario)
       const { status: perm } = await Location.requestForegroundPermissionsAsync()
@@ -282,22 +291,31 @@ export function useRunTracking(): UseRunTrackingReturn {
     const sid     = sessionIdRef.current
     const endedAt = new Date().toISOString()
 
-    try {
-      // Drenar cola final por si quedaron puntos en background
-      await drainQueue()
-      if (pendingPointsRef.current.length > 0) {
-        await sendRunPoints(sid, [...pendingPointsRef.current])
-        pendingPointsRef.current = []
+    // Hasta 3 intentos (con espera breve) antes de darnos por vencidos — una
+    // sola red caída momentánea no debe perder los puntos finales ni la marca
+    // de fin de la carrera.
+    let synced = false
+    for (let attempt = 1; attempt <= 3 && !synced; attempt++) {
+      try {
+        if (attempt > 1) await sleep(1500)
+        await drainQueue()
+        if (pendingPointsRef.current.length > 0) {
+          await sendRunPoints(sid, [...pendingPointsRef.current])
+          pendingPointsRef.current = []
+        }
+        await completeRunSession(sid, endedAt)
+        synced = true
+      } catch {
+        // Reintentar; si es el último intento, se refleja abajo.
       }
-      await completeRunSession(sid, endedAt)
-    } catch {
-      // Error de red — sesión parada localmente
-    } finally {
-      // Navegar al resumen DESPUÉS de completar (el efecto de la pantalla reacciona
-      // a 'completed'), para que el backend ya tenga las métricas al hacer el GET.
-      statusRef.current = 'completed'
-      setStatus('completed')
     }
+    setStopSyncFailed(!synced)
+    // Navegar al resumen DESPUÉS de completar (el efecto de la pantalla reacciona
+    // a 'completed'), para que el backend ya tenga las métricas al hacer el GET
+    // (si el sync falló igual navegamos: no podemos retener el GPS indefinidamente,
+    // pero la pantalla avisa con stopSyncFailed en vez de festejar en silencio).
+    statusRef.current = 'completed'
+    setStatus('completed')
   }, [clearAll, drainQueue])
 
   return {
@@ -310,6 +328,7 @@ export function useRunTracking(): UseRunTrackingReturn {
     totalElevationGain,
     backgroundActive,
     error,
+    stopSyncFailed,
     startRun,
     pauseRun,
     resumeRun,

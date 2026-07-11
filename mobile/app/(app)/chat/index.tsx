@@ -21,6 +21,8 @@ interface Message {
   role: 'coach' | 'user'
   text: string
   ts: Date
+  isError?: boolean      // fallo de red/IA — se muestra distinto de una respuesta real
+  retryText?: string     // texto original del usuario a reenviar si isError
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -156,27 +158,49 @@ function TypingDots({ color }: { color: string }) {
 
 // ─── Bubble ───────────────────────────────────────────────────────────────────
 
-function Bubble({ msg, colors, coachInitial = 'C' }: { msg: Message; colors: any; coachInitial?: string }) {
+function Bubble({ msg, colors, coachInitial = 'C', onRetry }: {
+  msg: Message
+  colors: any
+  coachInitial?: string
+  onRetry?: () => void
+}) {
+  const { t } = useTranslation()
   const isCoach = msg.role === 'coach'
+  const isError = !!msg.isError
   return (
     <View style={[chatStyles.bubbleRow, isCoach ? chatStyles.bubbleRowCoach : chatStyles.bubbleRowUser]}>
       {isCoach && (
-        <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
-          <Text style={chatStyles.coachAvatarTxt}>{coachInitial}</Text>
+        <View style={[
+          chatStyles.coachAvatar,
+          isError
+            ? { backgroundColor: 'transparent', borderColor: colors.red + '70' }
+            : { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' },
+        ]}>
+          <Text style={[chatStyles.coachAvatarTxt, isError && { color: colors.red }]}>{isError ? '!' : coachInitial}</Text>
         </View>
       )}
       <View style={[
         chatStyles.bubble,
-        isCoach
-          ? { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }
-          : { backgroundColor: colors.accent, borderColor: colors.accent, borderBottomRightRadius: 4 },
+        isError
+          ? { backgroundColor: colors.red + '12', borderColor: colors.red + '40', borderStyle: 'dashed', borderBottomLeftRadius: 4 }
+          : isCoach
+            ? { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }
+            : { backgroundColor: colors.accent, borderColor: colors.accent, borderBottomRightRadius: 4 },
       ]}>
-        <Text style={[chatStyles.bubbleTxt, { color: isCoach ? colors.inkPrimary : '#fff' }]}>
+        <Text style={[chatStyles.bubbleTxt, { color: isError ? colors.red : isCoach ? colors.inkPrimary : '#fff' }]}>
           {msg.text}
         </Text>
-        <Text style={[chatStyles.bubbleTs, { color: isCoach ? colors.inkFaint : 'rgba(255,255,255,0.5)' }]}>
-          {formatTs(msg.ts)}
-        </Text>
+        {isError && onRetry ? (
+          <TouchableOpacity onPress={onRetry} activeOpacity={0.7} style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+            <Text style={[chatStyles.bubbleTs, { color: colors.red, textDecorationLine: 'underline', fontSize: 11 }]}>
+              {t('chat_error_retry')}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={[chatStyles.bubbleTs, { color: isCoach ? colors.inkFaint : 'rgba(255,255,255,0.5)' }]}>
+            {formatTs(msg.ts)}
+          </Text>
+        )}
       </View>
     </View>
   )
@@ -184,25 +208,27 @@ function Bubble({ msg, colors, coachInitial = 'C' }: { msg: Message; colors: any
 
 // ─── Chat Modal ───────────────────────────────────────────────────────────────
 
-function ChatModal({ visible, onClose, colors, insets, initialContext, coachNombre }: {
+function ChatModal({ visible, onClose, colors, insets, initialContext, coachNombre, messages, setMessages }: {
   visible: boolean
   onClose: () => void
   colors: any
   insets: any
   initialContext?: string
   coachNombre?: string
+  messages: Message[]
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>
 }) {
   const { lang, t } = useTranslation()
-  const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
+  const lastOpenedContextRef = useRef<string | undefined>(undefined)
   const avatarInitial = (coachNombre || 'Coach')[0].toUpperCase()
 
   function buildHistorial(msgs: Message[]) {
     return msgs
-      .filter(m => m.id !== 'coach-0')
+      .filter(m => m.id !== 'coach-0' && !m.isError)
       .map(m => ({ role: m.role, text: m.text }))
   }
 
@@ -221,20 +247,33 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
         ts: new Date(),
       }])
     } catch {
+      // Se distingue visualmente de una respuesta real (Bubble con isError) y
+      // ofrece reintentar el mismo mensaje, en vez de fingir ser el coach.
       setMessages(prev => [...prev, {
         id: `c-err-${Date.now()}`,
         role: 'coach',
         text: t('chat_error_msg'),
         ts: new Date(),
+        isError: true,
+        retryText: texto,
       }])
     } finally {
       setIsTyping(false)
     }
   }
 
+  function retryFailedMessage(retryText: string) {
+    sendToAPI(retryText, messages)
+  }
+
+  // Solo arranca una conversación nueva la PRIMERA vez que se abre en esta
+  // sesión de la pantalla (o si cambia el contexto inicial) — reabrir el modal
+  // ya no borra el historial de la conversación en curso.
   useEffect(() => {
     if (!visible) return
     setInputText('')
+    if (messages.length > 0 && lastOpenedContextRef.current === initialContext) return
+    lastOpenedContextRef.current = initialContext
     const msg0: Message = { id: 'coach-0', role: 'coach', text: t('chat_initial_msg'), ts: new Date() }
     if (initialContext) {
       const userMsg: Message = { id: 'u-ctx-0', role: 'user', text: initialContext, ts: new Date() }
@@ -278,7 +317,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
               <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>
                 {coachNombre || 'Coach'}
               </Text>
-              <Text style={[chatStyles.chatSubtitle, { color: colors.green }]}>{t('chat_online')}</Text>
+              <Text style={[chatStyles.chatSubtitle, { color: colors.inkFaint }]}>{t('chat_ai_badge')}</Text>
             </View>
           </View>
           <View style={{ width: 36 }} />
@@ -296,7 +335,15 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {messages.map(msg => <Bubble key={msg.id} msg={msg} colors={colors} coachInitial={avatarInitial} />)}
+            {messages.map(msg => (
+              <Bubble
+                key={msg.id}
+                msg={msg}
+                colors={colors}
+                coachInitial={avatarInitial}
+                onRetry={msg.isError && msg.retryText ? () => retryFailedMessage(msg.retryText!) : undefined}
+              />
+            ))}
             {isTyping && (
               <View style={[chatStyles.bubbleRow, chatStyles.bubbleRowCoach]}>
                 <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
@@ -451,6 +498,9 @@ export default function CoachScreen() {
   const [activeIdx, setActiveIdx] = useState(0)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatContext, setChatContext] = useState<string | undefined>(undefined)
+  // Se mantiene en el padre (no dentro del modal) para que cerrar y reabrir el
+  // chat en la misma sesión de la app no borre la conversación en curso.
+  const [chatMessages, setChatMessages] = useState<Message[]>([])
 
   const [recs, setRecs] = useState<RecData[]>([])
   const [detecciones, setDetecciones] = useState<DetecData[]>([])
@@ -657,6 +707,8 @@ export default function CoachScreen() {
         insets={insets}
         initialContext={chatContext}
         coachNombre={coachNombre}
+        messages={chatMessages}
+        setMessages={setChatMessages}
       />
     </View>
   )

@@ -216,6 +216,8 @@ REST_FRAMEWORK = {
         'register': '5/hour',
         'password_reset': '5/hour',
         'confirm_reset': '10/hour',    # brute-force guard: 6-digit PIN has 1M combos
+        'verify_email': '10/hour',     # brute-force guard del PIN de verificación de email
+        'resend_verification': '5/hour',  # evita flooding de emails de verificación
         'generate_session': '10/hour',
         'regenerar_ejercicio': '20/hour',
         'ajustar_sesion': '15/hour',   # cost guard: each call hits Groq API
@@ -360,6 +362,12 @@ ACADEMY_PAYMENT_WEBHOOK_SECRET = os.environ.get('ACADEMY_PAYMENT_WEBHOOK_SECRET'
 GOOGLE_OAUTH_CLIENT_IDS = [
     c.strip() for c in os.environ.get('GOOGLE_OAUTH_CLIENT_IDS', '').split(',') if c.strip()
 ]
+
+# ─── Apple Sign-In ────────────────────────────────────────────────────────────
+# Audiencia esperada del identity_token: el bundle ID de la app iOS
+# (mobile/app.json → ios.bundleIdentifier). No requiere secreto — la firma se
+# verifica contra el JWKS público de Apple (ver users/views.py:_verify_apple_identity_token).
+APPLE_SIGNIN_BUNDLE_ID = os.environ.get('APPLE_SIGNIN_BUNDLE_ID', 'app.pyfit.mobile')
 
 # ─── Garmin Connect OAuth 2.0 ─────────────────────────────────────────────────
 GARMIN_CLIENT_ID     = os.environ.get('GARMIN_CLIENT_ID', '')

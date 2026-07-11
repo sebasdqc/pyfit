@@ -1,11 +1,13 @@
 """Endpoints de solicitudes de suscripción con código de descuento de
 influencer — Zyfit Pro y Zyfit Academy Pro (`producto`).
 
-    POST /api/promos/validar/           previsualiza el descuento de un código (sin crear nada)
-    POST /api/promos/solicitudes/       crea (o devuelve la ya pendiente) la solicitud del usuario
-    GET  /api/promos/solicitudes/mias/  solicitud más reciente del usuario autenticado
+    POST /api/promos/validar/               previsualiza el descuento de un código (sin crear nada)
+    POST /api/promos/solicitudes/           crea (o devuelve la ya pendiente) la solicitud del usuario
+    GET  /api/promos/solicitudes/mias/      solicitud más reciente del usuario autenticado
+    POST /api/promos/gestion-suscripcion/   pide cancelar o cambiar de plan (usuario ya Pro)
+    GET  /api/payments/history/             pagos confirmados del usuario (solicitudes ya cobradas)
 
-Los tres reciben/filtran por `producto` ('zyfit_pro' | 'academy_pro'), con
+Los primeros tres reciben/filtran por `producto` ('zyfit_pro' | 'academy_pro'), con
 default 'zyfit_pro' para no romper al cliente mobile existente (que no lo
 envía todavía). Sin cobrador conectado todavía: no existe un endpoint que
 active un producto por sí solo, eso solo ocurre al confirmar la solicitud
@@ -19,7 +21,7 @@ from rest_framework.response import Response
 
 from pyfit.throttles import PromoCodeValidateRateThrottle
 
-from .models import PRODUCTO_ZYFIT_PRO, CodigoPromocional, SolicitudSuscripcion
+from .models import PRODUCTO_ZYFIT_PRO, CodigoPromocional, SolicitudGestionSuscripcion, SolicitudSuscripcion
 from .payments import PRECIOS, CodigoInvalidoError, calcular_precio
 
 
@@ -121,3 +123,69 @@ def mi_solicitud(request):
     if not solicitud:
         return Response(None)
     return Response(_solicitud_payload(solicitud))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def crear_solicitud_gestion(request):
+    """Cancelar o cambiar de plan — el usuario debe ya ser Pro del `producto`
+    dado. No cambia `Profile.plan` de inmediato (ver docstring del modelo):
+    solo dispara el pedido para que el staff lo aplique manualmente."""
+    producto = request.data.get('producto') or PRODUCTO_ZYFIT_PRO
+    tipo = request.data.get('tipo')
+    if tipo not in (SolicitudGestionSuscripcion.TIPO_CANCELAR, SolicitudGestionSuscripcion.TIPO_CAMBIAR_PLAN):
+        return Response({'detail': 'tipo inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile = request.user.profile
+    if profile.plan != 'pro':
+        return Response({'detail': 'No tienes una suscripción Pro activa.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    plan_tipo_deseado = ''
+    if tipo == SolicitudGestionSuscripcion.TIPO_CAMBIAR_PLAN:
+        plan_tipo_deseado = request.data.get('plan_tipo_deseado', '')
+        if producto not in PRECIOS or plan_tipo_deseado not in PRECIOS[producto]:
+            return Response({'detail': 'plan_tipo_deseado inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    pendiente = SolicitudGestionSuscripcion.objects.filter(
+        user=request.user, producto=producto, tipo=tipo,
+        estado=SolicitudGestionSuscripcion.ESTADO_PENDIENTE,
+    ).first()
+    if pendiente:
+        return Response(_gestion_payload(pendiente))
+
+    solicitud = SolicitudGestionSuscripcion.objects.create(
+        user=request.user, producto=producto, tipo=tipo, plan_tipo_deseado=plan_tipo_deseado,
+    )
+    return Response(_gestion_payload(solicitud), status=status.HTTP_201_CREATED)
+
+
+def _gestion_payload(solicitud):
+    return {
+        'id': solicitud.id,
+        'tipo': solicitud.tipo,
+        'plan_tipo_deseado': solicitud.plan_tipo_deseado,
+        'estado': solicitud.estado,
+        'created_at': solicitud.created_at.isoformat(),
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historial_pagos(request):
+    """Historial de pagos (Zyfit Pro, app móvil) = solicitudes de suscripción
+    ya CONFIRMADAS (cobradas manualmente por el staff) — no hay pasarela de
+    pago conectada todavía, así que no hay transacciones automáticas; esto es
+    lo más cercano a un historial real sin fabricar datos."""
+    solicitudes = SolicitudSuscripcion.objects.filter(
+        user=request.user, producto=PRODUCTO_ZYFIT_PRO, estado=SolicitudSuscripcion.ESTADO_CONFIRMADA,
+    ).order_by('-confirmada_at')
+    return Response([
+        {
+            'id': s.id,
+            'fecha': (s.confirmada_at.date() if s.confirmada_at else s.created_at.date()).isoformat(),
+            'concepto': f'Zyfit Pro · {s.get_plan_tipo_display()}',
+            'monto': str(s.precio_final),
+            'moneda': 'USD',
+        }
+        for s in solicitudes
+    ])

@@ -14,6 +14,7 @@ from workouts import exercise_views
 from ai_workout import views as ai_views
 from ai_workout import chat_views
 from devices.urls import garmin_urlpatterns, apple_health_urlpatterns
+from promos import views as promos_views
 
 
 def health(request):
@@ -62,17 +63,21 @@ urlpatterns = [
     path('api/auth/register/', user_views.register),
     path('api/auth/login/', user_views.login_view),
     path('api/auth/google/', user_views.google_login),
+    path('api/auth/apple/', user_views.apple_login),
     path('api/auth/coach/login/', user_views.coach_login_view),
     path('api/auth/refresh/', TokenRefreshView.as_view(throttle_classes=[RefreshRateThrottle])),
     path('api/auth/logout/', user_views.logout_view),
     path('api/auth/account/', user_views.delete_account),
     path('api/auth/reset-password/', user_views.reset_password),
     path('api/auth/confirm-reset/', user_views.confirm_reset),
+    path('api/auth/verify-email/', user_views.verify_email),
+    path('api/auth/resend-verification/', user_views.resend_verification_email),
 
     # Profile
     path('api/profile/', user_views.profile_view),
     path('api/profile/avatar/', user_views.upload_avatar),
     path('api/profile/push-token/', user_views.update_push_token),
+    path('api/payments/history/', promos_views.historial_pagos),
 
     # Locations
     path('api/locations/', user_views.locations_view),
@@ -93,6 +98,7 @@ urlpatterns = [
     path('api/sessions/assigned-today/', workout_views.session_assigned_today),
     path('api/sessions/', workout_views.session_list),
     path('api/sessions/<int:pk>/', workout_views.session_detail),
+    path('api/sessions/<int:pk>/carga-previa/', workout_views.session_carga_previa),
     path('api/sessions/<int:pk>/feedback/', workout_views.session_feedback),
     path('api/sessions/<int:pk>/resumen/', workout_views.session_resumen),
     path('api/sessions/<int:pk>/logro/', workout_views.session_logro),

@@ -28,6 +28,7 @@ import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
 import { captureException } from '../../../lib/sentry'
 import { useTranslation } from '../../../lib/i18n'
+import { useKeepAwake } from 'expo-keep-awake'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -566,6 +567,7 @@ function ProgressBar({ current, total, topOffset = 0 }: { current: number; total
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function EjecutarScreen() {
+  useKeepAwake() // la pantalla no debe apagarse durante el entrenamiento
   const { id } = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
   const { t } = useTranslation()
@@ -584,6 +586,10 @@ export default function EjecutarScreen() {
   // Nivel del usuario — define si la demo de cada ejercicio arranca desplegada.
   const [nivel, setNivel] = useState<string | null>(null)
   const [unitsWeight, setUnitsWeight] = useState<'kg' | 'lb'>('kg')
+  // Última carga real registrada por nombre de ejercicio (sesión anterior, no
+  // ésta) — el motor ya la calculaba para el prompt de IA pero nunca se
+  // mostraba en pantalla; responde "¿estoy levantando más que la última vez?".
+  const [cargaPrevia, setCargaPrevia] = useState<Record<string, { peso: number; reps: number | null }>>({})
 
   // Demo media
   const [currentDemo, setCurrentDemo] = useState<DemoMedia | null>(null)
@@ -639,6 +645,9 @@ export default function EjecutarScreen() {
       }
     }
     if (id) fetchSession()
+    if (id) {
+      apiGet(`/api/sessions/${id}/carga-previa/`).then(setCargaPrevia).catch(() => {})
+    }
 
     // Recuperar log persistido si la app fue matada a mitad de sesión, o si el
     // usuario salió y vuelve a "Continuar entrenamiento" desde el dashboard.
@@ -894,7 +903,7 @@ export default function EjecutarScreen() {
       })
     }
     botones.push({
-      text: t('ejecutar_exit_confirm'),
+      text: hayProgreso ? t('ejecutar_exit_confirm_no_streak') : t('ejecutar_exit_confirm'),
       style: 'destructive',
       onPress: () => {
         if (intervalRef.current) clearInterval(intervalRef.current)
@@ -1025,6 +1034,9 @@ export default function EjecutarScreen() {
           style={[styles.navBtn, currentIndex === 0 && styles.navBtnDisabled]}
           onPress={handleAnterior}
           disabled={currentIndex === 0}
+          accessibilityRole="button"
+          accessibilityLabel={t('ejecutar_nav_prev')}
+          accessibilityState={{ disabled: currentIndex === 0 }}
         >
           <Text style={[styles.navBtnText, currentIndex === 0 && { color: colors.inkMuted }]}>
             ← {t('ejecutar_nav_prev')}
@@ -1040,7 +1052,12 @@ export default function EjecutarScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.navBtn} onPress={handleSalir}>
+        <TouchableOpacity
+          style={styles.navBtn}
+          onPress={handleSalir}
+          accessibilityRole="button"
+          accessibilityLabel={t('ejecutar_nav_exit')}
+        >
           <Text style={[styles.navBtnText, { color: colors.red }]}>{t('ejecutar_nav_exit')}</Text>
         </TouchableOpacity>
       </View>
@@ -1055,6 +1072,14 @@ export default function EjecutarScreen() {
           <View style={styles.ejercicioContainer}>
             {/* Exercise name — large and centered */}
             <Text style={styles.ejercicioNombre}>{currentEj.nombre}</Text>
+
+            {/* Última carga real registrada (sesión anterior) */}
+            {cargaPrevia[currentEj.nombre] ? (
+              <Text style={styles.ultimaVezText}>
+                {t('ejecutar_ultima_vez')} {cargaPrevia[currentEj.nombre].peso}{unitsWeight}
+                {cargaPrevia[currentEj.nombre].reps != null ? ` × ${cargaPrevia[currentEj.nombre].reps} reps` : ''}
+              </Text>
+            ) : null}
 
             {/* Demo media */}
             <MediaCard
@@ -1128,6 +1153,8 @@ export default function EjecutarScreen() {
               <TouchableOpacity
                 style={[styles.completarBtn, { backgroundColor: faseStyle.color }]}
                 onPress={completarSerie}
+                accessibilityRole="button"
+                accessibilityLabel="Lista la serie"
               >
                 <Text style={styles.completarBtnText}>LISTA LA SERIE</Text>
               </TouchableOpacity>
@@ -1382,6 +1409,14 @@ function makeStyles(c: Colors) {
       letterSpacing: -0.8,
       lineHeight: 38,
       textAlign: 'center',
+    },
+    ultimaVezText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 11,
+      color: c.inkMuted,
+      letterSpacing: 0.2,
+      textAlign: 'center',
+      marginTop: -6,
     },
     serieXofXWrap: {
       alignItems: 'center',

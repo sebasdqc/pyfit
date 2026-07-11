@@ -61,6 +61,7 @@ class UserLocationSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
+    email_verificado = serializers.BooleanField(source='user.email_verificado', read_only=True)
     edad = serializers.IntegerField(read_only=True)
     nivel_label = serializers.CharField(read_only=True)
     locations = UserLocationSerializer(source='user.locations', many=True, read_only=True)
@@ -72,7 +73,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'id', 'email', 'nombre', 'usuario', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label', 'nivel_experiencia',
+            'id', 'email', 'email_verificado', 'nombre', 'usuario', 'objetivo', 'objetivos_multiples', 'nivel', 'nivel_label', 'nivel_experiencia',
             'lesiones', 'experiencia_deportiva', 'estilo_entrenamiento',
             'fecha_nacimiento', 'edad', 'peso', 'altura', 'sexo', 'pais',
             'dias_semana', 'dias_fijos', 'horario_preferido', 'nivel_estres', 'tipo_trabajo',
@@ -92,7 +93,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         # Plan se modifica vía endpoints dedicados de suscripción (próximas iteraciones),
         # nunca por PUT directo al perfil — evita que el cliente se autopromocione.
         read_only_fields = [
-            'id', 'email', 'edad', 'nivel_label',
+            'id', 'email', 'email_verificado', 'edad', 'nivel_label',
             'racha_actual', 'mejor_racha', 'puntos_totales', 'logros',
             'plan', 'plan_tipo', 'plan_renovacion',
             'goal_changed_at', 'previous_goal',

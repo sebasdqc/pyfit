@@ -92,3 +92,10 @@ def activar(producto: str, user, plan_tipo: str):
     if producto == PRODUCTO_ACADEMY_PRO:
         return activar_academy_pro(user, plan_tipo)
     return activar_pro(user, plan_tipo)
+
+
+def cambiar_plan_pro(user, plan_tipo: str):
+    """Aplica un cambio de plan_tipo ya vigente (el usuario ya es Pro) —
+    misma renovación que activar_pro, para una `SolicitudGestionSuscripcion`
+    de tipo cambiar_plan que el staff decide aplicar ahora."""
+    return activar_pro(user, plan_tipo)

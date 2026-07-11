@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react'
 import {
-  BackHandler, Modal, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Alert, BackHandler, Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line, Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { apiPost } from '../../../lib/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -113,7 +114,8 @@ export default function CancelarScreen() {
   const planRenovacion = params.plan_renovacion || null
 
   const [paso, setPaso]             = useState<1 | 2>(1)
-  const [proxVisible, setProxVisible] = useState(false)
+  const [confirmVisible, setConfirmVisible] = useState(false)
+  const [enviando, setEnviando]     = useState(false)
 
   const fechaFin   = formatFechaLarga(planRenovacion)
   const accesoHasta = fechaFin
@@ -123,6 +125,22 @@ export default function CancelarScreen() {
   function handleBack() {
     if (paso === 1) router.back()
     else setPaso(1)
+  }
+
+  async function handleConfirmarCancelacion() {
+    if (enviando) return
+    setEnviando(true)
+    try {
+      await apiPost('/api/promos/gestion-suscripcion/', { tipo: 'cancelar' })
+      setConfirmVisible(true)
+    } catch (e: any) {
+      Alert.alert(
+        'No pudimos registrar tu solicitud',
+        e?.message || 'Hubo un problema de conexión. Intenta de nuevo.',
+      )
+    } finally {
+      setEnviando(false)
+    }
   }
 
   // Back de hardware (Android): en el paso 2 vuelve al paso 1 en vez de salir.
@@ -256,11 +274,17 @@ export default function CancelarScreen() {
 
             {/* Botón cancelar — danger */}
             <TouchableOpacity
-              style={styles.ctaDangerBtn}
-              onPress={() => setProxVisible(true)}
+              style={[styles.ctaDangerBtn, enviando && { opacity: 0.6 }]}
+              onPress={handleConfirmarCancelacion}
               activeOpacity={0.85}
+              disabled={enviando}
+              accessibilityRole="button"
+              accessibilityLabel="Sí, cancelar"
+              accessibilityState={{ disabled: enviando, busy: enviando }}
             >
-              <Text style={styles.ctaDangerText}>Sí, cancelar</Text>
+              {enviando
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.ctaDangerText}>Sí, cancelar</Text>}
             </TouchableOpacity>
 
             {/* Botón volver */}
@@ -275,17 +299,21 @@ export default function CancelarScreen() {
         )}
       </ScrollView>
 
-      {/* Modal próximamente */}
-      <Modal visible={proxVisible} transparent animationType="fade" statusBarTranslucent>
-        <Pressable style={styles.modalOverlay} onPress={() => setProxVisible(false)}>
+      {/* Modal de confirmación — solicitud real registrada */}
+      <Modal visible={confirmVisible} transparent animationType="fade" statusBarTranslucent>
+        <Pressable style={styles.modalOverlay} onPress={() => {}}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalEmoji}>🚀</Text>
-            <Text style={styles.modalTitle}>Próximamente</Text>
+            <Text style={styles.modalEmoji}>✓</Text>
+            <Text style={styles.modalTitle}>Solicitud recibida</Text>
             <Text style={styles.modalBody}>
-              Los pagos estarán disponibles muy pronto. Te avisaremos en cuanto puedas gestionar tu suscripción desde la app.
+              Nuestro equipo procesará tu cancelación. {accesoHasta} No se te cobrará de nuevo — si necesitas algo antes, escríbenos desde Ayuda.
             </Text>
-            <TouchableOpacity style={styles.modalBtn} onPress={() => setProxVisible(false)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => { setConfirmVisible(false); router.back() }}
+              activeOpacity={0.8}
+            >
               <Text style={styles.modalBtnText}>Entendido</Text>
             </TouchableOpacity>
           </Pressable>

@@ -362,6 +362,19 @@ function EjercicioRow({
   onSustituir?: () => void
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
+
+  function handlePress() {
+    if (canRegen) {
+      onSustituir?.()
+      return
+    }
+    Alert.alert(
+      t('generate_regen_limit_title') || 'Límite de sustituciones alcanzado',
+      t('generate_regen_limit_msg') || 'Ya sustituiste este ejercicio 2 veces hoy. Puedes ajustar duración/intensidad de toda la sesión, o descartarla y volver a generar.',
+    )
+  }
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
       {/* Left: name + modified badge */}
@@ -396,8 +409,7 @@ function EjercicioRow({
             borderColor: canRegen ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
             alignItems: 'center', justifyContent: 'center',
           }}
-          onPress={canRegen ? onSustituir : undefined}
-          disabled={!canRegen}
+          onPress={handlePress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, lineHeight: 20, color: canRegen ? '#fff' : 'rgba(255,255,255,0.2)' }}>↻</Text>
@@ -1182,6 +1194,8 @@ export default function GenerateScreen() {
   const [modifiedKeys,   setModifiedKeys]   = useState<Set<string>>(new Set())
   const [regenCount,     setRegenCount]     = useState<Record<string, number>>({})
   const [ajusteVisible,  setAjusteVisible]  = useState(false)
+  const [genRestantes,   setGenRestantes]   = useState<number | null>(null)
+  const [genLimite,      setGenLimite]      = useState<number | null>(null)
   const [coachNombre,    setCoachNombre]    = useState<string | null>(null)
   // Persiste el estado expand/collapse de cada fase entre desmontajes (ej. rotación, vuelta atrás)
   const faseExpandedRef = useRef<Record<string, boolean>>({})
@@ -1232,6 +1246,14 @@ export default function GenerateScreen() {
       if (!mountedRef.current) return   // se salió de la pantalla mientras generaba
       setSesionId(String(data.sesion_id))
       setSesion(data.sesion)
+      // Cuántas generaciones quedan hoy tras esta — informativo, no bloqueante.
+      apiGet('/api/sessions/today/')
+        .then((r: any) => {
+          if (!mountedRef.current) return
+          if (typeof r?.generaciones_restantes === 'number') setGenRestantes(r.generaciones_restantes)
+          if (typeof r?.generaciones_limite === 'number') setGenLimite(r.generaciones_limite)
+        })
+        .catch(() => {})
     } catch (err: any) {
       if (!mountedRef.current) return
       if (err?.code === 'daily_limit' || err?.status === 429) {
@@ -1448,6 +1470,13 @@ export default function GenerateScreen() {
               <Text style={styles.headerEyebrow}>TU ENTRENAMIENTO DE HOY</Text>
               <Text style={styles.sessionTitle}>{sesion.titulo}</Text>
               <Text style={styles.sessionMeta}>{formatDateES(lang)} · {sesion.duracion_total} {t('generate_mins_label')}</Text>
+              {genRestantes !== null && genLimite !== null ? (
+                <Text style={[styles.sessionMeta, genRestantes <= 1 ? { color: '#ffaa32' } : null]}>
+                  {genRestantes <= 1
+                    ? t('generate_remaining_last')
+                    : t('generate_remaining_today').replace('{n}', String(genRestantes)).replace('{limit}', String(genLimite))}
+                </Text>
+              ) : null}
               {coachNombre ? (
                 <View style={styles.coachBadge}>
                   <Text style={styles.coachBadgeIcon}>🧑‍🏫</Text>

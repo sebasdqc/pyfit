@@ -10,12 +10,14 @@ from django.contrib.messages.middleware import MessageMiddleware
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
 from academy.models import AcademySubscription
-from promos.admin import SolicitudSuscripcionAdmin
+from promos.admin import SolicitudGestionSuscripcionAdmin, SolicitudSuscripcionAdmin
 from promos.models import (
-    PRODUCTO_ACADEMY_PRO, PRODUCTO_ZYFIT_PRO, CodigoPromocional, Influencer, SolicitudSuscripcion,
+    PRODUCTO_ACADEMY_PRO, PRODUCTO_ZYFIT_PRO, CodigoPromocional, Influencer,
+    SolicitudGestionSuscripcion, SolicitudSuscripcion,
 )
 from promos.payments import CodigoInvalidoError, calcular_precio
 from users.models import Profile
@@ -344,3 +346,136 @@ class ConfirmarSolicitudAcademyProAdminActionTests(TestCase):
         # No debe haber tocado Zyfit Pro.
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.plan, 'starter')
+
+
+def make_pro_user(email='pro@example.com', plan_tipo='mensual'):
+    user = make_user(email)
+    user.profile.plan = 'pro'
+    user.profile.plan_tipo = plan_tipo
+    user.profile.plan_renovacion = date.today() + timedelta(days=20)
+    user.profile.save(update_fields=['plan', 'plan_tipo', 'plan_renovacion'])
+    return user
+
+
+class CrearSolicitudGestionEndpointTests(APITestCase):
+    URL = '/api/promos/gestion-suscripcion/'
+
+    def setUp(self):
+        self.user = make_pro_user()
+        self.client.force_authenticate(self.user)
+
+    def test_no_pro_user_cannot_request_cancelacion(self):
+        starter = make_user('starter@example.com')
+        self.client.force_authenticate(starter)
+        res = self.client.post(self.URL, {'tipo': 'cancelar'})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(SolicitudGestionSuscripcion.objects.count(), 0)
+
+    def test_cancelar_creates_pending_request(self):
+        res = self.client.post(self.URL, {'tipo': 'cancelar'})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['tipo'], 'cancelar')
+        self.assertEqual(res.data['estado'], SolicitudGestionSuscripcion.ESTADO_PENDIENTE)
+        # No cambia el plan de inmediato — el usuario mantiene acceso Pro.
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.plan, 'pro')
+
+    def test_cambiar_plan_requires_valid_plan_tipo_deseado(self):
+        res = self.client.post(self.URL, {'tipo': 'cambiar_plan', 'plan_tipo_deseado': 'quincenal'})
+        self.assertEqual(res.status_code, 400)
+
+    def test_cambiar_plan_creates_pending_request(self):
+        res = self.client.post(self.URL, {'tipo': 'cambiar_plan', 'plan_tipo_deseado': 'anual'})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['plan_tipo_deseado'], 'anual')
+        # Tampoco cambia de inmediato — se aplica "en el próximo ciclo" (staff decide cuándo).
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.plan_tipo, 'mensual')
+
+    def test_duplicate_pending_request_returns_the_existing_one(self):
+        r1 = self.client.post(self.URL, {'tipo': 'cancelar'})
+        r2 = self.client.post(self.URL, {'tipo': 'cancelar'})
+        self.assertEqual(r1.data['id'], r2.data['id'])
+        self.assertEqual(SolicitudGestionSuscripcion.objects.count(), 1)
+
+    def test_requires_auth(self):
+        self.client.force_authenticate(None)
+        res = self.client.post(self.URL, {'tipo': 'cancelar'})
+        self.assertEqual(res.status_code, 401)
+
+
+class MarcarProcesadaAdminActionTests(TestCase):
+    def setUp(self):
+        self.admin = SolicitudGestionSuscripcionAdmin(SolicitudGestionSuscripcion, None)
+        self.request = make_admin_request()
+
+    def test_procesar_cancelar_no_toca_el_plan(self):
+        user = make_pro_user()
+        solicitud = SolicitudGestionSuscripcion.objects.create(
+            user=user, tipo=SolicitudGestionSuscripcion.TIPO_CANCELAR,
+        )
+        self.admin.marcar_procesada(self.request, SolicitudGestionSuscripcion.objects.filter(pk=solicitud.pk))
+
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudGestionSuscripcion.ESTADO_PROCESADA)
+        self.assertIsNotNone(solicitud.procesada_at)
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.plan, 'pro')   # sigue Pro — la baja la maneja el staff aparte
+
+    def test_procesar_cambiar_plan_aplica_el_nuevo_plan_tipo(self):
+        user = make_pro_user(plan_tipo='mensual')
+        solicitud = SolicitudGestionSuscripcion.objects.create(
+            user=user, tipo=SolicitudGestionSuscripcion.TIPO_CAMBIAR_PLAN, plan_tipo_deseado='anual',
+        )
+        self.admin.marcar_procesada(self.request, SolicitudGestionSuscripcion.objects.filter(pk=solicitud.pk))
+
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudGestionSuscripcion.ESTADO_PROCESADA)
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.plan_tipo, 'anual')
+        self.assertEqual(user.profile.plan_renovacion, date.today() + timedelta(days=365))
+
+
+class HistorialPagosEndpointTests(APITestCase):
+    URL = '/api/payments/history/'
+
+    def setUp(self):
+        self.user = make_pro_user()
+        self.client.force_authenticate(self.user)
+
+    def test_only_confirmed_solicitudes_appear(self):
+        SolicitudSuscripcion.objects.create(
+            user=self.user, plan_tipo='mensual',
+            precio_lista=Decimal('9.99'), precio_final=Decimal('9.99'),
+            estado=SolicitudSuscripcion.ESTADO_PENDIENTE,
+        )
+        confirmada = SolicitudSuscripcion.objects.create(
+            user=self.user, plan_tipo='anual',
+            precio_lista=Decimal('79.99'), precio_final=Decimal('63.99'),
+            estado=SolicitudSuscripcion.ESTADO_CONFIRMADA, confirmada_at=timezone.now(),
+        )
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['id'], confirmada.id)
+        self.assertEqual(res.data[0]['monto'], '63.99')
+        self.assertEqual(res.data[0]['moneda'], 'USD')
+
+    def test_academy_pro_purchases_are_excluded(self):
+        SolicitudSuscripcion.objects.create(
+            user=self.user, producto=PRODUCTO_ACADEMY_PRO, plan_tipo='anual',
+            precio_lista=Decimal('150.00'), precio_final=Decimal('150.00'),
+            estado=SolicitudSuscripcion.ESTADO_CONFIRMADA, confirmada_at=timezone.now(),
+        )
+        res = self.client.get(self.URL)
+        self.assertEqual(res.data, [])
+
+    def test_empty_when_no_payments(self):
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, [])
+
+    def test_requires_auth(self):
+        self.client.force_authenticate(None)
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 401)

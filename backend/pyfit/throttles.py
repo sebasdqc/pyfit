@@ -24,6 +24,17 @@ class ConfirmResetRateThrottle(AnonRateThrottle):
     scope = 'confirm_reset'
 
 
+class VerifyEmailRateThrottle(UserRateThrottle):
+    """10 intentos por hora por usuario — mismo brute-force guard que
+    ConfirmResetRateThrottle, pero por cuenta (el usuario ya está autenticado)."""
+    scope = 'verify_email'
+
+
+class ResendVerificationRateThrottle(UserRateThrottle):
+    """5 reenvíos por hora por usuario — evita flooding de emails."""
+    scope = 'resend_verification'
+
+
 class GenerateSessionRateThrottle(UserRateThrottle):
     """10 generaciones por hora por usuario — protege el gasto en Groq API."""
     scope = 'generate_session'

@@ -8,8 +8,8 @@ from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from unfold.admin import ModelAdmin
 
-from .models import CodigoPromocional, Influencer, SolicitudSuscripcion
-from .payments import activar
+from .models import CodigoPromocional, Influencer, SolicitudGestionSuscripcion, SolicitudSuscripcion
+from .payments import activar, cambiar_plan_pro
 
 
 @admin.register(Influencer)
@@ -101,3 +101,36 @@ class SolicitudSuscripcionAdmin(ModelAdmin):
             comision_pagada=True, fecha_pago_comision=date.today(),
         )
         messages.success(request, f'{n} comisión(es) marcada(s) como pagada(s).')
+
+
+@admin.register(SolicitudGestionSuscripcion)
+class SolicitudGestionSuscripcionAdmin(ModelAdmin):
+    """Cola de trabajo del staff para cancelaciones/cambios de plan pedidos
+    desde la app. 'Cancelar' NO baja Profile.plan aquí — el usuario ya sabe
+    (por la UI) que mantiene acceso hasta plan_renovacion; el staff solo
+    necesita marcarlo procesado para no ofrecerle renovación. 'Cambiar de
+    plan' sí aplica el nuevo plan_tipo de inmediato al procesarla, porque el
+    staff decide el momento (equivalente a "el próximo ciclo" que promete la
+    UI, sin necesitar un cron de facturación)."""
+
+    list_display = ['user', 'producto', 'tipo', 'plan_tipo_deseado', 'estado', 'created_at']
+    list_filter = ['producto', 'tipo', 'estado']
+    search_fields = ['user__email']
+    autocomplete_fields = ['user']
+    readonly_fields = ['created_at', 'procesada_at']
+    actions = ['marcar_procesada']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user')
+
+    @admin.action(description='✓ Marcar como procesada (aplica cambio de plan si corresponde)')
+    def marcar_procesada(self, request, queryset):
+        n = 0
+        for solicitud in queryset.filter(estado=SolicitudGestionSuscripcion.ESTADO_PENDIENTE):
+            if solicitud.tipo == SolicitudGestionSuscripcion.TIPO_CAMBIAR_PLAN and solicitud.plan_tipo_deseado:
+                cambiar_plan_pro(solicitud.user, solicitud.plan_tipo_deseado)
+            solicitud.estado = SolicitudGestionSuscripcion.ESTADO_PROCESADA
+            solicitud.procesada_at = timezone.now()
+            solicitud.save(update_fields=['estado', 'procesada_at'])
+            n += 1
+        messages.success(request, f'{n} solicitud(es) procesada(s).')

@@ -328,12 +328,14 @@ export default function DispositivosScreen() {
           styles={styles}
         />
 
-        {/* Aviso si iOS pero HealthKit no disponible (simulador) */}
+        {/* La integración nativa con HealthKit todavía no está implementada
+            (ver lib/appleHealth.ts) — el aviso es honesto sobre el estado del
+            desarrollo, no sugiere un problema del dispositivo del usuario. */}
         {Platform.OS === 'ios' && !ahAvailable && !ahLoading && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              Apple Health no está disponible en este dispositivo o simulador.
-              Prueba en un iPhone físico con iOS 13+.
+              La integración con Apple Health está en desarrollo — todavía no
+              disponible en esta versión, independientemente de tu dispositivo.
             </Text>
           </View>
         )}

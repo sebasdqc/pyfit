@@ -721,7 +721,7 @@ export default function SuscripcionScreen() {
 
               <View style={styles.planActivoMetodo}>
                 <IconCreditCard color={colors.inkMuted} size={13} />
-                <Text style={styles.planActivoMetodoText}>•••• 4242</Text>
+                <Text style={styles.planActivoMetodoText}>Facturación gestionada manualmente por el equipo</Text>
               </View>
             </View>
 

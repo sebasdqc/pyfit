@@ -2,7 +2,8 @@
 Celery application para Zyfit.
 
 Configuración mínima: Redis como broker y backend de resultados.
-El beat schedule define los jobs periódicos (sync Garmin 6 AM UTC).
+El beat schedule define los jobs periódicos (sync Garmin 6 AM UTC,
+recordatorios push 19:00 UTC).
 """
 import os
 from celery import Celery
@@ -24,6 +25,11 @@ app.conf.beat_schedule = {
         'task':     'devices.tasks.sync_garmin_all',
         'schedule': crontab(hour=6, minute=0),  # 6:00 AM UTC todos los días
         'options':  {'expires': 3600},           # descarta si no se ejecutó en 1h
+    },
+    'send-daily-reminders': {
+        'task':     'workouts.tasks.send_daily_reminders',
+        'schedule': crontab(hour=19, minute=0),  # 19:00 UTC todos los días
+        'options':  {'expires': 3600},
     },
 }
 app.conf.timezone = 'UTC'

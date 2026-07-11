@@ -31,6 +31,7 @@ import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
 import { completePlannedRun, getRunSessionToday } from '../../../lib/runningApi'
+import { useKeepAwake } from 'expo-keep-awake'
 
 // Clave de consentimiento de la disclosure prominente de ubicación en segundo
 // plano. Google Play exige mostrar este aviso ANTES de solicitar el permiso
@@ -112,6 +113,7 @@ function mmss(s: number): string {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunScreen() {
+  useKeepAwake() // la pantalla no debe apagarse durante la carrera
   const insets = useSafeAreaInsets()
   const { colors, isDark } = useTheme()
   const {
@@ -124,6 +126,7 @@ export default function RunScreen() {
     totalElevationGain,
     backgroundActive,
     error,
+    stopSyncFailed,
     startRun,
     pauseRun,
     resumeRun,
@@ -258,6 +261,18 @@ export default function RunScreen() {
       Alert.alert('Error', error)
     }
   }, [error, status])
+
+  // Avisar si no se pudo sincronizar el final de la carrera (tras reintentar) —
+  // se navega al resumen igual, pero el usuario debe saber que algunos datos
+  // finales podrían faltar, en vez de festejar en silencio.
+  useEffect(() => {
+    if (status === 'completed' && stopSyncFailed) {
+      Alert.alert(
+        'No pudimos sincronizar el final de tu carrera',
+        'Tu carrera se detuvo, pero algunos datos finales podrían no haberse guardado por un problema de conexión.',
+      )
+    }
+  }, [status, stopSyncFailed])
 
   // Mostrar el aviso de ubicación automáticamente 1.5 s después de entrar a la
   // pantalla (solo en exterior y si el usuario no lo aceptó antes). Evita tener

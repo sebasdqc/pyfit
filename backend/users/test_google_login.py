@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import override_settings
 from rest_framework.test import APITestCase
 
@@ -25,6 +26,12 @@ def _idinfo(email='nuevo@example.com', name='Ana Pérez', verified=True, aud=WEB
 @override_settings(GOOGLE_OAUTH_CLIENT_IDS=[WEB_CLIENT_ID])
 class GoogleLoginTests(APITestCase):
     URL = '/api/auth/google/'
+
+    def setUp(self):
+        # LoginRateThrottle (10/min) es compartido con /api/auth/apple/ y keyed
+        # por IP — sin limpiar el cache, correr la suite completa de users
+        # acumula el conteo de otros test files y estos tests fallan con 429.
+        cache.clear()
 
     def test_missing_token_is_400(self):
         res = self.client.post(self.URL, {}, format='json')

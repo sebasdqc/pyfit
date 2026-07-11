@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react'
-import { View, Text, Animated, Easing, StyleSheet } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
+import { View, Text, Animated, Easing, StyleSheet, Modal, Pressable, TouchableOpacity } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { useTheme } from '../lib/theme'
 
@@ -47,6 +47,7 @@ const RING_CY = RING_SIZE / 2
 export default function ZyfitScoreCircle({ data }: { data: ZyfitScoreDetalle | null }) {
   const { colors } = useTheme()
   const styles = makeStyles(colors)
+  const [modalVisible, setModalVisible] = useState(false)
 
   const valor = data?.valor ?? null
   const hasData = data?.has_data ?? false
@@ -140,7 +141,41 @@ export default function ZyfitScoreCircle({ data }: { data: ZyfitScoreDetalle | n
             ))}
           </View>
         )}
+
+        <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.howBtn}>
+          <Text style={styles.howBtnText}>¿Cómo se calcula el Score? →</Text>
+        </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={e => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>¿Cómo se calcula el Zyfit Score?</Text>
+            <Text style={styles.modalBody}>
+              El <Text style={styles.modalBold}>Zyfit Score</Text> es una puntuación del 0 al 100 que combina tu nivel actual con tu tendencia (Momentum) de las últimas 4 semanas vs. las 4 anteriores.{'\n\n'}
+              <Text style={styles.modalBold}>📅 Consistencia (30%)</Text>{'\n'}
+              Sesiones entrenadas vs. las esperadas según tu objetivo semanal.{'\n\n'}
+              <Text style={styles.modalBold}>📈 Rendimiento (25%)</Text>{'\n'}
+              Progreso o mantenimiento de tu capacidad, adaptado a tu objetivo.{'\n\n'}
+              <Text style={styles.modalBold}>💪 Adherencia (20%)</Text>{'\n'}
+              Cumplimiento reportado en el feedback de tus sesiones.{'\n\n'}
+              <Text style={styles.modalBold}>🌙 Recuperación (15%)</Text>{'\n'}
+              Ánimo, sueño y estado físico de tus check-ins diarios.{'\n\n'}
+              <Text style={styles.modalBold}>⏱️ Recencia (10%)</Text>{'\n'}
+              Qué tan reciente fue tu última sesión.{'\n\n'}
+              Si te falta historial en algún factor, su peso se redistribuye entre los demás — por eso solo ves los factores activos. Se actualiza después de cada sesión con feedback.
+            </Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+              <Text style={styles.modalCloseText}>Entendido</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -307,6 +342,65 @@ function makeStyles(c: ReturnType<typeof useTheme>['colors']) {
     progressFill: {
       height: 3,
       borderRadius: 2,
+    },
+    howBtn: {
+      alignSelf: 'center',
+      paddingVertical: 2,
+      marginTop: 14,
+    },
+    howBtnText: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 11,
+      color: c.accent,
+      letterSpacing: 0.1,
+      textAlign: 'center',
+      textDecorationLine: 'underline',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.75)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    modalCard: {
+      backgroundColor: c.sheetBg,
+      borderWidth: 1,
+      borderColor: 'rgba(79,140,255,0.30)',
+      borderRadius: 24,
+      padding: 24,
+      width: '100%',
+      gap: 14,
+    },
+    modalTitle: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 18,
+      color: c.inkPrimary,
+      letterSpacing: -0.4,
+      lineHeight: 24,
+    },
+    modalBody: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 13,
+      color: c.inkSecondary,
+      lineHeight: 21,
+    },
+    modalBold: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-SemiBold',
+    },
+    modalCloseBtn: {
+      backgroundColor: c.accent,
+      borderRadius: 14,
+      paddingVertical: 13,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    modalCloseText: {
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 15,
+      color: '#ffffff',
+      letterSpacing: 0.2,
     },
     emptyCard: {
       alignItems: 'center',

@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react'
 import {
-  Modal, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { apiPost } from '../../../lib/api'
 
 // ─── Types & data ─────────────────────────────────────────────────────────────
 
@@ -155,10 +156,29 @@ export default function CambiarPlanScreen() {
   const planActual    = (plan_tipo || 'mensual') as PlanId
 
   const [planSeleccionado, setPlanSeleccionado] = useState<PlanId>(getDefaultSelection(planActual))
-  const [proxVisible, setProxVisible]           = useState(false)
+  const [confirmVisible, setConfirmVisible]     = useState(false)
+  const [enviando, setEnviando]                 = useState(false)
 
   const planInfo = PLANES.find(p => p.id === planSeleccionado)!
   const ctaText  = `Cambiar a ${planInfo.nombre} (USD ${planInfo.entero}.${planInfo.decimal})`
+
+  async function handleConfirmarCambio() {
+    if (enviando) return
+    setEnviando(true)
+    try {
+      await apiPost('/api/promos/gestion-suscripcion/', {
+        tipo: 'cambiar_plan', plan_tipo_deseado: planSeleccionado,
+      })
+      setConfirmVisible(true)
+    } catch (e: any) {
+      Alert.alert(
+        'No pudimos registrar tu solicitud',
+        e?.message || 'Hubo un problema de conexión. Intenta de nuevo.',
+      )
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   function getEstado(id: PlanId): 'current' | 'selected' | 'normal' {
     if (id === planActual)      return 'current'
@@ -217,16 +237,22 @@ export default function CambiarPlanScreen() {
 
         {/* CTA */}
         <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={() => setProxVisible(true)}
+          style={[styles.ctaBtn, enviando && { opacity: 0.6 }]}
+          onPress={handleConfirmarCambio}
           activeOpacity={0.85}
+          disabled={enviando}
+          accessibilityRole="button"
+          accessibilityLabel={ctaText}
+          accessibilityState={{ disabled: enviando, busy: enviando }}
         >
           <LinearGradient
             colors={[colors.accent, colors.accentDark]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={styles.ctaBtnGradient}
           >
-            <Text style={styles.ctaBtnText}>{ctaText}</Text>
+            {enviando
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.ctaBtnText}>{ctaText}</Text>}
           </LinearGradient>
         </TouchableOpacity>
 
@@ -235,17 +261,21 @@ export default function CambiarPlanScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal próximamente */}
-      <Modal visible={proxVisible} transparent animationType="fade" statusBarTranslucent>
-        <Pressable style={styles.modalOverlay} onPress={() => setProxVisible(false)}>
+      {/* Modal de confirmación — solicitud real registrada */}
+      <Modal visible={confirmVisible} transparent animationType="fade" statusBarTranslucent>
+        <Pressable style={styles.modalOverlay} onPress={() => {}}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalEmoji}>🚀</Text>
-            <Text style={styles.modalTitle}>Próximamente</Text>
+            <Text style={styles.modalEmoji}>✓</Text>
+            <Text style={styles.modalTitle}>Solicitud recibida</Text>
             <Text style={styles.modalBody}>
-              Los pagos estarán disponibles muy pronto. Te avisaremos en cuanto puedas gestionar tu suscripción desde la app.
+              Tu cambio a {planInfo.nombre} se aplicará en tu próximo ciclo de facturación. Nuestro equipo lo confirmará por email.
             </Text>
-            <TouchableOpacity style={styles.modalBtn} onPress={() => setProxVisible(false)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => { setConfirmVisible(false); router.back() }}
+              activeOpacity={0.8}
+            >
               <Text style={styles.modalBtnText}>Entendido</Text>
             </TouchableOpacity>
           </Pressable>

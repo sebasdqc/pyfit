@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import IsAuthenticated
 from pyfit.throttles import SessionResumenRateThrottle
 from rest_framework.response import Response
-from .models import Session, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle, SessionPhoto
+from .models import Session, SessionExercise, SessionFeedback, Competition, Exercise, UserExerciseProfile, UserAdaptationProfile, DailyCoachInsight, DailySaludo, TrainingDNA, CalendarEvent, TrainingCycle, SessionPhoto, DailyGenerationCount
 from .photo_service import create_session_photo, PhotoError
 
 
@@ -60,6 +60,46 @@ def session_detail(request, pk):
     return Response(SessionDetailSerializer(session).data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_carga_previa(request, pk):
+    """GET /api/sessions/<pk>/carga-previa/ — última carga real (peso×reps)
+    registrada por el usuario para cada ejercicio de ESTA sesión, en una
+    sesión anterior distinta. El motor ya calcula esto para el prompt de IA
+    (ver ai_workout/adaptive_engine.py::carga_previa) pero nunca se mostraba
+    durante la ejecución — "¿estoy levantando más que la última vez?" no tenía
+    respuesta en la app. Devuelve {nombre_ejercicio: {peso, reps}}.
+    """
+    try:
+        session = request.user.sessions.prefetch_related('exercises').get(pk=pk)
+    except Session.DoesNotExist:
+        return Response({'error': 'Sesión no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    nombres = list({ex.nombre for ex in session.exercises.all()})
+    if not nombres:
+        return Response({})
+
+    carga_previa: dict = {}
+    for row in (
+        SessionExercise.objects
+        .filter(session__user=request.user, nombre__in=nombres)
+        .exclude(session=session)
+        .exclude(series_log__isnull=True)
+        .order_by('nombre', '-session__fecha', '-id')
+        .values('nombre', 'series_log')
+    ):
+        nombre = row['nombre']
+        if nombre in carga_previa:
+            continue
+        sets = [s for s in (row['series_log'] or []) if isinstance(s, dict) and s.get('peso') not in (None, '')]
+        if not sets:
+            continue
+        last = sets[-1]
+        carga_previa[nombre] = {'peso': last.get('peso'), 'reps': last.get('reps')}
+
+    return Response(carga_previa)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def session_photos(request, pk):
@@ -99,11 +139,25 @@ def session_today(request):
     más reciente del día; el cliente la distingue de una previa por su id.
     """
     hoy = _get_local_date(request)
+    generation_count = DailyGenerationCount.objects.filter(user=request.user, fecha=hoy).first()
+    generaciones_restantes = max(0, DailyGenerationCount.DEFAULT_LIMIT - (generation_count.count if generation_count else 0))
+    generaciones_limite = DailyGenerationCount.DEFAULT_LIMIT
+
     s = request.user.sessions.filter(fecha=hoy).order_by('-created_at').first()
     ia = s.respuesta_ia if s else None
     if not s or not isinstance(ia, dict) or 'fases' not in ia:
-        return Response({'status': 'pending'})
-    return Response({'status': 'ready', 'sesion_id': s.id, 'sesion': ia})
+        return Response({
+            'status': 'pending',
+            'generaciones_restantes': generaciones_restantes,
+            'generaciones_limite': generaciones_limite,
+        })
+    return Response({
+        'status': 'ready',
+        'sesion_id': s.id,
+        'sesion': ia,
+        'generaciones_restantes': generaciones_restantes,
+        'generaciones_limite': generaciones_limite,
+    })
 
 
 @api_view(['GET'])
@@ -1506,6 +1560,7 @@ def stats_dashboard(request):
             'valor': zyfit_score_valor,
             'descripcion': zyfit_score_desc,
             'has_data': zyfit_score_has_data,
+            'componentes': _componentes_from_snapshot(ultimo_snapshot),
         },
     })
 
@@ -1513,6 +1568,19 @@ def stats_dashboard(request):
 def _leer_ultimo_score_snapshot(user):
     from scores.models import ScoreSnapshot
     return ScoreSnapshot.objects.filter(user=user).order_by('-created_at').first()
+
+
+def _componentes_from_snapshot(snapshot):
+    """Desglose por componente (consistencia/rendimiento/adherencia/recuperacion/
+    recencia) del snapshot cacheado — compartido entre stats_dashboard y
+    stats_zyfit_score para que ambas superficies muestren exactamente los
+    mismos 5 factores reales (ver scores/service.py::WEIGHTS)."""
+    if not snapshot or not snapshot.componentes_json:
+        return None
+    return {
+        k: {'valor': v.get('valor'), 'activo': bool(v.get('activo'))}
+        for k, v in snapshot.componentes_json.items()
+    }
 
 
 @api_view(['GET'])
@@ -1525,18 +1593,12 @@ def stats_zyfit_score(request):
     from scores.service import describe_snapshot
     snapshot = _leer_ultimo_score_snapshot(request.user)
     valor, descripcion, has_data = describe_snapshot(snapshot)
-    componentes = None
-    if snapshot and snapshot.componentes_json:
-        componentes = {
-            k: {'valor': v.get('valor'), 'activo': bool(v.get('activo'))}
-            for k, v in snapshot.componentes_json.items()
-        }
     return Response({
         'valor': valor,
         'descripcion': descripcion,
         'has_data': has_data,
         'momentum': snapshot.momentum if snapshot else None,
-        'componentes': componentes,
+        'componentes': _componentes_from_snapshot(snapshot),
     })
 
 

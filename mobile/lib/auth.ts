@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { apiPost } from './api'
 import { saveTokens, saveUser, clearTokens, clearUser, getUser, getRefreshToken, saveCoachSession } from './storage'
@@ -14,6 +15,18 @@ export async function register(email: string, password: string) {
   await saveTokens(data.access, data.refresh)
   await saveUser(data.user)
   return data.user
+}
+
+// ─── Verificación de email ────────────────────────────────────────────────────
+
+export async function resendVerificationEmail() {
+  return apiPost('/api/auth/resend-verification/', {})
+}
+
+export async function verifyEmail(code: string) {
+  await apiPost('/api/auth/verify-email/', { code })
+  const stored = await getUser()
+  if (stored) await saveUser({ ...stored, email_verificado: true })
 }
 
 // ─── Google Sign-In ───────────────────────────────────────────────────────────
@@ -75,6 +88,66 @@ export async function googleLogin(): Promise<GoogleLoginResult> {
     const code = e?.code
     if (statusCodes && code === statusCodes.SIGN_IN_CANCELLED) return { status: 'cancelled' }
     if (statusCodes && code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) return { status: 'unavailable' }
+    return { status: 'error' }
+  }
+}
+
+// ─── Apple Sign-In ────────────────────────────────────────────────────────────
+
+export type AppleLoginResult =
+  | { status: 'ok'; user: any }      // sesión iniciada (cuenta nueva o existente)
+  | { status: 'cancelled' }          // el usuario cerró la hoja de Apple
+  | { status: 'unavailable' }        // no es iOS 13+, o el módulo no está disponible
+  | { status: 'error' }              // red / token inválido / fallo inesperado
+
+/**
+ * Inicio de sesión con Apple usando la SDK nativa (expo-apple-authentication).
+ * Solo disponible en iOS (Apple no ofrece Sign in with Apple nativo en
+ * Android). Obtiene un `identityToken` firmado por Apple y lo canjea en el
+ * backend (`POST /api/auth/apple/`) por el mismo par JWT que el login normal.
+ *
+ * `fullName` solo llega la PRIMERA vez que el usuario autoriza la app — se
+ * envía al backend para poblar el nombre del perfil en ese momento; en logins
+ * posteriores Apple lo devuelve `null` y el backend ya tiene el Profile creado.
+ */
+export async function appleLogin(): Promise<AppleLoginResult> {
+  if (Platform.OS !== 'ios') return { status: 'unavailable' }
+
+  let AppleAuthentication: any
+  try {
+    AppleAuthentication = require('expo-apple-authentication')
+  } catch {
+    return { status: 'unavailable' }
+  }
+
+  try {
+    const available = await AppleAuthentication.isAvailableAsync()
+    if (!available) return { status: 'unavailable' }
+
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    })
+
+    const identityToken = credential?.identityToken
+    if (!identityToken) return { status: 'error' }
+
+    const fullName = credential?.fullName
+      ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(' ')
+      : null
+
+    const data = await apiPost('/api/auth/apple/', {
+      identity_token: identityToken,
+      full_name: fullName || undefined,
+    }, false)
+    await saveTokens(data.access, data.refresh)
+    await saveUser(data.user)
+    return { status: 'ok', user: data.user }
+  } catch (e: any) {
+    // ASAuthorizationError.Code.canceled === 1001
+    if (e?.code === 'ERR_REQUEST_CANCELED' || e?.code === '1001') return { status: 'cancelled' }
     return { status: 'error' }
   }
 }

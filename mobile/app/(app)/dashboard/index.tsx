@@ -171,9 +171,17 @@ interface ZyfitScoreData {
   valor: number | null
   descripcion: string | null
   has_data: boolean
-  // TODO: el backend debe exponer los factores en /api/stats/dashboard/
-  factores?: { consistencia: number; sueno: number; volumen: number }
+  componentes?: Record<string, { valor: number | null; activo: boolean }> | null
 }
+
+const ZS_COMPONENTE_LABELS: Record<string, string> = {
+  consistencia: 'Consistencia',
+  rendimiento: 'Rendimiento',
+  adherencia: 'Adherencia',
+  recuperacion: 'Recuperación',
+  recencia: 'Recencia',
+}
+const ZS_COMPONENTE_ORDEN = ['consistencia', 'rendimiento', 'adherencia', 'recuperacion', 'recencia']
 
 interface CheckinHoy {
   calidad_sueno: number | null
@@ -519,31 +527,29 @@ function ZyfitScoreCard({
       {/* ── Barras de factores — solo cuando hay datos ── */}
       {hasData && (
         <View style={styles.zsFactores}>
-          {([
-            { label: 'Consistencia', key: 'consistencia' as const },
-            { label: 'Sueño',        key: 'sueno'        as const },
-            { label: 'Volumen',      key: 'volumen'      as const },
-          ] as const).map(f => {
-            // TODO: conectar valores reales desde el backend cuando exponga factores individuales
-            const val = scoreData?.factores?.[f.key] ?? null
-            const barColor = val == null ? colors.borderBright
-              : val >= 70 ? colors.green
-              : val >= 40 ? colors.orange
-              : colors.red
-            return (
-              <View key={f.key} style={styles.zsFactorRow}>
-                <Text style={[styles.zsFactorLabel, { color: colors.inkMuted }]}>{f.label}</Text>
-                <View style={[styles.zsFactorBarBg, { backgroundColor: colors.borderDefault }]}>
-                  {val != null && (
-                    <View style={[styles.zsFactorBarFill, { width: `${val}%`, backgroundColor: barColor }]} />
-                  )}
+          {ZS_COMPONENTE_ORDEN
+            .map(key => ({ key, label: ZS_COMPONENTE_LABELS[key], c: scoreData?.componentes?.[key] }))
+            .filter((f): f is { key: string; label: string; c: { valor: number | null; activo: boolean } } => !!f.c?.activo)
+            .map(f => {
+              const val = f.c.valor != null ? Math.round(f.c.valor) : null
+              const barColor = val == null ? colors.borderBright
+                : val >= 70 ? colors.green
+                : val >= 40 ? colors.orange
+                : colors.red
+              return (
+                <View key={f.key} style={styles.zsFactorRow}>
+                  <Text style={[styles.zsFactorLabel, { color: colors.inkMuted }]}>{f.label}</Text>
+                  <View style={[styles.zsFactorBarBg, { backgroundColor: colors.borderDefault }]}>
+                    {val != null && (
+                      <View style={[styles.zsFactorBarFill, { width: `${val}%`, backgroundColor: barColor }]} />
+                    )}
+                  </View>
+                  <Text style={[styles.zsFactorPct, { color: val != null ? barColor : colors.inkFaint }]}>
+                    {val != null ? `${val}%` : '—'}
+                  </Text>
                 </View>
-                <Text style={[styles.zsFactorPct, { color: val != null ? barColor : colors.inkFaint }]}>
-                  {val != null ? `${val}%` : '—'}
-                </Text>
-              </View>
-            )
-          })}
+              )
+            })}
         </View>
       )}
 
@@ -1275,6 +1281,8 @@ function CTACard({
         style={styles.ctaBtnWrap}
         onPress={handlePress}
         activeOpacity={0.88}
+        accessibilityRole="button"
+        accessibilityLabel={btnLabel}
       >
         {cta.estado === 'C' ? (
           // Recuperación activa → naranja sólido
@@ -1671,6 +1679,8 @@ export default function DashboardScreen() {
               onPress={() => router.push('/(app)/perfil')}
               activeOpacity={0.8}
               style={styles.z1AvatarBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Perfil"
             >
               {data?.avatar ? (
                 <Image source={{ uri: data.avatar }} style={styles.z1AvatarImg} />

@@ -27,14 +27,14 @@ const PRINCIPIOS = [
   {
     id: 'fatiga',
     titulo: 'Fatiga acumulada',
-    texto: 'El entrenamiento intenso sin recuperación suficiente eleva los marcadores de fatiga sistémica. Entrenar con fatiga acumulada reduce la calidad del estímulo y aumenta el riesgo de lesión. PyFit calcula tu nivel de fatiga a partir de las sesiones de las últimas 72 horas.',
+    texto: 'El entrenamiento intenso sin recuperación suficiente eleva los marcadores de fatiga sistémica. Entrenar con fatiga acumulada reduce la calidad del estímulo y aumenta el riesgo de lesión. Zyfit calcula tu nivel de fatiga a partir de las sesiones de las últimas 72 horas.',
     fuente: 'Meeusen et al., 2013',
     color: '#ffaa32',
   },
   {
     id: 'cortisol',
     titulo: 'Cortisol y rendimiento',
-    texto: 'El estrés crónico eleva el cortisol, una hormona catabólica que interfiere con la síntesis proteica muscular y aumenta la percepción de esfuerzo. PyFit ajusta la intensidad objetivo según tu nivel de estrés y estado de ánimo reportados en el check-in diario.',
+    texto: 'El estrés crónico eleva el cortisol, una hormona catabólica que interfiere con la síntesis proteica muscular y aumenta la percepción de esfuerzo. Zyfit ajusta la intensidad objetivo según tu nivel de estrés y estado de ánimo reportados en el check-in diario.',
     fuente: 'Kraemer & Ratamess, 2005',
     color: '#ff4444',
   },
@@ -77,7 +77,7 @@ export default function CienciaScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>
-          PyFit basa sus decisiones en investigación publicada sobre ciencias del deporte, fisiología del ejercicio y psicología del rendimiento.
+          Zyfit basa sus decisiones en investigación publicada sobre ciencias del deporte, fisiología del ejercicio y psicología del rendimiento.
         </Text>
 
         {PRINCIPIOS.map((p, i) => (

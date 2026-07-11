@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, Linking, ActivityIndicator,
+  StyleSheet, Linking, ActivityIndicator, TextInput,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
@@ -13,7 +13,7 @@ import { useTranslation } from '../../../lib/i18n'
 import { useUnits, UnitSystem } from '../../../lib/units'
 import { apiGet, apiDelete } from '../../../lib/api'
 import { fetchMiCoachUnread } from '../../../lib/coachApi'
-import { logout } from '../../../lib/auth'
+import { logout, verifyEmail, resendVerificationEmail } from '../../../lib/auth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +22,7 @@ interface Profile {
   plan?: 'starter' | 'pro'
   plan_tipo?: 'mensual' | 'anual' | ''
   plan_renovacion?: string | null
+  email_verificado?: boolean
 }
 
 interface ProfileStats {
@@ -144,7 +145,7 @@ function Card({ children }: { children: React.ReactNode }) {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
-const DEFAULT: Profile = { nombre: '', plan: 'starter', plan_tipo: '', plan_renovacion: null }
+const DEFAULT: Profile = { nombre: '', plan: 'starter', plan_tipo: '', plan_renovacion: null, email_verificado: true }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -166,6 +167,14 @@ export default function AjustesScreen() {
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [showUnitsPicker, setShowUnitsPicker] = useState(false)
 
+  // Verificación de email
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false)
+  const [verifyCode, setVerifyCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [verifyError, setVerifyError] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
+
   const fetchAll = useCallback(async () => {
     try {
       const [profileRes, statsRes, unreadRes] = await Promise.allSettled([
@@ -175,7 +184,10 @@ export default function AjustesScreen() {
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
-        setProfile({ nombre: d.nombre || '', plan: d.plan, plan_tipo: d.plan_tipo, plan_renovacion: d.plan_renovacion })
+        setProfile({
+          nombre: d.nombre || '', plan: d.plan, plan_tipo: d.plan_tipo, plan_renovacion: d.plan_renovacion,
+          email_verificado: d.email_verificado ?? true,
+        })
       }
       if (statsRes.status === 'fulfilled') setProfileStats(statsRes.value)
       setCoachUnread(unreadRes.status === 'fulfilled' ? (unreadRes.value?.no_leidos ?? 0) : 0)
@@ -206,6 +218,43 @@ export default function AjustesScreen() {
     )
   }
 
+  function toggleVerifyEmail() {
+    setVerifyCode('')
+    setVerifyError('')
+    setResendSent(false)
+    setShowVerifyEmail(v => !v)
+  }
+
+  async function handleVerifyCode() {
+    const code = verifyCode.trim()
+    if (!code || verifying) return
+    setVerifying(true)
+    setVerifyError('')
+    try {
+      await verifyEmail(code)
+      setShowVerifyEmail(false)
+      setProfile(prev => ({ ...prev, email_verificado: true }))
+    } catch (e: any) {
+      setVerifyError(e?.message || 'Código inválido o expirado')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  async function handleResendCode() {
+    if (resending) return
+    setResending(true)
+    setVerifyError('')
+    try {
+      await resendVerificationEmail()
+      setResendSent(true)
+    } catch {
+      setVerifyError('No pudimos reenviar el código. Intenta de nuevo.')
+    } finally {
+      setResending(false)
+    }
+  }
+
   async function handleExportData() {
     if (exporting) return
     setExporting(true)
@@ -230,7 +279,7 @@ export default function AjustesScreen() {
       setDeleting(false)
       Alert.alert(
         'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@pyfit.app.',
+        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@zyfit.app.',
         [{ text: 'Entendido', style: 'cancel' }]
       )
     }
@@ -300,7 +349,22 @@ export default function AjustesScreen() {
                 <React.Fragment key={opt.id}>
                   {i > 0 && <Divider />}
                   <TouchableOpacity
-                    onPress={() => { setPalette(opt.id); setShowThemePicker(false) }}
+                    onPress={() => {
+                      if (opt.pro && profile.plan !== 'pro') {
+                        setShowThemePicker(false)
+                        Alert.alert(
+                          'Paleta Pro',
+                          `"${opt.label}" es un tema exclusivo de Zyfit Pro.`,
+                          [
+                            { text: 'Ahora no', style: 'cancel' },
+                            { text: 'Ver Zyfit Pro', onPress: navigateToSuscripcion },
+                          ]
+                        )
+                        return
+                      }
+                      setPalette(opt.id)
+                      setShowThemePicker(false)
+                    }}
                     activeOpacity={0.7}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 13 }}
                   >
@@ -328,6 +392,72 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         <SectionLabel label="MI CUENTA" />
         <Card>
+          {profile.email_verificado === false && (
+            <>
+              <Row
+                icon="⚠️"
+                title="Verifica tu email"
+                subtitle="Necesario para poder recuperar tu contraseña"
+                badge="Pendiente"
+                onPress={toggleVerifyEmail}
+              />
+              {showVerifyEmail && (
+                <View style={{ paddingHorizontal: 22, paddingBottom: 18, paddingTop: 4, gap: 10 }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.inkMuted, lineHeight: 18 }}>
+                    Te enviamos un código de 6 dígitos a tu email al registrarte. Ingrésalo abajo, o pide uno nuevo.
+                  </Text>
+                  <TextInput
+                    value={verifyCode}
+                    onChangeText={t => setVerifyCode(t.replace(/[^0-9]/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    placeholderTextColor={colors.inkFaint}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={{
+                      backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.borderBright,
+                      borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+                      color: colors.inkPrimary, fontFamily: 'JetBrainsMono-Regular', fontSize: 16, letterSpacing: 4,
+                    }}
+                  />
+                  {!!verifyError && (
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.red }}>{verifyError}</Text>
+                  )}
+                  {resendSent && (
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.green }}>Código reenviado — revisa tu email.</Text>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={handleVerifyCode}
+                      disabled={verifyCode.length !== 6 || verifying}
+                      activeOpacity={0.8}
+                      style={{
+                        flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+                        backgroundColor: colors.accent, opacity: (verifyCode.length !== 6 || verifying) ? 0.5 : 1,
+                      }}
+                    >
+                      {verifying
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: '#fff' }}>Verificar</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleResendCode}
+                      disabled={resending}
+                      activeOpacity={0.7}
+                      style={{
+                        borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center',
+                        borderWidth: 1, borderColor: colors.borderBright, opacity: resending ? 0.5 : 1,
+                      }}
+                    >
+                      {resending
+                        ? <ActivityIndicator size="small" color={colors.inkSecondary} />
+                        : <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: colors.inkSecondary }}>Reenviar</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <Divider />
+            </>
+          )}
           <Row
             icon="👤"
             title={t('perfil_row_personal')}
@@ -570,7 +700,7 @@ export default function AjustesScreen() {
           <Row
             icon="💬"
             title={t('perfil_row_support')}
-            onPress={() => Linking.openURL('mailto:hola@pyfit.app')}
+            onPress={() => Linking.openURL('mailto:hola@zyfit.app')}
           />
           <Divider />
           <Row

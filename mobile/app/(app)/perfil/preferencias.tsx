@@ -186,7 +186,7 @@ export default function PreferenciasScreen() {
               onChange={setEvitar} styles={styles} />
 
             <SectionLabel text="TONO DEL ENTRENADOR" styles={styles} />
-            <Text style={styles.tonoHint}>Personaliza cómo PyFit se comunica contigo</Text>
+            <Text style={styles.tonoHint}>Personaliza cómo Zyfit se comunica contigo</Text>
             <View style={styles.tonoGrid}>
               {TONOS.map(({ k, l, desc }) => (
                 <TouchableOpacity

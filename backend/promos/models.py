@@ -148,3 +148,48 @@ class SolicitudSuscripcion(models.Model):
 
     def __str__(self):
         return f'{self.user_id} · {self.plan_tipo} [{self.estado}]'
+
+
+class SolicitudGestionSuscripcion(models.Model):
+    """Pedido de un usuario Pro para cancelar o cambiar de plan. Mismo
+    espíritu que SolicitudSuscripcion (sin cobrador conectado): el staff la ve
+    en Django Admin y aplica el cambio manualmente — cancelar no baja el plan
+    de inmediato (el usuario mantiene acceso hasta plan_renovacion, como se le
+    dice en la pantalla de cancelación) y cambiar de plan se aplica recién en
+    el próximo ciclo de facturación, tal como promete la UI."""
+
+    TIPO_CANCELAR = 'cancelar'
+    TIPO_CAMBIAR_PLAN = 'cambiar_plan'
+    TIPO_CHOICES = [
+        (TIPO_CANCELAR, 'Cancelar'),
+        (TIPO_CAMBIAR_PLAN, 'Cambiar de plan'),
+    ]
+
+    ESTADO_PENDIENTE = 'pendiente'
+    ESTADO_PROCESADA = 'procesada'
+    ESTADO_CHOICES = [
+        (ESTADO_PENDIENTE, 'Pendiente'),
+        (ESTADO_PROCESADA, 'Procesada'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solicitudes_gestion_suscripcion',
+    )
+    producto = models.CharField(max_length=20, choices=PRODUCTO_CHOICES, default=PRODUCTO_ZYFIT_PRO)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    # Solo aplica cuando tipo=cambiar_plan.
+    plan_tipo_deseado = models.CharField(
+        max_length=20, choices=SolicitudSuscripcion.PLAN_TIPO_CHOICES, blank=True, default='',
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_PENDIENTE)
+    notas_admin = models.TextField(blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    procesada_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'promos_solicitud_gestion_suscripcion'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id} · {self.tipo} [{self.estado}]'

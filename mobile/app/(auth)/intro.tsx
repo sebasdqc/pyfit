@@ -11,11 +11,13 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { COLORS, Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
+import { useTranslation } from '../../lib/i18n'
 
 const ADVANCE_DELAY = 2800
 
 export default function IntroScreen() {
   const { colors, isDark } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
   const logoOpacity = useRef(new Animated.Value(0)).current
@@ -107,7 +109,7 @@ export default function IntroScreen() {
 
         <Animated.View style={{ opacity: taglineOpacity, transform: [{ translateY: taglineY }] }}>
           <Text style={styles.tagline}>
-            El futuro del entrenamiento{'\n'}es ahora.
+            {t('intro_tagline')}
           </Text>
         </Animated.View>
       </View>

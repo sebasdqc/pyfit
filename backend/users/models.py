@@ -84,6 +84,13 @@ class User(AbstractUser):
         'academy.Tenant', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='miembros',
     )
+    # Verificación de email tras registro por contraseña — evita cuentas basura
+    # con emails inexistentes/ajenos y asegura que la recuperación de contraseña
+    # sea posible. NO bloquea login/onboarding (solo informativo + reenvío desde
+    # Ajustes): un gate duro en el registro empeoraría el drop-off ya alto del
+    # onboarding (ver auditoría). Cuentas creadas por Google/Apple entran ya
+    # verificadas (el proveedor ya confirmó el email).
+    email_verificado = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -488,6 +495,26 @@ class PasswordResetCode(models.Model):
         cls.objects.filter(user=user).delete()
         # secrets.choice es CSPRNG (cryptographically secure). random.choices no lo es
         # y podría ser predecible si el estado del PRNG se filtra via timing u otras APIs.
+        code = ''.join(secrets.choice(string.digits) for _ in range(6))
+        return cls.objects.create(user=user, code=code)
+
+
+class EmailVerificationCode(models.Model):
+    """Mismo patrón que PasswordResetCode, para el flujo de verificación de
+    email tras el registro (ver User.email_verificado)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verification_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'email_verification_codes'
+
+    def is_valid(self):
+        return timezone.now() < self.created_at + timedelta(minutes=15)
+
+    @classmethod
+    def generate_for(cls, user):
+        cls.objects.filter(user=user).delete()
         code = ''.join(secrets.choice(string.digits) for _ in range(6))
         return cls.objects.create(user=user, code=code)
 

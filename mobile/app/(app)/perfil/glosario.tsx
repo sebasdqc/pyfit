@@ -42,7 +42,7 @@ const TERMINOS = [
   },
   {
     termino: 'RPE',
-    definicion: 'Rate of Perceived Exertion (Escala de Percepción del Esfuerzo). Escala del 1 al 10 que mide el esfuerzo subjetivo percibido durante el ejercicio. PyFit la utiliza para calibrar la intensidad ideal para cada sesión y perfil de usuario.',
+    definicion: 'Rate of Perceived Exertion (Escala de Percepción del Esfuerzo). Escala del 1 al 10 que mide el esfuerzo subjetivo percibido durante el ejercicio. Zyfit la utiliza para calibrar la intensidad ideal para cada sesión y perfil de usuario.',
   },
   {
     termino: 'Sobrecarga progresiva',

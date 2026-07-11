@@ -1,4 +1,8 @@
+import json
 import logging
+import time
+import requests
+import jwt as pyjwt
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
@@ -10,8 +14,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from pyfit.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle
-from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, Notification, NotificationPreference
+from pyfit.throttles import (
+    LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle,
+    VerifyEmailRateThrottle, ResendVerificationRateThrottle,
+)
+from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, EmailVerificationCode, Notification, NotificationPreference
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -36,6 +43,26 @@ def _migrar_progreso_academy_anonimo(user, request):
         logger.exception('No se pudo migrar progreso anónimo de Academy')
 
 
+def _send_verification_email(user):
+    """Envía (o reenvía) el código de verificación de email — best-effort,
+    nunca bloquea el flujo que la llama (registro/reenvío manual)."""
+    try:
+        code = EmailVerificationCode.generate_for(user)
+        send_mail(
+            subject='Verifica tu email — Zyfit',
+            message=(
+                f'Tu código de verificación es: {code.code}\n\n'
+                f'Este código expira en 15 minutos.\n\n'
+                f'Si no creaste esta cuenta, ignora este mensaje.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    except Exception:
+        logger.exception('No se pudo enviar el email de verificación a user=%s', user.pk)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
@@ -55,11 +82,46 @@ def register(request):
         user.save(update_fields=['academy_tenant'])
     refresh = RefreshToken.for_user(user)
     _migrar_progreso_academy_anonimo(user, request)
+    # No bloqueante: la cuenta funciona igual sin verificar (ver
+    # User.email_verificado) — solo habilita la verificación posterior.
+    _send_verification_email(user)
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),
-        'user': {'id': user.id, 'email': user.email},
+        'user': {'id': user.id, 'email': user.email, 'email_verificado': False},
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ResendVerificationRateThrottle])
+def resend_verification_email(request):
+    if request.user.email_verificado:
+        return Response({'detail': 'Tu email ya está verificado'})
+    _send_verification_email(request.user)
+    return Response({'detail': 'Te enviamos un nuevo código de verificación'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([VerifyEmailRateThrottle])
+def verify_email(request):
+    if request.user.email_verificado:
+        return Response({'detail': 'Tu email ya está verificado'})
+    code = (request.data.get('code') or '').strip()
+    if not code:
+        return Response({'error': 'Falta el código'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        verification = EmailVerificationCode.objects.filter(user=request.user, code=code).latest('created_at')
+    except EmailVerificationCode.DoesNotExist:
+        return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+    if not verification.is_valid():
+        verification.delete()
+        return Response({'error': 'El código ha expirado. Solicita uno nuevo.'}, status=status.HTTP_400_BAD_REQUEST)
+    request.user.email_verificado = True
+    request.user.save(update_fields=['email_verificado'])
+    verification.delete()
+    return Response({'detail': 'Email verificado correctamente'})
 
 
 @api_view(['POST'])
@@ -88,6 +150,7 @@ def login_view(request):
             'onboarding_completo': bool(profile and profile.is_onboarding_complete),
             'is_staff': user.is_staff,
             'role': user.role,
+            'email_verificado': user.email_verificado,
         },
     })
 
@@ -153,6 +216,12 @@ def google_login(request):
     if not user.is_active:
         return Response({'error': 'Cuenta inactiva'}, status=status.HTTP_401_UNAUTHORIZED)
 
+    # Google ya confirmó email_verified arriba — no hace falta nuestro propio
+    # código de verificación para esta cuenta (nueva o preexistente).
+    if not user.email_verificado:
+        user.email_verificado = True
+        user.save(update_fields=['email_verificado'])
+
     refresh = RefreshToken.for_user(user)
     profile = getattr(user, 'profile', None)
     return Response({
@@ -165,6 +234,118 @@ def google_login(request):
             'onboarding_completo': bool(profile and profile.is_onboarding_complete),
             'is_staff': user.is_staff,
             'role': user.role,
+            'email_verificado': user.email_verificado,
+        },
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+_apple_jwks_cache = {'keys': None, 'fetched_at': 0.0}
+
+
+def _get_apple_public_keys():
+    """Claves públicas de Apple (JWKS), cacheadas 1h — sin credenciales de
+    servidor: es el mismo endpoint público que usa cualquier verificador de
+    Sign in with Apple."""
+    now = time.time()
+    if _apple_jwks_cache['keys'] is None or now - _apple_jwks_cache['fetched_at'] > 3600:
+        resp = requests.get('https://appleid.apple.com/auth/keys', timeout=5)
+        resp.raise_for_status()
+        _apple_jwks_cache['keys'] = resp.json()['keys']
+        _apple_jwks_cache['fetched_at'] = now
+    return _apple_jwks_cache['keys']
+
+
+def _verify_apple_identity_token(identity_token, bundle_id):
+    """Verifica firma + issuer + audiencia del identity_token de Apple contra
+    su JWKS público. Lanza si el token es inválido/expirado/de otra app."""
+    unverified_header = pyjwt.get_unverified_header(identity_token)
+    kid = unverified_header.get('kid')
+    key_data = next((k for k in _get_apple_public_keys() if k['kid'] == kid), None)
+    if not key_data:
+        # Puede ser rotación de claves — un solo reintento con caché forzada a refrescar.
+        _apple_jwks_cache['keys'] = None
+        key_data = next((k for k in _get_apple_public_keys() if k['kid'] == kid), None)
+    if not key_data:
+        raise ValueError('Clave pública de Apple no encontrada para este token')
+    public_key = pyjwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key_data))
+    return pyjwt.decode(
+        identity_token,
+        key=public_key,
+        algorithms=['RS256'],
+        audience=bundle_id,
+        issuer='https://appleid.apple.com',
+    )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def apple_login(request):
+    """Inicio de sesión con Apple (Sign in with Apple, SDK nativo en la app).
+
+    Espejo de google_login: la app obtiene un `identity_token` firmado por
+    Apple con la SDK nativa (expo-apple-authentication) y lo envía aquí.
+    Verificamos firma + issuer + audiencia (bundle id) contra las claves
+    públicas de Apple (sin necesitar credenciales de servidor) y
+    buscamos-o-creamos el usuario por email, devolviendo el MISMO par JWT que
+    el login normal. `full_name` solo llega en el PRIMER login de la cuenta
+    (Apple no lo reenvía en logins posteriores) — se usa si está presente.
+    """
+    identity_token = (request.data.get('identity_token') or '').strip()
+    if not identity_token:
+        return Response({'error': 'Falta el identity_token de Apple'}, status=status.HTTP_400_BAD_REQUEST)
+
+    bundle_id = getattr(settings, 'APPLE_SIGNIN_BUNDLE_ID', 'app.pyfit.mobile')
+
+    try:
+        claims = _verify_apple_identity_token(identity_token, bundle_id)
+    except Exception:
+        logger.warning('Apple login: identity_token inválido', exc_info=True)
+        return Response({'error': 'Token de Apple inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    email = (claims.get('email') or '').lower().strip()
+    email_verified = claims.get('email_verified')
+    if isinstance(email_verified, str):
+        email_verified = email_verified.lower() == 'true'
+    if not email or not email_verified:
+        return Response({'error': 'La cuenta de Apple no tiene un email verificado'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    full_name = (request.data.get('full_name') or '').strip()
+    nombre_default = full_name or email.split('@')[0]
+
+    user, created = User.objects.get_or_create(email=email, defaults={'username': email})
+    if created:
+        # Sin contraseña usable: la cuenta solo entra por Apple hasta que el
+        # usuario fije una con el flujo de "olvidé mi contraseña".
+        user.set_unusable_password()
+        user.save(update_fields=['password'])
+        Profile.objects.create(user=user, nombre=nombre_default)
+    elif not getattr(user, 'profile', None):
+        Profile.objects.create(user=user, nombre=nombre_default)
+
+    if not user.is_active:
+        return Response({'error': 'Cuenta inactiva'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Apple ya confirmó email_verified arriba — no hace falta nuestro propio
+    # código de verificación para esta cuenta (nueva o preexistente).
+    if not user.email_verificado:
+        user.email_verificado = True
+        user.save(update_fields=['email_verificado'])
+
+    refresh = RefreshToken.for_user(user)
+    profile = getattr(user, 'profile', None)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'nombre': profile.nombre if profile else '',
+            'onboarding_completo': bool(profile and profile.is_onboarding_complete),
+            'is_staff': user.is_staff,
+            'role': user.role,
+            'email_verificado': user.email_verificado,
         },
     }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 

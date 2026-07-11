@@ -11,12 +11,21 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
+import { getLocales } from 'expo-localization'
 import {
   Lang,
   TranslationKey,
   getTranslation,
   getTranslationArray,
 } from './translations'
+
+const SUPPORTED_LANGS: Lang[] = ['es', 'en', 'pt', 'fr']
+
+// Idioma del dispositivo si es uno de los soportados; 'es' si no (default histórico).
+function detectDeviceLang(): Lang {
+  const code = getLocales()[0]?.languageCode
+  return (SUPPORTED_LANGS as string[]).includes(code ?? '') ? (code as Lang) : 'es'
+}
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
@@ -44,9 +53,12 @@ const I18nContext = createContext<I18nContextValue>({
 // ─── Proveedor ────────────────────────────────────────────────────────────────
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('es')
+  // Antes de leer la preferencia guardada, usamos el idioma del dispositivo
+  // (si es uno soportado) en vez de asumir español a secas.
+  const [lang, setLangState] = useState<Lang>(detectDeviceLang)
 
-  // Carga el idioma guardado al arrancar la app
+  // Carga el idioma guardado al arrancar la app (una preferencia explícita del
+  // usuario siempre gana sobre el idioma del dispositivo).
   useEffect(() => {
     SecureStore.getItemAsync('app_lang')
       .then(val => {

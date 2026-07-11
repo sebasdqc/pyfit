@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import {
-  Alert,
   View,
   Text,
   Image,
@@ -22,7 +21,7 @@ import Svg, { Path, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg
 import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
-import { login, register, googleLogin } from '../../lib/auth'
+import { login, register, googleLogin, appleLogin } from '../../lib/auth'
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
@@ -59,7 +58,10 @@ function SocialButton({
       style={[styles.socialBtn, (disabled || loading) && { opacity: 0.6 }]}
       activeOpacity={0.7}
       onPress={onPress}
-      disabled={disabled || loading || !onPress}>
+      disabled={disabled || loading || !onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}>
       {loading ? <ActivityIndicator size="small" color={colors.inkPrimary} /> : icon}
       <Text style={styles.socialBtnText}>{label}</Text>
     </TouchableOpacity>
@@ -200,18 +202,35 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [appleLoading, setAppleLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function handleApple() {
-    Alert.alert(
-      'Próximamente',
-      'El inicio de sesión con Apple estará disponible en la próxima actualización.',
-      [{ text: 'Entendido' }]
-    )
+  async function handleApple() {
+    if (loading || googleLoading || appleLoading) return
+    setError('')
+    setAppleLoading(true)
+    try {
+      const res = await appleLogin()
+      if (res.status === 'ok') {
+        if (res.user?.onboarding_completo) {
+          router.replace('/(app)/dashboard')
+        } else {
+          router.replace('/(auth)/onboarding-intro' as any)
+        }
+      } else if (res.status === 'cancelled') {
+        // El usuario cerró la hoja de Apple: silencioso, sin error.
+      } else if (res.status === 'unavailable') {
+        setError(t('login_apple_unavailable'))
+      } else {
+        setError(t('login_apple_error'))
+      }
+    } finally {
+      setAppleLoading(false)
+    }
   }
 
   async function handleGoogle() {
-    if (loading || googleLoading) return
+    if (loading || googleLoading || appleLoading) return
     setError('')
     setGoogleLoading(true)
     try {
@@ -220,7 +239,7 @@ export default function LoginScreen() {
         if (res.user?.onboarding_completo) {
           router.replace('/(app)/dashboard')
         } else {
-          // Cuenta nueva (o sin onboarding) → arrancamos el flujo de bienvenida.
+          // Cuenta nueva (o sin onboarding) → arrancamos el onboarding.
           router.replace('/(auth)/onboarding-intro' as any)
         }
       } else if (res.status === 'cancelled') {
@@ -276,6 +295,8 @@ export default function LoginScreen() {
         style={[styles.langBtn, { top: insets.top + 16 }]}
         onPress={toggleLang}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={t('login_lang_a11y')}
       >
         <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
       </TouchableOpacity>
@@ -304,6 +325,8 @@ export default function LoginScreen() {
                 style={[styles.tab, tab === 'login' && styles.tabActive]}
                 onPress={() => { setTab('login'); setError('') }}
                 activeOpacity={0.8}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === 'login' }}
               >
                 <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>
                   {t('login_tab_signin')}
@@ -313,6 +336,8 @@ export default function LoginScreen() {
                 style={[styles.tab, tab === 'register' && styles.tabActive]}
                 onPress={() => { setTab('register'); setError('') }}
                 activeOpacity={0.8}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === 'register' }}
               >
                 <Text style={[styles.tabText, tab === 'register' && styles.tabTextActive]}>
                   {t('login_tab_signup')}
@@ -332,6 +357,7 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                accessibilityLabel={t('login_email_label')}
               />
             </View>
 
@@ -346,6 +372,7 @@ export default function LoginScreen() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                accessibilityLabel={t('login_password_label')}
               />
             </View>
 
@@ -354,6 +381,8 @@ export default function LoginScreen() {
                 style={styles.forgotBtn}
                 activeOpacity={0.7}
                 onPress={() => router.push('/(auth)/forgot-password' as any)}
+                accessibilityRole="button"
+                accessibilityLabel={t('login_forgot_password')}
               >
                 <Text style={styles.forgotText}>{t('login_forgot_password')}</Text>
               </TouchableOpacity>
@@ -372,6 +401,9 @@ export default function LoginScreen() {
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={tab === 'login' ? t('login_btn_signin') : t('login_btn_signup')}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               <LinearGradient
                 colors={[colors.accent, colors.accentDark]}
@@ -399,8 +431,11 @@ export default function LoginScreen() {
             {/* Social buttons */}
             <View style={styles.socialRow}>
               <SocialButton icon={<GoogleIcon />} label="Google"
-                onPress={handleGoogle} loading={googleLoading} disabled={loading} />
-              <SocialButton icon={<AppleIcon />} label="Apple" onPress={handleApple} disabled={loading || googleLoading} />
+                onPress={handleGoogle} loading={googleLoading} disabled={loading || appleLoading} />
+              {Platform.OS === 'ios' && (
+                <SocialButton icon={<AppleIcon />} label="Apple"
+                  onPress={handleApple} loading={appleLoading} disabled={loading || googleLoading} />
+              )}
             </View>
 
             <Text style={styles.disclaimer}>

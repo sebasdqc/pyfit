@@ -1,12 +1,22 @@
 import { useEffect } from 'react'
-import { Tabs } from 'expo-router'
+import { Tabs, router } from 'expo-router'
 import { StackActions } from '@react-navigation/native'
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as Notifications from 'expo-notifications'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
 import { registerForPushNotifications } from '../../lib/pushNotifications'
+
+// Adónde navegar al tocar cada tipo de push (ver `data.tipo` en users.push/
+// send_reminders — 'checkin_reminder', 'streak_risk', 'racha', 'logro').
+// 'checkin_reminder' lleva directo al check-in; el resto (racha/logro/riesgo
+// de racha) se resuelve en el dashboard, que ya muestra ambos.
+function routeForNotification(data: Record<string, any> | undefined): string {
+  if (data?.tipo === 'checkin_reminder') return '/(app)/checkin'
+  return '/(app)/dashboard'
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +210,16 @@ export default function AppLayout() {
   useEffect(() => {
     // Fire-and-forget: request permission + send token to backend on first load
     registerForPushNotifications()
+  }, [])
+
+  // Tocar una notificación (app en background o cerrada) ahora navega a la
+  // pantalla relevante en vez de solo abrir la app en donde haya quedado.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as Record<string, any> | undefined
+      router.push(routeForNotification(data) as any)
+    })
+    return () => sub.remove()
   }, [])
 
   return (

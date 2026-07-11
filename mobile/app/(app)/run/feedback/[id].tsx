@@ -137,19 +137,31 @@ export default function RunFeedbackScreen() {
           feedback_notas: notas.trim() || null,
         })
       }
+      setSubmitting(false)
+      setDone(true)
     } catch {
-      // No bloqueante: felicitamos igual aunque el guardado falle.
       captureMessage('run-feedback POST failed — feedback not saved', 'warning')
+      submittingRef.current = false
+      setSubmitting(false)
+      Alert.alert(
+        t('feedback_save_error_title'),
+        t('feedback_save_error_msg'),
+        [
+          { text: t('feedback_retry'), onPress: handleFinish },
+          {
+            text: t('feedback_skip_anyway'),
+            style: 'destructive',
+            onPress: () => router.replace('/(app)/dashboard'),
+          },
+        ],
+      )
     }
-    // En vez de ir directo al dashboard, mostramos "Buen Trabajo".
-    setSubmitting(false)
-    setDone(true)
   }
 
   function handleSkip() {
     Alert.alert(
       t('feedback_skip_title'),
-      t('feedback_skip_msg'),
+      t('run_feedback_skip_msg'),
       [
         { text: t('feedback_skip_cancel'), style: 'cancel' },
         { text: t('feedback_skip_confirm'), style: 'destructive', onPress: () => router.replace('/(app)/dashboard') },

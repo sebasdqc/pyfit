@@ -97,7 +97,7 @@ export default function CicloScreen() {
         ) : (
           <>
             <Text style={styles.description}>
-              Cuando está activado, PyFit adapta la intensidad y el tipo de entrenamiento según la fase del ciclo.
+              Cuando está activado, Zyfit adapta la intensidad y el tipo de entrenamiento según la fase del ciclo.
             </Text>
 
             {/* Toggle */}
@@ -105,7 +105,7 @@ export default function CicloScreen() {
               <View>
                 <Text style={styles.toggleTitle}>Adaptar al ciclo menstrual</Text>
                 <Text style={styles.toggleSub}>
-                  {usaCiclo ? 'Activado — PyFit ajustará tus rutinas' : 'Desactivado'}
+                  {usaCiclo ? 'Activado — Zyfit ajustará tus rutinas' : 'Desactivado'}
                 </Text>
               </View>
               <View style={[styles.toggleSwitch, usaCiclo && styles.toggleSwitchOn]}>
@@ -134,7 +134,7 @@ export default function CicloScreen() {
 
                 <View style={styles.infoCard}>
                   <Text style={styles.infoText}>
-                    🌙 PyFit utilizará los datos de tu ciclo para ajustar el RPE objetivo, el volumen y el tipo de ejercicios en cada sesión.
+                    🌙 Zyfit utilizará los datos de tu ciclo para ajustar el RPE objetivo, el volumen y el tipo de ejercicios en cada sesión.
                   </Text>
                 </View>
               </>
