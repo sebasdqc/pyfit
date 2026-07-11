@@ -24,7 +24,6 @@ const FEATURES: { icon: IconName; titleKey: string; bodyKey: string }[] = [
   { icon: 'certificate', titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
   { icon: 'quiz', titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
   { icon: 'flame', titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
-  { icon: 'users', titleKey: 'landing.feature4Title', bodyKey: 'landing.feature4Body' },
   { icon: 'activity', titleKey: 'landing.feature5Title', bodyKey: 'landing.feature5Body' },
 ]
 
@@ -248,40 +247,44 @@ export function LandingPage() {
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.schoolsBody')}</p>
             </div>
-            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
               {schools.map((s) => {
                 const theme = schoolTheme(s.slug)
                 return (
-                  <BorderGlow
+                  <div
                     key={s.slug}
-                    {...CARD_GLOW}
-                    backgroundColor="#1f2937"
-                    className="group h-full transition-transform hover:-translate-y-0.5"
+                    className="w-[calc((100%-1rem)/2)] sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]"
                   >
-                    <Link
-                      to={`/explorar?escuela=${s.slug}`}
-                      className="relative flex h-full flex-col overflow-hidden p-5"
+                    <BorderGlow
+                      {...CARD_GLOW}
+                      backgroundColor="#1f2937"
+                      className="group h-full transition-transform hover:-translate-y-0.5"
                     >
-                      <div
-                        className="pointer-events-none absolute -right-6 -top-6 opacity-[0.07] transition-transform duration-300 group-hover:scale-110"
-                        style={{ color: theme.accent }}
+                      <Link
+                        to={`/explorar?escuela=${s.slug}`}
+                        className="relative flex h-full flex-col overflow-hidden p-5"
                       >
-                        <Icon name={theme.icon} size={110} strokeWidth={1.2} />
-                      </div>
-                      <span
-                        className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                        style={{ backgroundImage: schoolGradient(theme) }}
-                      >
-                        <Icon name={theme.icon} size={20} />
-                      </span>
-                      <h3 className="relative mt-4 text-[14px] font-semibold leading-snug text-ink">{s.nombre}</h3>
-                      <p className="relative mt-1 text-xs text-ink-muted">
-                        {t(s.count === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', {
-                          count: s.count,
-                        })}
-                      </p>
-                    </Link>
-                  </BorderGlow>
+                        <div
+                          className="pointer-events-none absolute -right-6 -top-6 opacity-[0.07] transition-transform duration-300 group-hover:scale-110"
+                          style={{ color: theme.accent }}
+                        >
+                          <Icon name={theme.icon} size={110} strokeWidth={1.2} />
+                        </div>
+                        <span
+                          className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white"
+                          style={{ backgroundImage: schoolGradient(theme) }}
+                        >
+                          <Icon name={theme.icon} size={20} />
+                        </span>
+                        <h3 className="relative mt-4 text-[14px] font-semibold leading-snug text-ink">{s.nombre}</h3>
+                        <p className="relative mt-1 text-xs text-ink-muted">
+                          {t(s.count === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', {
+                            count: s.count,
+                          })}
+                        </p>
+                      </Link>
+                    </BorderGlow>
+                  </div>
                 )
               })}
             </div>
