@@ -711,7 +711,7 @@ export interface CommunityReport {
 
 export type AcademySubscriptionEstado =
   | 'sin_suscripcion' | 'activa' | 'cancelada' | 'vencida' | 'pago_fallido'
-export type AcademyPlanTipo = 'mensual' | 'anual'
+export type AcademyPlanTipo = 'mensual' | 'trimestral' | 'anual'
 
 export interface AcademySubscriptionStatus {
   estado: AcademySubscriptionEstado

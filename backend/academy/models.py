@@ -817,7 +817,7 @@ class AcademySubscription(models.Model):
         (ESTADO_VENCIDA, 'Vencida'),
         (ESTADO_PAGO_FALLIDO, 'Pago fallido'),
     ]
-    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('anual', 'Anual')]
+    PLAN_TIPO_CHOICES = [('mensual', 'Mensual'), ('trimestral', 'Trimestral'), ('anual', 'Anual')]
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_subscription',

@@ -18,9 +18,12 @@ from datetime import date, timedelta
 from .models import AcademySubscription
 
 
+_DIAS_POR_PLAN = {'mensual': 30, 'trimestral': 90, 'anual': 365}
+
+
 def _calcular_renovacion(plan_tipo: str, desde: date | None = None) -> date:
     desde = desde or date.today()
-    dias = 365 if plan_tipo == 'anual' else 30
+    dias = _DIAS_POR_PLAN.get(plan_tipo, 30)
     return desde + timedelta(days=dias)
 
 

@@ -11,6 +11,7 @@ import { Wordmark } from '@/components/Emblem'
 import BorderGlow from '@/components/effects/BorderGlow'
 import StarBorder from '@/components/effects/StarBorder'
 import { Icon, type IconName } from '@/components/Icon'
+import { Badge } from '@/components/ui/Badge'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
@@ -32,6 +33,36 @@ const HOW_STEPS: { icon: IconName; titleKey: string; bodyKey: string }[] = [
   { icon: 'learning', titleKey: 'landing.howStep2Title', bodyKey: 'landing.howStep2Body' },
   { icon: 'certificate', titleKey: 'landing.howStep3Title', bodyKey: 'landing.howStep3Body' },
 ]
+
+// Precios de Zyfit Academy Pro — deben coincidir con
+// backend/promos/payments.py PRECIOS[PRODUCTO_ACADEMY_PRO].
+const PRICING_PLANS: {
+  id: 'mensual' | 'trimestral' | 'anual'
+  nameKey: string
+  price: number
+  months: number
+  billedKey: string
+  saveKey?: string
+  highlighted?: boolean
+}[] = [
+  { id: 'mensual', nameKey: 'landing.pricingMonthlyName', price: 25, months: 1, billedKey: 'landing.pricingBilledMonthly' },
+  {
+    id: 'trimestral', nameKey: 'landing.pricingQuarterlyName', price: 50, months: 3,
+    billedKey: 'landing.pricingBilledQuarterly', saveKey: 'landing.pricingSaveQuarterly',
+  },
+  {
+    id: 'anual', nameKey: 'landing.pricingYearlyName', price: 150, months: 12,
+    billedKey: 'landing.pricingBilledYearly', saveKey: 'landing.pricingSaveYearly', highlighted: true,
+  },
+]
+const PRICING_FEATURES = [
+  'landing.pricingFeature1', 'landing.pricingFeature2', 'landing.pricingFeature3', 'landing.pricingFeature4',
+]
+
+function monthlyEquivalent(price: number, months: number): string {
+  const perMonth = price / months
+  return Number.isInteger(perMonth) ? `${perMonth}` : perMonth.toFixed(2)
+}
 
 interface SchoolSummary {
   slug: string
@@ -125,6 +156,12 @@ export function LandingPage() {
           >
             {t('landing.exploreCourses')}
           </Link>
+          <a
+            href="#precios"
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
+          >
+            {t('landing.pricingNavLink')}
+          </a>
           <Link
             to="/blog"
             className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
@@ -358,6 +395,70 @@ export function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Precios */}
+      <section id="precios" className="scroll-mt-24 px-6 py-16 sm:px-10 sm:scroll-mt-28">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-xl text-center">
+            <p className="za-eyebrow">{t('landing.pricingEyebrow')}</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+              {t('landing.pricingTitle')}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.pricingBody')}</p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {PRICING_PLANS.map((p) => (
+              <BorderGlow
+                key={p.id}
+                {...CARD_GLOW}
+                backgroundColor="#1f2937"
+                className={`h-full transition-transform hover:-translate-y-0.5 ${
+                  p.highlighted ? 'sm:-translate-y-2 sm:scale-[1.03]' : ''
+                }`}
+              >
+                <div className="flex h-full flex-col p-6">
+                  {p.saveKey && (
+                    <span className="mb-3 self-start">
+                      <Badge tone="brand">{t(p.saveKey)}</Badge>
+                    </span>
+                  )}
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t(p.nameKey)}</h3>
+                  <p className="mt-3 flex items-baseline gap-1">
+                    <span className="text-4xl font-bold tracking-tight text-ink">
+                      USD {monthlyEquivalent(p.price, p.months)}
+                    </span>
+                    <span className="text-sm font-medium text-ink-muted">{t('landing.pricingPerMonth')}</span>
+                  </p>
+                  <p className="mt-1 text-xs text-ink-muted">{t(p.billedKey, { price: p.price })}</p>
+
+                  <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-soft">
+                    {PRICING_FEATURES.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5">
+                        <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
+                        {t(f)}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    to="/registro"
+                    className={`mt-6 flex h-11 items-center justify-center rounded-xl text-sm font-semibold transition-colors ${
+                      p.highlighted
+                        ? 'bg-brand text-white hover:opacity-90'
+                        : 'border border-white/20 text-ink hover:bg-white/5'
+                    }`}
+                  >
+                    {t('landing.pricingCta')}
+                  </Link>
+                </div>
+              </BorderGlow>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-xs text-ink-muted">{t('landing.pricingFootnote')}</p>
         </div>
       </section>
 

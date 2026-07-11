@@ -102,6 +102,7 @@ class SolicitudSuscripcion(models.Model):
     # aplica lo decide `promos.payments.PRECIOS[producto]`, no este choices.
     PLAN_TIPO_CHOICES = [
         ('mensual', 'Mensual'),
+        ('trimestral', 'Trimestral'),
         ('semestral', 'Semestral'),
         ('anual', 'Anual'),
     ]

@@ -103,13 +103,19 @@ class CalcularPrecioTests(TestCase):
 class CalcularPrecioAcademyProTests(TestCase):
     def test_sin_codigo_devuelve_precio_de_lista(self):
         precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ACADEMY_PRO, 'anual', None)
-        self.assertEqual(precio_lista, Decimal('79.99'))
+        self.assertEqual(precio_lista, Decimal('150.00'))
         self.assertEqual(descuento, Decimal('0'))
-        self.assertEqual(precio_final, Decimal('79.99'))
+        self.assertEqual(precio_final, Decimal('150.00'))
 
     def test_no_ofrece_plan_semestral(self):
         with self.assertRaises(KeyError):
             calcular_precio(PRODUCTO_ACADEMY_PRO, 'semestral', None)
+
+    def test_ofrece_plan_trimestral(self):
+        precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ACADEMY_PRO, 'trimestral', None)
+        self.assertEqual(precio_lista, Decimal('50.00'))
+        self.assertEqual(descuento, Decimal('0'))
+        self.assertEqual(precio_final, Decimal('50.00'))
 
     def test_codigo_del_producto_correcto_aplica_descuento(self):
         codigo = make_codigo(
@@ -117,9 +123,9 @@ class CalcularPrecioAcademyProTests(TestCase):
             valor_descuento=Decimal('20'),
         )
         precio_lista, descuento, precio_final = calcular_precio(PRODUCTO_ACADEMY_PRO, 'mensual', codigo)
-        self.assertEqual(precio_lista, Decimal('9.99'))
-        self.assertEqual(descuento, Decimal('2.00'))
-        self.assertEqual(precio_final, Decimal('7.99'))
+        self.assertEqual(precio_lista, Decimal('25.00'))
+        self.assertEqual(descuento, Decimal('5.00'))
+        self.assertEqual(precio_final, Decimal('20.00'))
 
 
 class ValidarCodigoEndpointTests(APITestCase):
@@ -158,7 +164,7 @@ class ValidarCodigoEndpointTests(APITestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.data['valido'])
-        self.assertEqual(Decimal(res.data['precio_final']), Decimal('7.99'))
+        self.assertEqual(Decimal(res.data['precio_final']), Decimal('20.00'))
 
     def test_codigo_de_zyfit_pro_no_aplica_a_academy_pro(self):
         make_codigo(producto=PRODUCTO_ZYFIT_PRO)
@@ -240,7 +246,7 @@ class CrearSolicitudEndpointTests(APITestCase):
         )
         self.assertEqual(res.status_code, 201)
         self.assertEqual(res.data['producto'], PRODUCTO_ACADEMY_PRO)
-        self.assertEqual(Decimal(res.data['precio_final']), Decimal('79.99'))
+        self.assertEqual(Decimal(res.data['precio_final']), Decimal('150.00'))
 
     def test_solicitud_pendiente_de_un_producto_no_bloquea_al_otro(self):
         r_pro = self.client.post('/api/promos/solicitudes/', {'plan_tipo': 'mensual'})

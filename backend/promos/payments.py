@@ -13,8 +13,9 @@ from decimal import Decimal
 
 from .models import PRODUCTO_ACADEMY_PRO, PRODUCTO_ZYFIT_PRO, CodigoPromocional
 
-# Precios por producto — Academy Pro no ofrece plan semestral, a diferencia
-# de Zyfit Pro (ver academy.AcademySubscription.PLAN_TIPO_CHOICES).
+# Precios por producto — cada uno ofrece su propio subconjunto de plan_tipo
+# (ver academy.AcademySubscription.PLAN_TIPO_CHOICES / este mismo módulo,
+# SolicitudSuscripcion.PLAN_TIPO_CHOICES es la unión de ambos).
 PRECIOS = {
     PRODUCTO_ZYFIT_PRO: {
         'mensual': Decimal('9.99'),
@@ -22,8 +23,9 @@ PRECIOS = {
         'anual': Decimal('79.99'),
     },
     PRODUCTO_ACADEMY_PRO: {
-        'mensual': Decimal('9.99'),
-        'anual': Decimal('79.99'),
+        'mensual': Decimal('25.00'),
+        'trimestral': Decimal('50.00'),
+        'anual': Decimal('150.00'),
     },
 }
 

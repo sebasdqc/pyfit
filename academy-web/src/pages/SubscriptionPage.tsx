@@ -35,8 +35,9 @@ const ESTADO_TONE: Record<AcademySubscriptionStatus['estado'], 'ok' | 'warn' | '
 }
 
 const PLANES: { id: AcademyPlanTipo; nombre: string; precioNum: number; periodo: string; badge?: string }[] = [
-  { id: 'mensual', nombre: 'Mensual', precioNum: 9.99, periodo: '/ mes' },
-  { id: 'anual', nombre: 'Anual', precioNum: 79.99, periodo: '/ año', badge: 'Ahorra 33%' },
+  { id: 'mensual', nombre: 'Mensual', precioNum: 25, periodo: '/ mes' },
+  { id: 'trimestral', nombre: 'Trimestral', precioNum: 50, periodo: '/ 3 meses', badge: 'Ahorra 33%' },
+  { id: 'anual', nombre: 'Anual', precioNum: 150, periodo: '/ año', badge: 'Ahorra 50%' },
 ]
 
 type CodigoEstado = 'idle' | 'validando' | 'valido' | 'invalido'
@@ -307,7 +308,7 @@ export function SubscriptionPage() {
             </div>
           ) : (
             <>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {PLANES.map((p) => {
                   const seleccionado = planSeleccionado === p.id
                   return (
