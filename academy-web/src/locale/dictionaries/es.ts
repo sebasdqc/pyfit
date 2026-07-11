@@ -268,7 +268,7 @@ const es = {
     goToMyCourses: 'Ir a mis cursos',
     goToCatalog: 'Ir al catálogo',
     recommendedForYou: 'Para empezar, te recomendamos',
-    generalProgress: 'Progreso general',
+    learningPoints: 'Puntos de aprendizaje',
     resumeWhereYouLeftOff: 'Continúa donde lo dejaste',
     nextStep: 'Tu próximo paso',
     progressOfCourse: 'Progreso de {{course}}',
@@ -286,8 +286,8 @@ const es = {
     en_progreso: 'En curso',
     no_iniciado: 'Sin iniciar',
   },
-  schoolProgressRing: {
-    ariaLabel: 'Progreso general: {{pct}}%',
+  schoolPointsBadge: {
+    ariaLabel: 'Puntos de aprendizaje: {{puntos}}',
   },
   catalog: {
     eyebrow: 'Catálogo',
@@ -363,10 +363,11 @@ const es = {
     noEnrollmentsTitle: 'Todavía no te has inscrito a ningún curso',
     noEnrollmentsBody: 'Explora el catálogo y empieza tu primera formación.',
     goToCatalog: 'Ir al catálogo',
-    completed: 'Completado',
-    inProgress: 'En curso',
+    activeCoursesLabel: 'Cursos en curso',
+    allCompletedTitle: '¡Completaste todo lo que empezaste!',
+    allCompletedBody: 'No tienes cursos en curso ahora mismo. Explora el catálogo para tu próxima formación, o revisa tus certificados.',
+    goToCertificates: 'Ver certificados',
     progressOfCourse: 'Progreso de {{course}}',
-    certificateLabel: 'Certificado {{code}}',
   },
   certificates: {
     eyebrow: 'Certificados',
@@ -634,6 +635,9 @@ const es = {
   profile: {
     eyebrow: 'Perfil',
     title: 'Mi cuenta',
+    preferencesTitle: 'Preferencias',
+    themeLabel: 'Tema',
+    languageLabel: 'Idioma',
     roleAdmin: 'Administrador',
     roleInstructor: 'Instructor',
     roleStudent: 'Estudiante',

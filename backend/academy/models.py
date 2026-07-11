@@ -367,6 +367,16 @@ class Lesson(models.Model):
     entregable_tipo = models.CharField(
         max_length=16, choices=ENTREGABLE_TIPO_CHOICES, blank=True, default='',
     )
+    # Puntos que otorga completar esta lección — motor de "puntos de
+    # aprendizaje" (academy.dashboard_service), que reemplaza al "progreso
+    # general" en % del Home: en un producto de suscripción continua un
+    # porcentaje que "se completa" encaja peor que un acumulado de puntos que
+    # nunca tiene techo. Valor por defecto razonable por tipo (ver migración
+    # de datos 0022), ajustable libremente por lección desde CourseContentPage
+    # o Django Admin. DISTINTO de AcademyStreak.puntos_totales (racha) y de
+    # Quiz.puntaje_aprobacion/total_puntos (umbral de aprobación del quiz) —
+    # tres sistemas de puntos separados a propósito, no mezclar.
+    puntos = models.PositiveIntegerField(default=10)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

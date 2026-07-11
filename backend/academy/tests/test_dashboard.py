@@ -92,10 +92,10 @@ class DashboardEmptyStateTests(_Base):
         self.assertFalse(data['tiene_matriculas'])
         self.assertIsNone(data['continuar'])
         self.assertIsNone(data['siguiente_paso'])
-        self.assertEqual(data['progreso_general'], 0)
+        self.assertEqual(data['puntos_aprendizaje'], 0)
 
         escuela = self._escuela(data, school.slug)
-        self.assertEqual(escuela['progreso_general'], 0)
+        self.assertEqual(escuela['puntos'], 0)
         self.assertEqual(escuela['cursos_no_iniciados'], 1)
         curso = self._curso(escuela, course.slug)
         self.assertEqual(curso['estado'], 'no_iniciado')
@@ -165,22 +165,22 @@ class DashboardCourseProgressTests(_Base):
         self.assertEqual(data['stats']['cursos_completados'], 1)
 
 
-# ─── Promedio por escuela ───────────────────────────────────────────────────────
+# ─── Puntos de aprendizaje por escuela ──────────────────────────────────────────
 
 class DashboardSchoolAggregationTests(_Base):
-    def test_progreso_general_promedia_completados_en_progreso_y_no_iniciados(self):
+    def test_puntos_suma_las_lecciones_completadas_de_la_escuela(self):
         school = self._school()
         completo = self._course(school=school, slug='completo')
-        [l] = self._lessons(completo, n=1)
+        [l] = self._lessons(completo, n=1)  # 1 lección texto, 10 pts default
         e1 = self._enroll(completo)
-        self._complete(e1, l)
+        self._complete(e1, l)  # +10 pts
 
         parcial = self._course(school=school, slug='parcial')
-        lecciones = self._lessons(parcial, n=2)
+        lecciones = self._lessons(parcial, n=2)  # 2 lecciones texto, 10 pts c/u
         e2 = self._enroll(parcial)
-        self._complete(e2, lecciones[0])  # 50%
+        self._complete(e2, lecciones[0])  # +10 pts (50% del curso, 1 de 2)
 
-        self._course(school=school, slug='sin-tocar')  # nunca inscrito → 0
+        self._course(school=school, slug='sin-tocar')  # nunca inscrito → 0 pts
 
         data = self._dashboard()
         escuela = self._escuela(data, school.slug)
@@ -189,8 +189,9 @@ class DashboardSchoolAggregationTests(_Base):
         self.assertEqual(escuela['cursos_completados'], 1)
         self.assertEqual(escuela['cursos_en_progreso'], 1)
         self.assertEqual(escuela['cursos_no_iniciados'], 1)
-        # (100 + 50 + 0) / 3 = 50
-        self.assertEqual(escuela['progreso_general'], 50)
+        # 10 (completo) + 10 (parcial, 1 lección) + 0 (sin tocar) = 20
+        self.assertEqual(escuela['puntos'], 20)
+        self.assertEqual(data['puntos_aprendizaje'], 20)
 
 
 # ─── Continuar / siguiente paso entre cursos y escuelas ─────────────────────────
@@ -333,6 +334,10 @@ class DashboardQueryCountTests(_Base):
         # Fijo independientemente del tamaño del catálogo (3 escuelas × 3 cursos ×
         # hasta 2 matrículas c/u aquí, + 6 insignias de identidad) — si este número
         # empieza a crecer con el fixture, es la señal de una N+1 reintroducida.
-        with self.assertNumQueries(17):
+        # 19 = 18 (línea base, incluye el INSERT lazy de AcademyStreak la primera
+        # vez que este estudiante pide su racha) + 1 por `_puntos_by_course`
+        # (agregación de puntos de aprendizaje, sumada 2026-07-10 al reemplazar
+        # `progreso_general`).
+        with self.assertNumQueries(19):
             res = self.client.get('/api/academy/dashboard/')
         self.assertEqual(res.status_code, 200)

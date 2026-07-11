@@ -149,6 +149,9 @@ export interface Lesson {
   contenido: string
   video_url: string // video de la lección o enlace de la reunión (en_vivo)
   duracion_min: number
+  // Puntos de aprendizaje que otorga completarla (academy.dashboard_service) —
+  // DISTINTO de racha.puntos_totales y de Quiz.puntaje_aprobacion/total_puntos.
+  puntos: number
   fecha_en_vivo: string | null // fecha/hora de la sesión sincrónica (en_vivo)
   entregable_tipo: EntregableTipo // qué sube el estudiante (solo tipo entregable)
   quiz: Quiz | null
@@ -234,6 +237,7 @@ export interface Enrollment {
   course: number
   curso_titulo: string
   curso_slug: string
+  curso_portada: string // data URL, URL http(s) o '' (placeholder en UI)
   estudiante_nombre: string
   estado: EnrollmentEstado
   progreso: number
@@ -366,7 +370,9 @@ export interface DashboardSchool {
   nombre: string
   slug: string
   orden: number
-  progreso_general: number
+  // Puntos de aprendizaje acumulados en esta escuela — reemplaza al viejo
+  // `progreso_general` en % (no encajaba con un producto de suscripción).
+  puntos: number
   total_cursos: number
   cursos_completados: number
   cursos_en_progreso: number
@@ -405,7 +411,9 @@ export interface DashboardStats {
 }
 
 export interface DashboardData {
-  progreso_general: number
+  // Puntos de aprendizaje totales — reemplaza al viejo `progreso_general` en
+  // % (ver dashboard_service.py). DISTINTO de `racha.puntos_totales`.
+  puntos_aprendizaje: number
   tiene_matriculas: boolean
   escuelas: DashboardSchool[]
   racha: StreakState

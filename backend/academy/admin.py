@@ -77,7 +77,7 @@ class ModuleAdmin(ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(ModelAdmin):
-    list_display = ('titulo', 'module', 'tipo', 'orden', 'duracion_min')
+    list_display = ('titulo', 'module', 'tipo', 'orden', 'duracion_min', 'puntos')
     list_filter = ('tipo',)
     search_fields = ('titulo', 'module__titulo')
 

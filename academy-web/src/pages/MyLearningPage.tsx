@@ -1,14 +1,15 @@
-// Mis matrículas. Consume GET /api/academy/enrollments/. Muestra cada curso con
-// su progreso y estado, y enlaza al detalle del curso.
+// Mis matrículas. Consume GET /api/academy/enrollments/. Muestra SOLO las
+// matrículas activas (en curso) en un carrusel horizontal — antes se listaban
+// TODAS las matrículas (incluidas completadas) en una grilla vertical, lo que
+// obligaba a mucho scroll con varios cursos. Las completadas ya viven en
+// /certificados, con su certificado.
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listMyEnrollments } from '@/api/academy'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Emblem } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { StreakCard } from '@/components/StreakCard'
 import { useStreak } from '@/lib/useStreak'
@@ -32,6 +33,8 @@ export function MyLearningPage() {
       active = false
     }
   }, [])
+
+  const activos = items.filter((e) => e.estado === 'activa')
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,37 +69,52 @@ export function MyLearningPage() {
             </Link>
           }
         />
+      ) : activos.length === 0 ? (
+        <EmptyState
+          icon="certificate"
+          title={t('myLearning.allCompletedTitle')}
+          description={t('myLearning.allCompletedBody')}
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                to="/catalogo"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark"
+              >
+                {t('myLearning.goToCatalog')} <Icon name="arrowRight" size={16} />
+              </Link>
+              <Link
+                to="/certificados"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-surface-border px-5 text-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink"
+              >
+                {t('myLearning.goToCertificates')}
+              </Link>
+            </div>
+          }
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {items.map((e) => (
-            <Link
-              key={e.id}
-              to={`/aprender/${e.id}`}
-              className="group za-card flex gap-4 p-4 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
-            >
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep">
-                <Emblem size={36} tone="dark" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="line-clamp-1 text-[15px] font-semibold text-ink group-hover:text-accent">
-                    {e.curso_titulo}
-                  </h3>
-                  <Badge tone={e.estado === 'completada' ? 'ok' : 'accent'}>
-                    {e.estado === 'completada' ? t('myLearning.completed') : t('myLearning.inProgress')}
-                  </Badge>
+        <div>
+          <p className="za-eyebrow">{t('myLearning.activeCoursesLabel')}</p>
+          <div className="mt-3 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+            {activos.map((e) => (
+              <Link
+                key={e.id}
+                to={`/aprender/${e.id}`}
+                className="group za-card flex w-72 shrink-0 snap-start flex-col gap-3 p-4 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
+              >
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand to-brand-deep">
+                  {e.curso_portada ? (
+                    <img src={e.curso_portada} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Icon name="learning" size={26} className="text-white" />
+                  )}
                 </div>
-                <div className="mt-4">
-                  <ProgressBar value={e.progreso} label={t('myLearning.progressOfCourse', { course: e.curso_titulo })} />
-                </div>
-                {e.certificado && (
-                  <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-ok">
-                    <Icon name="certificate" size={14} /> {t('myLearning.certificateLabel', { code: e.certificado })}
-                  </p>
-                )}
-              </div>
-            </Link>
-          ))}
+                <h3 className="line-clamp-2 text-[15px] font-semibold text-ink group-hover:text-accent">
+                  {e.curso_titulo}
+                </h3>
+                <ProgressBar value={e.progreso} label={t('myLearning.progressOfCourse', { course: e.curso_titulo })} />
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

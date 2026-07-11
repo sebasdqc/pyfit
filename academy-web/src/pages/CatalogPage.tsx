@@ -8,7 +8,6 @@ import { CourseCard } from '@/components/ui/CourseCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
-import { Emblem } from '@/components/Emblem'
 import { CATEGORIAS, NIVELES } from '@/lib/constants'
 import { schoolTheme, schoolGradient } from '@/lib/schoolTheme'
 import { useT } from '@/locale/useT'
@@ -139,9 +138,6 @@ export function CatalogPage() {
     <div className="flex flex-col gap-6">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
-        <div className="pointer-events-none absolute -right-10 -top-12 opacity-[0.08]">
-          <Emblem size={260} tone="dark" />
-        </div>
         <div className="relative z-10 max-w-2xl">
           <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">{t('catalog.eyebrow')}</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">

@@ -137,6 +137,7 @@ export interface CreateLessonPayload {
   contenido?: string
   video_url?: string
   orden?: number
+  puntos?: number
 }
 
 export async function createLesson(
@@ -161,6 +162,7 @@ export interface UpdateLessonPayload {
   contenido?: string
   duracion_min?: number
   orden?: number
+  puntos?: number
 }
 
 export async function updateLesson(

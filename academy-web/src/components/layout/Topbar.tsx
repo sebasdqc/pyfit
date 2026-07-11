@@ -8,14 +8,11 @@ import { Avatar } from '@/components/ui/Avatar'
 import { StreakPill } from '@/components/StreakPill'
 import { WeeklyStreakButton } from '@/components/WeeklyStreakButton'
 import { useAuth } from '@/auth/useAuth'
-import { useTheme } from '@/theme/useTheme'
 import { useT } from '@/locale/useT'
-import { LocaleToggle } from '@/components/ui/LocaleToggle'
 import { useStreak } from '@/lib/useStreak'
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const t = useT()
   const nombre = (user?.nombre ?? '').split(/\s+/)[0] || t('topbar.studentFallback')
 
@@ -43,16 +40,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       <div className="flex shrink-0 items-center gap-2.5">
         {!user?.is_instructor && <StreakPill />}
         {!user?.is_instructor && <WeeklyStreakButton />}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? t('topbar.toLightMode') : t('topbar.toDarkMode')}
-          title={theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-border bg-surface text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
-        >
-          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
-        </button>
-        <LocaleToggle />
         <UserMenu
           nombre={user?.nombre ?? t('topbar.userFallback')}
           email={user?.email ?? ''}

@@ -12,7 +12,7 @@ import { useAuth } from '@/auth/useAuth'
 import { registerRequest } from '@/api/auth'
 import { setTokens } from '@/api/client'
 import { clearAnonSession } from '@/lib/anonSession'
-import { Emblem, BrandLockup } from '@/components/Emblem'
+import { BrandLockup } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { LocaleToggle } from '@/components/ui/LocaleToggle'
@@ -83,9 +83,6 @@ export function RegisterPage() {
       </div>
       {/* Panel de marca (izquierda) — solo en escritorio */}
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-brand to-brand-deep p-12 lg:flex">
-        <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
-          <Emblem size={420} tone="dark" />
-        </div>
         <BrandLockup size={34} tone="dark" />
 
         <div className="relative z-10 max-w-md">

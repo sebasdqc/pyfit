@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Spinner } from '@/components/ui/Spinner'
 import { StreakCard } from '@/components/StreakCard'
-import { SchoolProgressRing } from '@/components/dashboard/SchoolProgressRing'
+import { SchoolPointsBadge } from '@/components/dashboard/SchoolPointsBadge'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { schoolTheme } from '@/lib/schoolTheme'
@@ -115,10 +115,10 @@ export function HomePage() {
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,320px)_1fr]">
             <div className="za-card flex items-center gap-4 p-5">
-              <SchoolProgressRing value={data.progreso_general} accent="rgb(var(--color-accent))" icon="learning" size={72} />
+              <SchoolPointsBadge puntos={data.puntos_aprendizaje} accent="rgb(var(--color-accent))" icon="sparkles" size={72} />
               <div>
-                <p className="za-eyebrow">{t('home.generalProgress')}</p>
-                <p className="mt-1 text-2xl font-bold text-ink">{data.progreso_general}%</p>
+                <p className="za-eyebrow">{t('home.learningPoints')}</p>
+                <p className="mt-1 text-2xl font-bold text-ink">{data.puntos_aprendizaje.toLocaleString()}</p>
               </div>
             </div>
             <StreakCard streak={data.racha} />
@@ -182,7 +182,7 @@ function SchoolSection({ escuela }: { escuela: DashboardSchool }) {
   return (
     <div className="za-card p-5">
       <div className="flex items-center gap-4">
-        <SchoolProgressRing value={escuela.progreso_general} accent={theme.accent} icon={theme.icon} size={56} />
+        <SchoolPointsBadge puntos={escuela.puntos} accent={theme.accent} icon={theme.icon} size={56} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-ink">{escuela.nombre}</h3>
           <p className="text-xs text-ink-muted">

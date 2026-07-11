@@ -620,6 +620,7 @@ function LessonFormDialog({
   const [tipo, setTipo] = useState<LessonTipo>('texto')
   const [contenido, setContenido] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
+  const [puntos, setPuntos] = useState(10)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -636,6 +637,7 @@ function LessonFormDialog({
         titulo: titulo.trim(), tipo, contenido,
         video_url: tipo === 'video' ? videoUrl.trim() : '',
         orden: nextOrden(module.lecciones),
+        puntos,
       })
       onSaved(`Lección "${titulo.trim()}" creada en "${module.titulo}".`)
     } catch {
@@ -701,6 +703,18 @@ function LessonFormDialog({
             />
           </label>
         )}
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Puntos de aprendizaje al completarla
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={puntos}
+            onChange={(e) => setPuntos(Number(e.target.value))}
+            className="input"
+          />
+        </label>
 
         {error && (
           <p role="alert" className="text-sm text-danger">
@@ -743,6 +757,7 @@ function LessonInfoDialog({
 }) {
   const [titulo, setTitulo] = useState(lesson.titulo)
   const [contenido, setContenido] = useState(lesson.contenido)
+  const [puntos, setPuntos] = useState(lesson.puntos)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -756,7 +771,7 @@ function LessonInfoDialog({
     setSaving(true)
     setError(null)
     try {
-      await updateLesson(courseId, moduleId, lesson.id, { titulo: titulo.trim(), contenido })
+      await updateLesson(courseId, moduleId, lesson.id, { titulo: titulo.trim(), contenido, puntos })
       onSaved(`"${titulo.trim()}" actualizada.`)
     } catch {
       setError('No se pudo guardar. Inténtalo de nuevo.')
@@ -805,6 +820,18 @@ function LessonInfoDialog({
             onChange={(e) => setContenido(e.target.value)}
             rows={8}
             className="input resize-none"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Puntos de aprendizaje al completarla
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={puntos}
+            onChange={(e) => setPuntos(Number(e.target.value))}
+            className="input"
           />
         </label>
 

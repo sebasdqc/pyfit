@@ -272,7 +272,7 @@ const en: DeepPartial<Dictionary> = {
     goToMyCourses: 'Go to my courses',
     goToCatalog: 'Go to the catalog',
     recommendedForYou: 'To get started, we recommend',
-    generalProgress: 'Overall progress',
+    learningPoints: 'Learning points',
     resumeWhereYouLeftOff: 'Resume where you left off',
     nextStep: 'Your next step',
     progressOfCourse: 'Progress of {{course}}',
@@ -290,8 +290,8 @@ const en: DeepPartial<Dictionary> = {
     en_progreso: 'In progress',
     no_iniciado: 'Not started',
   },
-  schoolProgressRing: {
-    ariaLabel: 'Overall progress: {{pct}}%',
+  schoolPointsBadge: {
+    ariaLabel: 'Learning points: {{puntos}}',
   },
   catalog: {
     eyebrow: 'Catalog',
@@ -367,10 +367,11 @@ const en: DeepPartial<Dictionary> = {
     noEnrollmentsTitle: 'You haven\'t enrolled in a course yet',
     noEnrollmentsBody: 'Explore the catalog and start your first course.',
     goToCatalog: 'Go to the catalog',
-    completed: 'Completed',
-    inProgress: 'In progress',
+    activeCoursesLabel: 'Courses in progress',
+    allCompletedTitle: 'You finished everything you started!',
+    allCompletedBody: 'You have no courses in progress right now. Explore the catalog for your next course, or check your certificates.',
+    goToCertificates: 'View certificates',
     progressOfCourse: 'Progress of {{course}}',
-    certificateLabel: 'Certificate {{code}}',
   },
   certificates: {
     eyebrow: 'Certificates',
@@ -638,6 +639,9 @@ const en: DeepPartial<Dictionary> = {
   profile: {
     eyebrow: 'Profile',
     title: 'My account',
+    preferencesTitle: 'Preferences',
+    themeLabel: 'Theme',
+    languageLabel: 'Language',
     roleAdmin: 'Administrator',
     roleInstructor: 'Instructor',
     roleStudent: 'Student',

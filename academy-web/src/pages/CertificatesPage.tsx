@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
 import { listMyEnrollments, verifyCertificate } from '@/api/academy'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Emblem } from '@/components/Emblem'
+import { Wordmark } from '@/components/Emblem'
 import { Icon } from '@/components/Icon'
 import { BRAND } from '@/lib/constants'
 import { shareOrDownloadCard } from '@/lib/shareImage'
@@ -115,14 +115,10 @@ function DiplomaCard({ titulo, nombre, codigo }: { titulo: string; nombre: strin
       {/* Orla doble decorativa */}
       <div className="pointer-events-none absolute inset-2.5 rounded-xl border border-brand/20" />
       <div className="pointer-events-none absolute inset-[13px] rounded-lg border border-brand/10" />
-      {/* Sello de fondo muy tenue */}
-      <div className="pointer-events-none absolute -right-8 -bottom-10 opacity-[0.05]">
-        <Emblem size={220} tone="light" />
-      </div>
 
       <div className="relative z-10 px-7 py-7">
         <div className="flex items-center justify-between">
-          <Emblem size={30} tone="light" />
+          <Wordmark size={13} tone="light" />
           <span className="za-eyebrow">{t('certificates.completionCertificate')}</span>
         </div>
 

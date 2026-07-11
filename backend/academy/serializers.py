@@ -127,7 +127,7 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = [
             'id', 'module', 'orden', 'titulo', 'tipo',
-            'contenido', 'video_url', 'duracion_min',
+            'contenido', 'video_url', 'duracion_min', 'puntos',
             'fecha_en_vivo', 'entregable_tipo', 'quiz', 'bloqueado', 'created_at',
         ]
         read_only_fields = ['id', 'module', 'created_at']
@@ -345,13 +345,14 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     curso_titulo = serializers.SerializerMethodField()
     curso_slug = serializers.CharField(source='course.slug', read_only=True)
+    curso_portada = serializers.CharField(source='course.portada', read_only=True)
     estudiante_nombre = serializers.SerializerMethodField()
     certificado = serializers.SerializerMethodField()
 
     class Meta:
         model = Enrollment
         fields = [
-            'id', 'student', 'course', 'curso_titulo', 'curso_slug',
+            'id', 'student', 'course', 'curso_titulo', 'curso_slug', 'curso_portada',
             'estudiante_nombre', 'estado', 'progreso', 'certificado',
             'created_at', 'completado_at',
         ]

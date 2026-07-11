@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { completeLesson, getCertificate, getEnrollment, type AttemptResult } from '@/api/academy'
 import { useDialogA11y } from '@/lib/useDialogA11y'
-import { Emblem } from '@/components/Emblem'
+import { Wordmark } from '@/components/Emblem'
 import { Icon, type IconName } from '@/components/Icon'
 import { Spinner } from '@/components/ui/Spinner'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -287,7 +287,7 @@ export function LessonPlayerPage() {
         >
           <Icon name="chevronLeft" size={20} />
         </button>
-        <Emblem size={26} />
+        <Wordmark size={14} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{enr.curso.titulo}</p>
         </div>

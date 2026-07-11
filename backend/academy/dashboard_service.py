@@ -10,10 +10,14 @@ NUNCA recalcula progreso ni otorga insignias: lee `Enrollment.progreso`/`estado`
 `streak_service.get_or_create_state` para la racha, embebido en el payload sin
 un segundo round-trip.
 
-El nombre `progreso_general` es DELIBERADAMENTE distinto del "Zyfit Score" de la
-app de entrenamiento (`users.coach_views`, 0.45·consistencia+0.40·adherencia+
-0.15·recencia): es un promedio simple y transparente de otro producto — nunca
-usar "score"/"puntaje" para este número.
+El Home ya NO expone un "progreso general" en % (encajaba mal con un producto
+de suscripción continua: un % implica una meta que se "termina", y de ahí se
+cae la suscripción). En su lugar se agregan los "puntos de aprendizaje"
+(`Lesson.puntos` de las lecciones completadas) por escuela y a nivel global —
+`puntos_aprendizaje` en la raíz, `puntos` por escuela. DISTINTO de
+`racha['puntos_totales']` (gamificación de la racha, `streak_service`) y del
+`Zyfit Score` de la app de entrenamiento (`users.coach_views`) — tres números
+separados a propósito, nunca mezclar ni renombrar uno a costa del otro.
 """
 
 from django.db.models import Max, Sum
@@ -26,7 +30,21 @@ BADGES_RECIENTES_MAX = 12
 
 # ─── Helpers internos ─────────────────────────────────────────────────────────
 
-def _course_status(course, enrollment):
+def _puntos_by_course(user):
+    """Puntos de aprendizaje ganados por curso (suma de `Lesson.puntos` de las
+    lecciones ya completadas), en una sola query agregada —
+    `{course_id: puntos}`. Un curso sin lecciones completadas no aparece acá
+    (se lee con `.get(id, 0)`)."""
+    rows = (
+        LessonProgress.objects
+        .filter(enrollment__student=user, completado=True)
+        .values('enrollment__course_id')
+        .annotate(total=Sum('lesson__puntos'))
+    )
+    return {row['enrollment__course_id']: row['total'] or 0 for row in rows}
+
+
+def _course_status(course, enrollment, puntos_by_course):
     """Bucket (`completado`/`en_progreso`/`no_iniciado`) + campos de un curso."""
     progreso = enrollment.progreso if enrollment else 0
     if enrollment and enrollment.estado == Enrollment.ESTADO_COMPLETADA:
@@ -44,24 +62,24 @@ def _course_status(course, enrollment):
         'progreso': progreso,
         'enrollment_id': enrollment.id if enrollment else None,
         'certificado': cert.codigo if cert else None,
+        '_puntos': puntos_by_course.get(course.id, 0),
     }
 
 
-def _school_summary(school, courses, by_course_id):
-    """Resumen de una escuela: `progreso_general` = promedio simple de `progreso`
-    sobre sus cursos publicados (un curso nunca-inscrito cuenta como 0). `None`
-    si la escuela no tiene cursos publicados (se excluye del payload, igual
-    criterio que `schools_view`)."""
+def _school_summary(school, courses, by_course_id, puntos_by_course):
+    """Resumen de una escuela: `puntos` = puntos de aprendizaje acumulados en
+    sus cursos publicados. `None` si la escuela no tiene cursos publicados (se
+    excluye del payload, igual criterio que `schools_view`)."""
     if not courses:
         return None
-    cursos_payload = [_course_status(c, by_course_id.get(c.id)) for c in courses]
-    progreso_general = round(sum(c['progreso'] for c in cursos_payload) / len(cursos_payload))
+    cursos_payload = [_course_status(c, by_course_id.get(c.id), puntos_by_course) for c in courses]
+    puntos = sum(c.pop('_puntos') for c in cursos_payload)
     return {
         'id': school.id,
         'nombre': school.nombre,
         'slug': school.slug,
         'orden': school.orden,
-        'progreso_general': progreso_general,
+        'puntos': puntos,
         'total_cursos': len(cursos_payload),
         'cursos_completados': sum(1 for c in cursos_payload if c['estado'] == 'completado'),
         'cursos_en_progreso': sum(1 for c in cursos_payload if c['estado'] == 'en_progreso'),
@@ -215,25 +233,22 @@ def build_dashboard(user, tenant=None, hoy=None, ahora=None) -> dict:
         .prefetch_related('insignias_obtenidas__badge')
     )
     by_course_id = {e.course_id: e for e in enrollments}
+    puntos_by_course = _puntos_by_course(user)
 
     escuelas = []
     for school in schools:
-        summary = _school_summary(school, cursos_por_escuela.get(school.id) or [], by_course_id)
+        summary = _school_summary(school, cursos_por_escuela.get(school.id) or [], by_course_id, puntos_by_course)
         if summary is not None:
             escuelas.append(summary)
 
-    todos_los_cursos = [c for escuela in escuelas for c in escuela['cursos']]
-    progreso_general = (
-        round(sum(c['progreso'] for c in todos_los_cursos) / len(todos_los_cursos))
-        if todos_los_cursos else 0
-    )
+    puntos_aprendizaje = sum(escuela['puntos'] for escuela in escuelas)
 
     last_activity = _last_activity_by_enrollment(user)
     continuar, siguiente_paso = _continue_and_next_step(enrollments, last_activity)
     racha = streak_service.get_or_create_state(user, hoy=hoy, ahora=ahora)
 
     return {
-        'progreso_general': progreso_general,
+        'puntos_aprendizaje': puntos_aprendizaje,
         'tiene_matriculas': bool(enrollments),
         'escuelas': escuelas,
         'racha': racha,

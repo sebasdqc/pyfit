@@ -9,7 +9,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { Link, useNavigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuth } from '@/auth/useAuth'
-import { Emblem, BrandLockup } from '@/components/Emblem'
+import { BrandLockup } from '@/components/Emblem'
 import { Icon, type IconName } from '@/components/Icon'
 import { LocaleToggle } from '@/components/ui/LocaleToggle'
 import { useT } from '@/locale/useT'
@@ -97,10 +97,6 @@ export function LoginPage() {
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '22px 22px' }}
         />
-        {/* Ráfaga decorativa de emblema (muy tenue) */}
-        <div className="pointer-events-none absolute -right-16 -top-16 opacity-[0.06]">
-          <Emblem size={420} tone="dark" />
-        </div>
         {/* Scrim: oscurece el fondo para garantizar contraste AA del texto en
             blanco/opacidad sin importar el color de marca del tenant activo. */}
         <div className="pointer-events-none absolute inset-0 bg-black/20" />

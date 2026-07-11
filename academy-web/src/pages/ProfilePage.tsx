@@ -8,9 +8,11 @@ import { Link } from 'react-router-dom'
 import { getBadges } from '@/api/academy'
 import { updateMe } from '@/api/auth'
 import { useAuth } from '@/auth/useAuth'
+import { useTheme } from '@/theme/useTheme'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Icon } from '@/components/Icon'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
 import { TagInput } from '@/components/ui/TagInput'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
@@ -23,6 +25,7 @@ const HOY = new Date().toISOString().slice(0, 10)
 export function ProfilePage() {
   const t = useT()
   const { user, refreshUser } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [nombre, setNombre] = useState(user?.nombre ?? '')
   const [pais, setPais] = useState(user?.pais ?? '')
   const [ciudad, setCiudad] = useState(user?.ciudad ?? '')
@@ -113,6 +116,34 @@ export function ProfilePage() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Stat icon="learning" value={user.total_inscripciones} label={t('profile.statEnrollments')} />
         <Stat icon="instructor" value={user.total_cursos_creados} label={t('profile.statCoursesCreated')} />
+      </section>
+
+      {/* Preferencias */}
+      <section className="za-card p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t('profile.preferencesTitle')}</h2>
+        <div className="mt-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-ink">{t('profile.themeLabel')}</p>
+              <p className="text-xs text-ink-muted">
+                {theme === 'dark' ? t('topbar.darkMode') : t('topbar.lightMode')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? t('topbar.toLightMode') : t('topbar.toDarkMode')}
+              className="flex h-10 items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
+              {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-ink">{t('profile.languageLabel')}</p>
+            <LocaleToggle />
+          </div>
+        </div>
       </section>
 
       {/* Suscripción */}

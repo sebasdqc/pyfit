@@ -14,7 +14,6 @@ import { ExploreHeader } from '@/components/layout/ExploreHeader'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
-import { Emblem } from '@/components/Emblem'
 import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
 
@@ -62,9 +61,6 @@ export function ExploreCatalogPage() {
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8 sm:px-10">
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-deep p-6 sm:p-9">
-          <div className="pointer-events-none absolute -right-10 -top-12 opacity-[0.08]">
-            <Emblem size={260} tone="dark" />
-          </div>
           <div className="relative z-10 max-w-2xl">
             <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-white/55">
               {t('explore.eyebrow')}
