@@ -108,25 +108,43 @@ export function Sidebar({
               <NavLink
                 to={item.to}
                 onClick={onNavigate}
-                title={t(item.labelKey)}
+                title={item.adminOnly ? `${t(item.labelKey)} · ${t('sidebar.adminOnlyTag')}` : t(item.labelKey)}
                 aria-label={t(item.labelKey)}
                 className={({ isActive }) =>
                   [
                     'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
                     'md:justify-center md:px-0 lg:justify-start lg:px-3',
-                    isActive
-                      ? 'bg-accent/10 font-medium text-brand'
-                      : 'text-ink-soft hover:bg-surface-soft hover:text-ink',
+                    item.adminOnly
+                      ? isActive
+                        ? 'bg-warn/10 font-medium text-warn'
+                        : 'text-warn/80 hover:bg-warn/10 hover:text-warn'
+                      : isActive
+                        ? 'bg-accent/10 font-medium text-brand'
+                        : 'text-ink-soft hover:bg-surface-soft hover:text-ink',
                   ].join(' ')
                 }
               >
                 {({ isActive }) => (
                   <>
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
+                      <span
+                        className={`absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full ${item.adminOnly ? 'bg-warn' : 'bg-accent'}`}
+                      />
                     )}
-                    <Icon name={item.icon} size={19} className={isActive ? 'text-accent' : ''} />
-                    <span className="md:hidden lg:inline">{t(item.labelKey)}</span>
+                    <Icon
+                      name={item.icon}
+                      size={19}
+                      className={item.adminOnly ? 'text-warn' : isActive ? 'text-accent' : ''}
+                    />
+                    <span
+                      className={
+                        item.adminOnly
+                          ? 'underline decoration-warn/50 underline-offset-4 md:hidden lg:inline'
+                          : 'md:hidden lg:inline'
+                      }
+                    >
+                      {t(item.labelKey)}
+                    </span>
                   </>
                 )}
               </NavLink>

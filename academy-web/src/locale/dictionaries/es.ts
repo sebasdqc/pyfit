@@ -54,6 +54,7 @@ const es = {
     navUsuarios: 'Usuarios',
     navSoporte: 'Soporte',
     navSoporteAdmin: 'Soporte (admin)',
+    adminOnlyTag: 'Solo administradores',
     roleAdmin: 'Administrador',
     roleDirectorTecnico: 'Director técnico',
     roleCoach: 'Entrenador',

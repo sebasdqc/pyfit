@@ -58,6 +58,7 @@ const en: DeepPartial<Dictionary> = {
     navUsuarios: 'Users',
     navSoporte: 'Support',
     navSoporteAdmin: 'Support (admin)',
+    adminOnlyTag: 'Admin only',
     roleAdmin: 'Administrator',
     roleDirectorTecnico: 'Technical director',
     roleCoach: 'Coach',
