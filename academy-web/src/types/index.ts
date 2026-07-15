@@ -400,6 +400,22 @@ export interface DashboardNextStep {
   leccion: { id: number; titulo: string; tipo: LessonTipo; modulo_titulo: string }
 }
 
+export interface AIRecommendation {
+  leccion_id: number
+  leccion_titulo: string
+  curso_id: number
+  curso_titulo: string
+  curso_slug: string
+  escuela_nombre: string | null
+  // Nombre de la competencia (grafo transversal a escuelas) que motivó la
+  // recomendación — DISTINTA de `continuar`/`siguiente_paso`, que son
+  // puramente secuenciales dentro del curso más reciente.
+  competencia_nombre: string
+  // null = curso de descubrimiento (todavía no matriculado); el link va al
+  // detalle del curso en vez de a /aprender/<enrollment_id>.
+  enrollment_id: number | null
+}
+
 export interface DashboardStats {
   cursos_completados: number
   cursos_activos: number
@@ -425,6 +441,7 @@ export interface DashboardData {
   insignias_identidad: AcademyBadgeCatalog
   continuar: DashboardNextStep | null
   siguiente_paso: DashboardNextStep | null
+  recomendacion_ia: AIRecommendation | null
   stats: DashboardStats
 }
 

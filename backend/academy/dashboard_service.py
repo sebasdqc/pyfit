@@ -20,10 +20,14 @@ cae la suscripción). En su lugar se agregan los "puntos de aprendizaje"
 separados a propósito, nunca mezclar ni renombrar uno a costa del otro.
 """
 
+import logging
+
 from django.db.models import Max, Sum
 
-from . import badges_service, streak_service
+from . import badges_service, mastery_service, streak_service
 from .models import Course, Enrollment, Lesson, LessonProgress, School
+
+logger = logging.getLogger(__name__)
 
 BADGES_RECIENTES_MAX = 12
 
@@ -159,6 +163,20 @@ def _target_payload(enrollment, leccion):
     }
 
 
+def _recomendacion_ia(user, tenant, continuar, siguiente_paso):
+    """Siguiente lección recomendada por el motor de mastery adaptativo
+    (`mastery_service`), cruzando escuelas — DISTINTA de `continuar`/
+    `siguiente_paso` (puramente secuencial dentro del curso más reciente).
+    Failure-safe: cualquier fallo devuelve `None` (sin recomendación) en vez
+    de tumbar el resto del Home — esta feature es aditiva, nunca crítica."""
+    excluir = {t['leccion']['id'] for t in (continuar, siguiente_paso) if t}
+    try:
+        return mastery_service.recomendar_siguiente(user, tenant=tenant, excluir_lesson_ids=excluir)
+    except Exception:
+        logger.exception('mastery_service.recomendar_siguiente failed (user=%s)', user.id)
+        return None
+
+
 def _continue_and_next_step(enrollments, last_activity):
     """`continuar` = próxima lección incompleta de la matrícula activa tocada
     más recientemente (por `LessonProgress.completado_at`). `siguiente_paso` es
@@ -246,12 +264,14 @@ def build_dashboard(user, tenant=None, hoy=None, ahora=None) -> dict:
     last_activity = _last_activity_by_enrollment(user)
     continuar, siguiente_paso = _continue_and_next_step(enrollments, last_activity)
     racha = streak_service.get_or_create_state(user, hoy=hoy, ahora=ahora)
+    recomendacion_ia = _recomendacion_ia(user, tenant, continuar, siguiente_paso)
 
     return {
         'puntos_aprendizaje': puntos_aprendizaje,
         'tiene_matriculas': bool(enrollments),
         'escuelas': escuelas,
         'racha': racha,
+        'recomendacion_ia': recomendacion_ia,
         # 'insignias' = Check-list de Competencias por curso (CourseBadge/EarnedBadge,
         # Programa Evolución 360°, otorgadas por matrícula). 'insignias_identidad' =
         # catálogo global de identidad (AcademyBadge/AcademyEarnedBadge, por usuario:

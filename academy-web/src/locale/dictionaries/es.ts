@@ -293,6 +293,8 @@ const es = {
     learningPoints: 'Puntos de aprendizaje',
     resumeWhereYouLeftOff: 'Continúa donde lo dejaste',
     nextStep: 'Tu próximo paso',
+    aiRecommendationEyebrow: 'Recomendado para ti',
+    aiRecommendationReason: 'Porque tu dominio en {{competencia}} es bajo',
     progressOfCourse: 'Progreso de {{course}}',
     coursesCompleted: 'Cursos completados',
     coursesInProgress: 'Cursos en curso',

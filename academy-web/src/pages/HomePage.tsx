@@ -19,7 +19,7 @@ import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { schoolTheme } from '@/lib/schoolTheme'
 import { useT } from '@/locale/useT'
 import type {
-  Course, CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
+  AIRecommendation, Course, CourseEstado, DashboardData, DashboardNextStep, DashboardSchool, DashboardStats,
 } from '@/types'
 
 export function HomePage() {
@@ -126,6 +126,8 @@ export function HomePage() {
 
           {objetivo && <ContinueHero target={objetivo} isResume={!!data.continuar} />}
 
+          {data.recomendacion_ia && <AIRecommendationCard recomendacion={data.recomendacion_ia} />}
+
           <PromoZyfitApp />
 
           <div className="flex flex-col gap-4">
@@ -165,6 +167,39 @@ function ContinueHero({ target, isResume }: { target: DashboardNextStep; isResum
         name="arrowRight"
         size={20}
         className="shrink-0 text-accent transition-transform group-hover:translate-x-1"
+      />
+    </Link>
+  )
+}
+
+function AIRecommendationCard({ recomendacion }: { recomendacion: AIRecommendation }) {
+  const t = useT()
+  const to = recomendacion.enrollment_id
+    ? `/aprender/${recomendacion.enrollment_id}`
+    : `/cursos/${recomendacion.curso_id}`
+  return (
+    <Link
+      to={to}
+      className="group za-card flex items-center gap-4 border-2 border-brand/20 bg-gradient-to-br from-brand/5 to-transparent p-5 transition-all hover:-translate-y-0.5 hover:shadow-cardHover"
+    >
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand text-white">
+        <Icon name="sparkles" size={24} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="za-eyebrow">{t('home.aiRecommendationEyebrow')}</p>
+        <h3 className="mt-1 truncate text-base font-semibold text-ink">{recomendacion.leccion_titulo}</h3>
+        <p className="truncate text-sm text-ink-soft">
+          {recomendacion.curso_titulo}
+          {recomendacion.escuela_nombre ? ` · ${recomendacion.escuela_nombre}` : ''}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-ink-muted">
+          {t('home.aiRecommendationReason', { competencia: recomendacion.competencia_nombre })}
+        </p>
+      </div>
+      <Icon
+        name="arrowRight"
+        size={20}
+        className="shrink-0 text-brand transition-transform group-hover:translate-x-1"
       />
     </Link>
   )

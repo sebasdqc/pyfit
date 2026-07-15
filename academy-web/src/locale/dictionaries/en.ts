@@ -297,6 +297,8 @@ const en: DeepPartial<Dictionary> = {
     learningPoints: 'Learning points',
     resumeWhereYouLeftOff: 'Resume where you left off',
     nextStep: 'Your next step',
+    aiRecommendationEyebrow: 'Recommended for you',
+    aiRecommendationReason: 'Because your mastery of {{competencia}} is low',
     progressOfCourse: 'Progress of {{course}}',
     coursesCompleted: 'Completed courses',
     coursesInProgress: 'Courses in progress',
