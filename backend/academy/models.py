@@ -914,3 +914,9 @@ from .library_models import LibraryResource, LibraryFavorite  # noqa: E402,F401
 
 # Blog editorial — modelo en archivo propio; ver blog_models.py.
 from .blog_models import BlogPost  # noqa: E402,F401
+
+# Grafo de competencias + mastery adaptativo — modelos en archivo propio;
+# ver competency_models.py.
+from .competency_models import (  # noqa: E402,F401
+    Competency, LessonCompetencyTag, StudentCompetencyMastery,
+)

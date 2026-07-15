@@ -7,6 +7,7 @@ from .community_models import (
     ESTADO_OCULTO_MANUAL, ESTADO_VISIBLE, CommunityPost, CommunityReply, CommunityReport,
 )
 from .blog_models import BlogPost
+from .competency_models import Competency, LessonCompetencyTag, StudentCompetencyMastery
 from .library_models import LibraryFavorite, LibraryResource
 from .support_models import SupportFAQ, SupportMessage
 from .models import (
@@ -297,6 +298,42 @@ class BlogPostAdmin(ModelAdmin):
     autocomplete_fields = ('school', 'autor')
     prepopulated_fields = {'slug': ('titulo',)}
     readonly_fields = ('vistas', 'publicado_en', 'created_at', 'updated_at')
+
+    def has_add_permission(self, request):
+        return False
+
+
+# ─── Grafo de competencias + mastery adaptativo ────────────────────────────────
+# Competency es la taxonomía curada a mano (ver seed_academy_competencies) —
+# activo/inactivo permite retirar una competencia sin redeploy. Los tags
+# fuente='ia' los escribe tag_lesson_competencies; un admin puede corregir uno
+# puntual cambiándolo a fuente='manual' para que el comando deje de tocarlo.
+# StudentCompetencyMastery es de solo lectura/auditoría (lo escribe
+# mastery_service, nunca a mano).
+
+@admin.register(Competency)
+class CompetencyAdmin(ModelAdmin):
+    list_display = ('nombre', 'slug', 'orden', 'activo', 'created_at')
+    list_filter = ('activo',)
+    search_fields = ('nombre', 'slug', 'descripcion')
+    prepopulated_fields = {'slug': ('nombre',)}
+
+
+@admin.register(LessonCompetencyTag)
+class LessonCompetencyTagAdmin(ModelAdmin):
+    list_display = ('lesson', 'competency', 'peso', 'fuente', 'updated_at')
+    list_filter = ('fuente', 'competency')
+    search_fields = ('lesson__titulo', 'competency__nombre', 'competency__slug')
+    autocomplete_fields = ('lesson', 'competency')
+
+
+@admin.register(StudentCompetencyMastery)
+class StudentCompetencyMasteryAdmin(ModelAdmin):
+    list_display = ('student', 'competency', 'nivel', 'evidencia_n', 'updated_at')
+    list_filter = ('competency',)
+    search_fields = ('student__email', 'competency__nombre')
+    autocomplete_fields = ('student', 'competency')
+    readonly_fields = ('student', 'competency', 'nivel', 'evidencia_n', 'updated_at')
 
     def has_add_permission(self, request):
         return False
