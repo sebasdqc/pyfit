@@ -39,6 +39,7 @@ quizzes, recalcular progreso, emitir certificado) vive en academy.grading.
 """
 
 import hmac
+import logging
 from datetime import date
 
 from django.conf import settings
@@ -56,7 +57,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle, SimuladorComputeRateThrottle
-from . import access_service, badges_service, dashboard_service, grading, streak_service
+from . import access_service, badges_service, dashboard_service, grading, mastery_service, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
@@ -70,6 +71,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ─── Branding por defecto (fallback cuando no hay tenant) ─────────────────────
@@ -142,6 +144,26 @@ def _otorgar_insignias(user):
         ]
     except Exception:
         return []
+
+
+def _registrar_evidencia_mastery_quiz(attempt):
+    """Actualiza el dominio (mastery) de competencias a partir de un intento
+    de quiz (efecto colateral, failure-safe). Un fallo de esta feature NUNCA
+    debe tumbar el flujo de aprendizaje — a diferencia de las insignias/racha,
+    sí logueamos la excepción porque no hay ningún otro rastro visible de que
+    algo falló (esta feature no tiene respuesta HTTP propia)."""
+    try:
+        mastery_service.registrar_evidencia_quiz(attempt)
+    except Exception:
+        logger.exception('mastery_service.registrar_evidencia_quiz failed (attempt=%s)', attempt.id)
+
+
+def _registrar_evidencia_mastery_submission(submission):
+    """Ídem para una entrega revisada por el instructor."""
+    try:
+        mastery_service.registrar_evidencia_submission(submission)
+    except Exception:
+        logger.exception('mastery_service.registrar_evidencia_submission failed (submission=%s)', submission.id)
 
 
 def _course_for_read(user, pk, tenant=None):
@@ -762,6 +784,8 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     # Insignias de identidad: SIEMPRE al final, después de que progreso y racha
     # ya quedaron guardados (ver docstring de _otorgar_insignias).
     nuevas_insignias = _otorgar_insignias(request.user)
+    # Mastery adaptativo: efecto colateral aparte, no afecta la respuesta.
+    _registrar_evidencia_mastery_quiz(attempt)
     data = QuizAttemptSerializer(attempt).data
     data['progreso'] = pct
     data['estado'] = enrollment.estado
@@ -1082,6 +1106,8 @@ def submission_review(request, submission_id):
     # Insignias de identidad: son del ALUMNO de la matrícula, no de request.user
     # (quien llama este endpoint es el instructor revisando la entrega).
     nuevas_insignias = _otorgar_insignias(enrollment.student)
+    # Mastery adaptativo: efecto colateral aparte, no afecta la respuesta.
+    _registrar_evidencia_mastery_submission(submission)
 
     data = SubmissionSerializer(submission).data
     data['progreso'] = enrollment.progreso
