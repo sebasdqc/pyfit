@@ -35,6 +35,10 @@ const translations = {
   login_lang_label:           { es: 'ES',                                 en: 'EN',                                 pt: 'PT',                                  fr: 'FR' },
   login_lang_a11y:            { es: 'Cambiar idioma',                    en: 'Change language',                    pt: 'Mudar idioma',                        fr: "Changer de langue" },
   login_coach_portal:         { es: 'PORTAL ENTRENADOR',                  en: 'COACH PORTAL',                       pt: 'PORTAL DO TREINADOR',                 fr: 'PORTAIL ENTRAÎNEUR' },
+  login_show_password:        { es: 'VER',                                en: 'SHOW',                               pt: 'VER',                                 fr: 'VOIR' },
+  login_hide_password:        { es: 'OCULTAR',                            en: 'HIDE',                               pt: 'OCULTAR',                             fr: 'MASQUER' },
+  login_password_hint:        { es: 'Mínimo 8 caracteres.',               en: 'At least 8 characters.',             pt: 'Mínimo 8 caracteres.',                fr: 'Au moins 8 caractères.' },
+  login_error_password_short: { es: 'La contraseña debe tener al menos 8 caracteres.', en: 'Password must be at least 8 characters.', pt: 'A senha deve ter pelo menos 8 caracteres.', fr: 'Le mot de passe doit contenir au moins 8 caractères.' },
 
   // ─── Forgot Password ─────────────────────────────────────────────────────────
   forgot_title:               { es: 'Recuperar contraseña',               en: 'Reset password',                     pt: 'Recuperar senha',                     fr: 'Réinitialiser le mot de passe' },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  AccessibilityInfo,
+  findNodeHandle,
   useWindowDimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -22,6 +24,45 @@ import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import { login, register, googleLogin, appleLogin } from '../../lib/auth'
+
+// ─── Contraste / accesibilidad ─────────────────────────────────────────────────
+
+// Luminancia relativa (WCAG) de un color hex. Solo maneja #rgb / #rrggbb —
+// suficiente porque TODOS los acentos de lib/colors.ts son hex sólidos.
+function relLuminance(hex: string): number {
+  const h = hex.replace('#', '')
+  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const toLin = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+  const r = toLin(parseInt(n.slice(0, 2), 16) / 255)
+  const g = toLin(parseInt(n.slice(2, 4), 16) / 255)
+  const b = toLin(parseInt(n.slice(4, 6), 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+// Tinta legible sobre un acento sólido. Mantiene el blanco de marca sobre los
+// acentos saturados (azul, rosa, neón) pero cambia a tinta oscura sobre los
+// acentos CLAROS (lima de Forest, cobre de Sand, turquesa de Midnight/Ocean),
+// donde el blanco fallaba WCAG AA (Forest llegaba a ~1.7:1). Umbral 3.2:1 =
+// justo por debajo del contraste blanco/azul de marca, que se preserva.
+function readableTextOn(hex: string): string {
+  const contrastWhite = 1.05 / (relLuminance(hex) + 0.05)
+  return contrastWhite >= 3.2 ? '#ffffff' : '#0d1117'
+}
+
+// Suscripción a "reducir movimiento" del SO (WCAG 2.3.3). La usan la aurora y
+// la animación de entrada para quedarse quietas si el usuario lo pidió.
+function useReduceMotion(): boolean {
+  const [reduce, setReduce] = useState(false)
+  useEffect(() => {
+    let mounted = true
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => { if (mounted) setReduce(!!v) })
+      .catch(() => {})
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduce(!!v))
+    return () => { mounted = false; sub?.remove?.() }
+  }, [])
+  return reduce
+}
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
@@ -108,15 +149,18 @@ function AppleIcon() {
 type OrbProps = {
   gid: string; color: string; size: number; top: number; left: number; driftX: number
   scaleFrom: number; scaleTo: number; opFrom: number; opTo: number; duration: number; delay: number
+  // dim atenúa la opacidad (temas claros); reduceMotion congela el orb.
+  dim: number; reduceMotion: boolean
 }
 
 function GlowOrb({
   gid, color, size, top, left, driftX,
-  scaleFrom, scaleTo, opFrom, opTo, duration, delay,
+  scaleFrom, scaleTo, opFrom, opTo, duration, delay, dim, reduceMotion,
 }: OrbProps) {
   const progress = React.useRef(new Animated.Value(0)).current
 
   React.useEffect(() => {
+    if (reduceMotion) return
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(progress, {
@@ -131,11 +175,18 @@ function GlowOrb({
     )
     loop.start()
     return () => loop.stop()
-  }, [progress, duration, delay])
+  }, [progress, duration, delay, reduceMotion])
 
-  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [scaleFrom, scaleTo] })
-  const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [opFrom, opTo] })
-  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-driftX, driftX] })
+  // Con reduce-motion, el orb queda estático en un punto medio del ciclo.
+  const scale = reduceMotion
+    ? (scaleFrom + scaleTo) / 2
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [scaleFrom, scaleTo] })
+  const opacity = reduceMotion
+    ? ((opFrom + opTo) / 2) * dim
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [opFrom * dim, opTo * dim] })
+  const translateX = reduceMotion
+    ? 0
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [-driftX, driftX] })
 
   return (
     <Animated.View
@@ -161,24 +212,39 @@ function GlowOrb({
 
 // Tres orbs azules superpuestos en la parte superior, con fases/duraciones
 // distintas para que el conjunto respire como una aurora viva.
-function LoginAura() {
-  const { colors } = useTheme()
+function LoginAura({ focus }: { focus: Animated.Value }) {
+  const { colors, isDark } = useTheme()
   const { width } = useWindowDimensions()
+  const reduceMotion = useReduceMotion()
+  // Los orbs se calibraron para fondos oscuros; sobre crema/rosa (temas claros)
+  // esos acentos saturados a opacidad plena se ven como un manchón pesado y
+  // arruinan el logo negro encima → los atenuamos fuerte.
+  const dim = isDark ? 1 : 0.35
+  // Diferenciador: la aurora "se inclina" hacia el usuario al enfocar un campo
+  // (leve escala + brillo). Se apaga con reduce-motion.
+  const focusStyle = reduceMotion ? null : {
+    opacity: focus.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }),
+    transform: [{ scale: focus.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }],
+  }
   return (
-    <View pointerEvents="none" style={auraStyles.container}>
+    <Animated.View pointerEvents="none" style={[auraStyles.container, focusStyle]}>
       <GlowOrb gid="orbCyan" color={colors.cyan} size={360}
         top={-50} left={-110} driftX={42}
-        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300} />
+        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300}
+        dim={dim} reduceMotion={reduceMotion} />
       <GlowOrb gid="orbDark" color={colors.accentDark} size={430}
         top={-110} left={width - 270} driftX={38}
-        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800} />
+        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800}
+        dim={dim} reduceMotion={reduceMotion} />
       <GlowOrb gid="orbMain" color={colors.accent} size={560}
         top={-210} left={width / 2 - 280} driftX={28}
-        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0} />
+        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0}
+        dim={dim} reduceMotion={reduceMotion} />
       <GlowOrb gid="orbCore" color={colors.accentLight} size={260}
         top={-70} left={width / 2 - 130} driftX={14}
-        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500} />
-    </View>
+        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500}
+        dim={dim} reduceMotion={reduceMotion} />
+    </Animated.View>
   )
 }
 
@@ -193,6 +259,7 @@ export default function LoginScreen() {
   const { t, lang, toggleLang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReduceMotion()
 
   const { initialTab } = useLocalSearchParams<{ initialTab?: string }>()
   const [tab, setTab] = useState<'login' | 'register'>(
@@ -200,10 +267,79 @@ export default function LoginScreen() {
   )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [appleLoading, setAppleLoading] = useState(false)
   const [error, setError] = useState('')
+  const errorRef = useRef<View>(null)
+
+  // Mueve el foco de accesibilidad al error al aparecer: sin esto, VoiceOver/
+  // TalkBack no anuncian "credenciales incorrectas" y el usuario queda atascado
+  // en el botón sin saber qué pasó (mismo patrón que el login web de Academy).
+  useEffect(() => {
+    if (!error) return
+    const node = findNodeHandle(errorRef.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  }, [error])
+
+  // Entrada escalonada del contenido (fade + subida sutil). Se respeta
+  // reduce-motion: si está activo, arranca ya en su posición final.
+  const entrance = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1)
+      return
+    }
+    Animated.timing(entrance, {
+      toValue: 1,
+      duration: 520,
+      delay: 120,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }, [entrance, reduceMotion])
+  const entranceStyle = {
+    opacity: entrance,
+    transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  }
+
+  // Diferenciador: la aurora reacciona al foco de los campos.
+  const auraFocus = useRef(new Animated.Value(0)).current
+  const animateAura = (to: number) =>
+    Animated.timing(auraFocus, {
+      toValue: to, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start()
+
+  // Diferenciador: pastilla deslizante del selector login/registro.
+  const [tabsW, setTabsW] = useState(0)
+  const tabAnim = useRef(new Animated.Value(tab === 'login' ? 0 : 1)).current
+  useEffect(() => {
+    const to = tab === 'login' ? 0 : 1
+    if (reduceMotion) { tabAnim.setValue(to); return }
+    Animated.spring(tabAnim, { toValue: to, useNativeDriver: true, friction: 9, tension: 90 }).start()
+  }, [tab, reduceMotion, tabAnim])
+  const pillWidth = tabsW > 0 ? (tabsW - 8) / 2 : 0
+  const pillX = tabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, pillWidth] })
+
+  // Diferenciador: brillo (sheen) que barre el botón primario en loop lento.
+  const [btnW, setBtnW] = useState(0)
+  const sheen = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduceMotion || btnW === 0) return
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(1800),
+        Animated.timing(sheen, {
+          toValue: 1, duration: 850, easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(sheen, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [reduceMotion, btnW, sheen])
+  const sheenX = sheen.interpolate({ inputRange: [0, 1], outputRange: [-btnW * 0.7, btnW * 1.3] })
 
   async function handleApple() {
     if (loading || googleLoading || appleLoading) return
@@ -259,6 +395,10 @@ export default function LoginScreen() {
       setError(t('login_error_fields'))
       return
     }
+    if (tab === 'register' && password.length < 8) {
+      setError(t('login_error_password_short'))
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -288,7 +428,7 @@ export default function LoginScreen() {
       />
 
       {/* Animated blue glow / orb aurora behind the top of the screen */}
-      <LoginAura />
+      <LoginAura focus={auraFocus} />
 
       {/* Language toggle — top-right, outside scroll */}
       <TouchableOpacity
@@ -311,6 +451,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <Animated.View style={entranceStyle}>
           {/* Logo */}
           <View style={styles.logoContainer}>
             <PyFitLogo />
@@ -319,10 +460,19 @@ export default function LoginScreen() {
 
           {/* Card */}
           <View style={styles.card}>
-            {/* Tab toggle */}
-            <View style={styles.tabRow}>
+            {/* Tab toggle — pastilla activa deslizante detrás de las etiquetas */}
+            <View
+              style={styles.tabRow}
+              onLayout={(e) => setTabsW(e.nativeEvent.layout.width)}
+            >
+              {pillWidth > 0 && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.tabPill, { width: pillWidth, transform: [{ translateX: pillX }] }]}
+                />
+              )}
               <TouchableOpacity
-                style={[styles.tab, tab === 'login' && styles.tabActive]}
+                style={styles.tab}
                 onPress={() => { setTab('login'); setError('') }}
                 activeOpacity={0.8}
                 accessibilityRole="tab"
@@ -333,7 +483,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, tab === 'register' && styles.tabActive]}
+                style={styles.tab}
                 onPress={() => { setTab('register'); setError('') }}
                 activeOpacity={0.8}
                 accessibilityRole="tab"
@@ -354,6 +504,8 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.inkMuted}
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => animateAura(1)}
+                onBlur={() => animateAura(0)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -363,17 +515,36 @@ export default function LoginScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('login_password_label')}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor={colors.inkMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel={t('login_password_label')}
-              />
+              <View style={styles.passwordRow}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.inkMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => animateAura(1)}
+                  onBlur={() => animateAura(0)}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel={t('login_password_label')}
+                />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPassword((s) => !s)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: showPassword }}
+                  accessibilityLabel={showPassword ? t('login_hide_password') : t('login_show_password')}
+                >
+                  <Text style={styles.eyeText}>
+                    {showPassword ? t('login_hide_password') : t('login_show_password')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {tab === 'register' && (
+                <Text style={styles.passwordHint}>{t('login_password_hint')}</Text>
+              )}
             </View>
 
             {tab === 'login' && (
@@ -390,7 +561,13 @@ export default function LoginScreen() {
 
             {/* Error */}
             {!!error && (
-              <View style={styles.errorBox}>
+              <View
+                ref={errorRef}
+                style={styles.errorBox}
+                accessible
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive"
+              >
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
@@ -410,9 +587,26 @@ export default function LoginScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryBtn}
+                onLayout={(e) => setBtnW(e.nativeEvent.layout.width)}
               >
+                {!reduceMotion && btnW > 0 && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.sheen,
+                      { width: btnW * 0.4, transform: [{ translateX: sheenX }, { rotate: '14deg' }] },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={['transparent', 'rgba(255,255,255,0.22)', 'transparent']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.sheenFill}
+                    />
+                  </Animated.View>
+                )}
                 {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={readableTextOn(colors.accent)} size="small" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
                     {tab === 'login' ? t('login_btn_signin') : t('login_btn_signup')}
@@ -455,6 +649,7 @@ export default function LoginScreen() {
               </Text>
             </Text>
           </View>
+          </Animated.View>
 
           {/* Acceso discreto al portal del entrenador — al fondo de todo */}
           <TouchableOpacity
@@ -526,9 +721,11 @@ function makeStyles(c: Colors) {
       marginBottom: 10,
     },
     tagline: {
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-      color: c.inkMuted,
+      // Instrument Serif italic = acento tipográfico de marca (mismo recurso
+      // que los títulos destacados de la app), refuerza identidad en el login.
+      fontFamily: 'InstrumentSerif-Italic',
+      fontSize: 17,
+      color: c.inkSecondary,
       letterSpacing: 0.2,
     },
 
@@ -543,11 +740,21 @@ function makeStyles(c: Colors) {
 
     // Tabs
     tabRow: {
+      position: 'relative',
       flexDirection: 'row',
       backgroundColor: c.glassBg,
       borderRadius: 12,
       padding: 4,
       marginBottom: 24,
+    },
+    // Pastilla activa deslizante (detrás de las etiquetas).
+    tabPill: {
+      position: 'absolute',
+      left: 4,
+      top: 4,
+      bottom: 4,
+      backgroundColor: c.accent,
+      borderRadius: 9,
     },
     tab: {
       flex: 1,
@@ -555,16 +762,15 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
       borderRadius: 9,
     },
-    tabActive: {
-      backgroundColor: c.accent,
-    },
     tabText: {
       fontFamily: 'SpaceGrotesk-Medium',
       fontSize: 14,
       color: c.inkMuted,
     },
     tabTextActive: {
-      color: c.white,
+      // Tinta legible según el acento: blanco sobre azul/rosa/neón, oscuro sobre
+      // acentos claros (lima Forest, cobre Sand, turquesa Midnight/Ocean).
+      color: readableTextOn(c.accent),
     },
 
     // Inputs
@@ -573,8 +779,8 @@ function makeStyles(c: Colors) {
     },
     inputLabel: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
+      fontSize: 11,
+      color: c.inkSecondary,
       letterSpacing: 1.2,
       marginBottom: 8,
     },
@@ -590,6 +796,33 @@ function makeStyles(c: Colors) {
       fontSize: 15,
     },
 
+    // Password: input + botón ver/ocultar superpuesto a la derecha.
+    passwordRow: {
+      position: 'relative',
+      justifyContent: 'center',
+    },
+    passwordInput: {
+      paddingRight: 78,
+    },
+    eyeBtn: {
+      position: 'absolute',
+      right: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+    },
+    eyeText: {
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 11,
+      color: c.accent,
+      letterSpacing: 1,
+    },
+    passwordHint: {
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 12,
+      color: c.inkSecondary,
+      marginTop: 8,
+    },
+
     // Forgot
     forgotBtn: {
       alignSelf: 'flex-end',
@@ -599,7 +832,7 @@ function makeStyles(c: Colors) {
     forgotText: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 13,
-      color: c.accentLight,
+      color: c.accent,
     },
 
     // Error
@@ -635,12 +868,23 @@ function makeStyles(c: Colors) {
       paddingVertical: 16,
       alignItems: 'center',
       justifyContent: 'center',
+      // Recorta el sheen que barre el botón (la sombra vive en el wrap, no aquí).
+      overflow: 'hidden',
     },
     primaryBtnText: {
       fontFamily: 'SpaceGrotesk-SemiBold',
       fontSize: 16,
-      color: c.white,
+      color: readableTextOn(c.accent),
       letterSpacing: 0.2,
+    },
+    // Sheen: banda diagonal translúcida que cruza el botón (ancho por inline).
+    sheen: {
+      position: 'absolute',
+      top: -24,
+      bottom: -24,
+    },
+    sheenFill: {
+      flex: 1,
     },
 
     // Divider
@@ -657,7 +901,7 @@ function makeStyles(c: Colors) {
     dividerText: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 12,
-      color: c.inkMuted,
+      color: c.inkSecondary,
       marginHorizontal: 12,
     },
 
@@ -688,13 +932,14 @@ function makeStyles(c: Colors) {
     // Disclaimer
     disclaimer: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 11,
-      color: c.inkMuted,
+      fontSize: 12,
+      color: c.inkSecondary,
       textAlign: 'center',
-      lineHeight: 16,
+      lineHeight: 18,
     },
     disclaimerLink: {
-      color: c.accentLight,
+      color: c.accent,
+      textDecorationLine: 'underline',
     },
 
     // Acceso al portal del entrenador — línea discreta, gris apagado, subrayada

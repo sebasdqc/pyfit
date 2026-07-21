@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -13,14 +13,32 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  AccessibilityInfo,
+  findNodeHandle,
   useWindowDimensions,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg'
 import { coachLogin } from '../../lib/auth'
 import { P, CONTACT_URL } from '../../lib/coachTheme'
 import { useTranslation, type ScalarKey } from '../../lib/i18n'
+
+// Suscripción a "reducir movimiento" del SO (WCAG 2.3.3) — misma utilidad que
+// el login del atleta. La usan la aurora y la animación de entrada.
+function useReduceMotion(): boolean {
+  const [reduce, setReduce] = useState(false)
+  useEffect(() => {
+    let mounted = true
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => { if (mounted) setReduce(!!v) })
+      .catch(() => {})
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduce(!!v))
+    return () => { mounted = false; sub?.remove?.() }
+  }, [])
+  return reduce
+}
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
 
@@ -52,15 +70,17 @@ function LockIcon() {
 type OrbProps = {
   gid: string; color: string; size: number; top: number; left: number; driftX: number
   scaleFrom: number; scaleTo: number; opFrom: number; opTo: number; duration: number; delay: number
+  reduceMotion: boolean
 }
 
 function GlowOrb({
   gid, color, size, top, left, driftX,
-  scaleFrom, scaleTo, opFrom, opTo, duration, delay,
+  scaleFrom, scaleTo, opFrom, opTo, duration, delay, reduceMotion,
 }: OrbProps) {
   const progress = React.useRef(new Animated.Value(0)).current
 
   React.useEffect(() => {
+    if (reduceMotion) return
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(progress, {
@@ -75,11 +95,18 @@ function GlowOrb({
     )
     loop.start()
     return () => loop.stop()
-  }, [progress, duration, delay])
+  }, [progress, duration, delay, reduceMotion])
 
-  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [scaleFrom, scaleTo] })
-  const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [opFrom, opTo] })
-  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-driftX, driftX] })
+  // Con reduce-motion, el orb queda estático en un punto medio del ciclo.
+  const scale = reduceMotion
+    ? (scaleFrom + scaleTo) / 2
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [scaleFrom, scaleTo] })
+  const opacity = reduceMotion
+    ? (opFrom + opTo) / 2
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [opFrom, opTo] })
+  const translateX = reduceMotion
+    ? 0
+    : progress.interpolate({ inputRange: [0, 1], outputRange: [-driftX, driftX] })
 
   return (
     <Animated.View
@@ -105,23 +132,34 @@ function GlowOrb({
 
 // Cuatro orbes morados superpuestos en la parte superior, con fases/duraciones
 // distintas para que el conjunto respire como una aurora viva.
-function CoachLoginAura() {
+function CoachLoginAura({ focus }: { focus: Animated.Value }) {
   const { width } = useWindowDimensions()
+  const reduceMotion = useReduceMotion()
+  // Diferenciador: la aurora "se inclina" hacia el usuario al enfocar un campo
+  // (leve escala + brillo). Se apaga con reduce-motion.
+  const focusStyle = reduceMotion ? null : {
+    opacity: focus.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }),
+    transform: [{ scale: focus.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }],
+  }
   return (
-    <View pointerEvents="none" style={auraStyles.container}>
+    <Animated.View pointerEvents="none" style={[auraStyles.container, focusStyle]}>
       <GlowOrb gid="cOrbLight" color={P.purpleLight} size={360}
         top={-50} left={-110} driftX={42}
-        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300} />
+        scaleFrom={0.9} scaleTo={1.32} opFrom={0.35} opTo={0.8} duration={4400} delay={300}
+        reduceMotion={reduceMotion} />
       <GlowOrb gid="cOrbDark" color={P.purpleDark} size={430}
         top={-110} left={width - 270} driftX={38}
-        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800} />
+        scaleFrom={1} scaleTo={1.28} opFrom={0.4} opTo={0.9} duration={4000} delay={800}
+        reduceMotion={reduceMotion} />
       <GlowOrb gid="cOrbMain" color={P.purple} size={560}
         top={-210} left={width / 2 - 280} driftX={28}
-        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0} />
+        scaleFrom={1} scaleTo={1.26} opFrom={0.6} opTo={1} duration={3200} delay={0}
+        reduceMotion={reduceMotion} />
       <GlowOrb gid="cOrbCore" color={P.purpleMid} size={260}
         top={-70} left={width / 2 - 130} driftX={14}
-        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500} />
-    </View>
+        scaleFrom={0.85} scaleTo={1.38} opFrom={0.4} opTo={0.95} duration={2600} delay={500}
+        reduceMotion={reduceMotion} />
+    </Animated.View>
   )
 }
 
@@ -141,11 +179,60 @@ const BENEFICIOS: ScalarKey[] = [
 export default function CoachLoginScreen() {
   const insets = useSafeAreaInsets()
   const { t } = useTranslation()
+  const reduceMotion = useReduceMotion()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const messageRef = useRef<View>(null)
+
+  // Foco de accesibilidad al mensaje de error al aparecer (VoiceOver/TalkBack).
+  useEffect(() => {
+    if (!message) return
+    const node = findNodeHandle(messageRef.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  }, [message])
+
+  // Entrada escalonada del contenido (fade + subida sutil), respeta reduce-motion.
+  const entrance = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduceMotion) { entrance.setValue(1); return }
+    Animated.timing(entrance, {
+      toValue: 1, duration: 520, delay: 120, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start()
+  }, [entrance, reduceMotion])
+  const entranceStyle = {
+    opacity: entrance,
+    transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  }
+
+  // Diferenciador: aurora reactiva al foco de los campos.
+  const auraFocus = useRef(new Animated.Value(0)).current
+  const animateAura = (to: number) =>
+    Animated.timing(auraFocus, {
+      toValue: to, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start()
+
+  // Diferenciador: sheen que barre el botón de acceso en loop lento.
+  const [btnW, setBtnW] = useState(0)
+  const sheen = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduceMotion || btnW === 0) return
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(1800),
+        Animated.timing(sheen, {
+          toValue: 1, duration: 850, easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(sheen, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [reduceMotion, btnW, sheen])
+  const sheenX = sheen.interpolate({ inputRange: [0, 1], outputRange: [-btnW * 0.7, btnW * 1.3] })
 
   async function handleAccess() {
     if (!email.trim() || !password.trim()) {
@@ -176,7 +263,7 @@ export default function CoachLoginScreen() {
   return (
     <View style={styles.root}>
       {/* Orbes animados morados detrás de la parte superior */}
-      <CoachLoginAura />
+      <CoachLoginAura focus={auraFocus} />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -190,6 +277,7 @@ export default function CoachLoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <Animated.View style={entranceStyle}>
           {/* Badge superior */}
           <View style={styles.badge}>
             <View style={styles.badgeDot} />
@@ -217,6 +305,8 @@ export default function CoachLoginScreen() {
                 placeholderTextColor={P.purpleFaint}
                 value={email}
                 onChangeText={(txt) => { setEmail(txt); setMessage('') }}
+                onFocus={() => animateAura(1)}
+                onBlur={() => animateAura(0)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -231,10 +321,23 @@ export default function CoachLoginScreen() {
                 placeholderTextColor={P.purpleFaint}
                 value={password}
                 onChangeText={(txt) => { setPassword(txt); setMessage('') }}
-                secureTextEntry
+                onFocus={() => animateAura(1)}
+                onBlur={() => animateAura(0)}
+                secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword((s) => !s)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: showPassword }}
+                accessibilityLabel={showPassword ? t('login_hide_password') : t('login_show_password')}
+              >
+                <Text style={styles.eyeText}>
+                  {showPassword ? t('login_hide_password') : t('login_show_password')}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Olvidaste tu contraseña */}
@@ -246,22 +349,51 @@ export default function CoachLoginScreen() {
               <Text style={styles.forgotText}>{t('login_forgot_password')}</Text>
             </TouchableOpacity>
 
-            {/* Botón de acceso */}
+            {/* Botón de acceso — wrap externo lleva la sombra (sin overflow para no
+                recortarla en iOS); el interior recorta el sheen. */}
             <TouchableOpacity
-              style={styles.accessBtn}
+              style={styles.accessBtnWrap}
               activeOpacity={0.85}
               onPress={handleAccess}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel={t('coach_login_access_btn')}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
-              {loading ? (
-                <ActivityIndicator color={P.white} size="small" />
-              ) : (
-                <Text style={styles.accessBtnText}>{t('coach_login_access_btn')}</Text>
-              )}
+              <View
+                style={styles.accessBtn}
+                onLayout={(e) => setBtnW(e.nativeEvent.layout.width)}
+              >
+                {!reduceMotion && btnW > 0 && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.sheen,
+                      { width: btnW * 0.4, transform: [{ translateX: sheenX }, { rotate: '14deg' }] },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={['transparent', 'rgba(255,255,255,0.22)', 'transparent']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.sheenFill}
+                    />
+                  </Animated.View>
+                )}
+                {loading ? (
+                  <ActivityIndicator color={P.white} size="small" />
+                ) : (
+                  <Text style={styles.accessBtnText}>{t('coach_login_access_btn')}</Text>
+                )}
+              </View>
             </TouchableOpacity>
 
             {/* Mensaje inline (no popup) */}
-            {!!message && <Text style={styles.message}>{message}</Text>}
+            {!!message && (
+              <View ref={messageRef} accessible accessibilityRole="alert" accessibilityLiveRegion="assertive">
+                <Text style={styles.message}>{message}</Text>
+              </View>
+            )}
           </View>
 
           {/* Separador "¿aún no eres coach?" */}
@@ -296,6 +428,7 @@ export default function CoachLoginScreen() {
           >
             <Text style={styles.backText}>{t('coach_login_back')}</Text>
           </TouchableOpacity>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -386,6 +519,14 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 15,
   },
+  eyeText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    color: P.purpleSoft,
+    letterSpacing: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
+  },
 
   // Olvidaste
   forgotBtn: {
@@ -400,18 +541,33 @@ const styles = StyleSheet.create({
     color: P.purpleSoft,
   },
 
-  // Botón de acceso
+  // Botón de acceso — wrap externo (solo sombra, sin overflow) + interior
+  // (color + recorte del sheen). Si overflow:'hidden' fuera en el mismo nodo
+  // que la sombra, iOS la recortaría (masksToBounds).
+  accessBtnWrap: {
+    borderRadius: 14,
+    shadowColor: P.purple,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
+  },
   accessBtn: {
     backgroundColor: P.purple,
     borderRadius: 14,
     paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: P.purple,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 10,
+    overflow: 'hidden',
+  },
+  // Sheen: banda diagonal translúcida que barre el botón (ancho por inline).
+  sheen: {
+    position: 'absolute',
+    top: -24,
+    bottom: -24,
+  },
+  sheenFill: {
+    flex: 1,
   },
   accessBtnText: {
     fontFamily: 'SpaceGrotesk-SemiBold',
