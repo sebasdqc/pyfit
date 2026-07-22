@@ -487,7 +487,9 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 13,
-    color: P.purpleFaint,
+    // Mismo color que el logo (purpleMid, hoy rojo medio) para que contraste
+    // sobre el fondo profundo — antes usaba purpleFaint y quedaba muy apagado.
+    color: P.purpleMid,
     letterSpacing: 0.2,
   },
 

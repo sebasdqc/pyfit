@@ -290,7 +290,6 @@ function LanguageSelector({ top }: { top: number }) {
         accessibilityLabel={t('login_lang_a11y')}
       >
         <Image source={FLAGS[lang]} style={styles.langFlag} resizeMode="cover" />
-        <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
         <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
           <Path d="M6 9l6 6 6-6" stroke={colors.inkSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
@@ -777,12 +776,6 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderBright,
-    },
-    langBtnText: {
-      fontFamily: 'JetBrainsMono-Medium',
-      fontSize: 11,
-      color: c.inkSecondary,
-      letterSpacing: 1.2,
     },
     langFlag: {
       width: 22,
