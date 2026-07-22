@@ -8,7 +8,9 @@ import {
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ActivityIndicator,
   Animated,
   Easing,
@@ -23,7 +25,24 @@ import Svg, { Path, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg
 import { Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
+import type { Lang } from '../../lib/translations'
 import { login, register, googleLogin, appleLogin } from '../../lib/auth'
+
+// ─── Banderas de idioma ────────────────────────────────────────────────────────
+// PNGs en mobile/assets/flags/<code>.png (60×40). Placeholders generados —
+// reemplazá los 4 por banderas reales manteniendo el nombre de archivo.
+const FLAGS: Record<Lang, ReturnType<typeof require>> = {
+  es: require('../../assets/flags/es.png'),
+  en: require('../../assets/flags/en.png'),
+  pt: require('../../assets/flags/pt.png'),
+  fr: require('../../assets/flags/fr.png'),
+}
+const LANGS: { code: Lang; label: string }[] = [
+  { code: 'es', label: 'Español' },
+  { code: 'en', label: 'English' },
+  { code: 'pt', label: 'Português' },
+  { code: 'fr', label: 'Français' },
+]
 
 // ─── Contraste / accesibilidad ─────────────────────────────────────────────────
 
@@ -252,11 +271,66 @@ const auraStyles = StyleSheet.create({
   container: { position: 'absolute', top: 0, left: 0, right: 0, height: 540, overflow: 'hidden' },
 })
 
+// ─── Selector de idioma (desplegable con banderas) ─────────────────────────────
+
+function LanguageSelector({ top }: { top: number }) {
+  const { colors } = useTheme()
+  const { t, lang, setLang } = useTranslation()
+  const styles = React.useMemo(() => makeStyles(colors), [colors])
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[styles.langBtn, { top }]}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={t('login_lang_a11y')}
+      >
+        <Image source={FLAGS[lang]} style={styles.langFlag} resizeMode="cover" />
+        <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
+        <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+          <Path d="M6 9l6 6 6-6" stroke={colors.inkSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      </TouchableOpacity>
+
+      <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+        {/* Capa a pantalla completa: tocar fuera cierra el menú. */}
+        <Pressable style={styles.langBackdrop} onPress={() => setOpen(false)}>
+          <View style={[styles.langMenu, { top: top + 44 }]}>
+            {LANGS.map((l) => {
+              const active = l.code === lang
+              return (
+                <TouchableOpacity
+                  key={l.code}
+                  style={[styles.langItem, active && styles.langItemActive]}
+                  onPress={() => { setLang(l.code); setOpen(false) }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={l.label}
+                >
+                  <Image source={FLAGS[l.code]} style={styles.langFlag} resizeMode="cover" />
+                  <Text style={[styles.langItemText, active && styles.langItemTextActive]}>
+                    {l.label}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LoginScreen() {
   const { colors } = useTheme()
-  const { t, lang, toggleLang } = useTranslation()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
   const reduceMotion = useReduceMotion()
@@ -430,16 +504,8 @@ export default function LoginScreen() {
       {/* Animated blue glow / orb aurora behind the top of the screen */}
       <LoginAura focus={auraFocus} />
 
-      {/* Language toggle — top-right, outside scroll */}
-      <TouchableOpacity
-        style={[styles.langBtn, { top: insets.top + 16 }]}
-        onPress={toggleLang}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={t('login_lang_a11y')}
-      >
-        <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
-      </TouchableOpacity>
+      {/* Selector de idioma desplegable — arriba a la derecha, fuera del scroll */}
+      <LanguageSelector top={insets.top + 16} />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -651,13 +717,19 @@ export default function LoginScreen() {
           </View>
           </Animated.View>
 
-          {/* Acceso discreto al portal del entrenador — al fondo de todo */}
+          {/* Acceso al portal del entrenador — píldora al fondo de todo */}
           <TouchableOpacity
             style={styles.coachPortalBtn}
             onPress={() => router.push('/(auth)/coach-login' as any)}
-            activeOpacity={0.6}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('login_coach_portal')}
           >
+            <View style={styles.coachPortalDot} />
             <Text style={styles.coachPortalText}>{t('login_coach_portal')}</Text>
+            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+              <Path d="M9 6l6 6-6 6" stroke={colors.inkSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -690,23 +762,71 @@ function makeStyles(c: Colors) {
       paddingBottom: 40,
     },
 
-    // Language button
+    // Selector de idioma (botón + menú desplegable con banderas)
     langBtn: {
       position: 'absolute',
       right: 20,
       zIndex: 50,
-      paddingHorizontal: 11,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingLeft: 8,
+      paddingRight: 10,
       paddingVertical: 6,
       borderRadius: 20,
       backgroundColor: c.cardBg,
       borderWidth: 1,
-      borderColor: c.borderDefault,
+      borderColor: c.borderBright,
     },
     langBtnText: {
       fontFamily: 'JetBrainsMono-Medium',
       fontSize: 11,
       color: c.inkSecondary,
       letterSpacing: 1.2,
+    },
+    langFlag: {
+      width: 22,
+      height: 15,
+      borderRadius: 3,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.borderBright,
+    },
+    langBackdrop: {
+      flex: 1,
+    },
+    langMenu: {
+      position: 'absolute',
+      right: 20,
+      minWidth: 172,
+      borderRadius: 14,
+      backgroundColor: c.cardBg,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      paddingVertical: 6,
+      // Sombra para separar el menú del fondo animado.
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.35,
+      shadowRadius: 20,
+      elevation: 14,
+    },
+    langItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+    },
+    langItemActive: {
+      backgroundColor: c.glassBg,
+    },
+    langItemText: {
+      fontFamily: 'SpaceGrotesk-Medium',
+      fontSize: 14,
+      color: c.inkSecondary,
+    },
+    langItemTextActive: {
+      color: c.accent,
     },
 
     // Logo
@@ -719,14 +839,24 @@ function makeStyles(c: Colors) {
       width: 196,
       height: 63,
       marginBottom: 10,
+      // Sombra muy sutil para despegar el wordmark del fondo animado.
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
     },
     tagline: {
       // Instrument Serif italic = acento tipográfico de marca (mismo recurso
       // que los títulos destacados de la app), refuerza identidad en el login.
       fontFamily: 'InstrumentSerif-Italic',
       fontSize: 17,
-      color: c.inkSecondary,
+      // Blanco puro con sombra sutil (igual que el logo) para que contraste
+      // sobre la aurora clara sin depender del color de tinta del tema.
+      color: '#ffffff',
       letterSpacing: 0.2,
+      textShadowColor: 'rgba(0,0,0,0.25)',
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 6,
     },
 
     // Card
@@ -942,20 +1072,32 @@ function makeStyles(c: Colors) {
       textDecorationLine: 'underline',
     },
 
-    // Acceso al portal del entrenador — línea discreta, gris apagado, subrayada
+    // Acceso al portal del entrenador — píldora con borde (más visible que la
+    // línea subrayada anterior). El punto rojo adelanta la identidad del portal.
     coachPortalBtn: {
       alignSelf: 'center',
       marginTop: 28,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      paddingVertical: 11,
+      paddingHorizontal: 18,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      backgroundColor: c.glassBg,
+    },
+    coachPortalDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#E5223F',   // rojo del portal de coach (coachTheme P.purple)
     },
     coachPortalText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      color: c.inkMuted,
-      letterSpacing: 2,
-      textDecorationLine: 'underline',
-      textAlign: 'center',
+      fontFamily: 'JetBrainsMono-Medium',
+      fontSize: 11,
+      color: c.inkSecondary,
+      letterSpacing: 1.5,
     },
   })
 }

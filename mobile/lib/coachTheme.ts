@@ -1,36 +1,41 @@
 /**
  * coachTheme.ts — Identidad visual del portal de entrenador (Zyfit).
  *
- * Paleta morada FIJA, independiente del tema del atleta (dark/light/midnight…).
- * El portal del coach se ve igual siempre: fondo azul-morado profundo con
- * acentos púrpura. La compartimos entre el login de coach y las pantallas del
+ * Paleta ROJA FIJA, independiente del tema del atleta (dark/light/midnight…).
+ * El portal del coach se ve igual siempre: fondo rojo-vino profundo casi negro
+ * con acentos rojos. La compartimos entre el login de coach y las pantallas del
  * portal para que no diverja.
+ *
+ * ⚠️ Los nombres de token (`purple`, `purpleDark`, `purpleMid`…) se CONSERVAN a
+ * propósito: los referencian todas las pantallas de `app/(coach)/*`. Cambiar
+ * solo los valores hex recolorea todo el portal sin tocar cada pantalla. El
+ * nombre es legado — el valor es rojo. (Antes: morado #7C5CFF.)
  */
 
 export const P = {
-  bg: '#0A0816',              // fondo general — azul-morado muy profundo, casi negro
-  cardBg: '#15102C',          // cards / superficies algo más claras que el fondo
-  cardBgAlt: '#1A1433',       // card de "resto de cartera" — morado neutro
-  inputBg: '#120E26',         // fondo de inputs
-  badgeBg: '#1B1340',         // badge / círculo de iniciales — morado muy oscuro
+  bg: '#120507',              // fondo general — rojo-vino muy profundo, casi negro
+  cardBg: '#22090E',          // cards / superficies algo más claras que el fondo
+  cardBgAlt: '#2B0D13',       // card de "resto de cartera" — rojo neutro oscuro
+  inputBg: '#1B070B',         // fondo de inputs
+  badgeBg: '#2E0D15',         // badge / círculo de iniciales — rojo muy oscuro
 
   warmBg: '#1E1512',          // card de atleta con alerta — cálido oscuro
   warmBorder: 'rgba(255,138,61,0.28)',  // borde naranja muy apagado
 
-  border: 'rgba(150,128,255,0.18)',     // borde morado sutil
-  borderBright: 'rgba(150,128,255,0.30)',
-  divider: 'rgba(150,128,255,0.12)',    // líneas finas moradas muy apagadas
+  border: 'rgba(255,110,130,0.18)',     // borde rojo sutil
+  borderBright: 'rgba(255,110,130,0.32)',
+  divider: 'rgba(255,110,130,0.12)',    // líneas finas rojas muy apagadas
 
-  purple: '#7C5CFF',          // morado sólido (botón, chip activo, dots)
-  purpleDark: '#5B3FD9',
-  purpleMid: '#A78BFA',       // morado medio (logo, títulos, tab activo)
-  purpleLight: '#C4B5FD',     // morado claro (acentos suaves, barras)
-  purpleSoft: '#9484C9',      // morado apagado (texto secundario, links)
-  purpleFaint: '#605489',     // morado muy apagado (subtítulo, placeholder, tab inactivo)
-  ink: '#E7E1FF',             // texto claro
-  white: '#F5F2FF',
+  purple: '#E5223F',          // rojo sólido (botón, chip activo, dots) [nombre legado]
+  purpleDark: '#B3172F',
+  purpleMid: '#FF6B7F',       // rojo medio (logo, títulos, tab activo)
+  purpleLight: '#FFB0BB',     // rojo claro (acentos suaves, barras)
+  purpleSoft: '#D98793',      // rojo apagado (texto secundario, links)
+  purpleFaint: '#A0636E',     // rojo muy apagado (subtítulo, placeholder, tab inactivo)
+  ink: '#FFE4E8',             // texto claro
+  white: '#FFF4F5',
 
-  orange: '#FF8A3D',          // alerta / naranja-rojo (chip Atención, badge Alerta)
+  orange: '#FF8A3D',          // alerta / naranja (chip Atención, badge Alerta)
   orangeSoft: 'rgba(255,138,61,0.14)',
   amber: '#FBBF24',           // pendiente
   amberSoft: 'rgba(251,191,36,0.14)',
