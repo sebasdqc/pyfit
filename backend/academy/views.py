@@ -50,6 +50,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.dateparse import parse_date
 from rest_framework import status
+from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
@@ -57,6 +58,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle, SimuladorComputeRateThrottle
+from pyfit.text_validators import validate_human_name, contains_unsafe_chars
 from . import access_service, badges_service, dashboard_service, grading, mastery_service, streak_service
 from .models import (
     Course, Module, Lesson, Quiz, Question,
@@ -273,6 +275,10 @@ def academy_me(request):
             if not nombre:
                 return Response({'nombre': 'El nombre no puede estar vacío.'},
                                 status=status.HTTP_400_BAD_REQUEST)
+            try:
+                nombre = validate_human_name(nombre)
+            except serializers.ValidationError as exc:
+                return Response({'nombre': exc.detail}, status=status.HTTP_400_BAD_REQUEST)
             user.first_name = nombre
             user.last_name = ''
             user.save(update_fields=['first_name', 'last_name'])
@@ -280,9 +286,17 @@ def academy_me(request):
         if 'pais' in data:
             updates['pais'] = (data.get('pais') or '').strip()[:80]
         if 'ciudad' in data:
-            updates['ciudad'] = (data.get('ciudad') or '').strip()[:120]
+            ciudad = (data.get('ciudad') or '').strip()[:120]
+            if ciudad and contains_unsafe_chars(ciudad):
+                return Response({'ciudad': 'Ese campo no puede contener los caracteres { } < > \\ `.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['ciudad'] = ciudad
         if 'profesion' in data:
-            updates['profesion'] = (data.get('profesion') or '').strip()[:150]
+            profesion = (data.get('profesion') or '').strip()[:150]
+            if profesion and contains_unsafe_chars(profesion):
+                return Response({'profesion': 'Ese campo no puede contener los caracteres { } < > \\ `.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['profesion'] = profesion
         if 'fecha_nacimiento' in data:
             raw = (data.get('fecha_nacimiento') or '').strip()
             parsed = parse_date(raw) if raw else None
@@ -295,17 +309,25 @@ def academy_me(request):
             if not isinstance(raw, list):
                 return Response({'intereses': 'Debe ser una lista de textos.'},
                                 status=status.HTTP_400_BAD_REQUEST)
-            updates['intereses'] = [str(x).strip()[:40] for x in raw if str(x).strip()][:20]
+            intereses = [str(x).strip()[:40] for x in raw if str(x).strip()][:20]
+            if any(contains_unsafe_chars(x) for x in intereses):
+                return Response({'intereses': 'Ningún interés puede contener los caracteres { } < > \\ `.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['intereses'] = intereses
         if 'redes_sociales' in data:
             raw = data.get('redes_sociales')
             if not isinstance(raw, dict):
                 return Response({'redes_sociales': 'Debe ser un objeto.'},
                                 status=status.HTTP_400_BAD_REQUEST)
-            updates['redes_sociales'] = {
+            redes = {
                 k: str(v).strip()[:200]
                 for k, v in raw.items()
                 if k in _REDES_SOCIALES_KEYS and str(v or '').strip()
             }
+            if any(contains_unsafe_chars(v) for v in redes.values()):
+                return Response({'redes_sociales': 'Ese campo no puede contener los caracteres { } < > \\ `.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            updates['redes_sociales'] = redes
         if 'perfil_deportivo' in data:
             valor = (data.get('perfil_deportivo') or '').strip()
             if valor and valor not in dict(Profile.PERFIL_DEPORTIVO_CHOICES):

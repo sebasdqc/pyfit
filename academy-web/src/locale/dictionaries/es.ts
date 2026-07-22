@@ -534,6 +534,7 @@ const es = {
     finish: 'Finalizar',
     next: 'Siguiente',
     nameRequiredError: 'Ingresa tu nombre para continuar.',
+    nameInvalidError: 'El nombre solo puede tener letras, espacios y guiones.',
     saveError: 'No se pudo guardar. Intenta de nuevo.',
     skipError: 'No se pudo continuar. Intenta de nuevo.',
     step1Title: 'Cuéntanos sobre ti',

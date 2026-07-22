@@ -2,11 +2,22 @@ import re
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from pyfit.text_validators import validate_human_name, contains_unsafe_chars
 from .models import Profile, UserLocation, UserInjury
 
 User = get_user_model()
 
 USUARIO_RE = re.compile(r'^[a-z0-9_]{3,20}$')
+
+# Campos de texto libre del onboarding que se interpolan luego en prompts de
+# IA (ai_workout.build_prompt) — se rechaza puntuación de riesgo (llaves,
+# backslash, etc.) en el punto de entrada, además de la sanitización que ya
+# ocurre justo antes de armar el prompt.
+_FREE_TEXT_UNSAFE_FIELDS = [
+    'lesiones', 'experiencia_deportiva', 'estilo_entrenamiento',
+    'motivo_limitacion', 'motivacion', 'notas_medicas',
+    'ejercicios_favoritos', 'ejercicios_evitar',
+]
 
 
 class UserInjurySerializer(serializers.ModelSerializer):
@@ -114,3 +125,15 @@ class ProfileSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError('Ese usuario ya está en uso.')
         return normalized
+
+    def validate_nombre(self, value):
+        return validate_human_name(value)
+
+    def validate(self, attrs):
+        for field in _FREE_TEXT_UNSAFE_FIELDS:
+            value = attrs.get(field)
+            if value and contains_unsafe_chars(value):
+                raise serializers.ValidationError({
+                    field: 'Ese campo no puede contener los caracteres { } < > \\ `.'
+                })
+        return attrs

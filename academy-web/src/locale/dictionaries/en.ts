@@ -538,6 +538,7 @@ const en: DeepPartial<Dictionary> = {
     finish: 'Finish',
     next: 'Next',
     nameRequiredError: 'Enter your name to continue.',
+    nameInvalidError: 'Name can only contain letters, spaces and hyphens.',
     saveError: 'Could not save. Please try again.',
     skipError: 'Could not continue. Please try again.',
     step1Title: 'Tell us about yourself',

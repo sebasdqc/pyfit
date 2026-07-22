@@ -17,6 +17,7 @@ import { TagInput } from '@/components/ui/TagInput'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
 import { COUNTRIES } from '@/lib/countries'
+import { isValidHumanName } from '@/lib/validation'
 import { useT } from '@/locale/useT'
 import type { AcademyBadgeCatalog } from '@/types'
 
@@ -49,7 +50,7 @@ export function ProfilePage() {
   }, [])
 
   if (!user) return null
-  const nombreValido = nombre.trim() !== ''
+  const nombreValido = nombre.trim() !== '' && isValidHumanName(nombre)
   const dirty =
     nombreValido &&
     (nombre.trim() !== user.nombre ||
@@ -184,7 +185,9 @@ export function ProfilePage() {
               className="input"
             />
             {!nombreValido && (
-              <p className="mt-1.5 text-xs text-danger">{t('onboarding.nameRequiredError')}</p>
+              <p className="mt-1.5 text-xs text-danger">
+                {nombre.trim() === '' ? t('onboarding.nameRequiredError') : t('onboarding.nameInvalidError')}
+              </p>
             )}
           </label>
           <label className="block">

@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from pyfit.text_validators import contains_unsafe_chars
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
@@ -124,6 +125,16 @@ class CenterAthleteSerializer(serializers.ModelSerializer):
 
     def get_nombre(self, obj):
         return _display_name(obj.athlete)
+
+    def validate_posicion(self, value):
+        if value and contains_unsafe_chars(value):
+            raise serializers.ValidationError('Ese campo no puede contener los caracteres { } < > \\ `.')
+        return value
+
+    def validate_grupo(self, value):
+        if value and contains_unsafe_chars(value):
+            raise serializers.ValidationError('Ese campo no puede contener los caracteres { } < > \\ `.')
+        return value
 
     def get_cuenta_activa(self, obj):
         u = obj.athlete

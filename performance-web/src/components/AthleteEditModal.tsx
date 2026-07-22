@@ -133,14 +133,14 @@ export function AthleteEditModal({
           <Section title="Datos">
             <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" autoFocus />
             <Num label="Dorsal" value={form.dorsal} onChange={(v) => set('dorsal', v)} error={errors.dorsal} />
-            <Text label="Posición" value={form.posicion} onChange={(v) => set('posicion', v)} />
+            <Text label="Posición" value={form.posicion} onChange={(v) => set('posicion', v)} error={errors.posicion} />
             <Select label="Estado" value={form.estado} onChange={(v) => set('estado', v)} options={[['ok', 'Disponible'], ['duda', 'En duda'], ['baja', 'No disponible']]} />
             <Text label="Nacionalidad" value={form.nacionalidad} onChange={(v) => set('nacionalidad', v)} />
             <Num label="Edad" value={form.edad} onChange={(v) => set('edad', v)} error={errors.edad} />
             <Num label="Altura (cm)" value={form.altura} onChange={(v) => set('altura', v)} error={errors.altura} />
             <Num label="Peso (kg)" value={form.peso} onChange={(v) => set('peso', v)} error={errors.peso} />
             <Select label="Pie hábil" value={form.pie} onChange={(v) => set('pie', v)} options={[['Derecho', 'Derecho'], ['Izquierdo', 'Izquierdo']]} />
-            <Text label="Grupo" value={form.grupo} onChange={(v) => set('grupo', v)} />
+            <Text label="Grupo" value={form.grupo} onChange={(v) => set('grupo', v)} error={errors.grupo} />
           </Section>
 
           <Section title="Rendimiento (0–100)">

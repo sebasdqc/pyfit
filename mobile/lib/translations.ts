@@ -84,6 +84,7 @@ const translations = {
   onboarding_name_label:      { es: 'TU NOMBRE',                        en: 'YOUR NAME',                           pt: 'SEU NOME',                            fr: 'VOTRE NOM' },
   onboarding_name_placeholder:{ es: 'Juan García',                       en: 'John Smith',                         pt: 'João Silva',                          fr: 'Jean Dupont' },
   onboarding_name_error:      { es: 'El nombre es requerido.',           en: 'Name is required.',                  pt: 'O nome é obrigatório.',               fr: 'Le nom est requis.' },
+  onboarding_name_invalid_error: { es: 'El nombre solo puede tener letras, espacios y guiones.', en: 'Name can only contain letters, spaces and hyphens.', pt: 'O nome só pode ter letras, espaços e hífens.', fr: 'Le nom ne peut contenir que des lettres, espaces et tirets.' },
   onboarding_birth_label:     { es: 'FECHA DE NACIMIENTO',              en: 'DATE OF BIRTH',                       pt: 'DATA DE NASCIMENTO',                  fr: 'DATE DE NAISSANCE' },
   onboarding_birth_error:     { es: 'La fecha de nacimiento es requerida.', en: 'Date of birth is required.',      pt: 'A data de nascimento é obrigatória.',  fr: 'La date de naissance est requise.' },
   onboarding_sex_label:       { es: 'SEXO BIOLÓGICO',                   en: 'BIOLOGICAL SEX',                     pt: 'SEXO BIOLÓGICO',                      fr: 'SEXE BIOLOGIQUE' },

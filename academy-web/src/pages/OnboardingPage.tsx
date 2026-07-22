@@ -16,6 +16,7 @@ import { Icon, type IconName } from '@/components/Icon'
 import { RedesSocialesFields } from '@/components/profile/RedesSocialesFields'
 import { TagInput } from '@/components/ui/TagInput'
 import { COUNTRIES } from '@/lib/countries'
+import { isValidHumanName } from '@/lib/validation'
 import { useT } from '@/locale/useT'
 import type { School } from '@/types'
 
@@ -111,6 +112,10 @@ export function OnboardingPage() {
     setError(null)
     if (paso === 1 && nombre.trim() === '') {
       setError(t('onboarding.nameRequiredError'))
+      return
+    }
+    if (paso === 1 && !isValidHumanName(nombre)) {
+      setError(t('onboarding.nameInvalidError'))
       return
     }
     setSaving(true)

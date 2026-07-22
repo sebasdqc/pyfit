@@ -5,6 +5,12 @@
 // la usan tanto el acotado (sanitizeAthlete) como la validación (validateAthlete).
 
 import type { Athlete, RadarKey } from './mockSquad'
+import { isValidHumanName } from './validation.ts'
+
+// Puntuación de riesgo para campos tipo tag (posición/grupo): bloquea sintaxis
+// de código/instrucciones sin restringir el resto del texto. Mismo criterio
+// que contains_unsafe_chars en backend/pyfit/text_validators.py.
+const UNSAFE_CHARS_RE = /[{}<>\\`]/
 
 // Roles que pueden editar atletas.
 export const EDIT_ROLES = ['admin', 'coach', 'director_tecnico'] as const
@@ -77,6 +83,8 @@ export function updateAthlete(list: Athlete[], id: string, patch: AthletePatch):
 // ── Validación (para resaltar campos fuera de rango antes de guardar) ────────
 export interface AthleteDraft {
   nombre?: string
+  posicion?: string
+  grupo?: string
   dorsal?: number
   edad?: number
   altura?: number
@@ -95,6 +103,10 @@ export interface AthleteDraft {
 export function validateAthlete(v: AthleteDraft): Record<string, string> {
   const errors: Record<string, string> = {}
   if (!v.nombre || !v.nombre.trim()) errors.nombre = 'El nombre es obligatorio'
+  else if (!isValidHumanName(v.nombre)) errors.nombre = 'Solo letras, espacios y guiones'
+
+  if (v.posicion && UNSAFE_CHARS_RE.test(v.posicion)) errors.posicion = 'Caracteres no permitidos: { } < > \\ `'
+  if (v.grupo && UNSAFE_CHARS_RE.test(v.grupo)) errors.grupo = 'Caracteres no permitidos: { } < > \\ `'
 
   for (const f of NUMERIC_FIELDS) {
     const val = v[f]

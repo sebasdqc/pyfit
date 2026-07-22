@@ -4,6 +4,7 @@
 
 import { useState, type KeyboardEvent } from 'react'
 import { Icon } from '@/components/Icon'
+import { hasUnsafeChars } from '@/lib/validation'
 
 export function TagInput({
   value,
@@ -22,7 +23,7 @@ export function TagInput({
 
   function add(raw: string) {
     const tag = raw.trim().slice(0, maxLength)
-    if (!tag || value.includes(tag) || value.length >= maxTags) return
+    if (!tag || value.includes(tag) || value.length >= maxTags || hasUnsafeChars(tag)) return
     onChange([...value, tag])
   }
 

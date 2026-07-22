@@ -33,6 +33,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import GenerateTeamSessionRateThrottle, LoginRateThrottle
+from pyfit.text_validators import HUMAN_NAME_RE
 from .calculators import CalculatorError, catalog, get_calculator
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
@@ -100,6 +101,10 @@ def _resolve_or_create_user(email, nombre, password=None, *, require_password=Fa
     existing = User.objects.filter(email__iexact=email).first()
     if existing:
         return existing, None
+
+    # El nombre solo importa al crear una cuenta nueva (si ya existe, se ignora).
+    if nombre and not HUMAN_NAME_RE.match(nombre):
+        return None, 'El nombre solo puede contener letras, espacios, apóstrofes y guiones.'
 
     if require_password:
         if not password or len(password) < 8:

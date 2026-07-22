@@ -18,6 +18,7 @@ import { useReduceMotion } from '../../lib/useReduceMotion'
 import { apiPut, apiPost, apiDelete, localDateStr } from '../../lib/api'
 import { getUser, saveUser, clearTokens, clearUser } from '../../lib/storage'
 import { COUNTRIES } from '../../lib/countries'
+import { isValidHumanName } from '../../lib/validation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -870,6 +871,7 @@ export default function OnboardingScreen() {
   function validate(): string | null {
     if (currentScreen === 'b1_personal') {
       if (!data.nombre.trim()) return t('onboarding_name_error')
+      if (!isValidHumanName(data.nombre)) return t('onboarding_name_invalid_error')
       if (!data.fechaNacimiento) return t('onboarding_birth_error')
       if (!data.pais) return t('onboarding_err_country')
       if (!data.sexo) return t('onboarding_err_sex')

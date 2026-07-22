@@ -27,6 +27,7 @@ import { SEM, acwrTone, type Tone } from '@/lib/tone'
 import { ESTADO_LABEL, ESTADO_TONE, RADAR_AXES, type Athlete } from '@/lib/mockSquad'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
+import { isValidHumanName } from '@/lib/validation'
 import {
   listCenterAthletes, createCenterAthlete, deleteCenterAthlete,
   listStaff, createStaff, deleteStaff,
@@ -539,7 +540,8 @@ function AtletaModal({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const canSave = f.email.trim().length > 3 && f.email.includes('@') && !saving
+  const nombreInvalido = f.nombre.trim() !== '' && !isValidHumanName(f.nombre)
+  const canSave = f.email.trim().length > 3 && f.email.includes('@') && !nombreInvalido && !saving
 
   async function submit() {
     if (!canSave) return
@@ -573,7 +575,10 @@ function AtletaModal({
       error={error}
     >
       <LabeledInput label="Email del atleta" value={f.email} onChange={(v) => setF({ ...f, email: v })} placeholder="atleta@email.com" type="email" autoFocus />
-      <LabeledInput label="Nombre" value={f.nombre} onChange={(v) => setF({ ...f, nombre: v })} placeholder="Nombre y apellido" />
+      <LabeledInput
+        label="Nombre" value={f.nombre} onChange={(v) => setF({ ...f, nombre: v })} placeholder="Nombre y apellido"
+        hint={nombreInvalido ? 'Solo letras, espacios y guiones.' : undefined}
+      />
       <div className="grid grid-cols-2 gap-3">
         <LabeledInput label="Dorsal" value={f.dorsal} onChange={(v) => setF({ ...f, dorsal: v })} placeholder="10" />
         <LabeledInput label="Posición" value={f.posicion} onChange={(v) => setF({ ...f, posicion: v })} placeholder="Opcional" />
@@ -613,7 +618,8 @@ function StaffModal({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const canSave = f.email.includes('@') && f.password.length >= 8 && !saving
+  const nombreInvalido = f.nombre.trim() !== '' && !isValidHumanName(f.nombre)
+  const canSave = f.email.includes('@') && f.password.length >= 8 && !nombreInvalido && !saving
 
   async function submit() {
     if (!canSave) return
@@ -646,7 +652,10 @@ function StaffModal({
       error={error}
     >
       <LabeledInput label="Email" value={f.email} onChange={(v) => setF({ ...f, email: v })} placeholder="staff@email.com" type="email" autoFocus />
-      <LabeledInput label="Nombre" value={f.nombre} onChange={(v) => setF({ ...f, nombre: v })} placeholder="Nombre y apellido" />
+      <LabeledInput
+        label="Nombre" value={f.nombre} onChange={(v) => setF({ ...f, nombre: v })} placeholder="Nombre y apellido"
+        hint={nombreInvalido ? 'Solo letras, espacios y guiones.' : undefined}
+      />
       <label className="block">
         <span className="text-xs text-white/45">Rol en el centro</span>
         <select

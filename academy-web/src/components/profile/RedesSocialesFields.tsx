@@ -3,6 +3,8 @@
 
 import { REDES_SOCIALES } from '@/lib/redesSociales'
 
+const UNSAFE_CHARS_RE = /[{}<>\\`]/g
+
 export function RedesSocialesFields({
   value,
   onChange,
@@ -18,7 +20,7 @@ export function RedesSocialesFields({
           <input
             value={value[red.key] ?? ''}
             placeholder={red.placeholder}
-            onChange={(e) => onChange({ ...value, [red.key]: e.target.value })}
+            onChange={(e) => onChange({ ...value, [red.key]: e.target.value.replace(UNSAFE_CHARS_RE, '') })}
             className="input"
           />
         </label>
