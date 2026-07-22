@@ -197,6 +197,7 @@ const translations = {
   // Bloque 1 — historial de entrenamiento
   onboarding_historial_q1:    { es: '¿Cuánto tiempo llevas entrenando de forma constante?', en: 'How long have you been training consistently?', pt: 'Há quanto tempo você treina de forma constante?', fr: 'Depuis combien de temps vous entraînez-vous de façon constante ?' },
   onboarding_historial_q2:    { es: '¿Cuántas veces a la semana has entrenado en los últimos 3 meses?', en: 'How many times a week have you trained in the last 3 months?', pt: 'Quantas vezes por semana você treinou nos últimos 3 meses?', fr: 'Combien de fois par semaine vous êtes-vous entraîné ces 3 derniers mois ?' },
+  onboarding_historial_q3:    { es: '¿Qué actividad física realizas actualmente?', en: 'What physical activity do you currently do?', pt: 'Que atividade física você pratica atualmente?', fr: 'Quelle activité physique pratiquez-vous actuellement ?' },
   onboarding_deportes_label:  { es: 'EJERCICIO FÍSICO QUE REALIZAS', en: 'PHYSICAL ACTIVITY YOU DO', pt: 'ATIVIDADE FÍSICA QUE VOCÊ PRATICA', fr: 'ACTIVITÉ PHYSIQUE PRATIQUÉE' },
   onboarding_deportes_a11y:   { es: 'Ejercicio físico que realizas', en: 'Physical activity you do', pt: 'Atividade física que você pratica', fr: 'Activité physique pratiquée' },
   onboarding_selected_suffix: { es: 'seleccionado(s)', en: 'selected', pt: 'selecionado(s)', fr: 'sélectionné(s)' },
@@ -320,7 +321,6 @@ const translations = {
   onboarding_equip_cat_pesas:    { es: 'Pesas y barras', en: 'Weights and barbells', pt: 'Pesos e barras', fr: 'Poids et barres' },
   onboarding_equip_cat_maquinas: { es: 'Máquinas y accesorios', en: 'Machines and accessories', pt: 'Máquinas e acessórios', fr: 'Machines et accessoires' },
   onboarding_equip_cat_cardio:   { es: 'Cardio y movilidad', en: 'Cardio and mobility', pt: 'Cardio e mobilidade', fr: 'Cardio et mobilité' },
-  onboarding_equip_mancuernas_ajustables: { es: 'Mancuernas ajustables', en: 'Adjustable dumbbells', pt: 'Halteres ajustáveis', fr: 'Haltères ajustables' },
   onboarding_equip_mancuernas_fijas:      { es: 'Mancuernas fijas', en: 'Fixed dumbbells', pt: 'Halteres fixos', fr: 'Haltères fixes' },
   onboarding_equip_barra_olimpica:        { es: 'Barra olímpica + discos', en: 'Olympic barbell + plates', pt: 'Barra olímpica + anilhas', fr: 'Barre olympique + disques' },
   onboarding_equip_barra_ez:              { es: 'Barra corta (EZ)', en: 'EZ curl bar', pt: 'Barra EZ', fr: 'Barre EZ' },

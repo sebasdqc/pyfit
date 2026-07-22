@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
-  PanResponder, BackHandler, AccessibilityInfo, findNodeHandle,
+  PanResponder, BackHandler, AccessibilityInfo, findNodeHandle, Animated,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -36,7 +36,7 @@ type Lesion = {
 }
 
 type ScreenId =
-  | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_sueno' | 'b1_contexto'
+  | 'b1_personal' | 'b1_ciclo' | 'b1_historial' | 'b1_frecuencia' | 'b1_actividad' | 'b1_sueno' | 'b1_contexto'
   | 'b2_lesiones' | 'b2_limitaciones' | 'b2_historial_medico'
   | 'b3_lugar' | 'b3_equipamiento' | 'b3_tiempo_horario'
   | 'b4_objetivo' | 'b4_horizonte'
@@ -231,7 +231,6 @@ const EQUIPAMIENTO_CATS = [
   {
     catKey: 'onboarding_equip_cat_pesas',
     items: [
-      { value: 'Mancuernas ajustables',   labelKey: 'onboarding_equip_mancuernas_ajustables' },
       { value: 'Mancuernas fijas',        labelKey: 'onboarding_equip_mancuernas_fijas' },
       { value: 'Barra olímpica + discos', labelKey: 'onboarding_equip_barra_olimpica' },
       { value: 'Barra corta (EZ)',        labelKey: 'onboarding_equip_barra_ez' },
@@ -266,10 +265,9 @@ const EQUIPAMIENTO_CATS = [
 
 // Mapea las etiquetas específicas de equipamiento del onboarding a las
 // CATEGORÍAS que el backend usa para filtrar ejercicios (Exercise.equipamiento).
-// Sin esto, 'Mancuernas ajustables' no coincide con la categoría 'Mancuernas'
+// Sin esto, 'Mancuernas fijas' no coincide con la categoría 'Mancuernas'
 // y el usuario nunca recibe ejercicios de ese implemento.
 const EQUIP_LABEL_TO_CATEGORY: Record<string, string> = {
-  'Mancuernas ajustables':            'Mancuernas',
   'Mancuernas fijas':                 'Mancuernas',
   'Barra olímpica + discos':          'Barras',
   'Barra corta (EZ)':                 'Barras',
@@ -430,6 +428,8 @@ function getBlockTitle(screen: ScreenId, t: (k: ScalarKey) => string): string {
     case 'b1_personal':
     case 'b1_ciclo':
     case 'b1_historial':
+    case 'b1_frecuencia':
+    case 'b1_actividad':
     case 'b1_sueno':
     case 'b1_contexto':
       return t('onboarding_block_fisico')
@@ -647,12 +647,24 @@ function DurationSlider({
   const currentLabel = t(current.labelKey)
   const currentSub = t(current.subKey)
   const frac = steps > 1 ? idx / (steps - 1) : 0
+  const reduceMotion = useReduceMotion()
 
   // Refs para que el PanResponder (creado una sola vez) lea siempre el estado actual.
   const trackWRef = useRef(trackW)
   trackWRef.current = trackW
   const valueRef = useRef(value)
   valueRef.current = value
+
+  // Anima el thumb/fill entre pasos en vez de saltar de golpe — se nota al
+  // arrastrar aunque el valor solo avance de paso en paso (steps discretos).
+  const fracAnim = useRef(new Animated.Value(frac)).current
+  useEffect(() => {
+    Animated.timing(fracAnim, {
+      toValue: frac,
+      duration: reduceMotion ? 0 : 150,
+      useNativeDriver: false,
+    }).start()
+  }, [frac, reduceMotion, fracAnim])
 
   const commitFromX = useCallback((x: number) => {
     const w = trackWRef.current
@@ -706,7 +718,7 @@ function DurationSlider({
         }}
         {...pan.panHandlers}>
         <View style={styles.durTrack} />
-        <View style={[styles.durTrackFill, { width: trackW * frac }]} />
+        <Animated.View style={[styles.durTrackFill, { width: Animated.multiply(fracAnim, trackW) }]} />
         {opts.map((o, i) => {
           const on = i <= idx
           const left = trackW * (steps > 1 ? i / (steps - 1) : 0) - 4
@@ -715,7 +727,8 @@ function DurationSlider({
               style={[styles.durTick, { left }, on && styles.durTickOn]} />
           )
         })}
-        <View pointerEvents="none" style={[styles.durThumb, { left: trackW * frac - 13 }]} />
+        <Animated.View pointerEvents="none"
+          style={[styles.durThumb, { left: Animated.subtract(Animated.multiply(fracAnim, trackW), 13) }]} />
       </View>
 
       <View style={styles.durEndsRow}>
@@ -835,6 +848,8 @@ export default function OnboardingScreen() {
     'b1_personal',
     ...(data.sexo === 'femenino' ? ['b1_ciclo' as ScreenId] : []),
     'b1_historial',
+    'b1_frecuencia',
+    'b1_actividad',
     'b1_sueno',
     'b1_contexto',
     'b2_lesiones',
@@ -886,6 +901,8 @@ export default function OnboardingScreen() {
     }
     if (currentScreen === 'b1_historial') {
       if (data.experienciaEntrenando === null) return t('onboarding_err_experience')
+    }
+    if (currentScreen === 'b1_frecuencia') {
       if (data.frecuenciaHistorica === null) return t('onboarding_err_frequency')
     }
     if (currentScreen === 'b1_sueno') {
@@ -1357,10 +1374,6 @@ export default function OnboardingScreen() {
   // ── Block 1: training history ──────────────────────────────────────────────
 
   function renderHistorial() {
-    const filteredDeportes = deportesQuery.length > 1
-      ? deportesPairs.filter(p => normalize(p.label).includes(normalize(deportesQuery)))
-      : deportesPairs
-
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -1391,8 +1404,18 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )
         })}
+      </ScrollView>
+    )
+  }
 
-        <Text style={[styles.historialQ, { marginTop: 28 }]}>{t('onboarding_historial_q2')}</Text>
+  // ── Block 1: frecuencia semanal (pantalla propia, separada de experiencia) ──
+
+  function renderFrecuencia() {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.historialQ}>{t('onboarding_historial_q2')}</Text>
 
         {FRECUENCIA_OPTIONS.map(opt => {
           const on = data.frecuenciaHistorica === opt.value
@@ -1418,6 +1441,22 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )
         })}
+      </ScrollView>
+    )
+  }
+
+  // ── Block 1: actividad física que realiza (pantalla propia) ─────────────────
+
+  function renderActividad() {
+    const filteredDeportes = deportesQuery.length > 1
+      ? deportesPairs.filter(p => normalize(p.label).includes(normalize(deportesQuery)))
+      : deportesPairs
+
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        <Text style={styles.historialQ}>{t('onboarding_historial_q3')}</Text>
 
         <View style={styles.deportesSection}>
           <TouchableOpacity style={styles.deportesHeader}
@@ -1831,7 +1870,7 @@ export default function OnboardingScreen() {
                 accessibilityRole="checkbox" accessibilityState={{ checked: on }}
                 accessibilityLabel={p.label}>
                 {on && <Text style={styles.condCheckmark}>✓ </Text>}
-                <Text style={[styles.condChipText, on && styles.condChipTextOn]}>{p.label}</Text>
+                <Text style={[styles.condChipText, on && styles.condChipTextOn]} numberOfLines={1} ellipsizeMode="tail">{p.label}</Text>
               </TouchableOpacity>
             )
           })}
@@ -2430,6 +2469,8 @@ export default function OnboardingScreen() {
       case 'b1_personal':          return renderPersonal()
       case 'b1_ciclo':             return renderCiclo()
       case 'b1_historial':         return renderHistorial()
+      case 'b1_frecuencia':        return renderFrecuencia()
+      case 'b1_actividad':         return renderActividad()
       case 'b1_sueno':             return renderSueno()
       case 'b1_contexto':          return renderContexto()
       case 'b2_lesiones':          return renderLesiones()
@@ -2477,7 +2518,12 @@ export default function OnboardingScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
-        {renderContent()}
+        {/* key={currentScreen} fuerza un remount del ScrollView de cada pantalla al
+            cambiar de paso — sin esto React reutiliza la misma instancia nativa y
+            conserva el scroll offset de la pantalla anterior. */}
+        <View key={currentScreen} style={{ flex: 1 }}>
+          {renderContent()}
+        </View>
 
         {currentScreen !== 'b6_procesando' && currentScreen !== 'b6_beta' && (
           <View style={styles.footer}>
@@ -2743,8 +2789,8 @@ function makeStyles(c: Colors) {
 
     fieldGroup: { marginBottom: 20 },
     fieldLabel: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
-      color: c.inkSecondary, letterSpacing: 1.2, marginBottom: 8,
+      fontFamily: 'JetBrainsMono-Medium', fontSize: 12,
+      color: c.inkPrimary, letterSpacing: 1, marginBottom: 10,
     },
     input: {
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
@@ -3111,12 +3157,13 @@ function makeStyles(c: Colors) {
     condGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
     condChip: {
       flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20,
+      flexBasis: '48%', flexGrow: 0, flexShrink: 0,
+      paddingHorizontal: 10, paddingVertical: 9, borderRadius: 16,
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
     },
     condChipOn: { backgroundColor: 'rgba(255,170,50,0.1)', borderColor: '#ffaa32' },
-    condCheckmark: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, color: '#ffaa32' },
-    condChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary },
+    condCheckmark: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: '#ffaa32' },
+    condChipText: { flexShrink: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 11.5, color: c.inkSecondary },
     condChipTextOn: { color: '#ffaa32' },
 
     // Block 2 — lesiones
