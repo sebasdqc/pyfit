@@ -30,6 +30,7 @@ function detectDeviceLang(): Lang {
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
 type ArrayKey = 'historial_months' | 'historial_days_abbr' | 'stats_months' | 'coach_dias_abbr'
+  | 'onboarding_deportes_labels' | 'onboarding_ejercicios_labels' | 'onboarding_condiciones_labels'
 export type ScalarKey = Exclude<TranslationKey, ArrayKey>
 
 interface I18nContextValue {

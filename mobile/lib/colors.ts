@@ -219,6 +219,47 @@ export function cardShadow(color: string, opacity = 0.18) {
   }
 }
 
+// ─── Contraste cross-tema ───────────────────────────────────────────────────
+// Las 8 paletas tienen `accent` propio (azul, rosa saturado, lima, cobre,
+// turquesa…). Un relleno "seleccionado" o un texto de botón NUNCA deben ser un
+// literal (`rgba(79,140,255,…)` / `#fff`) — eso solo se ve bien en el tema
+// donde se diseñó y rompe en el resto. Estos dos helpers derivan siempre del
+// `accent` del tema activo.
+
+// Convierte un hex sólido (#rgb o #rrggbb) a rgba(...) con la opacidad dada.
+// Reemplaza los rgba(79,140,255,X) hardcodeados por accentAlpha(c.accent, X).
+export function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const n = h.length === 3 ? h.split('').map(ch => ch + ch).join('') : h
+  const r = parseInt(n.slice(0, 2), 16)
+  const g = parseInt(n.slice(2, 4), 16)
+  const b = parseInt(n.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+// Alias semántico: relleno translúcido derivado del acento del tema activo.
+export const accentAlpha = hexToRgba
+
+function relLuminance(hex: string): number {
+  const h = hex.replace('#', '')
+  const n = h.length === 3 ? h.split('').map(ch => ch + ch).join('') : h
+  const toLin = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+  const r = toLin(parseInt(n.slice(0, 2), 16) / 255)
+  const g = toLin(parseInt(n.slice(2, 4), 16) / 255)
+  const b = toLin(parseInt(n.slice(4, 6), 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+// Tinta legible (WCAG) sobre un acento sólido: blanco sobre acentos saturados
+// (azul, rosa, neón), tinta oscura sobre acentos CLAROS (lima Forest, cobre
+// Sand, turquesa Midnight/Ocean) — ahí el blanco fijo caía a ~1.7:1 de
+// contraste. Umbral 3.2:1 = justo por debajo del contraste blanco/azul de
+// marca, que se preserva.
+export function readableTextOn(hex: string): string {
+  const contrastWhite = 1.05 / (relLuminance(hex) + 0.05)
+  return contrastWhite >= 3.2 ? '#ffffff' : '#0d1117'
+}
+
 // Keep COLORS alias pointing to dark for backward compatibility
 export const COLORS = DARK_COLORS
 

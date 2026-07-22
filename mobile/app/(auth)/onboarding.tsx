@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
-  PanResponder, BackHandler,
+  PanResponder, BackHandler, AccessibilityInfo, findNodeHandle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -11,8 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
-import { useTranslation } from '../../lib/i18n'
-import { Colors } from '../../lib/colors'
+import { useTranslation, type ScalarKey } from '../../lib/i18n'
+import type { Lang } from '../../lib/translations'
+import { Colors, accentAlpha, readableTextOn } from '../../lib/colors'
+import { useReduceMotion } from '../../lib/useReduceMotion'
 import { apiPut, apiPost, apiDelete, localDateStr } from '../../lib/api'
 import { getUser, saveUser, clearTokens, clearUser } from '../../lib/storage'
 import { COUNTRIES } from '../../lib/countries'
@@ -79,65 +81,80 @@ type FormData = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Las constantes de opciones viven a nivel de módulo (fuera del componente) y
+// NO tienen acceso al hook useTranslation() — por eso guardan `labelKey`/
+// `subKey`/etc. (claves ScalarKey) en vez del texto literal, y cada
+// `render*()` (que SÍ está dentro del componente) hace `t(opt.labelKey)` al
+// dibujar. `value`/`id`/`icon`/colores se mantienen intactos: son datos, no
+// texto — siguen enviándose al backend sin cambios.
 const FRECUENCIA_OPTIONS = [
-  { label: 'Casi nunca',           sublabel: '0 o 1 días por semana',   value: 1, badge: '0–1' },
-  { label: '1–2 veces por semana', sublabel: 'Entrenamiento ocasional', value: 2, badge: '1–2' },
-  { label: '3–4 veces por semana', sublabel: 'La frecuencia más común', value: 3, badge: '3–4' },
-  { label: '5–6 veces por semana', sublabel: 'Alta dedicación',          value: 5, badge: '5–6' },
-  { label: 'Todos los días',       sublabel: '7 días por semana',        value: 7, badge: '7'   },
-]
+  { labelKey: 'onboarding_freq_0_label',   subKey: 'onboarding_freq_0_sub',   value: 1, badge: '0–1' },
+  { labelKey: 'onboarding_freq_1_2_label', subKey: 'onboarding_freq_1_2_sub', value: 2, badge: '1–2' },
+  { labelKey: 'onboarding_freq_3_4_label', subKey: 'onboarding_freq_3_4_sub', value: 3, badge: '3–4' },
+  { labelKey: 'onboarding_freq_5_6_label', subKey: 'onboarding_freq_5_6_sub', value: 5, badge: '5–6' },
+  { labelKey: 'onboarding_freq_7_label',   subKey: 'onboarding_freq_7_sub',   value: 7, badge: '7'   },
+] as const
 
 // Tiempo entrenando de forma constante → nivel_experiencia (1–5). Es el insumo
 // principal del nivel técnico; el motor lo usa para acotar la complejidad de los
 // ejercicios y el prompt para calibrar el volumen.
 const EXPERIENCIA_OPTIONS = [
-  { value: 1, label: 'Menos de 6 meses', sublabel: 'Estoy empezando',            badge: '<6m'   },
-  { value: 2, label: '6 meses – 1 año',  sublabel: 'Tengo algo de base',         badge: '6-12m' },
-  { value: 3, label: '1 – 2 años',       sublabel: 'Entreno con constancia',     badge: '1-2a'  },
-  { value: 4, label: '2 – 5 años',       sublabel: 'Experiencia sólida',         badge: '2-5a'  },
-  { value: 5, label: 'Más de 5 años',    sublabel: 'Mucho recorrido entrenando', badge: '+5a'   },
-]
+  { value: 1, labelKey: 'onboarding_exp_lt6m_label',  subKey: 'onboarding_exp_lt6m_sub',  badge: '<6m'   },
+  { value: 2, labelKey: 'onboarding_exp_6_12m_label', subKey: 'onboarding_exp_6_12m_sub', badge: '6-12m' },
+  { value: 3, labelKey: 'onboarding_exp_1_2a_label',  subKey: 'onboarding_exp_1_2a_sub',  badge: '1-2a'  },
+  { value: 4, labelKey: 'onboarding_exp_2_5a_label',  subKey: 'onboarding_exp_2_5a_sub',  badge: '2-5a'  },
+  { value: 5, labelKey: 'onboarding_exp_5a_label',    subKey: 'onboarding_exp_5a_sub',    badge: '+5a'   },
+] as const
 
 const SUENO_OPTIONS = [
-  { value: '<6h',  label: 'Menos de 6h',   sublabel: 'Sueño corto o fragmentado', icon: '😓' },
-  { value: '6-7h', label: '6–7h irregular', sublabel: 'Varía mucho cada noche',    icon: '😐' },
-  { value: '7-8h', label: '7–8h estable',  sublabel: 'La cantidad recomendada',   icon: '😴' },
-  { value: '>8h',  label: 'Más de 8h',     sublabel: 'Largo o con mucha fatiga',  icon: '💤' },
-]
+  { value: '<6h',  labelKey: 'onboarding_sueno_lt6h_label', subKey: 'onboarding_sueno_lt6h_sub', icon: '😓' },
+  { value: '6-7h', labelKey: 'onboarding_sueno_6_7_label',  subKey: 'onboarding_sueno_6_7_sub',  icon: '😐' },
+  { value: '7-8h', labelKey: 'onboarding_sueno_7_8_label',  subKey: 'onboarding_sueno_7_8_sub',  icon: '😴' },
+  { value: '>8h',  labelKey: 'onboarding_sueno_8h_label',   subKey: 'onboarding_sueno_8h_sub',   icon: '💤' },
+] as const
 
-const ZONE_LABELS: Record<string, string> = {
-  cabeza:      'Cabeza / Cuello',
-  hombro_izq:  'Hombro izquierdo',
-  hombro_der:  'Hombro derecho',
-  brazo_izq:   'Brazo / Codo izq.',
-  brazo_der:   'Brazo / Codo der.',
-  muneca_izq:  'Muñeca / Mano izq.',
-  muneca_der:  'Muñeca / Mano der.',
-  pecho:       'Pecho / Tórax',
-  abdomen:     'Abdomen / Core',
-  lumbar:      'Espalda / Lumbar',
-  cadera:      'Cadera / Glúteos',
-  muslo_izq:   'Muslo izquierdo',
-  muslo_der:   'Muslo derecho',
-  rodilla_izq: 'Rodilla izquierda',
-  rodilla_der: 'Rodilla derecha',
-  tobillo_izq: 'Tobillo / Pie izq.',
-  tobillo_der: 'Tobillo / Pie der.',
+// Zonas del cuerpo: código interno (guardado tal cual en `lesiones`) → clave
+// de traducción de su etiqueta. `Object.keys` preserva el orden de inserción.
+const ZONE_LABEL_KEYS: Record<string, ScalarKey> = {
+  cabeza:      'onboarding_zone_cabeza',
+  hombro_izq:  'onboarding_zone_hombro_izq',
+  hombro_der:  'onboarding_zone_hombro_der',
+  brazo_izq:   'onboarding_zone_brazo_izq',
+  brazo_der:   'onboarding_zone_brazo_der',
+  muneca_izq:  'onboarding_zone_muneca_izq',
+  muneca_der:  'onboarding_zone_muneca_der',
+  pecho:       'onboarding_zone_pecho',
+  abdomen:     'onboarding_zone_abdomen',
+  lumbar:      'onboarding_zone_lumbar',
+  cadera:      'onboarding_zone_cadera',
+  muslo_izq:   'onboarding_zone_muslo_izq',
+  muslo_der:   'onboarding_zone_muslo_der',
+  rodilla_izq: 'onboarding_zone_rodilla_izq',
+  rodilla_der: 'onboarding_zone_rodilla_der',
+  tobillo_izq: 'onboarding_zone_tobillo_izq',
+  tobillo_der: 'onboarding_zone_tobillo_der',
+}
+function zoneLabel(id: string, t: (k: ScalarKey) => string): string {
+  const key = ZONE_LABEL_KEYS[id]
+  return key ? t(key) : id
 }
 
-const TIEMPO_LABELS: Record<LesionTiempo, string> = {
-  '1-3m': '1–3 meses',
-  '3-6m': '3–6 meses',
-  '6-12m': '6–12 meses',
-  '+1a':  'Más de 1 año',
+const TIEMPO_LABEL_KEYS: Record<LesionTiempo, ScalarKey> = {
+  '1-3m':  'onboarding_tiempo_1_3m',
+  '3-6m':  'onboarding_tiempo_3_6m',
+  '6-12m': 'onboarding_tiempo_6_12m',
+  '+1a':   'onboarding_tiempo_1a',
 }
 
-const GRAVEDAD_CONFIG: Record<LesionGravedad, { color: string; bg: string; label: string }> = {
-  leve:     { color: '#32c896', bg: 'rgba(50,200,150,0.15)',  label: 'Leve' },
-  moderada: { color: '#ffaa32', bg: 'rgba(255,170,50,0.15)',  label: 'Moderada' },
-  severa:   { color: '#ff4444', bg: 'rgba(255,68,68,0.15)',   label: 'Severa' },
+const GRAVEDAD_CONFIG: Record<LesionGravedad, { color: string; bg: string; labelKey: ScalarKey }> = {
+  leve:     { color: '#32c896', bg: 'rgba(50,200,150,0.15)',  labelKey: 'onboarding_grav_leve' },
+  moderada: { color: '#ffaa32', bg: 'rgba(255,170,50,0.15)',  labelKey: 'onboarding_grav_moderada' },
+  severa:   { color: '#ff4444', bg: 'rgba(255,68,68,0.15)',   labelKey: 'onboarding_grav_severa' },
 }
 
+// Valor guardado (español, compatible con el backend) — la etiqueta mostrada
+// se traduce por índice vía ta('onboarding_ejercicios_labels') en el
+// componente. Ver el comentario equivalente sobre DEPORTES más abajo.
 const EJERCICIOS_COMUNES = [
   // Piernas
   'Sentadilla', 'Sentadilla frontal', 'Sentadilla búlgara', 'Peso muerto', 'Peso muerto rumano',
@@ -161,6 +178,8 @@ const EJERCICIOS_COMUNES = [
 
 const COND_OTRO = 'Otro'
 
+// Idem: valor en español (enviado tal cual a condiciones_medicas), etiqueta
+// traducida por índice vía ta('onboarding_condiciones_labels').
 const CONDICIONES_MEDICAS = [
   'Hipertensión (presión alta)',
   'Hipotensión (presión baja)',
@@ -188,12 +207,12 @@ const CONDICIONES_MEDICAS = [
 ]
 
 const LUGARES = [
-  { id: 'gimnasio_completo', icon: '🏋️', label: 'Gimnasio completo',    desc: 'Máquinas, pesas libres, zonas de cardio — todo disponible' },
-  { id: 'gimnasio_basico',   icon: '🔩', label: 'Gimnasio básico',      desc: 'Mancuernas, barras, algo de cardio — lo esencial' },
-  { id: 'casa_equipado',     icon: '🏠', label: 'Casa con material',    desc: 'Tengo equipamiento en casa' },
-  { id: 'casa_sin',          icon: '🧘', label: 'Casa sin material',    desc: 'Solo mi cuerpo y espacio libre' },
-  { id: 'exterior',          icon: '🌳', label: 'Al aire libre',        desc: 'Parque, pista, playa, calle' },
-]
+  { id: 'gimnasio_completo', icon: '🏋️', labelKey: 'onboarding_lugar_gimnasio_completo_label', descKey: 'onboarding_lugar_gimnasio_completo_desc' },
+  { id: 'gimnasio_basico',   icon: '🔩', labelKey: 'onboarding_lugar_gimnasio_basico_label',   descKey: 'onboarding_lugar_gimnasio_basico_desc' },
+  { id: 'casa_equipado',     icon: '🏠', labelKey: 'onboarding_lugar_casa_equipado_label',     descKey: 'onboarding_lugar_casa_equipado_desc' },
+  { id: 'casa_sin',          icon: '🧘', labelKey: 'onboarding_lugar_casa_sin_label',          descKey: 'onboarding_lugar_casa_sin_desc' },
+  { id: 'exterior',          icon: '🌳', labelKey: 'onboarding_lugar_exterior_label',          descKey: 'onboarding_lugar_exterior_desc' },
+] as const
 
 const TIPO_BY_LUGAR_ID: Record<string, 'gimnasio' | 'casa' | 'exterior'> = {
   gimnasio_completo: 'gimnasio',
@@ -203,20 +222,46 @@ const TIPO_BY_LUGAR_ID: Record<string, 'gimnasio' | 'casa' | 'exterior'> = {
   exterior:          'exterior',
 }
 
+// items: { value } es el string en español guardado en data.equipamiento y
+// usado por EQUIP_LABEL_TO_CATEGORY (abajo) — SIN cambios, solo la etiqueta
+// mostrada (`labelKey`) se traduce. Desacoplar value/label evita que traducir
+// el equipamiento rompa el mapeo a categorías del motor.
 const EQUIPAMIENTO_CATS = [
   {
-    cat: 'Pesas y barras',
-    items: ['Mancuernas ajustables', 'Mancuernas fijas', 'Barra olímpica + discos', 'Barra corta (EZ)', 'Kettlebell(s)', 'Barra de dominadas'],
+    catKey: 'onboarding_equip_cat_pesas',
+    items: [
+      { value: 'Mancuernas ajustables',   labelKey: 'onboarding_equip_mancuernas_ajustables' },
+      { value: 'Mancuernas fijas',        labelKey: 'onboarding_equip_mancuernas_fijas' },
+      { value: 'Barra olímpica + discos', labelKey: 'onboarding_equip_barra_olimpica' },
+      { value: 'Barra corta (EZ)',        labelKey: 'onboarding_equip_barra_ez' },
+      { value: 'Kettlebell(s)',           labelKey: 'onboarding_equip_kettlebell' },
+      { value: 'Barra de dominadas',      labelKey: 'onboarding_equip_barra_dominadas' },
+    ],
   },
   {
-    cat: 'Máquinas y accesorios',
-    items: ['Banco de pesas', 'Máquina de poleas / Multifuerza', 'TRX / Suspensión', 'Bandas elásticas', 'Balón medicinal', 'Step / Cajón pliométrico', 'Paralelas'],
+    catKey: 'onboarding_equip_cat_maquinas',
+    items: [
+      { value: 'Banco de pesas',                  labelKey: 'onboarding_equip_banco' },
+      { value: 'Máquina de poleas / Multifuerza', labelKey: 'onboarding_equip_poleas' },
+      { value: 'TRX / Suspensión',                labelKey: 'onboarding_equip_trx' },
+      { value: 'Bandas elásticas',                labelKey: 'onboarding_equip_bandas' },
+      { value: 'Balón medicinal',                 labelKey: 'onboarding_equip_balon_medicinal' },
+      { value: 'Step / Cajón pliométrico',        labelKey: 'onboarding_equip_cajon' },
+      { value: 'Paralelas',                       labelKey: 'onboarding_equip_paralelas' },
+    ],
   },
   {
-    cat: 'Cardio y movilidad',
-    items: ['Cuerda de saltar', 'Colchoneta / Mat', 'Foam roller', 'Bicicleta estática', 'Cinta de correr', 'Remo (ergómetro)'],
+    catKey: 'onboarding_equip_cat_cardio',
+    items: [
+      { value: 'Cuerda de saltar',    labelKey: 'onboarding_equip_cuerda' },
+      { value: 'Colchoneta / Mat',    labelKey: 'onboarding_equip_colchoneta' },
+      { value: 'Foam roller',         labelKey: 'onboarding_equip_foam_roller' },
+      { value: 'Bicicleta estática',  labelKey: 'onboarding_equip_bici' },
+      { value: 'Cinta de correr',     labelKey: 'onboarding_equip_cinta' },
+      { value: 'Remo (ergómetro)',    labelKey: 'onboarding_equip_remo' },
+    ],
   },
-]
+] as const
 
 // Mapea las etiquetas específicas de equipamiento del onboarding a las
 // CATEGORÍAS que el backend usa para filtrar ejercicios (Exercise.equipamiento).
@@ -252,35 +297,35 @@ function mapEquipamientoToCategorias(labels: string[]): string[] {
 }
 
 const TIEMPO_NORMAL_OPTS = [
-  { value: '20-30', label: '20–30 min', sub: 'Sesión corta pero efectiva' },
-  { value: '30-45', label: '30–45 min', sub: 'Lo mínimo recomendado' },
-  { value: '45-60', label: '45–60 min', sub: 'La duración ideal' },
-  { value: '60-90', label: '60–90 min', sub: 'Sesión completa' },
-  { value: '90+',   label: '90+ min',   sub: 'Sesión larga, sin prisa' },
-]
+  { value: '20-30', labelKey: 'onboarding_dur_20_30', subKey: 'onboarding_dur_20_30_sub' },
+  { value: '30-45', labelKey: 'onboarding_dur_30_45', subKey: 'onboarding_dur_30_45_sub' },
+  { value: '45-60', labelKey: 'onboarding_dur_45_60', subKey: 'onboarding_dur_45_60_sub' },
+  { value: '60-90', labelKey: 'onboarding_dur_60_90', subKey: 'onboarding_dur_60_90_sub' },
+  { value: '90+',   labelKey: 'onboarding_dur_90_plus', subKey: 'onboarding_dur_90_plus_sub' },
+] as const
 
 const TIEMPO_OCUPADO_OPTS = [
-  { value: '10-15', label: '10–15 min', sub: 'Microentrenamiento' },
-  { value: '15-20', label: '15–20 min', sub: 'Express' },
-  { value: '20-30', label: '20–30 min', sub: 'Suficiente para lo esencial' },
-  { value: '30-45', label: '30–45 min', sub: 'La mayoría puede con esto' },
-]
+  { value: '10-15', labelKey: 'onboarding_dur_10_15', subKey: 'onboarding_dur_10_15_sub' },
+  { value: '15-20', labelKey: 'onboarding_dur_15_20', subKey: 'onboarding_dur_15_20_sub' },
+  { value: '20-30', labelKey: 'onboarding_dur_20_30', subKey: 'onboarding_dur_20_30_busy_sub' },
+  { value: '30-45', labelKey: 'onboarding_dur_30_45', subKey: 'onboarding_dur_30_45_busy_sub' },
+] as const
 
 const HORARIO_OPTS = [
-  { value: 'manana',   icon: '🌅', label: 'Mañana',   sub: 'Antes de las 10h' },
-  { value: 'mediodia', icon: '☀️', label: 'Mediodía',  sub: '12–15h' },
-  { value: 'tarde',    icon: '🌆', label: 'Tarde',     sub: '16–20h' },
-  { value: 'noche',    icon: '🌙', label: 'Noche',     sub: 'Después de las 20h' },
-]
+  { value: 'manana',   icon: '🌅', labelKey: 'onboarding_horario_manana',   subKey: 'onboarding_horario_manana_sub' },
+  { value: 'mediodia', icon: '☀️', labelKey: 'onboarding_horario_mediodia', subKey: 'onboarding_horario_mediodia_sub' },
+  { value: 'tarde',    icon: '🌆', labelKey: 'onboarding_horario_tarde',    subKey: 'onboarding_horario_tarde_sub' },
+  { value: 'noche',    icon: '🌙', labelKey: 'onboarding_horario_noche',    subKey: 'onboarding_horario_noche_sub' },
+] as const
 
 const OBJETIVOS = [
-  { id: 'verse_mejor',     icon: '✨', label: 'Quiero verme mejor',             tagline: 'Composición corporal y estética' },
-  { id: 'sentirse_fuerte', icon: '💪', label: 'Quiero sentirme más fuerte',     tagline: 'Ganar fuerza y músculo' },
-  { id: 'rendimiento',     icon: '🏆', label: 'Quiero mejorar mi rendimiento',  tagline: 'Velocidad, resistencia, explosividad' },
-  { id: 'energia',         icon: '⚡', label: 'Quiero más energía en mi día',   tagline: 'Vitalidad y bienestar diario' },
-  { id: 'salud',           icon: '❤️', label: 'Quiero mejorar mi salud',        tagline: 'Prevención y calidad de vida' },
-  { id: 'mantener',        icon: '🛡️', label: 'Quiero mantener lo que tengo',   tagline: 'Consistencia y conservación' },
-]
+  { id: 'verse_mejor',     icon: '✨', labelKey: 'onboarding_obj_verse_mejor_label',     tagKey: 'onboarding_obj_verse_mejor_tag' },
+  { id: 'sentirse_fuerte', icon: '💪', labelKey: 'onboarding_obj_sentirse_fuerte_label', tagKey: 'onboarding_obj_sentirse_fuerte_tag' },
+  { id: 'rendimiento',     icon: '🏆', labelKey: 'onboarding_obj_rendimiento_label',     tagKey: 'onboarding_obj_rendimiento_tag' },
+  { id: 'energia',         icon: '⚡', labelKey: 'onboarding_obj_energia_label',         tagKey: 'onboarding_obj_energia_tag' },
+  { id: 'salud',           icon: '❤️', labelKey: 'onboarding_obj_salud_label',           tagKey: 'onboarding_obj_salud_tag' },
+  { id: 'mantener',        icon: '🛡️', labelKey: 'onboarding_obj_mantener_label',        tagKey: 'onboarding_obj_mantener_tag' },
+] as const
 
 function mapObjetivoToGoal(id: string): string | null {
   const MAP: Record<string, string> = {
@@ -306,50 +351,52 @@ function nivelFromExperiencia(exp: number | null): 'principiante' | 'intermedio'
 }
 
 const HORIZONTE_OPTS = [
-  { value: '4-6w',   label: '4–6 semanas',     sub: 'Quiero ver algo rápido' },
-  { value: '3m',     label: '3 meses',          sub: 'Meta a corto plazo' },
-  { value: '6m',     label: '6 meses',          sub: 'Transformación real' },
-  { value: '1y',     label: '1 año o más',      sub: 'Cambio de estilo de vida' },
-  { value: 'evento', label: 'Tengo un evento',  sub: 'Boda, competición, viaje...' },
-  { value: 'libre',  label: 'Sin fecha fija',   sub: 'Proceso, no destino' },
-]
+  { value: '4-6w',   labelKey: 'onboarding_horiz_4_6w',  subKey: 'onboarding_horiz_4_6w_sub' },
+  { value: '3m',     labelKey: 'onboarding_horiz_3m',    subKey: 'onboarding_horiz_3m_sub' },
+  { value: '6m',     labelKey: 'onboarding_horiz_6m',    subKey: 'onboarding_horiz_6m_sub' },
+  { value: '1y',     labelKey: 'onboarding_horiz_1y',    subKey: 'onboarding_horiz_1y_sub' },
+  { value: 'evento', labelKey: 'onboarding_horiz_evento',subKey: 'onboarding_horiz_evento_sub' },
+  { value: 'libre',  labelKey: 'onboarding_horiz_libre', subKey: 'onboarding_horiz_libre_sub' },
+] as const
 
 const ABANDONO_OPTIONS = [
-  { id: 'tiempo',       icon: '⏰', label: 'Falta de tiempo',       sub: 'El día a día se come los planes' },
-  { id: 'aburrimiento', icon: '😴', label: 'Aburrimiento',          sub: 'Lo mismo una y otra vez' },
-  { id: 'lesion',       icon: '🩹', label: 'Lesión',                sub: 'El cuerpo me frenó' },
-  { id: 'resultados',   icon: '📉', label: 'No ver resultados',     sub: 'El esfuerzo no se reflejaba' },
-  { id: 'no_saber',     icon: '🤷', label: 'No saber qué hacer',    sub: 'Sin guía ni estructura clara' },
-  { id: 'motivacion',   icon: '🔋', label: 'Pérdida de motivación', sub: 'El impulso inicial se agotó' },
-]
+  { id: 'tiempo',       icon: '⏰', labelKey: 'onboarding_abandono_tiempo_label',       subKey: 'onboarding_abandono_tiempo_sub' },
+  { id: 'aburrimiento', icon: '😴', labelKey: 'onboarding_abandono_aburrimiento_label', subKey: 'onboarding_abandono_aburrimiento_sub' },
+  { id: 'lesion',       icon: '🩹', labelKey: 'onboarding_abandono_lesion_label',       subKey: 'onboarding_abandono_lesion_sub' },
+  { id: 'resultados',   icon: '📉', labelKey: 'onboarding_abandono_resultados_label',   subKey: 'onboarding_abandono_resultados_sub' },
+  { id: 'no_saber',     icon: '🤷', labelKey: 'onboarding_abandono_no_saber_label',     subKey: 'onboarding_abandono_no_saber_sub' },
+  { id: 'motivacion',   icon: '🔋', labelKey: 'onboarding_abandono_motivacion_label',   subKey: 'onboarding_abandono_motivacion_sub' },
+] as const
 
 const COACHING_STYLES = [
   {
     id: 'directo' as const,
-    icon: '⚡', label: 'Directo y exigente',
-    desc: 'Sin rodeos. Me dices exactamente qué hacer y con qué intensidad.',
+    icon: '⚡', labelKey: 'onboarding_coach_directo_label' as const,
+    descKey: 'onboarding_coach_directo_desc' as const,
     color: '#ffaa32', bg: 'rgba(255,170,50,0.1)', border: 'rgba(255,170,50,0.5)',
   },
   {
     id: 'calido' as const,
-    icon: '🌱', label: 'Motivacional y cálido',
-    desc: 'Me animas, celebras mis avances y me acompañas en los días difíciles.',
+    icon: '🌱', labelKey: 'onboarding_coach_calido_label' as const,
+    descKey: 'onboarding_coach_calido_desc' as const,
     color: '#32c896', bg: 'rgba(50,200,150,0.1)', border: 'rgba(50,200,150,0.5)',
   },
   {
     id: 'tecnico' as const,
-    icon: '🔬', label: 'Técnico y explicativo',
-    desc: 'Explicas el porqué de cada decisión. Quiero entender, no solo seguir.',
+    icon: '🔬', labelKey: 'onboarding_coach_tecnico_label' as const,
+    descKey: 'onboarding_coach_tecnico_desc' as const,
     color: '#6ce5ff', bg: 'rgba(108,229,255,0.1)', border: 'rgba(108,229,255,0.5)',
   },
 ]
 
 const TIPOS_ENTRENAMIENTO = [
-  { id: 'musculacion', icon: '🏋️', label: 'Musculación',        sub: 'Fuerza e hipertrofia' },
-  { id: 'running',     icon: '🏃', label: 'Running',            sub: 'Trabajo aeróbico y resistencia' },
-  { id: 'libre',       icon: '⚡', label: 'Entrenamiento Libre', sub: 'Sin estructura fija' },
-]
+  { id: 'musculacion', icon: '🏋️', labelKey: 'onboarding_entreno_musculacion_label', subKey: 'onboarding_entreno_musculacion_sub' },
+  { id: 'running',     icon: '🏃', labelKey: 'onboarding_entreno_running_label',     subKey: 'onboarding_entreno_running_sub' },
+  { id: 'libre',       icon: '⚡', labelKey: 'onboarding_entreno_libre_label',       subKey: 'onboarding_entreno_libre_sub' },
+] as const
 
+// Valor guardado (español) — etiqueta traducida por índice vía
+// ta('onboarding_deportes_labels'). Mismo patrón que EJERCICIOS_COMUNES.
 const DEPORTES = [
   'Musculación / Fuerza', 'Running / Cardio', 'Movilidad / Flexibilidad', 'HIIT / Funcional',
   'Musculación', 'CrossFit', 'Powerlifting', 'Halterofilia', 'Calistenia', 'Strongman', 'Functional Training',
@@ -366,41 +413,55 @@ const DEPORTES = [
   'Golf', 'Equitación', 'Tiro con arco', 'Ciclismo indoor', 'Raquetbol',
 ]
 
-function formatDate(d: Date) {
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+// Mapa idioma app → locale de Intl para que la fecha (mes en letras) se vea
+// en el idioma elegido, no siempre en español.
+const DATE_LOCALES: Record<Lang, string> = { es: 'es-ES', en: 'en-US', pt: 'pt-BR', fr: 'fr-FR' }
+function formatDate(d: Date, lang: Lang) {
+  return d.toLocaleDateString(DATE_LOCALES[lang], { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-function getBlockTitle(screen: ScreenId): string {
+function getBlockTitle(screen: ScreenId, t: (k: ScalarKey) => string): string {
   switch (screen) {
     case 'b1_personal':
     case 'b1_ciclo':
     case 'b1_historial':
     case 'b1_sueno':
     case 'b1_contexto':
-      return 'Quién eres físicamente'
+      return t('onboarding_block_fisico')
     case 'b2_lesiones':
     case 'b2_limitaciones':
     case 'b2_historial_medico':
-      return 'Tu cuerpo tiene historia'
+      return t('onboarding_block_historia')
     case 'b3_lugar':
     case 'b3_equipamiento':
     case 'b3_tiempo_horario':
-      return 'Cómo y dónde entrenas'
+      return t('onboarding_block_donde')
     case 'b4_objetivo':
     case 'b4_horizonte':
-      return 'Lo que quieres lograr'
+      return t('onboarding_block_lograr')
     case 'b5_abandono':
     case 'b5_coaching':
     case 'b5_entreno':
-      return 'Tu relación con el entrenamiento'
+      return t('onboarding_block_relacion')
     case 'b6_procesando':
     case 'b6_beta':
       return ''
   }
+}
+
+// Etiqueta accesible por zona: nombre + estado de lesión si existe. Compartida
+// entre el body map SVG (zonas <Rect> transparentes, poco fiables para
+// lectores de pantalla en algunas versiones) y su alternativa en lista de
+// texto plano — ambas deben describir la misma zona de la misma forma.
+function zoneA11yLabelExternal(id: string, lesiones: Lesion[], t: (k: ScalarKey) => string): string {
+  const label = zoneLabel(id, t)
+  const inj = lesiones.find(l => l.zona === id)
+  if (!inj) return label
+  return `${label}, ${inj.estado === 'activa' ? t('onboarding_zone_status_active') : t('onboarding_zone_status_resolved')}`
 }
 
 // ─── SVG Body Map ─────────────────────────────────────────────────────────────
@@ -409,20 +470,22 @@ function BodyMap({
   lesiones,
   editingZona,
   onZonePress,
+  t,
 }: {
   lesiones: Lesion[]
   editingZona: string | null
   onZonePress: (zone: string) => void
+  t: (k: ScalarKey) => string
 }) {
   const { colors } = useTheme()
   function zoneFill(id: string) {
-    if (editingZona === id) return 'rgba(79,140,255,0.32)'
+    if (editingZona === id) return accentAlpha(colors.accent, 0.32)
     const inj = lesiones.find(l => l.zona === id)
     if (!inj) return colors.glassBg
     return inj.estado === 'activa' ? 'rgba(255,68,68,0.26)' : 'rgba(50,200,150,0.22)'
   }
   function zoneStroke(id: string) {
-    if (editingZona === id) return '#4f8cff'
+    if (editingZona === id) return colors.accent
     const inj = lesiones.find(l => l.zona === id)
     if (!inj) return colors.borderBright
     return inj.estado === 'activa' ? '#ff4444' : '#32c896'
@@ -433,6 +496,7 @@ function BodyMap({
     return inj.estado === 'activa' ? '#ff4444' : '#32c896'
   }
   function press(id: string) { return () => onZonePress(id) }
+  const zoneA11yLabel = (id: string) => zoneA11yLabelExternal(id, lesiones, t)
 
   // ViewBox: 0 0 180 360  (centered at x=90)
   return (
@@ -518,26 +582,42 @@ function BodyMap({
 
       {/* ── Touch zones (transparent overlays, drawn last = on top) ── */}
 
-      <Rect x={65} y={57} width={50} height={56} fill="transparent" onPress={press('pecho')} />
-      <Rect x={65} y={111} width={50} height={44} fill="transparent" onPress={press('abdomen')} />
-      <Rect x={54} y={153} width={72} height={30} fill="transparent" onPress={press('cadera')} />
+      <Rect x={65} y={57} width={50} height={56} fill="transparent" onPress={press('pecho')}
+        accessible accessibilityLabel={zoneA11yLabel('pecho')} />
+      <Rect x={65} y={111} width={50} height={44} fill="transparent" onPress={press('abdomen')}
+        accessible accessibilityLabel={zoneA11yLabel('abdomen')} />
+      <Rect x={54} y={153} width={72} height={30} fill="transparent" onPress={press('cadera')}
+        accessible accessibilityLabel={zoneA11yLabel('cadera')} />
 
-      <Rect x={56} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_izq')} />
-      <Rect x={88} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_der')} />
-      <Rect x={56} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_izq')} />
-      <Rect x={90} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_der')} />
-      <Rect x={54} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_izq')} />
-      <Rect x={92} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_der')} />
+      <Rect x={56} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('muslo_izq')} />
+      <Rect x={88} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_der')}
+        accessible accessibilityLabel={zoneA11yLabel('muslo_der')} />
+      <Rect x={56} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('rodilla_izq')} />
+      <Rect x={90} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_der')}
+        accessible accessibilityLabel={zoneA11yLabel('rodilla_der')} />
+      <Rect x={54} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('tobillo_izq')} />
+      <Rect x={92} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_der')}
+        accessible accessibilityLabel={zoneA11yLabel('tobillo_der')} />
 
-      <Rect x={32} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_izq')} />
-      <Rect x={116} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_der')} />
-      <Rect x={32} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_izq')} />
-      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_der')} />
+      <Rect x={32} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('brazo_izq')} />
+      <Rect x={116} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_der')}
+        accessible accessibilityLabel={zoneA11yLabel('brazo_der')} />
+      <Rect x={32} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('muneca_izq')} />
+      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_der')}
+        accessible accessibilityLabel={zoneA11yLabel('muneca_der')} />
 
-      <Rect x={32} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_izq')} />
-      <Rect x={112} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_der')} />
+      <Rect x={32} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_izq')}
+        accessible accessibilityLabel={zoneA11yLabel('hombro_izq')} />
+      <Rect x={112} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_der')}
+        accessible accessibilityLabel={zoneA11yLabel('hombro_der')} />
 
-      <Rect x={64} y={2} width={52} height={66} fill="transparent" onPress={press('cabeza')} />
+      <Rect x={64} y={2} width={52} height={66} fill="transparent" onPress={press('cabeza')}
+        accessible accessibilityLabel={zoneA11yLabel('cabeza')} />
     </Svg>
   )
 }
@@ -548,20 +628,23 @@ function BodyMap({
 // para que el mapeo a la base de datos (parseInt → duracion_disponible /
 // duracion_minima) siga siendo idéntico.
 
-type DurOpt = { value: string; label: string; sub: string }
+type DurOpt = { value: string; labelKey: ScalarKey; subKey: ScalarKey }
 
 function DurationSlider({
-  opts, value, onChange, styles,
+  opts, value, onChange, styles, t,
 }: {
-  opts: DurOpt[]
+  opts: readonly DurOpt[]
   value: string | null
   onChange: (v: string) => void
   styles: ReturnType<typeof makeStyles>
+  t: (k: ScalarKey) => string
 }) {
   const [trackW, setTrackW] = useState(0)
   const steps = opts.length
   const idx = Math.max(0, opts.findIndex(o => o.value === value))
   const current = opts[idx] ?? opts[0]
+  const currentLabel = t(current.labelKey)
+  const currentSub = t(current.subKey)
   const frac = steps > 1 ? idx / (steps - 1) : 0
 
   // Refs para que el PanResponder (creado una sola vez) lea siempre el estado actual.
@@ -590,16 +673,36 @@ function DurationSlider({
     onPanResponderMove: e => commitFromX(e.nativeEvent.locationX),
   }), [commitFromX])
 
+  // Accesible como control "adjustable": el PanResponder por sí solo es
+  // inoperable con VoiceOver/TalkBack (no hay gesto de arrastre estándar en
+  // modo lectura). increment/decrement mueven un paso discreto.
+  function moveBy(delta: number) {
+    const newIdx = Math.max(0, Math.min(steps - 1, idx + delta))
+    const newVal = opts[newIdx].value
+    if (newVal !== valueRef.current) {
+      onChange(newVal)
+      Haptics.selectionAsync().catch(() => {})
+    }
+  }
+
   return (
     <View style={styles.durSlider}>
       <View style={styles.durValueRow}>
-        <Text style={styles.durValueLabel}>{current.label}</Text>
-        <Text style={styles.durValueSub}>{current.sub}</Text>
+        <Text style={styles.durValueLabel}>{currentLabel}</Text>
+        <Text style={styles.durValueSub}>{currentSub}</Text>
       </View>
 
       <View
         style={styles.durTrackTouch}
         onLayout={e => setTrackW(e.nativeEvent.layout.width)}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={`${currentLabel}, ${currentSub}`}
+        accessibilityValue={{ min: 0, max: steps - 1, now: idx, text: currentLabel }}
+        onAccessibilityAction={e => {
+          if (e.nativeEvent.actionName === 'increment') moveBy(1)
+          else if (e.nativeEvent.actionName === 'decrement') moveBy(-1)
+        }}
         {...pan.panHandlers}>
         <View style={styles.durTrack} />
         <View style={[styles.durTrackFill, { width: trackW * frac }]} />
@@ -615,8 +718,8 @@ function DurationSlider({
       </View>
 
       <View style={styles.durEndsRow}>
-        <Text style={styles.durEndLabel}>{opts[0].label}</Text>
-        <Text style={styles.durEndLabel}>{opts[steps - 1].label}</Text>
+        <Text style={styles.durEndLabel}>{t(opts[0].labelKey)}</Text>
+        <Text style={styles.durEndLabel}>{t(opts[steps - 1].labelKey)}</Text>
       </View>
     </View>
   )
@@ -626,9 +729,38 @@ function DurationSlider({
 
 export default function OnboardingScreen() {
   const { colors } = useTheme()
-  const { t } = useTranslation()
+  const { t, ta, lang } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
+
+  // Listas grandes (deportes/ejercicios/condiciones): el VALOR guardado sigue
+  // siendo el string en español (compatibilidad con el backend, sin cambios
+  // de comportamiento); solo la ETIQUETA mostrada se traduce, zipeada por
+  // índice con el array original. Calculado aquí (no dentro de un render*())
+  // porque los render*() se invocan condicionalmente y no pueden usar hooks.
+  const deportesLabels = ta('onboarding_deportes_labels')
+  const deportesPairs = useMemo(
+    () => DEPORTES.map((value, i) => ({ value, label: deportesLabels[i] ?? value })),
+    [deportesLabels],
+  )
+  const deportesLabelByValue = useMemo(
+    () => new Map(deportesPairs.map(p => [p.value, p.label])),
+    [deportesPairs],
+  )
+  const ejerciciosLabels = ta('onboarding_ejercicios_labels')
+  const ejerciciosPairs = useMemo(
+    () => EJERCICIOS_COMUNES.map((value, i) => ({ value, label: ejerciciosLabels[i] ?? value })),
+    [ejerciciosLabels],
+  )
+  const ejerciciosLabelByValue = useMemo(
+    () => new Map(ejerciciosPairs.map(p => [p.value, p.label])),
+    [ejerciciosPairs],
+  )
+  const condicionesLabels = ta('onboarding_condiciones_labels')
+  const condicionesPairs = useMemo(
+    () => CONDICIONES_MEDICAS.map((value, i) => ({ value, label: condicionesLabels[i] ?? value })),
+    [condicionesLabels],
+  )
 
   // ── Form data ──────────────────────────────────────────────────────────────
   const [data, setData] = useState<FormData>({
@@ -650,6 +782,15 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  const errorRef = useRef<View>(null)
+
+  // Foco de accesibilidad al error de validación al aparecer — sin esto,
+  // VoiceOver/TalkBack no anuncian por qué no se pudo avanzar de paso.
+  useEffect(() => {
+    if (!error) return
+    const node = findNodeHandle(errorRef.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  }, [error])
 
   // ── Block 1 helpers ────────────────────────────────────────────────────────
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -663,6 +804,12 @@ export default function OnboardingScreen() {
   const [ejerciciosExpanded, setEjerciciosExpanded] = useState(false)
   const [ejerciciosQuery, setEjerciciosQuery] = useState('')
 
+  // ── Block 2 — lesiones: alternativa accesible al body map ─────────────────
+  // El body map es SVG con zonas táctiles pequeñas — poco fiable para lectores
+  // de pantalla en algunas versiones. Esta lista en texto plano cubre las
+  // mismas 17 zonas con controles RN normales, sin depender del SVG.
+  const [zonesListOpen, setZonesListOpen] = useState(false)
+
   // ── Block 2 — lesion modal ─────────────────────────────────────────────────
   const [editingZona, setEditingZona] = useState<string | null>(null)
   const [draftEstado, setDraftEstado] = useState<LesionEstado | null>(null)
@@ -670,6 +817,13 @@ export default function OnboardingScreen() {
   const [draftEspecialista, setDraftEspecialista] = useState(false)
   const [draftTiempo, setDraftTiempo] = useState<LesionTiempo | null>(null)
   const [lesionError, setLesionError] = useState('')
+  const lesionErrorRef = useRef<Text>(null)
+
+  useEffect(() => {
+    if (!lesionError) return
+    const node = findNodeHandle(lesionErrorRef.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  }, [lesionError])
 
   // ── Block 6 ────────────────────────────────────────────────────────────────
   const [animCount, setAnimCount] = useState(0)
@@ -716,46 +870,46 @@ export default function OnboardingScreen() {
   function validate(): string | null {
     if (currentScreen === 'b1_personal') {
       if (!data.nombre.trim()) return t('onboarding_name_error')
-      if (!data.fechaNacimiento) return 'La fecha de nacimiento es requerida.'
-      if (!data.pais) return 'Selecciona tu país.'
-      if (!data.sexo) return 'Selecciona tu sexo biológico.'
+      if (!data.fechaNacimiento) return t('onboarding_birth_error')
+      if (!data.pais) return t('onboarding_err_country')
+      if (!data.sexo) return t('onboarding_err_sex')
       const p = Number(data.peso.replace(',', '.'))
-      if (!data.peso || isNaN(p) || p <= 0) return 'Ingresa un peso válido.'
+      if (!data.peso || isNaN(p) || p <= 0) return t('onboarding_weight_error')
       const pesoKgVal = data.pesoUnit === 'lb' ? p * 0.453592 : p
-      if (pesoKgVal < 30 || pesoKgVal > 300) return 'El peso debe estar entre 30 y 300 kg.'
+      if (pesoKgVal < 30 || pesoKgVal > 300) return t('onboarding_err_weight_range')
       const a = Number(data.altura.replace(',', '.'))
-      if (!data.altura || isNaN(a) || a <= 0) return 'Ingresa una altura válida.'
+      if (!data.altura || isNaN(a) || a <= 0) return t('onboarding_height_error')
       const alturaCmVal = data.alturaUnit === 'ft' ? a * 30.48 : a
-      if (alturaCmVal < 100 || alturaCmVal > 250) return 'La altura debe estar entre 100 y 250 cm.'
+      if (alturaCmVal < 100 || alturaCmVal > 250) return t('onboarding_err_height_range')
     }
     if (currentScreen === 'b1_historial') {
-      if (data.experienciaEntrenando === null) return 'Indica cuánto tiempo llevas entrenando.'
-      if (data.frecuenciaHistorica === null) return 'Selecciona tu frecuencia de entrenamiento.'
+      if (data.experienciaEntrenando === null) return t('onboarding_err_experience')
+      if (data.frecuenciaHistorica === null) return t('onboarding_err_frequency')
     }
     if (currentScreen === 'b1_sueno') {
-      if (!data.calidadSueno) return 'Selecciona tu calidad de sueño habitual.'
+      if (!data.calidadSueno) return t('onboarding_err_sleep')
     }
     if (currentScreen === 'b1_contexto') {
-      if (!data.nivelEstres) return 'Selecciona tu nivel de estrés habitual.'
-      if (!data.tipoTrabajo) return 'Indica tu tipo de trabajo o actividad diaria.'
+      if (!data.nivelEstres) return t('onboarding_err_stress')
+      if (!data.tipoTrabajo) return t('onboarding_err_worktype')
     }
     if (currentScreen === 'b3_lugar') {
-      if (data.lugares.length === 0) return 'Selecciona al menos un lugar de entrenamiento.'
+      if (data.lugares.length === 0) return t('onboarding_err_location')
     }
     if (currentScreen === 'b3_tiempo_horario') {
-      if (!data.tiempoNormal) return 'Indica cuánto tiempo tienes en un día normal.'
-      if (!data.tiempoOcupado) return 'Indica cuánto tiempo tienes en un día ocupado.'
-      if (data.horarios.length === 0) return 'Selecciona cuándo sueles entrenar.'
-      if (data.diasFijos === null) return 'Indica si tienes días fijos de entrenamiento.'
+      if (!data.tiempoNormal) return t('onboarding_err_time_normal')
+      if (!data.tiempoOcupado) return t('onboarding_err_time_busy')
+      if (data.horarios.length === 0) return t('onboarding_err_schedule')
+      if (data.diasFijos === null) return t('onboarding_err_fixed_days')
     }
     if (currentScreen === 'b4_objetivo') {
-      if (data.objetivos.length === 0) return 'Elige al menos un objetivo.'
+      if (data.objetivos.length === 0) return t('onboarding_err_goal')
     }
     if (currentScreen === 'b4_horizonte') {
-      if (!data.horizonteTemporal) return 'Selecciona un horizonte temporal.'
+      if (!data.horizonteTemporal) return t('onboarding_err_horizon')
     }
     if (currentScreen === 'b5_coaching') {
-      if (!data.estiloCoaching) return 'Elige cómo quieres que te guíe tu entrenador.'
+      if (!data.estiloCoaching) return t('onboarding_err_coaching')
     }
     return null
   }
@@ -782,12 +936,12 @@ export default function OnboardingScreen() {
   function confirmCancelRegistration() {
     if (cancelling) return
     Alert.alert(
-      'Registro sin completar',
-      'Puedes salir ahora y continuar más tarde — tu cuenta quedará pendiente de completar — o eliminarla por completo si no quieres seguir.',
+      t('onboarding_alert_cancel_title'),
+      t('onboarding_alert_cancel_message'),
       [
-        { text: 'Seguir aquí', style: 'cancel' },
-        { text: 'Salir por ahora', onPress: exitKeepingAccount },
-        { text: 'Eliminar mi cuenta', style: 'destructive', onPress: confirmDeleteAccount },
+        { text: t('onboarding_alert_stay'), style: 'cancel' },
+        { text: t('onboarding_alert_leave_for_now'), onPress: exitKeepingAccount },
+        { text: t('onboarding_alert_delete_account'), style: 'destructive', onPress: confirmDeleteAccount },
       ],
     )
   }
@@ -800,11 +954,11 @@ export default function OnboardingScreen() {
 
   function confirmDeleteAccount() {
     Alert.alert(
-      '¿Eliminar tu cuenta?',
-      'Se borrará tu cuenta y los datos que hayas introducido hasta ahora. Esta acción no se puede deshacer.',
+      t('onboarding_alert_delete_title'),
+      t('onboarding_alert_delete_message'),
       [
-        { text: 'No, mantenerla', style: 'cancel' },
-        { text: 'Sí, eliminar', style: 'destructive', onPress: cancelRegistration },
+        { text: t('onboarding_alert_keep_it'), style: 'cancel' },
+        { text: t('onboarding_alert_yes_delete'), style: 'destructive', onPress: cancelRegistration },
       ],
     )
   }
@@ -820,11 +974,11 @@ export default function OnboardingScreen() {
       // que no intente registrarse de nuevo con el mismo email sin soporte.
       setCancelling(false)
       Alert.alert(
-        'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Tu cuenta puede seguir activa.\n\nEscríbenos a hola@zyfit.app para que la eliminemos manualmente.',
+        t('onboarding_alert_delete_fail_title'),
+        t('onboarding_alert_delete_fail_msg'),
         [
           {
-            text: 'Salir de todas formas',
+            text: t('onboarding_alert_leave_anyway'),
             style: 'destructive',
             onPress: async () => {
               await clearTokens()
@@ -832,7 +986,7 @@ export default function OnboardingScreen() {
               router.replace('/(auth)/login')
             },
           },
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('onboarding_cancel'), style: 'cancel' },
         ]
       )
       return
@@ -853,7 +1007,10 @@ export default function OnboardingScreen() {
       // Build structured location rows that mirror UserLocation in the backend.
       // Gym locations don't carry the user's personal equipment (their gear comes
       // with the venue); home / outdoor locations inherit the user's kit.
-      const lugarLabel = (id: string) => LUGARES.find(l => l.id === id)?.label ?? id
+      const lugarLabel = (id: string) => {
+        const l = LUGARES.find(l => l.id === id)
+        return l ? t(l.labelKey) : id
+      }
       const equipMapeado = mapEquipamientoToCategorias(data.equipamiento)
       const lugaresEstructurados = data.lugares.map(id => {
         const tipo = TIPO_BY_LUGAR_ID[id] ?? 'casa'
@@ -872,7 +1029,7 @@ export default function OnboardingScreen() {
       // injuries that the user marked as superada without a gravedad value.
       const lesionesEstructuradas = data.lesiones.map(l => {
         const partes: string[] = []
-        if (l.tiempo)       partes.push(`hace ${TIEMPO_LABELS[l.tiempo].toLowerCase()}`)
+        if (l.tiempo)       partes.push(`hace ${t(TIEMPO_LABEL_KEYS[l.tiempo]).toLowerCase()}`)
         if (l.especialista) partes.push('vio especialista')
         if (l.estado === 'superada') partes.push('superada')
         return {
@@ -900,7 +1057,7 @@ export default function OnboardingScreen() {
         experiencia_deportiva: data.deportes.join(', '),
         calidad_sueno_habitual: data.calidadSueno ?? '',
         lesiones: data.lesiones.map(l => {
-          const label = ZONE_LABELS[l.zona] ?? l.zona
+          const label = zoneLabel(l.zona, t)
           const parts: string[] = [label, l.estado]
           if (l.gravedad) parts.push(l.gravedad)
           return parts.join(': ')
@@ -1033,9 +1190,9 @@ export default function OnboardingScreen() {
 
   function saveLesion() {
     if (!editingZona) return
-    if (!draftEstado) { setLesionError('Indica si la lesión está activa o superada.'); return }
-    if (draftEstado === 'activa' && !draftGravedad) { setLesionError('Selecciona la gravedad.'); return }
-    if (draftEstado === 'superada' && !draftTiempo) { setLesionError('Indica cuánto tiempo ha pasado.'); return }
+    if (!draftEstado) { setLesionError(t('onboarding_err_lesion_estado')); return }
+    if (draftEstado === 'activa' && !draftGravedad) { setLesionError(t('onboarding_err_lesion_gravedad')); return }
+    if (draftEstado === 'superada' && !draftTiempo) { setLesionError(t('onboarding_err_lesion_tiempo')); return }
 
     const lesion: Lesion = {
       zona: editingZona,
@@ -1061,9 +1218,7 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.contextLine}>
-          Para calcular tu gasto energético real y ajustar la intensidad
-        </Text>
+        <Text style={styles.contextLine}>{t('onboarding_b1_context')}</Text>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>{t('onboarding_name_label')}</Text>
@@ -1075,19 +1230,23 @@ export default function OnboardingScreen() {
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>{t('onboarding_birth_label')}</Text>
           <TouchableOpacity style={[styles.input, styles.inputTouch]}
-            onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
+            onPress={() => setShowDatePicker(true)} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityLabel={t('onboarding_birth_label')}
+            accessibilityValue={{ text: data.fechaNacimiento ? formatDate(data.fechaNacimiento, lang) : undefined }}>
             <Text style={data.fechaNacimiento ? styles.inputText : styles.inputPlaceholder}>
-              {data.fechaNacimiento ? formatDate(data.fechaNacimiento) : 'DD / MM / AAAA'}
+              {data.fechaNacimiento ? formatDate(data.fechaNacimiento, lang) : t('onboarding_date_placeholder')}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>PAÍS</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_country_label')}</Text>
           <TouchableOpacity style={[styles.input, styles.inputTouch]}
-            onPress={() => { setCountryQuery(''); setShowCountryPicker(true) }} activeOpacity={0.8}>
+            onPress={() => { setCountryQuery(''); setShowCountryPicker(true) }} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityLabel={t('onboarding_country_a11y')}
+            accessibilityValue={{ text: data.pais || undefined }}>
             <Text style={data.pais ? styles.inputText : styles.inputPlaceholder}>
-              {data.pais || 'Selecciona tu país'}
+              {data.pais || t('onboarding_country_placeholder')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1098,7 +1257,8 @@ export default function OnboardingScreen() {
             {(['masculino', 'femenino', 'otro'] as const).map(s => (
               <TouchableOpacity key={s}
                 style={[styles.chip, data.sexo === s && styles.chipOn]}
-                onPress={() => set('sexo', s)} activeOpacity={0.8}>
+                onPress={() => set('sexo', s)} activeOpacity={0.8}
+                accessibilityRole="radio" accessibilityState={{ selected: data.sexo === s }}>
                 <Text style={[styles.chipText, data.sexo === s && styles.chipTextOn]}>
                   {s === 'masculino' ? t('onboarding_sex_male') : s === 'femenino' ? t('onboarding_sex_female') : t('onboarding_sex_other')}
                 </Text>
@@ -1113,7 +1273,9 @@ export default function OnboardingScreen() {
             <View style={styles.unitToggle}>
               {(['kg', 'lb'] as const).map(u => (
                 <TouchableOpacity key={u} style={[styles.unitBtn, data.pesoUnit === u && styles.unitBtnOn]}
-                  onPress={() => set('pesoUnit', u)}>
+                  onPress={() => set('pesoUnit', u)}
+                  accessibilityRole="radio" accessibilityState={{ selected: data.pesoUnit === u }}
+                  accessibilityLabel={u}>
                   <Text style={[styles.unitBtnText, data.pesoUnit === u && styles.unitBtnTextOn]}>{u}</Text>
                 </TouchableOpacity>
               ))}
@@ -1131,7 +1293,9 @@ export default function OnboardingScreen() {
             <View style={styles.unitToggle}>
               {(['cm', 'ft'] as const).map(u => (
                 <TouchableOpacity key={u} style={[styles.unitBtn, data.alturaUnit === u && styles.unitBtnOn]}
-                  onPress={() => set('alturaUnit', u)}>
+                  onPress={() => set('alturaUnit', u)}
+                  accessibilityRole="radio" accessibilityState={{ selected: data.alturaUnit === u }}
+                  accessibilityLabel={u}>
                   <Text style={[styles.unitBtnText, data.alturaUnit === u && styles.unitBtnTextOn]}>{u}</Text>
                 </TouchableOpacity>
               ))}
@@ -1142,9 +1306,7 @@ export default function OnboardingScreen() {
             placeholderTextColor={colors.inkMuted} value={data.altura}
             onChangeText={v => set('altura', v.replace(',', '.'))} keyboardType="decimal-pad" />
           {data.alturaUnit === 'ft' && (
-            <Text style={styles.inputHint}>
-              Formato decimal: 5.75 = 5′9″  ·  6.0 = 6′0″  ·  5.5 = 5′6″
-            </Text>
+            <Text style={styles.inputHint}>{t('onboarding_height_ft_hint')}</Text>
           )}
         </View>
       </ScrollView>
@@ -1159,13 +1321,12 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.sectionLabel}>CICLO MENSTRUAL</Text>
-        <Text style={styles.cicloDesc}>
-          El ciclo menstrual afecta tu fuerza, energía y recuperación de formas muy concretas.
-          Si quieres, Zyfit lo integra en tu entrenamiento.
-        </Text>
+        <Text style={styles.sectionLabel}>{t('onboarding_ciclo_section')}</Text>
+        <Text style={styles.cicloDesc}>{t('onboarding_ciclo_desc')}</Text>
 
-        <TouchableOpacity onPress={() => set('usaCicloMenstrual', !on)} activeOpacity={0.88}>
+        <TouchableOpacity onPress={() => set('usaCicloMenstrual', !on)} activeOpacity={0.88}
+          accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+
           <LinearGradient
             colors={on ? [colors.accent, colors.accentDark] : ['transparent', 'transparent']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1179,16 +1340,14 @@ export default function OnboardingScreen() {
                   {t('onboarding_ciclo_yes')}
                 </Text>
                 <Text style={[styles.cicloCardSub, on && styles.cicloCardSubOn]}>
-                  Lo configuro después desde mi perfil
+                  {t('onboarding_ciclo_config_later')}
                 </Text>
               </View>
             </View>
           </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={styles.cicloNote}>
-          Puedes activarlo o desactivarlo cuando quieras desde tu perfil.
-        </Text>
+        <Text style={styles.cicloNote}>{t('onboarding_ciclo_toggle_note')}</Text>
       </ScrollView>
     )
   }
@@ -1197,30 +1356,32 @@ export default function OnboardingScreen() {
 
   function renderHistorial() {
     const filteredDeportes = deportesQuery.length > 1
-      ? DEPORTES.filter(d => normalize(d).includes(normalize(deportesQuery)))
-      : DEPORTES
+      ? deportesPairs.filter(p => normalize(p.label).includes(normalize(deportesQuery)))
+      : deportesPairs
 
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.historialQ}>
-          ¿Cuánto tiempo llevas entrenando de forma constante?
-        </Text>
+        <Text style={styles.historialQ}>{t('onboarding_historial_q1')}</Text>
 
         {EXPERIENCIA_OPTIONS.map(opt => {
           const on = data.experienciaEntrenando === opt.value
+          const label = t(opt.labelKey)
+          const sub = t(opt.subKey)
           return (
             <TouchableOpacity key={opt.value}
               style={[styles.freqCard, on && styles.freqCardOn]}
               onPress={() => set('experienciaEntrenando', opt.value)}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              accessibilityRole="radio" accessibilityState={{ selected: on }}
+              accessibilityLabel={`${label} — ${sub}`}>
               <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
                 {on && <View style={styles.freqDot} />}
               </View>
               <View style={styles.freqContent}>
-                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{opt.label}</Text>
-                <Text style={styles.freqSub}>{opt.sublabel}</Text>
+                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{label}</Text>
+                <Text style={styles.freqSub}>{sub}</Text>
               </View>
               <View style={[styles.freqBadge, on && styles.freqBadgeOn]}>
                 <Text style={[styles.freqBadgeText, on && styles.freqBadgeTextOn]}>{opt.badge}</Text>
@@ -1229,23 +1390,25 @@ export default function OnboardingScreen() {
           )
         })}
 
-        <Text style={[styles.historialQ, { marginTop: 28 }]}>
-          ¿Cuántas veces a la semana has entrenado en los últimos 3 meses?
-        </Text>
+        <Text style={[styles.historialQ, { marginTop: 28 }]}>{t('onboarding_historial_q2')}</Text>
 
         {FRECUENCIA_OPTIONS.map(opt => {
           const on = data.frecuenciaHistorica === opt.value
+          const label = t(opt.labelKey)
+          const sub = t(opt.subKey)
           return (
             <TouchableOpacity key={opt.value}
               style={[styles.freqCard, on && styles.freqCardOn]}
               onPress={() => set('frecuenciaHistorica', opt.value)}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              accessibilityRole="radio" accessibilityState={{ selected: on }}
+              accessibilityLabel={`${label} — ${sub}`}>
               <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
                 {on && <View style={styles.freqDot} />}
               </View>
               <View style={styles.freqContent}>
-                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{opt.label}</Text>
-                <Text style={styles.freqSub}>{opt.sublabel}</Text>
+                <Text style={[styles.freqLabel, on && styles.freqLabelOn]}>{label}</Text>
+                <Text style={styles.freqSub}>{sub}</Text>
               </View>
               <View style={[styles.freqBadge, on && styles.freqBadgeOn]}>
                 <Text style={[styles.freqBadgeText, on && styles.freqBadgeTextOn]}>{opt.badge}</Text>
@@ -1256,12 +1419,14 @@ export default function OnboardingScreen() {
 
         <View style={styles.deportesSection}>
           <TouchableOpacity style={styles.deportesHeader}
-            onPress={() => setDeportesExpanded(e => !e)} activeOpacity={0.8}>
+            onPress={() => setDeportesExpanded(e => !e)} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityState={{ expanded: deportesExpanded }}
+            accessibilityLabel={t('onboarding_deportes_a11y')}>
             <View>
-              <Text style={styles.deportesLabel}>EJERCICIO FÍSICO QUE REALIZAS</Text>
+              <Text style={styles.deportesLabel}>{t('onboarding_deportes_label')}</Text>
               {data.deportes.length > 0 && (
                 <Text style={styles.deportesCount}>
-                  {data.deportes.length} seleccionado{data.deportes.length > 1 ? 's' : ''}
+                  {data.deportes.length} {t('onboarding_selected_suffix')}
                 </Text>
               )}
             </View>
@@ -1272,8 +1437,9 @@ export default function OnboardingScreen() {
             <View style={styles.selectedRow}>
               {data.deportes.map(d => (
                 <TouchableOpacity key={d} style={styles.selectedChip}
-                  onPress={() => set('deportes', data.deportes.filter(x => x !== d))}>
-                  <Text style={styles.selectedChipText}>{d}</Text>
+                  onPress={() => set('deportes', data.deportes.filter(x => x !== d))}
+                  accessibilityRole="button" accessibilityLabel={`Quitar ${deportesLabelByValue.get(d) ?? d}`}>
+                  <Text style={styles.selectedChipText}>{deportesLabelByValue.get(d) ?? d}</Text>
                   <Text style={styles.selectedChipX}> ×</Text>
                 </TouchableOpacity>
               ))}
@@ -1282,22 +1448,24 @@ export default function OnboardingScreen() {
 
           {deportesExpanded && (
             <View style={styles.deportesDropdown}>
-              <TextInput style={styles.deportesSearch} placeholder="Buscar deporte..."
+              <TextInput style={styles.deportesSearch} placeholder={t('onboarding_deportes_search_placeholder')}
                 placeholderTextColor={colors.inkMuted} value={deportesQuery}
                 onChangeText={setDeportesQuery} autoCorrect={false} />
               <View style={styles.deportesGrid}>
-                {filteredDeportes.map(d => {
-                  const selected = data.deportes.includes(d)
+                {filteredDeportes.map(p => {
+                  const selected = data.deportes.includes(p.value)
                   return (
-                    <TouchableOpacity key={d}
+                    <TouchableOpacity key={p.value}
                       style={[styles.deporteChip, selected && styles.deporteChipOn]}
                       onPress={() => {
-                        if (selected) set('deportes', data.deportes.filter(x => x !== d))
-                        else set('deportes', [...data.deportes, d])
+                        if (selected) set('deportes', data.deportes.filter(x => x !== p.value))
+                        else set('deportes', [...data.deportes, p.value])
                       }}
-                      activeOpacity={0.75}>
+                      activeOpacity={0.75}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
+                      accessibilityLabel={p.label}>
                       <Text style={[styles.deporteChipText, selected && styles.deporteChipTextOn]}>
-                        {selected ? '✓ ' : ''}{d}
+                        {selected ? '✓ ' : ''}{p.label}
                       </Text>
                     </TouchableOpacity>
                   )
@@ -1317,24 +1485,24 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.suenoQ}>
-          ¿Cómo describirías tu calidad de sueño habitualmente?
-        </Text>
-        <Text style={styles.suenoSub}>
-          El sueño es uno de los factores que más impacta tu recuperación y progreso.
-        </Text>
+        <Text style={styles.suenoQ}>{t('onboarding_sueno_q')}</Text>
+        <Text style={styles.suenoSub}>{t('onboarding_sueno_sub')}</Text>
 
         <View style={styles.suenoGrid}>
           {SUENO_OPTIONS.map(opt => {
             const on = data.calidadSueno === opt.value
+            const label = t(opt.labelKey)
+            const sub = t(opt.subKey)
             return (
               <TouchableOpacity key={opt.value}
                 style={[styles.suenoCard, on && styles.suenoCardOn]}
                 onPress={() => set('calidadSueno', opt.value)}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="radio" accessibilityState={{ selected: on }}
+                accessibilityLabel={`${label} — ${sub}`}>
                 <Text style={styles.suenoIcon}>{opt.icon}</Text>
-                <Text style={[styles.suenoLabel, on && styles.suenoLabelOn]}>{opt.label}</Text>
-                <Text style={styles.suenoSublabel}>{opt.sublabel}</Text>
+                <Text style={[styles.suenoLabel, on && styles.suenoLabelOn]}>{label}</Text>
+                <Text style={styles.suenoSublabel}>{sub}</Text>
                 {on && <View style={styles.suenoActiveDot} />}
               </TouchableOpacity>
             )
@@ -1348,31 +1516,31 @@ export default function OnboardingScreen() {
 
   function renderContexto() {
     const ESTRES_OPTS = [
-      { v: 'bajo' as const,     label: 'Bajo',     sub: 'Vida tranquila, descanso suficiente' },
-      { v: 'moderado' as const, label: 'Moderado', sub: 'Altibajos normales del día a día' },
-      { v: 'alto' as const,     label: 'Alto',     sub: 'Cargado, poco margen para recuperar' },
+      { v: 'bajo' as const,     label: t('onboarding_estres_bajo'),     sub: t('onboarding_estres_bajo_sub') },
+      { v: 'moderado' as const, label: t('onboarding_estres_moderado'), sub: t('onboarding_estres_moderado_sub') },
+      { v: 'alto' as const,     label: t('onboarding_estres_alto'),     sub: t('onboarding_estres_alto_sub') },
     ]
     const TRABAJO_OPTS = [
-      { v: 'sedentario' as const, label: 'Sedentario', sub: 'Mayormente sentado (oficina, estudio)' },
-      { v: 'mixto' as const,      label: 'Mixto',      sub: 'Alterno entre estar de pie y sentado' },
-      { v: 'activo' as const,     label: 'Activo',     sub: 'Mucho movimiento o esfuerzo físico' },
+      { v: 'sedentario' as const, label: t('onboarding_trabajo_sedentario'), sub: t('onboarding_trabajo_sedentario_sub') },
+      { v: 'mixto' as const,      label: t('onboarding_trabajo_mixto'),      sub: t('onboarding_trabajo_mixto_sub') },
+      { v: 'activo' as const,     label: t('onboarding_trabajo_activo'),     sub: t('onboarding_trabajo_activo_sub') },
     ]
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.contextLine}>
-          Tu vida fuera del gimnasio define cuánta recuperación tienes disponible
-        </Text>
+        <Text style={styles.contextLine}>{t('onboarding_b1_context2')}</Text>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>NIVEL DE ESTRÉS HABITUAL</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_stress_section')}</Text>
           {ESTRES_OPTS.map(o => {
             const on = data.nivelEstres === o.v
             return (
               <TouchableOpacity key={o.v}
                 style={[styles.freqCard, on && styles.freqCardOn]}
-                onPress={() => set('nivelEstres', o.v)} activeOpacity={0.8}>
+                onPress={() => set('nivelEstres', o.v)} activeOpacity={0.8}
+                accessibilityRole="radio" accessibilityState={{ selected: on }}
+                accessibilityLabel={`${o.label} — ${o.sub}`}>
                 <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
                   {on && <View style={styles.freqDot} />}
                 </View>
@@ -1386,13 +1554,15 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={[styles.fieldGroup, { marginBottom: 0 }]}>
-          <Text style={styles.fieldLabel}>TIPO DE TRABAJO / ACTIVIDAD DIARIA</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_worktype_section')}</Text>
           {TRABAJO_OPTS.map(o => {
             const on = data.tipoTrabajo === o.v
             return (
               <TouchableOpacity key={o.v}
                 style={[styles.freqCard, on && styles.freqCardOn]}
-                onPress={() => set('tipoTrabajo', o.v)} activeOpacity={0.8}>
+                onPress={() => set('tipoTrabajo', o.v)} activeOpacity={0.8}
+                accessibilityRole="radio" accessibilityState={{ selected: on }}
+                accessibilityLabel={`${o.label} — ${o.sub}`}>
                 <View style={[styles.freqRadio, on && styles.freqRadioOn]}>
                   {on && <View style={styles.freqDot} />}
                 </View>
@@ -1415,10 +1585,8 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.lesionesTitle}>Lesiones activas o pasadas</Text>
-        <Text style={styles.lesionesSub}>
-          Toca una zona del cuerpo para registrarla. Esto nos permite protegerte.
-        </Text>
+        <Text style={styles.lesionesTitle}>{t('onboarding_lesiones_title')}</Text>
+        <Text style={styles.lesionesSub}>{t('onboarding_lesiones_sub')}</Text>
 
         {/* Body silhouette */}
         <View style={styles.bodyMapWrap}>
@@ -1426,6 +1594,7 @@ export default function OnboardingScreen() {
             lesiones={data.lesiones}
             editingZona={editingZona}
             onZonePress={openLesionModal}
+            t={t}
           />
 
           {/* Lumbar chip — not visible from front view */}
@@ -1435,12 +1604,15 @@ export default function OnboardingScreen() {
               data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipOn,
             ]}
             onPress={() => openLesionModal('lumbar')}
-            activeOpacity={0.8}>
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: !!data.lesiones.find(l => l.zona === 'lumbar') }}
+            accessibilityLabel={zoneA11yLabelExternal('lumbar', data.lesiones, t)}>
             <Text style={[
               styles.lumbarChipText,
               data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipTextOn,
             ]}>
-              + Espalda / Lumbar
+              {t('onboarding_lumbar_chip')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1449,36 +1621,72 @@ export default function OnboardingScreen() {
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#ff4444' }]} />
-            <Text style={styles.legendText}>Activa</Text>
+            <Text style={styles.legendText}>{t('onboarding_legend_activa')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#32c896' }]} />
-            <Text style={styles.legendText}>Superada</Text>
+            <Text style={styles.legendText}>{t('onboarding_legend_superada')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-            <Text style={styles.legendText}>Seleccionada</Text>
+            <Text style={styles.legendText}>{t('onboarding_legend_seleccionada')}</Text>
           </View>
+        </View>
+
+        {/* Alternativa accesible: lista en texto plano de las 17 zonas, para
+            quien usa lector de pantalla (el body map es SVG). */}
+        <View style={styles.deportesSection}>
+          <TouchableOpacity style={styles.deportesHeader}
+            onPress={() => setZonesListOpen(v => !v)} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityState={{ expanded: zonesListOpen }}
+            accessibilityLabel={t('onboarding_zones_list_a11y')}>
+            <Text style={styles.deportesLabel}>{t('onboarding_zones_list_toggle')}</Text>
+            <Text style={[styles.deportesChevron, zonesListOpen && styles.deportesChevronUp]}>›</Text>
+          </TouchableOpacity>
+          {zonesListOpen && (
+            <View style={styles.deportesDropdown}>
+              <View style={styles.deportesGrid}>
+                {Object.keys(ZONE_LABEL_KEYS).map(zona => {
+                  const inj = data.lesiones.find(l => l.zona === zona)
+                  return (
+                    <TouchableOpacity key={zona}
+                      style={[styles.deporteChip, !!inj && styles.deporteChipOn]}
+                      onPress={() => openLesionModal(zona)}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: !!inj }}
+                      accessibilityLabel={zoneA11yLabelExternal(zona, data.lesiones, t)}>
+                      <Text style={[styles.deporteChipText, !!inj && styles.deporteChipTextOn]}>
+                        {inj ? '✓ ' : ''}{zoneLabel(zona, t)}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Added injuries list */}
         {data.lesiones.length > 0 && (
           <View style={styles.lesionesListSection}>
-            <Text style={styles.lesionesListTitle}>LESIONES REGISTRADAS</Text>
+            <Text style={styles.lesionesListTitle}>{t('onboarding_lesiones_registradas')}</Text>
             {data.lesiones.map(l => (
               <TouchableOpacity key={l.zona} style={styles.lesionCard}
-                onPress={() => openLesionModal(l.zona)} activeOpacity={0.85}>
+                onPress={() => openLesionModal(l.zona)} activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={zoneLabel(l.zona, t)}>
                 <View style={[styles.lesionStatusBar,
                   { backgroundColor: l.estado === 'activa' ? '#ff4444' : '#32c896' }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.lesionCardZona}>{ZONE_LABELS[l.zona] ?? l.zona}</Text>
+                  <Text style={styles.lesionCardZona}>{zoneLabel(l.zona, t)}</Text>
                   <Text style={styles.lesionCardDetail}>
                     {l.estado === 'activa'
-                      ? `Activa · ${GRAVEDAD_CONFIG[l.gravedad!].label}${l.especialista ? ' · Vista por especialista' : ''}`
-                      : `Superada · hace ${TIEMPO_LABELS[l.tiempo!]}`}
+                      ? `${t('onboarding_lesion_activa_detail')} · ${t(GRAVEDAD_CONFIG[l.gravedad!].labelKey)}${l.especialista ? ` · ${t('onboarding_lesion_especialista')}` : ''}`
+                      : `${t('onboarding_lesion_superada_detail')} · ${t('onboarding_lesion_hace')} ${t(TIEMPO_LABEL_KEYS[l.tiempo!])}`}
                   </Text>
                 </View>
-                <Text style={styles.lesionCardEdit}>Editar ›</Text>
+                <Text style={styles.lesionCardEdit}>{t('onboarding_lesion_editar')}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1486,9 +1694,7 @@ export default function OnboardingScreen() {
 
         {/* Skip */}
         {data.lesiones.length === 0 && (
-          <Text style={styles.lesionesSkipNote}>
-            Sin lesiones que reportar — puedes continuar.
-          </Text>
+          <Text style={styles.lesionesSkipNote}>{t('onboarding_lesiones_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -1498,30 +1704,27 @@ export default function OnboardingScreen() {
 
   function renderLimitaciones() {
     const filtered = ejerciciosQuery.length > 1
-      ? EJERCICIOS_COMUNES.filter(e => normalize(e).includes(normalize(ejerciciosQuery)))
-      : EJERCICIOS_COMUNES
+      ? ejerciciosPairs.filter(p => normalize(p.label).includes(normalize(ejerciciosQuery)))
+      : ejerciciosPairs
 
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.limitTitle}>
-          ¿Hay ejercicios que sabes que no puedes hacer?
-        </Text>
-        <Text style={styles.limitSub}>
-          Por lesiones, dolor, limitación de rango de movimiento o simplemente preferencia.
-          Tu rutina los evitará por completo.
-        </Text>
+        <Text style={styles.limitTitle}>{t('onboarding_limit_title')}</Text>
+        <Text style={styles.limitSub}>{t('onboarding_limit_sub')}</Text>
 
         {/* Searchable exercise selector */}
         <View style={styles.deportesSection}>
           <TouchableOpacity style={styles.deportesHeader}
-            onPress={() => setEjerciciosExpanded(e => !e)} activeOpacity={0.8}>
+            onPress={() => setEjerciciosExpanded(e => !e)} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityState={{ expanded: ejerciciosExpanded }}
+            accessibilityLabel={t('onboarding_ejercicios_a11y')}>
             <View>
-              <Text style={styles.deportesLabel}>EJERCICIOS A EVITAR</Text>
+              <Text style={styles.deportesLabel}>{t('onboarding_ejercicios_label')}</Text>
               {data.ejerciciosEvitar.length > 0 && (
                 <Text style={styles.deportesCount}>
-                  {data.ejerciciosEvitar.length} seleccionado{data.ejerciciosEvitar.length > 1 ? 's' : ''}
+                  {data.ejerciciosEvitar.length} {t('onboarding_selected_suffix')}
                 </Text>
               )}
             </View>
@@ -1532,8 +1735,9 @@ export default function OnboardingScreen() {
             <View style={styles.selectedRow}>
               {data.ejerciciosEvitar.map(e => (
                 <TouchableOpacity key={e} style={styles.selectedChipRed}
-                  onPress={() => set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== e))}>
-                  <Text style={styles.selectedChipRedText}>{e}</Text>
+                  onPress={() => set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== e))}
+                  accessibilityRole="button" accessibilityLabel={`Quitar ${ejerciciosLabelByValue.get(e) ?? e}`}>
+                  <Text style={styles.selectedChipRedText}>{ejerciciosLabelByValue.get(e) ?? e}</Text>
                   <Text style={styles.selectedChipRedX}> ×</Text>
                 </TouchableOpacity>
               ))}
@@ -1542,22 +1746,24 @@ export default function OnboardingScreen() {
 
           {ejerciciosExpanded && (
             <View style={styles.deportesDropdown}>
-              <TextInput style={styles.deportesSearch} placeholder="Buscar ejercicio..."
+              <TextInput style={styles.deportesSearch} placeholder={t('onboarding_ejercicios_search_placeholder')}
                 placeholderTextColor={colors.inkMuted} value={ejerciciosQuery}
                 onChangeText={setEjerciciosQuery} autoCorrect={false} />
               <View style={styles.deportesGrid}>
-                {filtered.map(e => {
-                  const sel = data.ejerciciosEvitar.includes(e)
+                {filtered.map(p => {
+                  const sel = data.ejerciciosEvitar.includes(p.value)
                   return (
-                    <TouchableOpacity key={e}
+                    <TouchableOpacity key={p.value}
                       style={[styles.deporteChip, sel && styles.deporteChipRed]}
                       onPress={() => {
-                        if (sel) set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== e))
-                        else set('ejerciciosEvitar', [...data.ejerciciosEvitar, e])
+                        if (sel) set('ejerciciosEvitar', data.ejerciciosEvitar.filter(x => x !== p.value))
+                        else set('ejerciciosEvitar', [...data.ejerciciosEvitar, p.value])
                       }}
-                      activeOpacity={0.75}>
+                      activeOpacity={0.75}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: sel }}
+                      accessibilityLabel={p.label}>
                       <Text style={[styles.deporteChipText, sel && styles.deporteChipTextRed]}>
-                        {sel ? '✕ ' : ''}{e}
+                        {sel ? '✕ ' : ''}{p.label}
                       </Text>
                     </TouchableOpacity>
                   )
@@ -1573,7 +1779,7 @@ export default function OnboardingScreen() {
             <Text style={styles.fieldLabel}>{`${t('onboarding_why_label')} (${t('onboarding_optional')})`}</Text>
             <TextInput
               style={[styles.input, styles.textarea]}
-              placeholder="Ej: dolor de rodilla al cargar, cirugía de hombro hace 6 meses..."
+              placeholder={t('onboarding_ejercicios_motivo_placeholder')}
               placeholderTextColor={colors.inkMuted}
               value={data.motivoLimitacion}
               onChangeText={v => set('motivoLimitacion', v)}
@@ -1587,7 +1793,7 @@ export default function OnboardingScreen() {
         )}
 
         {data.ejerciciosEvitar.length === 0 && (
-          <Text style={styles.skipNote}>Sin limitaciones — puedes continuar.</Text>
+          <Text style={styles.skipNote}>{t('onboarding_limitaciones_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -1600,33 +1806,30 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.sectionLabel}>HISTORIAL MÉDICO</Text>
-        <Text style={styles.medTitle}>
-          ¿Alguna condición que afecte tu entrenamiento?
-        </Text>
-        <Text style={styles.medSub}>
-          Completamente opcional. Solo queremos adaptar tu rutina para que sea segura y efectiva.
-          No compartimos esta información.
-        </Text>
+        <Text style={styles.sectionLabel}>{t('onboarding_med_section')}</Text>
+        <Text style={styles.medTitle}>{t('onboarding_med_title')}</Text>
+        <Text style={styles.medSub}>{t('onboarding_med_sub')}</Text>
 
         {/* Conditions chip grid */}
         <View style={styles.condGrid}>
-          {CONDICIONES_MEDICAS.map(c => {
-            const on = data.condicionesMedicas.includes(c)
+          {condicionesPairs.map(p => {
+            const on = data.condicionesMedicas.includes(p.value)
             return (
-              <TouchableOpacity key={c}
+              <TouchableOpacity key={p.value}
                 style={[styles.condChip, on && styles.condChipOn]}
                 onPress={() => {
                   if (on) {
-                    set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== c))
-                    if (c === COND_OTRO) set('condicionOtra', '')
+                    set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== p.value))
+                    if (p.value === COND_OTRO) set('condicionOtra', '')
                   } else {
-                    set('condicionesMedicas', [...data.condicionesMedicas, c])
+                    set('condicionesMedicas', [...data.condicionesMedicas, p.value])
                   }
                 }}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                accessibilityLabel={p.label}>
                 {on && <Text style={styles.condCheckmark}>✓ </Text>}
-                <Text style={[styles.condChipText, on && styles.condChipTextOn]}>{c}</Text>
+                <Text style={[styles.condChipText, on && styles.condChipTextOn]}>{p.label}</Text>
               </TouchableOpacity>
             )
           })}
@@ -1635,10 +1838,10 @@ export default function OnboardingScreen() {
         {/* "Otro" — campo de texto libre cuando el chip está activo */}
         {data.condicionesMedicas.includes(COND_OTRO) && (
           <View style={[styles.fieldGroup, { marginTop: 18 }]}>
-            <Text style={styles.fieldLabel}>ESPECIFICA TU CONDICIÓN</Text>
+            <Text style={styles.fieldLabel}>{t('onboarding_med_otro_label')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Describe brevemente qué condición tienes"
+              placeholder={t('onboarding_med_otro_placeholder')}
               placeholderTextColor={colors.inkMuted}
               value={data.condicionOtra}
               onChangeText={v => set('condicionOtra', v)}
@@ -1651,10 +1854,10 @@ export default function OnboardingScreen() {
 
         {/* Optional notes */}
         <View style={[styles.fieldGroup, { marginTop: 24 }]}>
-          <Text style={styles.fieldLabel}>NOTAS ADICIONALES (OPCIONAL)</Text>
+          <Text style={styles.fieldLabel}>{t('onboarding_med_notas_label')}</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
-            placeholder="Cualquier otra cosa que debamos saber. Breve."
+            placeholder={t('onboarding_med_notas_placeholder')}
             placeholderTextColor={colors.inkMuted}
             value={data.notasMedicas}
             onChangeText={v => set('notasMedicas', v)}
@@ -1667,7 +1870,7 @@ export default function OnboardingScreen() {
         </View>
 
         {data.condicionesMedicas.length === 0 && (
-          <Text style={styles.skipNote}>Sin condiciones relevantes — puedes continuar.</Text>
+          <Text style={styles.skipNote}>{t('onboarding_med_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -1680,13 +1883,13 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Dónde entrenas?</Text>
-        <Text style={styles.b3Sub}>
-          La realidad es mixta. Selecciona todos los que aplican — tu rutina se adaptará.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_lugar_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_lugar_sub')}</Text>
 
         {LUGARES.map(loc => {
           const on = data.lugares.includes(loc.id)
+          const label = t(loc.labelKey)
+          const desc = t(loc.descKey)
           return (
             <TouchableOpacity key={loc.id}
               style={[styles.lugarCard, on && styles.lugarCardOn]}
@@ -1694,11 +1897,13 @@ export default function OnboardingScreen() {
                 if (on) set('lugares', data.lugares.filter(x => x !== loc.id))
                 else set('lugares', [...data.lugares, loc.id])
               }}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+              accessibilityLabel={`${label} — ${desc}`}>
               <Text style={styles.lugarIcon}>{loc.icon}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.lugarLabel, on && styles.lugarLabelOn]}>{loc.label}</Text>
-                <Text style={styles.lugarDesc}>{loc.desc}</Text>
+                <Text style={[styles.lugarLabel, on && styles.lugarLabelOn]}>{label}</Text>
+                <Text style={styles.lugarDesc}>{desc}</Text>
               </View>
               <View style={[styles.lugarCheck, on && styles.lugarCheckOn]}>
                 {on && <Text style={styles.lugarCheckMark}>✓</Text>}
@@ -1731,35 +1936,38 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Con qué equipamiento cuentas?</Text>
-        <Text style={styles.b3Sub}>
-          Incluye lo que tengas disponible, ya sea en casa o en tu lugar de entrenamiento habitual.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_equip_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_equip_sub')}</Text>
 
         {/* No equipment toggle */}
         <TouchableOpacity
           style={[styles.ningunCard, sinNada && styles.ningunCardOn]}
           onPress={() => toggleEquip('ninguno')}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+          accessibilityRole="checkbox" accessibilityState={{ checked: sinNada }}
+          accessibilityLabel={t('onboarding_equip_ninguno')}>
           <Text style={[styles.ningunLabel, sinNada && styles.ningunLabelOn]}>
-            {sinNada ? '✓  ' : ''}Solo mi cuerpo — sin equipamiento
+            {sinNada ? '✓  ' : ''}{t('onboarding_equip_ninguno')}
           </Text>
         </TouchableOpacity>
 
         {/* Equipment categories */}
         {!sinNada && EQUIPAMIENTO_CATS.map(cat => (
-          <View key={cat.cat} style={styles.equipCat}>
-            <Text style={styles.equipCatLabel}>{cat.cat.toUpperCase()}</Text>
+          <View key={cat.catKey} style={styles.equipCat}>
+            <Text style={styles.equipCatLabel}>{t(cat.catKey).toUpperCase()}</Text>
             <View style={styles.deportesGrid}>
               {cat.items.map(item => {
-                const sel = data.equipamiento.includes(item)
+                const sel = data.equipamiento.includes(item.value)
+                const label = t(item.labelKey)
                 return (
-                  <TouchableOpacity key={item}
+                  <TouchableOpacity key={item.value}
                     style={[styles.deporteChip, sel && styles.deporteChipOn]}
-                    onPress={() => toggleEquip(item)}
-                    activeOpacity={0.75}>
+                    onPress={() => toggleEquip(item.value)}
+                    activeOpacity={0.75}
+                    accessibilityRole="checkbox" accessibilityState={{ checked: sel }}
+                    accessibilityLabel={label}>
                     <Text style={[styles.deporteChipText, sel && styles.deporteChipTextOn]}>
-                      {sel ? '✓ ' : ''}{item}
+                      {sel ? '✓ ' : ''}{label}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -1769,7 +1977,7 @@ export default function OnboardingScreen() {
         ))}
 
         {!sinNada && data.equipamiento.length === 0 && (
-          <Text style={styles.skipNote}>Sin selección — puedes continuar.</Text>
+          <Text style={styles.skipNote}>{t('onboarding_equip_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -1791,49 +1999,46 @@ export default function OnboardingScreen() {
         showsVerticalScrollIndicator={false}>
 
         {/* Section: Normal day */}
-        <Text style={styles.tiempoSectionQ}>
-          ¿Cuánto tiempo tienes en un día normal?
-        </Text>
+        <Text style={styles.tiempoSectionQ}>{t('onboarding_tiempo_normal_q')}</Text>
         <DurationSlider
           opts={TIEMPO_NORMAL_OPTS}
           value={data.tiempoNormal}
           onChange={v => set('tiempoNormal', v)}
           styles={styles}
+          t={t}
         />
 
         {/* Section: Busy day */}
-        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
-          ¿Y en un día ocupado?
-        </Text>
-        <Text style={styles.tiempoSectionNote}>
-          Para rutinas de emergencia cuando el tiempo escasea.
-        </Text>
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>{t('onboarding_tiempo_ocupado_q')}</Text>
+        <Text style={styles.tiempoSectionNote}>{t('onboarding_tiempo_ocupado_note')}</Text>
         <DurationSlider
           opts={TIEMPO_OCUPADO_OPTS}
           value={data.tiempoOcupado}
           onChange={v => set('tiempoOcupado', v)}
           styles={styles}
+          t={t}
         />
 
         {/* Section: Time of day */}
-        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
-          ¿Cuándo sueles entrenar?
-        </Text>
-        <Text style={styles.tiempoSectionNote}>
-          Máximo 2 opciones — para notificaciones y check-ins en el momento correcto.
-        </Text>
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>{t('onboarding_horario_q')}</Text>
+        <Text style={styles.tiempoSectionNote}>{t('onboarding_horario_note')}</Text>
         <View style={styles.horarioGrid}>
           {HORARIO_OPTS.map(opt => {
             const on = data.horarios.includes(opt.value)
             const disabled = !on && data.horarios.length >= 2
+            const label = t(opt.labelKey)
+            const sub = t(opt.subKey)
             return (
               <TouchableOpacity key={opt.value}
                 style={[styles.horarioCard, on && styles.horarioCardOn, disabled && styles.horarioCardDisabled]}
                 onPress={() => toggleHorario(opt.value)}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                disabled={disabled}
+                accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled }}
+                accessibilityLabel={`${label} — ${sub}`}>
                 <Text style={styles.horarioIcon}>{opt.icon}</Text>
-                <Text style={[styles.horarioLabel, on && styles.horarioLabelOn]}>{opt.label}</Text>
-                <Text style={styles.horarioSub}>{opt.sub}</Text>
+                <Text style={[styles.horarioLabel, on && styles.horarioLabelOn]}>{label}</Text>
+                <Text style={styles.horarioSub}>{sub}</Text>
                 {on && <View style={styles.horarioDot} />}
               </TouchableOpacity>
             )
@@ -1841,27 +2046,29 @@ export default function OnboardingScreen() {
         </View>
 
         {/* Section: Fixed days */}
-        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>
-          ¿Tienes días fijos de entrenamiento?
-        </Text>
+        <Text style={[styles.tiempoSectionQ, { marginTop: 28 }]}>{t('onboarding_dias_fijos_q')}</Text>
         <View style={styles.diasRow}>
           <TouchableOpacity
             style={[styles.diasBtn, data.diasFijos === true && styles.diasBtnOn]}
             onPress={() => set('diasFijos', true)}
-            activeOpacity={0.8}>
+            activeOpacity={0.8}
+            accessibilityRole="radio" accessibilityState={{ selected: data.diasFijos === true }}
+            accessibilityLabel={`${t('onboarding_dias_fijos_si')} — ${t('onboarding_dias_fijos_si_sub')}`}>
             <Text style={[styles.diasBtnText, data.diasFijos === true && styles.diasBtnTextOn]}>
-              📅  Sí, días fijos
+              {t('onboarding_dias_fijos_si')}
             </Text>
-            <Text style={styles.diasBtnSub}>Mismo día cada semana</Text>
+            <Text style={styles.diasBtnSub}>{t('onboarding_dias_fijos_si_sub')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.diasBtn, data.diasFijos === false && styles.diasBtnOn]}
             onPress={() => set('diasFijos', false)}
-            activeOpacity={0.8}>
+            activeOpacity={0.8}
+            accessibilityRole="radio" accessibilityState={{ selected: data.diasFijos === false }}
+            accessibilityLabel={`${t('onboarding_dias_fijos_varia')} — ${t('onboarding_dias_fijos_varia_sub')}`}>
             <Text style={[styles.diasBtnText, data.diasFijos === false && styles.diasBtnTextOn]}>
-              🔄  Varía
+              {t('onboarding_dias_fijos_varia')}
             </Text>
-            <Text style={styles.diasBtnSub}>Depende de la semana</Text>
+            <Text style={styles.diasBtnSub}>{t('onboarding_dias_fijos_varia_sub')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1875,15 +2082,15 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Qué quieres lograr?</Text>
-        <Text style={styles.b3Sub}>
-          Elige hasta 2 objetivos principales. La rutina los priorizará en cada sesión.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_objetivo_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_objetivo_sub')}</Text>
 
         <View style={styles.objetivosGrid}>
           {OBJETIVOS.map(obj => {
             const on   = data.objetivos.includes(obj.id)
             const full = !on && data.objetivos.length >= 2
+            const label = t(obj.labelKey)
+            const tag = t(obj.tagKey)
             return (
               <TouchableOpacity key={obj.id}
                 style={[
@@ -1897,7 +2104,7 @@ export default function OnboardingScreen() {
                     set('objetivos', data.objetivos.filter(x => x !== obj.id))
                   } else {
                     if (data.objetivos.length >= 2) {
-                      setError('Máximo 2 objetivos principales. Si quieres añadir más, usa el objetivo extra abajo.')
+                      setError(t('onboarding_err_max_goals'))
                       return
                     }
                     // if this was the secondary, clear it
@@ -1910,12 +2117,14 @@ export default function OnboardingScreen() {
                     setError('')
                   }
                 }}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled: full }}
+                accessibilityLabel={`${label} — ${tag}`}>
                 <Text style={styles.objetivoIcon}>{obj.icon}</Text>
                 <Text style={[styles.objetivoLabel, on && styles.objetivoLabelOn]}>
-                  {obj.label}
+                  {label}
                 </Text>
-                <Text style={styles.objetivoTagline}>{obj.tagline}</Text>
+                <Text style={styles.objetivoTagline}>{tag}</Text>
                 {on && <View style={styles.objetivoDot} />}
               </TouchableOpacity>
             )
@@ -1923,7 +2132,7 @@ export default function OnboardingScreen() {
         </View>
 
         <Text style={[styles.skipNote, { marginTop: 10 }]}>
-          {data.objetivos.length} de 2 seleccionados
+          {data.objetivos.length} {t('onboarding_objetivo_count')}
         </Text>
 
         {/* Secondary objective — shown once at least one primary is selected */}
@@ -1933,31 +2142,31 @@ export default function OnboardingScreen() {
           return (
             <View style={styles.secundarioSection}>
               <View style={styles.secundarioDivider} />
-              <Text style={styles.secundarioQ}>
-                ¿Quieres añadir un objetivo extra?
-              </Text>
-              <Text style={styles.secundarioSub}>
-                Sólo uno. Lo tendremos en cuenta sin que compita con tus principales.
-              </Text>
+              <Text style={styles.secundarioQ}>{t('onboarding_secundario_q')}</Text>
+              <Text style={styles.secundarioSub}>{t('onboarding_secundario_sub')}</Text>
               <View style={styles.objetivosGrid}>
                 {remaining.map(obj => {
                   const on = data.objetivoSecundario === obj.id
+                  const label = t(obj.labelKey)
+                  const tag = t(obj.tagKey)
                   return (
                     <TouchableOpacity key={obj.id}
                       style={[styles.objetivoCard, styles.objetivoCardSecundario, on && styles.objetivoCardOn]}
                       onPress={() => set('objetivoSecundario', on ? null : obj.id)}
-                      activeOpacity={0.8}>
+                      activeOpacity={0.8}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                      accessibilityLabel={`${label} — ${tag}`}>
                       <Text style={styles.objetivoIcon}>{obj.icon}</Text>
                       <Text style={[styles.objetivoLabel, on && styles.objetivoLabelOn]}>
-                        {obj.label}
+                        {label}
                       </Text>
-                      <Text style={styles.objetivoTagline}>{obj.tagline}</Text>
+                      <Text style={styles.objetivoTagline}>{tag}</Text>
                       {on && <View style={styles.objetivoDot} />}
                     </TouchableOpacity>
                   )
                 })}
               </View>
-              <Text style={styles.secundarioNote}>Opcional — puedes continuar sin seleccionar.</Text>
+              <Text style={styles.secundarioNote}>{t('onboarding_secundario_note')}</Text>
             </View>
           )
         })()}
@@ -1972,24 +2181,26 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Cuándo quieres ver resultados?</Text>
-        <Text style={styles.b3Sub}>
-          Sin presión — solo para ajustar la intensidad y ritmo de progresión.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_horizonte_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_horizonte_sub')}</Text>
 
         <View style={styles.horizonteGrid}>
           {HORIZONTE_OPTS.map(opt => {
             const on = data.horizonteTemporal === opt.value
+            const label = t(opt.labelKey)
+            const sub = t(opt.subKey)
             return (
               <TouchableOpacity key={opt.value}
                 style={[styles.horizonteCard, on && styles.horizonteCardOn]}
                 onPress={() => set('horizonteTemporal', opt.value)}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="radio" accessibilityState={{ selected: on }}
+                accessibilityLabel={`${label} — ${sub}`}>
                 <Text style={[styles.horizonteLabel, on && styles.horizonteLabelOn]}>
-                  {opt.label}
+                  {label}
                 </Text>
                 <Text style={[styles.horizonteSub, on && styles.horizonteSubOn]}>
-                  {opt.sub}
+                  {sub}
                 </Text>
                 {on && <View style={styles.horizonteDot} />}
               </TouchableOpacity>
@@ -1999,16 +2210,11 @@ export default function OnboardingScreen() {
 
         {/* Motivation text */}
         <View style={[styles.fieldGroup, { marginTop: 32 }]}>
-          <Text style={styles.motivTitle}>
-            ¿Hay algo concreto que te está motivando ahora?
-          </Text>
-          <Text style={styles.motivSub}>
-            Un evento, una sensación, una persona. Breve y honesto.
-            Esto alimenta tus mensajes de logro personalizados.
-          </Text>
+          <Text style={styles.motivTitle}>{t('onboarding_motiv_title')}</Text>
+          <Text style={styles.motivSub}>{t('onboarding_motiv_sub')}</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
-            placeholder="Ej: una boda en agosto, volver a correr sin cansarme, sentirme bien en la playa..."
+            placeholder={t('onboarding_motiv_placeholder')}
             placeholderTextColor={colors.inkMuted}
             value={data.motivacion}
             onChangeText={v => set('motivacion', v)}
@@ -2030,23 +2236,21 @@ export default function OnboardingScreen() {
       <View style={styles.procesandoWrap}>
         {!!error ? (
           <>
-            <Text style={styles.procesandoErrorTitle}>Algo salió mal</Text>
+            <Text style={styles.procesandoErrorTitle}>{t('onboarding_procesando_error_title')}</Text>
             <Text style={styles.procesandoErrorSub}>{error}</Text>
             <TouchableOpacity
               style={styles.procesandoRetryBtn}
               onPress={() => { setError(''); setSaveComplete(false); handleSave() }}
               activeOpacity={0.8}>
-              <Text style={styles.procesandoRetryText}>Intentar de nuevo</Text>
+              <Text style={styles.procesandoRetryText}>{t('onboarding_procesando_retry')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.procesandoEyebrow}>CONSTRUYENDO TU PERFIL</Text>
+            <Text style={styles.procesandoEyebrow}>{t('onboarding_procesando_eyebrow')}</Text>
             <Text style={styles.procesandoNum}>{animCount}</Text>
-            <Text style={styles.procesandoNumLabel}>variables personalizadas</Text>
-            <Text style={styles.procesandoSubText}>
-              Calibrando tu entrenamiento con cada dato que nos compartiste.
-            </Text>
+            <Text style={styles.procesandoNumLabel}>{t('onboarding_procesando_num_label')}</Text>
+            <Text style={styles.procesandoSubText}>{t('onboarding_procesando_subtext')}</Text>
             <ActivityIndicator color={colors.accent} size="small" style={{ marginTop: 32 }} />
           </>
         )}
@@ -2061,27 +2265,22 @@ export default function OnboardingScreen() {
     return (
       <View style={styles.betaWrap}>
         <View style={styles.betaContent}>
-          <Text style={styles.betaEyebrow}>PERFIL LISTO</Text>
-          <Text style={styles.betaTitle}>
-            Tu entrenador{'\n'}ya te conoce.
-          </Text>
+          <Text style={styles.betaEyebrow}>{t('onboarding_beta_eyebrow')}</Text>
+          <Text style={styles.betaTitle}>{t('onboarding_beta_title')}</Text>
           <Text style={styles.betaBody}>
-            Analizamos{' '}
-            <Text style={styles.betaAccent}>{total} variables personalizadas</Text>
-            {' '}para construir algo que se adapta a ti — no al revés.
+            {t('onboarding_beta_body_prefix')}{' '}
+            <Text style={styles.betaAccent}>{total} {t('onboarding_procesando_num_label')}</Text>
+            {' '}{t('onboarding_beta_body_suffix')}
           </Text>
 
           <View style={styles.betaDivider} />
 
           <View style={styles.betaTagRow}>
             <View style={styles.betaTag}>
-              <Text style={styles.betaTagText}>BETA · ACCESO TEMPRANO</Text>
+              <Text style={styles.betaTagText}>{t('onboarding_beta_tag')}</Text>
             </View>
           </View>
-          <Text style={styles.betaBetaDesc}>
-            Estás entre los primeros en usar Zyfit. Tu uso y feedback construyen
-            la versión final. Gracias por confiar desde el principio.
-          </Text>
+          <Text style={styles.betaBetaDesc}>{t('onboarding_beta_desc')}</Text>
         </View>
 
         <View style={styles.betaFooter}>
@@ -2108,14 +2307,14 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Qué te ha hecho abandonar antes?</Text>
-        <Text style={styles.b3Sub}>
-          Sin juicio — esto nos ayuda a anticipar tu punto de quiebre y actuar antes de que llegues a él.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_abandono_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_abandono_sub')}</Text>
 
         <View style={styles.abandonoGrid}>
           {ABANDONO_OPTIONS.map(opt => {
             const on = data.razonesAbandono.includes(opt.id)
+            const label = t(opt.labelKey)
+            const sub = t(opt.subKey)
             return (
               <TouchableOpacity key={opt.id}
                 style={[styles.abandonoCard, on && styles.abandonoCardOn]}
@@ -2123,10 +2322,12 @@ export default function OnboardingScreen() {
                   if (on) set('razonesAbandono', data.razonesAbandono.filter(x => x !== opt.id))
                   else set('razonesAbandono', [...data.razonesAbandono, opt.id])
                 }}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                accessibilityLabel={`${label} — ${sub}`}>
                 <Text style={styles.abandonoIcon}>{opt.icon}</Text>
-                <Text style={[styles.abandonoLabel, on && styles.abandonoLabelOn]}>{opt.label}</Text>
-                <Text style={styles.abandonoItemSub}>{opt.sub}</Text>
+                <Text style={[styles.abandonoLabel, on && styles.abandonoLabelOn]}>{label}</Text>
+                <Text style={styles.abandonoItemSub}>{sub}</Text>
                 {on && <View style={styles.abandonoDot} />}
               </TouchableOpacity>
             )
@@ -2134,7 +2335,7 @@ export default function OnboardingScreen() {
         </View>
 
         {data.razonesAbandono.length === 0 && (
-          <Text style={styles.skipNote}>Opcional — puedes continuar sin seleccionar.</Text>
+          <Text style={styles.skipNote}>{t('onboarding_abandono_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -2147,13 +2348,13 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Cómo prefieres que te guíe tu entrenador?</Text>
-        <Text style={styles.b3Sub}>
-          Esto ajusta el tono de cada interacción. Puedes cambiarlo cuando quieras desde tu perfil.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_coaching_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_coaching_sub')}</Text>
 
         {COACHING_STYLES.map(style => {
           const on = data.estiloCoaching === style.id
+          const label = t(style.labelKey)
+          const desc = t(style.descKey)
           return (
             <TouchableOpacity key={style.id}
               style={[
@@ -2161,13 +2362,15 @@ export default function OnboardingScreen() {
                 on && { backgroundColor: style.bg, borderColor: style.border, borderWidth: 1.5 },
               ]}
               onPress={() => set('estiloCoaching', on ? null : style.id)}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              accessibilityRole="radio" accessibilityState={{ selected: on }}
+              accessibilityLabel={`${label} — ${desc}`}>
               <Text style={styles.coachingIcon}>{style.icon}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.coachingLabel, on && { color: style.color }]}>
-                  {style.label}
+                  {label}
                 </Text>
-                <Text style={styles.coachingDesc}>{style.desc}</Text>
+                <Text style={styles.coachingDesc}>{desc}</Text>
               </View>
               <View style={[styles.coachingRadio, on && { borderColor: style.color }]}>
                 {on && <View style={[styles.coachingRadioDot, { backgroundColor: style.color }]} />}
@@ -2186,14 +2389,14 @@ export default function OnboardingScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.b3Title}>¿Qué tipos de entrenamiento te interesan?</Text>
-        <Text style={styles.b3Sub}>
-          Sin jerarquía — todos son igual de válidos. Selecciona los que te llaman.
-        </Text>
+        <Text style={styles.b3Title}>{t('onboarding_entreno_title')}</Text>
+        <Text style={styles.b3Sub}>{t('onboarding_entreno_sub')}</Text>
 
         <View style={styles.entrenoGrid}>
           {TIPOS_ENTRENAMIENTO.map(tipo => {
             const on = data.tiposEntrenamiento.includes(tipo.id)
+            const label = t(tipo.labelKey)
+            const sub = t(tipo.subKey)
             return (
               <TouchableOpacity key={tipo.id}
                 style={[styles.entrenoCard, on && styles.entrenoCardOn]}
@@ -2201,10 +2404,12 @@ export default function OnboardingScreen() {
                   if (on) set('tiposEntrenamiento', data.tiposEntrenamiento.filter(x => x !== tipo.id))
                   else set('tiposEntrenamiento', [...data.tiposEntrenamiento, tipo.id])
                 }}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+                accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                accessibilityLabel={`${label} — ${sub}`}>
                 <Text style={styles.entrenoIcon}>{tipo.icon}</Text>
-                <Text style={[styles.entrenoLabel, on && styles.entrenoLabelOn]}>{tipo.label}</Text>
-                <Text style={styles.entrenoItemSub}>{tipo.sub}</Text>
+                <Text style={[styles.entrenoLabel, on && styles.entrenoLabelOn]}>{label}</Text>
+                <Text style={styles.entrenoItemSub}>{sub}</Text>
                 {on && <View style={styles.entrenoDot} />}
               </TouchableOpacity>
             )
@@ -2212,7 +2417,7 @@ export default function OnboardingScreen() {
         </View>
 
         {data.tiposEntrenamiento.length === 0 && (
-          <Text style={styles.skipNote}>Opcional — puedes continuar sin seleccionar.</Text>
+          <Text style={styles.skipNote}>{t('onboarding_entreno_skip')}</Text>
         )}
       </ScrollView>
     )
@@ -2249,7 +2454,10 @@ export default function OnboardingScreen() {
 
       {/* Safe-area spacer + progress bar */}
       <View style={{ paddingTop: insets.top }}>
-        <View style={styles.progressTrack}>
+        <View style={styles.progressTrack}
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
+          accessibilityLabel={`Paso ${screenIndex + 1} de ${screens.length}`}>
           <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
         </View>
       </View>
@@ -2257,10 +2465,11 @@ export default function OnboardingScreen() {
       {/* Header */}
       {currentScreen !== 'b6_procesando' && currentScreen !== 'b6_beta' && (
         <View style={styles.header}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}
+            accessibilityRole="button" accessibilityLabel={t('onboarding_back')}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.blockTitle}>{getBlockTitle(currentScreen)}</Text>
+          <Text style={styles.blockTitle}>{getBlockTitle(currentScreen, t)}</Text>
         </View>
       )}
 
@@ -2271,23 +2480,31 @@ export default function OnboardingScreen() {
         {currentScreen !== 'b6_procesando' && currentScreen !== 'b6_beta' && (
           <View style={styles.footer}>
             {!!error && (
-              <View style={styles.errorBox}>
+              <View
+                ref={errorRef}
+                style={styles.errorBox}
+                accessible
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive">
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
             <View style={styles.btnRow}>
               {screenIndex > 0 && (
-                <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.backSecondary} onPress={goBack} activeOpacity={0.8}
+                  accessibilityRole="button" accessibilityLabel={t('onboarding_back')}>
                   <Text style={styles.backSecondaryText}>{t('onboarding_back')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.nextWrap, screenIndex === 0 && styles.nextWrapFull]}
-                onPress={goNext} disabled={loading} activeOpacity={0.88}>
+                onPress={goNext} disabled={loading} activeOpacity={0.88}
+                accessibilityRole="button" accessibilityLabel={t('onboarding_continue')}
+                accessibilityState={{ disabled: loading, busy: loading }}>
                 <LinearGradient colors={[colors.accent, colors.accentDark]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
                   {loading
-                    ? <ActivityIndicator color="#fff" size="small" />
+                    ? <ActivityIndicator color={readableTextOn(colors.accent)} size="small" />
                     : <Text style={styles.nextBtnText}>{t('onboarding_continue')}</Text>
                   }
                 </LinearGradient>
@@ -2329,12 +2546,12 @@ export default function OnboardingScreen() {
               <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
                 <Text style={styles.dateCancel}>{t('onboarding_cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.dateTitle}>País</Text>
+              <Text style={styles.dateTitle}>{t('onboarding_country_picker_title')}</Text>
               <View style={{ width: 50 }} />
             </View>
             <View style={styles.countrySearchWrap}>
               <TextInput style={styles.deportesSearch}
-                placeholder="Buscar país…" placeholderTextColor={colors.inkMuted}
+                placeholder={t('onboarding_country_search_placeholder')} placeholderTextColor={colors.inkMuted}
                 value={countryQuery} onChangeText={setCountryQuery}
                 autoCorrect={false} autoCapitalize="none" />
             </View>
@@ -2347,13 +2564,15 @@ export default function OnboardingScreen() {
                 const on = data.pais === item
                 return (
                   <TouchableOpacity style={styles.countryRow} activeOpacity={0.7}
-                    onPress={() => { set('pais', item); setShowCountryPicker(false) }}>
+                    onPress={() => { set('pais', item); setShowCountryPicker(false) }}
+                    accessibilityRole="radio" accessibilityState={{ selected: on }}
+                    accessibilityLabel={item}>
                     <Text style={[styles.countryRowText, on && styles.countryRowTextOn]}>{item}</Text>
                     {on && <Text style={styles.countryCheck}>✓</Text>}
                   </TouchableOpacity>
                 )
               }}
-              ListEmptyComponent={<Text style={styles.countryEmpty}>Sin resultados</Text>}
+              ListEmptyComponent={<Text style={styles.countryEmpty}>{t('onboarding_country_empty')}</Text>}
             />
           </View>
         </View>
@@ -2367,19 +2586,21 @@ export default function OnboardingScreen() {
             <View style={styles.sheetHandle} />
 
             <Text style={styles.sheetZonaLabel}>
-              {ZONE_LABELS[editingZona ?? ''] ?? ''}
+              {editingZona ? zoneLabel(editingZona, t) : ''}
             </Text>
 
             {/* Estado */}
-            <Text style={styles.sheetSectionLabel}>ESTADO</Text>
+            <Text style={styles.sheetSectionLabel}>{t('onboarding_sheet_estado')}</Text>
             <View style={styles.estadoRow}>
               {(['activa', 'superada'] as const).map(e => (
                 <TouchableOpacity key={e}
                   style={[styles.estadoBtn, draftEstado === e && (e === 'activa' ? styles.estadoBtnActiva : styles.estadoBtnSuperada)]}
                   onPress={() => { setDraftEstado(e); setLesionError('') }}
-                  activeOpacity={0.8}>
+                  activeOpacity={0.8}
+                  accessibilityRole="radio" accessibilityState={{ selected: draftEstado === e }}
+                  accessibilityLabel={e === 'activa' ? t('onboarding_legend_activa') : t('onboarding_legend_superada')}>
                   <Text style={[styles.estadoBtnText, draftEstado === e && styles.estadoBtnTextOn]}>
-                    {e === 'activa' ? '🔴  Activa' : '✅  Superada'}
+                    {e === 'activa' ? t('onboarding_sheet_activa') : t('onboarding_sheet_superada')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -2388,20 +2609,23 @@ export default function OnboardingScreen() {
             {/* Gravedad (if activa) */}
             {draftEstado === 'activa' && (
               <>
-                <Text style={styles.sheetSectionLabel}>GRAVEDAD</Text>
+                <Text style={styles.sheetSectionLabel}>{t('onboarding_sheet_gravedad')}</Text>
                 <View style={styles.gravRow}>
                   {(['leve', 'moderada', 'severa'] as const).map(g => {
                     const cfg = GRAVEDAD_CONFIG[g]
                     const on = draftGravedad === g
+                    const gravLabel = t(cfg.labelKey)
                     return (
                       <TouchableOpacity key={g}
                         style={[styles.gravBtn,
                           { borderColor: on ? cfg.color : colors.borderBright,
                             backgroundColor: on ? cfg.bg : colors.glassBg }]}
                         onPress={() => { setDraftGravedad(g); setLesionError('') }}
-                        activeOpacity={0.8}>
+                        activeOpacity={0.8}
+                        accessibilityRole="radio" accessibilityState={{ selected: on }}
+                        accessibilityLabel={gravLabel}>
                         <Text style={[styles.gravBtnText, { color: on ? cfg.color : 'rgba(255,255,255,0.5)' }]}>
-                          {cfg.label}
+                          {gravLabel}
                         </Text>
                       </TouchableOpacity>
                     )
@@ -2409,11 +2633,13 @@ export default function OnboardingScreen() {
                 </View>
 
                 <TouchableOpacity style={styles.especialistaRow}
-                  onPress={() => setDraftEspecialista(v => !v)} activeOpacity={0.85}>
+                  onPress={() => setDraftEspecialista(v => !v)} activeOpacity={0.85}
+                  accessibilityRole="checkbox" accessibilityState={{ checked: draftEspecialista }}
+                  accessibilityLabel={t('onboarding_sheet_especialista')}>
                   <View style={[styles.miniCheck, draftEspecialista && styles.miniCheckOn]}>
                     {draftEspecialista && <Text style={styles.miniCheckMark}>✓</Text>}
                   </View>
-                  <Text style={styles.especialistaText}>Ya fue evaluada por un especialista</Text>
+                  <Text style={styles.especialistaText}>{t('onboarding_sheet_especialista')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -2421,17 +2647,20 @@ export default function OnboardingScreen() {
             {/* Tiempo (if superada) */}
             {draftEstado === 'superada' && (
               <>
-                <Text style={styles.sheetSectionLabel}>¿HACE CUÁNTO SE SUPERÓ?</Text>
+                <Text style={styles.sheetSectionLabel}>{t('onboarding_sheet_tiempo_q')}</Text>
                 <View style={styles.tiempoGrid}>
-                  {(['1-3m', '3-6m', '6-12m', '+1a'] as const).map(t => {
-                    const on = draftTiempo === t
+                  {(['1-3m', '3-6m', '6-12m', '+1a'] as const).map(tiempoVal => {
+                    const on = draftTiempo === tiempoVal
+                    const tiempoLabel = t(TIEMPO_LABEL_KEYS[tiempoVal])
                     return (
-                      <TouchableOpacity key={t}
+                      <TouchableOpacity key={tiempoVal}
                         style={[styles.tiempoBtn, on && styles.tiempoBtnOn]}
-                        onPress={() => { setDraftTiempo(t); setLesionError('') }}
-                        activeOpacity={0.8}>
+                        onPress={() => { setDraftTiempo(tiempoVal); setLesionError('') }}
+                        activeOpacity={0.8}
+                        accessibilityRole="radio" accessibilityState={{ selected: on }}
+                        accessibilityLabel={tiempoLabel}>
                         <Text style={[styles.tiempoText, on && styles.tiempoTextOn]}>
-                          {TIEMPO_LABELS[t]}
+                          {tiempoLabel}
                         </Text>
                       </TouchableOpacity>
                     )
@@ -2441,23 +2670,29 @@ export default function OnboardingScreen() {
             )}
 
             {!!lesionError && (
-              <Text style={styles.lesionModalError}>{lesionError}</Text>
+              <Text ref={lesionErrorRef} style={styles.lesionModalError}
+                accessibilityRole="alert" accessibilityLiveRegion="assertive">
+                {lesionError}
+              </Text>
             )}
 
             {/* Sheet buttons */}
             <View style={styles.sheetBtns}>
               {data.lesiones.find(l => l.zona === editingZona) && (
-                <TouchableOpacity style={styles.deleteBtn} onPress={deleteLesion} activeOpacity={0.8}>
-                  <Text style={styles.deleteBtnText}>Eliminar</Text>
+                <TouchableOpacity style={styles.deleteBtn} onPress={deleteLesion} activeOpacity={0.8}
+                  accessibilityRole="button" accessibilityLabel={t('onboarding_sheet_eliminar_a11y')}>
+                  <Text style={styles.deleteBtnText}>{t('onboarding_sheet_eliminar')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.saveWrap, !data.lesiones.find(l => l.zona === editingZona) && { flex: 1 }]}
-                onPress={saveLesion} activeOpacity={0.88}>
+                onPress={saveLesion} activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel={data.lesiones.find(l => l.zona === editingZona) ? t('onboarding_sheet_actualizar') : t('onboarding_sheet_agregar')}>
                 <LinearGradient colors={[colors.accent, colors.accentDark]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.saveBtn}>
                   <Text style={styles.saveBtnText}>
-                    {data.lesiones.find(l => l.zona === editingZona) ? 'Actualizar' : 'Agregar lesión'}
+                    {data.lesiones.find(l => l.zona === editingZona) ? t('onboarding_sheet_actualizar') : t('onboarding_sheet_agregar')}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -2472,6 +2707,13 @@ export default function OnboardingScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 function makeStyles(c: Colors) {
+  // Tinta legible sobre el acento del tema activo (botones/gradientes de
+  // acento, chips "on"): blanco sobre acentos saturados, oscura sobre acentos
+  // CLAROS (lima Forest, cobre Sand, turquesa Midnight/Ocean) — ahí el blanco
+  // fijo caía a ~1.7:1 de contraste. `textOnAccentSoft` es la variante
+  // "secundaria" (92%/72% de opacidad) para subtítulos sobre el mismo fondo.
+  const textOnAccent = readableTextOn(c.accent)
+  const textOnAccentSoft = textOnAccent === '#ffffff' ? 'rgba(255,255,255,0.92)' : 'rgba(13,17,23,0.72)'
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
     gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 380 },
@@ -2517,7 +2759,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
     },
-    chipOn: { backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent },
+    chipOn: { backgroundColor: accentAlpha(c.accent, 0.15), borderColor: c.accent },
     chipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: c.inkSecondary },
     chipTextOn: { color: c.accent },
 
@@ -2529,7 +2771,7 @@ function makeStyles(c: Colors) {
     unitBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6 },
     unitBtnOn: { backgroundColor: c.accent },
     unitBtnText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.5 },
-    unitBtnTextOn: { color: '#ffffff' },
+    unitBtnTextOn: { color: textOnAccent },
 
     // Ciclo
     sectionLabel: {
@@ -2549,13 +2791,13 @@ function makeStyles(c: Colors) {
     },
     cicloBoxOn: { backgroundColor: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.85)' },
     cicloBoxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: c.borderBright },
-    cicloCheck: { color: '#ffffff', fontSize: 16, fontFamily: 'SpaceGrotesk-Bold' },
+    cicloCheck: { color: textOnAccent, fontSize: 16, fontFamily: 'SpaceGrotesk-Bold' },
     cicloCardTitle: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, lineHeight: 21 },
-    cicloCardTitleOn: { color: '#ffffff' },
+    cicloCardTitleOn: { color: textOnAccent },
     cicloCardSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
-    // Subtítulo dentro del gradient accent: subimos opacidad 70→92 para
-    // garantizar contraste ≥3:1 sobre el pink accent (#f472b6).
-    cicloCardSubOn: { color: 'rgba(255,255,255,0.92)' },
+    // Subtítulo dentro del gradient accent: tinta derivada de textOnAccent
+    // (antes '#ffffff' fijo, fallaba WCAG sobre acentos claros como Forest/Sand).
+    cicloCardSubOn: { color: textOnAccentSoft },
     cicloNote: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, lineHeight: 18 },
 
     // Historial
@@ -2568,7 +2810,7 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 16, paddingVertical: 18, paddingHorizontal: 20, marginBottom: 10,
     },
-    freqCardOn: { backgroundColor: 'rgba(79,140,255,0.08)', borderColor: c.accent },
+    freqCardOn: { backgroundColor: accentAlpha(c.accent, 0.08), borderColor: c.accent },
     freqRadio: {
       width: 22, height: 22, borderRadius: 11, borderWidth: 2,
       borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
@@ -2580,7 +2822,7 @@ function makeStyles(c: Colors) {
     freqLabelOn: { color: c.accent },
     freqSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginTop: 2 },
     freqBadge: { backgroundColor: c.glassBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    freqBadgeOn: { backgroundColor: 'rgba(79,140,255,0.2)' },
+    freqBadgeOn: { backgroundColor: accentAlpha(c.accent, 0.2) },
     freqBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: c.inkMuted, letterSpacing: 0.5 },
     freqBadgeTextOn: { color: c.accent },
 
@@ -2599,7 +2841,7 @@ function makeStyles(c: Colors) {
     selectedRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingBottom: 14 },
     selectedChip: {
       flexDirection: 'row', alignItems: 'center',
-      backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: c.accent,
+      backgroundColor: accentAlpha(c.accent, 0.15), borderWidth: 1, borderColor: c.accent,
       borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     },
     selectedChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.accent },
@@ -2618,7 +2860,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20,
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
     },
-    deporteChipOn: { backgroundColor: 'rgba(79,140,255,0.15)', borderColor: c.accent },
+    deporteChipOn: { backgroundColor: accentAlpha(c.accent, 0.15), borderColor: c.accent },
     deporteChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkSecondary },
     deporteChipTextOn: { color: c.accent },
 
@@ -2636,7 +2878,7 @@ function makeStyles(c: Colors) {
       width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative',
     },
-    suenoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    suenoCardOn: { backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5 },
     suenoIcon: { fontSize: 30, marginBottom: 12 },
     suenoLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: c.inkPrimary, lineHeight: 20, marginBottom: 6 },
     suenoLabelOn: { color: c.accent },
@@ -2662,7 +2904,7 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 18, paddingVertical: 18, paddingHorizontal: 18, marginBottom: 10,
     },
-    lugarCardOn: { backgroundColor: 'rgba(79,140,255,0.09)', borderColor: c.accent, borderWidth: 1.5 },
+    lugarCardOn: { backgroundColor: accentAlpha(c.accent, 0.09), borderColor: c.accent, borderWidth: 1.5 },
     lugarIcon: { fontSize: 28, width: 36, textAlign: 'center' },
     lugarLabel: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary, marginBottom: 3 },
     lugarLabelOn: { color: c.accent },
@@ -2672,7 +2914,7 @@ function makeStyles(c: Colors) {
       borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
     },
     lugarCheckOn: { backgroundColor: c.accent, borderColor: c.accent },
-    lugarCheckMark: { color: '#fff', fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
+    lugarCheckMark: { color: textOnAccent, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
 
     // Equipment
     ningunCard: {
@@ -2732,7 +2974,7 @@ function makeStyles(c: Colors) {
       width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 18, padding: 18, alignItems: 'center', position: 'relative',
     },
-    horarioCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    horarioCardOn: { backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5 },
     horarioCardDisabled: { opacity: 0.35 },
     horarioIcon: { fontSize: 28, marginBottom: 8 },
     horarioLabel: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: c.inkPrimary, marginBottom: 3 },
@@ -2749,7 +2991,7 @@ function makeStyles(c: Colors) {
       flex: 1, paddingVertical: 16, paddingHorizontal: 14, borderRadius: 16,
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, alignItems: 'center',
     },
-    diasBtnOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    diasBtnOn: { backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5 },
     diasBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.inkPrimary, marginBottom: 4 },
     diasBtnTextOn: { color: c.accent },
     diasBtnSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, textAlign: 'center' },
@@ -2762,7 +3004,7 @@ function makeStyles(c: Colors) {
       minHeight: 120,
     },
     objetivoCardOn: {
-      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
+      backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5,
     },
     objetivoIcon: { fontSize: 32, marginBottom: 10 },
     objetivoLabel: {
@@ -2805,7 +3047,7 @@ function makeStyles(c: Colors) {
       borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16, position: 'relative',
     },
     horizonteCardOn: {
-      backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5,
+      backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5,
     },
     horizonteLabel: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 15,
@@ -2813,7 +3055,7 @@ function makeStyles(c: Colors) {
     },
     horizonteLabelOn: { color: c.accent },
     horizonteSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted },
-    horizonteSubOn: { color: 'rgba(79,140,255,0.65)' },
+    horizonteSubOn: { color: accentAlpha(c.accent, 0.65) },
     horizonteDot: {
       position: 'absolute', top: 10, right: 10,
       width: 7, height: 7, borderRadius: 4, backgroundColor: c.accent,
@@ -2969,7 +3211,7 @@ function makeStyles(c: Colors) {
       width: 24, height: 24, borderRadius: 7, borderWidth: 2,
       borderColor: c.borderBright, alignItems: 'center', justifyContent: 'center',
     },
-    miniCheckOn: { backgroundColor: 'rgba(79,140,255,0.2)', borderColor: c.accent },
+    miniCheckOn: { backgroundColor: accentAlpha(c.accent, 0.2), borderColor: c.accent },
     miniCheckMark: { color: c.accent, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
     especialistaText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 14, color: c.inkSecondary, flex: 1 },
 
@@ -2994,7 +3236,7 @@ function makeStyles(c: Colors) {
     deleteBtnText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.red },
     saveWrap: { flex: 2, borderRadius: 14, overflow: 'hidden' },
     saveBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
-    saveBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.2 },
+    saveBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: textOnAccent, letterSpacing: 0.2 },
 
     // Footer
     footer: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8 },
@@ -3013,7 +3255,7 @@ function makeStyles(c: Colors) {
     nextWrap: { flex: 2, borderRadius: 14, overflow: 'hidden' },
     nextWrapFull: { flex: 1 },
     nextBtn: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
-    nextBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#ffffff', letterSpacing: 0.3 },
+    nextBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: textOnAccent, letterSpacing: 0.3 },
 
     // Block 6 — procesando
     procesandoWrap: {
@@ -3047,7 +3289,7 @@ function makeStyles(c: Colors) {
     },
     procesandoRetryBtn: {
       paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14,
-      backgroundColor: 'rgba(79,140,255,0.1)', borderWidth: 1, borderColor: c.accent,
+      backgroundColor: accentAlpha(c.accent, 0.1), borderWidth: 1, borderColor: c.accent,
     },
     procesandoRetryText: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15, color: c.accent },
 
@@ -3075,7 +3317,7 @@ function makeStyles(c: Colors) {
     betaTagRow: { flexDirection: 'row', marginBottom: 14 },
     betaTag: {
       paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
-      backgroundColor: 'rgba(79,140,255,0.12)', borderWidth: 1, borderColor: c.accent,
+      backgroundColor: accentAlpha(c.accent, 0.12), borderWidth: 1, borderColor: c.accent,
     },
     betaTagText: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
@@ -3090,7 +3332,7 @@ function makeStyles(c: Colors) {
     betaBtn: { paddingVertical: 20, alignItems: 'center', justifyContent: 'center' },
     betaBtnText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
-      color: '#ffffff', letterSpacing: 2,
+      color: textOnAccent, letterSpacing: 2,
     },
 
     // Block 5 — abandono
@@ -3099,7 +3341,7 @@ function makeStyles(c: Colors) {
       width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, padding: 18, alignItems: 'flex-start', position: 'relative', minHeight: 110,
     },
-    abandonoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    abandonoCardOn: { backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5 },
     abandonoIcon: { fontSize: 28, marginBottom: 8 },
     abandonoLabel: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,
@@ -3136,7 +3378,7 @@ function makeStyles(c: Colors) {
       width: '47%', backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 20, padding: 20, alignItems: 'flex-start', position: 'relative', minHeight: 110,
     },
-    entrenoCardOn: { backgroundColor: 'rgba(79,140,255,0.1)', borderColor: c.accent, borderWidth: 1.5 },
+    entrenoCardOn: { backgroundColor: accentAlpha(c.accent, 0.1), borderColor: c.accent, borderWidth: 1.5 },
     entrenoIcon: { fontSize: 28, marginBottom: 8 },
     entrenoLabel: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 14,

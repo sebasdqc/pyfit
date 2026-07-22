@@ -24,21 +24,7 @@ import Svg, { Path, Rect, Defs, RadialGradient, Stop, Ellipse } from 'react-nati
 import { coachLogin } from '../../lib/auth'
 import { P, CONTACT_URL } from '../../lib/coachTheme'
 import { useTranslation, type ScalarKey } from '../../lib/i18n'
-
-// Suscripción a "reducir movimiento" del SO (WCAG 2.3.3) — misma utilidad que
-// el login del atleta. La usan la aurora y la animación de entrada.
-function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false)
-  useEffect(() => {
-    let mounted = true
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => { if (mounted) setReduce(!!v) })
-      .catch(() => {})
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduce(!!v))
-    return () => { mounted = false; sub?.remove?.() }
-  }, [])
-  return reduce
-}
+import { useReduceMotion } from '../../lib/useReduceMotion'
 
 // ─── Iconos ─────────────────────────────────────────────────────────────────────
 

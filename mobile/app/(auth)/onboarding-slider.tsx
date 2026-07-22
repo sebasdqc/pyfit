@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../lib/theme'
+import { useReduceMotion } from '../../lib/useReduceMotion'
 import { setSliderSeen } from '../../lib/storage'
 import EvidenciaCard from '../../components/EvidenciaCard'
 
@@ -59,10 +60,15 @@ const STATE_B = {
 
 function DemoWorkoutCard() {
   const { colors, isDark } = useTheme()
+  const reduceMotion = useReduceMotion()
   const [stateIdx, setStateIdx] = useState(0)
   const fadeAnim = useRef(new Animated.Value(1)).current
 
+  // Auto-cycle cada 3s (WCAG 2.2.2 — contenido que se mueve solo necesita
+  // poder pausarse). Sin control de pausa propio, la forma correcta de
+  // cumplirlo es no auto-reproducir si el usuario pidió reducir movimiento.
   useEffect(() => {
+    if (reduceMotion) return
     const interval = setInterval(() => {
       Animated.timing(fadeAnim, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => {
         setStateIdx(i => (i + 1) % 2)
@@ -70,7 +76,7 @@ function DemoWorkoutCard() {
       })
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [reduceMotion])
 
   const s = stateIdx === 0 ? STATE_A : STATE_B
 
@@ -190,15 +196,22 @@ export default function OnboardingSliderScreen() {
   // Tracks horizontal scroll position — drives all per-page animations natively
   const scrollX = useRef(new Animated.Value(0)).current
 
+  const reduceMotion = useReduceMotion()
+
   // Entrance animation: whole screen fades + lifts in on mount
   const entranceOp = useRef(new Animated.Value(0)).current
   const entranceY  = useRef(new Animated.Value(30)).current
   useEffect(() => {
+    if (reduceMotion) {
+      entranceOp.setValue(1)
+      entranceY.setValue(0)
+      return
+    }
     Animated.parallel([
       Animated.timing(entranceOp, { toValue: 1, duration: 550, delay: 120, useNativeDriver: true }),
       Animated.timing(entranceY,  { toValue: 0, duration: 480, delay: 120, useNativeDriver: true }),
     ]).start()
-  }, [])
+  }, [reduceMotion])
 
   // Per-page card animation: scale + opacity + lift — driven by live scroll position
   function cardStyle(idx: number) {

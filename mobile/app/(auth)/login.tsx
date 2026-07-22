@@ -22,10 +22,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg'
-import { Colors } from '../../lib/colors'
+import { Colors, readableTextOn } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
 import type { Lang } from '../../lib/translations'
+import { useReduceMotion } from '../../lib/useReduceMotion'
 import { login, register, googleLogin, appleLogin } from '../../lib/auth'
 
 // ─── Banderas de idioma ────────────────────────────────────────────────────────
@@ -43,45 +44,6 @@ const LANGS: { code: Lang; label: string }[] = [
   { code: 'pt', label: 'Português' },
   { code: 'fr', label: 'Français' },
 ]
-
-// ─── Contraste / accesibilidad ─────────────────────────────────────────────────
-
-// Luminancia relativa (WCAG) de un color hex. Solo maneja #rgb / #rrggbb —
-// suficiente porque TODOS los acentos de lib/colors.ts son hex sólidos.
-function relLuminance(hex: string): number {
-  const h = hex.replace('#', '')
-  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
-  const toLin = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
-  const r = toLin(parseInt(n.slice(0, 2), 16) / 255)
-  const g = toLin(parseInt(n.slice(2, 4), 16) / 255)
-  const b = toLin(parseInt(n.slice(4, 6), 16) / 255)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
-
-// Tinta legible sobre un acento sólido. Mantiene el blanco de marca sobre los
-// acentos saturados (azul, rosa, neón) pero cambia a tinta oscura sobre los
-// acentos CLAROS (lima de Forest, cobre de Sand, turquesa de Midnight/Ocean),
-// donde el blanco fallaba WCAG AA (Forest llegaba a ~1.7:1). Umbral 3.2:1 =
-// justo por debajo del contraste blanco/azul de marca, que se preserva.
-function readableTextOn(hex: string): string {
-  const contrastWhite = 1.05 / (relLuminance(hex) + 0.05)
-  return contrastWhite >= 3.2 ? '#ffffff' : '#0d1117'
-}
-
-// Suscripción a "reducir movimiento" del SO (WCAG 2.3.3). La usan la aurora y
-// la animación de entrada para quedarse quietas si el usuario lo pidió.
-function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false)
-  useEffect(() => {
-    let mounted = true
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => { if (mounted) setReduce(!!v) })
-      .catch(() => {})
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduce(!!v))
-    return () => { mounted = false; sub?.remove?.() }
-  }, [])
-  return reduce
-}
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
