@@ -292,9 +292,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function AppLayout() {
+  const { t } = useTranslation()
+
   useEffect(() => {
     // Fire-and-forget: request permission + send token to backend on first load
-    registerForPushNotifications()
+    registerForPushNotifications(t)
   }, [])
 
   // Tocar una notificación (app en background o cerrada) ahora navega a la

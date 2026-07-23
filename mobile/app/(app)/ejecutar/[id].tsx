@@ -160,7 +160,13 @@ function MediaCard({
   const hasImage = !!demo?.imagen_url
 
   const handleYouTube = () => {
-    if (demo?.youtube_url) Linking.openURL(demo.youtube_url)
+    // Hoy `youtube_url` siempre lo arma el backend (búsqueda de YouTube por
+    // nombre de ejercicio), pero se valida el esquema igual como defensa en
+    // profundidad ante un futuro campo editable (ej. video de un ejercicio
+    // personalizado del coach).
+    if (demo?.youtube_url && /^https:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(demo.youtube_url)) {
+      Linking.openURL(demo.youtube_url)
+    }
   }
 
   return (

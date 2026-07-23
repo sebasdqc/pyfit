@@ -637,6 +637,14 @@ const translations = {
   nav_history:                { es: 'Historial',                         en: 'History',                             pt: 'Histórico',                           fr: 'Historique' },
   nav_profile:                { es: 'Perfil',                            en: 'Profile',                             pt: 'Perfil',                              fr: 'Profil' },
 
+  // ─── Notificaciones (permiso, pantalla de contexto previa) ───────────────────
+  notif_context_title:        { es: 'Activá las notificaciones',        en: 'Turn on notifications',               pt: 'Ative as notificações',               fr: 'Activez les notifications' },
+  notif_context_body:         { es: 'Te avisamos cuando tu coach te escriba y con recordatorios para no perder la racha de entrenamiento.',
+                                en: 'We\'ll notify you when your coach messages you, and with reminders to keep your training streak going.',
+                                pt: 'Avisamos quando seu coach te escrever, e com lembretes para não perder sua sequência de treinos.',
+                                fr: 'Nous vous prévenons quand votre coach vous écrit, et avec des rappels pour garder votre série d\'entraînement.' },
+  notif_context_continue:     { es: 'Continuar',                         en: 'Continue',                            pt: 'Continuar',                           fr: 'Continuer' },
+
   // ─── Dashboard ───────────────────────────────────────────────────────────────
   dashboard_your_moment:      { es: 'TU MOMENTO',                       en: 'YOUR MOMENT',                         pt: 'SEU MOMENTO',                         fr: 'VOTRE MOMENT' },
   dashboard_rpe_week:         { es: 'RPE PROMEDIO · ESTA SEMANA',       en: 'AVG RPE · THIS WEEK',                 pt: 'RPE MÉDIO · ESTA SEMANA',             fr: 'RPE MOYEN · CETTE SEMAINE' },

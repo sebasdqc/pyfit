@@ -58,6 +58,7 @@ function OTPInput({
               }}
             >
               <Text
+                maxFontSizeMultiplier={1.3}
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 22,
