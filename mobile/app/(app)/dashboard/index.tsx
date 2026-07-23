@@ -25,89 +25,36 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true)
 }
 import { LinearGradient } from 'expo-linear-gradient'
+import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 // ─── Zyfit Score ring constants ────────────────────────────────────────────────
-const RING_SIZE   = 120
-const RING_R      = 50
-const RING_STROKE = 9
+// Anillo héroe — el Score es la métrica de marca, va en grande y centrado.
+const RING_SIZE   = 184
+const RING_R      = 80
+const RING_STROKE = 13
 const RING_CIRC   = 2 * Math.PI * RING_R
 const RING_CX     = RING_SIZE / 2
 const RING_CY     = RING_SIZE / 2
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { COLORS, Colors } from '../../../lib/colors'
+import { COLORS, Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, localDateStr } from '../../../lib/api'
 import StreakMilestoneModal from '../../../components/StreakMilestoneModal'
 
 // ─── Daily motivational phrases ───────────────────────────────────────────────
+// El catálogo vive en lib/translations.ts (clave de array `dashboard_frases`,
+// es/en/pt/fr) — se obtiene con ta('dashboard_frases') según el idioma activo.
 
-const FRASES_DIARIAS = [
-  'Hoy construyes lo que mañana agradeces.',
-  'Tu esfuerzo de hoy tiene memoria.',
-  'Cada sesión te hace más difícil de ignorar.',
-  'Otra sesión, otra versión de ti.',
-  'No se necesita perfecto. Se necesita presente.',
-  'Aparecer ya es ganar la mitad.',
-  'Tu cuerpo se adapta mientras descansas.',
-  'La consistencia hace lo que la motivación no.',
-  'Cada día que apareces, ganas algo.',
-  'La disciplina es motivación con memoria.',
-  'Lo que repites, lo que eres.',
-  'Tus hábitos están escribiendo tu historia.',
-  'Constante gana a perfecto, siempre.',
-  'Más fuerte de lo que crees. En serio.',
-  'Tu progreso no siempre se ve. Siempre existe.',
-  'Tu cuerpo aprende. Tú también.',
-  'Cada sesión deja una huella que no se borra.',
-  'El esfuerzo de ayer ya está en tu cuerpo.',
-  'Ya eres distinto a quien empezó aquí.',
-  'No tienes que dar el cien. Solo aparecer.',
-  'Entrenar con estrés es adaptabilidad real.',
-  'Tu mente necesita esto más que tu cuerpo.',
-  'El movimiento cambia el estado. Siempre.',
-  'Días difíciles, sesiones que más importan.',
-  'No pasa nada si hoy das menos. Da algo.',
-  'Empezaste. Eso ya te pone delante de muchos.',
-  'Esto ya no es motivación. Es identidad.',
-  'Ya no eres el mismo que empezó aquí.',
-  'Tu consistencia está construyendo algo permanente.',
-  'Muévete. Tu versión futura te lo agradece.',
-  'Sin prisa. Sin pausa. Hacia adelante.',
-  'Hoy también cuenta.',
-  'No necesitas más razones. Ya las tienes.',
-  'Hoy también eres capaz. Lo sabes.',
-  'Sigue. Siempre hay una razón para seguir.',
-  'Lo que lograste esta semana no se borra.',
-  'Lo que empezaste merece que lo termines.',
-  'Nadie te puede quitar lo que ya entrenaste.',
-  'El que persiste, transforma.',
-  'Tu único competidor eres tú de ayer.',
-  'Duele ahora. Orgullece después.',
-  'No pares cuando estés cansado. Para cuando acabes.',
-  'El cuerpo logra lo que la mente permite.',
-  'Hoy defines quién eres mañana.',
-  'Cada gota de sudor tiene un propósito.',
-  'Lo ordinario hecho consistentemente se vuelve extraordinario.',
-  'No busques la motivación. Conviértete en ella.',
-  'Tu esfuerzo de hoy es tu ventaja de mañana.',
-  'Ganar empieza por no rendirse hoy.',
-  'Un día a la vez. Un rep a la vez.',
-  'La versión que quieres ser ya existe — entrénala.',
-  'Nadie recuerda los días que descansaron de más.',
-  'Haz hoy lo que otros no harán.',
-  'El dolor de hoy es la fuerza de mañana.',
-  'Confía en el proceso aunque no veas los resultados.',
-  'Cada entrenamiento es una promesa cumplida contigo mismo.',
-]
-
-/** Devuelve la frase correspondiente al día actual (misma frase todo el día, rota cada 24h) */
-function getFraseDiaria(): string {
+/** Frase del día a partir del catálogo del idioma activo (misma frase todo el
+ *  día, rota cada 24h). Recibe el array ya localizado desde ta(). */
+function getFraseDiaria(frases: string[]): string {
+  if (!frases.length) return ''
   const dayIndex = Math.floor(Date.now() / 86_400_000)
-  return FRASES_DIARIAS[dayIndex % FRASES_DIARIAS.length]
+  return frases[dayIndex % frases.length]
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -433,6 +380,51 @@ function BellIcon() {
   )
 }
 
+// ─── Glass layer ──────────────────────────────────────────────────────────────
+// Capa de glassmorphism (expo-blur) que va DETRÁS del contenido de una card. La
+// card contenedora debe tener overflow:'hidden' + un fondo translúcido (glassBg).
+function GlassLayer() {
+  const { isDark } = useTheme()
+  return (
+    <BlurView
+      intensity={isDark ? 22 : 42}
+      tint={isDark ? 'dark' : 'light'}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+  )
+}
+
+// ─── Discipline icon (SVG propio, no emoji) ─────────────────────────────────────
+function DisciplineIcon({ titulo, color, size = 22 }: { titulo?: string; color: string; size?: number }) {
+  const t = (titulo ?? '').toLowerCase()
+  const common = { stroke: color, strokeWidth: 1.9, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' }
+  if (/corr|run|cardio|aerob|carrera/.test(t)) {
+    // Corredor
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Circle cx={15} cy={5} r={1.6} {...common} />
+        <Path d="M8 21l2.5-4 2-3 1-4 3 2 2 1M6.5 11l3-1.5 3 .5 2 3" {...common} />
+      </Svg>
+    )
+  }
+  if (/movil|flex|yoga|stretc|estira|recuper|calma/.test(t)) {
+    // Movilidad / estiramiento
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Circle cx={12} cy={4} r={1.6} {...common} />
+        <Path d="M12 6.5v6M12 12.5l-4 5M12 12.5l4 5M7 9.5l5 1 5-1" {...common} />
+      </Svg>
+    )
+  }
+  // Fuerza (default) — mancuerna
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" {...common} />
+    </Svg>
+  )
+}
+
 // ─── Zyfit Score Card ─────────────────────────────────────────────────────────
 
 function getZyfitRango(score: number): string {
@@ -478,51 +470,47 @@ function ZyfitScoreCard({
 
   return (
     <View style={styles.zsCard}>
+      <GlassLayer />
       {/* Label superior */}
       <Text style={styles.zsLabel}>ZYFIT SCORE</Text>
 
-      {/* ── Fila: anillo izquierda + texto derecha ── */}
-      <View style={styles.zsRow}>
-        {/* Anillo */}
-        <View style={styles.zsRingWrap}>
-          {hasData && <View style={styles.zsRingGlow} />}
-          <Svg width={RING_SIZE} height={RING_SIZE}>
-            <Circle
-              cx={RING_CX} cy={RING_CY} r={RING_R}
-              fill="none" stroke={colors.borderDefault} strokeWidth={RING_STROKE}
-            />
-            <AnimatedCircle
-              cx={RING_CX} cy={RING_CY} r={RING_R}
-              fill="none"
-              stroke={hasData ? colors.accent : 'rgba(79,140,255,0.20)'}
-              strokeWidth={RING_STROKE} strokeLinecap="round"
-              strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
-              strokeDashoffset={animOffset}
-              transform={`rotate(-90, ${RING_CX}, ${RING_CY})`}
-            />
-          </Svg>
-          <View style={styles.zsRingCenter}>
-            {hasData && valor != null ? (
-              <>
-                <Text style={styles.zsScore}>{valor}</Text>
-                <Text style={styles.zsScoreSub}>/ 100</Text>
-              </>
-            ) : (
-              <Text style={styles.zsScorePlaceholder}>—</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Texto derecho */}
-        <View style={styles.zsTextCol}>
-          <Text style={styles.zsRango}>
-            {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo\ntu score'}
-          </Text>
-          <Text style={styles.zsDesc}>
-            {desc ?? 'Completa tu primera sesión con feedback para ver tu Zyfit Score.'}
-          </Text>
+      {/* ── Anillo héroe, centrado ── */}
+      <View style={styles.zsRingWrap}>
+        {hasData && <View style={styles.zsRingGlow} />}
+        <Svg width={RING_SIZE} height={RING_SIZE}>
+          <Circle
+            cx={RING_CX} cy={RING_CY} r={RING_R}
+            fill="none" stroke={colors.borderDefault} strokeWidth={RING_STROKE}
+          />
+          <AnimatedCircle
+            cx={RING_CX} cy={RING_CY} r={RING_R}
+            fill="none"
+            stroke={hasData ? colors.accent : accentAlpha(colors.accent, 0.20)}
+            strokeWidth={RING_STROKE} strokeLinecap="round"
+            strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
+            strokeDashoffset={animOffset}
+            transform={`rotate(-90, ${RING_CX}, ${RING_CY})`}
+          />
+        </Svg>
+        <View style={styles.zsRingCenter}>
+          {hasData && valor != null ? (
+            <>
+              <Text style={styles.zsScore}>{valor}</Text>
+              <Text style={styles.zsScoreSub}>/ 100</Text>
+            </>
+          ) : (
+            <Text style={styles.zsScorePlaceholder}>—</Text>
+          )}
         </View>
       </View>
+
+      {/* Rango (acento serif) + descripción, centrados */}
+      <Text style={styles.zsRango}>
+        {hasData && valor != null ? getZyfitRango(valor) : 'Construyendo tu score'}
+      </Text>
+      <Text style={styles.zsDesc}>
+        {desc ?? 'Completa tu primera sesión con feedback para ver tu Zyfit Score.'}
+      </Text>
 
       {/* ── Barras de factores — solo cuando hay datos ── */}
       {hasData && (
@@ -554,7 +542,8 @@ function ZyfitScoreCard({
       )}
 
       {/* ── Enlace explicación ── */}
-      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.zsHowBtn}>
+      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.zsHowBtn}
+        accessibilityRole="button" accessibilityLabel="Cómo se calcula el Zyfit Score">
         <Text style={styles.zsHowText}>¿Cómo se calcula el Score? →</Text>
       </TouchableOpacity>
 
@@ -702,9 +691,9 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo, i
         width: W, height: H, borderRadius: R,
         // Dentro de un tramo de racha activa, el fondo/borde lo pinta el StreakTrack
         // corrido detrás de la fila — esta pilla queda transparente para no cortarlo.
-        backgroundColor: inStreak ? 'transparent' : 'rgba(79,140,255,0.12)',
+        backgroundColor: inStreak ? 'transparent' : accentAlpha(colors.accent, 0.12),
         borderWidth: isSelected ? 2 : (inStreak ? 0 : 1.5),
-        borderColor: isSelected ? colors.accent : 'rgba(79,140,255,0.45)',
+        borderColor: isSelected ? colors.accent : accentAlpha(colors.accent, 0.45),
         alignItems: 'center', justifyContent: 'center', gap: 2,
         shadowColor: isSelected ? colors.accent : 'transparent',
         shadowOpacity: isSelected ? 0.5 : 0,
@@ -778,7 +767,7 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
       {/* Ícono disciplina */}
       <View style={{
         width: 36, height: 36, borderRadius: 10,
-        backgroundColor: 'rgba(79,140,255,0.12)',
+        backgroundColor: accentAlpha(colors.accent, 0.12),
         alignItems: 'center', justifyContent: 'center',
       }}>
         <Text style={{ fontSize: 18, lineHeight: 22 }}>{icon}</Text>
@@ -807,6 +796,8 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
         }}
         onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Ver rutina: ${titulo}`}
       >
         <Text style={{
           fontFamily: 'SpaceGrotesk-Medium', fontSize: 11,
@@ -972,9 +963,9 @@ function TuSemanaCard({
                   left: `${(streakStartIdx / 7) * 100}%`,
                   width: `${((streakEndIdx - streakStartIdx + 1) / 7) * 100}%`,
                   borderRadius: 14,
-                  backgroundColor: 'rgba(79,140,255,0.12)',
+                  backgroundColor: accentAlpha(colors.accent, 0.12),
                   borderWidth: 1.5,
-                  borderColor: 'rgba(79,140,255,0.45)',
+                  borderColor: accentAlpha(colors.accent, 0.45),
                 }}
               />
             )}
@@ -992,6 +983,17 @@ function TuSemanaCard({
                   onPress={() => handleDayPress(iso, state)}
                   disabled={state !== 'past-done'}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: state !== 'past-done', selected: isSelected }}
+                  accessibilityLabel={
+                    `${DAY_LETTERS[idx]} ${dayNumber}` +
+                    (state === 'past-done'
+                      ? `, entrenado${count > 1 ? ` (${count} sesiones)` : ''} — ver detalle`
+                      : state === 'today' ? ', hoy'
+                      : state === 'rest' ? ', descanso'
+                      : state === 'future' ? ', próximo'
+                      : ', sin entrenar')
+                  }
                 >
                   <View style={{ position: 'relative' }}>
                     <DayPill state={state} isSelected={isSelected} dayNumber={dayNumber} dayLetter={DAY_LETTERS[idx]} colors={colors} eventTipo={eventTipo} inStreak={inStreak} />
@@ -1183,21 +1185,15 @@ function CTACard({
   t: (key: any) => string
 }) {
   const { isDark } = useTheme()
-  const PILL: Record<CTAData['pill_color'], { color: string; bg: string; border: string }> = {
-    green:   { color: '#32c896', bg: 'rgba(50,200,150,0.12)',  border: 'rgba(50,200,150,0.30)'  },
-    neutral: { color: colors.inkMuted, bg: colors.glassBg,    border: colors.borderDefault      },
-    orange:  { color: '#ffaa32', bg: 'rgba(255,170,50,0.12)', border: 'rgba(255,170,50,0.30)'  },
-  }
 
   const CARD_BORDER: Record<CTAData['estado'], string> = {
-    A: 'rgba(79,140,255,0.35)',
+    A: accentAlpha(colors.accent, 0.35),
     B: colors.borderBright,
     C: 'rgba(255,170,50,0.35)',
-    D: 'rgba(79,140,255,0.35)',
+    D: accentAlpha(colors.accent, 0.35),
     E: 'rgba(255,170,50,0.40)',
   }
 
-  const pill = PILL[cta.pill_color]
   const isActive = cta.estado === 'A' || cta.estado === 'D' || cta.estado === 'E'
 
   // Título simplificado a 3 tipos de sesión
@@ -1241,21 +1237,21 @@ function CTACard({
     'Iniciar entrenamiento de hoy'
 
   return (
-    <View style={[styles.ctaCard, { backgroundColor: isDark ? '#0E1C42' : colors.cardBg, borderColor: CARD_BORDER[cta.estado] }]}>
-      {isActive && (
+    <View style={[styles.ctaCard, { backgroundColor: colors.glassBg, borderColor: CARD_BORDER[cta.estado] }]}>
+      <GlassLayer />
+      {/* Wash de acento — da la identidad "card de entrenamiento" en cualquiera de
+          las 8 paletas (antes era un navy #0E1C42 fijo, azul incluso en Neon/Forest). */}
+      <LinearGradient
+        colors={[accentAlpha(colors.accent, isActive ? 0.18 : 0.08), 'transparent']}
+        style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
+      />
+      {isDark && (
         <LinearGradient
-          colors={['rgba(79,140,255,0.13)', 'transparent']}
+          colors={[accentAlpha(colors.accent, 0.10), 'transparent']}
+          start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}
           style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
         />
       )}
-
-      {/* Pill */}
-      <View style={[styles.ctaPill, { backgroundColor: pill.bg, borderColor: pill.border }]}>
-        <View style={[styles.ctaPillDot, { backgroundColor: pill.color }]} />
-        <Text style={[styles.ctaPillText, { color: pill.color }]}>
-          {cta.pill_label.toUpperCase()}
-        </Text>
-      </View>
 
       {/* Tipo de sesión — una sola línea */}
       <Text style={styles.ctaTitle} numberOfLines={1}>{tipoSesion}</Text>
@@ -1349,7 +1345,6 @@ function UltimaSesionCard({ session, colors }: { session: FullSession; colors: C
   const duracion     = session.respuesta_ia?.duracion_total ?? session.duracion_planificada ?? 0
   const cumplimiento = session.feedback?.cumplimiento ?? null
   const rpe          = session.feedback?.rpe_real ?? null
-  const icono        = getDisciplineIcon(titulo)
   const fecha        = relativeFecha(session.fecha)
   const cumpColor    = cumplimiento == null ? colors.inkSecondary
     : cumplimiento >= 90 ? colors.green
@@ -1360,12 +1355,15 @@ function UltimaSesionCard({ session, colors }: { session: FullSession; colors: C
     <TouchableOpacity
       onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
       activeOpacity={0.8}
-      style={[ultimaStyles.wrap, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}
+      accessibilityRole="button"
+      accessibilityLabel={`Última sesión: ${titulo}, ${fecha}. Ver detalle`}
+      style={[ultimaStyles.wrap, { backgroundColor: colors.glassBg, borderColor: colors.borderBright }]}
     >
+      <GlassLayer />
       <Text style={[ultimaStyles.sectionLabel, { color: colors.inkMuted }]}>ÚLTIMA SESIÓN</Text>
       <View style={ultimaStyles.row}>
-        <View style={ultimaStyles.iconBox}>
-          <Text style={{ fontSize: 20 }}>{icono}</Text>
+        <View style={[ultimaStyles.iconBox, { backgroundColor: accentAlpha(colors.accent, 0.10) }]}>
+          <DisciplineIcon titulo={titulo} color={colors.accent} size={22} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[ultimaStyles.titulo, { color: colors.inkPrimary }]} numberOfLines={1}>{titulo}</Text>
@@ -1402,15 +1400,16 @@ function UltimaSesionCard({ session, colors }: { session: FullSession; colors: C
 }
 
 const ultimaStyles = StyleSheet.create({
-  wrap: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 16 },
+  wrap: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 16, overflow: 'hidden' },
   sectionLabel: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 8,
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
     letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: {
+    // backgroundColor se aplica inline con accentAlpha(colors.accent, …) — el
+    // acento sale del tema activo, no de un azul fijo.
     width: 44, height: 44, borderRadius: 12,
-    backgroundColor: 'rgba(79,140,255,0.10)',
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   titulo: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, letterSpacing: -0.3, lineHeight: 19 },
@@ -1423,8 +1422,8 @@ const ultimaStyles = StyleSheet.create({
   metricItem: { flex: 1, alignItems: 'center' },
   metricVal:  { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, letterSpacing: -0.3, lineHeight: 20 },
   metricLabel: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 7,
-    letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 2,
+    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+    letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 2,
   },
 })
 
@@ -1455,6 +1454,7 @@ function InsightCard({
 
   return (
     <View style={styles.z5Card}>
+      <GlassLayer />
       {/* Tag: ícono + "TU ENTRENADOR" */}
       <View style={styles.z5Header}>
         {Icon}
@@ -1471,12 +1471,15 @@ function InsightCard({
         onPress={() => router.push('/(app)/chat' as any)}
         activeOpacity={0.75}
         style={styles.z5CoachLink}
+        accessibilityRole="button"
+        accessibilityLabel="Ver recomendaciones de tu entrenador"
       >
         <Text style={styles.z5CoachLinkTxt}>Ver recomendaciones →</Text>
       </TouchableOpacity>
 
       {/* ── Enlace explicación ── */}
-      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.z5HowBtn}>
+      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7} style={styles.z5HowBtn}
+        accessibilityRole="button" accessibilityLabel="Qué hace tu entrenador">
         <Text style={styles.zsHowText}>¿Qué hace tu entrenador? →</Text>
       </TouchableOpacity>
 
@@ -1518,7 +1521,7 @@ const RACHA_SIGUIENTE_RETO: Record<number, number> = { 7: 15 }
 
 export default function DashboardScreen() {
   const { colors } = useTheme()
-  const { t, lang } = useTranslation()
+  const { t, lang, ta } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -1642,8 +1645,9 @@ export default function DashboardScreen() {
   return (
     <View style={styles.root}>
       {/* Background gradient */}
+      {/* Glow de acento superior — profundidad + identidad de marca (coherente por tema) */}
       <LinearGradient
-        colors={[colors.gradientTop, 'transparent']}
+        colors={[accentAlpha(colors.accent, 0.12), 'transparent']}
         style={styles.gradient}
       />
 
@@ -1702,8 +1706,19 @@ export default function DashboardScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={styles.z1Saludo} numberOfLines={2}>{data?.saludo ?? ''}</Text>
-                  <Text style={styles.z1Insight} numberOfLines={2}>{getFraseDiaria()}</Text>
+                  {(() => {
+                    // Acento serif de marca sobre el nombre (parte tras la última coma)
+                    const s = data?.saludo ?? ''
+                    const i = s.lastIndexOf(', ')
+                    if (i === -1) return <Text style={styles.z1Saludo} numberOfLines={2}>{s}</Text>
+                    return (
+                      <Text style={styles.z1Saludo} numberOfLines={2}>
+                        {s.slice(0, i + 2)}
+                        <Text style={styles.z1SaludoAccent}>{s.slice(i + 2)}</Text>
+                      </Text>
+                    )
+                  })()}
+                  <Text style={styles.z1Insight} numberOfLines={2}>{getFraseDiaria(ta('dashboard_frases'))}</Text>
                 </>
               )}
             </View>
@@ -1918,9 +1933,9 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 20,
-      backgroundColor: 'rgba(108,229,255,0.10)',
+      backgroundColor: accentAlpha(c.cyan, 0.10),
       borderWidth: 1,
-      borderColor: 'rgba(108,229,255,0.25)',
+      borderColor: accentAlpha(c.cyan, 0.25),
     },
     streakCount: {
       fontFamily: 'SpaceGrotesk-Bold',
@@ -1941,6 +1956,12 @@ function makeStyles(c: Colors) {
       letterSpacing: -0.5,
       lineHeight: 24,
     },
+    z1SaludoAccent: {
+      fontFamily: 'InstrumentSerif-Italic',
+      fontSize: 21,
+      color: c.accent,
+      letterSpacing: 0,
+    },
     z1Insight: {
       fontFamily: 'SpaceGrotesk-Regular',
       fontSize: 12,
@@ -1960,9 +1981,9 @@ function makeStyles(c: Colors) {
       marginBottom: 20,
     },
     ctaCard: {
-      // Azul oscuro (navy) — distingue el card de entrenamiento del resto del
-      // dashboard. El resto de colores/elementos (pill, título, botón) se mantienen.
-      backgroundColor: '#0E1C42',
+      // Superficie del tema + wash de acento (ver CTACard) — distingue la card de
+      // entrenamiento del resto del dashboard sin hardcodear un azul navy.
+      backgroundColor: c.cardBg,
       borderWidth: 1,
       borderColor: c.borderDefault,
       borderRadius: 22,
@@ -2166,13 +2187,16 @@ function makeStyles(c: Colors) {
 
     // ── Zyfit Score Card
     zsCard: {
-      backgroundColor: 'transparent',
-      borderWidth: 0,
-      borderRadius: 22,
-      paddingVertical: 16,
+      // Card héroe de vidrio (glassmorphism vía GlassLayer detrás del contenido)
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderBright,
+      borderRadius: 24,
+      paddingVertical: 24,
       paddingHorizontal: 20,
-      gap: 12,
-      marginBottom: 8,
+      gap: 8,
+      marginBottom: 16,
+      alignItems: 'center',
       overflow: 'hidden',
     },
     zsRow: {
@@ -2193,9 +2217,9 @@ function makeStyles(c: Colors) {
       height: RING_SIZE + 20,
       borderRadius: (RING_SIZE + 20) / 2,
       backgroundColor: 'transparent',
-      shadowColor: '#4f8cff',
-      shadowOpacity: 0.30,
-      shadowRadius: 20,
+      shadowColor: c.accent,
+      shadowOpacity: 0.35,
+      shadowRadius: 26,
       shadowOffset: { width: 0, height: 0 },
       elevation: 0,
     },
@@ -2210,24 +2234,24 @@ function makeStyles(c: Colors) {
     },
     zsScore: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 34,
+      fontSize: 52,
       color: c.inkPrimary,
-      letterSpacing: -1,
-      lineHeight: 38,
+      letterSpacing: -2,
+      lineHeight: 56,
     },
     zsScoreSub: {
       fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 11,
+      fontSize: 12,
       color: c.inkMuted,
       letterSpacing: 0.5,
       textAlign: 'center',
-      marginTop: -2,
+      marginTop: 0,
     },
     zsScorePlaceholder: {
       fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 28,
+      fontSize: 42,
       color: c.inkFaint,
-      lineHeight: 34,
+      lineHeight: 48,
     },
     zsLabel: {
       fontFamily: 'JetBrainsMono-Regular',
@@ -2237,17 +2261,22 @@ function makeStyles(c: Colors) {
       textTransform: 'uppercase',
     },
     zsRango: {
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 20,
-      color: c.inkPrimary,
-      letterSpacing: -0.5,
-      lineHeight: 26,
+      // Acento serif de marca (Instrument Serif italic), centrado
+      fontFamily: 'InstrumentSerif-Italic',
+      fontSize: 28,
+      color: c.accent,
+      letterSpacing: 0,
+      lineHeight: 32,
+      textAlign: 'center',
+      marginTop: 4,
     },
     zsDesc: {
       fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 12,
+      fontSize: 12.5,
       color: c.inkSecondary,
       lineHeight: 18,
+      textAlign: 'center',
+      maxWidth: 280,
     },
     zsHowBtn: {
       alignSelf: 'center',
@@ -2272,7 +2301,7 @@ function makeStyles(c: Colors) {
     zsModalCard: {
       backgroundColor: c.sheetBg,
       borderWidth: 1,
-      borderColor: 'rgba(79,140,255,0.30)',
+      borderColor: accentAlpha(c.accent, 0.30),
       borderRadius: 24,
       padding: 24,
       width: '100%',
@@ -2315,9 +2344,9 @@ function makeStyles(c: Colors) {
 
     // ── Zone 5 — Tu Entrenador
     z5Card: {
-      backgroundColor: c.cardBg,           // fondo secundario del card
+      backgroundColor: c.glassBg,           // vidrio (GlassLayer detrás)
       borderWidth: 0.5,
-      borderColor: c.borderDefault,
+      borderColor: c.borderBright,
       borderLeftWidth: 1.5,                 // borde izquierdo accent
       borderLeftColor: c.accent,
       borderRadius: 14,
@@ -2327,6 +2356,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: 16,
       marginBottom: 28,
       gap: 8,
+      overflow: 'hidden',
     },
     z5Header: {
       flexDirection: 'row',
@@ -2371,6 +2401,8 @@ function makeStyles(c: Colors) {
     // ── Zyfit Score — Factor bars
     zsFactores: {
       gap: 8,
+      alignSelf: 'stretch',
+      marginTop: 8,
     },
     zsFactorRow: {
       flexDirection: 'row',
