@@ -16,9 +16,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import (
     LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle,
-    VerifyEmailRateThrottle, ResendVerificationRateThrottle,
+    VerifyEmailRateThrottle, ResendVerificationRateThrottle, ContentReportRateThrottle,
 )
-from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, EmailVerificationCode, Notification, NotificationPreference
+from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, EmailVerificationCode, Notification, NotificationPreference, ContentReport
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -1057,3 +1057,21 @@ def notification_prefs_view(request):
         prefs.save(update_fields=fields_to_save)
 
     return Response(_prefs_response(prefs))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ContentReportRateThrottle])
+def report_content(request):
+    """POST /api/reportar-contenido/ — canal para reportar contenido generado
+    por IA (rutina de fuerza, sesión de running, chat) que el usuario considera
+    inapropiado o incorrecto. Sin moderación automática: un humano lo revisa
+    desde el admin (ContentReport.resuelto)."""
+    mensaje = (request.data.get('mensaje') or '').strip()
+    if not mensaje:
+        return Response({'error': 'mensaje requerido'}, status=400)
+    if len(mensaje) > 2000:
+        return Response({'error': 'mensaje demasiado largo (máx. 2000 caracteres)'}, status=400)
+
+    ContentReport.objects.create(user=request.user, mensaje=mensaje)
+    return Response({'ok': True}, status=201)

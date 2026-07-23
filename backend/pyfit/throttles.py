@@ -84,6 +84,13 @@ class SupportChatRateThrottle(UserRateThrottle):
         return super().allow_request(request, view)
 
 
+class ContentReportRateThrottle(UserRateThrottle):
+    """10 reportes por día por usuario — es un canal para casos puntuales de
+    contenido de IA inapropiado, no un chat; frena el spam sin bloquear a
+    alguien que reporte un par de rutinas/sesiones distintas el mismo día."""
+    scope = 'content_report'
+
+
 class CoachVincularRateThrottle(UserRateThrottle):
     """20 intentos por hora por usuario — frena el barrido de códigos de coach
     (el atleta está autenticado, así que el límite es por cuenta)."""

@@ -449,6 +449,8 @@ export default function RunScreen() {
           style={[styles.backBtn, { backgroundColor: colors.glassBg, borderColor: colors.borderDefault }]}
           onPress={handleExit}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
         >
           <BackArrow color={colors.inkPrimary} />
         </TouchableOpacity>

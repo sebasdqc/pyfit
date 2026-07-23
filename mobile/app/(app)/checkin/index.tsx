@@ -217,6 +217,16 @@ function CheckinBodyMap({
   function s(id: string) { return selectedZones.includes(id) ? SSEL : SDEF }
   // Haptic ligero al tocar una zona → feedback táctil que confirma el registro.
   function p(id: string) { return () => { Haptics.selectionAsync(); onZonePress(id) } }
+  // Sin esto, las zonas del mapa son invisibles para TalkBack/VoiceOver — el
+  // check-in de dolor quedaría inalcanzable con lector de pantalla.
+  function a11y(id: string) {
+    return {
+      accessible: true,
+      accessibilityRole: 'button' as const,
+      accessibilityLabel: ZONE_LABELS[id] ?? id,
+      accessibilityState: { selected: selectedZones.includes(id) },
+    }
+  }
 
   return (
     <Svg width={160} height={320} viewBox="0 0 180 360">
@@ -255,22 +265,22 @@ function CheckinBodyMap({
         return <AnimatedZoneDot key={id} cx={cx} cy={cy} color={SSEL} />
       })}
 
-      <Rect x={65}  y={57}  width={50} height={56} fill="transparent" onPress={p('pecho')} />
-      <Rect x={65}  y={111} width={50} height={44} fill="transparent" onPress={p('abdomen')} />
-      <Rect x={54}  y={153} width={72} height={30} fill="transparent" onPress={p('cadera')} />
-      <Rect x={56}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_izq')} />
-      <Rect x={88}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_der')} />
-      <Rect x={56}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_izq')} />
-      <Rect x={90}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_der')} />
-      <Rect x={54}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_izq')} />
-      <Rect x={92}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_der')} />
-      <Rect x={32}  y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_izq')} />
-      <Rect x={116} y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_der')} />
-      <Rect x={32}  y={158} width={32} height={28} fill="transparent" onPress={p('muneca_izq')} />
-      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={p('muneca_der')} />
-      <Rect x={32}  y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_izq')} />
-      <Rect x={112} y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_der')} />
-      <Rect x={64}  y={2}   width={52} height={66} fill="transparent" onPress={p('cabeza')} />
+      <Rect x={65}  y={57}  width={50} height={56} fill="transparent" onPress={p('pecho')} {...a11y('pecho')} />
+      <Rect x={65}  y={111} width={50} height={44} fill="transparent" onPress={p('abdomen')} {...a11y('abdomen')} />
+      <Rect x={54}  y={153} width={72} height={30} fill="transparent" onPress={p('cadera')} {...a11y('cadera')} />
+      <Rect x={56}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_izq')} {...a11y('muslo_izq')} />
+      <Rect x={88}  y={182} width={32} height={64} fill="transparent" onPress={p('muslo_der')} {...a11y('muslo_der')} />
+      <Rect x={56}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_izq')} {...a11y('rodilla_izq')} />
+      <Rect x={90}  y={234} width={30} height={24} fill="transparent" onPress={p('rodilla_der')} {...a11y('rodilla_der')} />
+      <Rect x={54}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_izq')} {...a11y('tobillo_izq')} />
+      <Rect x={92}  y={252} width={34} height={72} fill="transparent" onPress={p('tobillo_der')} {...a11y('tobillo_der')} />
+      <Rect x={32}  y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_izq')} {...a11y('brazo_izq')} />
+      <Rect x={116} y={88}  width={32} height={80} fill="transparent" onPress={p('brazo_der')} {...a11y('brazo_der')} />
+      <Rect x={32}  y={158} width={32} height={28} fill="transparent" onPress={p('muneca_izq')} {...a11y('muneca_izq')} />
+      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={p('muneca_der')} {...a11y('muneca_der')} />
+      <Rect x={32}  y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_izq')} {...a11y('hombro_izq')} />
+      <Rect x={112} y={56}  width={36} height={34} fill="transparent" onPress={p('hombro_der')} {...a11y('hombro_der')} />
+      <Rect x={64}  y={2}   width={52} height={66} fill="transparent" onPress={p('cabeza')} {...a11y('cabeza')} />
     </Svg>
   )
 }

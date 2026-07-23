@@ -1,9 +1,11 @@
+from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.db import connection
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from users.models import CoachAthlete, CoachSubscription, Profile
+from users.models import CoachAthlete, CoachSubscription, ContentReport, Profile, UserInjury
 from workouts.models import Session
 
 User = get_user_model()
@@ -182,3 +184,89 @@ class ProfileInputValidationTests(TestCase):
         }, format='json')
         self.assertEqual(r.status_code, 400)
         self.assertIn('motivacion', r.data)
+
+
+@override_settings(FIELD_ENCRYPTION_KEY=Fernet.generate_key().decode())
+class HealthTextEncryptionTests(TestCase):
+    """lesiones/notas_medicas/motivo_limitacion (Profile) y descripcion
+    (UserInjury) son EncryptedTextField — nunca deben quedar en texto plano
+    en la columna real de la DB, pero sí legibles tal cual vía el ORM."""
+
+    def setUp(self):
+        self.atleta = _crear_atleta('encriptado@test.com')
+
+    def _raw_value(self, table, column, pk):
+        with connection.cursor() as cursor:
+            cursor.execute(f'SELECT {column} FROM {table} WHERE id = %s', [pk])
+            return cursor.fetchone()[0]
+
+    def test_profile_texto_libre_de_salud_queda_cifrado_en_db(self):
+        profile = self.atleta.profile
+        profile.lesiones = 'Rotura de LCA rodilla derecha'
+        profile.notas_medicas = 'Hipertensión controlada con medicación'
+        profile.motivo_limitacion = 'Cirugía de hombro hace 6 meses'
+        profile.save(update_fields=['lesiones', 'notas_medicas', 'motivo_limitacion'])
+
+        raw_lesiones = self._raw_value('profiles', 'lesiones', profile.id)
+        raw_notas = self._raw_value('profiles', 'notas_medicas', profile.id)
+        raw_motivo = self._raw_value('profiles', 'motivo_limitacion', profile.id)
+        self.assertNotIn('LCA', raw_lesiones)
+        self.assertNotIn('Hipertensión', raw_notas)
+        self.assertNotIn('hombro', raw_motivo)
+
+        reloaded = Profile.objects.get(pk=profile.id)
+        self.assertEqual(reloaded.lesiones, 'Rotura de LCA rodilla derecha')
+        self.assertEqual(reloaded.notas_medicas, 'Hipertensión controlada con medicación')
+        self.assertEqual(reloaded.motivo_limitacion, 'Cirugía de hombro hace 6 meses')
+
+    def test_userinjury_descripcion_queda_cifrada_en_db(self):
+        injury = UserInjury.objects.create(
+            user=self.atleta, zona='rodilla', severidad='cronica',
+            descripcion='Dolor agudo al flexionar, diagnosticado por traumatólogo',
+        )
+        raw = self._raw_value('user_injuries', 'descripcion', injury.id)
+        self.assertNotIn('traumatólogo', raw)
+
+        reloaded = UserInjury.objects.get(pk=injury.id)
+        self.assertEqual(reloaded.descripcion, 'Dolor agudo al flexionar, diagnosticado por traumatólogo')
+
+    def test_zona_y_severidad_siguen_filtrables_en_db(self):
+        # zona/severidad NO están encriptadas a propósito (alimentan list_filter
+        # del admin) — deben seguir funcionando como filtro exacto de ORM.
+        UserInjury.objects.create(user=self.atleta, zona='rodilla', severidad='leve')
+        UserInjury.objects.create(user=self.atleta, zona='hombro', severidad='cronica')
+        self.assertEqual(UserInjury.objects.filter(zona='rodilla').count(), 1)
+        self.assertEqual(UserInjury.objects.filter(severidad='cronica').count(), 1)
+
+
+class ContentReportTests(TestCase):
+    """Canal para reportar contenido de IA (rutina/running/chat) inapropiado
+    o incorrecto — sin moderación automática, un humano lo revisa en el admin."""
+
+    def setUp(self):
+        self.atleta = _crear_atleta('reporta@test.com')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.atleta)
+
+    def test_crea_reporte(self):
+        r = self.client.post('/api/reportar-contenido/', {
+            'mensaje': 'La rutina de hoy me sugirió sentadilla con dolor de rodilla activo.',
+        }, format='json')
+        self.assertEqual(r.status_code, 201)
+        reporte = ContentReport.objects.get(user=self.atleta)
+        self.assertFalse(reporte.resuelto)
+        self.assertIn('sentadilla', reporte.mensaje)
+
+    def test_rechaza_mensaje_vacio(self):
+        r = self.client.post('/api/reportar-contenido/', {'mensaje': '   '}, format='json')
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(ContentReport.objects.count(), 0)
+
+    def test_rechaza_mensaje_demasiado_largo(self):
+        r = self.client.post('/api/reportar-contenido/', {'mensaje': 'x' * 2001}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_requiere_autenticacion(self):
+        anon = APIClient()
+        r = anon.post('/api/reportar-contenido/', {'mensaje': 'algo'}, format='json')
+        self.assertEqual(r.status_code, 401)

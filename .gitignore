@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# DO app spec descargado con `doctl apps spec get` — trae CRON_SECRET y
+# CORS_ALLOWED_ORIGINS en texto plano (no cifrados como el resto de envs).
+# Nunca debe commitearse.
+/spec.yaml
+
 # Copia de entrega del video en la raíz — el asset usado por la app vive en
 # mobile/assets/. Se ignora la copia de la raíz para no duplicar 11 MB en el repo.
 /video_pantalla_generacion.mp4

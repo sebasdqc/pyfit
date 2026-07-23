@@ -7,6 +7,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
+from devices.fields import EncryptedTextField
+
 
 # Alfabeto sin caracteres ambiguos (sin 0/O, 1/I/L) para códigos de referido
 # cortos y legibles al dictarlos o escribirlos a mano.
@@ -181,7 +183,8 @@ class Profile(models.Model):
         null=True, blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
-    lesiones = models.TextField(blank=True)
+    # Encriptado (Fernet) — texto libre de salud, ver EncryptedTextField.
+    lesiones = EncryptedTextField(blank=True)
     experiencia_deportiva = models.TextField(blank=True)
     estilo_entrenamiento = models.CharField(max_length=100, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
@@ -257,8 +260,9 @@ class Profile(models.Model):
     # Onboarding extended fields
     calidad_sueno_habitual = models.CharField(max_length=30, blank=True)
     condiciones_medicas = models.JSONField(default=list, blank=True)
-    notas_medicas = models.TextField(blank=True)
-    motivo_limitacion = models.TextField(blank=True)
+    # Encriptados (Fernet) — texto libre de salud, ver EncryptedTextField.
+    notas_medicas = EncryptedTextField(blank=True)
+    motivo_limitacion = EncryptedTextField(blank=True)
     lugares_entrenamiento = models.JSONField(default=list, blank=True)
     implementos_perfil = models.JSONField(default=list, blank=True)
     duracion_disponible = models.IntegerField(
@@ -414,7 +418,11 @@ class UserInjury(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='injuries')
     zona = models.CharField(max_length=20, choices=ZONA_CHOICES)
     severidad = models.CharField(max_length=20, choices=SEVERIDAD_CHOICES)
-    descripcion = models.TextField(blank=True)
+    # Encriptado (Fernet) — texto libre de salud, ver EncryptedTextField.
+    # zona/severidad quedan sin encriptar a propósito: son enums cortos que
+    # alimentan list_filter en el admin (Fernet no es determinístico, así que
+    # un campo encriptado no se puede agrupar/filtrar a nivel de DB).
+    descripcion = EncryptedTextField(blank=True)
     activa = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -701,3 +709,23 @@ class CoachMessage(models.Model):
 
     def __str__(self):
         return f'{"coach" if self.from_coach else "atleta"}: {self.texto[:30]}'
+
+
+class ContentReport(models.Model):
+    """Reporte de contenido generado por IA que el usuario considera
+    inapropiado o incorrecto (rutina de fuerza, sesión de running, chat).
+    Sin moderación automática — un humano lo revisa desde el admin
+    (`resuelto`). Deliberadamente simple: el usuario describe en texto libre
+    qué vio y dónde; no se modela una relación estricta a Session/RunSession
+    porque el objetivo es dar un canal de reporte, no automatizar el triage."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='content_reports')
+    mensaje = models.TextField()
+    resuelto = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'content_reports'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} — {self.mensaje[:40]}'

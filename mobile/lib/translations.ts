@@ -998,6 +998,8 @@ const translations = {
   chat_online:                { es: '● En línea',                        en: '● Online',                            pt: '● Online',                            fr: '● En ligne' },
   chat_ai_badge:               { es: 'Asistente con IA — no es tu coach humano', en: 'AI assistant — not your human coach', pt: 'Assistente com IA — não é seu coach humano', fr: "Assistant IA — pas votre coach humain" },
   chat_placeholder:           { es: 'Escribe algo...',                   en: 'Type something...',                   pt: 'Digite algo...',                      fr: 'Écrivez quelque chose...' },
+  chat_close_a11y:            { es: 'Cerrar chat',                       en: 'Close chat',                          pt: 'Fechar chat',                         fr: 'Fermer le chat' },
+  chat_send_a11y:             { es: 'Enviar mensaje',                    en: 'Send message',                        pt: 'Enviar mensagem',                     fr: 'Envoyer le message' },
   chat_initial_msg:           { es: 'Hola, soy tu Coach y tomo en cuenta tu historial, tus hábitos y tus preferencias. Pregunta lo que quieras.',
                                 en: 'Hi, I\'m your Coach. I take into account your history, habits and preferences. Ask me anything.',
                                 pt: 'Olá, sou seu Coach e levo em conta seu histórico, hábitos e preferências. Pergunte o que quiser.',

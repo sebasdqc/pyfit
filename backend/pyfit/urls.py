@@ -153,6 +153,9 @@ urlpatterns = [
     path('api/notificaciones/<int:pk>/leer/', user_views.notification_leer),
     path('api/notificaciones/preferencias/', user_views.notification_prefs_view),
 
+    # Reporte de contenido de IA (rutina/running/chat inapropiado o incorrecto)
+    path('api/reportar-contenido/', user_views.report_content),
+
     # Competitions
     path('api/competitions/', workout_views.competitions),
     path('api/competitions/<int:pk>/', workout_views.competition_detail),

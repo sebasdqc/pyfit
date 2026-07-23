@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
+import { readableTextOn } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiPost, apiGet } from '../../../lib/api'
 
@@ -306,7 +307,8 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
         <LinearGradient colors={[colors.gradientTop, 'transparent']} style={chatStyles.gradient} />
 
         <View style={[chatStyles.chatHeader, { paddingTop: insets.top + 12, borderBottomColor: colors.borderDefault }]}>
-          <TouchableOpacity onPress={onClose} style={chatStyles.closeBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={onClose} style={chatStyles.closeBtn} activeOpacity={0.7}
+            accessibilityRole="button" accessibilityLabel={t('chat_close_a11y')}>
             <CloseIcon color={colors.inkSecondary} />
           </TouchableOpacity>
           <View style={chatStyles.chatHeaderCenter}>
@@ -382,12 +384,14 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
               onPress={handleSend}
               activeOpacity={0.8}
               disabled={isTyping || !inputText.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={t('chat_send_a11y')}
               style={[
                 chatStyles.sendBtn,
                 { backgroundColor: (inputText.trim() && !isTyping) ? colors.accent : colors.cardBg, borderColor: colors.borderBright },
               ]}
             >
-              <SendIcon color={(inputText.trim() && !isTyping) ? '#fff' : colors.inkMuted} />
+              <SendIcon color={(inputText.trim() && !isTyping) ? readableTextOn(colors.accent) : colors.inkMuted} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

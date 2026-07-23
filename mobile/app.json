@@ -80,6 +80,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Zyfit necesita acceder a tus fotos para que elijas una imagen de perfil o de tu sesión de entrenamiento.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Zyfit necesita tu ubicación en segundo plano para continuar registrando tu carrera con la pantalla apagada.",

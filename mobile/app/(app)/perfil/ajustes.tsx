@@ -704,6 +704,13 @@ export default function AjustesScreen() {
           />
           <Divider />
           <Row
+            icon="🚩"
+            title="Reportar contenido de IA"
+            subtitle="Rutina, running o chat inapropiado"
+            onPress={() => router.push('/(app)/perfil/reportar-contenido' as any)}
+          />
+          <Divider />
+          <Row
             icon="🔒"
             title={t('perfil_row_privacy')}
             onPress={() => router.push('/(auth)/privacidad' as any)}

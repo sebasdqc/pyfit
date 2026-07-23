@@ -12,7 +12,7 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from workouts.models import Session
 from .models import (
-    CoachAssignedSession, CoachAthlete, CoachSubscription, ImpersonationLog,
+    CoachAssignedSession, CoachAthlete, CoachSubscription, ContentReport, ImpersonationLog,
     MenstrualCycle, Notification, NotificationPreference, Profile, User,
     UserInjury, UserLocation,
 )
@@ -228,7 +228,9 @@ class UserLocationAdmin(ModelAdmin):
 class UserInjuryAdmin(ModelAdmin):
     list_display   = ['user', 'zona', 'severidad_badge', 'activa', 'created_at']
     list_filter    = ['zona', 'severidad', 'activa']
-    search_fields  = ['user__email', 'descripcion']
+    # 'descripcion' está encriptado (EncryptedTextField) — un LIKE/icontains
+    # no puede buscar sobre el texto cifrado, así que se saca de search_fields.
+    search_fields  = ['user__email']
     readonly_fields = ['created_at']
 
     @admin.display(description='Severidad', ordering='severidad')
@@ -272,6 +274,25 @@ class MenstrualCycleAdmin(ModelAdmin):
     list_display   = ['user', 'fecha_inicio', 'duracion_ciclo']
     list_filter    = [('fecha_inicio', RangeDateFilter)]
     search_fields  = ['user__email']
+
+
+@admin.register(ContentReport)
+class ContentReportAdmin(ModelAdmin):
+    list_display   = ['user', 'mensaje_preview', 'resuelto', 'created_at']
+    list_filter    = ['resuelto', ('created_at', RangeDateFilter)]
+    search_fields  = ['user__email', 'mensaje']
+    readonly_fields = ['user', 'mensaje', 'created_at']
+    list_per_page  = 50
+    actions        = ['mark_as_resuelto']
+
+    @admin.display(description='Mensaje')
+    def mensaje_preview(self, obj):
+        return obj.mensaje[:80] + ('…' if len(obj.mensaje) > 80 else '')
+
+    @admin.action(description='✓ Marcar como resueltos')
+    def mark_as_resuelto(self, request, queryset):
+        n = queryset.update(resuelto=True)
+        messages.success(request, f'{n} reporte(s) marcado(s) como resuelto(s).')
 
 
 @admin.register(CoachSubscription)

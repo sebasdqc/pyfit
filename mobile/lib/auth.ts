@@ -1,7 +1,7 @@
 import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { apiPost } from './api'
-import { saveTokens, saveUser, clearTokens, clearUser, getUser, getRefreshToken, saveCoachSession } from './storage'
+import { saveTokens, saveUser, clearTokens, clearUser, getUser, getRefreshToken, saveCoachSession, clearCoachSession } from './storage'
 
 export async function login(email: string, password: string) {
   const data = await apiPost('/api/auth/login/', { email, password }, false)
@@ -202,9 +202,11 @@ export async function logout() {
   }
   await clearTokens()
   await clearUser()
-  // Limpiar cualquier estado de impersonación al cerrar sesión para que el
-  // próximo login (incluso si es otra cuenta) no arrastre datos previos.
+  // Limpiar cualquier estado de impersonación y de sesión de coach al cerrar
+  // sesión, para que el próximo login (incluso si es otra cuenta, en un
+  // dispositivo compartido) no arrastre datos previos de ningún rol.
   await SecureStore.deleteItemAsync('admin_impersonating').catch(() => {})
+  await clearCoachSession().catch(() => {})
 }
 
 export { getUser }

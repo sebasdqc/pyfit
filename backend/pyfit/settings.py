@@ -235,6 +235,7 @@ REST_FRAMEWORK = {
         'anon_session': '20/hour',     # evita creación masiva de AnonymousSession sin cuenta
         'simulador_compute': '30/minute',  # cost guard: listas grandes repetidas = riesgo de OOM
         'promo_validate': '20/hour',   # frena la enumeración de códigos de descuento
+        'content_report': '10/day',    # reportes de contenido de IA — uso esporádico, no un canal de chat
     },
 }
 

@@ -39,7 +39,7 @@ const RING_CIRC   = 2 * Math.PI * RING_R
 const RING_CX     = RING_SIZE / 2
 const RING_CY     = RING_SIZE / 2
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { COLORS, Colors, accentAlpha } from '../../../lib/colors'
+import { COLORS, Colors, accentAlpha, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, localDateStr } from '../../../lib/api'
@@ -684,8 +684,8 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo, i
         shadowColor: colors.accent, shadowOpacity: 0.55,
         shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 5,
       }}>
-        <Text style={{ color: colors.white, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
-        <Text style={{ color: colors.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
+        <Text style={{ color: readableTextOn(colors.accent), fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.3 }}>{dayLetter}</Text>
+        <Text style={{ color: readableTextOn(colors.accent), fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, lineHeight: 16 }}>{dayNumber}</Text>
       </View>
     )
   }
