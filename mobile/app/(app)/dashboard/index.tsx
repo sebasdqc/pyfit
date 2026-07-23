@@ -272,17 +272,6 @@ function getDayState(
   return 'past-skip'
 }
 
-function getDisciplineIcon(titulo?: string): string {
-  if (!titulo) return '🏋️'
-  const t = titulo.toLowerCase()
-  if (/corr|run|cardio|aerob/.test(t))           return '🏃'
-  if (/movil|flex|yoga|stretc|estira/.test(t))   return '🧘'
-  if (/natac|swim|piscin/.test(t))               return '🏊'
-  if (/cicl|bici|cycl/.test(t))                  return '🚴'
-  if (/funcional|hiit|circuito/.test(t))         return '⚡'
-  return '🏋️'
-}
-
 // ─── Sparkles Icon ────────────────────────────────────────────────────────────
 
 function SparklesIcon({ color, size = 18 }: { color: string; size?: number }) {
@@ -421,6 +410,22 @@ function DisciplineIcon({ titulo, color, size = 22 }: { titulo?: string; color: 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" {...common} />
+    </Svg>
+  )
+}
+
+// ─── Data icons (sueño / HRV) — SVG propio, no emoji ────────────────────────────
+function MoonIcon({ color, size = 13 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+function HeartIcon({ color, size = 13 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
 }
@@ -751,7 +756,6 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
   const titulo   = session.respuesta_ia?.titulo ?? 'Sesión'
   const duracion = session.respuesta_ia?.duracion_total ?? session.duracion_planificada ?? 0
   const rpe      = session.feedback?.rpe_real ?? session.respuesta_ia?.rpe_target ?? null
-  const icon     = getDisciplineIcon(titulo)
   const meta     = [
     duracion > 0 ? `${duracion} min` : null,
     rpe != null  ? `RPE ${rpe}`      : null,
@@ -770,7 +774,7 @@ function SessionRow({ session, colors }: { session: FullSession; colors: Colors 
         backgroundColor: accentAlpha(colors.accent, 0.12),
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <Text style={{ fontSize: 18, lineHeight: 22 }}>{icon}</Text>
+        <DisciplineIcon titulo={titulo} color={colors.accent} size={19} />
       </View>
 
       {/* Info */}
@@ -1127,14 +1131,15 @@ function ReadinessBar({ checkin, colors }: { checkin: CheckinHoy; colors: Colors
   const { label, color } = getReadinessLabel(checkin.calidad_sueno, checkin.estado_animo, checkin.hrv)
   const ANIMO_EMOJIS = ['', '😩', '😔', '😐', '😊', '🔥']
   return (
-    <View style={[readinessStyles.wrap, { backgroundColor: colors.cardBg, borderColor: colors.borderDefault }]}>
+    <View style={[readinessStyles.wrap, { backgroundColor: colors.glassBg, borderColor: colors.borderBright }]}>
+      <GlassLayer />
       <View style={[readinessStyles.dot, { backgroundColor: color }]} />
       <Text style={[readinessStyles.label, { color }]}>{label}</Text>
       <View style={[readinessStyles.sep, { backgroundColor: colors.borderBright }]} />
       <View style={readinessStyles.dataRow}>
         {checkin.calidad_sueno != null && (
           <View style={readinessStyles.dataItem}>
-            <Text style={readinessStyles.dataIcon}>🌙</Text>
+            <MoonIcon color={colors.inkSecondary} />
             <Text style={[readinessStyles.dataVal, { color: colors.inkSecondary }]}>{checkin.calidad_sueno.toFixed(1)}h</Text>
           </View>
         )}
@@ -1146,7 +1151,7 @@ function ReadinessBar({ checkin, colors }: { checkin: CheckinHoy; colors: Colors
         )}
         {checkin.hrv != null && (
           <View style={readinessStyles.dataItem}>
-            <Text style={readinessStyles.dataIcon}>💓</Text>
+            <HeartIcon color={colors.inkSecondary} />
             <Text style={[readinessStyles.dataVal, { color: colors.inkSecondary }]}>{checkin.hrv}ms</Text>
           </View>
         )}
@@ -1160,7 +1165,7 @@ const readinessStyles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 10,
-    marginBottom: 12, gap: 8,
+    marginBottom: 12, gap: 8, overflow: 'hidden',
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
   label: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase' },
