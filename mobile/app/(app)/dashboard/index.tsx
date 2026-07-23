@@ -1178,6 +1178,32 @@ const readinessStyles = StyleSheet.create({
 
 // ─── CTA Card ─────────────────────────────────────────────────────────────────
 
+// Selector de tipo de sesión (chips arriba del card). Solo cambia el look
+// (color + textos) del card — todavía NO redirige el flujo real de generación
+// a un tipo específico, eso queda para cuando se conecte con el backend.
+type TipoSesionKey = 'fuerza' | 'cardiovascular' | 'descanso'
+
+const TIPO_CHIPS: { key: TipoSesionKey; label: string; color: string }[] = [
+  { key: 'fuerza',         label: 'Fuerza',         color: '#4f8cff' },
+  { key: 'cardiovascular', label: 'Cardiovascular', color: '#ff8c42' },
+  { key: 'descanso',       label: 'Descanso',       color: '#32c896' },
+]
+
+const TIPO_COPY: Record<TipoSesionKey, { titulo: string; descripcion: string }> = {
+  fuerza: {
+    titulo: 'Sesión de Fuerza',
+    descripcion: 'Trabajo con cargas — series, repeticiones y técnica.',
+  },
+  cardiovascular: {
+    titulo: 'Sesión Cardiovascular',
+    descripcion: 'Trabajo aeróbico — running, bici o cardio a tu ritmo.',
+  },
+  descanso: {
+    titulo: 'Descanso',
+    descripcion: 'Recuperación activa — movilidad, estiramiento y descarga.',
+  },
+}
+
 function CTACard({
   cta,
   colors,
@@ -1191,24 +1217,29 @@ function CTACard({
 }) {
   const { isDark } = useTheme()
 
+  // Título simplificado a 3 tipos de sesión (heurística sobre el texto real
+  // del backend) — usado solo para preseleccionar el chip al montar.
+  const tipoSesionReal = useMemo(() => {
+    const hay = (s: string) =>
+      (cta.titulo + ' ' + cta.descripcion).toLowerCase().includes(s)
+    if (hay('running') || hay('correr') || hay('cardio') || hay('carrera')) return 'cardiovascular'
+    if (hay('movilidad') || hay('flexibilidad') || hay('stretching') || hay('recuper')) return 'descanso'
+    return 'fuerza'
+  }, [cta.titulo, cta.descripcion])
+
+  const [tipoSel, setTipoSel] = useState<TipoSesionKey>(tipoSesionReal)
+  const chipActivo = TIPO_CHIPS.find(c => c.key === tipoSel)!
+  const { titulo: tipoSesion, descripcion: descripcionTipo } = TIPO_COPY[tipoSel]
+
   const CARD_BORDER: Record<CTAData['estado'], string> = {
-    A: accentAlpha(colors.accent, 0.35),
+    A: accentAlpha(chipActivo.color, 0.35),
     B: colors.borderBright,
     C: 'rgba(255,170,50,0.35)',
-    D: accentAlpha(colors.accent, 0.35),
+    D: accentAlpha(chipActivo.color, 0.35),
     E: 'rgba(255,170,50,0.40)',
   }
 
   const isActive = cta.estado === 'A' || cta.estado === 'D' || cta.estado === 'E'
-
-  // Título simplificado a 3 tipos de sesión
-  const tipoSesion = useMemo(() => {
-    const hay = (s: string) =>
-      (cta.titulo + ' ' + cta.descripcion).toLowerCase().includes(s)
-    if (hay('running') || hay('correr') || hay('cardio') || hay('carrera')) return 'Sesión de Running'
-    if (hay('movilidad') || hay('flexibilidad') || hay('stretching') || hay('recuper')) return 'Sesión de Movilidad'
-    return 'Sesión de Fuerza'
-  }, [cta.titulo, cta.descripcion])
 
   function handlePress() {
     if (cta.estado === 'E' && cta.sesion_hoy_id != null) {
@@ -1244,38 +1275,64 @@ function CTACard({
   return (
     <View style={[styles.ctaCard, { backgroundColor: colors.glassBg, borderColor: CARD_BORDER[cta.estado] }]}>
       <GlassLayer />
-      {/* Wash de acento — da la identidad "card de entrenamiento" en cualquiera de
-          las 8 paletas (antes era un navy #0E1C42 fijo, azul incluso en Neon/Forest). */}
+      {/* Wash de color — sigue al chip de tipo de sesión seleccionado (antes era
+          siempre accentAlpha(colors.accent), fijo sin importar el tipo). */}
       <LinearGradient
-        colors={[accentAlpha(colors.accent, isActive ? 0.18 : 0.08), 'transparent']}
+        colors={[accentAlpha(chipActivo.color, isActive ? 0.18 : 0.08), 'transparent']}
         style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
       />
       {isDark && (
         <LinearGradient
-          colors={[accentAlpha(colors.accent, 0.10), 'transparent']}
+          colors={[accentAlpha(chipActivo.color, 0.10), 'transparent']}
           start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}
           style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
         />
       )}
 
+      {/* Chips de tipo de sesión — solo cambian look (color + textos) del card,
+          todavía no redirigen el flujo real (eso lo conectamos después). */}
+      <View style={styles.tipoChipsRow}>
+        {TIPO_CHIPS.map(chip => {
+          const active = chip.key === tipoSel
+          return (
+            <TouchableOpacity
+              key={chip.key}
+              onPress={() => setTipoSel(chip.key)}
+              activeOpacity={0.8}
+              style={[
+                styles.tipoChip,
+                {
+                  backgroundColor: active ? accentAlpha(chip.color, 0.16) : 'transparent',
+                  borderColor: active ? accentAlpha(chip.color, 0.55) : colors.borderDefault,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.tipoChipText, { color: active ? chip.color : colors.inkMuted }]}>
+                {chip.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
       {/* Tipo de sesión — una sola línea */}
       <Text style={styles.ctaTitle} numberOfLines={1}>{tipoSesion}</Text>
 
-      {/* Descripción del backend: carga sugerida, días desde la última, cumplimiento… */}
-      {!!cta.descripcion && (
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Regular',
-            fontSize: 12.5,
-            color: colors.inkSecondary,
-            lineHeight: 17,
-            marginTop: 6,
-          }}
-          numberOfLines={2}
-        >
-          {cta.descripcion}
-        </Text>
-      )}
+      {/* Descripción orientada al tipo de sesión seleccionado */}
+      <Text
+        style={{
+          fontFamily: 'SpaceGrotesk-Regular',
+          fontSize: 12.5,
+          color: colors.inkSecondary,
+          lineHeight: 17,
+          marginTop: 6,
+        }}
+        numberOfLines={2}
+      >
+        {descripcionTipo}
+      </Text>
 
       {/* Botón principal — siempre sólido con letras blancas */}
       <TouchableOpacity
@@ -1789,18 +1846,6 @@ export default function DashboardScreen() {
           <ReadinessBar checkin={checkinHoy} colors={colors} />
         )}
 
-        {/* ── ZONA 2 — Card CTA principal ── */}
-        {loading ? (
-          <View style={styles.ctaCardSkeleton}>
-            <Skeleton width={100} height={22} borderRadius={11} />
-            <Skeleton width="70%" height={26} borderRadius={6} style={{ marginTop: 14 }} />
-            <Skeleton width="90%" height={14} borderRadius={4} style={{ marginTop: 8 }} />
-            <Skeleton width="100%" height={52} borderRadius={14} style={{ marginTop: 20 }} />
-          </View>
-        ) : !!data?.cta && (
-          <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
-        )}
-
         {/* ── Zyfit Score ── */}
         {loading ? (
           <View style={[styles.zsCard, { opacity: 0.5 }]}>
@@ -1812,6 +1857,18 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <ZyfitScoreCard scoreData={data?.zyfit_score} colors={colors} styles={styles} />
+        )}
+
+        {/* ── ZONA 2 — Card CTA principal ── */}
+        {loading ? (
+          <View style={styles.ctaCardSkeleton}>
+            <Skeleton width={100} height={22} borderRadius={11} />
+            <Skeleton width="70%" height={26} borderRadius={6} style={{ marginTop: 14 }} />
+            <Skeleton width="90%" height={14} borderRadius={4} style={{ marginTop: 8 }} />
+            <Skeleton width="100%" height={52} borderRadius={14} style={{ marginTop: 20 }} />
+          </View>
+        ) : !!data?.cta && (
+          <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
         )}
 
         {/* ── Última sesión completada con feedback ── */}
@@ -1995,6 +2052,22 @@ function makeStyles(c: Colors) {
       padding: 20,
       marginBottom: 20,
       overflow: 'hidden',
+    },
+    tipoChipsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 14,
+    },
+    tipoChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    tipoChipText: {
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 10,
+      letterSpacing: 0.6,
     },
     ctaPill: {
       flexDirection: 'row',

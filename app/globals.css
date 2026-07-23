@@ -1,0 +1,78 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap");
+@import "tailwindcss";
+
+:root {
+  --bg: #0d0d0d;
+  --card: #000000;
+  --accent: #4f8cff;
+  --accent-light: #7ab6ff;
+  --accent-dark: #2563ff;
+  --cyan: #6ce5ff;
+  --green: #32c896;
+  --orange: #ffaa32;
+  --ink: #e8efff;
+  --ink-dim: #9aa7c7;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono-label {
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+}
+
+.font-serif-accent {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glow-top::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140%;
+  height: 600px;
+  background: radial-gradient(ellipse at center, rgba(79, 140, 255, 0.22) 0%, rgba(79, 140, 255, 0) 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}

@@ -1,12 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Tabs, router } from 'expo-router'
 import { StackActions } from '@react-navigation/native'
-import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, Animated } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Notifications from 'expo-notifications'
 import { useTheme } from '../../lib/theme'
 import { useTranslation } from '../../lib/i18n'
-import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
+import Svg, { Path, Circle, Rect, Defs, RadialGradient, Stop } from 'react-native-svg'
 import { registerForPushNotifications } from '../../lib/pushNotifications'
 
 // Adónde navegar al tocar cada tipo de push (ver `data.tipo` en users.push/
@@ -63,7 +63,9 @@ function IconProfile({ color }: { color: string }) {
   )
 }
 
-// Play triángulo relleno para el botón central ENTRENAR
+// Play triángulo relleno (histórico — reemplazado en el botón ENTRENAR por
+// TrainButtonIcon, que alterna PESA/RUNNING). Se deja por si otra pantalla
+// necesita un ícono de play a futuro.
 function IconPlay({ color, size = 26 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginLeft: 2 }}>
@@ -72,6 +74,89 @@ function IconPlay({ color, size = 26 }: { color: string; size?: number }) {
         fill={color}
       />
     </Svg>
+  )
+}
+
+// Mancuerna (fuerza) para el botón central ENTRENAR
+function IconWeight({ color, size = 26 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={1.5} y={9} width={2.5} height={6} rx={1} fill={color} />
+      <Rect x={4.5} y={7} width={2.5} height={10} rx={1} fill={color} />
+      <Rect x={17} y={7} width={2.5} height={10} rx={1} fill={color} />
+      <Rect x={20} y={9} width={2.5} height={6} rx={1} fill={color} />
+      <Rect x={7} y={11} width={10} height={2} rx={1} fill={color} />
+    </Svg>
+  )
+}
+
+// Corredor (running) para el botón central ENTRENAR
+function IconRunning({ color, size = 26 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={15} cy={5} r={2} fill={color} />
+      <Path
+        d="M15 8L11 13L7 12M11 13L15 17L13 21"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M13 9L17 7M13 9L10 11"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+// Ícono animado del botón ENTRENAR: alterna PESA ⇄ RUNNING cada 5s con una
+// transición estilo glitch (parpadeo + jitter + fantasmas cian/magenta, tipo
+// interferencia VHS) en vez de un simple fade — el swap real de ícono ocurre
+// a mitad del glitch, cuando el ruido tapa el cambio.
+function TrainButtonIcon({ size = 26 }: { size?: number }) {
+  const [mode, setMode] = useState<'weight' | 'running'>('weight')
+  const glitch = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const runGlitch = () => {
+      glitch.setValue(0)
+      Animated.sequence([
+        Animated.timing(glitch, { toValue: 1, duration: 90, useNativeDriver: true }),
+        Animated.timing(glitch, { toValue: 0.15, duration: 60, useNativeDriver: true }),
+        Animated.timing(glitch, { toValue: 0.85, duration: 60, useNativeDriver: true }),
+        Animated.timing(glitch, { toValue: 0, duration: 130, useNativeDriver: true }),
+      ]).start()
+      setTimeout(() => {
+        setMode(m => (m === 'weight' ? 'running' : 'weight'))
+      }, 90)
+    }
+    const id = setInterval(runGlitch, 5000)
+    return () => clearInterval(id)
+  }, [])
+
+  const jitterR = glitch.interpolate({ inputRange: [0, 1], outputRange: [0, 3] })
+  const jitterL = glitch.interpolate({ inputRange: [0, 1], outputRange: [0, -3] })
+  const ghostOpacity = glitch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.85] })
+  const mainOpacity = glitch.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] })
+
+  const Icon = mode === 'weight' ? IconWeight : IconRunning
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{ position: 'absolute', opacity: ghostOpacity, transform: [{ translateX: jitterL }] }}>
+        <Icon color="#5ef1ff" size={size} />
+      </Animated.View>
+      <Animated.View style={{ position: 'absolute', opacity: ghostOpacity, transform: [{ translateX: jitterR }] }}>
+        <Icon color="#ff4fd8" size={size} />
+      </Animated.View>
+      <Animated.View style={{ opacity: mainOpacity, transform: [{ translateX: jitterR }] }}>
+        <Icon color="#ffffff" size={size} />
+      </Animated.View>
+    </View>
   )
 }
 
@@ -171,7 +256,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                   activeOpacity={0.85}
                   accessibilityLabel={t('nav_train')}
                 >
-                  <IconPlay color="#ffffff" size={26} />
+                  <TrainButtonIcon size={26} />
                 </TouchableOpacity>
               </View>
             </View>
