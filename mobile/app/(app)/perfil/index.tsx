@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable, Animated, Easing } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Animated, Easing } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -272,7 +272,7 @@ function EventosProximosSection({
 
   return (
     <View style={styles.eventosWrap}>
-      <Text style={styles.sectionLabel}>EVENTOS PRÓXIMOS</Text>
+      <Text style={[styles.sectionLabel, styles.eventosLabel]}>EVENTOS PRÓXIMOS</Text>
       {loading ? (
         <View style={{ gap: 10 }}>
           <Skeleton width="100%" height={64} borderRadius={16} />
@@ -518,7 +518,6 @@ export default function PerfilScreen() {
   const [statsLoading, setStatsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState(false)
-  const [adnModalOpen, setAdnModalOpen] = useState(false)
   const [eventos, setEventos] = useState<Competencia[]>([])
   const [eventosLoading, setEventosLoading] = useState(true)
 
@@ -585,7 +584,6 @@ export default function PerfilScreen() {
   const initials = getInitials(profile.nombre || 'U')
   const pLabel = planLabel(profile.plan)
   const pColor = planColor(profile.plan)
-  const adn = profileStats?.adn_entrenamiento
   const semanas = profileStats?.semanas_activas ?? 0
 
   return (
@@ -654,41 +652,6 @@ export default function PerfilScreen() {
           lang={lang}
         />
 
-        {/* ── ADN — compact card → abre modal ── */}
-        {statsLoading ? (
-          <View style={[styles.adnWrap, { opacity: 0.4 }]}>
-            <Skeleton width={52} height={9} borderRadius={3} style={{ marginBottom: 10 }} />
-            <View style={styles.adnCompactCard}>
-              <View style={styles.adnBar} />
-              <View style={styles.adnCompactBody}>
-                <Skeleton width={130} height={10} borderRadius={4} style={{ marginBottom: 8 }} />
-                <Skeleton width="90%" height={10} borderRadius={4} />
-              </View>
-              <Skeleton width={16} height={16} borderRadius={4} style={{ marginRight: 18, alignSelf: 'center' }} />
-            </View>
-          </View>
-        ) : !!adn && (
-          <View style={styles.adnWrap}>
-            <SectionLabelRow
-              label={t('perfil_dna_label')}
-              info="Tu ADN de entrenamiento es un análisis personalizado generado por IA que describe tu estilo y patrones de entrenamiento basado en tu historial."
-              styles={styles}
-            />
-            <TouchableOpacity onPress={() => setAdnModalOpen(true)} activeOpacity={0.75}>
-              <View style={styles.adnCompactCard}>
-                <View style={styles.adnBar} />
-                <View style={styles.adnCompactBody}>
-                  <View style={styles.adnTag}>
-                    <Text style={styles.adnTagText}>{t('perfil_dna_tag')}</Text>
-                  </View>
-                  <Text style={styles.adnPreview} numberOfLines={1}>{adn}</Text>
-                </View>
-                <Text style={styles.adnArrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* ── DISTRIBUCIÓN ── */}
         <DistribucionChart
           data={profileStats?.distribucion_tipo}
@@ -728,37 +691,6 @@ export default function PerfilScreen() {
           <GearIcon color={colors.inkSecondary} />
         </TouchableOpacity>
       </View>
-
-      {/* ── Modal ADN ── */}
-      <Modal
-        visible={adnModalOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAdnModalOpen(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setAdnModalOpen(false)}>
-          <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{t('perfil_dna_label')}</Text>
-            <View style={styles.modalDivider} />
-            <View style={styles.modalTagRow}>
-              <View style={styles.adnTag}>
-                <Text style={styles.adnTagText}>{t('perfil_dna_tag')}</Text>
-              </View>
-            </View>
-            <Text style={styles.modalText}>{adn}</Text>
-            <TouchableOpacity
-              onPress={() => setAdnModalOpen(false)}
-              style={styles.modalCloseBtn}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.modalCloseTxt}>
-                {lang === 'es' ? 'Cerrar' : lang === 'pt' ? 'Fechar' : 'Close'}
-              </Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   )
 }
@@ -887,25 +819,6 @@ function makeStyles(c: Colors) {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.3,
     },
 
-    // ── ADN compact ──
-    adnWrap: { marginBottom: 24 },
-    adnCompactCard: {
-      flexDirection: 'row', alignItems: 'center',
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 18, overflow: 'hidden',
-    },
-    adnBar: { width: 3, alignSelf: 'stretch', backgroundColor: c.accent },
-    adnCompactBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 16, gap: 6 },
-    adnTag: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 8, paddingVertical: 3,
-      borderRadius: 6, backgroundColor: c.cardBg,
-      borderWidth: 1, borderColor: c.borderBright,
-    },
-    adnTagText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
-    adnPreview: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkSecondary, lineHeight: 19, letterSpacing: -0.1 },
-    adnArrow: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: c.inkMuted, paddingHorizontal: 16 },
-
     // ── Distribución ──
     distWrap: { marginBottom: 28 },
     distCard: {
@@ -951,6 +864,7 @@ function makeStyles(c: Colors) {
 
     // ── Eventos ──
     eventosWrap: { marginBottom: 28 },
+    eventosLabel: { marginBottom: 12 },
     eventoCard: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
@@ -979,40 +893,6 @@ function makeStyles(c: Colors) {
     },
     eventoBadgeTxt: {
       fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1,
-    },
-
-    // ── Modal ADN ──
-    modalBackdrop: {
-      flex: 1, backgroundColor: 'rgba(0,0,0,0.72)',
-      justifyContent: 'flex-end',
-    },
-    modalSheet: {
-      backgroundColor: '#0d1117',
-      borderTopLeftRadius: 28, borderTopRightRadius: 28,
-      paddingHorizontal: 24, paddingBottom: 36, paddingTop: 16,
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-    },
-    modalHandle: {
-      width: 40, height: 4, borderRadius: 2,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      alignSelf: 'center', marginBottom: 20,
-    },
-    modalTitle: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: c.inkPrimary,
-      letterSpacing: -0.6, marginBottom: 16,
-    },
-    modalDivider: { height: 1, backgroundColor: c.borderDefault, marginBottom: 16 },
-    modalTagRow: { marginBottom: 14 },
-    modalText: {
-      fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary,
-      lineHeight: 24, letterSpacing: -0.1, marginBottom: 28,
-    },
-    modalCloseBtn: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderBright,
-      borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-    },
-    modalCloseTxt: {
-      fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, color: c.inkPrimary, letterSpacing: -0.2,
     },
   })
 }
