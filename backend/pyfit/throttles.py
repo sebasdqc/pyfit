@@ -97,6 +97,25 @@ class CoachVincularRateThrottle(UserRateThrottle):
     scope = 'coach_vincular'
 
 
+class ChangePasswordRateThrottle(UserRateThrottle):
+    """10 intentos por hora por usuario — evita que alguien con un JWT robado
+    (o el propio dueño equivocándose) fuerce combinaciones de la contraseña
+    actual sin límite."""
+    scope = 'change_password'
+
+
+class ChangeEmailRateThrottle(UserRateThrottle):
+    """5 solicitudes por hora por usuario — evita flooding de emails al
+    disparar códigos de verificación a direcciones nuevas repetidamente."""
+    scope = 'change_email'
+
+
+class ConfirmEmailChangeRateThrottle(UserRateThrottle):
+    """10 intentos por hora por usuario — brute-force guard del PIN de 6
+    dígitos, mismo criterio que ConfirmResetRateThrottle/VerifyEmailRateThrottle."""
+    scope = 'confirm_email_change'
+
+
 class RefreshRateThrottle(AnonRateThrottle):
     """20 refreshes por minuto por IP — impide el volcado masivo de tokens de acceso
     desde un refresh token robado antes de que se detecte el compromiso."""

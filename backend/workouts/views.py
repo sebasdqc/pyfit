@@ -232,7 +232,7 @@ def session_feedback(request, pk):
     racha_hito = None
     try:
         with transaction.atomic():
-            racha_hito = _actualizar_racha(request.user)
+            racha_hito = _actualizar_racha(request.user, hoy=_hoy)
             _check_logros(request.user)
             _actualizar_adaptation_profile(request.user, session, feedback)
             _evaluate_and_advance(request.user, session, feedback)
@@ -393,26 +393,47 @@ Reglas:
         return Response({'decisiones': [], 'evidencia': None})
 
 
+def _dias_con_actividad(user, fecha_min, fecha_max):
+    """Días con una Session con feedback O una carrera completada en el rango.
+
+    Running no tiene un paso de feedback separado como el entrenamiento de
+    fuerza (ver [[project_dia_entrenado_feedback]]) — `RunSession.status ==
+    'completed'` es la señal equivalente de "entrené", la misma que ya usa
+    `distribucion_tipo` para sumar cardio. Decisión de producto 2026-07-24:
+    los runs cuentan igual que una sesión de fuerza con feedback para racha
+    y puntos semanales.
+    """
+    dias = set(
+        Session.objects.filter(
+            user=user, fecha__gte=fecha_min, fecha__lte=fecha_max,
+            feedback__isnull=False,
+        ).values_list('fecha', flat=True)
+    )
+    try:
+        from runs.models import RunSession
+        run_starts = RunSession.objects.filter(
+            user=user, status='completed',
+            started_at__date__gte=fecha_min, started_at__date__lte=fecha_max,
+        ).values_list('started_at', flat=True)
+        dias |= {dt.date() for dt in run_starts}
+    except Exception:
+        pass
+    return dias
+
+
 def _calcular_racha_realtime(user, hoy=None):
     """
     Calcula la racha de días consecutivos en tiempo real (sin leer del perfil).
-    Un día cuenta como entrenado SOLO si tiene una sesión con feedback: la sesión
-    se crea al generar, así que "tener sesión" no implica haber entrenado; el
-    feedback es la señal de "entrené". Si hoy no cuenta, retrocede un día.
+    Un día cuenta como entrenado si tiene una sesión de fuerza con feedback O
+    una carrera completada (ver _dias_con_actividad). La Session se crea al
+    generar, así que "tener sesión" no implica haber entrenado; el feedback
+    es la señal de "entrené" para fuerza. Si hoy no cuenta, retrocede un día.
     Retorna el entero de días consecutivos.
     """
     if hoy is None:
         hoy = date.today()
-    # Días con una sesión COMPLETADA (con feedback) en los últimos 365 días
     fecha_min = hoy - timedelta(days=365)
-    dates_with_session = set(
-        Session.objects.filter(
-            user=user,
-            fecha__gte=fecha_min,
-            fecha__lte=hoy,
-            feedback__isnull=False,
-        ).values_list('fecha', flat=True)
-    )
+    dates_with_session = _dias_con_actividad(user, fecha_min, hoy)
     if not dates_with_session:
         return 0
     # Start from today; if today has no session, start from yesterday
@@ -440,17 +461,10 @@ def _calcular_racha_contexto(user, hoy=None):
         hoy = date.today()
 
     # Single bulk query shared by all derived metrics — avoids 3 extra queries.
-    # Un día entrenado = sesión con feedback (no basta con haberla generado).
+    # Un día entrenado = sesión con feedback o carrera completada (_dias_con_actividad).
     fecha_min = hoy - timedelta(days=365)
     lunes = hoy - timedelta(days=hoy.weekday())
-    dates_with_session = set(
-        Session.objects.filter(
-            user=user,
-            fecha__gte=fecha_min,
-            fecha__lte=hoy,
-            feedback__isnull=False,
-        ).values_list('fecha', flat=True)
-    )
+    dates_with_session = _dias_con_actividad(user, fecha_min, hoy)
 
     # Racha (derived from set — no extra query)
     dia = hoy if hoy in dates_with_session else hoy - timedelta(days=1)
@@ -520,11 +534,14 @@ _RACHA_HITOS = {
 }
 
 
-def _actualizar_racha(user):
+def _actualizar_racha(user, hoy=None):
     """
     Persiste la racha en profile.racha_actual para gamificación y logros.
     Se llama solo después de guardar un feedback.
     El dashboard NO debe leer de aquí — usa _calcular_racha_contexto() en tiempo real.
+
+    `hoy` debe ser la fecha LOCAL del dispositivo (_get_local_date), no UTC —
+    si no se pasa, cae a date.today() del servidor.
 
     Devuelve el hito de racha (3/7/14/30) si se acaba de cruzar en esta llamada
     (solo al crecer, no al recuperar), o None si no hay hito nuevo. Lo consume
@@ -536,7 +553,7 @@ def _actualizar_racha(user):
         return None
 
     racha_anterior = profile.racha_actual
-    racha = _calcular_racha_realtime(user)
+    racha = _calcular_racha_realtime(user, hoy)
     profile.racha_actual = racha
     if racha > profile.mejor_racha:
         profile.mejor_racha = racha
@@ -1798,106 +1815,23 @@ Reglas:
         return None
 
 
-def _contar_datos_medidos(user, desde):
-    """Suma TODOS los puntos de dato medidos del usuario en los últimos 30 días.
-
-    Cuenta cada valor no nulo que la app captura sobre el usuario: estados de
-    check-in (ánimo, sueño, HRV, foco, dolor, duración), parámetros planificados
-    de cada sesión y ejercicio, cada serie registrada en ejecución, el feedback
-    post-sesión, las métricas de carrera, cada punto GPS y los syncs de wearables.
-
-    El objetivo es mostrarle al usuario cuánto lo conocemos. Es puramente
-    informativo: cada bloque está aislado en try/except para no romper el
-    endpoint si una fuente de datos falla o no existe todavía.
-    """
-    total = 0
-
-    # 1) Check-ins diarios — cada campo medido no nulo
-    try:
-        from checkins.models import DailyCheckin
-        for c in DailyCheckin.objects.filter(user=user, fecha__gte=desde).iterator():
-            for v in (c.estado_animo, c.calidad_sueno, c.hrv, c.duracion_disponible, c.estado_fisico):
-                if v is not None:
-                    total += 1
-            if c.foco_entrenamiento:
-                total += len(c.foco_entrenamiento)
-            if c.dolor_hoy:
-                total += 1
-    except Exception:
-        pass
-
-    # 2) Sesiones + ejercicios + series registradas en ejecución
-    try:
-        sesiones = user.sessions.filter(fecha__gte=desde).prefetch_related('exercises')
-        for s in sesiones:
-            total += 2  # duracion_planificada + rpe_target (siempre presentes)
-            for ex in s.exercises.all():
-                for v in (ex.series, ex.repeticiones, ex.descanso_segundos, ex.rpe_sugerido):
-                    if v is not None and v != '':
-                        total += 1
-                if ex.series_log:
-                    for serie in ex.series_log:
-                        if isinstance(serie, dict):
-                            total += sum(1 for val in serie.values() if val not in (None, ''))
-                        else:
-                            total += 1
-    except Exception:
-        pass
-
-    # 3) Feedback post-sesión
-    try:
-        for fb in SessionFeedback.objects.filter(
-            session__user=user, created_at__date__gte=desde
-        ).iterator():
-            for v in (fb.rpe_real, fb.cumplimiento, fb.rating):
-                if v is not None:
-                    total += 1
-            if fb.molestias:
-                total += len(fb.molestias)
-    except Exception:
-        pass
-
-    # 4) Carreras (RunSession) + cada punto GPS
-    try:
-        from runs.models import RunSession, RunPoint
-        for r in RunSession.objects.filter(user=user, started_at__date__gte=desde).iterator():
-            total += 6  # distancia, duración, pace medio, mejor pace, calorías, desnivel
-            if r.avg_heart_rate is not None:
-                total += 1
-        total += RunPoint.objects.filter(
-            session__user=user, session__started_at__date__gte=desde
-        ).count()
-    except Exception:
-        pass
-
-    # 5) Wearables conectados (DeviceIntegration) — métricas sincronizadas
-    try:
-        from devices.models import DeviceIntegration
-        for d in DeviceIntegration.objects.filter(user=user, updated_at__date__gte=desde).iterator():
-            for v in (d.hrv, d.sleep_score, d.resting_hr, d.stress_level, d.body_battery):
-                if v is not None:
-                    total += 1
-    except Exception:
-        pass
-
-    return total
-
-
 def _racha_puntos_contexto(user, hoy=None):
     """Contexto para la card de RACHA del perfil (reemplaza DATOS MEDIDOS).
 
     Sistema de puntos v1 — semanal, se reinicia cada lunes:
       · Sesión completada con feedback ...... +100
       · Cumplimiento >= 80% en esa sesión ... +25  (bonus de calidad)
+      · Carrera completada (running) ........ +100 (mismo valor que una sesión)
       · Check-in diario ..................... +20
 
     Meta semanal = días objetivo (profile.dias_semana) * 100, mín 100. Entrenar
     tus días objetivo te lleva al 100%; los check-ins y el buen cumplimiento te
     dejan superarlo.
 
-    Un "día entrenado" = Session con feedback: MISMA definición que la racha
-    (el fuego) en _calcular_racha_realtime — ver project_dia_entrenado_feedback.
-    El fuego y los checks Lun–Dom cuentan lo mismo, para que la card sea coherente.
+    Un "día entrenado" = Session con feedback O carrera completada: MISMA
+    definición que la racha (el fuego) en _calcular_racha_realtime — ver
+    _dias_con_actividad / project_dia_entrenado_feedback. El fuego y los
+    checks Lun–Dom cuentan lo mismo, para que la card sea coherente.
     """
     if hoy is None:
         hoy = date.today()
@@ -1906,7 +1840,15 @@ def _racha_puntos_contexto(user, hoy=None):
     # Racha (fuego) — definición canónica compartida con el dashboard
     racha = _calcular_racha_realtime(user, hoy)
     try:
-        mejor_racha = max(user.profile.mejor_racha or 0, racha)
+        profile = user.profile
+        mejor_racha = max(profile.mejor_racha or 0, racha)
+        # La racha de running puede superar el mejor_racha persistido sin pasar
+        # por _actualizar_racha (que solo corre al guardar feedback de fuerza) —
+        # persistir acá evita que /api/profile/, el chat de IA y el admin
+        # muestren un mejor_racha desactualizado frente a esta card.
+        if mejor_racha > (profile.mejor_racha or 0):
+            profile.mejor_racha = mejor_racha
+            profile.save(update_fields=['mejor_racha'])
     except Exception:
         mejor_racha = racha
 
@@ -1923,6 +1865,22 @@ def _racha_puntos_contexto(user, hoy=None):
         cumpl = getattr(s.feedback, 'cumplimiento', None)
         if cumpl is not None and cumpl >= 80:
             puntos += 25
+
+    # Carreras completadas esta semana — mismo puntaje que una sesión de fuerza
+    # (+100 c/u); running no tiene paso de feedback separado, así que no hay
+    # bonus de cumplimiento equivalente. Ver _dias_con_actividad.
+    try:
+        from runs.models import RunSession
+        run_starts_semana = list(
+            RunSession.objects.filter(
+                user=user, status='completed',
+                started_at__date__gte=lunes, started_at__date__lte=hoy,
+            ).values_list('started_at', flat=True)
+        )
+        puntos += len(run_starts_semana) * 100
+        dias_entrenados |= {dt.date() for dt in run_starts_semana}
+    except Exception:
+        pass
 
     # Check-ins de esta semana
     try:
@@ -1962,46 +1920,37 @@ def _racha_puntos_contexto(user, hoy=None):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_profile(request):
-    from datetime import date, timedelta
-    hoy = date.today()
-    hace_30 = hoy - timedelta(days=30)
+    hoy = _get_local_date(request)
 
     # Semanas activas desde date_joined
     date_joined = request.user.date_joined.date()
     semanas_activas = (hoy - date_joined).days // 7
 
-    # Consistencia últimos 30 días
-    sesiones_30 = request.user.sessions.filter(fecha__gte=hace_30).count()
-    try:
-        dias_objetivo = request.user.profile.dias_semana or 3
-    except Exception:
-        dias_objetivo = 3
-    planificadas_30 = max(1, round(30 / 7 * dias_objetivo))
-    consistencia_30d = min(100, int(sesiones_30 / planificadas_30 * 100))
-
-    # Sesiones este mes
+    # Sesiones este mes (usado por Ajustes al armar el link de gestión de plan)
     sesiones_mes = request.user.sessions.filter(
         fecha__year=hoy.year, fecha__month=hoy.month
     ).count()
 
-    adn_entrenamiento = _generar_adn_entrenamiento(request.user)
-
-    # Total de datos medidos en los últimos 30 días (para la card "DATOS MEDIDOS")
-    datos_medidos_30d = _contar_datos_medidos(request.user, hace_30)
-
-    # Distribución por tipo: fuerza/cardio/movilidad — solo sesiones con feedback (completadas)
-    fuerza_count = request.user.sessions.filter(
-        feedback__isnull=False,
-        checkin__foco_entrenamiento__contains=['serio'],
-    ).count()
-    cardio_count = request.user.sessions.filter(
-        feedback__isnull=False,
-        checkin__foco_entrenamiento__contains=['descargar'],
-    ).count()
-    movilidad_count = request.user.sessions.filter(
-        feedback__isnull=False,
-        checkin__foco_entrenamiento__contains=['moverme'],
-    ).count()
+    # Distribución por tipo + top grupos musculares — todas sesiones con feedback
+    # (completadas), un solo aggregate con Count condicional en vez de 7 COUNT
+    # separados (uno por tipo/grupo).
+    _GRUPO_LABELS = {
+        'empujes':      'Pecho · Hombro · Tríceps',
+        'tracciones':   'Espalda · Bíceps',
+        'piernas_quad': 'Piernas · Cuádriceps',
+        'piernas_glut': 'Piernas · Glúteos',
+    }
+    _TOKENS = {
+        'fuerza': 'serio', 'cardio': 'descargar', 'movilidad': 'moverme',
+        **{k: k for k in _GRUPO_LABELS},
+    }
+    counts = request.user.sessions.filter(feedback__isnull=False).aggregate(**{
+        key: Count('id', filter=Q(checkin__foco_entrenamiento__contains=[token]))
+        for key, token in _TOKENS.items()
+    })
+    fuerza_count = counts['fuerza']
+    cardio_count = counts['cardio']
+    movilidad_count = counts['movilidad']
     try:
         from runs.models import RunSession
         cardio_count += RunSession.objects.filter(
@@ -2010,21 +1959,10 @@ def stats_profile(request):
     except Exception:
         pass
 
-    # Top grupos musculares — sesiones con feedback, conteo por token en foco_entrenamiento
-    _GRUPO_LABELS = {
-        'empujes':      'Pecho · Hombro · Tríceps',
-        'tracciones':   'Espalda · Bíceps',
-        'piernas_quad': 'Piernas · Cuádriceps',
-        'piernas_glut': 'Piernas · Glúteos',
-    }
-    top_grupos = []
-    for token, label in _GRUPO_LABELS.items():
-        cnt = request.user.sessions.filter(
-            feedback__isnull=False,
-            checkin__foco_entrenamiento__contains=[token],
-        ).count()
-        if cnt > 0:
-            top_grupos.append({'key': token, 'label': label, 'count': cnt})
+    top_grupos = [
+        {'key': token, 'label': label, 'count': counts[token]}
+        for token, label in _GRUPO_LABELS.items() if counts[token] > 0
+    ]
     top_grupos.sort(key=lambda x: -x['count'])
 
     # Racha + puntos semanales (card que reemplaza DATOS MEDIDOS)
@@ -2032,10 +1970,7 @@ def stats_profile(request):
 
     return Response({
         'semanas_activas': semanas_activas,
-        'consistencia_30d': consistencia_30d,
         'sesiones_mes': sesiones_mes,
-        'datos_medidos_30d': datos_medidos_30d,
-        'adn_entrenamiento': adn_entrenamiento,
         **racha_puntos,
         'distribucion_tipo': {
             'fuerza': fuerza_count,

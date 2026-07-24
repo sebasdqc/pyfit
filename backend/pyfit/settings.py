@@ -236,6 +236,9 @@ REST_FRAMEWORK = {
         'simulador_compute': '30/minute',  # cost guard: listas grandes repetidas = riesgo de OOM
         'promo_validate': '20/hour',   # frena la enumeración de códigos de descuento
         'content_report': '10/day',    # reportes de contenido de IA — uso esporádico, no un canal de chat
+        'change_password': '10/hour',  # frena brute-force de la contraseña actual con un JWT robado
+        'change_email': '5/hour',      # evita flooding de emails de verificación a direcciones nuevas
+        'confirm_email_change': '10/hour',  # brute-force guard: 6-digit PIN has 1M combos
     },
 }
 

@@ -17,8 +17,9 @@ from rest_framework_simplejwt.exceptions import TokenError
 from pyfit.throttles import (
     LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle, ConfirmResetRateThrottle,
     VerifyEmailRateThrottle, ResendVerificationRateThrottle, ContentReportRateThrottle,
+    ChangePasswordRateThrottle, ChangeEmailRateThrottle, ConfirmEmailChangeRateThrottle,
 )
-from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, EmailVerificationCode, Notification, NotificationPreference, ContentReport
+from .models import Profile, UserLocation, UserInjury, MenstrualCycle, PasswordResetCode, EmailVerificationCode, EmailChangeCode, Notification, NotificationPreference, ContentReport
 from .serializers import RegisterSerializer, ProfileSerializer, UserLocationSerializer, UserInjurySerializer
 
 User = get_user_model()
@@ -122,6 +123,107 @@ def verify_email(request):
     request.user.save(update_fields=['email_verificado'])
     verification.delete()
     return Response({'detail': 'Email verificado correctamente'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ChangePasswordRateThrottle])
+def change_password(request):
+    """Cambio de contraseña desde Ajustes > Seguridad, con la sesión ya
+    autenticada. Exige la contraseña ACTUAL (no solo el JWT) para que un
+    token robado no baste para tomar la cuenta cambiando la contraseña."""
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    current_password = request.data.get('current_password', '')
+    new_password = request.data.get('new_password', '')
+    if not current_password or not new_password:
+        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    if not request.user.check_password(current_password):
+        return Response({'error': 'La contraseña actual es incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        validate_password(new_password, user=request.user)
+    except DjangoValidationError as exc:
+        return Response({'error': list(exc.messages)[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.set_password(new_password)
+    request.user.save(update_fields=['password'])
+    return Response({'detail': 'Contraseña actualizada correctamente'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ChangeEmailRateThrottle])
+def change_email(request):
+    """Paso 1 del cambio de email: valida contraseña + email nuevo, y envía un
+    código de 6 dígitos al email NUEVO (no al actual) — el cambio recién se
+    aplica en confirm_email_change tras probar acceso a esa casilla."""
+    from django.core.validators import validate_email as django_validate_email
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    new_email = request.data.get('new_email', '').lower().strip()
+    password = request.data.get('password', '')
+    if not new_email or not password:
+        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+    if not request.user.check_password(password):
+        return Response({'error': 'Tu contraseña es incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        django_validate_email(new_email)
+    except DjangoValidationError:
+        return Response({'error': 'El email no es válido'}, status=status.HTTP_400_BAD_REQUEST)
+    if new_email == request.user.email:
+        return Response({'error': 'Ese ya es tu email actual'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
+        return Response({'error': 'Ese email ya está en uso'}, status=status.HTTP_400_BAD_REQUEST)
+
+    change_code = EmailChangeCode.generate_for(request.user, new_email)
+    try:
+        send_mail(
+            subject='Confirma tu nuevo email — Zyfit',
+            message=(
+                f'Tu código de verificación es: {change_code.code}\n\n'
+                f'Este código expira en 15 minutos.\n\n'
+                f'Si no solicitaste este cambio, ignora este mensaje — tu email actual seguirá sin cambios.'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[new_email],
+            fail_silently=True,
+        )
+    except Exception:
+        logger.exception('change_email: no se pudo enviar código a %s', new_email)
+    return Response({'detail': 'Te enviamos un código de verificación a tu nuevo email'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ConfirmEmailChangeRateThrottle])
+def confirm_email_change(request):
+    """Paso 2: aplica el cambio de email si el código recibido en la casilla
+    nueva es válido. Marca email_verificado=True (ya probó acceso a esa
+    bandeja) y sincroniza username=email — mismo invariante que RegisterSerializer,
+    evita que el email viejo (ahora libre) choque con el username de esta cuenta."""
+    code = (request.data.get('code') or '').strip()
+    if not code:
+        return Response({'error': 'Falta el código'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        change_code = EmailChangeCode.objects.filter(user=request.user, code=code).latest('created_at')
+    except EmailChangeCode.DoesNotExist:
+        return Response({'error': 'Código inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+    if not change_code.is_valid():
+        change_code.delete()
+        return Response({'error': 'El código ha expirado. Solicita uno nuevo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    new_email = change_code.new_email
+    if User.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
+        change_code.delete()
+        return Response({'error': 'Ese email ya está en uso'}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.email = new_email
+    request.user.username = new_email
+    request.user.email_verificado = True
+    request.user.save(update_fields=['email', 'username', 'email_verificado'])
+    change_code.delete()
+    return Response({'detail': 'Email actualizado correctamente', 'email': new_email})
 
 
 @api_view(['POST'])

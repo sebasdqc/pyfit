@@ -527,6 +527,34 @@ class EmailVerificationCode(models.Model):
         return cls.objects.create(user=user, code=code)
 
 
+class EmailChangeCode(models.Model):
+    """Código de verificación para el cambio de email desde Ajustes (POST
+    /api/auth/change-email/ + /api/auth/confirm-email-change/).
+
+    Se envía al email NUEVO (no al actual) para probar que el usuario tiene
+    acceso a esa casilla antes de aplicar el cambio. Modelo separado de
+    EmailVerificationCode (en vez de reutilizarlo) para que un código de
+    cambio de email no pueda colarse por error en el endpoint de verificación
+    de registro — ambos comparten el mismo patrón, pero decisiones y efectos
+    distintos."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_change_codes')
+    new_email = models.EmailField()
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'email_change_codes'
+
+    def is_valid(self):
+        return timezone.now() < self.created_at + timedelta(minutes=15)
+
+    @classmethod
+    def generate_for(cls, user, new_email):
+        cls.objects.filter(user=user).delete()
+        code = ''.join(secrets.choice(string.digits) for _ in range(6))
+        return cls.objects.create(user=user, new_email=new_email, code=code)
+
+
 class ImpersonationLog(models.Model):
     """Rastro persistente y consultable de cada impersonación ('ver como usuario').
 

@@ -72,6 +72,9 @@ urlpatterns = [
     path('api/auth/confirm-reset/', user_views.confirm_reset),
     path('api/auth/verify-email/', user_views.verify_email),
     path('api/auth/resend-verification/', user_views.resend_verification_email),
+    path('api/auth/change-password/', user_views.change_password),
+    path('api/auth/change-email/', user_views.change_email),
+    path('api/auth/confirm-email-change/', user_views.confirm_email_change),
 
     # Profile
     path('api/profile/', user_views.profile_view),
