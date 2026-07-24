@@ -60,7 +60,7 @@ class GenerateRunTests(TestCase):
         self.assertGreater(len(res.data['sesiones']), 0)
 
     # ── Generación ──
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_generate_fallback_sin_groq(self):
         res = self.client.post('/api/running/sessions/generate/', {}, format='json')
         self.assertEqual(res.status_code, 200)
@@ -68,7 +68,7 @@ class GenerateRunTests(TestCase):
         self.assertTrue(res.data['respuesta_ia']['fases'])          # estructura presente
         self.assertIn(res.data['estado'], ('planificada', 'ajustada'))
 
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_generate_con_llm_redacta_pero_motor_manda_numeros(self):
         with patch('ai_running.views._call_groq', return_value=(_NARRATION, _USAGE)) as m:
             res = self.client.post('/api/running/sessions/generate/', {}, format='json')
@@ -80,7 +80,7 @@ class GenerateRunTests(TestCase):
         # Los números (rpe_target) los fija el motor, no el LLM.
         self.assertIsNotNone(planned.rpe_target)
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_indoor_vacia_los_ritmos(self):
         res = self.client.post('/api/running/sessions/generate/', {'indoor': True}, format='json')
         self.assertEqual(res.status_code, 200)
@@ -89,14 +89,14 @@ class GenerateRunTests(TestCase):
                 self.assertIsNone(seg['pace_objetivo'])             # sin GPS, sin ritmo
                 self.assertIsNotNone(seg['fc_objetivo'])            # FC sí (hay sensor)
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_today_devuelve_la_planificada(self):
         gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
         res = self.client.get('/api/running/sessions/today/')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data['id'], gen.data['id'])
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_completar_vincula_runsession(self):
         gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
         now = timezone.now()
@@ -111,7 +111,7 @@ class GenerateRunTests(TestCase):
         run.refresh_from_db()
         self.assertEqual(run.session_type, 'planned')
 
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_generate_idempotente_no_rellama_llm(self):
         # Reabrir la pantalla el mismo día devuelve la sesión ya generada (sin re-LLM).
         with patch('ai_running.views._call_groq', return_value=(_NARRATION, _USAGE)) as m:
@@ -120,7 +120,7 @@ class GenerateRunTests(TestCase):
         self.assertEqual(m.call_count, 1)
         self.assertEqual(r1.data['id'], r2.data['id'])
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_completar_no_pisa_baseline_declarado(self):
         rp = RunnerProfile.objects.get(user=self.user)
         rp.fuente_baseline = 'declarado'
@@ -139,7 +139,7 @@ class GenerateRunTests(TestCase):
         self.assertEqual(rp.fuente_baseline, 'declarado')      # no pisado
         self.assertEqual(rp.threshold_pace_s_km, 250)
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_completar_recalcula_baseline_desde_historial(self):
         rp = RunnerProfile.objects.get(user=self.user)
         rp.fuente_baseline = 'cold_start'
@@ -158,7 +158,7 @@ class GenerateRunTests(TestCase):
         self.assertEqual(rp.fuente_baseline, 'historial')      # recomputado
         self.assertIsNotNone(rp.threshold_pace_s_km)
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_resumen_expone_objetivo_de_la_planificada(self):
         # Tras vincular la RunSession, el detalle de /api/runs/<id>/ expone el objetivo
         # de la sesión inteligente (para la adherencia en el resumen).
@@ -174,7 +174,7 @@ class GenerateRunTests(TestCase):
         self.assertIsNotNone(detail.data['planned'])
         self.assertEqual(detail.data['planned']['zona_principal'], gen.data['zona_principal'])
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_runsession_libre_no_trae_planned(self):
         now = timezone.now()
         run = RunSession.objects.create(
@@ -183,7 +183,7 @@ class GenerateRunTests(TestCase):
         detail = self.client.get(f'/api/runs/{run.id}/')
         self.assertIsNone(detail.data['planned'])
 
-    @override_settings(GROQ_API_KEY='')
+    @override_settings(LLM_API_KEY='')
     def test_dolor_de_carga_degrada_a_descanso_o_easy(self):
         from checkins.models import DailyCheckin
         DailyCheckin.objects.create(

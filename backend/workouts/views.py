@@ -365,11 +365,12 @@ Reglas:
 - evidencia: cita real de la literatura (Schoenfeld, Zourdos, Helms, NSCA, ACSM, etc.) relacionada con el tipo de entrenamiento. En español."""
 
     try:
-        import groq as _groq, json as _json
+        import json as _json
         from django.conf import settings as _settings
-        client = _groq.Groq(api_key=_settings.GROQ_API_KEY)
+        from pyfit.llm import get_llm_client
+        client = get_llm_client()
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=_settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=400,
             temperature=0.6,
@@ -928,11 +929,12 @@ INSTRUCCIONES ESTRICTAS:
 El campo "fragmento" es la frase más relevante del mensaje (3-6 palabras) que se destacará visualmente."""
 
     try:
-        import groq, json as _json
+        import json as _json
         from django.conf import settings as dj_settings
-        client = groq.Groq(api_key=dj_settings.GROQ_API_KEY)
+        from pyfit.llm import get_llm_client
+        client = get_llm_client()
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=dj_settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=180,
             temperature=0.65,
@@ -1168,11 +1170,12 @@ Elige el logro más relevante según los datos:
 Reglas: titulo máximo 7 palabras. Sin signos de exclamación. En español. Sin emojis en titulo ni descripcion."""
 
     try:
-        import groq as _groq, json as _json
+        import json as _json
         from django.conf import settings as _settings
-        client = _groq.Groq(api_key=_settings.GROQ_API_KEY)
+        from pyfit.llm import get_llm_client
+        client = get_llm_client()
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=_settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=200,
             temperature=0.65,
@@ -1377,9 +1380,10 @@ def _saludo_cacheado(user, hoy, *, nombre, total_sesiones, racha, ultima_titulo,
 
 def _generar_saludo(nombre, total_sesiones, racha, ultima_titulo, ultima_fecha, cumplimiento_prom, sexo=''):
     try:
-        import groq, json
+        import json
         from django.conf import settings
-        client = groq.Groq(api_key=settings.GROQ_API_KEY)
+        from pyfit.llm import get_llm_client
+        client = get_llm_client()
 
         ctx_parts = [f'Nombre: {nombre}', f'Total sesiones: {total_sesiones}', f'Racha actual: {racha} días']
         if sexo:
@@ -1404,7 +1408,7 @@ Reglas estrictas:
 - Responde ÚNICAMENTE JSON válido, sin markdown: {{"saludo": "...", "insight": "..."}}"""
 
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=120,
             temperature=0.75,
@@ -1764,11 +1768,11 @@ Reglas:
 - Responde ÚNICAMENTE con el texto del párrafo, sin comillas ni prefijos."""
 
     try:
-        import groq
         from django.conf import settings
-        client = groq.Groq(api_key=settings.GROQ_API_KEY)
+        from pyfit.llm import get_llm_client
+        client = get_llm_client()
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=85,
             temperature=0.65,

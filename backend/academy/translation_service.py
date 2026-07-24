@@ -18,14 +18,13 @@ import logging
 import time as _time
 
 from django.conf import settings
-from groq import Groq
 
 from ai_workout.views import GROQ_TIMEOUT_SECONDS, GROQ_MAX_RETRIES
+from pyfit.llm import get_llm_client
 from .models import Course, Module, School
 
 logger = logging.getLogger(__name__)
 
-MODEL = 'llama-3.3-70b-versatile'
 MAX_TOKENS = 2048
 
 
@@ -34,13 +33,13 @@ class TranslationUnavailable(Exception):
 
 
 def _call_groq_json(prompt: str):
-    if not settings.GROQ_API_KEY:
-        raise TranslationUnavailable('GROQ_API_KEY not configured')
+    if not settings.LLM_API_KEY:
+        raise TranslationUnavailable('LLM_API_KEY not configured')
 
     t0 = _time.monotonic()
-    client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
     completion = client.chat.completions.create(
-        model=MODEL,
+        model=settings.LLM_MODEL,
         messages=[{'role': 'user', 'content': prompt}],
         max_tokens=MAX_TOKENS,
     )

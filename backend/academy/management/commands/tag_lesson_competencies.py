@@ -28,7 +28,6 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from groq import Groq
 
 from academy.competency_models import Competency, LessonCompetencyTag
 from academy.competency_prompts import build_tagging_system_prompt, build_tagging_user_message
@@ -37,10 +36,10 @@ from academy.models import (
     LESSON_QUIZ, LESSON_TEXTO, LESSON_VIDEO, Course,
 )
 from ai_workout.views import GROQ_MAX_RETRIES, GROQ_TIMEOUT_SECONDS
+from pyfit.llm import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-MODEL = 'llama-3.3-70b-versatile'
 TEMPERATURE = 0.15  # clasificación, no generación creativa: buscamos consistencia.
 MAX_TOKENS = 300
 
@@ -71,11 +70,11 @@ def _call_groq_tagging(system_prompt: str, user_message: str) -> dict:
     system/user separados, JSON parseado a mano (sin `response_format`, no
     usado en ningún otro lugar del proyecto). Propaga errores del SDK/JSON
     tal cual — el caller decide cómo degradar."""
-    if not settings.GROQ_API_KEY:
-        raise RuntimeError('GROQ_API_KEY not configured')
-    client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    if not settings.LLM_API_KEY:
+        raise RuntimeError('LLM_API_KEY not configured')
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
     completion = client.chat.completions.create(
-        model=MODEL,
+        model=settings.LLM_MODEL,
         messages=[
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_message},

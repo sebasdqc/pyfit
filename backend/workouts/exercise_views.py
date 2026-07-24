@@ -202,12 +202,12 @@ Reglas:
 def _enriquecer_con_groq(nombre, patron, dificultad, musculos_prim, musculos_sec,
                           equipamiento, es_compuesto, error_risk) -> dict | None:
     """Llama a Groq y devuelve el dict enriquecido. Retorna None si hay error."""
-    if not settings.GROQ_API_KEY:
-        logger.warning('exercise_create: GROQ_API_KEY no configurada, se omite enriquecimiento')
+    if not settings.LLM_API_KEY:
+        logger.warning('exercise_create: LLM_API_KEY no configurada, se omite enriquecimiento')
         return None
 
     try:
-        from groq import Groq
+        from pyfit.llm import get_llm_client
         import json
 
         tipo = 'Compuesto (multi-articular)' if es_compuesto else 'Aislamiento (mono-articular)'
@@ -225,9 +225,9 @@ def _enriquecer_con_groq(nombre, patron, dificultad, musculos_prim, musculos_sec
             contras_lista=contras_lista,
         )
 
-        client = Groq(api_key=settings.GROQ_API_KEY, timeout=20.0, max_retries=1)
+        client = get_llm_client(timeout=20.0, max_retries=1)
         completion = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=settings.LLM_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=400,
             temperature=0.2,

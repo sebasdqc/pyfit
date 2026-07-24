@@ -1051,10 +1051,11 @@ def _compute_activation_funnel() -> dict:
 
 # ─── Salud del motor adaptativo (técnico · responde al período salvo RPE trend) ─
 #
-# Precios Groq para llama-3.3-70b-versatile (USD por 1M de tokens). Ajustar si
-# cambia el tier/modelo.
-GROQ_PRICE_IN_PER_1M  = 0.59
-GROQ_PRICE_OUT_PER_1M = 0.79
+# Precios DeepSeek para deepseek-chat (USD por 1M de tokens). Aproximados —
+# verificar en platform.deepseek.com/pricing (hay tarifa cache-hit menor y
+# descuento off-peak). Ajustar si cambia el proveedor/modelo.
+LLM_PRICE_IN_PER_1M  = 0.27
+LLM_PRICE_OUT_PER_1M = 1.10
 
 
 def _rpe_trend_4w() -> dict:
@@ -1156,7 +1157,7 @@ def _compute_engine_health(period_days: int) -> dict:
     # 5) Costo promedio por sesión generada (USD).
     tok = gen.aggregate(tin=Sum('tokens_in'), tout=Sum('tokens_out'), n=Count('id'))
     if tok['n'] and (tok['tin'] or tok['tout']):
-        costo_total  = (tok['tin'] or 0) / 1e6 * GROQ_PRICE_IN_PER_1M + (tok['tout'] or 0) / 1e6 * GROQ_PRICE_OUT_PER_1M
+        costo_total  = (tok['tin'] or 0) / 1e6 * LLM_PRICE_IN_PER_1M + (tok['tout'] or 0) / 1e6 * LLM_PRICE_OUT_PER_1M
         costo_sesion = round(costo_total / tok['n'], 4)
     else:
         costo_sesion = None

@@ -329,7 +329,14 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'noreply@pyfit.app')
 
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+# ─── Proveedor LLM (DeepSeek, OpenAI-compatible) ───────────────────────────────
+# Migrado de Groq a DeepSeek: la API es OpenAI-compatible, se usa el SDK `openai`
+# con base_url propia. Cliente central en pyfit/llm.py; el modelo se pasa como
+# settings.LLM_MODEL en cada llamada. Usado por la generación de rutinas/running,
+# el chat del coach, el tutor IA y la moderación/traducción de Academy.
+LLM_API_KEY  = os.environ.get('DEEPSEEK_API_KEY', '')
+LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.deepseek.com')
+LLM_MODEL    = os.environ.get('LLM_MODEL', 'deepseek-chat')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 # ─── Tutor IA de Zyfit Academy ─────────────────────────────────────────────────

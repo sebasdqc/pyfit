@@ -18,10 +18,10 @@ from django.db import transaction
 from django.db.models import F
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from groq import Groq
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from ai_workout.views import GROQ_MAX_RETRIES, GROQ_TIMEOUT_SECONDS
+from pyfit.llm import get_llm_client
 
 from . import badges_service, community_guardrails
 from .community_models import (
@@ -50,11 +50,11 @@ def _call_groq_moderation(system_prompt: str, user_message: str, max_tokens: int
     bloque — mismo patrón que `ai_tutor.services._call_groq_chat`). Devuelve
     el JSON parseado; propaga `json.JSONDecodeError`/`ValueError`/errores del
     SDK de Groq tal cual para que el caller decida cómo degradar."""
-    if not settings.GROQ_API_KEY:
-        raise RuntimeError('GROQ_API_KEY not configured')
-    client = Groq(api_key=settings.GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    if not settings.LLM_API_KEY:
+        raise RuntimeError('LLM_API_KEY not configured')
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
     completion = client.chat.completions.create(
-        model='llama-3.3-70b-versatile',
+        model=settings.LLM_MODEL,
         messages=[
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_message},

@@ -209,7 +209,7 @@ La lista "cues" debe tener exactamente {len(presc['segmentos'])} elementos, uno 
 
 
 def _fallback_narration(presc: dict, ajuste: str) -> dict:
-    """Narración determinística cuando no hay LLM disponible (sin GROQ_API_KEY o error).
+    """Narración determinística cuando no hay LLM disponible (sin LLM_API_KEY o error).
     La sesión sigue siendo válida: el motor ya fijó toda la estructura."""
     spec = ts.SESSION_TYPES.get(presc['tipo_sesion'], {})
     return {
@@ -345,7 +345,7 @@ def generate_run_session(request):
     usage, narration = {}, None
     try:
         from django.conf import settings
-        if settings.GROQ_API_KEY:
+        if settings.LLM_API_KEY:
             narration, usage = _call_groq(prompt, max_tokens=1200, user_id=user.id, return_usage=True)
     except Exception as e:   # noqa: BLE001 — degradación controlada a fallback determinístico
         logger.warning('generate_run: Groq falló (%s) — uso fallback determinístico', e)

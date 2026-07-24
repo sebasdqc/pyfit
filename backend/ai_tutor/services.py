@@ -15,10 +15,10 @@ import time as _time
 
 from django.conf import settings
 from django.db import transaction
-from groq import Groq
 
 from academy.access_service import nivel_academia_de
 from ai_workout.views import GROQ_TIMEOUT_SECONDS, GROQ_MAX_RETRIES
+from pyfit.llm import get_llm_client
 
 from . import guardrails, prompt as prompt_mod
 from .models import TutorConversation, TutorMessage, TutorDailyUsage
@@ -26,7 +26,6 @@ from .retrieval import retrieve_grounding
 
 logger = logging.getLogger(__name__)
 
-MODEL = 'llama-3.3-70b-versatile'
 MAX_TOKENS = 650
 TEMPERATURE = 0.4
 # Turnos previos que se reenvían a la IA para acotar tokens.
@@ -65,17 +64,13 @@ def _call_groq_chat(system_prompt: str, messages: list, user_id=None):
 
     Mismo patrón que ai_workout: cliente por request, timeout/retry acotados,
     extracción de tokens para logging/coste."""
-    if not settings.GROQ_API_KEY:
-        raise TutorUnavailable('GROQ_API_KEY not configured')
+    if not settings.LLM_API_KEY:
+        raise TutorUnavailable('LLM_API_KEY not configured')
 
     t0 = _time.monotonic()
-    client = Groq(
-        api_key=settings.GROQ_API_KEY,
-        timeout=GROQ_TIMEOUT_SECONDS,
-        max_retries=GROQ_MAX_RETRIES,
-    )
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
     completion = client.chat.completions.create(
-        model=MODEL,
+        model=settings.LLM_MODEL,
         messages=[{'role': 'system', 'content': system_prompt}] + messages,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
@@ -193,7 +188,7 @@ def answer(*, user, question, fecha, conversation_id=None, course=None, course_i
             conversation=conversation, role=TutorMessage.ROLE_ASSISTANT,
             contenido=text, fuentes=fuentes,
             tokens_in=usage['tokens_in'], tokens_out=usage['tokens_out'],
-            generacion_ms=usage['elapsed_ms'], modelo=MODEL,
+            generacion_ms=usage['elapsed_ms'], modelo=settings.LLM_MODEL,
         )
         _maybe_set_title(conversation, question)
         TutorDailyUsage.record(

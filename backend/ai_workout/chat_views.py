@@ -4,7 +4,6 @@ from datetime import date, timedelta
 
 from django.conf import settings
 from django.utils import timezone
-from groq import Groq
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +13,7 @@ from checkins.models import DailyCheckin
 from pyfit.throttles import AIChatRateThrottle
 from workouts.models import Session
 from ai_workout.views import calcular_fatiga, GROQ_TIMEOUT_SECONDS, GROQ_MAX_RETRIES
+from pyfit.llm import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -236,17 +236,13 @@ Sesiones totales: {sesiones_totales} | Racha: {racha} días | Mejor racha: {mejo
 # ─── Groq chat (texto libre, no JSON) ────────────────────────────────────────
 
 def _call_groq_chat(system_prompt: str, messages: list[dict], user_id=None) -> str:
-    if not settings.GROQ_API_KEY:
-        raise RuntimeError('GROQ_API_KEY not configured')
+    if not settings.LLM_API_KEY:
+        raise RuntimeError('LLM_API_KEY not configured')
 
     t0 = _time.monotonic()
-    groq_client = Groq(
-        api_key=settings.GROQ_API_KEY,
-        timeout=GROQ_TIMEOUT_SECONDS,
-        max_retries=GROQ_MAX_RETRIES,
-    )
-    completion = groq_client.chat.completions.create(
-        model='llama-3.3-70b-versatile',
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    completion = client.chat.completions.create(
+        model=settings.LLM_MODEL,
         messages=[{'role': 'system', 'content': system_prompt}] + messages,
         max_tokens=700,
         temperature=0.45,

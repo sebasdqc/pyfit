@@ -3,7 +3,6 @@ import logging
 import time as _time
 from datetime import date, timedelta
 from types import SimpleNamespace
-from groq import Groq
 from django.conf import settings
 from django.db import transaction
 from rest_framework import status
@@ -14,6 +13,7 @@ from pyfit.throttles import GenerateSessionRateThrottle, RegenerarEjercicioRateT
 from workouts.models import Session, SessionExercise, Exercise, UserAdaptationProfile, UserExerciseProfile, DailyGenerationCount
 from workouts.exercise_matching import resolve_exercise_fk, build_exercises_map
 from checkins.models import DailyCheckin
+from pyfit.llm import get_llm_client
 
 
 def _get_local_date(request) -> date:
@@ -50,14 +50,15 @@ from ai_workout import training_science as ts
 
 logger = logging.getLogger(__name__)
 
-# Timeout por intento de la petición a Groq (segundos).
-# IMPORTANTE: el SDK de Groq reintenta por defecto (max_retries=2). Con el default
-# un Groq lento daba 30s × 3 intentos ≈ 90s y el worker seguía ocupado mucho
-# tiempo. Acotamos a 1 reintento (peor caso ~60s, bajo el timeout de gunicorn de
-# 120s) y dejamos un timeout por intento holgado para que la generación COMPLETE
-# y cree la sesión aunque la pasarela ya le haya devuelto 504 al cliente: la
-# pantalla de generación recupera la sesión por polling de /api/sessions/today/.
-GROQ_TIMEOUT_SECONDS = 30
+# Timeout por intento de la petición al LLM (segundos).
+# DeepSeek es bastante más lento que Groq (inferencia no-acelerada): una
+# generación de rutina (~2-3k tokens de salida) puede tardar 40-70s. Subimos el
+# timeout 30s→90s para que la generación COMPLETE y cree la sesión aunque la
+# pasarela ya le haya devuelto 504 al cliente: la pantalla de generación recupera
+# la sesión por polling de /api/sessions/today/. Con max_retries=1 el peor caso
+# es un único intento largo (los reintentos solo ocurren ante fallos transitorios,
+# no por lentitud). Estas constantes las reutilizan chat/tutor/traducción/moderación.
+GROQ_TIMEOUT_SECONDS = 90
 GROQ_MAX_RETRIES = 1
 
 
@@ -70,17 +71,13 @@ def _call_groq(prompt: str, max_tokens: int, user_id=None, return_usage=False):
     Con `return_usage=True` devuelve `(data, usage)` donde usage = {tokens_in,
     tokens_out, elapsed_ms} para que el caller pueda persistir métricas del motor.
     """
-    if not settings.GROQ_API_KEY:
-        raise RuntimeError('GROQ_API_KEY not configured')
+    if not settings.LLM_API_KEY:
+        raise RuntimeError('LLM_API_KEY not configured')
 
     t0 = _time.monotonic()
-    groq_client = Groq(
-        api_key=settings.GROQ_API_KEY,
-        timeout=GROQ_TIMEOUT_SECONDS,
-        max_retries=GROQ_MAX_RETRIES,
-    )
-    completion = groq_client.chat.completions.create(
-        model='llama-3.3-70b-versatile',
+    client = get_llm_client(timeout=GROQ_TIMEOUT_SECONDS, max_retries=GROQ_MAX_RETRIES)
+    completion = client.chat.completions.create(
+        model=settings.LLM_MODEL,
         messages=[{'role': 'user', 'content': prompt}],
         max_tokens=max_tokens,
     )

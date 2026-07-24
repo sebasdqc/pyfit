@@ -122,7 +122,7 @@ class TeamLoadContextTests(_Base):
 
 
 class GenerateTeamSessionServiceTests(_Base):
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_happy_path_persiste_contenido_y_tokens(self):
         with patch('performance.team_session_generator._call_groq', return_value=(_IA_RESPUESTA, _USAGE)) as m:
             out = generate_team_session(self.planned, self.director)
@@ -137,7 +137,7 @@ class GenerateTeamSessionServiceTests(_Base):
         self.assertEqual(out.tipo, 'tecnico_tactico')
         self.assertEqual(out.duracion_min, 75)
 
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_respuesta_sin_fases_lanza_value_error(self):
         with patch('performance.team_session_generator._call_groq', return_value=({'titulo': 'x'}, _USAGE)):
             with self.assertRaises(ValueError):
@@ -147,7 +147,7 @@ class GenerateTeamSessionServiceTests(_Base):
 
 
 class GenerateTeamSessionEndpointTests(_Base):
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_endpoint_happy_path(self):
         with patch('performance.team_session_generator._call_groq', return_value=(_IA_RESPUESTA, _USAGE)):
             res = self.client.post(self.sesiones_url(self.planned.id, 'generar/'))
@@ -155,7 +155,7 @@ class GenerateTeamSessionEndpointTests(_Base):
         self.assertEqual(res.json()['estado'], 'generada')
         self.assertEqual(res.json()['origen'], 'ia')
 
-    @override_settings(GROQ_API_KEY='test-key')
+    @override_settings(LLM_API_KEY='test-key')
     def test_endpoint_falla_groq_502(self):
         with patch('performance.team_session_generator._call_groq', side_effect=RuntimeError('boom')):
             res = self.client.post(self.sesiones_url(self.planned.id, 'generar/'))
