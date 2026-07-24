@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable } from 'react-native'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Modal, Pressable, Animated, Easing } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha, readableTextOn, cardShadow } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
@@ -29,6 +29,10 @@ interface Competencia {
   id: number; nombre: string; fecha: string; tipo: string; distancia_disciplina?: string
 }
 
+interface DiaTracker {
+  entrenado: boolean; es_hoy: boolean; futuro: boolean
+}
+
 interface ProfileStats {
   semanas_activas: number
   consistencia_30d: number
@@ -37,16 +41,17 @@ interface ProfileStats {
   adn_entrenamiento?: string | null
   distribucion_tipo?: DistribucionTipo | null
   top_grupos?: GrupoFav[]
+  racha_actual?: number
+  mejor_racha?: number
+  puntos_semana?: number
+  meta_semanal?: number
+  dias_tracker?: DiaTracker[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(nombre: string) {
   return nombre.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
-}
-
-function agruparMiles(n: number, sep: string) {
-  return String(Math.max(0, Math.round(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, sep)
 }
 
 function planLabel(plan?: string) {
@@ -312,6 +317,189 @@ function EventosProximosSection({
   )
 }
 
+// ─── Racha Card (fuego animado + puntos semanales + tracker Lun–Dom) ──────────
+
+// Letras de día, Lun-primero — misma convención que "Tu Semana" del dashboard.
+const DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+// Silueta de llama (path "flame" de Lucide, viewBox 24) — se rellena con el acento.
+const FLAME_PATH = 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'
+
+function FlameIcon({ color, size = 46, active }: { color: string; size?: number; active: boolean }) {
+  // Glow pulsante (halo doble) + flicker de la llama. Todo con Animated core y
+  // useNativeDriver — mismo patrón que el StreakTrack del dashboard.
+  const pulse = useRef(new Animated.Value(0)).current
+  const flicker = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!active) { pulse.setValue(0); flicker.setValue(0); return }
+    const p = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]))
+    const f = Animated.loop(Animated.sequence([
+      Animated.timing(flicker, { toValue: 1, duration: 620, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(flicker, { toValue: 0, duration: 780, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]))
+    p.start(); f.start()
+    return () => { p.stop(); f.stop() }
+  }, [active])
+
+  const box = Math.round(size * 1.7)
+  const flameColor = active ? color : 'rgba(255,255,255,0.16)'
+
+  return (
+    <View style={{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }}>
+      {active && (
+        <>
+          {/* halo externo — glow amplio y suave */}
+          <Animated.View style={{
+            position: 'absolute', width: box, height: box, borderRadius: box / 2,
+            backgroundColor: color,
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.22] }),
+            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.05] }) }],
+          }} />
+          {/* halo interno — más intenso, pegado a la llama */}
+          <Animated.View style={{
+            position: 'absolute', width: size * 1.1, height: size * 1.1, borderRadius: size,
+            backgroundColor: color,
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.22, 0.44] }),
+            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.12] }) }],
+          }} />
+        </>
+      )}
+      <Animated.View style={{
+        transform: active ? [
+          { scale: flicker.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) },
+          { translateY: flicker.interpolate({ inputRange: [0, 1], outputRange: [0, -1.5] }) },
+        ] : [],
+      }}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d={FLAME_PATH} fill={flameColor} />
+        </Svg>
+      </Animated.View>
+    </View>
+  )
+}
+
+function RachaCard({
+  racha, mejorRacha, puntos, meta, tracker, loading, styles, colors, t, lang,
+}: {
+  racha: number; mejorRacha: number; puntos: number; meta: number
+  tracker: DiaTracker[]; loading: boolean
+  styles: ReturnType<typeof makeStyles>; colors: Colors
+  t: (key: string) => string; lang: string
+}) {
+  const pct = meta > 0 ? Math.min(100, Math.round((puntos / meta) * 100)) : 0
+  const metaLograda = meta > 0 && puntos >= meta
+  const barAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (loading) return
+    barAnim.setValue(0)
+    Animated.timing(barAnim, {
+      toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false,
+    }).start()
+  }, [loading, pct])
+
+  const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${pct}%`] })
+  const daysWord = racha === 1
+    ? (lang === 'es' ? 'día' : lang === 'pt' ? 'dia' : lang === 'fr' ? 'jour' : 'day')
+    : t('perfil_days_suffix')
+
+  if (loading) {
+    return (
+      <View style={styles.rachaWrap}>
+        <View style={[styles.rachaCard, { opacity: 0.5 }]}>
+          <View style={styles.rachaLeft}>
+            <Skeleton width={54} height={54} borderRadius={27} />
+            <Skeleton width={44} height={24} borderRadius={6} style={{ marginTop: 12 }} />
+          </View>
+          <View style={styles.rachaRight}>
+            <Skeleton width={120} height={22} borderRadius={6} />
+            <Skeleton width="100%" height={12} borderRadius={8} style={{ marginTop: 14 }} />
+            <Skeleton width="100%" height={48} borderRadius={14} style={{ marginTop: 14 }} />
+          </View>
+        </View>
+      </View>
+    )
+  }
+
+  const items = tracker && tracker.length === 7
+    ? tracker
+    : Array.from({ length: 7 }, () => ({ entrenado: false, es_hoy: false, futuro: true }))
+
+  return (
+    <View style={styles.rachaWrap}>
+      <View style={styles.rachaCard}>
+        {/* ── Izquierda: fuego + racha ── */}
+        <View style={styles.rachaLeft}>
+          <FlameIcon color={colors.accent} size={46} active={racha > 0} />
+          <View style={styles.rachaNumRow}>
+            <Text style={[styles.rachaNum, { color: racha > 0 ? colors.inkPrimary : colors.inkMuted }]}>{racha}</Text>
+            <Text style={styles.rachaDays}>{daysWord}</Text>
+          </View>
+          <Text style={styles.rachaLabel}>{t('perfil_streak_label')}</Text>
+          {mejorRacha > 0 && (
+            <Text style={styles.rachaRecord}>{t('perfil_streak_record')} · {mejorRacha}</Text>
+          )}
+        </View>
+
+        {/* ── Derecha: puntos + barra + tracker semanal ── */}
+        <View style={styles.rachaRight}>
+          <View style={styles.rachaPtsRow}>
+            <Text style={styles.rachaPts} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{puntos}</Text>
+            <Text style={styles.rachaPtsMeta}> / {meta} {t('perfil_streak_points')}</Text>
+            <View style={{ flex: 1 }} />
+            {metaLograda ? (
+              <Text style={[styles.rachaWeekLabel, { color: colors.accent }]} numberOfLines={1}>✓ {t('perfil_streak_week')}</Text>
+            ) : (
+              <Text style={styles.rachaWeekLabel}>{t('perfil_streak_week')}</Text>
+            )}
+          </View>
+
+          <View style={styles.rachaBarTrack}>
+            <Animated.View style={[styles.rachaBarFillWrap, cardShadow(colors.accent, 0.55), { width: barWidth }]}>
+              <LinearGradient
+                colors={[colors.accentDark, colors.accent, colors.accentLight]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.rachaBarFill}
+              />
+            </Animated.View>
+          </View>
+
+          <View style={styles.rachaTracker}>
+            {items.map((d, i) => {
+              const on = d.entrenado
+              const today = d.es_hoy
+              return (
+                <View key={i} style={styles.rachaDayCol}>
+                  <View style={[
+                    styles.rachaDot,
+                    on
+                      ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                      : today
+                        ? { backgroundColor: 'transparent', borderColor: colors.accent }
+                        : { backgroundColor: colors.glassBg, borderColor: colors.borderDefault },
+                  ]}>
+                    {on && (
+                      <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                        <Path d="M5 13l4 4L19 7" stroke={readableTextOn(colors.accent)} strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" />
+                      </Svg>
+                    )}
+                    {today && !on && <View style={[styles.rachaDotToday, { backgroundColor: colors.accent }]} />}
+                  </View>
+                  <Text style={[styles.rachaDayLetter, (on || today) && { color: colors.accent }]}>{DAY_LETTERS[i]}</Text>
+                </View>
+              )
+            })}
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 // ─── Default profile ──────────────────────────────────────────────────────────
 
 const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '', plan: 'pro' }
@@ -397,7 +585,6 @@ export default function PerfilScreen() {
   const initials = getInitials(profile.nombre || 'U')
   const pLabel = planLabel(profile.plan)
   const pColor = planColor(profile.plan)
-  const datosMedidos = agruparMiles(profileStats?.datos_medidos_30d ?? 0, lang === 'en' ? ',' : '.')
   const adn = profileStats?.adn_entrenamiento
   const semanas = profileStats?.semanas_activas ?? 0
 
@@ -453,18 +640,19 @@ export default function PerfilScreen() {
           </View>
         </View>
 
-        {/* ── MÉTRICAS ── */}
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <View style={styles.metricCardText}>
-              <Text style={styles.metricLabel}>{t('perfil_measured_data')}</Text>
-              <Text style={styles.metricSub}>{lang === 'es' ? 'Últimos 30 días' : lang === 'pt' ? 'Últimos 30 dias' : 'Last 30 days'}</Text>
-            </View>
-            <Text style={[styles.metricValue, { color: colors.cyan }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.45}>
-              {statsLoading ? '–' : datosMedidos}
-            </Text>
-          </View>
-        </View>
+        {/* ── RACHA + PUNTOS SEMANALES ── */}
+        <RachaCard
+          racha={profileStats?.racha_actual ?? 0}
+          mejorRacha={profileStats?.mejor_racha ?? 0}
+          puntos={profileStats?.puntos_semana ?? 0}
+          meta={profileStats?.meta_semanal ?? 100}
+          tracker={profileStats?.dias_tracker ?? []}
+          loading={statsLoading}
+          styles={styles}
+          colors={colors}
+          t={t as (key: string) => string}
+          lang={lang}
+        />
 
         {/* ── ADN — compact card → abre modal ── */}
         {statsLoading ? (
@@ -645,17 +833,59 @@ function makeStyles(c: Colors) {
       alignItems: 'center', justifyContent: 'center',
     },
 
-    // ── Métricas ──
-    metricsGrid: { marginBottom: 28 },
-    metricCard: {
+    // ── Racha + puntos semanales ──
+    rachaWrap: { marginBottom: 28 },
+    rachaCard: {
+      flexDirection: 'row', alignItems: 'stretch', gap: 14,
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, paddingVertical: 22, paddingHorizontal: 24,
-      flexDirection: 'row', alignItems: 'center', gap: 16,
+      borderRadius: 22, padding: 14,
     },
-    metricCardText: { flex: 1, gap: 2 },
-    metricLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase' },
-    metricValue: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 48, letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'right' },
-    metricSub: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
+    rachaLeft: {
+      width: 104, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: accentAlpha(c.accent, 0.07), borderWidth: 1, borderColor: accentAlpha(c.accent, 0.14),
+      borderRadius: 16, paddingVertical: 14, gap: 2,
+    },
+    rachaNumRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 4 },
+    rachaNum: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 34, letterSpacing: -1.5, lineHeight: 36 },
+    rachaDays: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, color: c.inkMuted, paddingBottom: 5 },
+    rachaLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkSecondary,
+      letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
+    },
+    rachaRecord: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.inkFaint,
+      letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 4,
+    },
+    rachaRight: { flex: 1, justifyContent: 'center', gap: 12, paddingVertical: 2 },
+    rachaPtsRow: { flexDirection: 'row', alignItems: 'baseline' },
+    rachaPts: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: c.inkPrimary, letterSpacing: -1.2 },
+    rachaPtsMeta: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 15, color: c.inkMuted, letterSpacing: -0.4 },
+    rachaWeekLabel: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 8.5, color: c.inkMuted,
+      letterSpacing: 1, textTransform: 'uppercase', alignSelf: 'center',
+    },
+    rachaBarTrack: {
+      height: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)',
+    },
+    // backgroundColor = accent para que iOS renderice la sombra (glow); la tapa
+    // el gradiente por encima, así que no se ve. Sin overflow:hidden a propósito
+    // para no recortar el resplandor.
+    rachaBarFillWrap: { height: 12, borderRadius: 8, backgroundColor: c.accent },
+    rachaBarFill: { flex: 1, borderRadius: 8 },
+    rachaTracker: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 14,
+      paddingVertical: 10, paddingHorizontal: 8,
+    },
+    rachaDayCol: { alignItems: 'center', gap: 6 },
+    rachaDot: {
+      width: 26, height: 26, borderRadius: 13, borderWidth: 1.5,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    rachaDotToday: { width: 6, height: 6, borderRadius: 3 },
+    rachaDayLetter: {
+      fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 0.3,
+    },
 
     // ── ADN compact ──
     adnWrap: { marginBottom: 24 },
