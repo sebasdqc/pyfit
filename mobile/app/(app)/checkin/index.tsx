@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Rect, Circle, Ellipse, Path } from 'react-native-svg'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme } from '../../../lib/theme'
 import { Colors } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
@@ -114,6 +114,14 @@ const CATEGORIA_OPTS = [
 ]
 // Categoría incluye DESCANSO (que NO existe como disciplina en DISCIPLINA_OPTS).
 type Categoria = DisciplinaCat | 'DESCANSO'
+
+// Chip del card de Inicio (dashboard) → categoría del check-in. Permite saltar la
+// pantalla de elegir modalidad (d4) cuando el usuario ya la eligió en el dashboard.
+const TIPO_CHIP_TO_CAT: Record<string, Categoria> = {
+  fuerza: 'FUERZA',
+  cardiovascular: 'CARDIOVASCULAR',
+  descanso: 'DESCANSO',
+}
 
 // Para disciplinas al aire libre / agua, "¿dónde entrenas hoy?" se reduce a 2
 // entornos simples (sin lugares guardados ni implementos). La elección se guarda
@@ -625,6 +633,18 @@ export default function CheckinScreen() {
     }
   }
 
+  // ── Pre-selección de modalidad desde el chip del dashboard ─────────────────
+  // Si venimos del card de Inicio con ?tipo=..., arrancamos ya en la pantalla que
+  // corresponde (saltando d4). `ts` es un nonce para re-disparar el salto cuando se
+  // vuelve a entrar desde el chip con el tab ya montado.
+  const { tipo: tipoParam, ts: tsParam } = useLocalSearchParams<{ tipo?: string; ts?: string }>()
+  const tipoChip = Array.isArray(tipoParam) ? tipoParam[0] : tipoParam
+  const tsChip = Array.isArray(tsParam) ? tsParam[0] : tsParam
+  const initialCat: Categoria | null = TIPO_CHIP_TO_CAT[String(tipoChip ?? '')] ?? null
+  const initialScreenIndex = initialCat
+    ? SCREENS.indexOf(initialCat === 'DESCANSO' ? 'd_estado' : 'd4_sub')
+    : 0
+
   // ── Form state ────────────────────────────────────────────────────────────
   // Los 3 estados que ahora son sliders arrancan en su punto central (valor por
   // defecto), no en null: el slider siempre tiene posición y Continuar está activo.
@@ -633,7 +653,7 @@ export default function CheckinScreen() {
   const [zonasDolorHoy, setZonasDolorHoy] = useState<string[]>([])
   const [estadoMental, setEstadoMental] = useState<EstadoMental | null>('normal')
   const [tiempoDispo, setTiempoDispo] = useState<TiempoDispo | null>(null)
-  const [categoria, setCategoria] = useState<Categoria | null>(null)
+  const [categoria, setCategoria] = useState<Categoria | null>(initialCat)
   const [disciplina, setDisciplina] = useState<TipoDisciplina | null>(null)
   // Entorno simple (exteriores/interiores · aguas abiertas/piscina) para cardio
   // al aire libre; reemplaza la selección de lugar guardado en esas disciplinas.
@@ -651,12 +671,15 @@ export default function CheckinScreen() {
   const [pressedDisc, setPressedDisc] = useState<TipoDisciplina | null>(null)
 
   // ── Nav state ─────────────────────────────────────────────────────────────
-  const [screenIndex, setScreenIndex] = useState(0)
+  const [screenIndex, setScreenIndex] = useState(initialScreenIndex)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const [checkinSaved, setCheckinSaved] = useState(false)
   const [procesandoTimer, setProcesandoTimer] = useState(false)
+  // Días desde la última sesión de entrenamiento (viene de la respuesta del
+  // guardado); alimenta la ventana de día de descanso. null = nunca entrenó.
+  const [diasDescanso, setDiasDescanso] = useState<number | null>(null)
   // Tarjeta para compartir del día de descanso (modal en el resumen).
   const [shareOpen, setShareOpen] = useState(false)
   const [userLabel, setUserLabel] = useState<string | undefined>(undefined)
@@ -728,7 +751,21 @@ export default function CheckinScreen() {
     setError('')
     setCheckinSaved(false)
     setProcesandoTimer(false)
+    setDiasDescanso(null)
     setAddingLoc(false)
+  }
+
+  // Pre-selecciona una modalidad y salta la pantalla de elegirla (d4). Deja el
+  // mismo estado que pickCategoria (categoria seteada, disciplina por elegir),
+  // pero sin el parpadeo y arrancando ya en la pantalla destino.
+  function preselectModalidad(cat: Categoria) {
+    setCategoria(cat)
+    setDisciplina(null)
+    setEntornoCardio(null)
+    setRunningMode(null)
+    setPendingCat(null)
+    setError('')
+    setScreenIndex(SCREENS.indexOf(cat === 'DESCANSO' ? 'd_estado' : 'd4_sub'))
   }
 
   // Al volver a la pantalla ENTRENAR tras COMPLETAR un check-in (incluido el día de
@@ -737,10 +774,18 @@ export default function CheckinScreen() {
   // un check-in a medias (sin guardar) conserva su progreso al cambiar de pestaña.
   const checkinSavedRef = useRef(false)
   useEffect(() => { checkinSavedRef.current = checkinSaved }, [checkinSaved])
+  // Nonce del chip ya aplicado (en frío ya viene reflejado en el estado inicial).
+  const appliedTsRef = useRef<string | null>(tsChip ?? null)
   useFocusEffect(
     useCallback(() => {
       if (checkinSavedRef.current) resetCheckin()
-    }, []),
+      // Re-entrada desde el chip con el tab ya montado: re-aplica el salto de
+      // modalidad (después del reset, para que gane sobre él).
+      if (initialCat && tsChip && tsChip !== appliedTsRef.current) {
+        appliedTsRef.current = tsChip
+        preselectModalidad(initialCat)
+      }
+    }, [initialCat, tsChip]),
   )
 
   // Tocar una categoría en d4: parpadea 2 veces y avanza a d4_sub. Resetea la
@@ -860,7 +905,7 @@ export default function CheckinScreen() {
       if (discOpt) notasParts.push(`Disciplina: ${discOpt.label}`)
       if (grupoOpt && showGrupoMuscular) notasParts.push(`Grupo muscular: ${grupoOpt.label} — ${grupoOpt.sub}`)
       if (entornoLabel) notasParts.push(`Entorno: ${entornoLabel}`)
-      await apiPost('/api/checkins/', {
+      const res = await apiPost('/api/checkins/', {
         foco_entrenamiento: focos,
         estado_animo: estadoMental ? MENTAL_TO_ANIMO[estadoMental] : 3,
         estado_fisico: estadoFisico ? FISICO_TO_NUM[estadoFisico] : null,
@@ -871,6 +916,9 @@ export default function CheckinScreen() {
         dolor_hoy: zonaLabels.length > 0 ? zonaLabels.join(', ') : null,
         notas: notasParts.length > 0 ? notasParts.join('. ') : null,
       })
+      // Para el día de descanso: días desde la última sesión (backend, failure-safe).
+      const d = res?.dias_desde_ultima_sesion
+      setDiasDescanso(typeof d === 'number' ? d : null)
       setCheckinSaved(true)
     } catch (e: any) {
       // Stay on d6_procesando — the screen renders the error inline
@@ -1455,9 +1503,30 @@ export default function CheckinScreen() {
     )
   }
 
+  // Copy dinámico de la ventana de día de descanso, según los días desde la
+  // última sesión de entrenamiento (diasDescanso). null = nunca entrenó.
+  function descansoDiasLinea(): string {
+    const d = diasDescanso
+    if (d == null) return 'Aún no registras una sesión de entrenamiento.'
+    if (d <= 0)    return 'Tu última sesión fue hoy.'
+    if (d === 1)   return 'Tu última sesión fue ayer.'
+    return `Llevas ${d} días desde tu última sesión.`
+  }
+
+  function descansoImportancia(): string {
+    const d = diasDescanso
+    if (d == null) return 'El descanso también construye tu progreso: es cuando el cuerpo asimila lo que entrenas.'
+    if (d <= 0)    return 'Sumar descanso ayuda a consolidar el trabajo de hoy. Dale a tu cuerpo tiempo de asimilar.'
+    if (d === 1)   return 'Un día de recuperación es donde el músculo se repara y crece, y el sistema nervioso se repone.'
+    if (d === 2)   return 'Dos días de descanso son justo lo que el cuerpo necesita para adaptarse y volver más fuerte.'
+    if (d <= 4)    return 'El descanso ya cumplió su función: tu cuerpo está listo para rendir de nuevo.'
+    return 'El descanso es clave, pero tu cuerpo ya se recuperó. Retomar el ritmo te hará bien.'
+  }
+
   function renderD7() {
     // Día de descanso: sin pronóstico de sesión ni CTA de entrenamiento. Muestra la
-    // frase y un botón para compartir la tarjeta (se rasteriza a PNG en el modal).
+    // importancia de descansar (según los días sin entrenar) y un botón para
+    // compartir la tarjeta (se rasteriza a PNG en el modal).
     if (isDescanso) {
       return (
         <View style={[styles.resumenWrap, { paddingTop: insets.top + 24 }]}>
@@ -1470,12 +1539,13 @@ export default function CheckinScreen() {
           <View style={styles.resumenCard}>
             <Text style={styles.resumenDataText}>{buildSummaryText() || 'Tu estado de hoy quedó registrado.'}</Text>
             <View style={styles.resumenDivider} />
-            <Text style={[styles.resumenSesionEyebrow, { color: REST_COLOR }]}>HOY</Text>
-            <Text style={styles.resumenSesionText}>{restFrase}</Text>
+            <Text style={[styles.resumenSesionEyebrow, { color: REST_COLOR }]}>TU DESCANSO</Text>
+            <Text style={styles.resumenSesionText}>{descansoDiasLinea()}</Text>
+            <Text style={[styles.resumenDataText, { marginTop: 8 }]}>{descansoImportancia()}</Text>
           </View>
 
-          <Text style={styles.resumenNote}>
-            Recuperar también es progreso. Vuelve mañana para tu próxima sesión.
+          <Text style={[styles.resumenNote, { color: REST_COLOR }]}>
+            Te esperamos mañana para tu próximo entrenamiento 💪
           </Text>
 
           <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>

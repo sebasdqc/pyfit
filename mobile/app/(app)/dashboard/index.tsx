@@ -1259,7 +1259,9 @@ function CTACard({
         router.push({ pathname: '/(app)/historial', params: { fecha: localDateStr(), ts: String(Date.now()) } } as any)
       }
     } else {
-      router.push('/(app)/checkin')
+      // Pasa el chip seleccionado para que el check-in pre-seleccione la
+      // modalidad y se salte la pantalla de elegirla (d4). Solo estados A/C/D.
+      router.push({ pathname: '/(app)/checkin', params: { tipo: tipoSel, ts: String(Date.now()) } } as any)
     }
   }
 
@@ -1302,14 +1304,17 @@ function CTACard({
               style={[
                 styles.tipoChip,
                 {
-                  backgroundColor: active ? accentAlpha(chip.color, 0.16) : 'transparent',
-                  borderColor: active ? accentAlpha(chip.color, 0.55) : colors.borderDefault,
+                  // Inactivos ya no son transparentes: llevan un tinte de su
+                  // propio color + borde marcado para que se lean bien (antes
+                  // quedaban demasiado apagados). El activo sube el contraste.
+                  backgroundColor: active ? accentAlpha(chip.color, 0.22) : accentAlpha(chip.color, 0.10),
+                  borderColor: active ? accentAlpha(chip.color, 0.75) : accentAlpha(chip.color, 0.38),
                 },
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.tipoChipText, { color: active ? chip.color : colors.inkMuted }]}>
+              <Text style={[styles.tipoChipText, { color: active ? chip.color : accentAlpha(chip.color, 0.85) }]}>
                 {chip.label}
               </Text>
             </TouchableOpacity>
