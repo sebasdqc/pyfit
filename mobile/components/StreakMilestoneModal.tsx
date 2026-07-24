@@ -4,13 +4,15 @@ import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
-import { Colors } from '../lib/colors'
+import { Colors, readableTextOn } from '../lib/colors'
 import { useTheme } from '../lib/theme'
+import { useReduceMotion } from '../lib/useReduceMotion'
 
 const CONFETTI_EMOJIS = ['🎉', '✨', '⭐️', '🔥', '💥']
 
 /** Una partícula de confeti que estalla desde el centro en una dirección aleatoria y se desvanece. */
 function ConfettiPiece({ delay }: { delay: number }) {
+  const reduceMotion = useReduceMotion()
   const progress = useRef(new Animated.Value(0)).current
   const angle    = useMemo(() => Math.random() * Math.PI * 2, [])
   const distance = useMemo(() => 60 + Math.random() * 90, [])
@@ -18,6 +20,9 @@ function ConfettiPiece({ delay }: { delay: number }) {
   const rotate   = useMemo(() => `${Math.round(Math.random() * 360)}deg`, [])
 
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): sin la explosión de confeti, es puramente
+    // decorativa — se queda en opacity 0 (progress en el tramo final del fade-out).
+    if (reduceMotion) { progress.setValue(1); return }
     progress.setValue(0)
     Animated.timing(progress, {
       toValue: 1,
@@ -26,7 +31,7 @@ function ConfettiPiece({ delay }: { delay: number }) {
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start()
-  }, [])
+  }, [reduceMotion])
 
   const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(angle) * distance] })
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(angle) * distance] })
@@ -56,6 +61,7 @@ export default function StreakMilestoneModal({
   onClose: () => void
 }) {
   const { colors } = useTheme()
+  const reduceMotion = useReduceMotion()
   const themedStyles = useMemo(() => makeThemedStyles(colors), [colors])
 
   const backdropOpacity = useRef(new Animated.Value(0)).current
@@ -75,6 +81,13 @@ export default function StreakMilestoneModal({
     cardScale.setValue(0.85)
     iconScale.setValue(0.3)
 
+    // Reduce-motion (WCAG 2.3.3): la card aparece directo en su posición final,
+    // sin entrada animada ni el pulso continuo del ícono.
+    if (reduceMotion) {
+      backdropOpacity.setValue(1); cardOpacity.setValue(1); cardScale.setValue(1); iconScale.setValue(1)
+      return
+    }
+
     Animated.timing(backdropOpacity, { toValue: 1, duration: 260, useNativeDriver: true }).start()
     Animated.parallel([
       Animated.timing(cardOpacity, { toValue: 1, duration: 320, delay: 80, useNativeDriver: true }),
@@ -93,11 +106,11 @@ export default function StreakMilestoneModal({
       ).start()
     }, 700)
     return () => clearTimeout(pulseTimer)
-  }, [visible])
+  }, [visible, reduceMotion])
 
   if (!visible) return null
 
-  const confettiPieces = Array.from({ length: 14 })
+  const confettiPieces = reduceMotion ? [] : Array.from({ length: 14 })
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
@@ -143,7 +156,7 @@ export default function StreakMilestoneModal({
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.ctaText}>¡Seguimos!</Text>
+              <Text style={[styles.ctaText, { color: readableTextOn(colors.accent) }]}>¡Seguimos!</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>

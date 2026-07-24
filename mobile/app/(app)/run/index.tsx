@@ -28,7 +28,8 @@ import {
 } from '../../../lib/runMetrics'
 import { apiGet } from '../../../lib/api'
 import { useTheme } from '../../../lib/theme'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
 import { completePlannedRun, getRunSessionToday } from '../../../lib/runningApi'
 import { useKeepAwake } from 'expo-keep-awake'
@@ -116,6 +117,7 @@ export default function RunScreen() {
   useKeepAwake() // la pantalla no debe apagarse durante la carrera
   const insets = useSafeAreaInsets()
   const { colors, isDark } = useTheme()
+  const reduceMotion = useReduceMotion()
   const {
     sessionId,
     status,
@@ -156,6 +158,8 @@ export default function RunScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current
   useEffect(() => {
     if (!isIndoor || status !== 'active') return
+    // Reduce-motion (WCAG 2.3.3): sin el pulso en loop.
+    if (reduceMotion) { pulseAnim.setValue(1); return }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
@@ -164,7 +168,7 @@ export default function RunScreen() {
     )
     loop.start()
     return () => loop.stop()
-  }, [isIndoor, status, pulseAnim])
+  }, [isIndoor, status, pulseAnim, reduceMotion])
 
   // Fetch user weight for calorie estimation
   useEffect(() => {
@@ -573,7 +577,7 @@ export default function RunScreen() {
                 onPress={handleStartRun}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.actionBtnText, { color: colors.white }]}>EMPEZAR</Text>
+                <Text style={[styles.actionBtnText, { color: readableTextOn(colors.green) }]}>EMPEZAR</Text>
               </TouchableOpacity>
               {/* Salida explícita por si el usuario eligió Free Run por error y
                   prefiere otro entrenamiento. Como aún no empezó, no hay datos
@@ -604,7 +608,7 @@ export default function RunScreen() {
                   onPress={resumeRun}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.actionBtnText, { color: colors.white }]}>REANUDAR</Text>
+                  <Text style={[styles.actionBtnText, { color: readableTextOn(colors.green) }]}>REANUDAR</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -612,7 +616,7 @@ export default function RunScreen() {
                 onPress={handleFinish}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.actionBtnText, { color: colors.white }]}>FINALIZAR</Text>
+                <Text style={[styles.actionBtnText, { color: readableTextOn(colors.red) }]}>FINALIZAR</Text>
               </TouchableOpacity>
             </View>
           )}

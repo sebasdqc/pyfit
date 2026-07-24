@@ -22,7 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Line, Path, Circle, Rect, Text as SvgText } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../../lib/theme'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 import ZyfitScoreCircle, { ZyfitScoreCircleEmpty, ZyfitScoreDetalle } from '../../../components/ZyfitScoreCircle'
 import { useTranslation } from '../../../lib/i18n'
@@ -492,9 +493,12 @@ function CompetitionCell({
   dayNum: number
   onPress: () => void
 }) {
+  const reduceMotion = useReduceMotion()
   const glowAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): brillo estático a mitad de camino, sin el loop.
+    if (reduceMotion) { glowAnim.setValue(0.5); return }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -503,7 +507,7 @@ function CompetitionCell({
     )
     loop.start()
     return () => loop.stop()
-  }, [])
+  }, [reduceMotion])
 
   const fontSize = Math.max(7, Math.floor(cellSize * 0.38))
 
@@ -683,7 +687,7 @@ function HeatMapBlock({
                       ? (eventTipo === 'descanso' ? '#fff' : '#000')
                       : cell.es_descanso
                         ? colors.inkFaint
-                        : cell.intensidad >= 3 ? '#ffffff' : colors.inkMuted
+                        : cell.intensidad >= 3 ? readableTextOn(colors.accent) : colors.inkMuted
 
                     // Estilo del recuadro
                     const cellStyle: object = eventTipo
@@ -1287,7 +1291,7 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
                     activeOpacity={0.82}
                   >
                     {savingEvent
-                      ? <ActivityIndicator color="#fff" size="small" />
+                      ? <ActivityIndicator color={readableTextOn(colors.accent)} size="small" />
                       : <Text style={styles.modalSaveBtnText}>{t('stats_event_btn_save')}</Text>
                     }
                   </TouchableOpacity>
@@ -1412,7 +1416,7 @@ function makeHostStyles(c: Colors) {
       fontSize: 12,
       letterSpacing: 0.2,
     },
-    chipTextActive: { color: '#fff' },
+    chipTextActive: { color: readableTextOn(c.accent) },
     pdfBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 4,
       borderWidth: 1, borderRadius: 12,
@@ -1649,7 +1653,7 @@ function makeStyles(c: Colors) {
     },
     modalSaveBtnText: {
       fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14,
-      color: '#ffffff', letterSpacing: -0.2,
+      color: readableTextOn(c.accent), letterSpacing: -0.2,
     },
   })
 }

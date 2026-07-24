@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach } from '../../../lib/coachApi'
@@ -25,6 +25,7 @@ import { useTranslation } from '../../../lib/i18n'
 import { getShareUserLabel } from '../../../lib/shareCard'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
 import SessionPhotos from '../../../components/SessionPhotos'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -173,8 +174,11 @@ function OptionRow({
 // Pulso de opacidad compartido para los skeletons — el estado de carga "respira"
 // en vez de quedarse congelado. Corre en el hilo nativo (opacity).
 function useSkeletonPulse() {
+  const reduceMotion = useReduceMotion()
   const pulse = useRef(new Animated.Value(0.4)).current
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): opacidad fija a mitad de camino, sin el loop.
+    if (reduceMotion) { pulse.setValue(0.7); return }
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -183,7 +187,7 @@ function useSkeletonPulse() {
     )
     anim.start()
     return () => anim.stop()
-  }, [pulse])
+  }, [pulse, reduceMotion])
   return pulse
 }
 
@@ -281,6 +285,7 @@ function AchievementCard({
   styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+  const reduceMotion = useReduceMotion()
 
   // Entrance animation values
   const cardOpacity = useRef(new Animated.Value(0)).current
@@ -292,6 +297,13 @@ function AchievementCard({
   useEffect(() => {
     // Haptic on achievement reveal
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+
+    // Reduce-motion (WCAG 2.3.3): la card aparece directo en su posición final,
+    // sin entrada animada ni el pulso continuo del ícono.
+    if (reduceMotion) {
+      cardOpacity.setValue(1); cardSlide.setValue(0); iconScale.setValue(1); iconPulse.setValue(1)
+      return
+    }
 
     // Card slides up and fades in
     Animated.parallel([
@@ -319,7 +331,7 @@ function AchievementCard({
       clearTimeout(pulseTimer)
       pulseLoopRef.current?.stop()
     }
-  }, [])
+  }, [reduceMotion])
 
   return (
     <Animated.View
@@ -350,6 +362,7 @@ export default function FeedbackScreen() {
   const { id }     = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
   const { t }      = useTranslation()
+  const reduceMotion = useReduceMotion()
   const styles     = useMemo(() => makeStyles(colors), [colors])
   const insets     = useSafeAreaInsets()
   const scrollRef  = useRef<ScrollView>(null)
@@ -457,13 +470,14 @@ export default function FeedbackScreen() {
   const contentSlide = useRef(new Animated.Value(18)).current
 
   useEffect(() => {
+    if (reduceMotion) { contentFade.setValue(1); contentSlide.setValue(0); return }
     contentFade.setValue(0)
     contentSlide.setValue(18)
     Animated.parallel([
       Animated.timing(contentFade,  { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.spring(contentSlide, { toValue: 0, tension: 90, friction: 12, useNativeDriver: true }),
     ]).start()
-  }, [step])
+  }, [step, reduceMotion])
 
   // ── Fetch resumen on step 2 ────────────────────────────────────────────────
   useEffect(() => {
@@ -992,7 +1006,7 @@ function makeStyles(c: Colors) {
     },
     primaryBtnDisabled: { opacity: 0.45 },
     primaryBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', letterSpacing: -0.2,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: readableTextOn(c.accent), letterSpacing: -0.2,
     },
     listoBtn: {
       borderRadius: 16, paddingVertical: 16,
@@ -1000,7 +1014,7 @@ function makeStyles(c: Colors) {
       overflow: 'hidden', minHeight: 54,
     },
     listoBtnText: {
-      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff', letterSpacing: -0.2,
+      fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: readableTextOn(c.accent), letterSpacing: -0.2,
     },
     compartirBtn: {
       borderRadius: 16, paddingVertical: 14,
