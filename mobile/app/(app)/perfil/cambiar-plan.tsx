@@ -255,7 +255,7 @@ export default function CambiarPlanScreen() {
             style={styles.ctaBtnGradient}
           >
             {enviando
-              ? <ActivityIndicator color="#fff" size="small" />
+              ? <ActivityIndicator color={readableTextOn(colors.accent)} size="small" />
               : <Text style={styles.ctaBtnText}>{ctaText}</Text>}
           </LinearGradient>
         </TouchableOpacity>

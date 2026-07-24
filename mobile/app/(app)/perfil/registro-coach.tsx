@@ -16,7 +16,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import Svg, { Path } from 'react-native-svg'
-import { Colors, accentAlpha } from '../../../lib/colors'
+import { Colors, accentAlpha, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
 import { fetchMiCoachChat, sendMiCoachMensaje, desvincularMiCoach, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
@@ -201,7 +201,7 @@ export default function RegistroCoachScreen() {
                   )}
                   <View style={[styles.msgRow, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
                     <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
-                      <Text style={[styles.bubbleText, { color: mine ? colors.white : colors.inkPrimary }]}>{m.texto}</Text>
+                      <Text style={[styles.bubbleText, { color: mine ? readableTextOn(colors.accent) : colors.inkPrimary }]}>{m.texto}</Text>
                     </View>
                     <Text style={styles.msgMeta}>{horaDe(m.created_at)} · {mine ? t('coach_tu_pronoun') : coach.nombre.split(' ')[0]}</Text>
                   </View>
@@ -225,9 +225,9 @@ export default function RegistroCoachScreen() {
               maxLength={2000}
             />
             <TouchableOpacity style={styles.sendBtn} activeOpacity={0.85} onPress={enviar} disabled={sending}>
-              {sending ? <ActivityIndicator size="small" color={colors.white} /> : (
+              {sending ? <ActivityIndicator size="small" color={readableTextOn(colors.accent)} /> : (
                 <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                  <Path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" stroke={colors.white} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" stroke={readableTextOn(colors.accent)} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
               )}
             </TouchableOpacity>
@@ -273,7 +273,7 @@ export default function RegistroCoachScreen() {
               disabled={codigo.trim().length < 4 || linking}
               onPress={vincular}
             >
-              {linking ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryBtnText}>{t('coach_vincularme_btn')}</Text>}
+              {linking ? <ActivityIndicator color={readableTextOn(colors.accent)} /> : <Text style={styles.primaryBtnText}>{t('coach_vincularme_btn')}</Text>}
             </TouchableOpacity>
 
             <Text style={styles.hint}>
@@ -321,7 +321,7 @@ function makeStyles(c: Colors) {
     },
     errorText: { alignSelf: 'flex-start', color: c.red, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, marginBottom: 12, marginTop: -4 },
     primaryBtn: { width: '100%', backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 16, minHeight: 50, justifyContent: 'center' },
-    primaryBtnText: { color: c.white, fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 0.8 },
+    primaryBtnText: { color: readableTextOn(c.accent), fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 0.8 },
     btnDisabled: { opacity: 0.45 },
     hint: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, lineHeight: 18, textAlign: 'center', paddingHorizontal: 12 },
 

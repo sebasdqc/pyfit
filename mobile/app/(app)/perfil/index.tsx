@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Image, Ani
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { LinearGradient } from 'expo-linear-gradient'
+import { BlurView } from 'expo-blur'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
@@ -10,6 +11,7 @@ import { Colors, accentAlpha, readableTextOn, cardShadow } from '../../../lib/co
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,10 +149,38 @@ const GRUPO_ICON: Record<string, string> = {
 // ─── Distribución Chart ───────────────────────────────────────────────────────
 
 const DIST_CONFIG = [
-  { key: 'fuerza',    icon: '💪', tKey: 'perfil_dist_fuerza',    color: '#4f8cff' },
-  { key: 'cardio',    icon: '🏃', tKey: 'perfil_dist_cardio',    color: '#ff8c42' },
-  { key: 'movilidad', icon: '🧘', tKey: 'perfil_dist_movilidad', color: '#34d399' },
+  { key: 'fuerza',    tKey: 'perfil_dist_fuerza',    color: '#4f8cff' },
+  { key: 'cardio',    tKey: 'perfil_dist_cardio',    color: '#ff8c42' },
+  { key: 'movilidad', tKey: 'perfil_dist_movilidad', color: '#34d399' },
 ] as const
+
+// Ícono SVG propio (no emoji) por tipo de distribución — mismos trazos que
+// DisciplineIcon del dashboard, para mantener la misma identidad entre pantallas.
+function DistTipoIcon({ tipo, color, size = 15 }: { tipo: string; color: string; size?: number }) {
+  const common = { stroke: color, strokeWidth: 1.9, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' }
+  if (tipo === 'cardio') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Circle cx={15} cy={5} r={1.6} {...common} />
+        <Path d="M8 21l2.5-4 2-3 1-4 3 2 2 1M6.5 11l3-1.5 3 .5 2 3" {...common} />
+      </Svg>
+    )
+  }
+  if (tipo === 'movilidad') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Circle cx={12} cy={4} r={1.6} {...common} />
+        <Path d="M12 6.5v6M12 12.5l-4 5M12 12.5l4 5M7 9.5l5 1 5-1" {...common} />
+      </Svg>
+    )
+  }
+  // Fuerza (default) — mancuerna
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" {...common} />
+    </Svg>
+  )
+}
 
 function DistribucionChart({
   data, loading, styles, colors, t,
@@ -171,6 +201,7 @@ function DistribucionChart({
         styles={styles}
       />
       <View style={styles.distCard}>
+        <GlassLayer />
         {DIST_CONFIG.map((tipo, idx) => {
           const val = vals[tipo.key]
           const pct = loading ? 0.2 : val / maxVal
@@ -179,7 +210,9 @@ function DistribucionChart({
               {idx > 0 && <View style={styles.distDivider} />}
               <View style={styles.distRow}>
                 <View style={styles.distMeta}>
-                  <Text style={styles.distIcon}>{tipo.icon}</Text>
+                  <View style={styles.distIcon}>
+                    <DistTipoIcon tipo={tipo.key} color={loading ? colors.inkMuted : tipo.color} />
+                  </View>
                   <Text style={styles.distLabel}>{t(tipo.tKey)}</Text>
                   <View style={{ flex: 1 }} />
                   <Text style={[styles.distCount, { color: loading ? colors.inkMuted : tipo.color }]}>
@@ -231,6 +264,7 @@ function FavoritosSection({
         </View>
       ) : !hasData ? (
         <View style={styles.favEmpty}>
+          <GlassLayer />
           <Text style={styles.favEmptyText}>{t('perfil_fav_empty')}</Text>
         </View>
       ) : (
@@ -276,6 +310,7 @@ function EventosProximosSection({
         </View>
       ) : proximos.length === 0 ? (
         <View style={styles.favEmpty}>
+          <GlassLayer />
           <Text style={styles.favEmptyText}>{t('perfil_eventos_empty')}</Text>
         </View>
       ) : (
@@ -285,6 +320,7 @@ function EventosProximosSection({
             const urgente = diasRestantes <= 7
             return (
               <View key={ev.id} style={styles.eventoCard}>
+                <GlassLayer />
                 <View style={[styles.eventoColorBar, { backgroundColor: urgente ? '#ff8c42' : colors.accent }]} />
                 <View style={styles.eventoIcon}>
                   <Text style={{ fontSize: 20 }}>{tipoIcon(ev.tipo)}</Text>
@@ -313,6 +349,22 @@ function EventosProximosSection({
   )
 }
 
+// ─── Glass layer ──────────────────────────────────────────────────────────────
+// Capa de glassmorphism (expo-blur) que va DETRÁS del contenido de una card —
+// mismo patrón que el dashboard. La card contenedora debe tener
+// overflow:'hidden' + un fondo translúcido (glassBg).
+function GlassLayer() {
+  const { isDark } = useTheme()
+  return (
+    <BlurView
+      intensity={isDark ? 22 : 42}
+      tint={isDark ? 'dark' : 'light'}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+  )
+}
+
 // ─── Racha Card (fuego animado + puntos semanales + tracker Lun–Dom) ──────────
 
 // Letras de día, Lun-primero — misma convención que "Tu Semana" del dashboard.
@@ -324,11 +376,15 @@ const FLAME_PATH = 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.2
 function FlameIcon({ color, size = 46, active }: { color: string; size?: number; active: boolean }) {
   // Glow pulsante (halo doble) + flicker de la llama. Todo con Animated core y
   // useNativeDriver — mismo patrón que el StreakTrack del dashboard.
+  const reduceMotion = useReduceMotion()
   const pulse = useRef(new Animated.Value(0)).current
   const flicker = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (!active) { pulse.setValue(0); flicker.setValue(0); return }
+    // Reduce-motion (WCAG 2.3.3): llama estática con el glow a mitad de camino,
+    // en vez del loop de pulso/flicker infinito.
+    if (reduceMotion) { pulse.setValue(0.5); flicker.setValue(0); return }
     const p = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -339,7 +395,7 @@ function FlameIcon({ color, size = 46, active }: { color: string; size?: number;
     ]))
     p.start(); f.start()
     return () => { p.stop(); f.stop() }
-  }, [active])
+  }, [active, reduceMotion])
 
   const box = Math.round(size * 1.7)
   const flameColor = active ? color : 'rgba(255,255,255,0.16)'
@@ -388,15 +444,17 @@ function RachaCard({
 }) {
   const pct = meta > 0 ? Math.min(100, Math.round((puntos / meta) * 100)) : 0
   const metaLograda = meta > 0 && puntos >= meta
+  const reduceMotion = useReduceMotion()
   const barAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (loading) return
+    if (reduceMotion) { barAnim.setValue(1); return }
     barAnim.setValue(0)
     Animated.timing(barAnim, {
       toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false,
     }).start()
-  }, [loading, pct])
+  }, [loading, pct, reduceMotion])
 
   const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${pct}%`] })
   const daysWord = racha === 1
@@ -428,6 +486,7 @@ function RachaCard({
   return (
     <View style={styles.rachaWrap}>
       <View style={styles.rachaCard}>
+        <GlassLayer />
         {/* ── Izquierda: fuego + racha ── */}
         <View style={styles.rachaLeft}>
           <FlameIcon color={colors.accent} size={46} active={racha > 0} />
@@ -727,7 +786,7 @@ function makeStyles(c: Colors) {
       backgroundColor: c.accentDark, borderWidth: 2, borderColor: c.accentLight,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { color: c.white, fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, letterSpacing: -0.5 },
+    avatarText: { color: readableTextOn(c.accentDark), fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, letterSpacing: -0.5 },
     headerInfo: { flex: 1, paddingTop: 4, gap: 8 },
     nombre: {
       color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold',
@@ -767,8 +826,8 @@ function makeStyles(c: Colors) {
     rachaWrap: { marginBottom: 28 },
     rachaCard: {
       flexDirection: 'row', alignItems: 'stretch', gap: 14,
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 22, padding: 14,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 22, padding: 14, overflow: 'hidden',
     },
     rachaLeft: {
       width: 104, alignItems: 'center', justifyContent: 'center',
@@ -820,13 +879,13 @@ function makeStyles(c: Colors) {
     // ── Distribución ──
     distWrap: { marginBottom: 28 },
     distCard: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
+      borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20, overflow: 'hidden',
     },
     distDivider: { height: 1, backgroundColor: c.borderDefault },
     distRow: { paddingVertical: 16 },
     distMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    distIcon: { fontSize: 15, marginRight: 8 },
+    distIcon: { marginRight: 8 },
     distLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkSecondary, letterSpacing: 1.8, textTransform: 'uppercase' },
     distCount: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.5 },
     distCountSuffix: {
@@ -852,8 +911,9 @@ function makeStyles(c: Colors) {
     favChipLabel: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 12, letterSpacing: -0.2 },
     favChipCount: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 0.5 },
     favEmpty: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
       borderRadius: 16, paddingVertical: 20, paddingHorizontal: 20, alignItems: 'center',
+      overflow: 'hidden',
     },
     favEmptyText: {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted,
@@ -865,7 +925,7 @@ function makeStyles(c: Colors) {
     eventosLabel: { marginBottom: 12 },
     eventoCard: {
       flexDirection: 'row', alignItems: 'center',
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
+      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
       borderRadius: 16, overflow: 'hidden',
     },
     eventoColorBar: { width: 3, alignSelf: 'stretch' },

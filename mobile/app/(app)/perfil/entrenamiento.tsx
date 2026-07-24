@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors, accentAlpha } from '../../../lib/colors'
+import { Colors, accentAlpha, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPatch } from '../../../lib/api'
@@ -281,10 +281,10 @@ function makeStyles(c: Colors) {
     dayBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault, alignItems: 'center', justifyContent: 'center' },
     dayBtnActive: { backgroundColor: c.accent, borderColor: c.accent },
     dayBtnText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: c.inkMuted },
-    dayBtnTextActive: { color: c.white },
+    dayBtnTextActive: { color: readableTextOn(c.accent) },
     rmTitle: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4, marginTop: 8 },
     rmSub: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.inkMuted, marginBottom: 14 },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
-    saveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
+    saveBtnText: { color: readableTextOn(c.accent), fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
   })
 }

@@ -26,6 +26,8 @@ import Svg, { Path } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import type { Colors } from '../../../lib/colors'
+import { readableTextOn } from '../../../lib/colors'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -53,9 +55,13 @@ function BluetoothIcon({ color, size = 22 }: { color: string; size?: number }) {
 // ─── Radar — anillos pulsantes ────────────────────────────────────────────────
 
 function RadarRings({ color }: { color: string }) {
+  const reduceMotion = useReduceMotion()
   const rings = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current]
 
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): un anillo estático a mitad de camino en vez
+    // del loop infinito de 3 anillos escaneando.
+    if (reduceMotion) { rings.forEach(ring => ring.setValue(0.3)); return }
     const delays = [0, 600, 1200]
     const anims = rings.map((ring, i) =>
       Animated.loop(
@@ -70,7 +76,7 @@ function RadarRings({ color }: { color: string }) {
     )
     anims.forEach(a => a.start())
     return () => anims.forEach(a => a.stop())
-  }, [])
+  }, [reduceMotion])
 
   return (
     <View style={radarStyles.container}>
@@ -270,7 +276,7 @@ function makeStyles(c: Colors) {
       width: '100%', borderRadius: 16, paddingVertical: 15, alignItems: 'center',
     },
     doneBtnText: {
-      color: '#fff', fontFamily: 'SpaceGrotesk-Bold',
+      color: readableTextOn(c.green), fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 15, letterSpacing: -0.3,
     },
   })

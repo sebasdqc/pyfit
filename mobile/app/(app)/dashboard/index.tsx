@@ -43,6 +43,7 @@ import { COLORS, Colors, accentAlpha, readableTextOn } from '../../../lib/colors
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, localDateStr } from '../../../lib/api'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 import StreakMilestoneModal from '../../../components/StreakMilestoneModal'
 
 // ─── Daily motivational phrases ───────────────────────────────────────────────
@@ -457,6 +458,7 @@ function ZyfitScoreCard({
   const [modalVisible, setModalVisible] = useState(false)
 
   // Animated offset: arranca en RING_CIRC (anillo vacío) → valor real
+  const reduceMotion = useReduceMotion()
   const animOffset = useRef(new Animated.Value(RING_CIRC)).current
   const prevValorRef = useRef<number | null>(null)
 
@@ -466,13 +468,14 @@ function ZyfitScoreCard({
     const target = hasData && valor != null
       ? RING_CIRC * (1 - valor / 100)
       : RING_CIRC
+    if (reduceMotion) { animOffset.setValue(target); return }
     Animated.timing(animOffset, {
       toValue: target,
       duration: 1000,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start()
-  }, [valor, hasData])
+  }, [valor, hasData, reduceMotion])
 
   return (
     <View style={styles.zsCard}>
@@ -596,10 +599,13 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
   style?: object
 }) {
   const { colors } = useTheme()
+  const reduceMotion = useReduceMotion()
   // Pulso de opacidad (shimmer) para que el estado de carga se sienta vivo y no
   // como contenido congelado. useNativeDriver: la opacidad corre en el hilo nativo.
   const pulse = useRef(new Animated.Value(0.4)).current
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): opacidad fija a mitad de camino, sin el loop.
+    if (reduceMotion) { pulse.setValue(0.7); return }
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -608,7 +614,7 @@ function Skeleton({ width, height, borderRadius = 8, style }: {
     )
     anim.start()
     return () => anim.stop()
-  }, [pulse])
+  }, [pulse, reduceMotion])
   return (
     <Animated.View
       style={[
@@ -641,9 +647,12 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo, i
   const W = 34, H = 50, R = 14
 
   // Animación de brillo para competiciones (menos intensa que el calendario mensual)
+  const reduceMotion = useReduceMotion()
   const glowAnim = useRef(new Animated.Value(0)).current
   useEffect(() => {
     if (eventTipo !== 'competicion') { glowAnim.setValue(0); return }
+    // Reduce-motion (WCAG 2.3.3): brillo estático a mitad de camino, sin el loop.
+    if (reduceMotion) { glowAnim.setValue(0.5); return }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -652,7 +661,7 @@ function DayPill({ state, isSelected, dayNumber, dayLetter, colors, eventTipo, i
     )
     loop.start()
     return () => loop.stop()
-  }, [eventTipo])
+  }, [eventTipo, reduceMotion])
 
   // Evento sobreescribe el estado visual
   if (eventTipo) {
@@ -1971,7 +1980,7 @@ function makeStyles(c: Colors) {
       justifyContent: 'center',
     },
     z1AvatarText: {
-      color: c.white,
+      color: readableTextOn(c.accentDark),
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 14,
       letterSpacing: -0.3,
@@ -2239,7 +2248,7 @@ function makeStyles(c: Colors) {
     semBadgeText: {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 8,
-      color: '#fff',
+      color: readableTextOn(c.accent),
       lineHeight: 11,
     },
     semFooter: {

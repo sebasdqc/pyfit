@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors, accentAlpha } from '../../../lib/colors'
+import { Colors, accentAlpha, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPatch, apiPost } from '../../../lib/api'
 import { useTranslation } from '../../../lib/i18n'
@@ -200,6 +200,6 @@ function makeStyles(c: Colors) {
       alignItems: 'center', justifyContent: 'center',
     },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
-    saveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
+    saveBtnText: { color: readableTextOn(c.accent), fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
   })
 }

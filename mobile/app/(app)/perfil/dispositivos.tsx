@@ -24,6 +24,7 @@ import { useTranslation } from '../../../lib/i18n'
 import { apiDelete, apiGet, apiPost } from '../../../lib/api'
 import AppleHealthService from '../../../lib/appleHealth'
 import type { Colors } from '../../../lib/colors'
+import { readableTextOn } from '../../../lib/colors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -426,7 +427,7 @@ function makeStyles(c: Colors) {
       paddingVertical: 13, alignItems: 'center',
     },
     btnConnectText: {
-      color: c.white, fontFamily: 'SpaceGrotesk-SemiBold',
+      color: readableTextOn(c.accent), fontFamily: 'SpaceGrotesk-SemiBold',
       fontSize: 14, letterSpacing: -0.2,
     },
     connectedFooter: {

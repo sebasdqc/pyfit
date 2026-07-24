@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import * as Haptics from 'expo-haptics'
 import Svg, { Path } from 'react-native-svg'
-import { Colors, accentAlpha } from '../../../lib/colors'
+import { Colors, accentAlpha, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet } from '../../../lib/api'
@@ -233,8 +233,7 @@ function makeStyles(c: Colors) {
       width: '100%', backgroundColor: c.accent, borderRadius: 14,
       paddingVertical: 15, alignItems: 'center', marginBottom: 12,
     },
-    primaryBtnText: {
-      color: c.white, fontFamily: 'JetBrainsMono-Medium',
+    primaryBtnText: { color: readableTextOn(c.accent), fontFamily: 'JetBrainsMono-Medium',
       fontSize: 12, letterSpacing: 0.8,
     },
     secondaryBtn: {

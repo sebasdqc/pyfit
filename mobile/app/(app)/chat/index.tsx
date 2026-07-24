@@ -13,6 +13,7 @@ import { useTheme } from '../../../lib/theme'
 import { readableTextOn, accentAlpha } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiPost, apiGet } from '../../../lib/api'
+import { useReduceMotion } from '../../../lib/useReduceMotion'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 
@@ -115,11 +116,30 @@ function AlertaIcon({ color, size = 14 }: { color: string; size?: number }) {
   )
 }
 
+// ─── Glass layer ──────────────────────────────────────────────────────────────
+// Capa de glassmorphism (expo-blur) que va DETRÁS del contenido de una card —
+// mismo patrón que el dashboard/Perfil. La card contenedora debe tener
+// overflow:'hidden' + un fondo translúcido (glassBg).
+function GlassLayer() {
+  const { isDark } = useTheme()
+  return (
+    <BlurView
+      intensity={isDark ? 22 : 42}
+      tint={isDark ? 'dark' : 'light'}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+  )
+}
+
 // ─── Typing indicator ─────────────────────────────────────────────────────────
 
 function TypingDots({ color }: { color: string }) {
+  const reduceMotion = useReduceMotion()
   const anims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): puntos quietos en reposo, sin el rebote en loop.
+    if (reduceMotion) { anims.forEach(a => a.setValue(0)); return }
     const loop = Animated.loop(
       Animated.stagger(180, anims.map(a =>
         Animated.sequence([
@@ -130,7 +150,7 @@ function TypingDots({ color }: { color: string }) {
     )
     loop.start()
     return () => loop.stop()
-  }, [])
+  }, [reduceMotion])
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4 }}>
       {anims.map((a, i) => (
@@ -167,7 +187,7 @@ function Bubble({ msg, colors, coachInitial = 'C', onRetry }: {
             ? { backgroundColor: 'transparent', borderColor: colors.red + '70' }
             : { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' },
         ]}>
-          <Text style={[chatStyles.coachAvatarTxt, isError && { color: colors.red }]}>{isError ? '!' : coachInitial}</Text>
+          <Text style={[chatStyles.coachAvatarTxt, { color: isError ? colors.red : readableTextOn(colors.accentDark) }]}>{isError ? '!' : coachInitial}</Text>
         </View>
       )}
       <View style={[
@@ -178,7 +198,7 @@ function Bubble({ msg, colors, coachInitial = 'C', onRetry }: {
             ? { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }
             : { backgroundColor: colors.accent, borderColor: colors.accent, borderBottomRightRadius: 4 },
       ]}>
-        <Text style={[chatStyles.bubbleTxt, { color: isError ? colors.red : isCoach ? colors.inkPrimary : '#fff' }]}>
+        <Text style={[chatStyles.bubbleTxt, { color: isError ? colors.red : isCoach ? colors.inkPrimary : readableTextOn(colors.accent) }]}>
           {msg.text}
         </Text>
         {isError && onRetry ? (
@@ -188,7 +208,7 @@ function Bubble({ msg, colors, coachInitial = 'C', onRetry }: {
             </Text>
           </TouchableOpacity>
         ) : (
-          <Text style={[chatStyles.bubbleTs, { color: isCoach ? colors.inkFaint : 'rgba(255,255,255,0.5)' }]}>
+          <Text style={[chatStyles.bubbleTs, { color: isCoach ? colors.inkFaint : accentAlpha(readableTextOn(colors.accent), 0.5) }]}>
             {formatTs(msg.ts)}
           </Text>
         )}
@@ -303,7 +323,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
           </TouchableOpacity>
           <View style={chatStyles.chatHeaderCenter}>
             <View style={[chatStyles.coachAvatarLg, { backgroundColor: colors.accentDark, borderColor: colors.accent + '50' }]}>
-              <Text style={chatStyles.coachAvatarLgTxt}>{avatarInitial}</Text>
+              <Text style={[chatStyles.coachAvatarLgTxt, { color: readableTextOn(colors.accentDark) }]}>{avatarInitial}</Text>
             </View>
             <View>
               <Text style={[chatStyles.chatTitle, { color: colors.inkPrimary }]}>
@@ -339,7 +359,7 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
             {isTyping && (
               <View style={[chatStyles.bubbleRow, chatStyles.bubbleRowCoach]}>
                 <View style={[chatStyles.coachAvatar, { backgroundColor: colors.accentDark, borderColor: colors.accentLight + '60' }]}>
-                  <Text style={chatStyles.coachAvatarTxt}>{avatarInitial}</Text>
+                  <Text style={[chatStyles.coachAvatarTxt, { color: readableTextOn(colors.accentDark) }]}>{avatarInitial}</Text>
                 </View>
                 <View style={[chatStyles.bubble, { backgroundColor: colors.cardBg, borderColor: colors.borderBright, borderBottomLeftRadius: 4 }]}>
                   <TypingDots color={colors.inkMuted} />
@@ -401,7 +421,8 @@ function InsightCard({ colors, texto, onAskCoach }: {
   const { t } = useTranslation()
   const cyan = colors.cyan
   return (
-    <View style={[styles.cardOuter, { borderColor: cyan + '28', backgroundColor: colors.cardBg }]}>
+    <View style={[styles.cardOuter, { borderColor: cyan + '28', backgroundColor: colors.glassBg }]}>
+      <GlassLayer />
       <View style={[styles.cardTopBar, { backgroundColor: cyan }]} />
       <LinearGradient
         colors={[cyan + '18', 'transparent']}
@@ -451,8 +472,9 @@ function RecCard({ rec, anim, colors, onAskCoach }: {
   return (
     <Animated.View style={[
       styles.cardOuter,
-      { borderColor: rec.color + '28', backgroundColor: colors.cardBg, opacity: anim, transform: [{ translateY }] },
+      { borderColor: rec.color + '28', backgroundColor: colors.glassBg, opacity: anim, transform: [{ translateY }] },
     ]}>
+      <GlassLayer />
       <View style={[styles.cardTopBar, { backgroundColor: rec.color }]} />
       <LinearGradient
         colors={[rec.color + '18', 'transparent']}
@@ -508,8 +530,12 @@ const CHIPS_BY_LANG: Record<string, string[]> = {
 function CoachChip({ tema, onPress, colors, isDark, phase }: {
   tema: string; onPress: () => void; colors: any; isDark: boolean; phase: number
 }) {
+  const reduceMotion = useReduceMotion()
   const pulse = useRef(new Animated.Value(0)).current
   useEffect(() => {
+    // Reduce-motion (WCAG 2.3.3): anillo estático a mitad de camino, sin el
+    // pulso en loop ni la onda desfasada por chip.
+    if (reduceMotion) { pulse.setValue(0.5); return }
     const loop = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -517,7 +543,7 @@ function CoachChip({ tema, onPress, colors, isDark, phase }: {
     // Desfase por chip → el pulso recorre la fila como una onda, no todos a la vez.
     const timer = setTimeout(() => loop.start(), phase)
     return () => { clearTimeout(timer); loop.stop() }
-  }, [phase])
+  }, [phase, reduceMotion])
 
   const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.22, 0.85] })
 
@@ -545,6 +571,7 @@ export default function CoachScreen() {
   const { colors, isDark } = useTheme()
   const { lang, t } = useTranslation()
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReduceMotion()
 
   const [activeIdx, setActiveIdx] = useState(0)
   const [chatOpen, setChatOpen] = useState(false)
@@ -563,8 +590,9 @@ export default function CoachScreen() {
   const cardAnims = useRef(Array.from({ length: MAX_RECS }, () => new Animated.Value(0))).current
 
   useEffect(() => {
+    if (reduceMotion) { headerAnim.setValue(1); return }
     Animated.timing(headerAnim, { toValue: 1, duration: 520, useNativeDriver: true }).start()
-  }, [])
+  }, [reduceMotion])
 
   useEffect(() => {
     setLoadingRecs(true)
@@ -576,6 +604,7 @@ export default function CoachScreen() {
         setCoachNombre(data.coach?.nombre || undefined)
         // Stagger card animations
         const anims = data.recomendaciones?.slice(0, MAX_RECS).map((_, i) => cardAnims[i]) || []
+        if (reduceMotion) { anims.forEach(a => a.setValue(1)); return }
         Animated.stagger(90, anims.map(a =>
           Animated.spring(a, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 })
         )).start()
@@ -742,14 +771,14 @@ export default function CoachScreen() {
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }}>
               <Path
                 d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4V5.5z"
-                stroke="#fff" strokeWidth={1.9} strokeLinejoin="round"
+                stroke={readableTextOn(colors.accent)} strokeWidth={1.9} strokeLinejoin="round"
               />
             </Svg>
             <View style={{ flex: 1 }}>
-              <Text style={styles.chatBtnTxt}>{t('chat_start_btn')}</Text>
-              <Text style={styles.chatBtnSubtxt} numberOfLines={1}>{chatBtnSubtext}</Text>
+              <Text style={[styles.chatBtnTxt, { color: readableTextOn(colors.accent) }]}>{t('chat_start_btn')}</Text>
+              <Text style={[styles.chatBtnSubtxt, { color: accentAlpha(readableTextOn(colors.accent), 0.65) }]} numberOfLines={1}>{chatBtnSubtext}</Text>
             </View>
-            <Text style={styles.chatBtnArrow}>›</Text>
+            <Text style={[styles.chatBtnArrow, { color: accentAlpha(readableTextOn(colors.accent), 0.7) }]}>›</Text>
           </TouchableOpacity>
         </Animated.View>
 

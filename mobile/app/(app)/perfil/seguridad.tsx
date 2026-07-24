@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost } from '../../../lib/api'
@@ -244,7 +244,7 @@ function makeStyles(c: Colors) {
     eyeToggle: { alignSelf: 'flex-start', marginTop: 10 },
     eyeToggleText: { color: c.accent, fontFamily: 'SpaceGrotesk-Medium', fontSize: 12 },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 },
-    saveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
+    saveBtnText: { color: readableTextOn(c.accent), fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
     cancelBtn: { alignItems: 'center', marginTop: 12 },
     cancelBtnText: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     currentEmailLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 },

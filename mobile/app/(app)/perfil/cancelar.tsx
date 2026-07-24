@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Redirect, router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line, Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
 import { BILLING_ENABLED } from '../../../lib/featureFlags'
@@ -287,7 +287,7 @@ export default function CancelarScreen() {
               accessibilityState={{ disabled: enviando, busy: enviando }}
             >
               {enviando
-                ? <ActivityIndicator color="#fff" size="small" />
+                ? <ActivityIndicator color={readableTextOn(colors.red)} size="small" />
                 : <Text style={styles.ctaDangerText}>Sí, cancelar</Text>}
             </TouchableOpacity>
 
@@ -428,7 +428,7 @@ function makeStyles(c: Colors) {
     },
     ctaMantenText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 16,
-      letterSpacing: -0.3, color: '#fff',
+      letterSpacing: -0.3, color: readableTextOn(c.accent),
     },
 
     ctaDangerBtn: {
@@ -438,7 +438,7 @@ function makeStyles(c: Colors) {
     },
     ctaDangerText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 16,
-      letterSpacing: -0.3, color: '#fff',
+      letterSpacing: -0.3, color: readableTextOn(c.red),
     },
 
     ctaSecundario: { alignItems: 'center', paddingVertical: 6 },

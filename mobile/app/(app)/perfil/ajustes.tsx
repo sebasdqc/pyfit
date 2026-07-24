@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme, Palette } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { useUnits, UnitSystem } from '../../../lib/units'
@@ -440,8 +440,8 @@ export default function AjustesScreen() {
                       }}
                     >
                       {verifying
-                        ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: '#fff' }}>{t('ajt_verify_btn')}</Text>}
+                        ? <ActivityIndicator size="small" color={readableTextOn(colors.accent)} />
+                        : <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: readableTextOn(colors.accent) }}>{t('ajt_verify_btn')}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleResendCode}

@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { useTranslation } from '../../../lib/i18n'
 import { apiPost } from '../../../lib/api'
@@ -81,7 +81,7 @@ export default function ReportarContenidoScreen() {
             accessibilityLabel={t('rep_submit')}
           >
             {enviando
-              ? <ActivityIndicator color="#fff" size="small" />
+              ? <ActivityIndicator color={readableTextOn(colors.accent)} size="small" />
               : <Text style={styles.submitBtnTxt}>{t('rep_submit')}</Text>}
           </TouchableOpacity>
         </ScrollView>
@@ -121,6 +121,6 @@ function makeStyles(c: Colors) {
     submitBtn: {
       height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
     },
-    submitBtnTxt: { color: '#fff', fontFamily: 'SpaceGrotesk-Bold', fontSize: 15 },
+    submitBtnTxt: { color: readableTextOn(c.accent), fontFamily: 'SpaceGrotesk-Bold', fontSize: 15 },
   })
 }
