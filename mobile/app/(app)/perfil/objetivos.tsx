@@ -4,15 +4,26 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPatch, apiPost } from '../../../lib/api'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const OBJETIVOS_LIST = [
   'Perder grasa', 'Ganar músculo', 'Rendimiento deportivo', 'Resistencia', 'Salud general',
 ]
+
+// Label i18n por objetivo — el valor (id) que se guarda/envía al backend
+// sigue siendo el string en español; solo se traduce el texto mostrado.
+const OBJETIVO_LABELS: Record<string, string> = {
+  'Perder grasa':          'obj_lose_fat',
+  'Ganar músculo':         'obj_gain_muscle',
+  'Rendimiento deportivo': 'obj_sport_performance',
+  'Resistencia':           'obj_endurance',
+  'Salud general':         'obj_general_health',
+}
 
 const OBJETIVO_TO_GOAL: Record<string, string> = {
   'Perder grasa':          'perdida_grasa',
@@ -26,12 +37,14 @@ const OBJETIVO_TO_GOAL: Record<string, string> = {
 
 export default function ObjetivosScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
   const [fullProfile, setFullProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [objetivos, setObjetivos] = useState<string[]>([])
 
   useEffect(() => {
@@ -43,12 +56,28 @@ export default function ObjetivosScreen() {
 
   function toggleObjetivo(obj: string) {
     setObjetivos(prev => prev.includes(obj) ? prev.filter(o => o !== obj) : [...prev, obj])
+    setIsDirty(true)
+  }
+
+  function goBack() {
+    if (isDirty) {
+      Alert.alert(
+        t('dp_unsaved_title'),
+        t('dp_unsaved_msg'),
+        [
+          { text: t('dp_unsaved_keep'), style: 'cancel' },
+          { text: t('dp_unsaved_leave'), style: 'destructive', onPress: () => router.back() },
+        ]
+      )
+      return
+    }
+    router.back()
   }
 
   async function save() {
     if (!fullProfile) return
     if (objetivos.length === 0) {
-      Alert.alert('Selecciona al menos un objetivo')
+      Alert.alert(t('obj_select_at_least_one'))
       return
     }
     setSaving(true)
@@ -62,9 +91,10 @@ export default function ObjetivosScreen() {
       if (goal) {
         await apiPost('/api/training-cycle/', { goal })
       }
+      setIsDirty(false)
       router.back()
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('obj_save_error'))
     } finally { setSaving(false) }
   }
 
@@ -74,24 +104,24 @@ export default function ObjetivosScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis objetivos</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_objectives')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={{ paddingTop: 40, alignItems: 'center' }}>
-            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
           </View>
         ) : (
           <>
             <Text style={styles.hint}>
-              Selecciona uno o varios objetivos. El primero que elijas será el principal.
+              {t('obj_hint')}
             </Text>
 
             <View style={styles.objectivesGrid}>
@@ -107,10 +137,10 @@ export default function ObjetivosScreen() {
                   >
                     {rank === 1 && (
                       <View style={styles.primaryBadge}>
-                        <Text style={styles.primaryBadgeText}>PRINCIPAL</Text>
+                        <Text style={styles.primaryBadgeText}>{t('obj_primary_badge')}</Text>
                       </View>
                     )}
-                    <Text style={[styles.objText, active && styles.objTextActive]}>{obj}</Text>
+                    <Text style={[styles.objText, active && styles.objTextActive]}>{t(OBJETIVO_LABELS[obj] as any)}</Text>
                     {active && (
                       <View style={styles.checkCircle}>
                         <Text style={{ color: colors.accent, fontSize: 12, fontFamily: 'SpaceGrotesk-Bold' }}>✓</Text>
@@ -124,7 +154,7 @@ export default function ObjetivosScreen() {
             <TouchableOpacity
               style={[styles.saveBtn, (saving || objetivos.length === 0) && { opacity: 0.5 }]}
               onPress={save} disabled={saving || objetivos.length === 0} activeOpacity={0.85}>
-              <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? t('obj_saving') : t('obj_save_changes')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -155,17 +185,17 @@ function makeStyles(c: Colors) {
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
       borderRadius: 16, padding: 18,
     },
-    objCardActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.08)' },
+    objCardActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.08) },
     primaryBadge: {
       paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
-      backgroundColor: 'rgba(79,140,255,0.15)',
+      backgroundColor: accentAlpha(c.accent, 0.15),
     },
     primaryBadgeText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, color: c.accent, letterSpacing: 1, textTransform: 'uppercase' },
     objText: { flex: 1, color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 },
     objTextActive: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-SemiBold' },
     checkCircle: {
       width: 24, height: 24, borderRadius: 12,
-      backgroundColor: 'rgba(79,140,255,0.15)',
+      backgroundColor: accentAlpha(c.accent, 0.15),
       borderWidth: 1, borderColor: c.accent,
       alignItems: 'center', justifyContent: 'center',
     },

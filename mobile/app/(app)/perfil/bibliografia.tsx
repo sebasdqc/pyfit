@@ -6,12 +6,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+// Autores/año/título/journal de cada cita NO se traducen — son referencias
+// bibliográficas reales, se citan igual en los 4 idiomas. Solo se traduce el
+// nombre de la categoría (categoriaKey).
 
 const REFERENCIAS = [
   {
-    categoria: 'Carga y rendimiento',
+    categoriaKey: 'bib_cat_carga',
     color: '#4f8cff',
     items: [
       {
@@ -41,7 +45,7 @@ const REFERENCIAS = [
     ],
   },
   {
-    categoria: 'Recuperación',
+    categoriaKey: 'bib_cat_recuperacion',
     color: '#32c896',
     items: [
       {
@@ -65,7 +69,7 @@ const REFERENCIAS = [
     ],
   },
   {
-    categoria: 'Bienestar y estrés',
+    categoriaKey: 'bib_cat_bienestar',
     color: '#ffaa32',
     items: [
       {
@@ -83,7 +87,7 @@ const REFERENCIAS = [
     ],
   },
   {
-    categoria: 'Ciclo menstrual',
+    categoriaKey: 'bib_cat_ciclo',
     color: '#c084fc',
     items: [
       {
@@ -100,12 +104,13 @@ const REFERENCIAS = [
       },
     ],
   },
-]
+] as const
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function BibliografiaScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -120,14 +125,14 @@ export default function BibliografiaScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bibliografía</Text>
+        <Text style={styles.headerTitle}>{t('bib_header')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {REFERENCIAS.map(cat => (
-          <View key={cat.categoria} style={styles.section}>
+          <View key={cat.categoriaKey} style={styles.section}>
             <View style={[styles.catBadge, { borderColor: `${cat.color}44`, backgroundColor: `${cat.color}14` }]}>
-              <Text style={[styles.catLabel, { color: cat.color }]}>{cat.categoria.toUpperCase()}</Text>
+              <Text style={[styles.catLabel, { color: cat.color }]}>{t(cat.categoriaKey).toUpperCase()}</Text>
             </View>
 
             {cat.items.map((ref, i) => (

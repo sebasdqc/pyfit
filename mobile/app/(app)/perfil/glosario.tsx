@@ -8,56 +8,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation, type ScalarKey } from '../../../lib/i18n'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const TERMINOS = [
-  {
-    termino: 'Descanso activo',
-    definicion: 'Sesión de baja intensidad (movilidad, caminata, natación suave) realizada en días de recuperación. Favorece el flujo sanguíneo y acelera la eliminación de metabolitos sin generar nuevo estrés neuromuscular.',
-  },
-  {
-    termino: 'Fase folicular',
-    definicion: 'Primera mitad del ciclo menstrual (días 1–14). Los niveles de estrógeno son crecientes, lo que favorece entrenamientos de alta intensidad, fuerza y mayor tolerancia al volumen de entrenamiento.',
-  },
-  {
-    termino: 'Fase lútea',
-    definicion: 'Segunda mitad del ciclo menstrual (días 15–28). La progesterona es dominante, lo que se asocia a mayor percepción de fatiga, temperatura corporal elevada y menor tolerancia al entrenamiento de alta intensidad.',
-  },
-  {
-    termino: 'Fatiga neuromuscular',
-    definicion: 'Reducción temporal de la capacidad de producir fuerza como resultado del esfuerzo físico acumulado. Se manifiesta como menor rendimiento, mayor percepción del esfuerzo y disminución de la coordinación.',
-  },
-  {
-    termino: 'Frecuencia cardíaca de reserva',
-    definicion: 'Diferencia entre la frecuencia cardíaca máxima y la frecuencia cardíaca en reposo. Se usa para calcular zonas de intensidad cardiovascular más precisas que con la frecuencia cardíaca máxima sola.',
-  },
-  {
-    termino: 'HIIT',
-    definicion: 'High-Intensity Interval Training. Método de entrenamiento que alterna períodos de esfuerzo máximo o cercano al máximo con períodos de recuperación activa o pasiva. Mejora la capacidad aeróbica y el metabolismo en menor tiempo.',
-  },
-  {
-    termino: 'Periodización',
-    definicion: 'Organización sistemática del entrenamiento en bloques con variaciones planificadas de volumen, intensidad y tipo de estímulo. Permite maximizar las adaptaciones fisiológicas y reducir el riesgo de sobreentrenamiento.',
-  },
-  {
-    termino: 'RPE',
-    definicion: 'Rate of Perceived Exertion (Escala de Percepción del Esfuerzo). Escala del 1 al 10 que mide el esfuerzo subjetivo percibido durante el ejercicio. Zyfit la utiliza para calibrar la intensidad ideal para cada sesión y perfil de usuario.',
-  },
-  {
-    termino: 'Sobrecarga progresiva',
-    definicion: 'Principio fundamental del entrenamiento que consiste en aumentar gradualmente el estímulo (peso, repeticiones, series o densidad) para seguir generando adaptaciones neuromusculares y evitar el estancamiento.',
-  },
-  {
-    termino: 'Volumen de entrenamiento',
-    definicion: 'Cantidad total de trabajo realizado en una sesión o semana, expresada como series × repeticiones × carga. Es el principal determinante del crecimiento muscular a largo plazo, dentro de un rango tolerable de fatiga.',
-  },
+const TERMINOS: { terminoKey: ScalarKey; definicionKey: ScalarKey }[] = [
+  { terminoKey: 'glo_descanso_activo_term', definicionKey: 'glo_descanso_activo_def' },
+  { terminoKey: 'glo_fase_folicular_term', definicionKey: 'glo_fase_folicular_def' },
+  { terminoKey: 'glo_fase_lutea_term', definicionKey: 'glo_fase_lutea_def' },
+  { terminoKey: 'glo_fatiga_neuromuscular_term', definicionKey: 'glo_fatiga_neuromuscular_def' },
+  { terminoKey: 'glo_frecuencia_reserva_term', definicionKey: 'glo_frecuencia_reserva_def' },
+  { terminoKey: 'glo_hiit_term', definicionKey: 'glo_hiit_def' },
+  { terminoKey: 'glo_periodizacion_term', definicionKey: 'glo_periodizacion_def' },
+  { terminoKey: 'glo_rpe_term', definicionKey: 'glo_rpe_def' },
+  { terminoKey: 'glo_sobrecarga_term', definicionKey: 'glo_sobrecarga_def' },
+  { terminoKey: 'glo_volumen_term', definicionKey: 'glo_volumen_def' },
 ]
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function GlosarioScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
@@ -65,8 +37,10 @@ export default function GlosarioScreen() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return TERMINOS
-    return TERMINOS.filter(t => t.termino.toLowerCase().includes(q) || t.definicion.toLowerCase().includes(q))
-  }, [query])
+    return TERMINOS.filter(item =>
+      t(item.terminoKey).toLowerCase().includes(q) || t(item.definicionKey).toLowerCase().includes(q)
+    )
+  }, [query, t])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -79,7 +53,7 @@ export default function GlosarioScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Glosario</Text>
+        <Text style={styles.headerTitle}>{t('glo_header')}</Text>
       </View>
 
       {/* Search bar */}
@@ -91,7 +65,7 @@ export default function GlosarioScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Buscar término..."
+          placeholder={t('glo_search_placeholder')}
           placeholderTextColor={colors.inkMuted}
           style={styles.searchInput}
           autoCapitalize="none"
@@ -102,12 +76,12 @@ export default function GlosarioScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
-          <Text style={styles.empty}>Sin resultados para "{query}"</Text>
+          <Text style={styles.empty}>{t('glo_no_results_prefix')} "{query}"</Text>
         ) : (
-          filtered.map((t, i) => (
-            <View key={t.termino} style={[styles.termCard, i === filtered.length - 1 && { marginBottom: 0 }]}>
-              <Text style={styles.termNombre}>{t.termino}</Text>
-              <Text style={styles.termDef}>{t.definicion}</Text>
+          filtered.map((item, i) => (
+            <View key={item.terminoKey} style={[styles.termCard, i === filtered.length - 1 && { marginBottom: 0 }]}>
+              <Text style={styles.termNombre}>{t(item.terminoKey)}</Text>
+              <Text style={styles.termDef}>{t(item.definicionKey)}</Text>
             </View>
           ))
         )}

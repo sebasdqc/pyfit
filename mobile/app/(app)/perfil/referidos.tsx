@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import * as Haptics from 'expo-haptics'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet } from '../../../lib/api'
 
 // ─── Config ─────────────────────────────────────────────────────────────────
@@ -20,21 +21,18 @@ function buildReferralLink(code: string) {
   return code ? `${DOWNLOAD_BASE}/r/${code}` : DOWNLOAD_BASE
 }
 
-function buildInviteMessage(code: string) {
+function buildInviteMessage(code: string, t: (k: any) => string) {
   const link = buildReferralLink(code)
   return (
-    `¡Entrena conmigo en Zyfit! 💪\n\n` +
-    `Usa mi código ${code} al registrarte y arrancamos juntos.\n\n` +
-    `Descarga la app aquí: ${link}`
+    `${t('ref_invite_line1')}\n\n` +
+    `${t('ref_invite_line2').replace('{code}', code)}\n\n` +
+    `${t('ref_invite_line3').replace('{link}', link)}`
   )
 }
 
 // Beneficios aún por definir — se listan como adelanto.
-const BENEFICIOS: { icon: string; text: string }[] = [
-  { icon: '🎁', text: 'Recompensas para ti y para cada amigo que invites' },
-  { icon: '🏆', text: 'Ventajas exclusivas al alcanzar metas juntos' },
-  { icon: '✨', text: 'Sorpresas a medida que crece tu equipo' },
-]
+const BENEFICIO_ICONS = ['🎁', '🏆', '✨'] as const
+const BENEFICIO_KEYS = ['ref_benefit_1', 'ref_benefit_2', 'ref_benefit_3'] as const
 
 type Copied = 'code' | 'msg' | 'link' | null
 
@@ -42,6 +40,7 @@ type Copied = 'code' | 'msg' | 'link' | null
 
 export default function ReferidosScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -102,7 +101,7 @@ export default function ReferidosScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Referidos</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_referrals')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}
@@ -112,13 +111,13 @@ export default function ReferidosScreen() {
         <View style={styles.iconCircle}>
           <Text style={{ fontSize: 40 }}>🎁</Text>
         </View>
-        <Text style={styles.title}>Invita a un amigo</Text>
+        <Text style={styles.title}>{t('ref_hero_title')}</Text>
         <Text style={styles.description}>
-          Comparte tu código personal. Cuando tus amigos entrenen con Zyfit, ambos ganan.
+          {t('ref_hero_desc')}
         </Text>
 
         {/* Código de referido */}
-        <Text style={styles.sectionLabel}>TU CÓDIGO DE REFERIDO</Text>
+        <Text style={styles.sectionLabel}>{t('ref_code_label')}</Text>
         <TouchableOpacity
           style={styles.codeBox}
           activeOpacity={canCopy ? 0.8 : 1}
@@ -131,7 +130,7 @@ export default function ReferidosScreen() {
             <>
               <Text style={styles.codeValue}>{code || '——————'}</Text>
               <Text style={styles.codeHint}>
-                {copied === 'code' ? '✓ ¡Copiado!' : 'Toca para copiar'}
+                {copied === 'code' ? `✓ ${t('ref_copied')}` : t('ref_tap_to_copy')}
               </Text>
             </>
           )}
@@ -142,10 +141,10 @@ export default function ReferidosScreen() {
           style={[styles.primaryBtn, !canCopy && styles.btnDisabled]}
           activeOpacity={0.85}
           disabled={!canCopy}
-          onPress={() => copy(buildInviteMessage(code), 'msg')}
+          onPress={() => copy(buildInviteMessage(code, t), 'msg')}
         >
           <Text style={styles.primaryBtnText}>
-            {copied === 'msg' ? '✓ ¡MENSAJE COPIADO!' : 'COPIAR MENSAJE DE INVITACIÓN'}
+            {copied === 'msg' ? `✓ ${t('ref_msg_copied')}` : t('ref_copy_msg')}
           </Text>
         </TouchableOpacity>
 
@@ -156,21 +155,21 @@ export default function ReferidosScreen() {
           onPress={() => copy(buildReferralLink(code), 'link')}
         >
           <Text style={styles.secondaryBtnText}>
-            {copied === 'link' ? '✓ ¡LINK COPIADO!' : 'COPIAR SOLO LINK DE DESCARGA'}
+            {copied === 'link' ? `✓ ${t('ref_link_copied')}` : t('ref_copy_link')}
           </Text>
         </TouchableOpacity>
 
         {/* Beneficios (aún por definir) */}
         <View style={styles.benefitsCard}>
-          <Text style={styles.benefitsTitle}>Beneficios</Text>
-          {BENEFICIOS.map((b, i) => (
+          <Text style={styles.benefitsTitle}>{t('ref_benefits_title')}</Text>
+          {BENEFICIO_KEYS.map((key, i) => (
             <View key={i} style={styles.benefitRow}>
-              <Text style={styles.benefitIcon}>{b.icon}</Text>
-              <Text style={styles.benefitText}>{b.text}</Text>
+              <Text style={styles.benefitIcon}>{BENEFICIO_ICONS[i]}</Text>
+              <Text style={styles.benefitText}>{t(key)}</Text>
             </View>
           ))}
           <Text style={styles.benefitsNote}>
-            Estamos afinando los detalles del programa. ¡Pronto anunciaremos las recompensas!
+            {t('ref_benefits_note')}
           </Text>
         </View>
       </ScrollView>
@@ -195,8 +194,8 @@ function makeStyles(c: Colors) {
     headerTitle: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, letterSpacing: -0.5, flex: 1 },
     iconCircle: {
       width: 96, height: 96, borderRadius: 48,
-      backgroundColor: 'rgba(79,140,255,0.1)',
-      borderWidth: 1, borderColor: 'rgba(79,140,255,0.2)',
+      backgroundColor: accentAlpha(c.accent, 0.1),
+      borderWidth: 1, borderColor: accentAlpha(c.accent, 0.2),
       alignItems: 'center', justifyContent: 'center',
       marginTop: 24, marginBottom: 20,
     },

@@ -16,7 +16,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
 import { fetchMiCoachChat, sendMiCoachMensaje, desvincularMiCoach, type Mensaje, type MiCoachChat } from '../../../lib/coachApi'
@@ -76,12 +76,14 @@ export default function RegistroCoachScreen() {
 
   useEffect(() => { cargarChat() }, [])
 
-  // Polling del chat cada 5s mientras hay coach vinculado.
+  // Polling del chat cada 5s mientras hay coach vinculado. Depende de coach?.id
+  // (no de `coach`, que es un objeto nuevo en cada poll) para no reiniciar el
+  // setInterval cada 5s sin necesidad.
   useEffect(() => {
     if (!coach) return
     const t = setInterval(() => cargarChat(true), 5000)
     return () => clearInterval(t)
-  }, [coach])
+  }, [coach?.id])
 
   async function vincular() {
     if (codigo.trim().length < 4 || linking) return
@@ -304,8 +306,8 @@ function makeStyles(c: Colors) {
     // Código
     iconCircle: {
       width: 96, height: 96, borderRadius: 48,
-      backgroundColor: 'rgba(79,140,255,0.1)',
-      borderWidth: 1, borderColor: 'rgba(79,140,255,0.2)',
+      backgroundColor: accentAlpha(c.accent, 0.1),
+      borderWidth: 1, borderColor: accentAlpha(c.accent, 0.2),
       alignItems: 'center', justifyContent: 'center',
       marginTop: 24, marginBottom: 20,
     },
@@ -317,7 +319,7 @@ function makeStyles(c: Colors) {
       paddingVertical: 20, minHeight: 72, color: c.inkPrimary, fontFamily: 'JetBrainsMono-Medium',
       fontSize: 30, letterSpacing: 8, textAlign: 'center', marginBottom: 16,
     },
-    errorText: { alignSelf: 'flex-start', color: '#ff8585', fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, marginBottom: 12, marginTop: -4 },
+    errorText: { alignSelf: 'flex-start', color: c.red, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, marginBottom: 12, marginTop: -4 },
     primaryBtn: { width: '100%', backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 16, minHeight: 50, justifyContent: 'center' },
     primaryBtnText: { color: c.white, fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 0.8 },
     btnDisabled: { opacity: 0.45 },
@@ -329,7 +331,7 @@ function makeStyles(c: Colors) {
       marginHorizontal: 20, marginTop: 16, marginBottom: 8,
       backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 16, padding: 14,
     },
-    coachAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(79,140,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+    coachAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: accentAlpha(c.accent, 0.15), alignItems: 'center', justifyContent: 'center' },
     coachAvatarText: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: c.accent },
     coachLabel: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: c.inkMuted, letterSpacing: 1.4 },
     coachName: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 16, color: c.inkPrimary, marginTop: 2 },
@@ -338,7 +340,7 @@ function makeStyles(c: Colors) {
 
     chatContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
     chatEmpty: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, color: c.inkMuted, textAlign: 'center', marginTop: 40 },
-    sendErrorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: '#ff8585', textAlign: 'center', paddingHorizontal: 20, marginBottom: 6 },
+    sendErrorText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: c.red, textAlign: 'center', paddingHorizontal: 20, marginBottom: 6 },
     dateSep: { alignItems: 'center', marginVertical: 12 },
     dateSepText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkFaint, letterSpacing: 0.5 },
     msgRow: { marginBottom: 14, maxWidth: '100%' },

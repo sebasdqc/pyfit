@@ -1,9 +1,10 @@
 /**
  * MI CUENTA — sub-menú del Perfil.
  *
- * Reúne las opciones de cuenta: Datos personales y, si aplica, Ciclo menstrual.
- * Carga el perfil sólo para los subtítulos/badges informativos; la navegación
- * funciona igual aunque el fetch falle.
+ * Reúne las opciones de cuenta: Seguridad y, si aplica, Ciclo menstrual.
+ * ("Datos personales" ya está directo en Ajustes, no se repite acá.) Carga el
+ * perfil sólo para los subtítulos/badges informativos; la navegación funciona
+ * igual aunque el fetch falle.
  */
 import React, { useCallback, useState } from 'react'
 import { router, useFocusEffect } from 'expo-router'
@@ -13,30 +14,25 @@ import { MenuScreen, MenuRow } from '../../../components/ProfileMenu'
 
 export default function MiCuentaScreen() {
   const { t } = useTranslation()
-  const [peso, setPeso] = useState('')
-  const [altura, setAltura] = useState('')
   const [sexo, setSexo] = useState('')
   const [usaCiclo, setUsaCiclo] = useState(false)
 
   useFocusEffect(useCallback(() => {
     apiGet('/api/profile/').then((d: any) => {
-      setPeso(d.peso ?? '')
-      setAltura(d.altura ?? '')
       setSexo(d.sexo ?? '')
       setUsaCiclo(!!d.usa_ciclo_menstrual)
     }).catch(() => { /* navegación sigue funcionando sin subtítulos */ })
   }, []))
 
-  const subDatos = peso && altura ? `${peso} kg · ${altura} cm` : undefined
-  const badgeCiclo = usaCiclo ? 'Activo' : 'Configurar'
+  const badgeCiclo = usaCiclo ? t('mic_cycle_active') : t('mic_cycle_configure')
 
   return (
     <MenuScreen title={t('perfil_section_account')}>
       <MenuRow
-        icon="👤"
-        title={t('perfil_row_personal')}
-        subtitle={subDatos}
-        onPress={() => router.push('/(app)/perfil/datos-personales' as any)}
+        icon="🔒"
+        title={t('mic_security')}
+        subtitle={t('mic_security_sub')}
+        onPress={() => router.push('/(app)/perfil/seguridad' as any)}
       />
       {sexo === 'femenino' && (
         <MenuRow

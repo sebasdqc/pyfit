@@ -9,12 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiPost } from '../../../lib/api'
 
 const MAX_LEN = 2000
 
 export default function ReportarContenidoScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
   const [mensaje, setMensaje] = useState('')
@@ -27,12 +29,12 @@ export default function ReportarContenidoScreen() {
     try {
       await apiPost('/api/reportar-contenido/', { mensaje: texto })
       Alert.alert(
-        'Gracias por avisarnos',
-        'Revisaremos el contenido que reportaste.',
+        t('rep_thanks_title'),
+        t('rep_thanks_msg'),
         [{ text: 'OK', onPress: () => router.back() }],
       )
     } catch (e: any) {
-      Alert.alert('No se pudo enviar', e?.message || 'Intenta de nuevo en unos minutos.')
+      Alert.alert(t('rep_send_error_title'), e?.message || t('rep_send_error_msg'))
     } finally {
       setEnviando(false)
     }
@@ -46,31 +48,27 @@ export default function ReportarContenidoScreen() {
 
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}
-            accessibilityRole="button" accessibilityLabel="Volver">
+            accessibilityRole="button" accessibilityLabel={t('common_back')}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
               <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Reportar contenido</Text>
+          <Text style={styles.headerTitle}>{t('rep_title')}</Text>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          <Text style={styles.intro}>
-            Las rutinas, sesiones de running y el chat de Zyfit se generan con IA. Si viste algo
-            inapropiado, incorrecto o contraindicado, contanos qué pasó y en qué sesión — lo revisamos
-            manualmente.
-          </Text>
+          <Text style={styles.intro}>{t('rep_intro')}</Text>
 
           <TextInput
             style={styles.textarea}
             value={mensaje}
-            onChangeText={t => setMensaje(t.slice(0, MAX_LEN))}
-            placeholder="Ej: la rutina del 20/07 me sugirió sentadilla con salto a pesar de que marqué dolor de rodilla activo."
+            onChangeText={txt => setMensaje(txt.slice(0, MAX_LEN))}
+            placeholder={t('rep_placeholder')}
             placeholderTextColor={colors.inkFaint}
             multiline
             numberOfLines={8}
             textAlignVertical="top"
-            accessibilityLabel="Descripción del contenido a reportar"
+            accessibilityLabel={t('rep_a11y_input')}
           />
           <Text style={styles.counter}>{mensaje.length}/{MAX_LEN}</Text>
 
@@ -80,11 +78,11 @@ export default function ReportarContenidoScreen() {
             disabled={!mensaje.trim() || enviando}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel="Enviar reporte"
+            accessibilityLabel={t('rep_submit')}
           >
             {enviando
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.submitBtnTxt}>Enviar reporte</Text>}
+              : <Text style={styles.submitBtnTxt}>{t('rep_submit')}</Text>}
           </TouchableOpacity>
         </ScrollView>
       </View>

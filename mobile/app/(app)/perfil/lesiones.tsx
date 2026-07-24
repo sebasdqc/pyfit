@@ -4,29 +4,57 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation, ScalarKey } from '../../../lib/i18n'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
+// `k` = valor Spanish canónico (se .toLowerCase()/normaliza antes de mandarlo
+// al backend); `labelKey` = clave de traducción solo para mostrar.
 
-const ZONAS = ['Rodilla', 'Lumbar', 'Hombro', 'Cuello', 'Cadera', 'Tobillo', 'Muñeca', 'Codo']
-const SEVERIDADES = ['Leve', 'Moderada', 'Crónica']
+const ZONAS = [
+  { k: 'Rodilla', labelKey: 'les_zona_rodilla' },
+  { k: 'Lumbar', labelKey: 'les_zona_lumbar' },
+  { k: 'Hombro', labelKey: 'les_zona_hombro' },
+  { k: 'Cuello', labelKey: 'les_zona_cuello' },
+  { k: 'Cadera', labelKey: 'les_zona_cadera' },
+  { k: 'Tobillo', labelKey: 'les_zona_tobillo' },
+  { k: 'Muñeca', labelKey: 'les_zona_muneca' },
+  { k: 'Codo', labelKey: 'les_zona_codo' },
+] as const
+const SEVERIDADES = [
+  { k: 'Leve', labelKey: 'les_sev_leve' },
+  { k: 'Moderada', labelKey: 'les_sev_moderada' },
+  { k: 'Crónica', labelKey: 'les_sev_cronica' },
+] as const
 
-const ZONA_LABELS: Record<string, string> = {
-  rodilla: 'Rodilla', lumbar: 'Lumbar', hombro: 'Hombro',
-  cuello: 'Cuello', cadera: 'Cadera', tobillo: 'Tobillo',
-  muñeca: 'Muñeca', codo: 'Codo', thoracica: 'Dorsal',
+// Mapea el valor backend (lowercase, a veces con lateralidad legacy) a su clave
+// de traducción para mostrarlo en la lista de lesiones registradas.
+const ZONA_LABEL_KEYS: Record<string, ScalarKey> = {
+  rodilla: 'les_zona_rodilla', lumbar: 'les_zona_lumbar', hombro: 'les_zona_hombro',
+  cuello: 'les_zona_cuello', cadera: 'les_zona_cadera', tobillo: 'les_zona_tobillo',
+  muñeca: 'les_zona_muneca', codo: 'les_zona_codo', thoracica: 'les_zona_dorsal',
   // legacy values with laterality
-  rodilla_der: 'Rodilla derecha', rodilla_izq: 'Rodilla izquierda',
-  hombro_der: 'Hombro derecho', hombro_izq: 'Hombro izquierdo',
-  tobillo_der: 'Tobillo derecho', tobillo_izq: 'Tobillo izquierdo',
-  muñeca_der: 'Muñeca derecha', muñeca_izq: 'Muñeca izquierda',
-  codo_der: 'Codo derecho', codo_izq: 'Codo izquierdo',
+  rodilla_der: 'les_zona_rodilla_der', rodilla_izq: 'les_zona_rodilla_izq',
+  hombro_der: 'les_zona_hombro_der', hombro_izq: 'les_zona_hombro_izq',
+  tobillo_der: 'les_zona_tobillo_der', tobillo_izq: 'les_zona_tobillo_izq',
+  muñeca_der: 'les_zona_muneca_der', muñeca_izq: 'les_zona_muneca_izq',
+  codo_der: 'les_zona_codo_der', codo_izq: 'les_zona_codo_izq',
 }
 
-function zonaLabel(zona: string): string {
-  return ZONA_LABELS[zona.toLowerCase()] ?? zona.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+const SEV_LABEL_KEYS: Record<string, ScalarKey> = {
+  leve: 'les_sev_leve', moderada: 'les_sev_moderada', cronica: 'les_sev_cronica',
+}
+
+function zonaLabel(zona: string, t: (k: ScalarKey) => string): string {
+  const key = ZONA_LABEL_KEYS[zona.toLowerCase()]
+  return key ? t(key) : zona.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function sevLabel(sev: string, t: (k: ScalarKey) => string): string {
+  const key = SEV_LABEL_KEYS[sev.toLowerCase()]
+  return key ? t(key) : sev.charAt(0).toUpperCase() + sev.slice(1)
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,6 +81,7 @@ function Chip({ label, active, onPress, styles }: {
 
 export default function LesionesScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -83,7 +112,7 @@ export default function LesionesScreen() {
       setZona('')
       setSeveridad('')
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('les_save_error'))
     } finally { setSaving(false) }
   }
 
@@ -91,19 +120,23 @@ export default function LesionesScreen() {
     try {
       const updated = await apiPut(`/api/injuries/${inj.id}/`, { activa: !inj.activa })
       setInjuries(prev => prev.map(i => i.id === inj.id ? updated : i))
-    } catch {}
+    } catch (e: any) {
+      Alert.alert(t('common_error'), e.message ?? t('les_save_error'))
+    }
   }
 
   async function remove(inj: Injury) {
-    Alert.alert('Eliminar lesión', `¿Eliminar ${zonaLabel(inj.zona)}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('les_delete_title'), `${t('les_delete_q')} ${zonaLabel(inj.zona, t)}?`, [
+      { text: t('common_cancel'), style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive',
+        text: t('common_delete'), style: 'destructive',
         onPress: async () => {
           try {
             await apiDelete(`/api/injuries/${inj.id}/`)
             setInjuries(prev => prev.filter(i => i.id !== inj.id))
-          } catch {}
+          } catch (e: any) {
+            Alert.alert(t('common_error'), e.message ?? t('les_save_error'))
+          }
         },
       },
     ])
@@ -120,32 +153,32 @@ export default function LesionesScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lesiones y limitaciones</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_injuries')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={{ paddingTop: 40, alignItems: 'center' }}>
-            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
           </View>
         ) : (
           <>
             {/* Existing injuries */}
             {injuries.length === 0 ? (
-              <Text style={styles.emptyText}>Sin lesiones registradas.</Text>
+              <Text style={styles.emptyText}>{t('les_empty')}</Text>
             ) : (
               <>
-                <SectionLabel text="LESIONES REGISTRADAS" styles={styles} />
+                <SectionLabel text={t('les_registered')} styles={styles} />
                 {injuries.map(inj => (
                   <View key={inj.id} style={styles.injuryRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.injuryZona}>{zonaLabel(inj.zona)}</Text>
-                      <Text style={styles.injurySev}>{inj.severidad.charAt(0).toUpperCase() + inj.severidad.slice(1)}</Text>
+                      <Text style={styles.injuryZona}>{zonaLabel(inj.zona, t)}</Text>
+                      <Text style={styles.injurySev}>{sevLabel(inj.severidad, t)}</Text>
                     </View>
                     <TouchableOpacity onPress={() => toggleActiva(inj)} activeOpacity={0.7}
                       style={[styles.toggleBtn, inj.activa && styles.toggleBtnActive]}>
                       <Text style={[styles.toggleBtnText, inj.activa && { color: colors.accent }]}>
-                        {inj.activa ? 'Activa' : 'Inactiva'}
+                        {inj.activa ? t('les_active') : t('les_inactive')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => remove(inj)} activeOpacity={0.7} style={{ marginLeft: 8 }}>
@@ -158,27 +191,27 @@ export default function LesionesScreen() {
 
             {/* Add new */}
             <View style={styles.addSection}>
-              <SectionLabel text="AGREGAR LESIÓN" styles={styles} />
+              <SectionLabel text={t('les_add_section')} styles={styles} />
               <View style={[styles.chipsRow, { marginBottom: 12 }]}>
-                {ZONAS.map(z => (
-                  <Chip key={z} label={z} active={zona === z}
-                    onPress={() => setZona(zona === z ? '' : z)} styles={styles} />
+                {ZONAS.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={zona === k}
+                    onPress={() => setZona(zona === k ? '' : k)} styles={styles} />
                 ))}
               </View>
 
               {zona !== '' && (
                 <>
-                  <SectionLabel text="SEVERIDAD" styles={styles} />
+                  <SectionLabel text={t('les_severity')} styles={styles} />
                   <View style={[styles.chipsRow, { marginBottom: 12 }]}>
-                    {SEVERIDADES.map(sv => (
-                      <Chip key={sv} label={sv} active={severidad === sv}
-                        onPress={() => setSeveridad(severidad === sv ? '' : sv)} styles={styles} />
+                    {SEVERIDADES.map(({ k, labelKey }) => (
+                      <Chip key={k} label={t(labelKey)} active={severidad === k}
+                        onPress={() => setSeveridad(severidad === k ? '' : k)} styles={styles} />
                     ))}
                   </View>
                   <TouchableOpacity
                     style={[styles.saveBtn, (!zona || !severidad || saving) && { opacity: 0.4 }]}
                     onPress={add} disabled={!zona || !severidad || saving} activeOpacity={0.85}>
-                    <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : '+ Agregar lesión'}</Text>
+                    <Text style={styles.saveBtnText}>{saving ? t('les_saving') : `+ ${t('les_add_injury')}`}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -211,12 +244,12 @@ function makeStyles(c: Colors) {
     injuryZona: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
     injurySev: { color: c.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
     toggleBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.glassBg },
-    toggleBtnActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.1)' },
+    toggleBtnActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.1) },
     toggleBtnText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: c.inkMuted, letterSpacing: 0.4 },
     addSection: { marginTop: 28 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },
-    chipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    chipActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.12) },
     chipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },

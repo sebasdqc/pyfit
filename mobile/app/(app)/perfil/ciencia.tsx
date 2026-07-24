@@ -6,58 +6,55 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+// `fuente` (autores/año) no se traduce — es una cita bibliográfica, se mantiene igual en los 4 idiomas.
 
 const PRINCIPIOS = [
   {
     id: 'rpe',
-    titulo: 'RPE y percepción del esfuerzo',
-    texto: 'El RPE cuantifica el esfuerzo subjetivo en una escala del 1 al 10. Esta percepción es un indicador fisiológico válido: correlaciona con la frecuencia cardíaca, el lactato sanguíneo y el rendimiento real. Entrenar en la zona de RPE correcta maximiza el estímulo sin acumular fatiga innecesaria.',
+    tituloKey: 'cie_rpe_title', textoKey: 'cie_rpe_text',
     fuente: 'Borg, 1982 · Zourdos et al., 2016',
     color: '#4f8cff',
   },
   {
     id: 'periodizacion',
-    titulo: 'Periodización y progresión',
-    texto: 'Organizar el entrenamiento en bloques con variaciones planificadas de carga y volumen optimiza las adaptaciones y reduce el riesgo de estancamiento. La sobrecarga progresiva sistemática es el principal motor del progreso neuromuscular.',
+    tituloKey: 'cie_periodizacion_title', textoKey: 'cie_periodizacion_text',
     fuente: 'Schoenfeld, 2010 · Haff & Triplett, 2016',
     color: '#6ce5ff',
   },
   {
     id: 'fatiga',
-    titulo: 'Fatiga acumulada',
-    texto: 'El entrenamiento intenso sin recuperación suficiente eleva los marcadores de fatiga sistémica. Entrenar con fatiga acumulada reduce la calidad del estímulo y aumenta el riesgo de lesión. Zyfit calcula tu nivel de fatiga a partir de las sesiones de las últimas 72 horas.',
+    tituloKey: 'cie_fatiga_title', textoKey: 'cie_fatiga_text',
     fuente: 'Meeusen et al., 2013',
     color: '#ffaa32',
   },
   {
     id: 'cortisol',
-    titulo: 'Cortisol y rendimiento',
-    texto: 'El estrés crónico eleva el cortisol, una hormona catabólica que interfiere con la síntesis proteica muscular y aumenta la percepción de esfuerzo. Zyfit ajusta la intensidad objetivo según tu nivel de estrés y estado de ánimo reportados en el check-in diario.',
+    tituloKey: 'cie_cortisol_title', textoKey: 'cie_cortisol_text',
     fuente: 'Kraemer & Ratamess, 2005',
     color: '#ff4444',
   },
   {
     id: 'ciclo',
-    titulo: 'Ciclo menstrual y rendimiento físico',
-    texto: 'La fase folicular (días 1–14) favorece entrenamientos de alta intensidad y fuerza, ya que los niveles de estrógeno son más altos. La fase lútea (días 15–28) se asocia con mayor fatiga y menor tolerancia al volumen. Adaptar el entrenamiento al ciclo optimiza resultados y reduce el riesgo de sobreentrenamiento.',
+    tituloKey: 'cie_ciclo_title', textoKey: 'cie_ciclo_text',
     fuente: 'Janse de Jonge, 2003 · McNulty et al., 2020',
     color: '#c084fc',
   },
   {
     id: 'sueno',
-    titulo: 'Sueño y recuperación muscular',
-    texto: 'Durante el sueño profundo se produce la mayor secreción de hormona de crecimiento del día. Dormir menos de 7 horas reduce la síntesis proteica, eleva el cortisol y disminuye el rendimiento anaeróbico. Tu calidad de sueño influye directamente en el RPE objetivo de cada sesión.',
+    tituloKey: 'cie_sueno_title', textoKey: 'cie_sueno_text',
     fuente: 'Dattilo et al., 2011 · Fullagar et al., 2015',
     color: '#32c896',
   },
-]
+] as const
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CienciaScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
@@ -72,22 +69,22 @@ export default function CienciaScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cómo funciona tu entrenador</Text>
+        <Text style={styles.headerTitle}>{t('cie_header')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>
-          Zyfit basa sus decisiones en investigación publicada sobre ciencias del deporte, fisiología del ejercicio y psicología del rendimiento.
+          {t('cie_intro')}
         </Text>
 
         {PRINCIPIOS.map((p, i) => (
           <View key={p.id} style={[styles.card, i === PRINCIPIOS.length - 1 && { marginBottom: 0 }]}>
             <View style={[styles.cardBar, { backgroundColor: p.color }]} />
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{p.titulo}</Text>
-              <Text style={styles.cardText}>{p.texto}</Text>
+              <Text style={styles.cardTitle}>{t(p.tituloKey)}</Text>
+              <Text style={styles.cardText}>{t(p.textoKey)}</Text>
               <View style={styles.fuenteRow}>
-                <Text style={styles.fuenteLabel}>FUENTE</Text>
+                <Text style={styles.fuenteLabel}>{t('cie_fuente_label')}</Text>
                 <Text style={styles.fuenteText}>{p.fuente}</Text>
               </View>
             </View>

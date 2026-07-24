@@ -14,6 +14,7 @@ import { useUnits, UnitSystem } from '../../../lib/units'
 import { apiGet, apiDelete } from '../../../lib/api'
 import { fetchMiCoachUnread } from '../../../lib/coachApi'
 import { logout, verifyEmail, resendVerificationEmail } from '../../../lib/auth'
+import { BILLING_ENABLED } from '../../../lib/featureFlags'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -209,11 +210,11 @@ export default function AjustesScreen() {
   function handleDeleteAccount() {
     if (deleting) return
     Alert.alert(
-      'Eliminar cuenta',
-      'Se eliminará tu cuenta y todos tus datos (perfil, sesiones, historial, lesiones). Esta acción es permanente y no se puede deshacer.',
+      t('ajt_delete_account'),
+      t('ajt_delete_msg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar definitivamente', style: 'destructive', onPress: confirmDeleteAccount },
+        { text: t('common_cancel'), style: 'cancel' },
+        { text: t('ajt_delete_confirm'), style: 'destructive', onPress: confirmDeleteAccount },
       ]
     )
   }
@@ -235,7 +236,7 @@ export default function AjustesScreen() {
       setShowVerifyEmail(false)
       setProfile(prev => ({ ...prev, email_verificado: true }))
     } catch (e: any) {
-      setVerifyError(e?.message || 'Código inválido o expirado')
+      setVerifyError(e?.message || t('ajt_verify_error_invalid'))
     } finally {
       setVerifying(false)
     }
@@ -249,7 +250,7 @@ export default function AjustesScreen() {
       await resendVerificationEmail()
       setResendSent(true)
     } catch {
-      setVerifyError('No pudimos reenviar el código. Intenta de nuevo.')
+      setVerifyError(t('ajt_verify_error_resend'))
     } finally {
       setResending(false)
     }
@@ -262,7 +263,7 @@ export default function AjustesScreen() {
       const { exportMonthlyReport } = await import('../../../lib/monthlyReport')
       await exportMonthlyReport()
     } catch (e: any) {
-      Alert.alert('Error al exportar', e?.message ?? 'No se pudo generar el PDF. Intenta de nuevo.')
+      Alert.alert(t('ajt_export_error_title'), e?.message ?? t('ajt_export_error_msg'))
     } finally {
       setExporting(false)
     }
@@ -278,9 +279,9 @@ export default function AjustesScreen() {
     } catch {
       setDeleting(false)
       Alert.alert(
-        'No pudimos eliminar tu cuenta',
-        'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@zyfit.app.',
-        [{ text: 'Entendido', style: 'cancel' }]
+        t('ajt_delete_error_title'),
+        t('ajt_delete_error_msg'),
+        [{ text: t('ajt_understood'), style: 'cancel' }]
       )
     }
   }
@@ -321,7 +322,7 @@ export default function AjustesScreen() {
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={styles.backBtn}>
           <ChevronLeft color={colors.inkPrimary} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Ajustes</Text>
+        <Text style={styles.topTitle}>{t('ajt_title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -334,11 +335,11 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* APARIENCIA                                 */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="APARIENCIA" />
+        <SectionLabel label={t('ajt_section_appearance')} />
         <Card>
           <Row
             icon="🎨"
-            title="Tema"
+            title={t('ajt_theme')}
             subtitle={`${currentPaletteIcon}  ${currentPaletteLabel}`}
             onPress={() => { setShowLangPicker(false); setShowThemePicker(v => !v) }}
           />
@@ -353,12 +354,15 @@ export default function AjustesScreen() {
                       if (opt.pro && profile.plan !== 'pro') {
                         setShowThemePicker(false)
                         Alert.alert(
-                          'Paleta Pro',
-                          `"${opt.label}" es un tema exclusivo de Zyfit Pro.`,
-                          [
-                            { text: 'Ahora no', style: 'cancel' },
-                            { text: 'Ver Zyfit Pro', onPress: navigateToSuscripcion },
-                          ]
+                          t('ajt_palette_pro_title'),
+                          `"${opt.label}" ${t('ajt_palette_pro_msg')}`,
+                          // Sin Play Billing no ofrecemos el CTA de compra (BILLING_ENABLED).
+                          BILLING_ENABLED
+                            ? [
+                                { text: t('ajt_not_now'), style: 'cancel' },
+                                { text: t('ajt_see_pro'), onPress: navigateToSuscripcion },
+                              ]
+                            : [{ text: 'OK' }]
                         )
                         return
                       }
@@ -390,21 +394,21 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* MI CUENTA                                  */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="MI CUENTA" />
+        <SectionLabel label={t('perfil_section_account')} />
         <Card>
           {profile.email_verificado === false && (
             <>
               <Row
                 icon="⚠️"
-                title="Verifica tu email"
-                subtitle="Necesario para poder recuperar tu contraseña"
-                badge="Pendiente"
+                title={t('ajt_verify_title')}
+                subtitle={t('ajt_verify_sub')}
+                badge={t('ajt_verify_pending')}
                 onPress={toggleVerifyEmail}
               />
               {showVerifyEmail && (
                 <View style={{ paddingHorizontal: 22, paddingBottom: 18, paddingTop: 4, gap: 10 }}>
                   <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.inkMuted, lineHeight: 18 }}>
-                    Te enviamos un código de 6 dígitos a tu email al registrarte. Ingrésalo abajo, o pide uno nuevo.
+                    {t('ajt_verify_instructions')}
                   </Text>
                   <TextInput
                     value={verifyCode}
@@ -423,7 +427,7 @@ export default function AjustesScreen() {
                     <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.red }}>{verifyError}</Text>
                   )}
                   {resendSent && (
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.green }}>Código reenviado — revisa tu email.</Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.green }}>{t('ajt_verify_resent')}</Text>
                   )}
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity
@@ -437,7 +441,7 @@ export default function AjustesScreen() {
                     >
                       {verifying
                         ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: '#fff' }}>Verificar</Text>}
+                        : <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: '#fff' }}>{t('ajt_verify_btn')}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleResendCode}
@@ -450,7 +454,7 @@ export default function AjustesScreen() {
                     >
                       {resending
                         ? <ActivityIndicator size="small" color={colors.inkSecondary} />
-                        : <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: colors.inkSecondary }}>Reenviar</Text>}
+                        : <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: colors.inkSecondary }}>{t('ajt_verify_resend')}</Text>}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -466,33 +470,38 @@ export default function AjustesScreen() {
           <Divider />
           <Row
             icon="🔐"
-            title="Cuenta"
-            subtitle="Email, contraseña y configuración"
+            title={t('ajt_account_title')}
+            subtitle={t('ajt_account_sub')}
             onPress={() => router.push('/(app)/perfil/mi-cuenta' as any)}
           />
           <Divider />
           <Row
             icon="🔔"
-            title="Notificaciones"
-            subtitle="Alertas y preferencias de aviso"
+            title={t('ajt_notifications_title')}
+            subtitle={t('ajt_notifications_sub')}
             onPress={() => router.push('/(app)/notificaciones' as any)}
           />
-          <Divider />
-          {profile.plan === 'pro' ? (
-            <Row
-              icon="👑"
-              title={t('perfil_row_subscription')}
-              subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
-              badge="Pro"
-              onPress={navigateToSuscripcion}
-            />
-          ) : (
-            <Row
-              icon="⭐"
-              title={t('perfil_row_upgrade')}
-              subtitle={lang === 'pt' ? 'Desbloqueie seu treinador completo' : lang === 'en' ? 'Unlock your full coach' : 'Desbloquea tu entrenador completo'}
-              onPress={navigateToSuscripcion}
-            />
+          {/* Suscripción/Upgrade: oculto mientras no haya Play Billing (BILLING_ENABLED). */}
+          {BILLING_ENABLED && (
+            <>
+              <Divider />
+              {profile.plan === 'pro' ? (
+                <Row
+                  icon="👑"
+                  title={t('perfil_row_subscription')}
+                  subtitle={formatRenovacion(profile.plan_tipo, profile.plan_renovacion)}
+                  badge="Pro"
+                  onPress={navigateToSuscripcion}
+                />
+              ) : (
+                <Row
+                  icon="⭐"
+                  title={t('perfil_row_upgrade')}
+                  subtitle={lang === 'pt' ? 'Desbloqueie seu treinador completo' : lang === 'en' ? 'Unlock your full coach' : lang === 'fr' ? 'Débloquez votre coach complet' : 'Desbloquea tu entrenador completo'}
+                  onPress={navigateToSuscripcion}
+                />
+              )}
+            </>
           )}
           <Divider />
           <Row
@@ -505,7 +514,7 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* PREFERENCIAS                               */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="PREFERENCIAS" />
+        <SectionLabel label={t('ajt_section_preferences')} />
         <Card>
           <Row
             icon="🎯"
@@ -528,7 +537,7 @@ export default function AjustesScreen() {
           <Row
             icon="🏋️"
             title={t('perfil_row_training')}
-            onPress={() => router.push('/(app)/perfil/datos-entrenamiento' as any)}
+            onPress={() => router.push('/(app)/perfil/entrenamiento' as any)}
           />
           <Divider />
           <Row
@@ -541,7 +550,7 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* TUS DATOS                                  */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="TUS DATOS" />
+        <SectionLabel label={t('perfil_section_data')} />
         <Card>
           <Row
             icon="⌚"
@@ -554,7 +563,7 @@ export default function AjustesScreen() {
           <Row
             icon="🌐"
             title={t('perfil_lang_label')}
-            rightLabel={lang === 'es' ? '🇪🇸  ES' : lang === 'en' ? '🇺🇸  EN' : '🇧🇷  PT'}
+            rightLabel={({ es: '🇪🇸  ES', en: '🇺🇸  EN', pt: '🇧🇷  PT', fr: '🇫🇷  FR' } as Record<string, string>)[lang] ?? '🇪🇸  ES'}
             onPress={() => { setShowThemePicker(false); setShowLangPicker(v => !v) }}
           />
           {showLangPicker && (
@@ -564,6 +573,7 @@ export default function AjustesScreen() {
                 { code: 'es' as const, flag: '🇪🇸', label: t('perfil_lang_es') },
                 { code: 'en' as const, flag: '🇺🇸', label: t('perfil_lang_en') },
                 { code: 'pt' as const, flag: '🇧🇷', label: t('perfil_lang_pt') },
+                { code: 'fr' as const, flag: '🇫🇷', label: t('perfil_lang_fr') },
               ]).map((opt, i) => (
                 <React.Fragment key={opt.code}>
                   {i > 0 && <Divider />}
@@ -587,7 +597,7 @@ export default function AjustesScreen() {
           <Divider />
           <Row
             icon="📐"
-            title="Unidades"
+            title={t('ajt_units_title')}
             rightLabel={unitSystem === 'imperial' ? '🇺🇸 lb / in' : '📏 kg / cm'}
             onPress={() => { setShowThemePicker(false); setShowLangPicker(false); setShowUnitsPicker(v => !v) }}
           />
@@ -595,8 +605,8 @@ export default function AjustesScreen() {
             <>
               <Divider />
               {([
-                { id: 'metric' as UnitSystem, icon: '📏', label: 'Métrico — kg / cm' },
-                { id: 'imperial' as UnitSystem, icon: '🇺🇸', label: 'Imperial — lb / in' },
+                { id: 'metric' as UnitSystem, icon: '📏', label: t('ajt_units_metric') },
+                { id: 'imperial' as UnitSystem, icon: '🇺🇸', label: t('ajt_units_imperial') },
               ]).map((opt, i) => (
                 <React.Fragment key={opt.id}>
                   {i > 0 && <Divider />}
@@ -620,17 +630,22 @@ export default function AjustesScreen() {
           <Divider />
           <Row
             icon="🔗"
-            title="Integraciones"
-            subtitle="Apple Health, Garmin y más"
+            title={t('ajt_integrations_title')}
+            subtitle={t('ajt_integrations_sub')}
             onPress={() => router.push('/(app)/perfil/dispositivos' as any)}
           />
-          <Divider />
-          <Row
-            icon="📊"
-            title="Reportes"
-            subtitle="Historial de pagos y actividad"
-            onPress={() => router.push('/(app)/perfil/historial-pagos' as any)}
-          />
+          {/* Historial de pagos: oculto mientras no haya Play Billing (BILLING_ENABLED). */}
+          {BILLING_ENABLED && (
+            <>
+              <Divider />
+              <Row
+                icon="📊"
+                title={t('ajt_reports_title')}
+                subtitle={t('ajt_reports_sub')}
+                onPress={() => router.push('/(app)/perfil/historial-pagos' as any)}
+              />
+            </>
+          )}
           <Divider />
           <TouchableOpacity
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15, gap: 14 }}
@@ -641,10 +656,10 @@ export default function AjustesScreen() {
             <Text style={{ fontSize: 18, width: 24, textAlign: 'center' }}>📤</Text>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: colors.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 15 }}>
-                Exportar Datos
+                {t('ajt_export_title')}
               </Text>
               <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, letterSpacing: -0.1 }}>
-                {exporting ? 'Generando PDF…' : 'Informe mensual en PDF'}
+                {exporting ? t('ajt_export_generating') : t('ajt_export_sub')}
               </Text>
             </View>
             {exporting
@@ -681,7 +696,7 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* REGISTRO CON COACH (card standalone)       */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="ENTRENADOR" />
+        <SectionLabel label={t('perfil_section_coach')} />
         <Card>
           <Row
             icon="🧑‍🏫"
@@ -695,7 +710,7 @@ export default function AjustesScreen() {
         {/* ══════════════════════════════════════════ */}
         {/* AYUDA                                      */}
         {/* ══════════════════════════════════════════ */}
-        <SectionLabel label="AYUDA" />
+        <SectionLabel label={t('ajt_section_help')} />
         <Card>
           <Row
             icon="💬"
@@ -705,8 +720,8 @@ export default function AjustesScreen() {
           <Divider />
           <Row
             icon="🚩"
-            title="Reportar contenido de IA"
-            subtitle="Rutina, running o chat inapropiado"
+            title={t('ajt_report_ai_title')}
+            subtitle={t('ajt_report_ai_sub')}
             onPress={() => router.push('/(app)/perfil/reportar-contenido' as any)}
           />
           <Divider />
@@ -718,15 +733,15 @@ export default function AjustesScreen() {
           <Divider />
           <Row
             icon="📄"
-            title="Términos y condiciones"
+            title={t('ajt_terms')}
             onPress={() => router.push('/(auth)/terminos' as any)}
           />
           <Divider />
           <Row
             icon="♿"
-            title="Accesibilidad"
-            subtitle="Próximamente"
-            onPress={() => Alert.alert('Próximamente', 'Opciones de tamaño de fuente, contraste y haptics en una próxima actualización.')}
+            title={t('ajt_accessibility_title')}
+            subtitle={t('common_soon')}
+            onPress={() => Alert.alert(t('common_soon'), t('ajt_accessibility_msg'))}
           />
         </Card>
 
@@ -737,7 +752,7 @@ export default function AjustesScreen() {
         <Card>
           <Row title={t('perfil_logout')} danger onPress={handleLogout} />
           <Divider />
-          <Row title="Eliminar cuenta" danger onPress={handleDeleteAccount} />
+          <Row title={t('ajt_delete_account')} danger onPress={handleDeleteAccount} />
         </Card>
 
         <Text style={styles.version}>{t('perfil_version')}</Text>

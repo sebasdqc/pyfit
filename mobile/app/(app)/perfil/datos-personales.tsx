@@ -7,16 +7,25 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiGet, apiPatch } from '../../../lib/api'
 import { COUNTRIES, normalizeCountry } from '../../../lib/countries'
 import { useUnits } from '../../../lib/units'
+import { useTranslation } from '../../../lib/i18n'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ESTRES = [{ k: 'bajo', l: 'Bajo' }, { k: 'moderado', l: 'Moderado' }, { k: 'alto', l: 'Alto' }]
-const TRABAJOS = [{ k: 'sedentario', l: 'Sedentario' }, { k: 'mixto', l: 'Mixto' }, { k: 'activo', l: 'Activo' }]
+const ESTRES = [
+  { k: 'bajo', labelKey: 'onboarding_estres_bajo' },
+  { k: 'moderado', labelKey: 'onboarding_estres_moderado' },
+  { k: 'alto', labelKey: 'onboarding_estres_alto' },
+] as const
+const TRABAJOS = [
+  { k: 'sedentario', labelKey: 'onboarding_trabajo_sedentario' },
+  { k: 'mixto', labelKey: 'onboarding_trabajo_mixto' },
+  { k: 'activo', labelKey: 'onboarding_trabajo_activo' },
+] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +93,7 @@ function ReadOnlyField({ label, value, styles }: { label: string; value: string;
 
 export default function DatosPersonalesScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const { weightLabel, heightLabel, toInputWeight, toInputHeight, fromInputWeight, fromInputHeight } = useUnits()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
@@ -136,7 +146,7 @@ export default function DatosPersonalesScreen() {
   async function save() {
     if (!fullProfile) return
     if (usuario && !/^[a-z0-9_]{3,20}$/.test(usuario)) {
-      Alert.alert('Usuario inválido', 'Debe tener 3-20 caracteres: minúsculas, números y guion bajo.')
+      Alert.alert(t('dp_usuario_invalido_title'), t('dp_usuario_invalido_msg'))
       return
     }
     // Convertir a métrico antes de validar y guardar
@@ -144,16 +154,16 @@ export default function DatosPersonalesScreen() {
     const alturaMetric = fromInputHeight(altura)
     const p = Number(pesoMetric.replace(',', '.'))
     if (peso && (isNaN(p) || p < 30 || p > 300)) {
-      Alert.alert('Peso inválido', weightLabel === 'lb'
-        ? 'El peso debe estar entre 66 y 661 lb.'
-        : 'El peso debe estar entre 30 y 300 kg.')
+      Alert.alert(t('dp_peso_invalido_title'), weightLabel === 'lb'
+        ? t('dp_peso_invalido_msg_lb')
+        : t('dp_peso_invalido_msg_kg'))
       return
     }
     const a = Number(alturaMetric.replace(',', '.'))
     if (altura && (isNaN(a) || a < 100 || a > 250)) {
-      Alert.alert('Altura inválida', heightLabel === 'in'
-        ? 'La altura debe estar entre 39 y 98 pulgadas.'
-        : 'La altura debe estar entre 100 y 250 cm.')
+      Alert.alert(t('dp_altura_invalido_title'), heightLabel === 'in'
+        ? t('dp_altura_invalido_msg_in')
+        : t('dp_altura_invalido_msg_cm'))
       return
     }
     setSaving(true)
@@ -170,7 +180,7 @@ export default function DatosPersonalesScreen() {
       setSaved(true)
       savedTimer.current = setTimeout(() => { setSaved(false); router.back() }, 1400)
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('dp_no_se_pudo_guardar'))
     } finally { setSaving(false) }
   }
 
@@ -185,11 +195,11 @@ export default function DatosPersonalesScreen() {
           onPress={() => {
             if (isDirty) {
               Alert.alert(
-                'Cambios sin guardar',
-                '¿Salir sin guardar los cambios?',
+                t('dp_unsaved_title'),
+                t('dp_unsaved_msg'),
                 [
-                  { text: 'Seguir editando', style: 'cancel' },
-                  { text: 'Salir', style: 'destructive', onPress: () => router.back() },
+                  { text: t('dp_unsaved_keep'), style: 'cancel' },
+                  { text: t('dp_unsaved_leave'), style: 'destructive', onPress: () => router.back() },
                 ]
               )
               return
@@ -201,7 +211,7 @@ export default function DatosPersonalesScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Datos personales</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_personal')}</Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -211,7 +221,7 @@ export default function DatosPersonalesScreen() {
           {loading ? (
             <View style={{ paddingTop: 40, alignItems: 'center' }}>
               <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>
-                Cargando...
+                {t('common_loading')}
               </Text>
             </View>
           ) : (
@@ -219,93 +229,93 @@ export default function DatosPersonalesScreen() {
               {/* Read-only fields */}
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <ReadOnlyField label="FECHA DE NACIMIENTO"
+                  <ReadOnlyField label={t('onboarding_birth_label')}
                     value={formatDate(fullProfile?.fecha_nacimiento ?? '')} styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <ReadOnlyField label="SEXO"
+                  <ReadOnlyField label={t('dp_sexo_label')}
                     value={capitalizeFirst(fullProfile?.sexo ?? '')} styles={styles} />
                 </View>
               </View>
 
-              <ReadOnlyField label="CORREO" value={fullProfile?.email ?? ''} styles={styles} />
+              <ReadOnlyField label={t('dp_correo_label')} value={fullProfile?.email ?? ''} styles={styles} />
 
-              <GlassInput label="NOMBRE" value={nombre} onChangeText={mark(setNombre)}
-                placeholder="Tu nombre" styles={styles} />
+              <GlassInput label={t('dp_nombre_label')} value={nombre} onChangeText={mark(setNombre)}
+                placeholder={t('dp_nombre_placeholder')} styles={styles} />
 
               {/* Usuario — handle público para el footer de las tarjetas compartibles */}
               <View style={styles.fieldGroup}>
-                <SectionLabel text="USUARIO" styles={styles} />
+                <SectionLabel text={t('dp_usuario_label')} styles={styles} />
                 <View style={[styles.input, styles.usuarioRow]}>
                   <Text style={styles.usuarioAt}>@</Text>
                   <TextInput
                     value={usuario}
                     onChangeText={(v) => { setUsuario(v.toLowerCase().replace(/[^a-z0-9_]/g, '')); setIsDirty(true) }}
-                    placeholder="tu_usuario"
+                    placeholder={t('dp_usuario_placeholder')}
                     placeholderTextColor={colors.inkMuted}
                     style={styles.usuarioInput}
                     autoCapitalize="none" autoCorrect={false}
                     maxLength={20}
                   />
                 </View>
-                <Text style={styles.fieldHint}>Se muestra en tus tarjetas para compartir entrenamientos.</Text>
+                <Text style={styles.fieldHint}>{t('dp_usuario_hint')}</Text>
               </View>
 
               {/* País — selector buscable (mismo catálogo que el onboarding) */}
               <View style={styles.fieldGroup}>
-                <SectionLabel text="PAÍS" styles={styles} />
+                <SectionLabel text={t('onboarding_country_label')} styles={styles} />
                 <TouchableOpacity style={[styles.input, styles.inputTouch]} activeOpacity={0.7}
                   onPress={() => { setCountryQuery(''); setShowCountryPicker(true) }}>
                   <Text style={pais ? styles.inputText : styles.inputPlaceholder}>
-                    {pais || 'Selecciona tu país'}
+                    {pais || t('onboarding_country_placeholder')}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <GlassInput label={`PESO (${weightLabel})`} value={peso} onChangeText={mark(setPeso)}
+                  <GlassInput label={`${t('onboarding_weight_label')} (${weightLabel})`} value={peso} onChangeText={mark(setPeso)}
                     placeholder={weightLabel === 'lb' ? '154' : '70'} keyboardType="decimal-pad" styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <GlassInput label={`ALTURA (${heightLabel})`} value={altura} onChangeText={mark(setAltura)}
+                  <GlassInput label={`${t('onboarding_height_label')} (${heightLabel})`} value={altura} onChangeText={mark(setAltura)}
                     placeholder={heightLabel === 'in' ? '69' : '175'} keyboardType="numeric" styles={styles} />
                 </View>
               </View>
 
-              <SectionLabel text="NIVEL DE ESTRÉS" styles={styles} />
+              <SectionLabel text={t('dp_estres_label')} styles={styles} />
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
-                {ESTRES.map(({ k, l }) => (
-                  <Chip key={k} label={l} active={nivelEstres === k}
+                {ESTRES.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={nivelEstres === k}
                     onPress={() => markChip(setNivelEstres)(k)} styles={styles} />
                 ))}
               </View>
 
-              <SectionLabel text="TIPO DE TRABAJO" styles={styles} />
+              <SectionLabel text={t('onboarding_trabajo_label')} styles={styles} />
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
-                {TRABAJOS.map(({ k, l }) => (
-                  <Chip key={k} label={l} active={tipoTrabajo === k}
+                {TRABAJOS.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={tipoTrabajo === k}
                     onPress={() => markChip(setTipoTrabajo)(k)} styles={styles} />
                 ))}
               </View>
 
-              <GlassInput label="EXPERIENCIA DEPORTIVA" value={experiencia}
+              <GlassInput label={t('dp_experiencia_label')} value={experiencia}
                 onChangeText={mark(setExperiencia)}
-                placeholder="Ej: 5 años de fútbol, crossfit... (opcional)"
+                placeholder={t('dp_experiencia_placeholder')}
                 multiline styles={styles} />
 
               {saved && (
                 <View style={styles.savedToast}>
-                  <Text style={styles.savedToastText}>✓ Guardado</Text>
+                  <Text style={styles.savedToastText}>✓ {t('dp_guardado')}</Text>
                 </View>
               )}
 
               <TouchableOpacity
                 style={[styles.saveBtn, (saving || saved) && { opacity: 0.5 }]}
                 onPress={save} disabled={saving || saved} activeOpacity={0.85}>
-                <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+                <Text style={styles.saveBtnText}>{saving ? t('dp_guardando') : t('dp_guardar_cambios')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -320,14 +330,14 @@ export default function DatosPersonalesScreen() {
           <View style={styles.countrySheet}>
             <View style={styles.sheetHeader}>
               <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                <Text style={styles.sheetCancel}>Cancelar</Text>
+                <Text style={styles.sheetCancel}>{t('common_cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.sheetTitle}>País</Text>
+              <Text style={styles.sheetTitle}>{t('onboarding_country_picker_title')}</Text>
               <View style={{ width: 64 }} />
             </View>
             <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
               <TextInput style={styles.countrySearch}
-                placeholder="Buscar país…" placeholderTextColor={colors.inkMuted}
+                placeholder={t('onboarding_country_search_placeholder')} placeholderTextColor={colors.inkMuted}
                 value={countryQuery} onChangeText={setCountryQuery}
                 autoCorrect={false} autoCapitalize="none" />
             </View>
@@ -346,7 +356,7 @@ export default function DatosPersonalesScreen() {
                   </TouchableOpacity>
                 )
               }}
-              ListEmptyComponent={<Text style={styles.countryEmpty}>Sin resultados</Text>}
+              ListEmptyComponent={<Text style={styles.countryEmpty}>{t('onboarding_country_empty')}</Text>}
             />
           </View>
         </View>
@@ -417,7 +427,7 @@ function makeStyles(c: Colors) {
     readOnlyText: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },
-    chipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    chipActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.12) },
     chipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
@@ -426,6 +436,6 @@ function makeStyles(c: Colors) {
       backgroundColor: 'rgba(50,200,150,0.15)', borderWidth: 1, borderColor: 'rgba(50,200,150,0.4)',
       borderRadius: 10, paddingVertical: 9, alignItems: 'center', marginTop: 8, marginBottom: 4,
     },
-    savedToastText: { color: '#32c896', fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
+    savedToastText: { color: c.green, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14 },
   })
 }

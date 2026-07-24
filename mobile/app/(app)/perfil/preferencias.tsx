@@ -6,17 +6,18 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPatch } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ESTILOS = [
-  { k: 'musculacion', l: 'Musculación' },
-  { k: 'running',     l: 'Running' },
-  { k: 'libre',       l: 'Entrenamiento Libre' },
-]
+  { k: 'musculacion', tkey: 'pref_style_strength' },
+  { k: 'running',     tkey: 'pref_style_running' },
+  { k: 'libre',       tkey: 'pref_style_free' },
+] as const
 
 const LISTA_EJERCICIOS = [
   'Sentadilla con barra', 'Sentadilla frontal', 'Sentadilla sumo', 'Sentadilla goblet',
@@ -30,12 +31,6 @@ const LISTA_EJERCICIOS = [
   'Puente de glúteos', 'Zancadas', 'Prensa de piernas', 'Extensión de cuádriceps',
   'Curl femoral', 'Elevación de gemelos', 'Plancha', 'Crunch', 'Rueda abdominal',
   'Swing con kettlebell', 'Burpees', 'Mountain climbers', 'Saltos al cajón',
-]
-
-const TONOS = [
-  { k: 'directo', l: 'Directo', desc: 'Instrucciones precisas y al punto' },
-  { k: 'motivacional', l: 'Motivacional', desc: 'Energético y alentador' },
-  { k: 'tecnico', l: 'Técnico', desc: 'Explicaciones detalladas con base científica' },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -60,6 +55,7 @@ function ExerciseSelector({ label, value, onChange, styles }: {
   label: string; value: string; onChange: (v: string) => void; styles: ReturnType<typeof makeStyles>
 }) {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const selected = value ? value.split(',').map(x => x.trim()).filter(Boolean) : []
@@ -87,7 +83,7 @@ function ExerciseSelector({ label, value, onChange, styles }: {
           value={query}
           onChangeText={v => { setQuery(v); setOpen(v.length > 0) }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Buscar ejercicio a evitar..."
+          placeholder={t('pref_search_avoid')}
           placeholderTextColor={colors.inkMuted}
           autoCapitalize="none" autoCorrect={false}
         />
@@ -111,16 +107,17 @@ function ExerciseSelector({ label, value, onChange, styles }: {
 
 export default function PreferenciasScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
   const [fullProfile, setFullProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
 
   const [estilos, setEstilos] = useState<string[]>([])
   const [evitar, setEvitar] = useState('')
-  const [tono, setTono] = useState('directo')
 
   useEffect(() => {
     apiGet('/api/profile/').then(data => {
@@ -135,6 +132,22 @@ export default function PreferenciasScreen() {
     // Single-select: el backend guarda un solo estilo (estilo_entrenamiento es
     // string). Antes la UI permitía marcar varios pero solo se guardaba el 1º.
     setEstilos(prev => prev.includes(k) ? [] : [k])
+    setIsDirty(true)
+  }
+
+  function goBack() {
+    if (isDirty) {
+      Alert.alert(
+        t('dp_unsaved_title'),
+        t('dp_unsaved_msg'),
+        [
+          { text: t('dp_unsaved_keep'), style: 'cancel' },
+          { text: t('dp_unsaved_leave'), style: 'destructive', onPress: () => router.back() },
+        ]
+      )
+      return
+    }
+    router.back()
   }
 
   async function save() {
@@ -146,9 +159,10 @@ export default function PreferenciasScreen() {
         estilo_entrenamiento: estilos[0] ?? '',
         ejercicios_evitar: evitar,
       })
+      setIsDirty(false)
       router.back()
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('pref_save_error'))
     } finally { setSaving(false) }
   }
 
@@ -158,56 +172,37 @@ export default function PreferenciasScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preferencias de entrenamiento</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_preferences')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {loading ? (
           <View style={{ paddingTop: 40, alignItems: 'center' }}>
-            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
           </View>
         ) : (
           <>
-            <SectionLabel text="ESTILO DE ENTRENAMIENTO" styles={styles} />
+            <SectionLabel text={t('pref_style_label')} styles={styles} />
             <View style={[styles.chipsRow, { marginBottom: 24 }]}>
-              {ESTILOS.map(({ k, l }) => (
-                <Chip key={k} label={l} active={estilos.includes(k)}
+              {ESTILOS.map(({ k, tkey }) => (
+                <Chip key={k} label={t(tkey)} active={estilos.includes(k)}
                   onPress={() => toggleEstilo(k)} styles={styles} />
               ))}
             </View>
 
-            <ExerciseSelector label="EJERCICIOS A EVITAR" value={evitar}
-              onChange={setEvitar} styles={styles} />
-
-            <SectionLabel text="TONO DEL ENTRENADOR" styles={styles} />
-            <Text style={styles.tonoHint}>Personaliza cómo Zyfit se comunica contigo</Text>
-            <View style={styles.tonoGrid}>
-              {TONOS.map(({ k, l, desc }) => (
-                <TouchableOpacity
-                  key={k}
-                  style={[styles.tonoCard, tono === k && styles.tonoCardActive]}
-                  onPress={() => setTono(k)} activeOpacity={0.7}>
-                  <Text style={[styles.tonoLabel, tono === k && styles.tonoLabelActive]}>{l}</Text>
-                  <Text style={styles.tonoDesc}>{desc}</Text>
-                  {tono === k && (
-                    <View style={styles.tonoCheck}>
-                      <Text style={{ color: colors.accent, fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ExerciseSelector label={t('pref_avoid_label')} value={evitar}
+              onChange={v => { setEvitar(v); setIsDirty(true) }} styles={styles} />
 
             <TouchableOpacity
               style={[styles.saveBtn, saving && { opacity: 0.5 }]}
               onPress={save} disabled={saving} activeOpacity={0.85}>
-              <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? t('pref_saving') : t('pref_save_changes')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -236,32 +231,15 @@ function makeStyles(c: Colors) {
     input: { backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },
-    chipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    chipActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.12) },
     chipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
-    exChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(79,140,255,0.15)', borderWidth: 1, borderColor: c.accent },
+    exChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: accentAlpha(c.accent, 0.15), borderWidth: 1, borderColor: c.accent },
     exChipText: { color: c.accent, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13 },
     exChipRemove: { color: c.accent, fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 },
     dropdown: { position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, backgroundColor: c.sheetBg, borderWidth: 1, borderColor: c.borderBright, borderRadius: 12, marginTop: 4, overflow: 'hidden' },
     dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.borderDefault },
     dropdownText: { color: c.inkPrimary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 },
-    tonoHint: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, marginBottom: 12, marginTop: -4 },
-    tonoGrid: { gap: 10, marginBottom: 28 },
-    tonoCard: {
-      backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault,
-      borderRadius: 14, padding: 16, position: 'relative',
-    },
-    tonoCardActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.08)' },
-    tonoLabel: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, marginBottom: 4 },
-    tonoLabelActive: { color: c.inkPrimary },
-    tonoDesc: { color: c.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, lineHeight: 18 },
-    tonoCheck: {
-      position: 'absolute', top: 14, right: 14,
-      width: 22, height: 22, borderRadius: 11,
-      backgroundColor: 'rgba(79,140,255,0.15)',
-      borderWidth: 1, borderColor: c.accent,
-      alignItems: 'center', justifyContent: 'center',
-    },
     saveBtn: { backgroundColor: c.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
     saveBtnText: { color: c.white, fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 15 },
   })

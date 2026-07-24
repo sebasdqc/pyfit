@@ -30,15 +30,11 @@ interface Competencia {
 }
 
 interface DiaTracker {
-  entrenado: boolean; es_hoy: boolean; futuro: boolean
+  entrenado: boolean; es_hoy: boolean
 }
 
 interface ProfileStats {
   semanas_activas: number
-  consistencia_30d: number
-  sesiones_mes: number
-  datos_medidos_30d: number
-  adn_entrenamiento?: string | null
   distribucion_tipo?: DistribucionTipo | null
   top_grupos?: GrupoFav[]
   racha_actual?: number
@@ -171,7 +167,7 @@ function DistribucionChart({
     <View style={styles.distWrap}>
       <SectionLabelRow
         label={t('perfil_dist_label')}
-        info="Muestra cuántas veces has entrenado fuerza, cardio y movilidad según los focos que elegiste en tus check-ins diarios."
+        info={t('perfil_dist_info')}
         styles={styles}
       />
       <View style={styles.distCard}>
@@ -213,18 +209,18 @@ function DistribucionChart({
 // ─── Favoritos Section ────────────────────────────────────────────────────────
 
 function FavoritosSection({
-  grupos, loading, styles, colors,
+  grupos, loading, styles, colors, t,
 }: {
   grupos?: GrupoFav[]; loading: boolean
-  styles: ReturnType<typeof makeStyles>; colors: Colors
+  styles: ReturnType<typeof makeStyles>; colors: Colors; t: (key: string) => string
 }) {
   const hasData = !loading && grupos && grupos.length > 0
 
   return (
     <View style={styles.favWrap}>
       <SectionLabelRow
-        label="ENTRENAMIENTOS FAVORITOS"
-        info="Los grupos musculares que más has trabajado en tus sesiones completadas con feedback."
+        label={t('perfil_fav_label')}
+        info={t('perfil_fav_info')}
         styles={styles}
       />
       {loading ? (
@@ -235,7 +231,7 @@ function FavoritosSection({
         </View>
       ) : !hasData ? (
         <View style={styles.favEmpty}>
-          <Text style={styles.favEmptyText}>Completa más entrenamientos para ver tus favoritos</Text>
+          <Text style={styles.favEmptyText}>{t('perfil_fav_empty')}</Text>
         </View>
       ) : (
         <View style={styles.favChipsRow}>
@@ -262,17 +258,17 @@ function FavoritosSection({
 // ─── Eventos Próximos Section ─────────────────────────────────────────────────
 
 function EventosProximosSection({
-  eventos, loading, styles, colors, lang,
+  eventos, loading, styles, colors, lang, t,
 }: {
   eventos: Competencia[]; loading: boolean
-  styles: ReturnType<typeof makeStyles>; colors: Colors; lang: string
+  styles: ReturnType<typeof makeStyles>; colors: Colors; lang: string; t: (key: string) => string
 }) {
   const today = new Date().toISOString().slice(0, 10)
   const proximos = eventos.filter(e => e.fecha >= today).sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   return (
     <View style={styles.eventosWrap}>
-      <Text style={[styles.sectionLabel, styles.eventosLabel]}>EVENTOS PRÓXIMOS</Text>
+      <Text style={[styles.sectionLabel, styles.eventosLabel]}>{t('perfil_eventos_label')}</Text>
       {loading ? (
         <View style={{ gap: 10 }}>
           <Skeleton width="100%" height={64} borderRadius={16} />
@@ -280,7 +276,7 @@ function EventosProximosSection({
         </View>
       ) : proximos.length === 0 ? (
         <View style={styles.favEmpty}>
-          <Text style={styles.favEmptyText}>No tienes eventos registrados próximamente</Text>
+          <Text style={styles.favEmptyText}>{t('perfil_eventos_empty')}</Text>
         </View>
       ) : (
         <View style={{ gap: 10 }}>
@@ -305,7 +301,7 @@ function EventosProximosSection({
                 </View>
                 <View style={[styles.eventoBadge, { borderColor: (urgente ? '#ff8c42' : colors.accent) + '50', backgroundColor: (urgente ? '#ff8c42' : colors.accent) + '15' }]}>
                   <Text style={[styles.eventoBadgeTxt, { color: urgente ? '#ff8c42' : colors.accent }]}>
-                    {diasRestantes === 0 ? 'HOY' : `${diasRestantes}d`}
+                    {diasRestantes === 0 ? t('perfil_event_today') : `${diasRestantes}d`}
                   </Text>
                 </View>
               </View>
@@ -427,7 +423,7 @@ function RachaCard({
 
   const items = tracker && tracker.length === 7
     ? tracker
-    : Array.from({ length: 7 }, () => ({ entrenado: false, es_hoy: false, futuro: true }))
+    : Array.from({ length: 7 }, () => ({ entrenado: false, es_hoy: false }))
 
   return (
     <View style={styles.rachaWrap}>
@@ -502,7 +498,7 @@ function RachaCard({
 
 // ─── Default profile ──────────────────────────────────────────────────────────
 
-const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '', plan: 'pro' }
+const DEFAULT: Profile = { nombre: '', nivel: 'rookie', avatar: '', plan: 'free' }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -531,7 +527,7 @@ export default function PerfilScreen() {
       ])
       if (profileRes.status === 'fulfilled') {
         const d = profileRes.value
-        setProfile({ nombre: d.nombre || '', nivel: d.nivel || 'rookie', avatar: d.avatar || '', plan: d.plan || 'pro' })
+        setProfile({ nombre: d.nombre || '', nivel: d.nivel || 'rookie', avatar: d.avatar || '', plan: d.plan || 'free' })
       } else {
         setLoadError(true)
       }
@@ -556,7 +552,7 @@ export default function PerfilScreen() {
   async function handlePickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.')
+      Alert.alert(t('perfil_avatar_perm_title'), t('perfil_avatar_perm_msg'))
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -575,7 +571,7 @@ export default function PerfilScreen() {
       await apiPost('/api/profile/avatar/', { avatar: base64 })
       setProfile(prev => ({ ...prev, avatar: base64 }))
     } catch {
-      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.')
+      Alert.alert(t('common_error'), t('perfil_avatar_err_msg'))
     } finally {
       setUploading(false)
     }
@@ -613,7 +609,7 @@ export default function PerfilScreen() {
             {loading ? (
               <Skeleton width={140} height={22} borderRadius={5} style={{ marginBottom: 10 }} />
             ) : (
-              <Text style={styles.nombre} numberOfLines={2}>{profile.nombre || 'Usuario'}</Text>
+              <Text style={styles.nombre} numberOfLines={2}>{profile.nombre || t('perfil_user_fallback')}</Text>
             )}
 
             {loadError && !loading ? (
@@ -622,12 +618,12 @@ export default function PerfilScreen() {
                 style={styles.retryBtn}
                 accessibilityRole="button"
               >
-                <Text style={styles.retryText}>↺ Reintentar</Text>
+                <Text style={styles.retryText}>↺ {t('common_retry')}</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.nivelPill}>
                 <Text style={styles.nivelPillText}>
-                  {statsLoading ? '–' : `${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`}
+                  {statsLoading ? '–' : `${semanas} ${semanas === 1 ? t('perfil_week_one') : t('perfil_week_many')}`}
                 </Text>
               </View>
             )}
@@ -667,6 +663,7 @@ export default function PerfilScreen() {
           loading={statsLoading}
           styles={styles}
           colors={colors}
+          t={t as (key: string) => string}
         />
 
         {/* ── EVENTOS PRÓXIMOS ── */}
@@ -676,6 +673,7 @@ export default function PerfilScreen() {
           styles={styles}
           colors={colors}
           lang={lang}
+          t={t as (key: string) => string}
         />
 
         <View style={{ height: 48 }} />

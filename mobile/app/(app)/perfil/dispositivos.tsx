@@ -55,16 +55,18 @@ function ChevronLeft({ color }: { color: string }) {
   )
 }
 
-function formatSyncTime(iso: string | null): string {
-  if (!iso) return 'Nunca sincronizado'
+const SYNC_LOCALES: Record<string, string> = { es: 'es-ES', en: 'en-US', pt: 'pt-BR', fr: 'fr-FR' }
+
+function formatSyncTime(iso: string | null, t: (k: any) => string, lang: string): string {
+  if (!iso) return t('dev_never_synced')
   const d = new Date(iso)
   const now = new Date()
   const diffMin = Math.floor((now.getTime() - d.getTime()) / 60000)
-  if (diffMin < 1) return 'Hace un momento'
-  if (diffMin < 60) return `Hace ${diffMin} min`
+  if (diffMin < 1) return t('dev_moment_ago')
+  if (diffMin < 60) return t('dev_synced_min_ago').replace('{n}', String(diffMin))
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `Hace ${diffH}h`
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  if (diffH < 24) return t('dev_synced_hours_ago').replace('{n}', String(diffH))
+  return d.toLocaleDateString(SYNC_LOCALES[lang] ?? 'es-ES', { day: 'numeric', month: 'short' })
 }
 
 function MetricPill({ label, value, color }: { label: string; value: string | null; color: string }) {
@@ -105,6 +107,7 @@ function DeviceCard({
   available, comingSoon, onConnect, onDisconnect, onSync, styles,
 }: DeviceCardProps) {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
 
   if (!available) return null
 
@@ -121,7 +124,7 @@ function DeviceCard({
             <Text style={styles.deviceName}>{name}</Text>
             {comingSoon && (
               <View style={styles.soonBadge}>
-                <Text style={styles.soonBadgeText}>PRÓXIMO</Text>
+                <Text style={styles.soonBadgeText}>{t('dev_soon_badge')}</Text>
               </View>
             )}
             {connected && !comingSoon && (
@@ -136,9 +139,9 @@ function DeviceCard({
       {connected && metrics && (
         <View style={styles.metricsRow}>
           <MetricPill label="HRV" value={metrics.hrv ? `${Math.round(metrics.hrv)} ms` : null} color={colors.accent} />
-          <MetricPill label="Sueño" value={metrics.sleep_score ? `${Math.round(metrics.sleep_score)}/100` : null} color={colors.cyan} />
-          <MetricPill label="FC rep." value={metrics.resting_hr ? `${Math.round(metrics.resting_hr)} bpm` : null} color={colors.green} />
-          <MetricPill label="Estrés" value={metrics.stress_level ? `${Math.round(metrics.stress_level)}/100` : null} color={colors.orange} />
+          <MetricPill label={t('dev_metric_sleep')} value={metrics.sleep_score ? `${Math.round(metrics.sleep_score)}/100` : null} color={colors.cyan} />
+          <MetricPill label={t('dev_metric_resting_hr')} value={metrics.resting_hr ? `${Math.round(metrics.resting_hr)} bpm` : null} color={colors.green} />
+          <MetricPill label={t('dev_metric_stress')} value={metrics.stress_level ? `${Math.round(metrics.stress_level)}/100` : null} color={colors.orange} />
         </View>
       )}
 
@@ -147,11 +150,11 @@ function DeviceCard({
         <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 12 }} />
       ) : comingSoon ? (
         <Text style={styles.comingSoonText}>
-          Disponible próximamente cuando obtengamos acceso al programa de partners de Garmin.
+          {t('dev_garmin_coming_soon')}
         </Text>
       ) : connected ? (
         <View style={styles.connectedFooter}>
-          <Text style={styles.syncLabel}>{formatSyncTime(state.last_synced_at)}</Text>
+          <Text style={styles.syncLabel}>{formatSyncTime(state.last_synced_at, t, lang)}</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {onSync && (
               <TouchableOpacity
@@ -162,7 +165,7 @@ function DeviceCard({
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={colors.accent} />
-                  : <Text style={styles.btnSecondaryText}>Sincronizar</Text>
+                  : <Text style={styles.btnSecondaryText}>{t('dev_sync')}</Text>
                 }
               </TouchableOpacity>
             )}
@@ -171,13 +174,13 @@ function DeviceCard({
               onPress={onDisconnect}
               activeOpacity={0.7}
             >
-              <Text style={styles.btnDangerText}>Desconectar</Text>
+              <Text style={styles.btnDangerText}>{t('dev_disconnect')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <TouchableOpacity style={styles.btnConnect} onPress={onConnect} activeOpacity={0.85}>
-          <Text style={styles.btnConnectText}>Conectar {name}</Text>
+          <Text style={styles.btnConnectText}>{t('dev_connect').replace('{name}', name)}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -237,7 +240,7 @@ export default function DispositivosScreen() {
       await _doAhSync()
       await fetchStates()
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo conectar Apple Health.')
+      Alert.alert(t('common_error'), e?.message ?? t('dev_err_connect_ah'))
     } finally {
       setAhLoading(false)
     }
@@ -261,7 +264,7 @@ export default function DispositivosScreen() {
       setAhSyncing(true)
       await _doAhSync()
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo sincronizar con Apple Health.')
+      Alert.alert(t('common_error'), e?.message ?? t('dev_err_sync_ah'))
     } finally {
       setAhSyncing(false)
     }
@@ -270,19 +273,19 @@ export default function DispositivosScreen() {
   // ── Apple Health — Desconectar ────────────────────────────────────────────
   async function handleAhDisconnect() {
     Alert.alert(
-      'Desconectar Apple Health',
-      '¿Estás seguro? Tus datos de salud actuales se eliminarán de Zyfit. Puedes volver a conectar cuando quieras.',
+      t('dev_disconnect_ah_title'),
+      t('dev_disconnect_ah_msg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common_cancel'), style: 'cancel' },
         {
-          text: 'Desconectar',
+          text: t('dev_disconnect'),
           style: 'destructive',
           onPress: async () => {
             try {
               await apiDelete('/api/integrations/apple-health/')
               setAhState(DISCONNECTED)
             } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'No se pudo desconectar.')
+              Alert.alert(t('common_error'), e?.message ?? t('dev_err_disconnect'))
             }
           },
         },
@@ -299,7 +302,7 @@ export default function DispositivosScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <ChevronLeft color={colors.inkSecondary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Dispositivos</Text>
+        <Text style={styles.navTitle}>{t('dev_title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -309,15 +312,14 @@ export default function DispositivosScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionDesc}>
-          Conecta tus wearables para que Zyfit use tus datos de sueño, HRV y recuperación
-          al diseñar cada sesión.
+          {t('dev_section_desc')}
         </Text>
 
         {/* ── Apple Health ── */}
         <DeviceCard
           icon="🍎"
           name="Apple Health"
-          description="Lee HRV, sueño y FC directamente desde tu iPhone o Apple Watch."
+          description={t('dev_ah_desc')}
           state={ahState}
           loading={ahLoading}
           syncing={ahSyncing}
@@ -334,8 +336,7 @@ export default function DispositivosScreen() {
         {Platform.OS === 'ios' && !ahAvailable && !ahLoading && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              La integración con Apple Health está en desarrollo — todavía no
-              disponible en esta versión, independientemente de tu dispositivo.
+              {t('dev_ah_in_dev')}
             </Text>
           </View>
         )}
@@ -344,7 +345,7 @@ export default function DispositivosScreen() {
         <DeviceCard
           icon="⌚"
           name="Garmin"
-          description="Sincroniza métricas de tu reloj Garmin: HRV, sueño, estrés y Body Battery."
+          description={t('dev_garmin_desc')}
           state={garminState}
           loading={garminLoading}
           syncing={false}
@@ -361,7 +362,7 @@ export default function DispositivosScreen() {
           onPress={() => router.push('/(app)/perfil/buscar-dispositivo')}
           activeOpacity={0.8}
         >
-          <Text style={styles.scanButtonText}>Buscar dispositivo Bluetooth</Text>
+          <Text style={styles.scanButtonText}>{t('dev_scan_button')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />

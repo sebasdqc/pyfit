@@ -10,12 +10,13 @@ import {
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router, useLocalSearchParams } from 'expo-router'
+import { Redirect, router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
+import { BILLING_ENABLED } from '../../../lib/featureFlags'
 
 // ─── Types & data ─────────────────────────────────────────────────────────────
 
@@ -148,6 +149,9 @@ function PlanCard({ plan, estado, onSelect, colors, styles }: PlanCardProps) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CambiarPlanScreen() {
+  // Cambio de plan desactivado hasta integrar Play Billing (BILLING_ENABLED).
+  if (!BILLING_ENABLED) return <Redirect href={'/(app)/perfil/ajustes' as any} />
+
   const { colors } = useTheme()
   const insets     = useSafeAreaInsets()
   const styles     = React.useMemo(() => makeStyles(colors), [colors])
@@ -394,7 +398,7 @@ function makeStyles(c: Colors) {
     },
     ctaBtnText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 16,
-      letterSpacing: -0.3, color: '#fff',
+      letterSpacing: -0.3, color: readableTextOn(c.accent),
     },
     cancelLink: { alignItems: 'center', paddingVertical: 4 },
     cancelLinkText: {

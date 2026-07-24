@@ -7,15 +7,39 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPatch } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const NIVELES = [{ k: 'principiante', l: 'Principiante' }, { k: 'intermedio', l: 'Intermedio' }, { k: 'avanzado', l: 'Avanzado' }]
-const HORARIOS = [{ k: 'mañana', l: 'Mañana' }, { k: 'tarde', l: 'Tarde' }, { k: 'noche', l: 'Noche' }]
+const NIVELES = [
+  { k: 'principiante', labelKey: 'ent_nivel_principiante' },
+  { k: 'intermedio', labelKey: 'ent_nivel_intermedio' },
+  { k: 'avanzado', labelKey: 'ent_nivel_avanzado' },
+] as const
+const HORARIOS = [
+  { k: 'mañana', labelKey: 'ent_horario_manana' },
+  { k: 'tarde', labelKey: 'ent_horario_tarde' },
+  { k: 'noche', labelKey: 'ent_horario_noche' },
+] as const
 const DIAS = [1, 2, 3, 4, 5, 6, 7]
+
+// Deja solo dígitos + separador decimal (el decimal-pad de Android igual admite letras).
+const onlyNum = (v: string) => v.replace(/[^0-9.,]/g, '')
+
+// "" → null (el 1RM es opcional); valida que sea numérico y esté en rango 1–500 kg.
+// Lanza Error con mensaje legible si es inválido — evita mandar '' o texto al DecimalField.
+// Los textos llegan ya traducidos desde el componente (parseRM es module-level, sin acceso a `t`).
+function parseRM(raw: string, label: string, invalidMsg: string, tooHighMsg: string): number | null {
+  const s = raw.trim().replace(',', '.')
+  if (s === '') return null
+  const n = Number(s)
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${label}: ${invalidMsg}`)
+  if (n > 500) throw new Error(`${label}: ${tooHighMsg}`)
+  return n
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -57,12 +81,14 @@ function GlassInput({ label, value, onChangeText, placeholder, keyboardType = 'd
 
 export default function EntrenamientoScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
   const [fullProfile, setFullProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
 
   const [nivel, setNivel] = useState('principiante')
   const [diasSemana, setDiasSemana] = useState(3)
@@ -71,6 +97,24 @@ export default function EntrenamientoScreen() {
   const [rmMuerto, setRmMuerto] = useState('')
   const [rmBanca, setRmBanca] = useState('')
   const [rmHombro, setRmHombro] = useState('')
+
+  // Helpers que marcan el formulario como modificado
+  const mark = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setIsDirty(true) }
+
+  function goBack() {
+    if (isDirty) {
+      Alert.alert(
+        t('dp_unsaved_title'),
+        t('dp_unsaved_msg'),
+        [
+          { text: t('dp_unsaved_keep'), style: 'cancel' },
+          { text: t('dp_unsaved_leave'), style: 'destructive', onPress: () => router.back() },
+        ]
+      )
+      return
+    }
+    router.back()
+  }
 
   useEffect(() => {
     apiGet('/api/profile/').then(data => {
@@ -87,6 +131,22 @@ export default function EntrenamientoScreen() {
 
   async function save() {
     if (!fullProfile) return
+
+    // Validar RMs ANTES de tocar el estado de guardado: número válido, rango y
+    // vacío → null. Si algo falla, avisar y no enviar (evita un 400 mudo).
+    let rmS: number | null, rmM: number | null, rmB: number | null, rmH: number | null
+    const invalidMsg = t('ent_rm_invalid')
+    const tooHighMsg = t('ent_rm_too_high')
+    try {
+      rmS = parseRM(rmSentadilla, t('ent_rm_squat'), invalidMsg, tooHighMsg)
+      rmM = parseRM(rmMuerto, t('ent_rm_deadlift'), invalidMsg, tooHighMsg)
+      rmB = parseRM(rmBanca, t('ent_rm_bench'), invalidMsg, tooHighMsg)
+      rmH = parseRM(rmHombro, t('ent_rm_shoulder'), invalidMsg, tooHighMsg)
+    } catch (e: any) {
+      Alert.alert(t('ent_rm_alert_title'), e.message)
+      return
+    }
+
     setSaving(true)
     try {
       // PRF-3: sincronizar nivel_experiencia con el nivel editado — el motor
@@ -97,12 +157,13 @@ export default function EntrenamientoScreen() {
       await apiPatch('/api/profile/', {
         nivel, nivel_experiencia: nivelExp,
         dias_semana: diasSemana, horario_preferido: horario,
-        rm_sentadilla: rmSentadilla, rm_peso_muerto: rmMuerto,
-        rm_press_banca: rmBanca, rm_press_hombro: rmHombro,
+        rm_sentadilla: rmS, rm_peso_muerto: rmM,
+        rm_press_banca: rmB, rm_press_hombro: rmH,
       })
+      setIsDirty(false)
       router.back()
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('ent_save_error'))
     } finally { setSaving(false) }
   }
 
@@ -112,12 +173,12 @@ export default function EntrenamientoScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Datos de entrenamiento</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_training')}</Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -126,55 +187,55 @@ export default function EntrenamientoScreen() {
 
           {loading ? (
             <View style={{ paddingTop: 40, alignItems: 'center' }}>
-              <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+              <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
             </View>
           ) : (
             <>
-              <SectionLabel text="NIVEL" styles={styles} />
+              <SectionLabel text={t('ent_level')} styles={styles} />
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
-                {NIVELES.map(({ k, l }) => (
-                  <Chip key={k} label={l} active={nivel === k} onPress={() => setNivel(k)} styles={styles} />
+                {NIVELES.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={nivel === k} onPress={() => mark(setNivel)(k)} styles={styles} />
                 ))}
               </View>
 
-              <SectionLabel text="DÍAS POR SEMANA" styles={styles} />
+              <SectionLabel text={t('ent_days_per_week')} styles={styles} />
               <View style={[styles.daysRow, { marginBottom: 20 }]}>
                 {DIAS.map(d => (
                   <TouchableOpacity key={d} style={[styles.dayBtn, diasSemana === d && styles.dayBtnActive]}
-                    onPress={() => setDiasSemana(d)} activeOpacity={0.7}>
+                    onPress={() => mark(setDiasSemana)(d)} activeOpacity={0.7}>
                     <Text style={[styles.dayBtnText, diasSemana === d && styles.dayBtnTextActive]}>{d}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <SectionLabel text="HORARIO PREFERIDO" styles={styles} />
+              <SectionLabel text={t('ent_preferred_time')} styles={styles} />
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
-                {HORARIOS.map(({ k, l }) => (
-                  <Chip key={k} label={l} active={horario === k} onPress={() => setHorario(k)} styles={styles} />
+                {HORARIOS.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={horario === k} onPress={() => mark(setHorario)(k)} styles={styles} />
                 ))}
               </View>
 
-              <Text style={styles.rmTitle}>1RM APROXIMADO (kg)</Text>
-              <Text style={styles.rmSub}>Opcional — para calcular cargas exactas</Text>
+              <Text style={styles.rmTitle}>{t('ent_rm_title')}</Text>
+              <Text style={styles.rmSub}>{t('ent_rm_sub')}</Text>
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="SENTADILLA" value={rmSentadilla} onChangeText={setRmSentadilla}
+                  <GlassInput label={t('ent_rm_squat')} value={rmSentadilla} onChangeText={v => mark(setRmSentadilla)(onlyNum(v))}
                     placeholder="100" keyboardType="decimal-pad" styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="PESO MUERTO" value={rmMuerto} onChangeText={setRmMuerto}
+                  <GlassInput label={t('ent_rm_deadlift')} value={rmMuerto} onChangeText={v => mark(setRmMuerto)(onlyNum(v))}
                     placeholder="120" keyboardType="decimal-pad" styles={styles} />
                 </View>
               </View>
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="PRESS BANCA" value={rmBanca} onChangeText={setRmBanca}
+                  <GlassInput label={t('ent_rm_bench')} value={rmBanca} onChangeText={v => mark(setRmBanca)(onlyNum(v))}
                     placeholder="80" keyboardType="decimal-pad" styles={styles} />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <GlassInput label="PRESS HOMBRO" value={rmHombro} onChangeText={setRmHombro}
+                  <GlassInput label={t('ent_rm_shoulder')} value={rmHombro} onChangeText={v => mark(setRmHombro)(onlyNum(v))}
                     placeholder="60" keyboardType="decimal-pad" styles={styles} />
                 </View>
               </View>
@@ -182,7 +243,7 @@ export default function EntrenamientoScreen() {
               <TouchableOpacity
                 style={[styles.saveBtn, saving && { opacity: 0.5 }]}
                 onPress={save} disabled={saving} activeOpacity={0.85}>
-                <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+                <Text style={styles.saveBtnText}>{saving ? t('ent_saving') : t('ent_save_changes')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -213,7 +274,7 @@ function makeStyles(c: Colors) {
     rowFields: { flexDirection: 'row' },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },
-    chipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    chipActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.12) },
     chipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
     daysRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

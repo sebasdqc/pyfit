@@ -7,14 +7,32 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPost, apiDelete } from '../../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Ids que se envían al backend (estables); su label se traduce por separado.
 const IMPLEMENTOS = ['Barras', 'Mancuernas', 'Máquinas', 'TRX', 'Kettlebells', 'Bandas elásticas', 'Cajón pliométrico', 'Anillas']
 const TIPOS_LUGAR = ['Gimnasio', 'Casa', 'Exterior']
+
+const IMP_KEY: Record<string, string> = {
+  'Barras': 'ubi_imp_bars',
+  'Mancuernas': 'ubi_imp_dumbbells',
+  'Máquinas': 'ubi_imp_machines',
+  'TRX': 'ubi_imp_trx',
+  'Kettlebells': 'ubi_imp_kettlebells',
+  'Bandas elásticas': 'ubi_imp_bands',
+  'Cajón pliométrico': 'ubi_imp_plyobox',
+  'Anillas': 'ubi_imp_rings',
+}
+const TIPO_KEY: Record<string, string> = {
+  gimnasio: 'ubi_type_gym',
+  casa: 'ubi_type_home',
+  exterior: 'ubi_type_outdoor',
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,8 +60,13 @@ function Chip({ label, active, onPress, styles }: {
 
 export default function UbicacionesScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
+
+  const tipoLabel = (id: string) =>
+    id && TIPO_KEY[id.toLowerCase()] ? t(TIPO_KEY[id.toLowerCase()] as any) : capitalizeFirst(id)
+  const impLabel = (imp: string) => (IMP_KEY[imp] ? t(IMP_KEY[imp] as any) : imp)
 
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,7 +92,7 @@ export default function UbicacionesScreen() {
 
   async function saveNew() {
     if (!newLoc.nombre.trim() || !newLoc.tipo) {
-      Alert.alert('Campos requeridos', 'Debes completar el nombre y el tipo de ubicación.')
+      Alert.alert(t('ubi_alert_required_title'), t('ubi_alert_required_msg'))
       return
     }
     setSaving(true)
@@ -83,22 +106,22 @@ export default function UbicacionesScreen() {
       setAdding(false)
       loadLocations()
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('ubi_save_error'))
     } finally { setSaving(false) }
   }
 
   async function deleteLocation(id: number, nombre: string) {
-    Alert.alert('Eliminar ubicación', `¿Eliminar "${nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('ubi_delete_title'), t('ubi_delete_msg').replace('{name}', nombre), [
+      { text: t('common_cancel'), style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive',
+        text: t('common_delete'), style: 'destructive',
         onPress: async () => {
           setDeletingId(id)
           try {
             await apiDelete(`/api/locations/${id}/`)
             loadLocations()
           } catch (e: any) {
-            Alert.alert('Error', e.message ?? 'No se pudo eliminar')
+            Alert.alert(t('common_error'), e.message ?? t('ubi_delete_error'))
           } finally {
             setDeletingId(null)
           }
@@ -123,7 +146,7 @@ export default function UbicacionesScreen() {
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ubicaciones</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_locations')}</Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -132,12 +155,12 @@ export default function UbicacionesScreen() {
 
           {loading ? (
             <View style={{ paddingTop: 40, alignItems: 'center' }}>
-              <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+              <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
             </View>
           ) : (
             <>
               {locations.length === 0 && !adding && (
-                <Text style={styles.emptyText}>No tienes ubicaciones guardadas.</Text>
+                <Text style={styles.emptyText}>{t('ubi_empty')}</Text>
               )}
 
               {locations.map(loc => (
@@ -145,7 +168,7 @@ export default function UbicacionesScreen() {
                   <View style={styles.locCardHeader}>
                     <View>
                       <Text style={styles.locNombre}>{loc.nombre}</Text>
-                      <Text style={styles.locTipo}>{capitalizeFirst(loc.tipo)}</Text>
+                      <Text style={styles.locTipo}>{tipoLabel(loc.tipo)}</Text>
                     </View>
                     <TouchableOpacity
                       onPress={() => deleteLocation(loc.id!, loc.nombre)}
@@ -154,7 +177,7 @@ export default function UbicacionesScreen() {
                     >
                       {deletingId === loc.id
                         ? <ActivityIndicator color={colors.red} size="small" />
-                        : <Text style={styles.locDelete}>Eliminar</Text>
+                        : <Text style={styles.locDelete}>{t('common_delete')}</Text>
                       }
                     </TouchableOpacity>
                   </View>
@@ -162,7 +185,7 @@ export default function UbicacionesScreen() {
                     <View style={styles.chipsRow}>
                       {loc.implementos.map(imp => (
                         <View key={imp} style={styles.impTag}>
-                          <Text style={styles.impTagText}>{imp}</Text>
+                          <Text style={styles.impTagText}>{impLabel(imp)}</Text>
                         </View>
                       ))}
                     </View>
@@ -172,28 +195,28 @@ export default function UbicacionesScreen() {
 
               {adding ? (
                 <View style={styles.addForm}>
-                  <SectionLabel text="NOMBRE" styles={styles} />
+                  <SectionLabel text={t('ubi_label_name')} styles={styles} />
                   <TextInput
                     value={newLoc.nombre}
                     onChangeText={v => setNewLoc(prev => ({ ...prev, nombre: v }))}
-                    placeholder="Ej: Mi gimnasio"
+                    placeholder={t('ubi_name_placeholder')}
                     placeholderTextColor={colors.inkMuted}
                     style={[styles.input, { marginBottom: 16 }]}
                     autoCapitalize="words" autoCorrect={false}
                   />
 
-                  <SectionLabel text="TIPO" styles={styles} />
+                  <SectionLabel text={t('ubi_label_type')} styles={styles} />
                   <View style={[styles.chipsRow, { marginBottom: 16 }]}>
-                    {TIPOS_LUGAR.map(t => (
-                      <Chip key={t} label={t} active={newLoc.tipo === t}
-                        onPress={() => setNewLoc(prev => ({ ...prev, tipo: t }))} styles={styles} />
+                    {TIPOS_LUGAR.map(tipo => (
+                      <Chip key={tipo} label={tipoLabel(tipo)} active={newLoc.tipo === tipo}
+                        onPress={() => setNewLoc(prev => ({ ...prev, tipo }))} styles={styles} />
                     ))}
                   </View>
 
-                  <SectionLabel text="IMPLEMENTOS DISPONIBLES" styles={styles} />
+                  <SectionLabel text={t('ubi_label_equipment')} styles={styles} />
                   <View style={[styles.chipsRow, { marginBottom: 20 }]}>
                     {IMPLEMENTOS.map(imp => (
-                      <Chip key={imp} label={imp} active={newLoc.implementos.includes(imp)}
+                      <Chip key={imp} label={impLabel(imp)} active={newLoc.implementos.includes(imp)}
                         onPress={() => toggleImplemento(imp)} styles={styles} />
                     ))}
                   </View>
@@ -202,20 +225,20 @@ export default function UbicacionesScreen() {
                     <TouchableOpacity
                       style={[styles.saveBtn, { flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderDefault }]}
                       onPress={() => { setAdding(false); setNewLoc(EMPTY_LOC) }} activeOpacity={0.7}>
-                      <Text style={[styles.saveBtnText, { color: colors.inkSecondary }]}>Cancelar</Text>
+                      <Text style={[styles.saveBtnText, { color: colors.inkSecondary }]}>{t('common_cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.saveBtn, { flex: 1 }, saving && { opacity: 0.6 }]}
                       onPress={saveNew} disabled={saving} activeOpacity={0.85}>
                       {saving
                         ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={styles.saveBtnText}>Guardar</Text>
+                        : <Text style={styles.saveBtnText}>{t('common_save')}</Text>
                       }
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity style={styles.addBtn} onPress={() => setAdding(true)} activeOpacity={0.7}>
-                  <Text style={styles.addBtnText}>+ Agregar ubicación</Text>
+                  <Text style={styles.addBtnText}>+ {t('ubi_add')}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -249,12 +272,12 @@ function makeStyles(c: Colors) {
     locDelete: { color: c.red, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: c.borderDefault, backgroundColor: c.cardBg },
-    chipActive: { borderColor: c.accent, backgroundColor: 'rgba(79,140,255,0.12)' },
+    chipActive: { borderColor: c.accent, backgroundColor: accentAlpha(c.accent, 0.12) },
     chipText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13 },
     chipTextActive: { color: c.accent, fontFamily: 'SpaceGrotesk-SemiBold' },
     impTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault },
     impTagText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 11 },
-    addBtn: { borderWidth: 1, borderColor: c.accent, borderStyle: 'dashed', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 8, backgroundColor: 'rgba(79,140,255,0.05)' },
+    addBtn: { borderWidth: 1, borderColor: c.accent, borderStyle: 'dashed', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 8, backgroundColor: accentAlpha(c.accent, 0.05) },
     addBtnText: { color: c.accent, fontFamily: 'SpaceGrotesk-Medium', fontSize: 14 },
     addForm: { backgroundColor: c.cardBg, borderWidth: 1, borderColor: c.borderDefault, borderRadius: 16, padding: 14, marginTop: 8 },
     sectionLabel: { color: c.inkMuted, fontFamily: 'JetBrainsMono-Regular', fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },

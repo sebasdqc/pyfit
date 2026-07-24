@@ -11,12 +11,13 @@ import {
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router, useLocalSearchParams } from 'expo-router'
+import { Redirect, router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line, Path } from 'react-native-svg'
 import { Colors } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
 import { apiPost } from '../../../lib/api'
+import { BILLING_ENABLED } from '../../../lib/featureFlags'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,9 @@ function LossRow({ Icon, titulo, descripcion, colors, styles }: LossRowProps) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CancelarScreen() {
+  // Cancelación de plan desactivada hasta integrar Play Billing (BILLING_ENABLED).
+  if (!BILLING_ENABLED) return <Redirect href={'/(app)/perfil/ajustes' as any} />
+
   const { colors } = useTheme()
   const insets     = useSafeAreaInsets()
   const styles     = React.useMemo(() => makeStyles(colors), [colors])

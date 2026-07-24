@@ -7,8 +7,7 @@
  * título + subtítulo/badge opcional + chevron) que navega a cada sub-pantalla.
  *
  * Centraliza el look de las filas que antes vivían sueltas en perfil/index.tsx,
- * para que mi-cuenta / datos-entrenamiento / tus-dispositivos / evidencia
- * reutilicen exactamente el mismo estilo.
+ * para que mi-cuenta / tus-dispositivos reutilicen exactamente el mismo estilo.
  */
 import React from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'

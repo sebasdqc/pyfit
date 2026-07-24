@@ -2,31 +2,51 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { Redirect, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { Colors } from '../../../lib/colors'
+import { Colors, accentAlpha } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import { apiGet, apiPatch, apiPost, localDateStr } from '../../../lib/api'
 
-function formatDate(d: Date): string {
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+const DATE_LOCALE: Record<string, string> = { es: 'es-ES', en: 'en-US', pt: 'pt-BR', fr: 'fr-FR' }
+
+function formatDate(d: Date, lang: string): string {
+  return d.toLocaleDateString(DATE_LOCALE[lang] ?? 'es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CicloScreen() {
   const { colors } = useTheme()
+  const { t, lang } = useTranslation()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
 
   const [fullProfile, setFullProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [usaCiclo, setUsaCiclo] = useState(false)
   const [duracion, setDuracion] = useState('28')
   const [fechaInicio, setFechaInicio] = useState<Date | null>(null)
   const [showPicker, setShowPicker] = useState(false)
+
+  function goBack() {
+    if (isDirty) {
+      Alert.alert(
+        t('dp_unsaved_title'),
+        t('dp_unsaved_msg'),
+        [
+          { text: t('dp_unsaved_keep'), style: 'cancel' },
+          { text: t('dp_unsaved_leave'), style: 'destructive', onPress: () => router.back() },
+        ]
+      )
+      return
+    }
+    router.back()
+  }
 
   useEffect(() => {
     Promise.all([
@@ -45,7 +65,7 @@ export default function CicloScreen() {
   async function save() {
     if (!fullProfile) return
     if (usaCiclo && !fechaInicio) {
-      Alert.alert('Falta la fecha', 'Indica cuándo empezó tu último período para adaptar tus rutinas.')
+      Alert.alert(t('cic_alert_date_title'), t('cic_alert_date_msg'))
       return
     }
     // #11: validar la duración en vez de recortarla en silencio. Vacío = 28
@@ -54,7 +74,7 @@ export default function CicloScreen() {
     if (usaCiclo && duracion.trim() !== '') {
       const parsed = parseInt(duracion, 10)
       if (isNaN(parsed) || parsed < 20 || parsed > 45) {
-        Alert.alert('Duración inválida', 'La duración del ciclo debe estar entre 20 y 45 días.')
+        Alert.alert(t('cic_alert_dur_title'), t('cic_alert_dur_msg'))
         return
       }
       dur = parsed
@@ -69,10 +89,17 @@ export default function CicloScreen() {
           duracion_ciclo: dur,
         })
       }
+      setIsDirty(false)
       router.back()
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar')
+      Alert.alert(t('common_error'), e.message ?? t('cic_save_error'))
     } finally { setSaving(false) }
+  }
+
+  // Pantalla accesible solo para sexo=femenino (gateado también en mi-cuenta.tsx,
+  // pero esta pantalla es alcanzable por deep-link directo — no confiar solo en eso).
+  if (!loading && fullProfile && fullProfile.sexo !== 'femenino') {
+    return <Redirect href={'/(app)/perfil/mi-cuenta' as any} />
   }
 
   return (
@@ -81,31 +108,31 @@ export default function CicloScreen() {
         style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Path d="M15 18l-6-6 6-6" stroke={colors.inkPrimary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ciclo menstrual</Text>
+        <Text style={styles.headerTitle}>{t('perfil_row_cycle')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={{ paddingTop: 40, alignItems: 'center' }}>
-            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>Cargando...</Text>
+            <Text style={{ color: colors.inkMuted, fontFamily: 'SpaceGrotesk-Regular', fontSize: 14 }}>{t('common_loading')}</Text>
           </View>
         ) : (
           <>
             <Text style={styles.description}>
-              Cuando está activado, Zyfit adapta la intensidad y el tipo de entrenamiento según la fase del ciclo.
+              {t('cic_description')}
             </Text>
 
             {/* Toggle */}
-            <TouchableOpacity style={styles.toggleRow} onPress={() => setUsaCiclo(prev => !prev)} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.toggleRow} onPress={() => { setUsaCiclo(prev => !prev); setIsDirty(true) }} activeOpacity={0.7}>
               <View>
-                <Text style={styles.toggleTitle}>Adaptar al ciclo menstrual</Text>
+                <Text style={styles.toggleTitle}>{t('cic_toggle_title')}</Text>
                 <Text style={styles.toggleSub}>
-                  {usaCiclo ? 'Activado — Zyfit ajustará tus rutinas' : 'Desactivado'}
+                  {usaCiclo ? t('cic_toggle_on') : t('cic_toggle_off')}
                 </Text>
               </View>
               <View style={[styles.toggleSwitch, usaCiclo && styles.toggleSwitchOn]}>
@@ -115,18 +142,18 @@ export default function CicloScreen() {
 
             {usaCiclo && (
               <>
-                <Text style={styles.fieldLabel}>INICIO DE TU ÚLTIMO PERÍODO</Text>
+                <Text style={styles.fieldLabel}>{t('cic_label_start')}</Text>
                 <TouchableOpacity style={styles.input} onPress={() => setShowPicker(true)} activeOpacity={0.8}>
                   <Text style={fechaInicio ? styles.inputText : styles.inputPlaceholder}>
-                    {fechaInicio ? formatDate(fechaInicio) : 'Seleccionar fecha'}
+                    {fechaInicio ? formatDate(fechaInicio, lang) : t('cic_select_date')}
                   </Text>
                 </TouchableOpacity>
 
-                <Text style={styles.fieldLabel}>DURACIÓN DEL CICLO (DÍAS)</Text>
+                <Text style={styles.fieldLabel}>{t('cic_label_duration')}</Text>
                 <TextInput
                   style={styles.input}
                   value={duracion}
-                  onChangeText={txt => setDuracion(txt.replace(/[^0-9]/g, '').slice(0, 2))}
+                  onChangeText={txt => { setDuracion(txt.replace(/[^0-9]/g, '').slice(0, 2)); setIsDirty(true) }}
                   keyboardType="number-pad"
                   placeholder="28"
                   placeholderTextColor={colors.inkMuted}
@@ -134,7 +161,7 @@ export default function CicloScreen() {
 
                 <View style={styles.infoCard}>
                   <Text style={styles.infoText}>
-                    🌙 Zyfit utilizará los datos de tu ciclo para ajustar el RPE objetivo, el volumen y el tipo de ejercicios en cada sesión.
+                    🌙 {t('cic_info')}
                   </Text>
                 </View>
               </>
@@ -147,7 +174,7 @@ export default function CicloScreen() {
                 maximumDate={new Date()}
                 onChange={(_e, d) => {
                   setShowPicker(Platform.OS === 'ios')
-                  if (d) setFechaInicio(d)
+                  if (d) { setFechaInicio(d); setIsDirty(true) }
                 }}
               />
             )}
@@ -155,7 +182,7 @@ export default function CicloScreen() {
             <TouchableOpacity
               style={[styles.saveBtn, saving && { opacity: 0.5 }]}
               onPress={save} disabled={saving} activeOpacity={0.85}>
-              <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? t('cic_saving') : t('cic_save_changes')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -210,8 +237,8 @@ function makeStyles(c: Colors) {
     inputText: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkPrimary },
     inputPlaceholder: { fontFamily: 'SpaceGrotesk-Regular', fontSize: 15, color: c.inkMuted },
     infoCard: {
-      backgroundColor: 'rgba(79,140,255,0.06)',
-      borderWidth: 1, borderColor: 'rgba(79,140,255,0.2)',
+      backgroundColor: accentAlpha(c.accent, 0.06),
+      borderWidth: 1, borderColor: accentAlpha(c.accent, 0.2),
       borderRadius: 14, padding: 16, marginBottom: 24,
     },
     infoText: { color: c.inkSecondary, fontFamily: 'SpaceGrotesk-Regular', fontSize: 13, lineHeight: 20 },

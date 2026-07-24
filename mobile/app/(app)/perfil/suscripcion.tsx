@@ -16,12 +16,13 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router, useLocalSearchParams } from 'expo-router'
+import { Redirect, router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line, Path } from 'react-native-svg'
 import { apiGet, apiPost } from '../../../lib/api'
-import { Colors } from '../../../lib/colors'
+import { Colors, readableTextOn } from '../../../lib/colors'
 import { useTheme } from '../../../lib/theme'
+import { BILLING_ENABLED } from '../../../lib/featureFlags'
 
 interface SolicitudSuscripcion {
   id: number
@@ -350,6 +351,10 @@ function GestionRow({ Icon, titulo, subtitulo, disabled, danger, onPress, colors
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function SuscripcionScreen() {
+  // Flujo de pago desactivado hasta integrar Play Billing (BILLING_ENABLED).
+  // El flag es constante, así que este early-return no altera el orden de hooks.
+  if (!BILLING_ENABLED) return <Redirect href={'/(app)/perfil/ajustes' as any} />
+
   const { colors } = useTheme()
   const insets     = useSafeAreaInsets()
   const styles     = React.useMemo(() => makeStyles(colors), [colors])
@@ -974,7 +979,7 @@ function makeStyles(c: Colors) {
     },
     ctaBtnText: {
       fontFamily: 'SpaceGrotesk-Bold', fontSize: 16,
-      letterSpacing: -0.3, color: '#fff',
+      letterSpacing: -0.3, color: readableTextOn(c.accent),
     },
 
     // ── Link secundario + footer legal (upgrade) ──

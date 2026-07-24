@@ -24,11 +24,12 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
+import { useTranslation } from '../../../lib/i18n'
 import type { Colors } from '../../../lib/colors'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const SCAN_TITLES = ['Buscando dispositivos...', 'Escaneando Bluetooth...', 'Detectando señales...']
+const SCAN_TITLE_KEYS = ['bdv_scan_title_1', 'bdv_scan_title_2', 'bdv_scan_title_3'] as const
 const SCAN_DURATION_MS = 3200   // tiempo de cortesía antes de mostrar el estado real
 
 // ─── SVG helpers ──────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ const radarStyles = StyleSheet.create({
 
 export default function BuscarDispositivoScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const styles = React.useMemo(() => makeStyles(colors), [colors])
 
@@ -120,7 +122,7 @@ export default function BuscarDispositivoScreen() {
   useEffect(() => {
     if (!scanning) return
     const interval = setInterval(() => {
-      setTitleIndex(prev => (prev + 1) % SCAN_TITLES.length)
+      setTitleIndex(prev => (prev + 1) % SCAN_TITLE_KEYS.length)
       setDotIndex(prev => (prev + 1) % 3)
     }, 900)
     return () => clearInterval(interval)
@@ -135,7 +137,7 @@ export default function BuscarDispositivoScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <ChevronLeft color={colors.inkSecondary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Buscar dispositivo</Text>
+        <Text style={styles.navTitle}>{t('bdv_title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -154,9 +156,9 @@ export default function BuscarDispositivoScreen() {
 
         {scanning ? (
           <>
-            <Text style={styles.scanTitle}>{SCAN_TITLES[titleIndex]}</Text>
+            <Text style={styles.scanTitle}>{t(SCAN_TITLE_KEYS[titleIndex])}</Text>
             <Text style={styles.scanSubtitle}>
-              Asegúrate de que tu dispositivo esté encendido y cerca.
+              {t('bdv_scan_subtitle')}
             </Text>
             <View style={styles.dotsRow}>
               {[0, 1, 2].map(i => (
@@ -172,11 +174,11 @@ export default function BuscarDispositivoScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.scanTitle}>Emparejamiento directo aún no disponible</Text>
+            <Text style={styles.scanTitle}>{t('bdv_unavailable_title')}</Text>
             <Text style={styles.scanSubtitle}>
-              Todavía no soportamos conectar relojes/bandas por Bluetooth directamente desde la app.
-              Ya puedes conectar <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', color: colors.inkPrimary }}>Apple Health</Text> desde
-              la pantalla anterior, y Garmin llegará pronto vía su programa de partners.
+              {t('bdv_unavailable_msg_pre')}
+              <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', color: colors.inkPrimary }}>Apple Health</Text>
+              {t('bdv_unavailable_msg_post')}
             </Text>
           </>
         )}
@@ -185,7 +187,7 @@ export default function BuscarDispositivoScreen() {
         <View style={styles.privacyCard}>
           <Text style={styles.privacyIcon}>🔒</Text>
           <Text style={styles.privacyText}>
-            Cuando conectes un dispositivo, Zyfit usa esos datos internamente para personalizar tus rutinas. No los compartimos con terceros.
+            {t('bdv_privacy')}
           </Text>
         </View>
 
@@ -194,7 +196,7 @@ export default function BuscarDispositivoScreen() {
           onPress={() => router.back()}
           activeOpacity={0.85}
         >
-          <Text style={styles.doneBtnText}>Volver</Text>
+          <Text style={styles.doneBtnText}>{t('common_back')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
