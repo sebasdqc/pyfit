@@ -1883,6 +1883,82 @@ def _contar_datos_medidos(user, desde):
     return total
 
 
+def _racha_puntos_contexto(user, hoy=None):
+    """Contexto para la card de RACHA del perfil (reemplaza DATOS MEDIDOS).
+
+    Sistema de puntos v1 — semanal, se reinicia cada lunes:
+      · Sesión completada con feedback ...... +100
+      · Cumplimiento >= 80% en esa sesión ... +25  (bonus de calidad)
+      · Check-in diario ..................... +20
+
+    Meta semanal = días objetivo (profile.dias_semana) * 100, mín 100. Entrenar
+    tus días objetivo te lleva al 100%; los check-ins y el buen cumplimiento te
+    dejan superarlo.
+
+    Un "día entrenado" = Session con feedback: MISMA definición que la racha
+    (el fuego) en _calcular_racha_realtime — ver project_dia_entrenado_feedback.
+    El fuego y los checks Lun–Dom cuentan lo mismo, para que la card sea coherente.
+    """
+    if hoy is None:
+        hoy = date.today()
+    lunes = hoy - timedelta(days=hoy.weekday())
+
+    # Racha (fuego) — definición canónica compartida con el dashboard
+    racha = _calcular_racha_realtime(user, hoy)
+    try:
+        mejor_racha = max(user.profile.mejor_racha or 0, racha)
+    except Exception:
+        mejor_racha = racha
+
+    # Sesiones de ESTA semana (Lun–hoy) con feedback
+    sesiones_semana = list(
+        Session.objects.filter(
+            user=user, fecha__gte=lunes, fecha__lte=hoy, feedback__isnull=False,
+        ).select_related('feedback')
+    )
+    dias_entrenados = {s.fecha for s in sesiones_semana}
+
+    puntos = len(sesiones_semana) * 100
+    for s in sesiones_semana:
+        cumpl = getattr(s.feedback, 'cumplimiento', None)
+        if cumpl is not None and cumpl >= 80:
+            puntos += 25
+
+    # Check-ins de esta semana
+    try:
+        from checkins.models import DailyCheckin
+        puntos += DailyCheckin.objects.filter(
+            user=user, fecha__gte=lunes, fecha__lte=hoy,
+        ).count() * 20
+    except Exception:
+        pass
+
+    # Meta semanal derivada del objetivo del usuario
+    try:
+        dias_objetivo = int(user.profile.dias_semana or 3)
+    except Exception:
+        dias_objetivo = 3
+    meta_semanal = max(100, dias_objetivo * 100)
+
+    # Tracker Lun–Dom (mismo orden Lun-primero que DAY_LETTERS del dashboard)
+    tracker = []
+    for i in range(7):
+        d = lunes + timedelta(days=i)
+        tracker.append({
+            'entrenado': d in dias_entrenados,
+            'es_hoy': d == hoy,
+            'futuro': d > hoy,
+        })
+
+    return {
+        'racha_actual': racha,
+        'mejor_racha': mejor_racha,
+        'puntos_semana': puntos,
+        'meta_semanal': meta_semanal,
+        'dias_tracker': tracker,
+    }
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats_profile(request):
@@ -1951,12 +2027,16 @@ def stats_profile(request):
             top_grupos.append({'key': token, 'label': label, 'count': cnt})
     top_grupos.sort(key=lambda x: -x['count'])
 
+    # Racha + puntos semanales (card que reemplaza DATOS MEDIDOS)
+    racha_puntos = _racha_puntos_contexto(request.user, hoy)
+
     return Response({
         'semanas_activas': semanas_activas,
         'consistencia_30d': consistencia_30d,
         'sesiones_mes': sesiones_mes,
         'datos_medidos_30d': datos_medidos_30d,
         'adn_entrenamiento': adn_entrenamiento,
+        **racha_puntos,
         'distribucion_tipo': {
             'fuerza': fuerza_count,
             'cardio': cardio_count,
