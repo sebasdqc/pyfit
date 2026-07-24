@@ -1227,6 +1227,7 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
                             else ('Retoma donde la dejaste' if empezada else 'Tu coach preparó tu sesión de hoy')),
             'sesion_hoy_id': sesion_coach.id,
             'solo_feedback': solo_feedback,
+            'tipo_hoy': 'fuerza',
         }
 
     # Estado D — primera semana (< 3 sesiones totales)
@@ -1269,6 +1270,7 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
                 ),
                 'sesion_hoy_id': sesion_hoy.id,
                 'solo_feedback': solo_feedback,
+                'tipo_hoy': 'fuerza',
             }
 
         # Estado B — ya entrenó hoy (hay feedback → completada)
@@ -1281,6 +1283,7 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
             'titulo': titulo_hoy or 'Sesión completada',
             'descripcion': desc,
             'sesion_hoy_id': sesion_hoy.id,
+            'tipo_hoy': 'fuerza',
         }
 
     # Carrera libre completada hoy — RunSession es un modelo separado de Session.
@@ -1305,6 +1308,7 @@ def _cta_sugerido(user, total_sesiones, fatiga_pct, hoy=None):
                 'descripcion': ' · '.join(desc_parts) if desc_parts else 'Carrera completada',
                 'sesion_hoy_id': None,
                 'run_sesion_hoy_id': run_hoy.id,
+                'tipo_hoy': 'cardiovascular',
             }
     except Exception:
         pass
@@ -2230,6 +2234,7 @@ def _stats_consistencia_mensual(request):
         'dias':  dias,
         'sesiones_completadas':  sesiones_completadas,
         'sesiones_planificadas': sesiones_planificadas,
+        'dias_semana':           dias_semana,
         'fecha_registro_year':   fecha_registro.year,
         'fecha_registro_month':  fecha_registro.month,
     })
