@@ -1,15 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react'
 import {
-  View, Text, ScrollView, StyleSheet, Animated,
+  View, Text, ScrollView, StyleSheet, Animated, Easing,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
   Modal, TouchableOpacity, TextInput, KeyboardAvoidingView,
   Platform, ActivityIndicator,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { useTheme } from '../../../lib/theme'
-import { readableTextOn } from '../../../lib/colors'
+import { readableTextOn, accentAlpha } from '../../../lib/colors'
 import { useTranslation } from '../../../lib/i18n'
 import { apiPost, apiGet } from '../../../lib/api'
 
@@ -72,17 +73,6 @@ function CloseIcon({ color }: { color: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  )
-}
-
-function LightbulbIcon({ color, size = 15 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M9 21h6M12 3a6 6 0 0 1 4 10.58V17H8v-3.42A6 6 0 0 1 12 3z"
-        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
-      />
     </Svg>
   )
 }
@@ -402,27 +392,48 @@ function ChatModal({ visible, onClose, colors, insets, initialContext, coachNomb
 
 // ─── Insight del día ──────────────────────────────────────────────────────────
 
-function InsightCard({ colors, texto, loading }: { colors: any; texto?: string; loading: boolean }) {
+// Misma cáscara visual que RecCard (barra superior, gradiente, chip, emoji,
+// divisor, cuerpo, botón "preguntar al coach") para coherencia y tamaños; se
+// distingue por su acento cyan y el emoji 💡.
+function InsightCard({ colors, texto, onAskCoach }: {
+  colors: any; texto?: string; onAskCoach: () => void
+}) {
   const { t } = useTranslation()
+  const cyan = colors.cyan
   return (
-    <View style={[
-      insightStyles.wrap,
-      {
-        backgroundColor: colors.cardBg,
-        borderColor: colors.borderDefault,
-        borderLeftColor: colors.cyan,
-      },
-    ]}>
-      <View style={insightStyles.labelRow}>
-        <LightbulbIcon color={colors.cyan} size={14} />
-        <Text style={[insightStyles.label, { color: colors.cyan }]}>{t('chat_insight_label')}</Text>
+    <View style={[styles.cardOuter, { borderColor: cyan + '28', backgroundColor: colors.cardBg }]}>
+      <View style={[styles.cardTopBar, { backgroundColor: cyan }]} />
+      <LinearGradient
+        colors={[cyan + '18', 'transparent']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill} pointerEvents="none"
+      />
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeaderRow}>
+          <View style={[styles.categChip, { borderColor: cyan + '50', backgroundColor: cyan + '18' }]}>
+            <Text style={[styles.categTxt, { color: cyan }]}>{t('chat_insight_label')}</Text>
+          </View>
+          <Text style={styles.cardEmoji}>💡</Text>
+        </View>
+        <View style={[styles.cardDivider, { backgroundColor: cyan + '30' }]} />
+        <Text style={[styles.cardBody, styles.insightBody, { color: colors.inkPrimary }]}>
+          {texto || t('chat_no_insight')}
+        </Text>
+
+        {/* Botón preguntarle al Coach — igual que RecCard */}
+        <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
+        <TouchableOpacity
+          onPress={onAskCoach}
+          activeOpacity={0.75}
+          style={[styles.cardAskBtn, { backgroundColor: cyan + '12', borderColor: cyan + '35' }]}
+        >
+          <View style={styles.cardAskBtnLeft}>
+            <MiniChatIcon color={cyan} size={12} />
+            <Text style={[styles.cardAskBtnTxt, { color: cyan }]}>{t('chat_ask_coach')}</Text>
+          </View>
+          <Text style={[styles.cardAskBtnArrow, { color: cyan }]}>›</Text>
+        </TouchableOpacity>
       </View>
-      {loading
-        ? <ActivityIndicator size="small" color={colors.inkMuted} />
-        : <Text style={[insightStyles.text, { color: colors.inkSecondary }]}>
-            {texto || t('chat_no_insight')}
-          </Text>
-      }
     </View>
   )
 }
@@ -492,10 +503,46 @@ const CHIPS_BY_LANG: Record<string, string[]> = {
   fr: ['Comment s\'échauffer avant la force', 'Charge en glucides', 'Meilleurs compléments pour mon objectif', 'Comment progresser au squat', 'Que faire si je dors mal', 'Semaine de décharge'],
 }
 
+// ─── Chip "Explora con tu coach" (blur frosted + anillo de acento pulsátil) ───
+
+function CoachChip({ tema, onPress, colors, isDark, phase }: {
+  tema: string; onPress: () => void; colors: any; isDark: boolean; phase: number
+}) {
+  const pulse = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]))
+    // Desfase por chip → el pulso recorre la fila como una onda, no todos a la vez.
+    const timer = setTimeout(() => loop.start(), phase)
+    return () => { clearTimeout(timer); loop.stop() }
+  }, [phase])
+
+  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.22, 0.85] })
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+      <BlurView
+        intensity={isDark ? 24 : 45}
+        tint={isDark ? 'dark' : 'light'}
+        style={[styles.chip, { backgroundColor: accentAlpha(colors.accent, isDark ? 0.07 : 0.05) }]}
+      >
+        <Text style={[styles.chipTxt, { color: colors.inkPrimary }]}>{tema}</Text>
+      </BlurView>
+      {/* anillo de acento pulsátil por encima del blur */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.chipRing, { borderColor: colors.accent, opacity: ringOpacity }]}
+      />
+    </TouchableOpacity>
+  )
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CoachScreen() {
-  const { colors } = useTheme()
+  const { colors, isDark } = useTheme()
   const { lang, t } = useTranslation()
   const insets = useSafeAreaInsets()
 
@@ -539,7 +586,8 @@ export default function CoachScreen() {
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
-    setActiveIdx(Math.max(0, Math.min(idx, recs.length - 1)))
+    // El carrusel tiene la card de Insight en el índice 0 + N recomendaciones.
+    setActiveIdx(Math.max(0, Math.min(idx, recs.length)))
   }
 
   function openChat(ctx?: string) {
@@ -552,7 +600,8 @@ export default function CoachScreen() {
     setChatContext(undefined)
   }
 
-  const activeRec = recs[activeIdx]
+  // Índice 0 = card de Insight; las recomendaciones empiezan en 1.
+  const activeRec = activeIdx === 0 ? undefined : recs[activeIdx - 1]
   const chatBtnSubtext = activeRec
     ? `${t('chat_start_sub_rec')} "${activeRec.titulo}"`
     : t('chat_start_sub_default')
@@ -581,12 +630,7 @@ export default function CoachScreen() {
           </Text>
         </Animated.View>
 
-        {/* ── INSIGHT DEL DÍA ── */}
-        <Animated.View style={{ opacity: headerOpacity, marginBottom: 28 }}>
-          <InsightCard colors={colors} texto={insightTexto} loading={loadingRecs} />
-        </Animated.View>
-
-        {/* ── RECOMENDACIONES ── */}
+        {/* ── RECOMENDACIONES (la primera card es el Insight del día) ── */}
         <View style={styles.sectionWrap}>
           <View style={styles.sectionLabelRow}>
             <Text style={[styles.sectionLabel, { color: colors.inkMuted }]}>{t('chat_recs_label')}</Text>
@@ -609,6 +653,14 @@ export default function CoachScreen() {
                   decelerationRate="fast"
                   style={styles.slider}
                 >
+                  {/* Card 0 — Insight del día (mismo formato que las recomendaciones) */}
+                  <View key="insight" style={styles.cardPage}>
+                    <InsightCard
+                      colors={colors}
+                      texto={insightTexto}
+                      onAskCoach={() => openChat(insightTexto || undefined)}
+                    />
+                  </View>
                   {recs.map((rec, idx) => (
                     <View key={rec.id} style={styles.cardPage}>
                       <RecCard
@@ -621,7 +673,7 @@ export default function CoachScreen() {
                   ))}
                 </ScrollView>
                 <View style={styles.dotsRow}>
-                  {recs.map((_, i) => (
+                  {Array.from({ length: recs.length + 1 }).map((_, i) => (
                     <View
                       key={i}
                       style={[
@@ -649,14 +701,14 @@ export default function CoachScreen() {
             contentContainerStyle={styles.chipsContent}
           >
             {CHIPS_BY_LANG[lang]?.map((tema, i) => (
-              <TouchableOpacity
+              <CoachChip
                 key={i}
+                tema={tema}
                 onPress={() => openChat(tema)}
-                activeOpacity={0.75}
-                style={[styles.chip, { borderColor: colors.borderBright, backgroundColor: colors.cardBg }]}
-              >
-                <Text style={[styles.chipTxt, { color: colors.inkSecondary }]}>{tema}</Text>
-              </TouchableOpacity>
+                colors={colors}
+                isDark={isDark}
+                phase={i * 260}
+              />
             ))}
           </ScrollView>
         </View>
@@ -718,27 +770,6 @@ export default function CoachScreen() {
   )
 }
 
-// ─── Insight styles ───────────────────────────────────────────────────────────
-
-const insightStyles = StyleSheet.create({
-  wrap: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderLeftWidth: 3,
-    padding: 16,
-    gap: 8,
-  },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  label: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-    letterSpacing: 2, textTransform: 'uppercase',
-  },
-  text: {
-    fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
-    lineHeight: 22, letterSpacing: -0.1,
-  },
-})
-
 // ─── Styles pantalla principal ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -788,6 +819,12 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
     lineHeight: 22, letterSpacing: -0.1,
   },
+  // Cuerpo del Insight — un poco más de presencia que cardBody porque es el
+  // contenido principal de esa card (no lleva título).
+  insightBody: {
+    fontFamily: 'SpaceGrotesk-Medium', fontSize: 15,
+    lineHeight: 23,
+  },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   cardFooterDot: { width: 5, height: 5, borderRadius: 3 },
   cardFooterTxt: { fontFamily: 'JetBrainsMono-Regular', fontSize: 8, letterSpacing: 0.8 },
@@ -811,10 +848,13 @@ const styles = StyleSheet.create({
   dot: { height: 6, borderRadius: 3 },
 
   chipsScroll: { marginHorizontal: -20 },
-  chipsContent: { paddingHorizontal: 20, gap: 8, flexDirection: 'row' },
+  chipsContent: { paddingHorizontal: 20, paddingVertical: 4, gap: 9, flexDirection: 'row' },
   chip: {
-    paddingHorizontal: 14, paddingVertical: 9,
-    borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 15, paddingVertical: 10,
+    borderRadius: 20, overflow: 'hidden',
+  },
+  chipRing: {
+    borderRadius: 20, borderWidth: 1.5,
   },
   chipTxt: {
     fontFamily: 'SpaceGrotesk-Medium', fontSize: 13,
