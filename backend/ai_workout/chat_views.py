@@ -29,6 +29,26 @@ def _sanitize(value: str, max_len: int = _MAX_MSG_LEN) -> str:
     return str(value).replace('\n', ' ').replace('\r', ' ').strip()[:max_len]
 
 
+def _as_text(item) -> str:
+    """Coacciona un item de lista (str o dict) a texto legible para el prompt.
+
+    Los campos JSON del perfil/check-in no siempre guardan strings: `logros`
+    guarda dicts {'id','label','icon'} (ver users.views._check_logros). Un
+    `', '.join(...)` directo sobre esa lista rompe con
+    "sequence item 0: expected str instance, dict found" y tumba el chat con 502.
+    """
+    if isinstance(item, dict):
+        icon = str(item.get('icon', '') or '')
+        label = item.get('label') or item.get('nombre') or item.get('id') or ''
+        return f'{icon} {label}'.strip()
+    return str(item).strip()
+
+
+def _join_strs(items, sep: str = ', ') -> str:
+    """join defensivo: coacciona cada item a texto y descarta los vacíos."""
+    return sep.join(t for t in (_as_text(i) for i in (items or [])) if t)
+
+
 # ─── Context builder ──────────────────────────────────────────────────────────
 
 def _build_system_prompt(user, lang: str) -> str:
@@ -69,7 +89,7 @@ def _build_system_prompt(user, lang: str) -> str:
         if checkin.dolor_hoy:
             checkin_lines.append(f'Dolor/molestia hoy: {_sanitize(checkin.dolor_hoy, 200)}')
         if checkin.foco_entrenamiento:
-            checkin_lines.append(f'Foco: {", ".join(checkin.foco_entrenamiento)}')
+            checkin_lines.append(f'Foco: {_join_strs(checkin.foco_entrenamiento)}')
         if checkin.duracion_disponible:
             checkin_lines.append(f'Tiempo disponible: {checkin.duracion_disponible} min')
     else:
@@ -190,7 +210,7 @@ Respondes SIEMPRE en {lang_name}. Máximo 3-4 oraciones por respuesta. Sin lista
 Nombre: {nombre}
 Nivel: {nivel} (gamificación: {nivel_label})
 Objetivo principal: {objetivo or 'no definido'}
-{('Objetivos adicionales: ' + ', '.join(objetivos_mult)) if objetivos_mult else ''}
+{('Objetivos adicionales: ' + _join_strs(objetivos_mult)) if objetivos_mult else ''}
 Sexo: {sexo or 'no especificado'} | Peso: {peso or 'no definido'} kg
 Días de entrenamiento por semana: {dias_semana}
 Nivel de estrés habitual: {nivel_estres} | Tipo de trabajo: {tipo_trabajo}
@@ -214,7 +234,7 @@ Fatiga acumulada: {fatiga}
 
 ═══ GAMIFICACIÓN ═══
 Sesiones totales: {sesiones_totales} | Racha: {racha} días | Mejor racha: {mejor_racha} días
-{('Logros: ' + ', '.join(logros)) if logros else ''}
+{('Logros: ' + _join_strs(logros)) if logros else ''}
 
 {('═══ COACH ═══' + chr(10) + coach_info) if coach_info else ''}
 
