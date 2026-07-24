@@ -69,6 +69,7 @@ interface ConsistData {
   dias: DiaData[]
   sesiones_completadas: number
   sesiones_planificadas: number
+  dias_semana: number  // objetivo semanal del perfil → sombrear la semana si se cumple
   fecha_registro_year: number
   fecha_registro_month: number
 }
@@ -293,107 +294,6 @@ function EstadoBarChart({
         )
       })}
     </Svg>
-  )
-}
-
-// ─── Donut chart for intención ────────────────────────────────────────────────
-
-const INTENCION_DEFS = [
-  { id: 'serio',     label: 'Entrenar en serio',      color: '#4f8cff' },
-  { id: 'descargar', label: 'Descargar energía',       color: '#ffaa32' },
-  { id: 'moverme',   label: 'Moverme aunque sea poco', color: '#32c896' },
-  { id: 'recuperar', label: 'Recuperarme activamente', color: '#6ce5ff' },
-] as const
-
-function roundToHundred(vals: number[]): number[] {
-  const total = vals.reduce((a, b) => a + b, 0)
-  if (total === 0) return vals.map(() => 0)
-  const raw     = vals.map(v => (v / total) * 100)
-  const floored = raw.map(Math.floor)
-  const rem     = 100 - floored.reduce((a, b) => a + b, 0)
-  const fracs   = raw.map((v, i) => ({ i, frac: v - Math.floor(v) }))
-    .sort((a, b) => b.frac - a.frac)
-  for (let k = 0; k < rem; k++) floored[fracs[k].i]++
-  return floored
-}
-
-function arcPath(cx: number, cy: number, R: number, r: number, a0: number, a1: number): string {
-  const x1 = cx + R * Math.cos(a0), y1 = cy + R * Math.sin(a0)
-  const x2 = cx + R * Math.cos(a1), y2 = cy + R * Math.sin(a1)
-  const x3 = cx + r * Math.cos(a1), y3 = cy + r * Math.sin(a1)
-  const x4 = cx + r * Math.cos(a0), y4 = cy + r * Math.sin(a0)
-  const lg  = a1 - a0 > Math.PI ? 1 : 0
-  return [
-    `M${x1.toFixed(2)},${y1.toFixed(2)}`,
-    `A${R},${R},0,${lg},1,${x2.toFixed(2)},${y2.toFixed(2)}`,
-    `L${x3.toFixed(2)},${y3.toFixed(2)}`,
-    `A${r},${r},0,${lg},0,${x4.toFixed(2)},${y4.toFixed(2)}`,
-    'Z',
-  ].join(' ')
-}
-
-function DonutChart({
-  counts, containerW, ringBg, centerBg, legendLabel,
-}: {
-  counts: CuerpoData['intencion_counts']
-  containerW: number
-  ringBg:      string  // anillo de fondo
-  centerBg:    string  // centro del donut
-  legendLabel: string  // color de los labels en la leyenda
-}) {
-  const raw   = INTENCION_DEFS.map(d => counts[d.id] ?? 0)
-  const total = raw.reduce((a, b) => a + b, 0)
-  const pcts  = roundToHundred(raw)
-
-  const CX = containerW / 2
-  const CY = 45
-  const R  = 34
-  const ri = 21
-  const GAP = 0.05 // radians gap between adjacent segments
-
-  const angles = raw.map(c => (total > 0 ? (c / total) : 0) * Math.PI * 2)
-  let cursor   = -Math.PI / 2
-
-  return (
-    <>
-      <Svg width={containerW} height={90}>
-        {/* Background ring */}
-        <Circle cx={CX} cy={CY} r={R} fill="none" stroke={ringBg} strokeWidth={R - ri} />
-
-        {INTENCION_DEFS.map((def, i) => {
-          const angle = angles[i]
-          if (angle < 0.01) { cursor += angle; return null }
-          const isFull = angle >= Math.PI * 2 - 0.01
-          const a0 = cursor + (isFull ? 0 : GAP / 2)
-          const a1 = cursor + angle - (isFull ? 0 : GAP / 2)
-          cursor += angle
-          if (isFull) {
-            return (
-              <React.Fragment key={def.id}>
-                <Circle cx={CX} cy={CY} r={R}  fill={def.color} />
-                <Circle cx={CX} cy={CY} r={ri} fill={centerBg} />
-              </React.Fragment>
-            )
-          }
-          return <Path key={def.id} d={arcPath(CX, CY, R, ri, a0, a1)} fill={def.color} />
-        })}
-      </Svg>
-
-      {/* Legend: 2×2 grid */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-        {INTENCION_DEFS.map((def, i) => (
-          <View key={def.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '47%' }}>
-            <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: def.color }} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 10, color: legendLabel, flex: 1 }} numberOfLines={1}>
-              {def.label}
-            </Text>
-            <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 10, color: def.color }}>
-              {pcts[i]}%
-            </Text>
-          </View>
-        ))}
-      </View>
-    </>
   )
 }
 
@@ -746,8 +646,29 @@ function HeatMapBlock({
               for (let i = 0; i < cells.length; i += 7) {
                 rows.push(cells.slice(i, i + 7))
               }
-              return rows.map((row, ri) => (
-                <View key={ri} style={[styles.gridRow, { gap: GAP, marginBottom: GAP }]}>
+              // Objetivo semanal del perfil (backend). Si en la semana se
+              // entrenó >= objetivo, se sombrea toda la fila (semana lograda).
+              const metaSemanal = data.dias_semana || 3
+              return rows.map((row, ri) => {
+                const entrenadosSemana = row.filter(
+                  c => c && !c.es_descanso && c.intensidad >= 1,
+                ).length
+                const semanaLograda = entrenadosSemana >= metaSemanal
+                return (
+                <View
+                  key={ri}
+                  style={[
+                    styles.gridRow,
+                    { gap: GAP, marginBottom: GAP },
+                    semanaLograda && {
+                      backgroundColor: 'rgba(50,200,150,0.13)',
+                      borderRadius: 8,
+                      paddingVertical: 3,
+                      paddingHorizontal: 4,
+                      marginHorizontal: -4,
+                    },
+                  ]}
+                >
                   {Array.from({ length: 7 }).map((_, ci) => {
                     const cell = row[ci] ?? null
                     if (cell === null) {
@@ -815,7 +736,8 @@ function HeatMapBlock({
                     )
                   })}
                 </View>
-              ))
+                )
+              })
             })()}
 
             {/* Legend */}
@@ -1250,21 +1172,6 @@ function EstadisticasView({ embedded = false }: { embedded?: boolean }) {
                   label={colors.inkMuted}
                 />
               </View>
-
-              {/* Sección B: Intención de entrenamiento (solo si >= 5 checkins) */}
-              {cuerpoData.total_checkins >= 5 && (
-                <>
-                  <View style={styles.sectionDivider} />
-                  <Text style={styles.cardMiniTitle}>{t('stats_intention_title')}</Text>
-                  <DonutChart
-                    counts={cuerpoData.intencion_counts}
-                    containerW={cardInnerW}
-                    ringBg={colors.borderDefault}
-                    centerBg={colors.bg}
-                    legendLabel={colors.inkSecondary}
-                  />
-                </>
-              )}
             </>
           )}
         </View>
@@ -1575,8 +1482,10 @@ function makeStyles(c: Colors) {
 
     // Card
     card: {
-      backgroundColor: c.cardBg, borderWidth: 1,
-      borderColor: c.borderDefault, borderRadius: 20,
+      // Look glass consistente con la pantalla de Inicio (glassBg translúcido +
+      // borde brillante + radio 22), antes era cardBg sólido con borde tenue.
+      backgroundColor: c.glassBg, borderWidth: 1,
+      borderColor: c.borderBright, borderRadius: 22,
       padding: 16, marginBottom: 20,
     },
 

@@ -101,6 +101,7 @@ interface CTAData {
   sesion_hoy_id: number | null
   run_sesion_hoy_id?: number | null  // RunSession (carrera libre), modelo separado de Session
   solo_feedback?: boolean  // estado E + terminó ejercicios sin feedback → ir directo a feedback
+  tipo_hoy?: 'fuerza' | 'cardiovascular' | null  // modalidad entrenada hoy (B/E) → estado por-chip
 }
 
 interface MetricaData {
@@ -1228,21 +1229,32 @@ function CTACard({
   }, [cta.titulo, cta.descripcion])
 
   const [tipoSel, setTipoSel] = useState<TipoSesionKey>(tipoSesionReal)
-  const chipActivo = TIPO_CHIPS.find(c => c.key === tipoSel)!
   const { titulo: tipoSesion, descripcion: descripcionTipo } = TIPO_COPY[tipoSel]
 
+  // Un solo color para todos los chips (pedido de producto): el acento del tema.
+  // Tiñe también el wash y el borde del card.
+  const chipColor = colors.accent
+
+  // Estado efectivo por-chip: "ya entrenaste" (B) y "en curso" (E) solo aplican al
+  // chip de la modalidad realmente entrenada hoy (cta.tipo_hoy). Los demás chips
+  // muestran el CTA de inicio (A), con el salto de modalidad ya resuelto.
+  const effEstado: CTAData['estado'] =
+    (cta.estado === 'B' || cta.estado === 'E') && cta.tipo_hoy && cta.tipo_hoy !== tipoSel
+      ? 'A'
+      : cta.estado
+
   const CARD_BORDER: Record<CTAData['estado'], string> = {
-    A: accentAlpha(chipActivo.color, 0.35),
+    A: accentAlpha(chipColor, 0.35),
     B: colors.borderBright,
     C: 'rgba(255,170,50,0.35)',
-    D: accentAlpha(chipActivo.color, 0.35),
+    D: accentAlpha(chipColor, 0.35),
     E: 'rgba(255,170,50,0.40)',
   }
 
-  const isActive = cta.estado === 'A' || cta.estado === 'D' || cta.estado === 'E'
+  const isActive = effEstado === 'A' || effEstado === 'D' || effEstado === 'E'
 
   function handlePress() {
-    if (cta.estado === 'E' && cta.sesion_hoy_id != null) {
+    if (effEstado === 'E' && cta.sesion_hoy_id != null) {
       // Terminó los ejercicios pero no dio feedback → directo a feedback.
       // Si no, retomar la ejecución (ejecutar reabre donde la dejó).
       if (cta.solo_feedback) {
@@ -1250,7 +1262,7 @@ function CTACard({
       } else {
         router.push(`/(app)/ejecutar/${cta.sesion_hoy_id}` as any)
       }
-    } else if (cta.estado === 'B') {
+    } else if (effEstado === 'B') {
       if (cta.run_sesion_hoy_id != null) {
         // RunSession (carrera libre) → ir al resumen de la carrera
         router.push(`/(app)/run/resumen/${cta.run_sesion_hoy_id}` as any)
@@ -1266,26 +1278,26 @@ function CTACard({
   }
 
   const btnLabel =
-    cta.estado === 'E' && cta.solo_feedback ? 'Dar feedback' :
-    cta.estado === 'E' ? 'Continuar entrenamiento' :
-    cta.estado === 'B' && cta.run_sesion_hoy_id != null ? 'Ver resumen de tu carrera' :
-    cta.estado === 'B' ? 'Ver resumen de tu sesión' :
-    cta.estado === 'C' ? 'Iniciar recuperación activa' :
-    cta.estado === 'D' ? 'Comenzar mi primer entrenamiento' :
+    effEstado === 'E' && cta.solo_feedback ? 'Dar feedback' :
+    effEstado === 'E' ? 'Continuar entrenamiento' :
+    effEstado === 'B' && cta.run_sesion_hoy_id != null ? 'Ver resumen de tu carrera' :
+    effEstado === 'B' ? 'Ver resumen de tu sesión' :
+    effEstado === 'C' ? 'Iniciar recuperación activa' :
+    effEstado === 'D' ? 'Comenzar mi primer entrenamiento' :
     'Iniciar entrenamiento de hoy'
 
   return (
-    <View style={[styles.ctaCard, { backgroundColor: colors.glassBg, borderColor: CARD_BORDER[cta.estado] }]}>
+    <View style={[styles.ctaCard, { backgroundColor: colors.glassBg, borderColor: CARD_BORDER[effEstado] }]}>
       <GlassLayer />
       {/* Wash de color — sigue al chip de tipo de sesión seleccionado (antes era
           siempre accentAlpha(colors.accent), fijo sin importar el tipo). */}
       <LinearGradient
-        colors={[accentAlpha(chipActivo.color, isActive ? 0.18 : 0.08), 'transparent']}
+        colors={[accentAlpha(chipColor, isActive ? 0.18 : 0.08), 'transparent']}
         style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
       />
       {isDark && (
         <LinearGradient
-          colors={[accentAlpha(chipActivo.color, 0.10), 'transparent']}
+          colors={[accentAlpha(chipColor, 0.10), 'transparent']}
           start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}
           style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
         />
@@ -1307,14 +1319,14 @@ function CTACard({
                   // Inactivos ya no son transparentes: llevan un tinte de su
                   // propio color + borde marcado para que se lean bien (antes
                   // quedaban demasiado apagados). El activo sube el contraste.
-                  backgroundColor: active ? accentAlpha(chip.color, 0.22) : accentAlpha(chip.color, 0.10),
-                  borderColor: active ? accentAlpha(chip.color, 0.75) : accentAlpha(chip.color, 0.38),
+                  backgroundColor: active ? accentAlpha(chipColor, 0.22) : accentAlpha(chipColor, 0.10),
+                  borderColor: active ? accentAlpha(chipColor, 0.75) : accentAlpha(chipColor, 0.38),
                 },
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.tipoChipText, { color: active ? chip.color : accentAlpha(chip.color, 0.85) }]}>
+              <Text style={[styles.tipoChipText, { color: active ? chipColor : accentAlpha(chipColor, 0.85) }]}>
                 {chip.label}
               </Text>
             </TouchableOpacity>
@@ -1347,7 +1359,7 @@ function CTACard({
         accessibilityRole="button"
         accessibilityLabel={btnLabel}
       >
-        {cta.estado === 'C' ? (
+        {effEstado === 'C' ? (
           // Recuperación activa → naranja sólido
           <View style={[styles.ctaBtn, styles.ctaBtnSolidOrange]}>
             <Text style={styles.ctaBtnText}>{btnLabel}</Text>
@@ -1364,11 +1376,12 @@ function CTACard({
         )}
       </TouchableOpacity>
 
-      {/* Botón secundario "Entrenar otra vez hoy" — solo en estado B */}
-      {cta.estado === 'B' && (
+      {/* Botón secundario "Entrenar otra vez hoy" — solo en estado B (chip que coincide
+          con lo entrenado hoy). Preselecciona la misma modalidad. */}
+      {effEstado === 'B' && (
         <TouchableOpacity
           style={[styles.ctaBtnWrap, { marginTop: 10 }]}
-          onPress={() => router.push('/(app)/checkin')}
+          onPress={() => router.push({ pathname: '/(app)/checkin', params: { tipo: tipoSel, ts: String(Date.now()) } } as any)}
           activeOpacity={0.75}
         >
           <View style={styles.ctaBtnTrainAgain}>
@@ -1378,10 +1391,10 @@ function CTACard({
       )}
 
       {/* Botón secundario "Generar otra rutina" — solo en estado E */}
-      {cta.estado === 'E' && (
+      {effEstado === 'E' && (
         <TouchableOpacity
           style={[styles.ctaBtnWrap, { marginTop: 10 }]}
-          onPress={() => router.push('/(app)/checkin')}
+          onPress={() => router.push({ pathname: '/(app)/checkin', params: { tipo: tipoSel, ts: String(Date.now()) } } as any)}
           activeOpacity={0.75}
         >
           <View style={styles.ctaBtnTrainAgain}>

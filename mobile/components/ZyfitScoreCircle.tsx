@@ -210,10 +210,11 @@ function makeStyles(c: ReturnType<typeof useTheme>['colors']) {
       marginBottom: 12,
     },
     card: {
-      backgroundColor: c.cardBg,
+      // Look glass consistente con Inicio (glassBg + borde brillante + radio 22).
+      backgroundColor: c.glassBg,
       borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 20,
+      borderColor: c.borderBright,
+      borderRadius: 22,
       padding: 16,
       marginBottom: 20,
       alignItems: 'center',
@@ -299,6 +300,7 @@ function makeStyles(c: ReturnType<typeof useTheme>['colors']) {
       alignSelf: 'stretch',
       flexDirection: 'row',
       flexWrap: 'wrap',
+      justifyContent: 'center', // fila de arriba (3) casi llena; los 2 de abajo quedan centrados
       gap: 8,
       marginTop: 16,
     },
