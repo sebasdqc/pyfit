@@ -64,18 +64,16 @@ coach puede vincularlo vía el Portal de Coach.
 - Nombre del producto: **Zyfit**. Logo actual: `/logo-zyfit-blanco.png`.
   Contacto: `privacidad@zyfit.app`.
 - Voz confirmada: **español latinoamericano neutro, tratamiento de "tú"**
-  (no "vos" ni "vosotros"). El copy actual de `app/page.tsx` y
-  `WaitlistForm.tsx` usa "vos" (voseo argentino, p. ej. "contás",
-  "Sumate") — **corrección pendiente** hacia "tú" neutro en cualquier
-  trabajo de copy que se haga sobre esta landing.
-- Identidad de color: el CLAUDE.md raíz del ecosistema fija azul
-  (`#4f8cff`) como identidad de **Zyfit Performance** (panel B2B), morado
-  (`#7C5CFF`) para el Portal de Coach, rojo (`#cc1f36`) para Zyfit Academy,
-  y 8 paletas seleccionables por el usuario para la app de consumo en sí.
-  Esta landing usa hoy azul/violeta como accent — no hay una identidad de
-  color propia confirmada para "la landing de la app de consumo" más allá
-  de lo heredado; tratar como decisión abierta, no como compromiso de marca
-  fijo.
+  (no "vos" ni "vosotros"). Ya corregido en `app/page.tsx`, `Hero.tsx`,
+  `WaitlistForm.tsx` y metadata de `layout.tsx` (2026-07-24).
+- Identidad de color de esta landing: **"Barra Cargada"** — el código de
+  color real de los discos olímpicos (rojo 25kg / azul 20kg / amarillo
+  15kg / verde 10kg) como sistema de datos, sobre fondo grafito mate. Ver
+  `DESIGN.md` para el sistema completo (tokens, tipografía, componentes).
+  Esto es propio de la landing de la app de consumo — no reemplaza ni
+  reutiliza el azul de Zyfit Performance (`#4f8cff`), el morado del Portal
+  de Coach (`#7C5CFF`) ni el rojo de Zyfit Academy (`#cc1f36`); son
+  identidades de producto distintas que no comparten código ni tokens.
 
 ## Evidence on Hand
 

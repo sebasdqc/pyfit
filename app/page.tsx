@@ -8,21 +8,29 @@ import FactorBars from './components/FactorBars'
 const STEPS = [
   {
     n: '01',
+    color: 'var(--plate-red)',
+    ink: '#14161a',
     title: 'Check-in diario',
     text: 'Antes de entrenar cuentas cómo dormiste, tu ánimo, tu tiempo disponible y cualquier molestia. 30 segundos.',
   },
   {
     n: '02',
+    color: 'var(--plate-blue)',
+    ink: 'var(--chalk)',
     title: 'La IA arma tu sesión',
     text: 'Con tu perfil, tu historial y el check-in de hoy, el motor genera una rutina de fuerza o running a tu medida.',
   },
   {
     n: '03',
+    color: 'var(--plate-yellow)',
+    ink: '#14161a',
     title: 'Entrenas y das feedback',
     text: 'Registras peso, repeticiones y RPE. Al terminar, calificas cómo te sentiste y qué tan bien cumpliste.',
   },
   {
     n: '04',
+    color: 'var(--plate-green)',
+    ink: '#14161a',
     title: 'La próxima sesión se ajusta',
     text: 'Ese feedback entra al motor: si veníamos fuerte, subimos la carga; si hubo fatiga, la próxima se adapta.',
   },
@@ -31,37 +39,37 @@ const STEPS = [
 const FEATURES = [
   {
     icon: '⚡',
-    color: 'var(--accent-light)',
+    color: 'var(--plate-red)',
     title: 'IA adaptativa, fuerza + running',
     text: 'Una sola app genera tus rutinas de fuerza y tus sesiones de running, ajustándose sesión a sesión según tu feedback real.',
   },
   {
     icon: '🎯',
-    color: 'var(--cyan)',
+    color: 'var(--plate-blue)',
     title: 'Zyfit Score',
     text: 'Un puntaje de 0 a 100 que resume consistencia, rendimiento, adherencia y recuperación, para que veas tu evolución de un vistazo.',
   },
   {
     icon: '🔥',
-    color: 'var(--orange)',
+    color: 'var(--plate-yellow)',
     title: 'Racha y logros',
-    text: 'Mantené tu racha de entrenamiento, subí de nivel y desbloqueá logros que reconocen tu constancia, no solo tus PRs.',
+    text: 'Mantén tu racha de entrenamiento, sube de nivel y desbloquea logros que reconocen tu constancia, no solo tus PRs.',
   },
   {
     icon: '🛰️',
-    color: 'var(--green)',
+    color: 'var(--plate-green)',
     title: 'Free Run con GPS',
-    text: 'Salí a correr y trackeamos distancia, ritmo, velocidad y desnivel en tiempo real, sin depender de otra app.',
+    text: 'Sal a correr y trackeamos distancia, ritmo, velocidad y desnivel en tiempo real, sin depender de otra app.',
   },
   {
     icon: '🤝',
-    color: 'var(--violet)',
+    color: 'var(--chalk)',
     title: 'Portal de Coach',
     text: 'Si entrenas con un coach, puede ver tu progreso real y dejar directivas que la IA integra en tu próxima rutina.',
   },
   {
     icon: '🔒',
-    color: 'var(--ink-dim)',
+    color: 'var(--chalk-dim)',
     title: 'Tus datos, protegidos',
     text: 'Cifrado en tránsito y en reposo, sin venta de datos a terceros ni publicidad dirigida con tu información de entrenamiento.',
   },
@@ -101,11 +109,10 @@ const FAQS = [
 export default function LandingPage() {
   return (
     <>
-      {/* Ambient background */}
+      {/* Ambient background: piso de hierro bajo una sola luz de trabajo */}
       <div className="bg-canvas" aria-hidden>
-        <div className="aurora aurora-1" />
-        <div className="aurora aurora-2" />
-        <div className="aurora aurora-3" />
+        <div className="work-light" />
+        <div className="iron-sheen" />
         <div className="noise-overlay" />
       </div>
 
@@ -128,10 +135,10 @@ export default function LandingPage() {
               <span
                 key={i}
                 className="font-mono-label text-xs uppercase px-6 flex items-center gap-6"
-                style={{ color: 'var(--ink-faint)' }}
+                style={{ color: 'var(--chalk-dim)' }}
               >
                 {word}
-                <span style={{ color: 'var(--accent)' }}>◆</span>
+                <span style={{ color: 'var(--plate-red)' }}>◆</span>
               </span>
             ))}
           </div>
@@ -142,21 +149,21 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {STATS.map((s, i) => (
               <Reveal key={s.label} delay={i * 90}>
-                <div className="glass rounded-2xl p-6 h-full">
+                <div className="plate rounded-lg p-6 h-full">
                   <div className="flex items-baseline gap-1.5">
                     <span
-                      className="text-4xl font-semibold tracking-tight"
-                      style={{ color: 'var(--accent-light)' }}
+                      className="font-display text-4xl font-bold tracking-tight"
+                      style={{ fontFamily: 'var(--font-display)', color: 'var(--chalk)' }}
                     >
                       {s.value}
                     </span>
                     {s.unit && (
-                      <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
+                      <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--chalk-dim)' }}>
                         {s.unit}
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm leading-snug" style={{ color: 'var(--ink-dim)' }}>
+                  <p className="mt-2 text-sm leading-snug" style={{ color: 'var(--chalk-dim)' }}>
                     {s.label}
                   </p>
                 </div>
@@ -171,23 +178,23 @@ export default function LandingPage() {
             <SectionHeading eyebrow="Cómo funciona" title="Cada sesión se construye en base a la anterior" />
           </Reveal>
           <div className="mt-16 relative">
-            {/* connecting line */}
+            {/* rail: los pasos van "sobre la barra" */}
             <div
               className="hidden lg:block absolute top-[46px] left-[12%] right-[12%] h-px"
-              style={{ background: 'linear-gradient(90deg, transparent, var(--accent), var(--violet), transparent)', opacity: 0.4 }}
+              style={{ background: 'var(--border-strong)' }}
             />
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {STEPS.map((s, i) => (
                 <Reveal key={s.n} delay={i * 110}>
-                  <div className="glass card-lift rounded-2xl p-6 h-full relative">
+                  <div className="plate card-lift rounded-lg p-6 h-full relative">
                     <span
-                      className="font-mono-label inline-flex items-center justify-center w-12 h-12 rounded-full text-sm mb-4"
-                      style={{ background: 'rgba(79,140,255,0.12)', color: 'var(--accent-light)', border: '1px solid var(--border-strong)' }}
+                      className="font-display inline-flex items-center justify-center w-12 h-12 text-lg font-bold stamp"
+                      style={{ fontFamily: 'var(--font-display)', background: s.color, color: s.ink }}
                     >
                       {s.n}
                     </span>
-                    <h3 className="font-semibold text-lg">{s.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                    <h3 className="font-semibold text-lg mt-4" style={{ color: 'var(--chalk)' }}>{s.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--chalk-dim)' }}>
                       {s.text}
                     </p>
                   </div>
@@ -200,22 +207,22 @@ export default function LandingPage() {
         {/* Funciones */}
         <section id="funciones" className="max-w-6xl mx-auto px-6 py-24">
           <Reveal>
-            <SectionHeading eyebrow="Funciones" title="Todo lo que necesitás para entrenar mejor" />
+            <SectionHeading eyebrow="Funciones" title="Todo lo que necesitas para entrenar mejor" />
           </Reveal>
           <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 3) * 100}>
-                <div className="glass card-lift rounded-2xl p-6 h-full group">
+                <div className="plate card-lift rounded-lg p-6 h-full group">
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 transition-transform group-hover:scale-110"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', boxShadow: `0 0 24px -12px ${f.color}` }}
+                    className="w-12 h-12 flex items-center justify-center text-xl mb-4 transition-transform group-hover:scale-105 stamp"
+                    style={{ background: f.color }}
                   >
                     {f.icon}
                   </div>
-                  <h3 className="font-semibold text-lg" style={{ color: f.color }}>
+                  <h3 className="font-semibold text-lg" style={{ color: 'var(--chalk)' }}>
                     {f.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                  <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--chalk-dim)' }}>
                     {f.text}
                   </p>
                 </div>
@@ -229,7 +236,7 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto px-6 py-24 grid lg:grid-cols-2 gap-16 items-center">
             <Reveal className="order-2 lg:order-1">
               <SectionHeading eyebrow="Zyfit Score" title="Tu progreso, resumido en un número" align="left" />
-              <p className="mt-6 text-base leading-relaxed max-w-lg" style={{ color: 'var(--ink-dim)' }}>
+              <p className="mt-6 text-base leading-relaxed max-w-lg" style={{ color: 'var(--chalk-dim)' }}>
                 El Zyfit Score cruza cinco señales de tu entrenamiento en un puntaje de 0 a 100:
                 consistencia, rendimiento, adherencia, recuperación y tu momentum reciente. Así sabes,
                 de un vistazo, si vas por buen camino.
@@ -238,7 +245,7 @@ export default function LandingPage() {
             </Reveal>
 
             <Reveal className="order-1 lg:order-2 flex justify-center" delay={120}>
-              <div className="glass-strong rounded-[2rem] p-14 floaty-slow" style={{ boxShadow: 'var(--shadow-lift)' }}>
+              <div className="plate-strong rounded-lg p-14">
                 <ScoreRing value={82} size={240} stroke={16} />
               </div>
             </Reveal>
@@ -248,20 +255,17 @@ export default function LandingPage() {
         {/* CTA */}
         <section className="max-w-6xl mx-auto px-6 py-24">
           <Reveal>
-            <div
-              className="glass-strong rounded-[2rem] px-8 py-16 sm:py-20 text-center relative overflow-hidden"
-              style={{ boxShadow: 'var(--shadow-lift)' }}
-            >
+            <div className="plate-strong rounded-lg px-8 py-16 sm:py-20 text-center relative overflow-hidden">
               <div
                 className="pointer-events-none absolute inset-0"
-                style={{ background: 'radial-gradient(ellipse 60% 90% at 50% 0%, rgba(79,140,255,0.18), transparent 70%)' }}
+                style={{ background: 'radial-gradient(ellipse 60% 90% at 50% 0%, rgba(224,32,31,0.14), transparent 70%)' }}
               />
               <div className="relative z-10">
-                <h2 className="section-title max-w-2xl mx-auto">
+                <h2 className="section-title max-w-2xl mx-auto" style={{ color: 'var(--chalk)' }}>
                   Empieza a entrenar con un plan que{' '}
                   <span className="font-accent">te conoce</span>.
                 </h2>
-                <p className="mt-4 max-w-lg mx-auto" style={{ color: 'var(--ink-dim)' }}>
+                <p className="mt-4 max-w-lg mx-auto" style={{ color: 'var(--chalk-dim)' }}>
                   Súmate a la lista de espera y sé de los primeros en probar Zyfit.
                 </p>
                 <div className="mt-8 flex justify-center">
@@ -280,17 +284,17 @@ export default function LandingPage() {
           <div className="mt-12 space-y-3">
             {FAQS.map((f, i) => (
               <Reveal key={f.q} delay={i * 70}>
-                <details className="glass rounded-2xl px-6 py-4 group">
-                  <summary className="flex items-center justify-between cursor-pointer font-medium">
+                <details className="plate rounded-lg px-6 py-4 group">
+                  <summary className="flex items-center justify-between cursor-pointer font-medium" style={{ color: 'var(--chalk)' }}>
                     {f.q}
                     <span
                       className="ml-4 shrink-0 text-lg transition-transform duration-300 group-open:rotate-45"
-                      style={{ color: 'var(--accent-light)' }}
+                      style={{ color: 'var(--plate-red)' }}
                     >
                       +
                     </span>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                  <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--chalk-dim)' }}>
                     {f.a}
                   </p>
                 </details>
@@ -304,7 +308,7 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <img src="/logo-zyfit-blanco.png" alt="Zyfit" className="h-5 w-auto opacity-80" />
-          <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--ink-dim)' }}>
+          <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--chalk-dim)' }}>
             <a href="/privacy" className="hover:text-white transition-colors">
               Privacidad
             </a>
@@ -312,7 +316,7 @@ export default function LandingPage() {
               Contacto
             </a>
           </div>
-          <p className="text-xs" style={{ color: 'var(--ink-faint)' }}>
+          <p className="text-xs" style={{ color: 'var(--chalk-dim)' }}>
             © 2026 Zyfit. Todos los derechos reservados.
           </p>
         </div>
@@ -333,12 +337,12 @@ function SectionHeading({
   return (
     <div className={align === 'center' ? 'text-center max-w-2xl mx-auto' : ''}>
       <span
-        className="font-mono-label text-xs uppercase inline-block px-3 py-1 rounded-full glass"
-        style={{ color: 'var(--accent-light)' }}
+        className="font-mono-label text-xs uppercase inline-block px-3 py-1 stamp"
+        style={{ color: '#14161a', background: 'var(--plate-yellow)' }}
       >
         {eyebrow}
       </span>
-      <h2 className="section-title mt-4">{title}</h2>
+      <h2 className="section-title mt-4" style={{ color: 'var(--chalk)' }}>{title}</h2>
     </div>
   )
 }

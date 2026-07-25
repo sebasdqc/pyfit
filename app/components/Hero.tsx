@@ -35,32 +35,32 @@ export default function Hero() {
       <div className="relative z-10 max-w-6xl mx-auto px-6 pt-36 pb-24 lg:pt-44 lg:pb-32 grid lg:grid-cols-[1.05fr_0.95fr] gap-16 items-center">
         <div style={{ transform: `translateY(${textShift}px)`, opacity: fade }}>
           <span
-            className="font-mono-label inline-flex items-center gap-2 text-[11px] uppercase px-3 py-1.5 rounded-full glass"
-            style={{ color: 'var(--accent-light)' }}
+            className="font-mono-label inline-flex items-center gap-2 text-[11px] uppercase px-3 py-1.5 stamp"
+            style={{ color: '#14161a', background: 'var(--plate-yellow)' }}
           >
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--green)' }} />
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#14161a' }} />
             IA adaptativa · fuerza + running
           </span>
 
-          <h1 className="display mt-6">
+          <h1 className="display mt-6" style={{ color: 'var(--chalk)' }}>
             Un entrenador que{' '}
             <span className="font-accent">se adapta</span>{' '}
             a ti, no al revés.
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed max-w-lg" style={{ color: 'var(--ink-dim)' }}>
+          <p className="mt-6 text-lg leading-relaxed max-w-lg" style={{ color: 'var(--chalk-dim)' }}>
             Zyfit genera tu rutina de fuerza o running en base a tu progreso real, tu feedback de cada
             sesión y cómo llegas ese día. Nada de plantillas genéricas.
           </p>
 
           <div className="mt-10 flex flex-col gap-4" id="lista-de-espera">
             <WaitlistForm />
-            <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--ink-dim)' }}>
+            <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--chalk-dim)' }}>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--green)' }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--plate-green)' }} />
                 Muy pronto en App Store y Google Play
               </span>
-              <span style={{ color: 'var(--ink-faint)' }}>·</span>
+              <span style={{ color: 'var(--chalk-dim)' }}>·</span>
               <span>Sin spam</span>
             </div>
           </div>

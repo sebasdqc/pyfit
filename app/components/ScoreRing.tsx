@@ -65,24 +65,15 @@ export default function ScoreRing({
     }
   }, [animate, value])
 
-  const gid = `ring-grad-${size}`
-
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg ref={ref} width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <defs>
-          <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#7ab6ff" />
-            <stop offset="55%" stopColor="#4f8cff" />
-            <stop offset="100%" stopColor="#8b7bff" />
-          </linearGradient>
-        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="rgba(236,231,222,0.1)"
           strokeWidth={stroke}
         />
         <circle
@@ -90,19 +81,22 @@ export default function ScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={`url(#${gid})`}
+          stroke="var(--plate-red)"
           strokeWidth={stroke}
-          strokeLinecap="round"
+          strokeLinecap="butt"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.1s linear', filter: 'drop-shadow(0 0 8px rgba(79,140,255,0.55))' }}
+          style={{ transition: 'stroke-dashoffset 0.1s linear' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-semibold tabular-nums" style={{ fontSize: size * 0.28, lineHeight: 1 }}>
+        <span
+          className="font-bold tabular-nums"
+          style={{ fontFamily: 'var(--font-display)', fontSize: size * 0.32, lineHeight: 1, color: 'var(--chalk)' }}
+        >
           {progress}
         </span>
-        <span className="font-mono-label uppercase mt-1" style={{ color: 'var(--ink-dim)', fontSize: size * 0.075 }}>
+        <span className="font-mono-label uppercase mt-1" style={{ color: 'var(--chalk-dim)', fontSize: size * 0.075 }}>
           {label}
         </span>
       </div>

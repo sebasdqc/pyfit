@@ -35,27 +35,27 @@ export default function PhoneMockup() {
       style={{ width: 300 }}
     >
       <div
-        className="tilt floaty"
+        className="tilt"
         style={{ transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)` }}
       >
         {/* Phone body */}
         <div
-          className="relative rounded-[2.4rem] p-5 glass-strong"
+          className="relative rounded-[2rem] p-5 plate-strong"
           style={{ boxShadow: 'var(--shadow-lift)' }}
         >
           {/* notch */}
           <div
             className="absolute left-1/2 -translate-x-1/2 top-2.5 h-1.5 w-16 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.14)' }}
+            style={{ background: 'rgba(236,231,222,0.14)' }}
           />
 
           <div className="flex items-center justify-between mb-5 mt-2">
-            <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
+            <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--chalk-dim)' }}>
               Sesión de hoy
             </span>
             <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-              style={{ background: 'rgba(79,140,255,0.16)', color: 'var(--accent-light)' }}
+              className="text-[10px] px-2 py-0.5 font-medium stamp"
+              style={{ background: 'var(--plate-blue)', color: 'var(--chalk)' }}
             >
               Fuerza · Tren superior
             </span>
@@ -69,11 +69,11 @@ export default function PhoneMockup() {
             {EXERCISES.map((ex) => (
               <div
                 key={ex.name}
-                className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid var(--border)' }}
+                className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                style={{ background: 'rgba(236,231,222,0.04)', border: '1px solid var(--border)' }}
               >
-                <span className="text-xs font-medium">{ex.name}</span>
-                <span className="font-mono-label text-[10px]" style={{ color: 'var(--ink-dim)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--chalk)' }}>{ex.name}</span>
+                <span className="font-mono-label text-[10px]" style={{ color: 'var(--chalk-dim)' }}>
                   {ex.sets}
                 </span>
               </div>
@@ -81,11 +81,11 @@ export default function PhoneMockup() {
           </div>
 
           <div
-            className="mt-4 rounded-xl px-3 py-2.5 flex items-center gap-2"
-            style={{ background: 'rgba(255,170,50,0.1)', border: '1px solid rgba(255,170,50,0.22)' }}
+            className="mt-4 rounded-lg px-3 py-2.5 flex items-center gap-2"
+            style={{ background: 'rgba(240,180,41,0.1)', border: '1px solid rgba(240,180,41,0.3)' }}
           >
             <span>🔥</span>
-            <span className="text-xs font-medium" style={{ color: 'var(--orange)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--plate-yellow)' }}>
               Racha de 12 días
             </span>
           </div>
@@ -93,25 +93,25 @@ export default function PhoneMockup() {
 
         {/* Floating depth chips */}
         <div
-          className="absolute -left-10 top-24 glass-strong rounded-2xl px-4 py-3 hidden sm:block"
+          className="absolute -left-10 top-24 plate-strong rounded-lg px-4 py-3 hidden sm:block"
           style={{ transform: 'translateZ(70px)', boxShadow: 'var(--shadow-lift)' }}
         >
-          <p className="font-mono-label text-[9px] uppercase" style={{ color: 'var(--ink-dim)' }}>
+          <p className="font-mono-label text-[9px] uppercase" style={{ color: 'var(--chalk-dim)' }}>
             Ritmo
           </p>
-          <p className="text-lg font-semibold" style={{ color: 'var(--cyan)' }}>
-            5:12<span className="text-xs font-normal" style={{ color: 'var(--ink-dim)' }}> /km</span>
+          <p className="text-lg font-semibold" style={{ color: 'var(--plate-blue)' }}>
+            5:12<span className="text-xs font-normal" style={{ color: 'var(--chalk-dim)' }}> /km</span>
           </p>
         </div>
 
         <div
-          className="absolute -right-8 bottom-28 glass-strong rounded-2xl px-4 py-3 hidden sm:block"
+          className="absolute -right-8 bottom-28 plate-strong rounded-lg px-4 py-3 hidden sm:block"
           style={{ transform: 'translateZ(90px)', boxShadow: 'var(--shadow-lift)' }}
         >
-          <p className="font-mono-label text-[9px] uppercase" style={{ color: 'var(--ink-dim)' }}>
+          <p className="font-mono-label text-[9px] uppercase" style={{ color: 'var(--chalk-dim)' }}>
             Volumen semanal
           </p>
-          <p className="text-lg font-semibold" style={{ color: 'var(--green)' }}>+14%</p>
+          <p className="text-lg font-semibold" style={{ color: 'var(--plate-green)' }}>+14%</p>
         </div>
       </div>
     </div>
