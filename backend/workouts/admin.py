@@ -275,8 +275,8 @@ class SessionFeedbackAdmin(ModelAdmin):
 
 @admin.register(Exercise)
 class ExerciseAdmin(ModelAdmin):
-    list_display   = ['nombre', 'patron_movimiento', 'dificultad', 'bilateral', 'es_compuesto', 'activo']
-    list_filter    = ['patron_movimiento', 'dificultad', 'activo', 'bilateral', 'es_compuesto']
+    list_display   = ['nombre', 'patron_movimiento', 'dificultad', 'bilateral', 'es_compuesto', 'activo', 'evidence_score', 'goal_primary', 'injury_risk_profile']
+    list_filter    = ['patron_movimiento', 'dificultad', 'activo', 'bilateral', 'es_compuesto', 'evidence_score', 'goal_primary', 'injury_risk_profile']
     search_fields  = ['nombre']
     list_per_page  = 50
 

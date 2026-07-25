@@ -190,6 +190,74 @@ class FocusFilterTests(SimpleTestCase):
         self.assertLessEqual(len(out), _MIN_FOCUS_POOL)
 
 
+def _engine_con_perfil(nivel='intermedio', nivel_experiencia=None, experiencia_deportiva=''):
+    """Engine mínimo para probar _riesgo_alto_permitido sin BD (no consulta
+    Exercise/UserInjury — solo lee atributos de self.perfil)."""
+    return AdaptiveEngineService(
+        SimpleNamespace(id=1),
+        SimpleNamespace(foco_entrenamiento=[]),
+        None,
+        SimpleNamespace(nivel=nivel, nivel_experiencia=nivel_experiencia, experiencia_deportiva=experiencia_deportiva),
+    )
+
+
+class RiesgoAltoPermitidoTests(SimpleTestCase):
+    """injury_risk_profile='alto' (derivados olímpicos, sentadilla overhead)
+    restringido a nivel avanzado salvo historial de halterofilia/CrossFit."""
+
+    def test_nivel_avanzado_permitido(self):
+        self.assertTrue(_engine_con_perfil(nivel='avanzado')._riesgo_alto_permitido())
+
+    def test_nivel_experiencia_alto_permitido_aunque_nivel_categorico_no(self):
+        self.assertTrue(_engine_con_perfil(nivel='intermedio', nivel_experiencia=5)._riesgo_alto_permitido())
+
+    def test_principiante_sin_historial_bloqueado(self):
+        self.assertFalse(_engine_con_perfil(nivel='principiante')._riesgo_alto_permitido())
+
+    def test_intermedio_con_crossfit_permitido(self):
+        engine = _engine_con_perfil(nivel='intermedio', experiencia_deportiva='CrossFit, Running')
+        self.assertTrue(engine._riesgo_alto_permitido())
+
+    def test_intermedio_con_halterofilia_permitido(self):
+        engine = _engine_con_perfil(nivel='intermedio', experiencia_deportiva='Natación, Halterofilia')
+        self.assertTrue(engine._riesgo_alto_permitido())
+
+    def test_intermedio_con_otro_deporte_no_permitido(self):
+        engine = _engine_con_perfil(nivel='intermedio', experiencia_deportiva='Running, Natación')
+        self.assertFalse(engine._riesgo_alto_permitido())
+
+
+class ObjetivoPrincipalYHistorialOlimpicoTests(SimpleTestCase):
+    """training_science.objetivo_principal / tiene_historial_olimpico — mapeos
+    puros usados por el ranking del pool y el gate de riesgo alto."""
+
+    def test_goal_directo_hipertrofia(self):
+        self.assertEqual(ts.objetivo_principal('hipertrofia'), 'hipertrofia')
+
+    def test_goal_fuerza_y_potencia_mapean_a_rendimiento(self):
+        self.assertEqual(ts.objetivo_principal('fuerza'), 'rendimiento')
+        self.assertEqual(ts.objetivo_principal('potencia'), 'rendimiento')
+
+    def test_goal_salud_y_perdida_grasa_mapean_a_salud_general(self):
+        self.assertEqual(ts.objetivo_principal('salud'), 'salud_general')
+        self.assertEqual(ts.objetivo_principal('perdida_grasa'), 'salud_general')
+
+    def test_goal_vacio_cae_a_fallback_de_objetivo_texto(self):
+        self.assertEqual(ts.objetivo_principal('', 'sentirse_fuerte'), 'hipertrofia')
+
+    def test_sin_goal_ni_objetivo_resoluble_devuelve_none(self):
+        self.assertIsNone(ts.objetivo_principal('', ''))
+        self.assertIsNone(ts.objetivo_principal('', 'texto libre no reconocido'))
+
+    def test_historial_olimpico_por_crossfit_o_halterofilia(self):
+        self.assertTrue(ts.tiene_historial_olimpico('CrossFit'))
+        self.assertTrue(ts.tiene_historial_olimpico('Running, Halterofilia, Natación'))
+
+    def test_sin_historial_olimpico(self):
+        self.assertFalse(ts.tiene_historial_olimpico('Running, Natación'))
+        self.assertFalse(ts.tiene_historial_olimpico(''))
+
+
 class WeeklyVolumeTests(SimpleTestCase):
     def test_aggregate_primary_full_secondary_half(self):
         rows = [
@@ -324,6 +392,36 @@ class FormatPoolCompactTests(SimpleTestCase):
         self.assertNotIn('descripción larga', out)   # descripción fuera
         self.assertIn('@RPE8', out)                  # prescripción presente
         self.assertIn('RIR2', out)
+
+    def test_pool_sin_evidence_score_ni_goal_tags_no_rompe(self):
+        """Retrocompatibilidad: ejercicios sin clasificar (backfill pendiente,
+        campos ausentes del dict) siguen apareciendo — nunca se excluyen."""
+        pool = [self._entry('Press banca'), self._entry('Press inclinado')]
+        out = _format_exercise_pool_enriched(
+            pool, {'priorizados': [], 'evitar': [], 'razon_evitar': {}}, objetivo_principal='hipertrofia',
+        )
+        bullets = [l for l in out.splitlines() if l.strip().startswith('•')]
+        self.assertEqual(len(bullets), 2)
+
+    def test_goal_tags_prioriza_sin_excluir_por_evidence_score(self):
+        """El objetivo del usuario (goal_primary) prioriza el orden; evidence_score
+        es solo desempate — un ejercicio de score bajo o sin clasificar sigue
+        entrando (spec sec.6: nunca usarlo como filtro excluyente)."""
+        alto_score_sin_match = self._entry(
+            'Press banca declinado', goal_tags=['rendimiento'], evidence_score=5,
+        )
+        bajo_score_con_match = self._entry(
+            'Press con banda', goal_tags=['hipertrofia'], evidence_score=2,
+        )
+        sin_clasificar = self._entry('Press banca inclinado')  # sin goal_tags/evidence_score
+        pool = [alto_score_sin_match, bajo_score_con_match, sin_clasificar]
+        out = _format_exercise_pool_enriched(
+            pool, {'priorizados': [], 'evitar': [], 'razon_evitar': {}}, objetivo_principal='hipertrofia',
+        )
+        bullets = [l for l in out.splitlines() if l.strip().startswith('•')]
+        self.assertEqual(len(bullets), 3)  # ninguno se excluye
+        # El que matchea el objetivo va primero, aunque su evidence_score sea menor.
+        self.assertIn('Press con banda', bullets[0])
 
 
 # ─── Hallazgo #1: red de seguridad de equipamiento (coherencia casa/gimnasio) ──

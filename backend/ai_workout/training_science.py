@@ -26,6 +26,8 @@ Referencias:
 """
 import unicodedata
 
+from users.onboarding_goals import resolve_goal_from_objetivo
+
 # ─── Capa 1: taxonomía de grupos de volumen ───────────────────────────────────
 #
 # 13 grupos de volumen (con presupuesto) + 'manguito' (estabilizador, SIN
@@ -489,3 +491,55 @@ def prescribe_exercise(*, es_compuesto: bool, peso_libre: bool, patron: str,
     rir = max(0, 10 - rpe)
 
     return {'reps': reps, 'descanso_s': int(descanso), 'rpe': rpe, 'rir': rir}
+
+
+# ─── Objetivo principal (rendimiento / hipertrofia / salud_general) ──────────
+#
+# Deriva de Profile.goal (users/models.py, GOAL_CHOICES de 5 vías: fuerza/
+# potencia/hipertrofia/salud/perdida_grasa), que ya existe y ya alimenta la
+# periodización (TrainingCycle.goal, mismas choices) y Zyfit Score v2
+# (scores/service.py::GOAL_TO_PERFIL). Este mapeo es de 3 vías y DISTINTO del
+# de Score v2: ese colapsa hipertrofia dentro de "rendimiento" (perfil.py solo
+# necesita 2 sub-modelos), pero el sistema de evidencia por ejercicio (ver
+# zyfit-evidencia-ejercicios-spec.md sección 1) necesita distinguir hipertrofia
+# como objetivo propio — no reusar GOAL_TO_PERFIL acá.
+GOAL_TO_OBJETIVO_PRINCIPAL: dict[str, str] = {
+    'fuerza':        'rendimiento',
+    'potencia':      'rendimiento',
+    'hipertrofia':   'hipertrofia',
+    'salud':         'salud_general',
+    'perdida_grasa': 'salud_general',
+}
+
+
+def objetivo_principal(goal: str, objetivo_texto: str = '') -> str | None:
+    """Resuelve el objetivo_principal del usuario para el ranking del pool
+    (rendimiento/hipertrofia/salud_general). Prioriza `Profile.goal`; si está
+    vacío (se escribe fire-and-forget en el onboarding y puede quedar sin
+    poblar), cae al mismo fallback estricto que ya usa Zyfit Score v2 sobre
+    el string libre `Profile.objetivo` — allowlist exacta, sin fuzzy-match
+    (ver users/onboarding_goals.py). None si no se puede resolver ninguno de
+    los dos: el generador debe comportarse igual que hoy, sin ponderar."""
+    mapped = GOAL_TO_OBJETIVO_PRINCIPAL.get((goal or '').strip())
+    if mapped:
+        return mapped
+    resolved_goal = resolve_goal_from_objetivo(objetivo_texto)
+    if resolved_goal:
+        return GOAL_TO_OBJETIVO_PRINCIPAL.get(resolved_goal)
+    return None
+
+
+# Valores exactos de la lista DEPORTES en mobile/app/(auth)/onboarding.tsx que
+# implican historial de entrenamiento olímpico/halterofilia. Se guardan como
+# Profile.experiencia_deportiva = deportes.join(', ') — texto libre separado
+# por coma, pero con tokens conocidos y exactos (no requiere fuzzy-match).
+HISTORIAL_OLIMPICO_TOKENS = frozenset({'Halterofilia', 'CrossFit'})
+
+
+def tiene_historial_olimpico(experiencia_deportiva: str) -> bool:
+    """True si el usuario declaró Halterofilia o CrossFit entre sus deportes
+    practicados en el onboarding. Usado para permitir ejercicios de
+    injury_risk_profile='alto' (derivados olímpicos, sentadilla overhead) a
+    usuarios que no son nivel avanzado pero sí tienen ese entrenamiento previo."""
+    tokens = {t.strip() for t in (experiencia_deportiva or '').split(',')}
+    return bool(tokens & HISTORIAL_OLIMPICO_TOKENS)

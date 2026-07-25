@@ -558,7 +558,7 @@ def _format_exercise_pool(grouped):
     return '\n'.join(lines)
 
 
-def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
+def _format_exercise_pool_enriched(pool: list, priorities: dict, objetivo_principal: str | None = None) -> str:
     """
     Formats the enriched exercise pool (from AdaptiveEngineService) for the LLM.
     Groups by patron_movimiento sorted by priority; limits to 30 exercises.
@@ -575,9 +575,19 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict) -> str:
     for ex in pool:
         by_patron.setdefault(ex['patron_movimiento'], []).append(ex)
 
-    # Sort within each patron: compuestos first, then by veces_realizado desc
+    # Sort within each patron: compuestos primero (sin cambio de comportamiento
+    # existente); luego, entre los que empatan, prioriza el objetivo del
+    # usuario (goal_tags) y usa evidence_score como desempate — NUNCA como
+    # filtro excluyente: un ejercicio de score bajo o sin clasificar (None)
+    # sigue entrando si es el único disponible para ese equipo/nivel/patrón
+    # (ver zyfit-evidencia-ejercicios-spec.md sección 6).
     for pat in by_patron:
-        by_patron[pat].sort(key=lambda x: (not x['es_compuesto'], -x.get('veces_realizado', 0)))
+        by_patron[pat].sort(key=lambda x: (
+            not x['es_compuesto'],
+            not (objetivo_principal and objetivo_principal in (x.get('goal_tags') or [])),
+            -(x.get('evidence_score') or 0),
+            -x.get('veces_realizado', 0),
+        ))
 
     # Build ordered patron list
     patron_order: list[str] = []
@@ -767,7 +777,9 @@ def build_prompt(ctx):
     priorities    = ctx.get('pattern_priorities', {'priorizados': [], 'evitar': [], 'razon_evitar': {}})
 
     if enriched_pool is not None:
-        exercise_pool_text = _format_exercise_pool_enriched(enriched_pool, priorities)
+        exercise_pool_text = _format_exercise_pool_enriched(
+            enriched_pool, priorities, ctx.get('objetivo_principal'),
+        )
     else:
         exercise_pool_text = _format_exercise_pool(ctx.get('exercise_pool', {}))
 
@@ -1179,6 +1191,9 @@ def generate_session(request):
     ctx = {
         'nombre': perfil.nombre,
         'objetivo': perfil.objetivo or 'salud general',
+        # rendimiento/hipertrofia/salud_general — usado SOLO para ranking del
+        # pool (ver _format_exercise_pool_enriched), nunca como filtro.
+        'objetivo_principal': ts.objetivo_principal(perfil.goal, perfil.objetivo),
         'nivel': perfil.nivel,
         'nivel_experiencia': perfil.nivel_experiencia,
         'lesiones': perfil.lesiones,
@@ -1678,6 +1693,7 @@ def session_ajustar(request, pk):
     ctx = {
         'nombre':               perfil.nombre,
         'objetivo':             perfil.objetivo or 'salud general',
+        'objetivo_principal':   ts.objetivo_principal(perfil.goal, perfil.objetivo),
         'nivel':                perfil.nivel,
         'nivel_experiencia':    perfil.nivel_experiencia,
         'lesiones':             perfil.lesiones,

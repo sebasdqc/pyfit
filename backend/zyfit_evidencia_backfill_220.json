@@ -1,0 +1,2774 @@
+{
+  "_meta": {
+    "proposito": "Backfill propuesto de evidence_score/goal_tags/goal_primary/lengthened_bias/injury_risk_profile para los 220 ejercicios preexistentes del catalogo Zyfit, generado por Claude Code siguiendo zyfit-evidencia-ejercicios-spec.md (secciones 2-3) calibrado contra la tabla semilla (seccion 4) y las tablas de ranking de zyfit-evidencia-ejercicios.md.",
+    "NO_APLICADO": true,
+    "nota": "Este archivo NO se aplico a la base de datos. Requiere revision y aprobacion antes de convertirse en un management command / migracion de aplicacion.",
+    "total_ejercicios": 220,
+    "confianza_alta": 82,
+    "confianza_media": 124,
+    "confianza_baja": 14,
+    "confianza_alta_significa": "Coincide (exacto o variante muy cercana) con un ejemplo explicito de la tabla semilla del spec o de las tablas de ranking del informe — valores tomados directo de esa fuente.",
+    "confianza_media_significa": "Sin ancla directa en los documentos; derivado con la heuristica basada en las reglas de la seccion 3 del spec (patron de movimiento, es_compuesto, equipo, technical_level existente). Revisar con criterio editorial, no bloqueante.",
+    "confianza_baja_significa": "Casos de nicho tecnico (cargada/locomocion sin ancla) o que no calzaron con claridad en ningun tag (regla de default de la seccion 3) — el spec pide marcarlos explicitamente para revision manual antes de aplicar."
+  },
+  "ejercicios": [
+    {
+      "nombre": "Ab wheel rollout desde rodillas",
+      "evidence_score": 3,
+      "evidence_rationale": "Entrada regulable al patron de rollout; progresion gradual.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Abdominal en máquina",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=core_antiextension, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Abducción de cadera con banda (de pie)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Abducción de cadera en máquina",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Aperturas con mancuernas en banco plano (fly)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "B-stance RDL (RDL en media postura)",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=bisagra, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Battle ropes (cuerdas de batalla)",
+      "evidence_score": 2,
+      "evidence_rationale": "Acondicionamiento; evidencia limitada de fuerza/hipertrofia.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Bear crawl",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=locomocion, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Bicycle crunch",
+      "evidence_score": 3,
+      "evidence_rationale": "Alta activacion de recto abdominal pero flexion espinal repetida.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Bird dog",
+      "evidence_score": 4,
+      "evidence_rationale": "Validado; estabilizacion multifidos/transverso, muy seguro.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Box jump (salto a cajón)",
+      "evidence_score": 4,
+      "evidence_rationale": "Pliometrico basico validado para potencia.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Box squat",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=sentadilla, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Burpee",
+      "evidence_score": 3,
+      "evidence_rationale": "Acondicionamiento metabolico; poca especificidad de fuerza.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Caminata con zancada (walking lunge)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=locomocion, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Chop y lift en polea",
+      "evidence_score": 3,
+      "evidence_rationale": "Patron funcional pero evidencia moderada.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Clean con kettlebell",
+      "evidence_score": 4,
+      "evidence_rationale": "Desarrollo de potencia y RFD; alto respaldo NSCA.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Couch stretch (estiramiento de psoas en pared)",
+      "evidence_score": 2,
+      "evidence_rationale": "Mejora ROM de cadera; evidencia moderada.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Crossover en polea alta (cable fly)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Crunch",
+      "evidence_score": 3,
+      "evidence_rationale": "Alta activacion de recto abdominal pero flexion espinal repetida.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Crunch en polea (cable crunch)",
+      "evidence_score": 3,
+      "evidence_rationale": "Alta activacion de recto abdominal pero flexion espinal repetida.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Curl Zottman",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl concentrado",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de bíceps agarre prono (reverse curl)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de bíceps con barra",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de bíceps con mancuernas (alternado)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de isquiotibiales sentado en máquina",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de isquiotibiales tumbado en máquina",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de muñeca (wrist curl)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl de piernas con liga",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl en banco inclinado (incline curl)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl en polea baja",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl martillo (hammer curl)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Curl predicador (preacher curl)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Dead bug",
+      "evidence_score": 4,
+      "evidence_rationale": "Validado (Lee y McGill); estabilizacion sin flexion espinal, seguro.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Dominada agarre neutro",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_vertical, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Dominadas (chin-up) agarre supino",
+      "evidence_score": 5,
+      "evidence_rationale": "Alta activacion dorsal + biceps; excelente para hipertrofia.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Dominadas (pull-up) agarre prono",
+      "evidence_score": 5,
+      "evidence_rationale": "Mayor activacion de dorsal que casi todos los jalones; estandar funcional.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Dominadas agarre neutro",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_vertical, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Dominadas asistidas (con banda)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Dominadas asistidas con banda",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Dominadas lastradas",
+      "evidence_score": 5,
+      "evidence_rationale": "Permite sobrecarga progresiva del patron; maxima transferencia de fuerza.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Dragon flag",
+      "evidence_score": 2,
+      "evidence_rationale": "Impresionante pero de nicho, alta exigencia y evidencia escasa.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Dragon flag (progresión)",
+      "evidence_score": 2,
+      "evidence_rationale": "Impresionante pero de nicho, alta exigencia y evidencia escasa.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Déficit deadlift (peso muerto desde déficit)",
+      "evidence_score": 5,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=bisagra, compuesto=True -> score 5/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Elevaciones de piernas acostado",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=core_antiextension, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Elevaciones frontales con mancuernas",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_vertical, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Elevaciones laterales con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Mayor activacion del deltoides lateral que cualquier press (~66% MVC); clave para hipertrofia lateral.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Elevaciones laterales en polea baja",
+      "evidence_score": 4,
+      "evidence_rationale": "Mayor activacion del deltoides lateral que cualquier press (~66% MVC); clave para hipertrofia lateral.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Elevación de piernas colgado",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta activacion de recto abdominal inferior/psoas.",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Elevación de talones de pie (calf raise)",
+      "evidence_score": 4,
+      "evidence_rationale": "Mayor hipertrofia de gastrocnemio que la version sentada (posicion alargada).",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Elevación de talones sentado (seated calf raise)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Elevación de talones sentado (sóleo)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Encogimientos de hombros (shrugs) con mancuernas",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Extensión de cuádriceps en máquina",
+      "evidence_score": 4,
+      "evidence_rationale": "Robusta evidencia de hipertrofia de cuadriceps.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Extensión de tríceps en polea (pushdown)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Extensión de tríceps sobre la cabeza (overhead)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Extensión de tríceps unilateral en polea",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Extensión torácica sobre foam roller",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=movilidad, compuesto=False -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Face pull en polea alta",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta relevancia para salud de hombro/deltoides posterior; bien respaldado en prehab.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Face pull en polea alta (retracción)",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta relevancia para salud de hombro/deltoides posterior; bien respaldado en prehab.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Farmer carry bilateral",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta transferencia funcional, core y agarre.",
+      "goal_tags": [
+        "salud_general",
+        "rendimiento"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Farmer carry con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta transferencia funcional, core y agarre.",
+      "goal_tags": [
+        "salud_general",
+        "rendimiento"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Flexión de brazos (push-up) estándar",
+      "evidence_score": 4,
+      "evidence_rationale": "Endosada explicitamente por ACSM 2026; efectiva con carga corporal/banda.",
+      "goal_tags": [
+        "salud_general",
+        "hipertrofia"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Flexión de brazos con rodillas (push-up modificado)",
+      "evidence_score": 4,
+      "evidence_rationale": "Endosada explicitamente por ACSM 2026; efectiva con carga corporal/banda.",
+      "goal_tags": [
+        "salud_general",
+        "hipertrofia"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Flexión de brazos declinada (push-up pies elevados)",
+      "evidence_score": 4,
+      "evidence_rationale": "Endosada explicitamente por ACSM 2026; efectiva con carga corporal/banda.",
+      "goal_tags": [
+        "salud_general",
+        "hipertrofia"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Flexión de brazos inclinada (push-up elevado)",
+      "evidence_score": 4,
+      "evidence_rationale": "Endosada explicitamente por ACSM 2026; efectiva con carga corporal/banda.",
+      "goal_tags": [
+        "salud_general",
+        "hipertrofia"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Fondos en banco (triceps dips)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Fondos en paralelas (dips) — énfasis pecho",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Fondos en paralelas énfasis tríceps",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Frog pump",
+      "evidence_score": 2,
+      "evidence_rationale": "Activacion glutea pero de nicho, dificil de cargar progresivamente.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "GHD sit-up",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=core_antiextension, compuesto=False -> score 4/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Giro ruso con peso (medicine ball)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=core_antirrotacion, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Glute kickback en polea",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Good morning con barra",
+      "evidence_score": 3,
+      "evidence_rationale": "Activacion de erectores/isquios pero mayor demanda tecnica y riesgo lumbar.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Good morning con disco",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=bisagra, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hack squat en máquina",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Handstand push-up asistido",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=empuje_vertical, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Hip 90-90 con transición activa",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=movilidad, compuesto=False -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hip flexor march (marcha de flexores)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=movilidad, compuesto=False -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hip thrust con banda",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=bisagra, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hip thrust con barra",
+      "evidence_score": 5,
+      "evidence_rationale": "Mayor activacion de gluteo mayor que la sentadilla; RCT muestra hipertrofia glutea comparable/superior.",
+      "goal_tags": [
+        "hipertrofia",
+        "rendimiento"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Hip thrust con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=bisagra, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hip thrust con peso corporal",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=bisagra, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Hip thrust unilateral (single-leg)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=bisagra, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Hollow body hold",
+      "evidence_score": 3,
+      "evidence_rationale": "Buen isometrico; evidencia moderada.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Hollow body rock",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=core_antiextension, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Inchworm",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=locomocion, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Jalón agarre neutro en polea",
+      "evidence_score": 4,
+      "evidence_rationale": "Buena activacion con posicion comoda de hombro.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Jalón al pecho con agarre neutro (polea)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_vertical, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Jalón al pecho en polea alta (lat pulldown)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_vertical, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Jalón con banda de resistencia",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_vertical, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Jalón detrás del cuello",
+      "evidence_score": 2,
+      "evidence_rationale": "Activacion similar al frontal pero mayor estres en hombro.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Jalón en polea con un brazo",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Jefferson curl",
+      "evidence_score": 1,
+      "evidence_rationale": "Nicho de flexion lumbar cargada; evidencia escasa y perfil de seguridad debatido.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "alto",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Kettlebell clean",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=locomocion, compuesto=True -> score 4/5, tags ['rendimiento'].",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Kickback de tríceps con mancuerna",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "L-sit",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=core_antiextension, compuesto=False -> score 4/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "L-sit en paralelas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=core_antiextension, compuesto=False -> score 4/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Landmine press (press con barra en esquina)",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Leg swing (balanceo de pierna)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=movilidad, compuesto=False -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Lunge contralateral con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Meadows row",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Mountain climber",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=core_antiextension, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Movilización de tobillo con banda",
+      "evidence_score": 3,
+      "evidence_rationale": "Mejora ROM de dorsiflexion, relevante para sentadilla.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Nordic curl (curl nórdico)",
+      "evidence_score": 4,
+      "evidence_rationale": "Excelente para fuerza excentrica de isquios y prevencion de lesiones.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Pallof press",
+      "evidence_score": 4,
+      "evidence_rationale": "Estandar de antirrotacion; buena activacion de oblicuos/transverso y seguro.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Pallof press en polea",
+      "evidence_score": 4,
+      "evidence_rationale": "Estandar de antirrotacion; buena activacion de oblicuos/transverso y seguro.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Pec deck (mariposa en máquina)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=empuje_horizontal, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Peso muerto con liga",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=bisagra, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Peso muerto con mancuernas",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=bisagra, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Peso muerto convencional",
+      "evidence_score": 5,
+      "evidence_rationale": "Alta activacion de erectores/isquios/gluteo, gran transferencia a fuerza, base de todas las guias.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Peso muerto rumano (RDL)",
+      "evidence_score": 5,
+      "evidence_rationale": "Maxima activacion de isquiotibiales en EMG; excelente para hipertrofia posterior.",
+      "goal_tags": [
+        "hipertrofia",
+        "rendimiento"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Peso muerto sumo",
+      "evidence_score": 5,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=bisagra, compuesto=True -> score 5/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Peso muerto sumo con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=bisagra, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pigeon pose (postura de paloma)",
+      "evidence_score": 2,
+      "evidence_rationale": "ROM de rotadores de cadera; evidencia limitada de transferencia.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Pike push-up",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_vertical, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pistol squat (sentadilla a una pierna)",
+      "evidence_score": 2,
+      "evidence_rationale": "Alta demanda de equilibrio/movilidad; poca evidencia de hipertrofia, dificil de cargar.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Plancha con alcance (plank reach)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=core_antirrotacion, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Plancha con deslizamiento (slider plank)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=core_antiextension, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Plancha con movimiento de cadera (hip shift plank)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=core_antirrotacion, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Plancha de Copenhague",
+      "evidence_score": 3,
+      "evidence_rationale": "Alta activacion de aductores/oblicuos; relevante para prevencion de ingle.",
+      "goal_tags": [
+        "rendimiento",
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": true,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Plancha frontal (plank)",
+      "evidence_score": 4,
+      "evidence_rationale": "Bien validada por McGill; alta estabilidad lumbopelvica y seguridad.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Plancha frontal sobre manos (push-up position)",
+      "evidence_score": 4,
+      "evidence_rationale": "Bien validada por McGill; alta estabilidad lumbopelvica y seguridad.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Plancha lateral",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta activacion de oblicuos/cuadrado lumbar; validada por McGill.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Plancha lateral con elevación de cadera",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta activacion de oblicuos/cuadrado lumbar; validada por McGill.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Prensa de piernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Robusta evidencia de hipertrofia de cuadriceps; segura y escalable.",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Prensa unilateral (single leg press)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press Arnold",
+      "evidence_score": 3,
+      "evidence_rationale": "Activacion multi-cabeza pero evidencia limitada de superioridad.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Press Arnold con mancuernas",
+      "evidence_score": 3,
+      "evidence_rationale": "Activacion multi-cabeza pero evidencia limitada de superioridad.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Press de banca declinado con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca declinado con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca declinado en máquina Smith",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca inclinado con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca inclinado con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca inclinado en máquina Smith",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca plano con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de banca plano con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press de hombros unilateral con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_vertical, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press en máquina de pecho",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=empuje_horizontal, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press francés con barra EZ",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=aislamiento, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press francés con barra EZ (skull crusher)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=aislamiento, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press militar con barra (overhead press)",
+      "evidence_score": 5,
+      "evidence_rationale": "Estandar de fuerza de hombro; alta activacion de deltoides anterior.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Press militar con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "ROM y activacion comparables; mas seguro para hombros.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Press militar en máquina (shoulder press)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=empuje_vertical, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Press unilateral de pie (Pallof overhead)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=core_antirrotacion, compuesto=False -> score 3/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Puente glúteo con peso corporal",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=bisagra, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Puente glúteo unilateral con peso corporal",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=bisagra, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pull-through en polea baja",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=bisagra, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pullover con liga",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pullover con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Aislamiento de dorsal en alargamiento; evidencia moderada.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Pullover en polea",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Push press con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Transferencia a potencia; permite sobrecarga.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Push up con déficit",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Push up con liga",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Push up lastrado",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=empuje_horizontal, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pájaro (reverse fly) con mancuernas",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Pájaro en polea (reverse cable fly)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=aislamiento, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "RDL unilateral con mancuerna",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=bisagra, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Rack pull (peso muerto parcial)",
+      "evidence_score": 3,
+      "evidence_rationale": "Sobrecarga de erectores/trapecio; nicho de fuerza parcial.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo al mentón con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_vertical, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo al pecho en máquina (chest-supported row)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=True -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo con banda de resistencia",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_horizontal, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo con barra (bent-over row)",
+      "evidence_score": 5,
+      "evidence_rationale": "Alta activacion de dorsal/trapecio medio/romboides y erectores; gran transferencia.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo con barra T (T-bar row)",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo con kettlebell",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_horizontal, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo con mancuerna a una mano",
+      "evidence_score": 5,
+      "evidence_rationale": "Alta activacion de dorsal con soporte; versatil y seguro.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo con mancuernas bilateral inclinado",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=jalon_horizontal, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo en TRX",
+      "evidence_score": 3,
+      "evidence_rationale": "Endosado como opcion en casa; carga limitada.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo en máquina Smith",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo en máquina sentado",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_horizontal, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo en polea baja con barra",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_horizontal, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Remo invertido (Australian pull-up)",
+      "evidence_score": 3,
+      "evidence_rationale": "Buena entrada con carga corporal; escalabilidad limitada.",
+      "goal_tags": [
+        "salud_general",
+        "hipertrofia"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo pendlay",
+      "evidence_score": 4,
+      "evidence_rationale": "Variante estricta con gran carga; buena transferencia a fuerza.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Remo unilateral con resistencia al suelo",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=core_antirrotacion, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Reverse Nordic curl",
+      "evidence_score": 3,
+      "evidence_rationale": "Emergente para recto femoral en alargamiento; evidencia inicial positiva.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Rollout con rueda abdominal",
+      "evidence_score": 4,
+      "evidence_rationale": "De las mayores activaciones de recto abdominal/transverso.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Rotación externa con banda",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Rotación externa con banda (90°)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=aislamiento, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Rueda abdominal (ab wheel rollout)",
+      "evidence_score": 4,
+      "evidence_rationale": "Ejercicio de antiextension con mayor rango de movimiento del catalogo.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Russian twist",
+      "evidence_score": 2,
+      "evidence_rationale": "Popular pero flexion-rotacion lumbar cargada; perfil de seguridad cuestionado.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Salto a la comba (jump rope)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=locomocion, compuesto=True -> score 2/5, tags ['rendimiento', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "salud_general"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Salto squat (jump squat)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=locomocion, compuesto=True -> score 3/5, tags ['rendimiento'].",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Seal row",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_horizontal, compuesto=True -> score 2/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla Cossack",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Sentadilla Zercher",
+      "evidence_score": 5,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=sentadilla, compuesto=True -> score 5/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla búlgara (RFESS)",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta activacion unilateral; excelente transferencia y bajo estres axial.",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sentadilla búlgara con peso corporal",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla búlgara contralateral con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=sentadilla, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla con banda de resistencia",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=sentadilla, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla con pausa (pause squat)",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=sentadilla, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla con peso corporal",
+      "evidence_score": 1,
+      "evidence_rationale": "Accesible y seguro, pero techo de sobrecarga progresiva muy bajo.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sentadilla en máquina Smith",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla frontal con barra",
+      "evidence_score": 4,
+      "evidence_rationale": "Activacion de cuadriceps similar a la trasera con menor carga lumbar.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sentadilla goblet con kettlebell",
+      "evidence_score": 3,
+      "evidence_rationale": "Buen ejercicio de entrada, carga limitada por el agarre.",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sentadilla sumo con mancuerna",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sentadilla trasera con barra (high bar)",
+      "evidence_score": 5,
+      "evidence_rationale": "Estandar de oro; alta activacion cuadriceps/gluteo, gran transferencia e hipertrofia.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sentadilla trasera con barra (low bar)",
+      "evidence_score": 5,
+      "evidence_rationale": "Estandar de oro; alta activacion cuadriceps/gluteo, gran transferencia e hipertrofia.",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sissy squat",
+      "evidence_score": 2,
+      "evidence_rationale": "Enfatiza recto femoral en alargamiento pero evidencia escasa y estres en rodilla.",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": true,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Sled push (empuje de trineo)",
+      "evidence_score": 4,
+      "evidence_rationale": "Gran transferencia a aceleracion/potencia; sin componente excentrico (seguro).",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Snatch grip deadlift",
+      "evidence_score": 5,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=bisagra, compuesto=True -> score 5/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Sprint (carrera de alta intensidad)",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=locomocion, compuesto=True -> score 3/5, tags ['rendimiento'].",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Sprint en pista o treadmill",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=locomocion, compuesto=True -> score 3/5, tags ['rendimiento'].",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "baja"
+    },
+    {
+      "nombre": "Squat to stand",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=movilidad, compuesto=False -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Step up con mancuernas",
+      "evidence_score": 3,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 3/5, tags ['rendimiento', 'hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Step up con peso corporal",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=sentadilla, compuesto=True -> score 1/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Straight arm pulldown (jalón con brazos extendidos)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=jalon_vertical, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Suitcase carry (carga unilateral caminando)",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta demanda de core anti-lateral + agarre + trapecio; gran transferencia funcional.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Suitcase carry (carga unilateral)",
+      "evidence_score": 4,
+      "evidence_rationale": "Alta demanda de core anti-lateral + agarre + trapecio; gran transferencia funcional.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Superman (extensión posterior en suelo)",
+      "evidence_score": 1,
+      "evidence_rationale": "Heuristica: technical_level=1, patron=jalon_vertical, compuesto=False -> score 1/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Swing con kettlebell",
+      "evidence_score": 4,
+      "evidence_rationale": "Buena transferencia a potencia de cadera; evidencia solida de RFD.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Thruster con mancuernas",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=3, patron=empuje_vertical, compuesto=True -> score 4/5, tags ['rendimiento', 'hipertrofia'].",
+      "goal_tags": [
+        "rendimiento",
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Toes to bar (pies a la barra)",
+      "evidence_score": 4,
+      "evidence_rationale": "Heuristica: technical_level=4, patron=core_antiextension, compuesto=False -> score 4/5, tags ['hipertrofia'].",
+      "goal_tags": [
+        "hipertrofia"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Turkish get-up",
+      "evidence_score": 3,
+      "evidence_rationale": "Estabilidad de hombro/core; evidencia moderada, muy tecnico.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "V-up (tijera abdominal)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=core_antiextension, compuesto=False -> score 2/5, tags ['hipertrofia', 'salud_general'].",
+      "goal_tags": [
+        "hipertrofia",
+        "salud_general"
+      ],
+      "goal_primary": "hipertrofia",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Wall slide (deslizamiento en pared)",
+      "evidence_score": 3,
+      "evidence_rationale": "Buena para control escapular; evidencia moderada en prehab de hombro.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Wall squat (sentadilla en pared)",
+      "evidence_score": 1,
+      "evidence_rationale": "Isometrico de entrada, evidencia minima de hipertrofia/fuerza directa.",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Z press (press sentado en suelo)",
+      "evidence_score": 2,
+      "evidence_rationale": "Nicho; alta demanda de core/movilidad, poca evidencia especifica.",
+      "goal_tags": [
+        "rendimiento"
+      ],
+      "goal_primary": "rendimiento",
+      "lengthened_bias": false,
+      "injury_risk_profile": "moderado",
+      "confianza": "alta"
+    },
+    {
+      "nombre": "Zancada (lunge) caminando",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Zancada estática (split squat)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    },
+    {
+      "nombre": "Zancada lateral (lateral lunge)",
+      "evidence_score": 2,
+      "evidence_rationale": "Heuristica: technical_level=2, patron=sentadilla, compuesto=True -> score 2/5, tags ['salud_general'].",
+      "goal_tags": [
+        "salud_general"
+      ],
+      "goal_primary": "salud_general",
+      "lengthened_bias": false,
+      "injury_risk_profile": "bajo",
+      "confianza": "media"
+    }
+  ]
+}

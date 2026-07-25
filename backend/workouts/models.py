@@ -28,6 +28,16 @@ class Exercise(models.Model):
         ('medio', 'Medio (2–4 m²)'),
         ('amplio', 'Amplio (>4 m²)'),
     ]
+    GOAL_TAG_CHOICES = [
+        ('rendimiento', 'Rendimiento'),
+        ('hipertrofia', 'Hipertrofia'),
+        ('salud_general', 'Salud general'),
+    ]
+    INJURY_RISK_CHOICES = [
+        ('bajo', 'Bajo'),
+        ('moderado', 'Moderado'),
+        ('alto', 'Alto'),
+    ]
     nombre = models.CharField(max_length=200, unique=True)
     patron_movimiento = models.CharField(max_length=30, choices=PATRON_CHOICES)
     musculos_primarios = models.JSONField(default=list)
@@ -58,6 +68,20 @@ class Exercise(models.Model):
     rest_seconds_default = models.SmallIntegerField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     coaching_cues = models.JSONField(default=list)
+    # Sistema de evidencia científica y objetivo (ver
+    # backend/zyfit-evidencia-ejercicios-spec.md). Todos nullable/blank por
+    # defecto — los 220 ejercicios pre-existentes quedan sin clasificar hasta
+    # que se apruebe y aplique el backfill; el generador debe tratar "sin
+    # clasificar" igual que hoy (sin romper rutinas existentes).
+    evidence_score = models.SmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    evidence_rationale = models.CharField(max_length=300, blank=True, default='')
+    goal_tags = models.JSONField(default=list, blank=True)
+    goal_primary = models.CharField(max_length=20, choices=GOAL_TAG_CHOICES, blank=True, default='')
+    lengthened_bias = models.BooleanField(null=True, blank=True)
+    injury_risk_profile = models.CharField(max_length=10, choices=INJURY_RISK_CHOICES, blank=True, default='')
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True, blank=True,

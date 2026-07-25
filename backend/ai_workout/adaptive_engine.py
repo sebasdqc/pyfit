@@ -353,6 +353,17 @@ class AdaptiveEngineService:
             }
         return self._body_zones
 
+    def _riesgo_alto_permitido(self) -> bool:
+        """Ejercicios con injury_risk_profile='alto' (derivados olímpicos,
+        sentadilla overhead) quedan restringidos a nivel avanzado por defecto,
+        salvo que el usuario haya declarado Halterofilia/CrossFit entre sus
+        deportes en el onboarding (ver ts.tiene_historial_olimpico)."""
+        nivel_avanzado = (
+            self.perfil.nivel == 'avanzado'
+            or (self.perfil.nivel_experiencia or 0) >= 5
+        )
+        return nivel_avanzado or ts.tiene_historial_olimpico(self.perfil.experiencia_deportiva)
+
     # ─── Equipamiento (fuente única para pool + red de seguridad) ─────────────
 
     def _expand_implementos(self, has_equipment_data: bool) -> set[str]:
@@ -398,8 +409,9 @@ class AdaptiveEngineService:
         """
         Filtra el catálogo de ejercicios usando tablas normalizadas cuando están
         disponibles, o los JSONFields legacy como fallback cuando no lo están.
-        Aplica los 7 filtros en orden: contraindicaciones, equipamiento,
-        nivel técnico, estado físico, espacio, activo.
+        Aplica los filtros en orden: contraindicaciones, riesgo alto
+        (injury_risk_profile), equipamiento, nivel técnico, estado físico,
+        espacio, activo.
         Devuelve lista de dicts enriquecidos.
         """
         has_equipment_data, has_contraindication_data = _check_satellite_tables()
@@ -418,6 +430,8 @@ class AdaptiveEngineService:
         nivel_usuario = self.perfil.nivel_experiencia or NIVEL_MAP.get(self.perfil.nivel, 3)
         estado_fisico: int = self.checkin.estado_fisico or self.checkin.estado_animo
         espacio_restringido = self.location.tipo in ('casa', 'exterior')
+        injury_zones = self._get_injury_zones()
+        riesgo_alto_ok = self._riesgo_alto_permitido()
 
         candidates = (
             Exercise.objects
@@ -452,6 +466,15 @@ class AdaptiveEngineService:
                     skip = True
             if skip:
                 continue
+
+            # ── Filtro nuevo: perfil de riesgo alto (injury_risk_profile) ────
+            # Derivados olímpicos / sentadilla overhead: excluir SIEMPRE si hay
+            # lesión/dolor activo (cargan muñeca/hombro/rodilla/lumbar a la vez
+            # en la posición de recibo), y por defecto también si el usuario no
+            # es avanzado ni declaró historial de halterofilia/CrossFit.
+            if ex.injury_risk_profile == 'alto':
+                if injury_zones or not riesgo_alto_ok:
+                    continue
 
             # ── Filtro 3: Equipamiento ───────────────────────────────────────
             if not self._exercise_equipment_ok(ex, implementos_disponibles, has_equipment_data):
@@ -516,6 +539,11 @@ class AdaptiveEngineService:
                 'musculos_secundarios': muscles_by_role.get('secundario', []),
                 'coaching_cues':        list(ex.coaching_cues or []),
                 'description':          ex.description or '',
+                'evidence_score':       ex.evidence_score,
+                'evidence_rationale':   ex.evidence_rationale or '',
+                'goal_tags':            list(ex.goal_tags or []),
+                'goal_primary':         ex.goal_primary or '',
+                'injury_risk_profile':  ex.injury_risk_profile or '',
                 'requires_warning':     requires_warning,
                 'warning_text':         warning_text,
                 'primera_vez':          True,
@@ -541,6 +569,7 @@ class AdaptiveEngineService:
         nivel_usuario = self.perfil.nivel_experiencia or NIVEL_MAP.get(self.perfil.nivel, 3)
         estado_fisico: int = self.checkin.estado_fisico or self.checkin.estado_animo
         espacio_restringido = self.location.tipo in ('casa', 'exterior')
+        riesgo_alto_ok = self._riesgo_alto_permitido()
 
         pool: list[dict] = []
         for ex in Exercise.objects.filter(activo=True):
@@ -552,6 +581,13 @@ class AdaptiveEngineService:
             contra_set = set(ex.contraindicaciones or [])
             if contra_set & injury_zones:
                 continue
+
+            # Riesgo alto (injury_risk_profile): igual criterio que la ruta
+            # normalizada — excluir con lesión/dolor activo, o por defecto si
+            # el usuario no es avanzado ni tiene historial olímpico/CrossFit.
+            if ex.injury_risk_profile == 'alto':
+                if injury_zones or not riesgo_alto_ok:
+                    continue
 
             # Level
             if ex.technical_level is not None and ex.technical_level > nivel_usuario + 1:
@@ -593,6 +629,11 @@ class AdaptiveEngineService:
                 'musculos_secundarios': list(ex.musculos_secundarios or []),
                 'coaching_cues':        list(ex.coaching_cues or []),
                 'description':          ex.description or '',
+                'evidence_score':       ex.evidence_score,
+                'evidence_rationale':   ex.evidence_rationale or '',
+                'goal_tags':            list(ex.goal_tags or []),
+                'goal_primary':         ex.goal_primary or '',
+                'injury_risk_profile':  ex.injury_risk_profile or '',
                 'requires_warning':     False,
                 'warning_text':         None,
                 'primera_vez':          True,
