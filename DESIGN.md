@@ -14,6 +14,11 @@ colors:
   chalk: "#ece7de"
   chalk-dim: "#aca69c"
   chalk-faint: "#6f6a62"
+  plate-red-hover: "#ad1817"
+  bevel-highlight-strong: "rgba(255, 255, 255, 0.18)"
+  bevel-highlight-strong-hover: "rgba(255, 255, 255, 0.22)"
+  bevel-highlight-strong-active: "rgba(255, 255, 255, 0.14)"
+  bevel-shadow-fill: "rgba(0, 0, 0, 0.2)"
 typography:
   display:
     fontFamily: "Big Shoulders Display, system-ui, sans-serif"
@@ -50,7 +55,7 @@ components:
     rounded: "{rounded.lg}"
     padding: "14px 20px"
   button-primary-hover:
-    backgroundColor: "#ad1817"
+    backgroundColor: "{colors.plate-red-hover}"
     textColor: "{colors.chalk}"
     rounded: "{rounded.lg}"
     padding: "14px 20px"
@@ -145,6 +150,7 @@ Sin sombras difusas de neón ni `backdrop-filter`. La profundidad se transmite c
 ### Shadow Vocabulary
 - **plate** (`inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.3)`): tarjetas estándar (stats, pasos, features, FAQ).
 - **plate-strong** (`inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -2px 0 rgba(0,0,0,0.35), 0 24px 60px -20px rgba(0,0,0,0.65)`): superficies destacadas (mockup del teléfono, tarjeta del Zyfit Score, CTA final).
+- **button-bevel** (borde `bevel-shadow-fill` #`rgba(0,0,0,0.2)`, highlight interior `bevel-highlight-strong` `rgba(255,255,255,0.18)`, hover `bevel-highlight-strong-hover` `rgba(255,255,255,0.22)`, active `bevel-highlight-strong-active` `rgba(255,255,255,0.14)`): mismo bisel de chapa que `plate`, pero con opacidades más altas — un fondo saturado (`plate-red-fill`) necesita un highlight más visible que uno neutro para seguir leyendo como metal, no como superficie plana.
 
 ### Named Rules
 **The No-Blur Rule.** `backdrop-filter` no existe en este sistema. Ninguna superficie es translúcida; todas son chapa mate opaca.
@@ -158,7 +164,7 @@ Radios pequeños y consistentes (`rounded-lg` ≈ 8px) en tarjetas e inputs — 
 ### Buttons
 - **Shape:** `rounded-lg` (8px).
 - **Primary:** fondo `plate-red-fill` (#c41c1b), texto chalk, `padding: 14px 20px`. Nunca `plate-red` puro de fondo (falla contraste).
-- **Hover:** oscurece a `#ad1817` + sombra más profunda (nunca aclara — aclarar empeora el contraste).
+- **Hover:** oscurece a `plate-red-hover` (#ad1817) + sombra más profunda (nunca aclara — aclarar empeora el contraste).
 - **Active:** `translateY(2px)` — la barra "baja" al presionar, como una repetición.
 
 ### Tags / Stamps

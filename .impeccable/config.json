@@ -1,0 +1,28 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "app/privacy/page.tsx"
+    ],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "9px",
+        "createdAt": "2026-07-25T02:16:27.759Z",
+        "reason": "User confirmed 9px micro-label is intentional (phone mockup data density)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "createdAt": "2026-07-25T02:16:28.605Z",
+        "reason": "User confirmed 10px micro-label is intentional (phone mockup data density)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "11px",
+        "createdAt": "2026-07-25T02:16:28.974Z",
+        "reason": "User confirmed 11px micro-label is intentional (hero/eyebrow badge)"
+      }
+    ]
+  }
+}
