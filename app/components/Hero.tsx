@@ -44,13 +44,13 @@ export default function Hero() {
 
           <h1 className="display mt-6">
             Un entrenador que{' '}
-            <span className="font-serif-accent gradient-text">se adapta</span>{' '}
-            a vos, no al revés.
+            <span className="font-accent">se adapta</span>{' '}
+            a ti, no al revés.
           </h1>
 
           <p className="mt-6 text-lg leading-relaxed max-w-lg" style={{ color: 'var(--ink-dim)' }}>
             Zyfit genera tu rutina de fuerza o running en base a tu progreso real, tu feedback de cada
-            sesión y cómo llegás ese día. Nada de plantillas genéricas.
+            sesión y cómo llegas ese día. Nada de plantillas genéricas.
           </p>
 
           <div className="mt-10 flex flex-col gap-4" id="lista-de-espera">

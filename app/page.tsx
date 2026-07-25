@@ -9,7 +9,7 @@ const STEPS = [
   {
     n: '01',
     title: 'Check-in diario',
-    text: 'Antes de entrenar contás cómo dormiste, tu ánimo, tu tiempo disponible y cualquier molestia. 30 segundos.',
+    text: 'Antes de entrenar cuentas cómo dormiste, tu ánimo, tu tiempo disponible y cualquier molestia. 30 segundos.',
   },
   {
     n: '02',
@@ -18,8 +18,8 @@ const STEPS = [
   },
   {
     n: '03',
-    title: 'Entrenás y das feedback',
-    text: 'Registrás peso, repeticiones y RPE. Al terminar, calificás cómo te sentiste y qué tan bien cumpliste.',
+    title: 'Entrenas y das feedback',
+    text: 'Registras peso, repeticiones y RPE. Al terminar, calificas cómo te sentiste y qué tan bien cumpliste.',
   },
   {
     n: '04',
@@ -57,7 +57,7 @@ const FEATURES = [
     icon: '🤝',
     color: 'var(--violet)',
     title: 'Portal de Coach',
-    text: 'Si entrenás con un coach, puede ver tu progreso real y dejar directivas que la IA integra en tu próxima rutina.',
+    text: 'Si entrenas con un coach, puede ver tu progreso real y dejar directivas que la IA integra en tu próxima rutina.',
   },
   {
     icon: '🔒',
@@ -86,7 +86,7 @@ const FAQS = [
   },
   {
     q: '¿Necesito un coach para usar la app?',
-    a: 'No es obligatorio. Podés entrenar de forma completamente autónoma. Si ya tenés coach, podés vincularlo desde el Portal de Coach para que vea tu progreso.',
+    a: 'No es obligatorio. Puedes entrenar de forma completamente autónoma. Si ya tienes coach, puedes vincularlo desde el Portal de Coach para que vea tu progreso.',
   },
   {
     q: '¿Qué datos usa la IA para generar mi rutina?',
@@ -94,7 +94,7 @@ const FAQS = [
   },
   {
     q: '¿Cuándo está disponible en Play Store y App Store?',
-    a: 'Estamos en etapa final de pruebas. Sumate a la lista de espera y te avisamos apenas esté disponible para descargar.',
+    a: 'Estamos en etapa final de pruebas. Súmate a la lista de espera y te avisamos apenas esté disponible para descargar.',
   },
 ]
 
@@ -106,7 +106,6 @@ export default function LandingPage() {
         <div className="aurora aurora-1" />
         <div className="aurora aurora-2" />
         <div className="aurora aurora-3" />
-        <div className="grid-overlay" />
         <div className="noise-overlay" />
       </div>
 
@@ -145,7 +144,12 @@ export default function LandingPage() {
               <Reveal key={s.label} delay={i * 90}>
                 <div className="glass rounded-2xl p-6 h-full">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-semibold tracking-tight gradient-text">{s.value}</span>
+                    <span
+                      className="text-4xl font-semibold tracking-tight"
+                      style={{ color: 'var(--accent-light)' }}
+                    >
+                      {s.value}
+                    </span>
                     {s.unit && (
                       <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
                         {s.unit}
@@ -227,7 +231,7 @@ export default function LandingPage() {
               <SectionHeading eyebrow="Zyfit Score" title="Tu progreso, resumido en un número" align="left" />
               <p className="mt-6 text-base leading-relaxed max-w-lg" style={{ color: 'var(--ink-dim)' }}>
                 El Zyfit Score cruza cinco señales de tu entrenamiento en un puntaje de 0 a 100:
-                consistencia, rendimiento, adherencia, recuperación y tu momentum reciente. Así sabés,
+                consistencia, rendimiento, adherencia, recuperación y tu momentum reciente. Así sabes,
                 de un vistazo, si vas por buen camino.
               </p>
               <FactorBars />
@@ -254,11 +258,11 @@ export default function LandingPage() {
               />
               <div className="relative z-10">
                 <h2 className="section-title max-w-2xl mx-auto">
-                  Empezá a entrenar con un plan que{' '}
-                  <span className="font-serif-accent gradient-text">te conoce</span>.
+                  Empieza a entrenar con un plan que{' '}
+                  <span className="font-accent">te conoce</span>.
                 </h2>
                 <p className="mt-4 max-w-lg mx-auto" style={{ color: 'var(--ink-dim)' }}>
-                  Sumate a la lista de espera y sé de los primeros en probar Zyfit.
+                  Súmate a la lista de espera y sé de los primeros en probar Zyfit.
                 </p>
                 <div className="mt-8 flex justify-center">
                   <WaitlistForm />

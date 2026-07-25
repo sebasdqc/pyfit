@@ -4,13 +4,13 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Zyfit — Tu entrenador personal con IA adaptativa',
   description:
-    'Rutinas de fuerza y running que se ajustan a vos en cada sesión, según tu progreso, tu feedback y tu día. Muy pronto en App Store y Google Play.',
+    'Rutinas de fuerza y running que se ajustan a ti en cada sesión, según tu progreso, tu feedback y tu día. Muy pronto en App Store y Google Play.',
   openGraph: {
     title: 'Zyfit — Tu entrenador personal con IA adaptativa',
     description:
-      'Rutinas de fuerza y running que se ajustan a vos en cada sesión. Nada de plantillas genéricas.',
+      'Rutinas de fuerza y running que se ajustan a ti en cada sesión. Nada de plantillas genéricas.',
     type: 'website',
-    locale: 'es_ES',
+    locale: 'es_419',
   },
 }
 

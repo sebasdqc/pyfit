@@ -111,7 +111,7 @@ export default function PhoneMockup() {
           <p className="font-mono-label text-[9px] uppercase" style={{ color: 'var(--ink-dim)' }}>
             Volumen semanal
           </p>
-          <p className="text-lg font-semibold gradient-text">+14%</p>
+          <p className="text-lg font-semibold" style={{ color: 'var(--green)' }}>+14%</p>
         </div>
       </div>
     </div>

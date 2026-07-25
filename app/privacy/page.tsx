@@ -348,7 +348,7 @@ const styles: Record<string, React.CSSProperties> = {
   subsection: {
     marginTop: 20,
     paddingLeft: 16,
-    borderLeft: '3px solid #e5e7eb',
+    borderLeft: '1px solid #e5e7eb',
   },
   h3: {
     fontSize: 16,

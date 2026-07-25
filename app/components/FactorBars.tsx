@@ -44,12 +44,13 @@ export default function FactorBars() {
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <div
-              className="h-full rounded-full"
+              className="h-full w-full rounded-full"
               style={{
-                width: on ? `${f.value}%` : '0%',
+                transform: `scaleX(${on ? f.value / 100 : 0})`,
+                transformOrigin: 'left',
                 background: `linear-gradient(90deg, ${f.color}, ${f.color} 70%, transparent)`,
                 boxShadow: `0 0 12px -2px ${f.color}`,
-                transition: `width 1.1s cubic-bezier(0.2,0.8,0.2,1) ${i * 120}ms`,
+                transition: `transform 1.1s cubic-bezier(0.2,0.8,0.2,1) ${i * 120}ms`,
               }}
             />
           </div>
