@@ -15,20 +15,20 @@ export default function WaitlistForm() {
   if (submitted) {
     return (
       <div
-        className="plate-strong rounded-lg px-6 py-5 text-center w-full max-w-md"
-        style={{ borderColor: 'rgba(46,139,87,0.4)' }}
+        className="glass-strong rounded-2xl px-6 py-5 text-center w-full max-w-md"
+        style={{ borderColor: 'rgba(50,200,150,0.35)' }}
       >
-        <p className="font-semibold flex items-center justify-center gap-2" style={{ color: 'var(--plate-green)' }}>
+        <p className="font-semibold flex items-center justify-center gap-2" style={{ color: 'var(--green)' }}>
           <span
             className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px]"
-            style={{ background: 'rgba(46,139,87,0.2)' }}
+            style={{ background: 'rgba(50,200,150,0.18)' }}
           >
             ✓
           </span>
           ¡Listo! Te avisamos apenas Zyfit esté disponible.
         </p>
-        <p className="text-sm mt-1.5" style={{ color: 'var(--chalk-dim)' }}>
-          Guardamos <span style={{ color: 'var(--chalk)' }}>{email}</span> en la lista de espera.
+        <p className="text-sm mt-1.5" style={{ color: 'var(--ink-dim)' }}>
+          Guardamos <span style={{ color: 'var(--ink)' }}>{email}</span> en la lista de espera.
         </p>
       </div>
     )
@@ -42,12 +42,12 @@ export default function WaitlistForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="tu@email.com"
-        className="flex-1 rounded-lg px-4 py-3.5 text-sm outline-none plate transition-all placeholder:text-[color:var(--chalk-dim)] focus:border-[color:var(--plate-red)]"
-        style={{ color: 'var(--chalk)' }}
+        className="flex-1 rounded-xl px-4 py-3.5 text-sm outline-none glass transition-all placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)]"
+        style={{ color: 'var(--ink)' }}
       />
       <button
         type="submit"
-        className="btn-primary rounded-lg px-5 py-3.5 text-sm font-semibold whitespace-nowrap"
+        className="btn-primary rounded-xl px-5 py-3.5 text-sm font-semibold whitespace-nowrap"
       >
         Unirme a la lista
       </button>

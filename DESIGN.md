@@ -1,24 +1,24 @@
 ---
-name: Zyfit Landing — Barra Cargada
-description: Landing de lista de espera de Zyfit, en la identidad "Barra Cargada": el código de color de los discos olímpicos como sistema de datos.
+name: Zyfit Landing
+description: Landing de lista de espera de Zyfit — dark glassmorphism con acentos en gradiente azul/violeta, sobre tipografía Big Shoulders Display + Public Sans.
 colors:
-  bg: "#17181b"
-  bg-soft: "#1d1f23"
-  surface: "#1f2124"
-  surface-strong: "#26282c"
-  plate-red: "#e0201f"
-  plate-red-fill: "#c41c1b"
-  plate-blue: "#2a5eaa"
-  plate-yellow: "#f0b429"
-  plate-green: "#2e8b57"
-  chalk: "#ece7de"
-  chalk-dim: "#aca69c"
-  chalk-faint: "#6f6a62"
-  plate-red-hover: "#ad1817"
-  bevel-highlight-strong: "rgba(255, 255, 255, 0.18)"
-  bevel-highlight-strong-hover: "rgba(255, 255, 255, 0.22)"
-  bevel-highlight-strong-active: "rgba(255, 255, 255, 0.14)"
-  bevel-shadow-fill: "rgba(0, 0, 0, 0.2)"
+  bg: "#08090c"
+  bg-soft: "#0d0f14"
+  card: "#0a0b0f"
+  accent: "#4f8cff"
+  accent-light: "#7ab6ff"
+  accent-dark: "#2563ff"
+  violet: "#8b7bff"
+  cyan: "#6ce5ff"
+  green: "#32c896"
+  orange: "#ffaa32"
+  ink: "#eaf0ff"
+  ink-dim: "#9aa7c7"
+  ink-faint: "#5f6b86"
+  button-text-on-accent: "#051021"
+  glass-highlight: "rgba(255, 255, 255, 0.06)"
+  glass-highlight-strong: "rgba(255, 255, 255, 0.07)"
+  glass-notch: "rgba(255, 255, 255, 0.14)"
 typography:
   display:
     fontFamily: "Big Shoulders Display, system-ui, sans-serif"
@@ -45,79 +45,93 @@ typography:
     fontSize: "9-11px"
     letterSpacing: "0.14em"
 rounded:
-  sm: "6px"
-  md: "8px"
-  lg: "8px"
+  sm: "0.75rem"
+  md: "1rem"
+  lg: "1.5rem"
+  xl: "2rem"
 components:
   button-primary:
-    backgroundColor: "{colors.plate-red-fill}"
-    textColor: "{colors.chalk}"
-    rounded: "{rounded.lg}"
-    padding: "14px 20px"
-  button-primary-hover:
-    backgroundColor: "{colors.plate-red-hover}"
-    textColor: "{colors.chalk}"
-    rounded: "{rounded.lg}"
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.button-text-on-accent}"
+    rounded: "{rounded.md}"
     padding: "14px 20px"
 ---
 
-# Design System: Zyfit Landing — Barra Cargada
+# Design System: Zyfit Landing
 
 ## Overview
 
-**Creative North Star: "Barra Cargada" (Loaded Bar)**
+**Creative North Star: "Dark Glass Aurora"**
 
-El progreso no se representa con un gráfico neón: se representa con peso
-real, cargado en una barra. El sistema de datos de la marca es el código de
-color de los discos olímpicos de competencia (rojo = 25kg, azul = 20kg,
-amarillo = 15kg, verde = 10kg) — un estándar real del deporte, no una
-paleta decorativa inventada. Cada color que aparece en la interfaz significa
-algo (intensidad, categoría de dato, estado), igual que en un gimnasio real.
+Un ambiente oscuro atravesado por auroras de color (azul/violeta/cian) detrás
+de superficies de vidrio esmerilado — el look original de la landing, que el
+usuario confirmó explícitamente que prefiere por sobre una identidad
+alternativa más industrial ("Barra Cargada", código de color de discos
+olímpicos) que se probó y se descartó en esta misma sesión. La tipografía sí
+se actualizó y se mantiene: **Big Shoulders Display** (numerales/titulares
+condensados y pesados) reemplaza a la Space Grotesk original, sobre
+**Public Sans** para el cuerpo.
 
-Este mundo reemplaza uno anterior de "AI SaaS oscuro con glass y aurora de
-colores" (fondo casi negro, tarjetas de vidrio esmerilado, texto en
-gradiente, blobs de luz difusos) — un look que el propio detector de
-Impeccable identifica como uno de los patrones más repetidos de interfaces
-generadas por IA. Barra Cargada lo rechaza explícitamente: sin
-`backdrop-filter`, sin texto en gradiente, sin blobs de color ambiental.
-
-**Fuera de alcance:** `app/privacy/page.tsx` es un documento legal en modo
-lectura que mantiene deliberadamente su propio sistema claro/inline,
-separado de este mundo — no aplica esta paleta ni tipografía, y los
-colores/tamaños que el detector marca ahí como "fuera de DESIGN.md" son
-esperados, no drift.
+**Historial de decisión (importante para no revertir sin querer):**
+1. Versión original: glass + gradient-text + aurora, tipografía Space
+   Grotesk/Instrument Serif.
+2. Primer refinamiento: se sacó la fuente sobreusada y el voseo argentino
+   (→ "tú" neutro), se probó sacar gradient-text — cambios menores,
+   aprobados.
+3. Rediseño completo a "Barra Cargada": reemplazo total del mundo visual
+   (colores de disco, superficies mate sin blur, sin gradientes) — el
+   usuario lo pidió, se construyó, y **luego pidió revertirlo**: "prefiero
+   los colores de la versión anterior... me gustaban las gradientes y el
+   glass."
+4. **Estado actual (este archivo):** colores/gradientes/glass originales +
+   tipografía Big Shoulders Display/Public Sans que sí gustó del paso 3.
 
 **Key Characteristics:**
-- Superficies mate tipo "chapa troquelada" (bisel sutil vía box-shadow en capas), nunca vidrio esmerilado.
-- Un solo color por dato/estado, tomado del estándar real de discos — nunca degradados decorativos.
-- Numerales industriales pesados para cifras y titulares; texto de cuerpo en una sans de trabajo neutra.
-- Motion mecánico: asentamiento con ease-out decisivo, nunca rebote/elástico ni flotación ambiental.
+- Fondo casi negro (`#08090c`) con blobs de "aurora" azul/violeta/cian
+  difusos y en movimiento lento detrás del contenido.
+- Superficies de vidrio esmerilado (`backdrop-filter: blur`) en casi todas
+  las tarjetas y contenedores — es una elección de identidad confirmada
+  por el usuario, no un default sin decidir.
+- Texto en gradiente azul→violeta como recurso de énfasis en titulares y
+  cifras clave — también confirmado, no accidental.
+- Numerales y titulares en Big Shoulders Display (condensada, pesada);
+  cuerpo en Public Sans.
 
 ## Colors
 
-Paleta "Full palette": grafito de fondo + cuatro colores con significado
-fijo (intensidad/categoría), nunca usados como decoración libre.
+Paleta de acento único (azul) con variaciones tonales (violeta/cian/verde/
+naranja) para iconografía de features — no un sistema de significado fijo
+por color, son acentos decorativos por sección.
 
 ### Primary
-- **Plate Red** (`#e0201f`): identidad principal — trazo del Zyfit Score, acento de énfasis en titulares (`.font-accent`), ícono "+" del FAQ, resplandor sutil del CTA. Solo como color de texto/gráfico sobre fondo oscuro (nunca como relleno con texto encima, ver *Plate Red Fill*).
-- **Plate Red Fill** (`#c41c1b`): variante más oscura, exclusiva para rellenos sólidos con texto claro encima (botón primario). Existe porque `plate-red` puro no llega a 4.5:1 con texto claro — nunca usar `plate-red` como relleno de botón.
+- **Accent Blue** (`#4f8cff`, claro `#7ab6ff`, oscuro `#2563ff`): color de
+  marca — botón primario, badges, bordes de foco, línea conectora de pasos,
+  eyebrows de sección.
 
 ### Secondary
-- **Plate Blue** (`#2a5eaa`): paso 02 ("La IA arma tu sesión"), feature "Zyfit Score", chip "Fuerza · Tren superior" del mockup, dato "Ritmo". Con texto encima, usar siempre chalk (nunca texto oscuro: `#2a5eaa` no llega a 3:1 con texto oscuro).
-- **Plate Yellow** (`#f0b429`): paso 03, feature "Racha y logros", el tag/eyebrow de cada sección y el badge del Hero. Es el único de los cuatro que admite texto oscuro encima con contraste excelente (9.7:1) — por eso es el color por defecto para etiquetas de texto chico sobre relleno sólido.
-- **Plate Green** (`#2e8b57`): paso 04, feature "Free Run GPS", barra "Adherencia", dato "Volumen semanal", estado de éxito del formulario de waitlist.
+- **Violet** (`#8b7bff`): segundo tono del gradiente de acento; feature
+  "Portal de Coach"; aurora 2.
+- **Cyan** (`#6ce5ff`): feature "Zyfit Score"; dato "Ritmo" del mockup;
+  aurora 3.
+- **Green** (`#32c896`): feature "Free Run GPS"; estados de éxito
+  (waitlist, "Muy pronto en stores"); dato "Volumen semanal".
+- **Orange** (`#ffaa32`): feature "Racha y logros"; chip de racha del
+  mockup del teléfono.
 
 ### Neutral
-- **Chalk** (`#ece7de`): texto principal sobre fondo oscuro.
-- **Chalk Dim** (`#aca69c`): texto secundario/descripciones.
-- **Chalk Faint** (`#6f6a62`): reservado para elementos puramente decorativos que NO son texto legible (ya no se usa para placeholder ni copy — ver Do's and Don'ts).
-- **Bg** (`#17181b`) / **Bg Soft** (`#1d1f23`): fondo de página y header al hacer scroll.
-- **Surface** (`#1f2124`) / **Surface Strong** (`#26282c`): fondo de tarjetas (`.plate` / `.plate-strong`).
+- **Ink** (`#eaf0ff`): texto principal sobre fondo oscuro.
+- **Ink Dim** (`#9aa7c7`): texto secundario/descripciones.
+- **Ink Faint** (`#5f6b86`): texto terciario (separadores, copyright,
+  placeholder).
+- **Bg** (`#08090c`) / **Bg Soft** (`#0d0f14`) / **Card** (`#0a0b0f`).
 
 ### Named Rules
-**The Real-Standard Rule.** Ningún color nuevo se agrega a la paleta de datos sin corresponder a un disco IWF real. Si se necesita un quinto tono (como en Factor Bars → "Momentum"), se usa chalk (neutro), no un color inventado.
-
-**The Fill-Needs-Contrast Rule.** Antes de usar un `plate-*` como `background` con texto encima, verificar el par en una calculadora de contraste. Solo `plate-yellow` (texto oscuro) y `plate-blue` (texto chalk) pasan 4.5:1 de forma nativa; el resto requiere una variante `-fill` dedicada o reservarse para texto/gráficos grandes (≥3:1).
+**The Confirmed-Aesthetic Rule.** Gradient-text y glass/backdrop-filter
+están **permitidos y son intencionales** en este sistema — el usuario los
+pidió de vuelta explícitamente después de probar una versión sin ellos.
+Cualquier auditoría o skill de diseño que los marque como "antipatrón de
+IA genérica" debe tratarse como falso positivo aquí, ya confirmado por el
+usuario (ver excepciones en `.impeccable/config.json`).
 
 ## Typography
 
@@ -125,78 +139,94 @@ fijo (intensidad/categoría), nunca usados como decoración libre.
 **Body Font:** Public Sans (con system-ui/-apple-system de fallback)
 **Label/Mono Font:** JetBrains Mono
 
-**Character:** una condensada industrial pesada (numerales de placa/matrícula) contra una sans de trabajo neutra — la tensión entre "cartel de taller" y "texto que se lee fácil en el celular".
+**Character:** una condensada industrial pesada para números/titulares
+sobre una sans de trabajo neutra para el cuerpo — la parte de la identidad
+"Barra Cargada" que sí sobrevivió a la reversión.
 
 ### Hierarchy
 - **Display** (700, `clamp(2.8rem, 6.6vw, 5.2rem)`, line-height 0.98): titular del Hero.
 - **Section title** (700, `clamp(2.1rem, 3.8vw, 3.1rem)`, line-height 1): título de cada sección.
-- **Accent** (800 itálica, color plate-red): la palabra de énfasis dentro de un titular (`.font-accent`) — nunca gradiente.
+- **Accent** (700 itálica + `gradient-text`): la palabra de énfasis dentro de un titular (`.font-accent.gradient-text`).
 - **Body** (400, 1rem, line-height 1.6): párrafos descriptivos.
-- **Label** (500, 0.75rem, uppercase, tracking 0.14em, JetBrains Mono): eyebrows, unidades de stats, datos de reps/ritmo.
-
-- **Micro-label** (500, 9–11px, uppercase, tracking 0.14em, JetBrains Mono): datos de máxima densidad (ritmo, volumen, sets del mockup del teléfono) donde `label` (12px) no entra.
-
-### Named Rules
-**The No-Cliché-Grotesk Rule.** Nunca Space Grotesk, Inter-como-display, DM Sans u otra sans "de IA genérica" — Big Shoulders Display es la única fuente display del sistema.
+- **Label** (500, 0.75rem, uppercase, tracking 0.14em, JetBrains Mono): eyebrows, unidades de stats.
+- **Micro-label** (500, 9–11px, uppercase, tracking 0.14em, JetBrains Mono): datos de máxima densidad (mockup del teléfono, badge del Hero).
 
 ## Layout
 
-Contenedor central `max-w-6xl`, padding horizontal `px-6`. Grid de 2/3/4 columnas según breakpoint (`sm`/`lg`) para stats, pasos y features. Ritmo vertical por sección: `py-20` a `py-24`. El "rail" horizontal entre los 4 pasos (`Cómo funciona`) es un hairline plano (`--border-strong`), no un gradiente de color — representa la barra sobre la que se apoyan los pasos.
+Contenedor central `max-w-6xl`, padding horizontal `px-6`. Grid de 2/3/4
+columnas según breakpoint para stats, pasos y features. Ritmo vertical por
+sección: `py-20` a `py-24`. La línea conectora entre los 4 pasos usa un
+degradado horizontal (`transparent → accent → violet → transparent`).
 
 ## Elevation & Depth
 
-Sin sombras difusas de neón ni `backdrop-filter`. La profundidad se transmite con bisel de chapa: `box-shadow` en capas (highlight interior arriba, sombra interior abajo) más una sombra de proyección real hacia afuera en `.plate-strong`.
+Vidrio esmerilado sobre auroras de color: `.glass`/`.glass-strong` con
+`backdrop-filter: blur(24-28px)` y un borde hairline sutil. Es material,
+no accidental — la profundidad viene de la transparencia + blur, no de
+sombras duras.
 
 ### Shadow Vocabulary
-- **plate** (`inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.3)`): tarjetas estándar (stats, pasos, features, FAQ).
-- **plate-strong** (`inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -2px 0 rgba(0,0,0,0.35), 0 24px 60px -20px rgba(0,0,0,0.65)`): superficies destacadas (mockup del teléfono, tarjeta del Zyfit Score, CTA final).
-- **button-bevel** (borde `bevel-shadow-fill` #`rgba(0,0,0,0.2)`, highlight interior `bevel-highlight-strong` `rgba(255,255,255,0.18)`, hover `bevel-highlight-strong-hover` `rgba(255,255,255,0.22)`, active `bevel-highlight-strong-active` `rgba(255,255,255,0.14)`): mismo bisel de chapa que `plate`, pero con opacidades más altas — un fondo saturado (`plate-red-fill`) necesita un highlight más visible que uno neutro para seguir leyendo como metal, no como superficie plana.
+- **shadow-lift** (`0 30px 80px -20px rgba(0,0,0,0.7)`): superficies destacadas (mockup del teléfono, tarjeta del Score, CTA final).
+- **shadow-glow** (`0 0 0 1px rgba(122,182,255,0.2), 0 20px 60px -12px rgba(79,140,255,0.5)`): resplandor azul disponible para superficies que quieran un halo de marca.
+- **glass-highlight** (`glass-highlight` #`rgba(255,255,255,0.06)`, `glass-highlight-strong` #`rgba(255,255,255,0.07)`): borde superior sutil de `.glass-strong` que simula el reflejo del vidrio.
+- **glass-notch** (`rgba(255,255,255,0.14)`): el "notch" decorativo del mockup del teléfono, mismo lenguaje de vidrio.
 
 ### Named Rules
-**The No-Blur Rule.** `backdrop-filter` no existe en este sistema. Ninguna superficie es translúcida; todas son chapa mate opaca.
+**The Glass-Is-Identity Rule.** `backdrop-filter` no se retira de este
+sistema — es parte confirmada de la identidad visual, no un default a
+depurar.
 
 ## Shapes
 
-Radios pequeños y consistentes (`rounded-lg` ≈ 8px) en tarjetas e inputs — nada de `rounded-2xl`/`rounded-3xl` (esos pertenecían al mundo de vidrio anterior). Las etiquetas/tags usan un corte diagonal (`clip-path` vía `.stamp`, ~6% de sesgo en los bordes) que evoca una etiqueta de equipo/gancho de gimnasio, no un pill redondeado.
+Radios grandes y suaves: `rounded-2xl`/`rounded-3xl` en tarjetas, `rounded-full` en pills/badges/botones. Nada de cortes diagonales ni esquinas duras (eso pertenecía a "Barra Cargada", descartado).
 
 ## Components
 
 ### Buttons
-- **Shape:** `rounded-lg` (8px).
-- **Primary:** fondo `plate-red-fill` (#c41c1b), texto chalk, `padding: 14px 20px`. Nunca `plate-red` puro de fondo (falla contraste).
-- **Hover:** oscurece a `plate-red-hover` (#ad1817) + sombra más profunda (nunca aclara — aclarar empeora el contraste).
-- **Active:** `translateY(2px)` — la barra "baja" al presionar, como una repetición.
+- **Shape:** `rounded-full` (pill).
+- **Primary:** fondo `var(--grad-accent)` (gradiente azul→violeta), texto oscuro `#051021`, `box-shadow` azul difuso.
+- **Hover:** `translateY(-2px)` + sombra más amplia (nunca oscurece — el gradiente ya es la superficie).
+- **Active:** vuelve a la posición base.
 
-### Tags / Stamps
-- **Style:** relleno sólido `plate-yellow` + texto oscuro (`#14161a`) para eyebrows de sección y el badge del Hero — es el único par de alto contraste nativo para texto chico sobre color sólido.
-- **Shape:** `.stamp` (clip-path diagonal), nunca `rounded-full`.
+### Tags / Eyebrows / Badges
+- **Style:** `.glass` + `rounded-full`, texto `accent-light`.
 
 ### Cards / Containers
-- **Corner Style:** `rounded-lg`.
-- **Background:** `.plate` (surface) o `.plate-strong` (gradiente surface→surface-strong) según jerarquía.
+- **Corner Style:** `rounded-2xl` (tarjetas) / `rounded-[2rem]` (superficies destacadas).
+- **Background:** `.glass` o `.glass-strong`.
 - **Shadow Strategy:** ver Elevation & Depth.
-- **Border:** hairline `--border` / `--border-strong`, nunca coloreado.
+- **Border:** hairline `--border`/`--border-strong`.
 
 ### Inputs / Fields
-- **Style:** `.plate` (mismo tratamiento que una tarjeta), texto chalk, placeholder en chalk-dim (nunca chalk-faint — falla contraste).
-- **Focus:** cambia el borde a `plate-red`.
+- **Style:** `.glass`, texto `ink`, placeholder `ink-faint`.
+- **Focus:** borde `accent`.
 
 ### Navigation
-- Header fijo, fondo transparente en el tope; al hacer scroll pasa a `--bg-soft` sólido (nunca blur). Links en chalk-dim, hover a blanco.
+- Header fijo; al hacer scroll pasa a `rgba(8,9,12,0.72)` + `backdrop-filter: blur(18px)` (glass, no sólido).
 
 ### Zyfit Score Ring (signature component)
-Anillo SVG con `stroke-linecap: butt` (no `round`) y color sólido `plate-red` — deliberadamente sin gradiente ni `drop-shadow` de glow, para que el número lea como una lectura de instrumento, no un efecto decorativo.
+Anillo SVG con gradiente azul→violeta (`stroke-linecap: round`) y
+`drop-shadow` azul difuso — lectura decorativa/aspiracional, no de
+instrumento de precisión (eso era la versión "Barra Cargada").
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** usar `plate-yellow` + texto oscuro para cualquier etiqueta de texto chico sobre relleno sólido — es el único par nativamente accesible.
-- **Do** usar `plate-red-fill` (no `plate-red`) para cualquier botón/relleno con texto encima.
-- **Do** mantener cada color de dato atado a su significado real (rojo=máxima intensidad, azul=secundario, amarillo=atención/etiqueta, verde=éxito/positivo) en vez de usarlo libremente por decoración.
-- **Do** usar chalk-dim (no chalk-faint) para cualquier texto real que el usuario deba leer (placeholders incluidos).
+- **Do** usar `gradient-text` para énfasis en titulares y cifras clave —
+  es parte confirmada de la identidad.
+- **Do** usar `.glass`/`.glass-strong` como superficie por defecto de
+  tarjetas y contenedores.
+- **Do** mantener Big Shoulders Display para titulares/numerales y Public
+  Sans para cuerpo — es lo único que sobrevivió del experimento "Barra
+  Cargada" y el usuario lo confirmó como acierto.
+- **Do** usar chalk-dim/ink-dim (no ink-faint) para cualquier texto real
+  que el usuario deba leer con comodidad; `ink-faint` queda para
+  separadores/copyright de muy baja jerarquía.
 
 ### Don't:
-- **Don't** reintroducir `backdrop-filter`, texto en gradiente, o fondos de aurora/blobs — son exactamente el mundo que este rediseño reemplazó.
-- **Don't** usar easing con rebote/elástico (`cubic-bezier` con overshoot >1) — el detector de Impeccable lo marca como "tacky"; usar `--ease-mech` (ease-out-expo puro).
-- **Don't** usar `plate-blue` con texto oscuro encima, ni `plate-red`/`plate-green` con texto chico de ningún color — no llegan a 4.5:1.
-- **Don't** agregar un quinto color de "disco" que no corresponda a un peso IWF real.
+- **Don't** volver a proponer una identidad "sin glass/sin gradiente" sin
+  que el usuario lo pida de nuevo explícitamente — ya se probó y se
+  revirtió en esta sesión.
+- **Don't** reintroducir el sistema de color de discos IWF (rojo/azul/
+  amarillo/verde) de "Barra Cargada" — quedó descartado, no es la
+  identidad de esta landing.

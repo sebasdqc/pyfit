@@ -1,6 +1,8 @@
 {
   "detector": {
-    "ignoreRules": [],
+    "ignoreRules": [
+      "gradient-text"
+    ],
     "ignoreFiles": [
       "app/privacy/page.tsx"
     ],

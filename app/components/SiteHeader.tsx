@@ -23,7 +23,9 @@ export default function SiteHeader() {
     <header
       className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
       style={{
-        background: scrolled ? 'var(--bg-soft)' : 'transparent',
+        background: scrolled ? 'rgba(8,9,12,0.72)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(18px)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(18px)' : 'none',
         borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent',
       }}
     >
@@ -37,7 +39,7 @@ export default function SiteHeader() {
               key={l.href}
               href={l.href}
               className="text-sm font-medium transition-colors hover:text-white"
-              style={{ color: 'var(--chalk-dim)' }}
+              style={{ color: 'var(--ink-dim)' }}
             >
               {l.label}
             </a>

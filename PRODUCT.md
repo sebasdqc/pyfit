@@ -66,14 +66,22 @@ coach puede vincularlo vía el Portal de Coach.
 - Voz confirmada: **español latinoamericano neutro, tratamiento de "tú"**
   (no "vos" ni "vosotros"). Ya corregido en `app/page.tsx`, `Hero.tsx`,
   `WaitlistForm.tsx` y metadata de `layout.tsx` (2026-07-24).
-- Identidad de color de esta landing: **"Barra Cargada"** — el código de
-  color real de los discos olímpicos (rojo 25kg / azul 20kg / amarillo
-  15kg / verde 10kg) como sistema de datos, sobre fondo grafito mate. Ver
-  `DESIGN.md` para el sistema completo (tokens, tipografía, componentes).
-  Esto es propio de la landing de la app de consumo — no reemplaza ni
-  reutiliza el azul de Zyfit Performance (`#4f8cff`), el morado del Portal
-  de Coach (`#7C5CFF`) ni el rojo de Zyfit Academy (`#cc1f36`); son
-  identidades de producto distintas que no comparten código ni tokens.
+- Identidad visual confirmada de esta landing (2026-07-25, tras probar y
+  descartar una alternativa): **dark glassmorphism** — fondo casi negro con
+  auroras azul/violeta/cian, superficies `.glass`/`.glass-strong` con
+  `backdrop-filter`, texto en gradiente azul→violeta como énfasis. Se
+  probó una identidad alternativa ("Barra Cargada", código de color de
+  discos olímpicos, superficies mate sin glass) y el usuario pidió
+  explícitamente revertirla: "prefiero los colores de la versión
+  anterior... me gustaban las gradientes y el glass." Lo único de esa
+  prueba que **sí** se mantuvo: la tipografía Big Shoulders Display
+  (titulares/numerales) + Public Sans (cuerpo). Ver `DESIGN.md` para el
+  sistema completo — no volver a proponer quitar glass/gradientes sin que
+  el usuario lo pida de nuevo. El azul de esta landing es un accent propio
+  de la app de consumo, no reutiliza ni reemplaza el azul de Zyfit
+  Performance (`#4f8cff` es coincidencia de valor, no el mismo token/uso),
+  el morado del Portal de Coach (`#7C5CFF`) ni el rojo de Zyfit Academy
+  (`#cc1f36`).
 
 ## Evidence on Hand
 

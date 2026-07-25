@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 
 const FACTORS: { label: string; value: number; color: string }[] = [
-  { label: 'Consistencia', value: 88, color: 'var(--plate-red)' },
-  { label: 'Rendimiento', value: 74, color: 'var(--plate-blue)' },
-  { label: 'Adherencia', value: 91, color: 'var(--plate-green)' },
-  { label: 'Recuperación', value: 69, color: 'var(--plate-yellow)' },
-  { label: 'Momentum', value: 80, color: 'var(--chalk)' },
+  { label: 'Consistencia', value: 88, color: 'var(--accent)' },
+  { label: 'Rendimiento', value: 74, color: 'var(--cyan)' },
+  { label: 'Adherencia', value: 91, color: 'var(--green)' },
+  { label: 'Recuperación', value: 69, color: 'var(--orange)' },
+  { label: 'Momentum', value: 80, color: 'var(--violet)' },
 ]
 
 export default function FactorBars() {
@@ -37,18 +37,19 @@ export default function FactorBars() {
       {FACTORS.map((f, i) => (
         <li key={f.label}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium" style={{ color: 'var(--chalk)' }}>{f.label}</span>
-            <span className="font-mono-label text-xs tabular-nums" style={{ color: 'var(--chalk-dim)' }}>
+            <span className="text-sm font-medium">{f.label}</span>
+            <span className="font-mono-label text-xs tabular-nums" style={{ color: 'var(--ink-dim)' }}>
               {f.value}
             </span>
           </div>
-          <div className="h-2 rounded-sm overflow-hidden" style={{ background: 'rgba(236,231,222,0.08)' }}>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <div
-              className="h-full w-full rounded-sm"
+              className="h-full w-full rounded-full"
               style={{
                 transform: `scaleX(${on ? f.value / 100 : 0})`,
                 transformOrigin: 'left',
-                background: f.color,
+                background: `linear-gradient(90deg, ${f.color}, ${f.color} 70%, transparent)`,
+                boxShadow: `0 0 12px -2px ${f.color}`,
                 transition: `transform 1.1s cubic-bezier(0.2,0.8,0.2,1) ${i * 120}ms`,
               }}
             />
