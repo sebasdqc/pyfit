@@ -5,6 +5,7 @@ import Reveal from './components/Reveal'
 import ScoreRing from './components/ScoreRing'
 import FactorBars from './components/FactorBars'
 import LoopSteps from './components/LoopSteps'
+import Faq from './components/Faq'
 
 const FEATURES = [
   {
@@ -55,25 +56,6 @@ const STATS = [
 const MARQUEE = [
   'Entrenamiento en casa', 'Gimnasio', 'Calistenia', 'Running',
   'Ciclismo', 'CrossFit', 'Funcionales', 'Trail',
-]
-
-const FAQS = [
-  {
-    q: '¿Necesito experiencia previa para usar Zyfit?',
-    a: 'No. El motor de IA arma tu plan según tu nivel de experiencia, objetivo y disponibilidad, sea tu primera vez entrenando o lleves años en esto.',
-  },
-  {
-    q: '¿Necesito un coach para usar la app?',
-    a: 'No es obligatorio. Puedes entrenar de forma completamente autónoma. Si ya tienes coach, puedes vincularlo desde el Portal de Coach para que vea tu progreso.',
-  },
-  {
-    q: '¿Qué datos usa la IA para generar mi rutina?',
-    a: 'Tu perfil físico, objetivos, historial de sesiones y el check-in del día (ánimo, sueño, molestias). Nunca compartimos tu nombre ni email con el motor de IA.',
-  },
-  {
-    q: '¿Cuándo está disponible en Play Store y App Store?',
-    a: 'Estamos en etapa final de pruebas. Súmate a la lista de espera y te avisamos apenas esté disponible para descargar.',
-  },
 ]
 
 export default function LandingPage() {
@@ -228,26 +210,7 @@ export default function LandingPage() {
           <Reveal>
             <SectionHeading eyebrow="FAQ" title="Preguntas frecuentes" />
           </Reveal>
-          <div className="mt-12 space-y-3">
-            {FAQS.map((f, i) => (
-              <Reveal key={f.q} delay={i * 70}>
-                <details className="glass rounded-2xl px-6 py-4 group">
-                  <summary className="flex items-center justify-between cursor-pointer font-medium">
-                    {f.q}
-                    <span
-                      className="ml-4 shrink-0 text-lg transition-transform duration-300 group-open:rotate-45"
-                      style={{ color: 'var(--accent-light)' }}
-                    >
-                      +
-                    </span>
-                  </summary>
-                  <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
-                    {f.a}
-                  </p>
-                </details>
-              </Reveal>
-            ))}
-          </div>
+          <Faq />
         </section>
       </main>
 

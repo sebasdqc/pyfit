@@ -243,6 +243,89 @@ body {
 details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 
+/* ── FAQ (acordeón) ─────────────────────────────────── */
+.faq-item {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.35s ease, background 0.35s ease;
+}
+.faq-item:hover { border-color: var(--border-strong); }
+.faq-item[data-open="true"] {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Barra de acento que crece de arriba hacia abajo al abrir */
+.faq-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--grad-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open="true"] .faq-bar { transform: scaleY(1); }
+
+.faq-q { cursor: pointer; }
+.faq-q:focus-visible { outline: 2px solid var(--accent-light); outline-offset: -2px; }
+
+.faq-index {
+  color: var(--ink-faint);
+  transition: color 0.35s ease;
+}
+.faq-item[data-open="true"] .faq-index { color: var(--accent-light); }
+
+/* "+" que gira y se convierte en "−" */
+.faq-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open="true"] .faq-icon { transform: rotate(180deg); }
+.faq-icon-h,
+.faq-icon-v {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: var(--accent-light);
+}
+.faq-icon-h {
+  width: 14px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+}
+.faq-icon-v {
+  width: 2px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open="true"] .faq-icon-v { transform: translate(-50%, -50%) scaleY(0); }
+
+/* Apertura sin max-height inventado */
+.faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-a > div { overflow: hidden; }
+.faq-item[data-open="true"] .faq-a { grid-template-rows: 1fr; }
+
+.faq-a-text {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.3s ease 0.06s, transform 0.3s ease 0.06s;
+}
+.faq-item[data-open="true"] .faq-a-text {
+  opacity: 1;
+  transform: none;
+}
+
 /* ── "El Bucle" — pasos de Cómo funciona ────────────── */
 /* Móvil/tablet: lista apilada con conector vertical.
    lg+: los 4 pasos se posicionan sobre una órbita alrededor de un núcleo. */
@@ -250,6 +333,38 @@ details > summary::-webkit-details-marker { display: none; }
   position: relative;
   display: flex;
   flex-direction: column;
+  /* Canaleta izquierda para el riel de retorno del apilado */
+  padding-left: 30px;
+}
+
+/* "C" abierta a la derecha: baja por la izquierda desde la card 01 hasta el
+   final del 04 y vuelve a entrar arriba con una punta de flecha. */
+.loop-return {
+  position: absolute;
+  left: 0;
+  top: 42px;
+  bottom: 26px;
+  /* Igual al padding-left del stage: los brazos llegan justo al borde de las cards */
+  width: 30px;
+  border: 2px solid var(--border-strong);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+}
+.loop-return::before {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--accent-light);
+  border-right: 2px solid var(--accent-light);
+  transform: translateX(0) rotate(45deg);
+  animation: loop-return-nudge 2.6s ease-in-out infinite;
+}
+@keyframes loop-return-nudge {
+  0%, 100% { transform: translateX(0) rotate(45deg); }
+  50% { transform: translateX(4px) rotate(45deg); }
 }
 .loop-ring,
 .loop-hub { display: none; }
@@ -295,7 +410,9 @@ details > summary::-webkit-details-marker { display: none; }
     max-width: 940px;
     margin-inline: auto;
     aspect-ratio: 940 / 830;
+    padding-left: 0;
   }
+  .loop-return { display: none; }
   .loop-ring {
     display: block;
     position: absolute;
@@ -363,5 +480,7 @@ details > summary::-webkit-details-marker { display: none; }
   .aurora, .floaty, .floaty-slow, .marquee-track { animation: none !important; }
   .tilt { transition: none !important; }
   .loop-comet, .loop-skel, .loop-hub-sweep { animation: none !important; }
+  .loop-return::before { animation: none !important; }
+  .faq-bar, .faq-icon, .faq-icon-v, .faq-a, .faq-a-text { transition: none !important; }
   .loop-node, .loop-node-body { transition: none !important; }
 }

@@ -312,6 +312,10 @@ export default function LoopSteps() {
           </div>
         )
       })}
+
+      {/* Riel de retorno 04 → 01: solo en el apilado, donde no hay órbita que
+          muestre que el proceso es circular. En lg lo reemplaza el cometa. */}
+      <span className="loop-return" aria-hidden />
     </div>
   )
 }
