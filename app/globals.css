@@ -282,24 +282,6 @@ details > summary::-webkit-details-marker { display: none; }
   transition: background 0.45s ease;
 }
 
-.loop-repeat {
-  align-self: center;
-  margin-top: 22px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.9rem;
-  font-size: 10px;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-.loop-repeat-icon {
-  display: inline-block;
-  font-size: 11px;
-  color: var(--accent-light);
-  animation: loop-spin 7s linear infinite;
-}
-
 @keyframes loop-spin { to { transform: rotate(360deg); } }
 /* Perímetro de la elipse 317×351 ≈ 2100 — una vuelta completa a la órbita */
 @keyframes loop-comet { to { stroke-dashoffset: -2100; } }
@@ -368,15 +350,10 @@ details > summary::-webkit-details-marker { display: none; }
   .loop-node[data-pos="s"]:hover { transform: translateX(-50%) translateY(-5px); }
   .loop-node[data-pos="w"]:hover { transform: translateY(-50%) translateX(-5px); }
   .loop-node[data-pos="e"]:hover { transform: translateY(-50%) translateX(5px); }
-  /* Sobre el arco 04 → 01 (cuadrante superior izquierdo de la órbita) */
-  .loop-repeat {
-    position: absolute;
-    left: 26%;
-    top: 20%;
-    margin: 0;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    z-index: 3;
-  }
+  /* En la órbita el recorrido lo marca el cometa, no el conector del apilado.
+     Va acá y no con `lg:hidden` porque este archivo no está en @layer y
+     por eso le gana a las utilidades de Tailwind. */
+  .loop-link { display: none; }
 }
 
 /* ── Reduced motion ─────────────────────────────────── */
@@ -385,6 +362,6 @@ details > summary::-webkit-details-marker { display: none; }
   .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .aurora, .floaty, .floaty-slow, .marquee-track { animation: none !important; }
   .tilt { transition: none !important; }
-  .loop-comet, .loop-skel, .loop-hub-sweep, .loop-repeat-icon { animation: none !important; }
+  .loop-comet, .loop-skel, .loop-hub-sweep { animation: none !important; }
   .loop-node, .loop-node-body { transition: none !important; }
 }

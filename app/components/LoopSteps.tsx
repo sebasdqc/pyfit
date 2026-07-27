@@ -298,10 +298,12 @@ export default function LoopSteps() {
               </div>
             </button>
 
-            {/* Conector vertical (solo apilado / móvil) */}
+            {/* Conector vertical del apilado. Se oculta en lg desde globals.css,
+                NO con `lg:hidden`: este CSS va sin capa y le gana a las utilidades
+                de Tailwind, que viven en @layer utilities. */}
             {i < STEPS.length - 1 && (
               <span
-                className="loop-link rounded-full lg:hidden"
+                className="loop-link rounded-full"
                 aria-hidden
                 data-done={i < active}
                 style={{ background: i < active ? s.color : 'var(--border-strong)' }}
@@ -310,12 +312,6 @@ export default function LoopSteps() {
           </div>
         )
       })}
-
-      {/* El lazo que cierra: 04 vuelve a 01 */}
-      <span className="loop-repeat font-mono-label glass rounded-full" aria-hidden>
-        <span className="loop-repeat-icon">↻</span>
-        Y vuelve a empezar
-      </span>
     </div>
   )
 }
