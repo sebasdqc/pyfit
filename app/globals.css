@@ -243,10 +243,144 @@ body {
 details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 
+/* ── "El Bucle" — pasos de Cómo funciona ────────────── */
+/* Móvil/tablet: lista apilada con conector vertical.
+   lg+: los 4 pasos se posicionan sobre una órbita alrededor de un núcleo. */
+.loop-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.loop-ring,
+.loop-hub { display: none; }
+
+.loop-node {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease,
+    box-shadow 0.35s ease, background 0.35s ease;
+}
+.loop-node:hover { border-color: var(--border-strong); }
+.loop-node:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+
+/* Apertura sin salto de layout: 0fr → 1fr */
+.loop-node-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+}
+.loop-node-body > div { overflow: hidden; }
+.loop-node[data-active="true"] .loop-node-body {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.loop-link {
+  display: block;
+  width: 2px;
+  height: 22px;
+  margin: 0 auto;
+  transition: background 0.45s ease;
+}
+
+.loop-repeat {
+  align-self: center;
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.loop-repeat-icon {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--accent-light);
+  animation: loop-spin 7s linear infinite;
+}
+
+@keyframes loop-spin { to { transform: rotate(360deg); } }
+/* Perímetro de la elipse 340×360 ≈ 2199 — una vuelta completa a la órbita */
+@keyframes loop-comet { to { stroke-dashoffset: -2199; } }
+.loop-comet { animation: loop-comet 12s linear infinite; }
+@keyframes loop-shimmer { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.75; } }
+.loop-skel { animation: loop-shimmer 1.8s ease-in-out infinite; }
+
+@media (min-width: 1024px) {
+  .loop-stage {
+    display: block;
+    max-width: 1000px;
+    margin-inline: auto;
+    aspect-ratio: 1000 / 860;
+  }
+  .loop-ring {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+  .loop-hub {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 180px;
+    height: 180px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .loop-hub-sweep {
+    position: absolute;
+    inset: -30%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(79, 140, 255, 0.28) 60deg,
+      rgba(139, 123, 255, 0.22) 110deg,
+      transparent 170deg
+    );
+    animation: loop-spin 14s linear infinite;
+  }
+  /* 32% de 1000 = 320px → centro de las cards laterales en x = 160 (rx = 340).
+     min-height 140px → centro de las cards superior/inferior en y = 70 (ry = 360). */
+  .loop-node {
+    position: absolute;
+    width: 32%;
+    min-height: 140px;
+    z-index: 2;
+  }
+  .loop-node[data-pos="n"] { top: 0; left: 50%; transform: translateX(-50%); }
+  .loop-node[data-pos="s"] { bottom: 0; left: 50%; transform: translateX(-50%); }
+  .loop-node[data-pos="w"] { left: 0; top: 50%; transform: translateY(-50%); }
+  .loop-node[data-pos="e"] { right: 0; top: 50%; transform: translateY(-50%); }
+  .loop-node[data-pos="n"]:hover,
+  .loop-node[data-pos="s"]:hover { transform: translateX(-50%) translateY(-5px); }
+  .loop-node[data-pos="w"]:hover { transform: translateY(-50%) translateX(-5px); }
+  .loop-node[data-pos="e"]:hover { transform: translateY(-50%) translateX(5px); }
+  /* Sobre el arco 04 → 01 (cuadrante superior izquierdo de la órbita) */
+  .loop-repeat {
+    position: absolute;
+    left: 26%;
+    top: 20%;
+    margin: 0;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    z-index: 3;
+  }
+}
+
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .aurora, .floaty, .floaty-slow, .marquee-track { animation: none !important; }
   .tilt { transition: none !important; }
+  .loop-comet, .loop-skel, .loop-hub-sweep, .loop-repeat-icon { animation: none !important; }
+  .loop-node, .loop-node-body { transition: none !important; }
 }

@@ -4,29 +4,7 @@ import Hero from './components/Hero'
 import Reveal from './components/Reveal'
 import ScoreRing from './components/ScoreRing'
 import FactorBars from './components/FactorBars'
-
-const STEPS = [
-  {
-    n: '01',
-    title: 'Check-in diario',
-    text: 'Antes de entrenar cuentas cómo dormiste, tu ánimo, tu tiempo disponible y cualquier molestia. 30 segundos.',
-  },
-  {
-    n: '02',
-    title: 'La IA arma tu sesión',
-    text: 'Con tu perfil, tu historial y el check-in de hoy, el motor genera una rutina de fuerza o running a tu medida.',
-  },
-  {
-    n: '03',
-    title: 'Entrenas y das feedback',
-    text: 'Registras peso, repeticiones y RPE. Al terminar, calificas cómo te sentiste y qué tan bien cumpliste.',
-  },
-  {
-    n: '04',
-    title: 'La próxima sesión se ajusta',
-    text: 'Ese feedback entra al motor: si veníamos fuerte, subimos la carga; si hubo fatiga, la próxima se adapta.',
-  },
-]
+import LoopSteps from './components/LoopSteps'
 
 const FEATURES = [
   {
@@ -75,8 +53,8 @@ const STATS = [
 ]
 
 const MARQUEE = [
-  'Fuerza', 'Running', 'Check-in diario', 'RPE', 'Zyfit Score', 'Racha',
-  'GPS en vivo', 'Portal de Coach', 'IA adaptativa', 'Sin plantillas',
+  'Entrenamiento en casa', 'Gimnasio', 'Calistenia', 'Running',
+  'Ciclismo', 'CrossFit', 'Funcionales', 'Trail',
 ]
 
 const FAQS = [
@@ -165,31 +143,9 @@ export default function LandingPage() {
           <Reveal>
             <SectionHeading eyebrow="Cómo funciona" title="Cada sesión se construye en base a la anterior" />
           </Reveal>
-          <div className="mt-16 relative">
-            {/* connecting line */}
-            <div
-              className="hidden lg:block absolute top-[46px] left-[12%] right-[12%] h-px"
-              style={{ background: 'linear-gradient(90deg, transparent, var(--accent), var(--violet), transparent)', opacity: 0.4 }}
-            />
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {STEPS.map((s, i) => (
-                <Reveal key={s.n} delay={i * 110}>
-                  <div className="glass card-lift rounded-2xl p-6 h-full relative">
-                    <span
-                      className="font-mono-label inline-flex items-center justify-center w-12 h-12 rounded-full text-sm mb-4"
-                      style={{ background: 'rgba(79,140,255,0.12)', color: 'var(--accent-light)', border: '1px solid var(--border-strong)' }}
-                    >
-                      {s.n}
-                    </span>
-                    <h3 className="font-semibold text-lg">{s.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
-                      {s.text}
-                    </p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
+          <Reveal>
+            <LoopSteps />
+          </Reveal>
         </section>
 
         {/* Funciones */}
