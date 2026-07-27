@@ -206,7 +206,7 @@ export default function LoopSteps() {
       onBlurCapture={() => setPaused(false)}
     >
       {/* Órbita: línea punteada + cometa que la recorre 01→02→03→04→01 */}
-      <svg className="loop-ring" viewBox="0 0 1000 860" fill="none" aria-hidden>
+      <svg className="loop-ring" viewBox="0 0 940 830" fill="none" aria-hidden>
         <defs>
           <linearGradient id="loopComet" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="var(--accent-light)" stopOpacity="0" />
@@ -216,10 +216,10 @@ export default function LoopSteps() {
         </defs>
         {/* rx/ry pasan por el centro de cada card (ver .loop-node en globals.css) */}
         <ellipse
-          cx="500"
-          cy="430"
-          rx="340"
-          ry="360"
+          cx="470"
+          cy="415"
+          rx="317"
+          ry="351"
           stroke="var(--border-strong)"
           strokeWidth="1.5"
           strokeDasharray="2 12"
@@ -228,13 +228,13 @@ export default function LoopSteps() {
         />
         <ellipse
           className="loop-comet"
-          cx="500"
-          cy="430"
-          rx="340"
-          ry="360"
+          cx="470"
+          cy="415"
+          rx="317"
+          ry="351"
           stroke="url(#loopComet)"
           strokeWidth="2.5"
-          strokeDasharray="185 2014"
+          strokeDasharray="175 1925"
           strokeLinecap="round"
         />
       </svg>
@@ -243,13 +243,10 @@ export default function LoopSteps() {
       <div className="loop-hub glass-strong">
         <span className="loop-hub-sweep" aria-hidden />
         <div className="relative text-center">
-          <span className="font-mono-label block text-[9px] uppercase" style={{ color: 'var(--ink-faint)' }}>
-            El bucle
+          <span className="font-mono-label block text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
+            Zyfit Loop
           </span>
-          <span className="font-accent gradient-text mt-1 block text-5xl leading-none">{STEPS[active].n}</span>
-          <span className="font-mono-label mt-1 block text-[9px] uppercase" style={{ color: 'var(--ink-dim)' }}>
-            de 04
-          </span>
+          <span className="font-accent gradient-text mt-1.5 block text-5xl leading-none">{STEPS[active].n}</span>
         </div>
       </div>
 

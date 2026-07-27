@@ -301,8 +301,8 @@ details > summary::-webkit-details-marker { display: none; }
 }
 
 @keyframes loop-spin { to { transform: rotate(360deg); } }
-/* Perímetro de la elipse 340×360 ≈ 2199 — una vuelta completa a la órbita */
-@keyframes loop-comet { to { stroke-dashoffset: -2199; } }
+/* Perímetro de la elipse 317×351 ≈ 2100 — una vuelta completa a la órbita */
+@keyframes loop-comet { to { stroke-dashoffset: -2100; } }
 .loop-comet { animation: loop-comet 12s linear infinite; }
 @keyframes loop-shimmer { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.75; } }
 .loop-skel { animation: loop-shimmer 1.8s ease-in-out infinite; }
@@ -310,9 +310,9 @@ details > summary::-webkit-details-marker { display: none; }
 @media (min-width: 1024px) {
   .loop-stage {
     display: block;
-    max-width: 1000px;
+    max-width: 940px;
     margin-inline: auto;
-    aspect-ratio: 1000 / 860;
+    aspect-ratio: 940 / 830;
   }
   .loop-ring {
     display: block;
@@ -329,8 +329,8 @@ details > summary::-webkit-details-marker { display: none; }
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 180px;
-    height: 180px;
+    width: 150px;
+    height: 150px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     overflow: hidden;
@@ -348,12 +348,16 @@ details > summary::-webkit-details-marker { display: none; }
     );
     animation: loop-spin 14s linear infinite;
   }
-  /* 32% de 1000 = 320px → centro de las cards laterales en x = 160 (rx = 340).
-     min-height 140px → centro de las cards superior/inferior en y = 70 (ry = 360). */
+  /* Geometría de la órbita — si tocás una medida, recalculá las otras:
+     · 32,5% de 940 = 305px → centro lateral en x = 153 → rx = 317
+     · min-height 128px      → centro superior en y = 64 → ry = 351
+     El ancho NO puede pasar de 33,3%: por encima de eso la card superior
+     expandida (~300px) pisa la esquina de las laterales. El alto tampoco
+     puede bajar de ~800px por el mismo motivo (hoy queda ~50px de aire). */
   .loop-node {
     position: absolute;
-    width: 32%;
-    min-height: 140px;
+    width: 32.5%;
+    min-height: 128px;
     z-index: 2;
   }
   .loop-node[data-pos="n"] { top: 0; left: 50%; transform: translateX(-50%); }
