@@ -178,6 +178,21 @@ body {
   transform: translateY(0);
 }
 
+.btn-outline {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-light);
+  transform: translateY(-2px);
+}
+.btn-outline:active {
+  transform: translateY(0);
+}
+
 /* ── Scroll reveal ──────────────────────────────────── */
 .reveal {
   opacity: 0;

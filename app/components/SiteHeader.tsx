@@ -45,12 +45,20 @@ export default function SiteHeader() {
             </a>
           ))}
         </nav>
-        <a
-          href="#lista-de-espera"
-          className="btn-primary rounded-full px-5 py-2 text-sm font-semibold"
-        >
-          Unirme
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="#lista-de-espera"
+            className="btn-primary rounded-full px-5 py-2 text-sm font-semibold"
+          >
+            Unirme
+          </a>
+          <a
+            href="/roadmap"
+            className="btn-outline hidden sm:inline-flex rounded-full px-5 py-2 text-sm font-semibold"
+          >
+            Roadmap público
+          </a>
+        </div>
       </div>
     </header>
   )
