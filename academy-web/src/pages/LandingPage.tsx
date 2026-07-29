@@ -1,37 +1,59 @@
-// Landing pública de Zyfit Academy — vive en "/". Reemplaza el redirect directo
-// a /login para visitantes sin sesión. Usuarios ya logueados son enviados a
-// /inicio (mismo patrón que /registro y /explorar vía useRedirectIfAuthenticated).
+// Landing pública de Zyfit Academy — vive en "/". Los visitantes con sesión van
+// a /inicio (mismo patrón que /registro y /explorar vía useRedirectIfAuthenticated).
+//
+// ── CONTRATO DE DIRECCIÓN ────────────────────────────────────────────────────
+// THESIS: un profesional se compone por planos, y la página lo arma a la vista.
+//   Rechaza el hero oscuro con aurora y las cuatro tarjetas iguales con ícono
+//   que envía todo e-learning (era, literalmente, la versión anterior de esto).
+// OWN-WORLD: afiche de Ikko Tanaka. Papel washi #F2E8D5, tinta cálida #14110F y
+//   cuatro planos llenos SIN contorno: bermellón = rojo de marca #cc1f36,
+//   índigo #1E3A8A, oro #C8A24B, negro. Archivo variable (el ancho hace la
+//   jerarquía), radio 0, cero sombras, cero degradados, cero blur. El color
+//   toma regiones enteras; un filete de 1px es la única división.
+// STORY: veo una figura hecha de planos → entiendo que cada plano es una
+//   escuela → compruebo que se arma paso a paso hasta un certificado
+//   verificable → creo mi cuenta gratis.
+// FIRST VIEWPORT: izquierda sobre papel — rótulo, titular monumental, cuerpo y
+//   dos acciones (bermellón sólido + filete). Derecha a sangre: la figura sobre
+//   negro. Debajo, tres cifras reales separadas por filetes.
+// FORM: "Retrato de Planos", challenger fusionado que el usuario eligió por
+//   encima de la tirada (asignada: Pizarra de Análisis, #6 de mi lista; seed
+//   d3baf49b). Descartado el staging "barrido rotatorio": la puesta en escena
+//   es la del propio mundo — la figura como eje fijo y las regiones de color
+//   turnándose el ancho completo.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listPublicCourses } from '@/api/academy'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
-import Aurora from '@/components/Aurora'
 import { Wordmark } from '@/components/Emblem'
-import BorderGlow from '@/components/effects/BorderGlow'
-import StarBorder from '@/components/effects/StarBorder'
-import { Icon, type IconName } from '@/components/Icon'
-import { Badge } from '@/components/ui/Badge'
-import { CourseCard } from '@/components/ui/CourseCard'
+import { Icon } from '@/components/Icon'
+import { PlaneFigure, PlaneMark, STEP_REVEALS, planeOfSchool, type PlaneShape } from '@/components/landing/PlaneFigure'
+import { PosterCourseCard } from '@/components/landing/PosterCourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
-import { Spinner } from '@/components/ui/Spinner'
 import { LocaleToggle } from '@/components/ui/LocaleToggle'
-import { schoolGradient, schoolTheme } from '@/lib/schoolTheme'
-import { cssVarToHex } from '@/lib/themeColor'
 import { useT } from '@/locale/useT'
 import type { Course } from '@/types'
+import './landing.css'
 
-const FEATURES: { icon: IconName; titleKey: string; bodyKey: string }[] = [
-  { icon: 'certificate', titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
-  { icon: 'quiz', titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
-  { icon: 'flame', titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
-  { icon: 'activity', titleKey: 'landing.feature5Title', bodyKey: 'landing.feature5Body' },
+const PAPER = '#f2e8d5'
+const VERMILION = '#cc1f36'
+const GOLD = '#c8a24b'
+
+// Cada prestación entra con su propio plano, no con un ícono dentro de un
+// cuadrado redondeado repetido cuatro veces.
+const FEATURES: { shape: PlaneShape; fill: string; titleKey: string; bodyKey: string }[] = [
+  { shape: 'halfdisc', fill: VERMILION, titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
+  { shape: 'column', fill: GOLD, titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
+  { shape: 'disc', fill: PAPER, titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
+  { shape: 'bar', fill: VERMILION, titleKey: 'landing.feature5Title', bodyKey: 'landing.feature5Body' },
 ]
 
-const HOW_STEPS: { icon: IconName; titleKey: string; bodyKey: string }[] = [
-  { icon: 'profile', titleKey: 'landing.howStep1Title', bodyKey: 'landing.howStep1Body' },
-  { icon: 'learning', titleKey: 'landing.howStep2Title', bodyKey: 'landing.howStep2Body' },
-  { icon: 'certificate', titleKey: 'landing.howStep3Title', bodyKey: 'landing.howStep3Body' },
+const HOW_STEPS = [
+  { titleKey: 'landing.howStep1Title', bodyKey: 'landing.howStep1Body' },
+  { titleKey: 'landing.howStep2Title', bodyKey: 'landing.howStep2Body' },
+  { titleKey: 'landing.howStep3Title', bodyKey: 'landing.howStep3Body' },
 ]
 
 // Precios de Zyfit Academy Pro — deben coincidir con
@@ -70,17 +92,39 @@ interface SchoolSummary {
   count: number
 }
 
-// Estilo del glow compartido por los 3 tipos de card de la landing — colores
-// derivados de la marca (accent-light/accent/brand) en vez de la paleta
-// morado/rosa/celeste genérica del componente original.
-const CARD_GLOW = {
-  borderRadius: 16,
-  glowColor: '353 82 62',
-  colors: ['#f0626f', '#e63950', '#cc1f36'],
-  glowRadius: 28,
-  glowIntensity: 0.85,
-  coneSpread: 32,
-  minGlow: 0.5,
+/** Rótulo de región: cuadro de color + versalitas. Es el mismo gesto en las 6
+ *  regiones, así que funciona como clave de color de la página. */
+function Rotulo({ children, fill }: { children: React.ReactNode; fill: string }) {
+  return (
+    <span className="zl-label">
+      <span aria-hidden="true" style={{ width: 10, height: 10, background: fill, display: 'block' }} />
+      {children}
+    </span>
+  )
+}
+
+/** Cabecera de región: rótulo + título anclados al borde izquierdo de la grilla,
+ *  con el cuerpo (o una acción) a la derecha, alineados por la base. */
+function RegionHead({
+  rotulo,
+  fill,
+  title,
+  aside,
+}: {
+  rotulo: string
+  fill: string
+  title: string
+  aside?: React.ReactNode
+}) {
+  return (
+    <div className="zl-head">
+      <div className="zl-head-lead">
+        <Rotulo fill={fill}>{rotulo}</Rotulo>
+        <h2 className="zl-title">{title}</h2>
+      </div>
+      {aside && <div className="zl-head-aside">{aside}</div>}
+    </div>
+  )
 }
 
 export function LandingPage() {
@@ -88,6 +132,10 @@ export function LandingPage() {
   const redirecting = useRedirectIfAuthenticated('/inicio')
   const [allCourses, setAllCourses] = useState<Course[]>([])
   const [loadingCourses, setLoadingCourses] = useState(true)
+  const [activeSchool, setActiveSchool] = useState<string | null>(null)
+  // Paso mostrado por la figura de "Cómo funciona". Arranca en el último: quien
+  // no interactúa ve el resultado, y quien interactúa puede rebobinar el armado.
+  const [step, setStep] = useState(HOW_STEPS.length - 1)
 
   useEffect(() => {
     let active = true
@@ -99,17 +147,6 @@ export function LandingPage() {
       active = false
     }
   }, [])
-
-  // Colores de la aurora del Hero: derivados de las variables CSS del tenant
-  // activo (no hardcodeados) para que el efecto respete el white-labeling.
-  const auroraColors = useMemo<[string, string, string]>(
-    () => [
-      cssVarToHex('--color-accent-light', '#f0626f'),
-      cssVarToHex('--color-accent', '#e63950'),
-      cssVarToHex('--color-brand', '#cc1f36'),
-    ],
-    [],
-  )
 
   const featuredCourses = useMemo(() => allCourses.slice(0, 6), [allCourses])
 
@@ -133,367 +170,315 @@ export function LandingPage() {
   }, [allCourses])
 
   const stats = [
-    { icon: 'catalog' as const, value: allCourses.length, label: t('landing.statsCoursesLabel') },
-    { icon: 'layers' as const, value: schools.length, label: t('landing.statsSchoolsLabel') },
-    { icon: 'clock' as const, value: totalHoras, label: t('landing.statsHoursLabel') },
+    { value: allCourses.length, label: t('landing.statsCoursesLabel') },
+    { value: schools.length, label: t('landing.statsSchoolsLabel') },
+    { value: totalHoras, label: t('landing.statsHoursLabel') },
   ]
   const showStats = !loadingCourses && allCourses.length > 0
+  const activeSchoolName = schools.find((s) => s.slug === activeSchool)?.nombre
 
   if (redirecting) return <LoadingScreen />
 
   return (
-    <div data-theme="dark" className="min-h-[100dvh] bg-surface-soft text-ink">
-      {/* Header — barra de navegación flotante, siempre oscura (ya lo era antes;
-          ahora coincide con el resto de la landing, que también es fija en oscuro) */}
-      <header className="fixed inset-x-3 top-3 z-50 mx-auto flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/55 px-4 py-3 shadow-lg shadow-black/30 backdrop-blur-xl sm:inset-x-6 sm:top-5 sm:px-6">
-        <Link to="/" className="shrink-0">
-          <Wordmark tone="dark" />
-        </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Link
-            to="/explorar"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
-          >
-            {t('landing.exploreCourses')}
+    <div className="zl">
+      {/* Navegación — filete inferior y una última celda de color que sangra
+          hasta el borde derecho: el remate del afiche, no una píldora flotante */}
+      <nav className="zl-nav" aria-label={t('landing.navLabel')}>
+        <div className="zl-nav-inner">
+          <Link to="/" className="zl-nav-brand">
+            <Wordmark />
           </Link>
-          <a
-            href="#precios"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
-          >
-            {t('landing.pricingNavLink')}
-          </a>
-          <Link
-            to="/blog"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:inline-block"
-          >
-            {t('blog.eyebrow')}
-          </Link>
-          <Link
-            to="/login"
-            className="rounded-lg px-2.5 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white sm:px-3"
-          >
-            {t('landing.login')}
-          </Link>
-          <Link
-            to="/registro"
-            className="rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-brand transition-colors hover:bg-white/90 sm:px-4"
-          >
-            {t('landing.createAccount')}
-          </Link>
-          <LocaleToggle className="!border-white/15 !bg-white/10 !text-white/75 hover:!bg-white/15 hover:!text-white" />
-        </nav>
+          <div className="zl-nav-links">
+            <Link to="/explorar" className="zl-nav-link">{t('landing.exploreCourses')}</Link>
+            <a href="#precios" className="zl-nav-link">{t('landing.pricingNavLink')}</a>
+            <Link to="/blog" className="zl-nav-link">{t('blog.eyebrow')}</Link>
+            <Link to="/login" className="zl-nav-link">{t('landing.login')}</Link>
+            <span className="zl-nav-tail">
+              <LocaleToggle className="!h-9 !min-w-9 !rounded-none !border-[#14110f]/35 !bg-transparent !text-[#5a524a] hover:!bg-[#14110f]/10 hover:!text-[#14110f]" />
+            </span>
+            <Link to="/registro" className="zl-nav-cta">{t('landing.createAccount')}</Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero — tipografía sobre papel a la izquierda, la figura a sangre sobre
+          negro a la derecha. La figura es el argumento, no una ilustración */}
+      <header className="zl-hero">
+        <div className="zl-hero-grid">
+          <div className="zl-hero-type">
+            <Rotulo fill={VERMILION}>{t('landing.eyebrow')}</Rotulo>
+            <h1 className="zl-display">
+              {t('landing.heroTitleLine1')}
+              <br />
+              {t('landing.heroTitleLine2')}
+            </h1>
+            <p className="zl-body">{t('landing.heroBody')}</p>
+            <div className="zl-hero-actions">
+              <Link to="/registro" className="zl-btn zl-btn--primary">
+                {t('landing.createAccountFree')}
+                <Icon name="arrowRight" size={16} />
+              </Link>
+              <Link to="/explorar" className="zl-btn zl-btn--ghost">
+                {t('landing.exploreNoAccount')}
+              </Link>
+            </div>
+            <p className="zl-hero-note">
+              {t('landing.alreadyHaveAccount')}{' '}
+              <Link to="/login">{t('landing.loginCta')}</Link>
+            </p>
+          </div>
+          <div className="zl-hero-figure">
+            <PlaneFigure label={t('landing.figureLabel')} fit="bleed" animateOnMount />
+          </div>
+        </div>
       </header>
 
-      {/* Hero — altura de pantalla completa; el fondo aurora se mueve más que
-          antes y la barra de estadísticas vive dentro de este mismo frame,
-          tanto en desktop como en mobile */}
-      <section
-        className="relative flex min-h-[100dvh] flex-col px-6 pb-24 pt-28 sm:px-10 sm:pb-32 sm:pt-32"
-        style={{ background: 'radial-gradient(120% 100% at 50% -10%, rgb(var(--color-brand-deep) / 0.6), #040406 65%)' }}
-      >
-        {/* overflow-hidden queda acá, y no en el <section>, para que el fondo
-            aurora se recorte a este frame pero la barra de estadísticas de más
-            abajo pueda seguir "flotando" fuera de este límite sin ser clipeada */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <Aurora colorStops={auroraColors} blend={0.6} amplitude={2.6} speed={1.1} />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#040406] to-transparent" />
-        </div>
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/55">
-            {t('landing.eyebrow')}
-          </p>
-          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl">
-            {t('landing.heroTitleLine1')}
-            <br />
-            {t('landing.heroTitleLine2')}
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-            {t('landing.heroBody')}
-          </p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={3} className="w-full sm:w-fit">
-              {t('landing.createAccountFree')}
-              <Icon name="arrowRight" size={17} />
-            </StarBorder>
-            <Link
-              to="/explorar"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/25 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
-            >
-              {t('landing.exploreNoAccount')}
-            </Link>
-          </div>
-          <p className="mt-6 text-sm text-white/55">
-            {t('landing.alreadyHaveAccount')}{' '}
-            <Link to="/login" className="font-medium text-white underline underline-offset-2 hover:text-white/80">
-              {t('landing.loginCta')}
-            </Link>
-          </p>
-        </div>
-
-        {/* Barra de estadísticas — flota sobre el borde inferior del Hero,
-            pero sigue viviendo dentro del mismo frame de pantalla completa */}
-        {showStats && (
-          <div className="relative z-10 mx-auto -mb-24 w-full max-w-4xl sm:-mb-28">
-            <div className="za-card za-fade-up grid grid-cols-1 divide-y divide-surface-border overflow-hidden rounded-3xl sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              {stats.map((s) => (
-                <div key={s.label} className="flex items-center gap-3 px-6 py-5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Icon name={s.icon} size={19} />
-                  </span>
-                  <div>
-                    <p className="text-2xl font-bold leading-none tracking-tight text-ink">{s.value}</p>
-                    <p className="mt-1 text-xs text-ink-soft">{s.label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Features */}
-      <section className={`mx-auto max-w-6xl px-6 sm:px-10 ${showStats ? 'pb-16 pt-14' : 'py-16'}`}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((f) => (
-            <BorderGlow
-              key={f.titleKey}
-              {...CARD_GLOW}
-              backgroundColor="#1f2937"
-              className="group h-full transition-transform hover:-translate-y-0.5"
-            >
-              <div className="flex h-full flex-col p-5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
-                  <Icon name={f.icon} size={20} />
-                </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
+      {/* Cifras reales del catálogo, en una tira dividida por filetes */}
+      {showStats && (
+        <div className="zl-stats">
+          <div className="zl-stats-grid">
+            {stats.map((s) => (
+              <div key={s.label} className="zl-stat">
+                <span className="zl-num zl-stat-value">{s.value}</span>
+                <span className="zl-stat-label">{s.label}</span>
               </div>
-            </BorderGlow>
-          ))}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Prestaciones — cuadrantes de una grilla continua sobre índigo */}
+      <section className="zl-region zl-region--indigo">
+        <div className="zl-wrap">
+          <RegionHead rotulo={t('landing.featuresEyebrow')} fill={GOLD} title={t('landing.featuresTitle')} />
+          <div className="zl-quads">
+            {FEATURES.map((f) => (
+              <div key={f.titleKey} className="zl-quad">
+                <PlaneMark shape={f.shape} fill={f.fill} className="zl-quad-mark" />
+                <div>
+                  <h3 className="zl-subtitle">{t(f.titleKey)}</h3>
+                  <p className="zl-body zl-body--sm" style={{ marginTop: '0.5rem' }}>{t(f.bodyKey)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Escuelas de especialización */}
+      {/* Escuelas — la demostración de la tesis: cada escuela es un plano de la
+          figura, y enfocarla lo enciende */}
       {schools.length > 0 && (
-        <section className="bg-surface-soft px-6 py-16 sm:px-10">
-          <div className="mx-auto max-w-6xl">
-            <div className="max-w-xl">
-              <p className="za-eyebrow">{t('landing.schoolsEyebrow')}</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                {t('landing.schoolsTitle')}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.schoolsBody')}</p>
-            </div>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              {schools.map((s) => {
-                const theme = schoolTheme(s.slug)
-                return (
-                  <div
-                    key={s.slug}
-                    className="w-[calc((100%-1rem)/2)] sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]"
-                  >
-                    <BorderGlow
-                      {...CARD_GLOW}
-                      backgroundColor="#1f2937"
-                      className="group h-full transition-transform hover:-translate-y-0.5"
-                    >
+        <section className="zl-region zl-region--paper">
+          <div className="zl-wrap">
+            <RegionHead
+              rotulo={t('landing.schoolsEyebrow')}
+              fill={VERMILION}
+              title={t('landing.schoolsTitle')}
+              aside={<p className="zl-body">{t('landing.schoolsBody')}</p>}
+            />
+
+            <div className="zl-schools">
+              <div className="zl-schools-figure">
+                <PlaneFigure label={t('landing.figureLabel')} activeSlug={activeSchool} />
+                <p className="zl-figure-caption">
+                  <span
+                    aria-hidden="true"
+                    className="zl-figure-dot"
+                    style={{ background: activeSchool ? planeOfSchool(activeSchool).fill : PAPER }}
+                  />
+                  {activeSchoolName ?? t('landing.schoolsHint')}
+                </p>
+              </div>
+
+              <ul className="zl-school-list" onMouseLeave={() => setActiveSchool(null)}>
+                {schools.map((s) => {
+                  const plane = planeOfSchool(s.slug)
+                  return (
+                    <li key={s.slug}>
                       <Link
                         to={`/explorar?escuela=${s.slug}`}
-                        className="relative flex h-full flex-col overflow-hidden p-5"
+                        className="zl-school"
+                        onMouseEnter={() => setActiveSchool(s.slug)}
+                        onFocus={() => setActiveSchool(s.slug)}
+                        onBlur={() => setActiveSchool(null)}
                       >
-                        <div
-                          className="pointer-events-none absolute -right-6 -top-6 opacity-[0.07] transition-transform duration-300 group-hover:scale-110"
-                          style={{ color: theme.accent }}
-                        >
-                          <Icon name={theme.icon} size={110} strokeWidth={1.2} />
-                        </div>
-                        <span
-                          className="relative flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                          style={{ backgroundImage: schoolGradient(theme) }}
-                        >
-                          <Icon name={theme.icon} size={20} />
-                        </span>
-                        <h3 className="relative mt-4 text-[14px] font-semibold leading-snug text-ink">{s.nombre}</h3>
-                        <p className="relative mt-1 text-xs text-ink-muted">
+                        <PlaneMark shape={plane.shape} fill={plane.fill} className="zl-school-mark" />
+                        <span className="zl-school-name">{s.nombre}</span>
+                        <span className="zl-school-count">
                           {t(s.count === 1 ? 'catalog.coursesCountOne' : 'catalog.coursesCountOther', {
                             count: s.count,
                           })}
-                        </p>
+                        </span>
                       </Link>
-                    </BorderGlow>
-                  </div>
-                )
-              })}
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           </div>
         </section>
       )}
 
       {/* Cursos destacados */}
-      <section className="px-6 py-16 sm:px-10">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="za-eyebrow">{t('landing.catalogEyebrow')}</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.featuredCourses')}</h2>
-            </div>
-            <Link
-              to="/explorar"
-              className="hidden shrink-0 items-center gap-1 text-sm font-medium text-accent hover:text-accent-dark sm:inline-flex"
-            >
-              {t('landing.seeFullCatalog')}
-              <Icon name="chevronRight" size={16} />
-            </Link>
-          </div>
+      <section className="zl-region zl-region--paper2">
+        <div className="zl-wrap">
+          <RegionHead
+            rotulo={t('landing.catalogEyebrow')}
+            fill={VERMILION}
+            title={t('landing.featuredCourses')}
+            aside={
+              <Link to="/explorar" className="zl-link">
+                {t('landing.seeFullCatalog')}
+                <Icon name="arrowRight" size={14} />
+              </Link>
+            }
+          />
 
           {loadingCourses ? (
-            <div className="flex justify-center py-16">
-              <Spinner size={32} />
+            <div className="zl-courses" aria-busy="true" aria-live="polite">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="zl-course" style={{ opacity: 0.5 }}>
+                  <div className="zl-course-plate" style={{ background: 'rgba(20,17,15,0.12)' }} />
+                  <div className="zl-course-body">
+                    <span className="zl-course-meta">{t('landing.loadingCourses')}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : featuredCourses.length === 0 ? (
-            <p className="mt-8 text-sm text-ink-soft">{t('landing.comingSoon')}</p>
+            <p className="zl-body">{t('landing.comingSoon')}</p>
           ) : (
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredCourses.map((c) => (
-                <BorderGlow
-                  key={c.id}
-                  {...CARD_GLOW}
-                  backgroundColor="transparent"
-                  className="transition-transform hover:-translate-y-0.5"
-                >
-                  <CourseCard course={c} to={`/explorar/cursos/${c.id}`} />
-                </BorderGlow>
+            <div className="zl-courses">
+              {featuredCourses.map((c, i) => (
+                <PosterCourseCard key={c.id} course={c} index={i} to={`/explorar/cursos/${c.id}`} />
               ))}
             </div>
           )}
-
-          <Link
-            to="/explorar"
-            className="mt-8 flex items-center justify-center gap-1 text-sm font-medium text-accent hover:text-accent-dark sm:hidden"
-          >
-            {t('landing.seeFullCatalog')}
-            <Icon name="chevronRight" size={16} />
-          </Link>
         </div>
       </section>
 
-      {/* Cómo funciona */}
-      <section className="bg-surface-soft px-6 py-16 sm:px-10">
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-xl">
-            <p className="za-eyebrow">{t('landing.howEyebrow')}</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.howTitle')}</h2>
-          </div>
-          <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
-            {HOW_STEPS.map((s, i) => (
-              <div key={s.titleKey}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
-                  {i + 1}
-                </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(s.titleKey)}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(s.bodyKey)}</p>
+      {/* Cómo funciona — la figura se arma paso a paso y termina en el papel del
+          certificado, que es la única prueba concreta que la página promete */}
+      <section className="zl-region zl-region--ink">
+        <div className="zl-wrap">
+          <RegionHead rotulo={t('landing.howEyebrow')} fill={GOLD} title={t('landing.howTitle')} />
+
+          <div className="zl-steps">
+            <ul className="zl-step-list">
+              {HOW_STEPS.map((s, i) => (
+                <li key={s.titleKey}>
+                  <button
+                    type="button"
+                    className="zl-step"
+                    aria-pressed={step === i}
+                    onClick={() => setStep(i)}
+                    onMouseEnter={() => setStep(i)}
+                    onFocus={() => setStep(i)}
+                  >
+                    <span className="zl-num zl-step-num">{i + 1}</span>
+                    <span>
+                      <span className="zl-subtitle" style={{ display: 'block' }}>{t(s.titleKey)}</span>
+                      <span className="zl-body zl-body--sm" style={{ display: 'block', marginTop: '0.5rem' }}>
+                        {t(s.bodyKey)}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div>
+              <div className="zl-steps-figure">
+                <PlaneFigure label={t('landing.figureLabel')} revealCount={STEP_REVEALS[step]} />
               </div>
-            ))}
+              <div className="zl-cert" style={{ marginTop: '1.5rem' }}>
+                <div className="zl-cert-rule" />
+                <span className="zl-label">{t('landing.certLabel')}</span>
+                <p className="zl-cert-code zl-num">ZA-XXXXXXXX</p>
+                <p className="zl-body zl-body--sm" style={{ margin: 0 }}>{t('landing.certNote')}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Precios */}
-      <section id="precios" className="scroll-mt-24 px-6 py-16 sm:px-10 sm:scroll-mt-28">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-xl text-center">
-            <p className="za-eyebrow">{t('landing.pricingEyebrow')}</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-              {t('landing.pricingTitle')}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.pricingBody')}</p>
-          </div>
+      <section id="precios" className="zl-region zl-region--paper" style={{ scrollMarginTop: '4rem' }}>
+        <div className="zl-wrap">
+          <RegionHead
+            rotulo={t('landing.pricingEyebrow')}
+            fill={VERMILION}
+            title={t('landing.pricingTitle')}
+            aside={<p className="zl-body">{t('landing.pricingBody')}</p>}
+          />
 
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="zl-plans">
             {PRICING_PLANS.map((p) => (
-              <BorderGlow
-                key={p.id}
-                {...CARD_GLOW}
-                backgroundColor="#1f2937"
-                className={`h-full transition-transform hover:-translate-y-0.5 ${
-                  p.highlighted ? 'sm:-translate-y-2 sm:scale-[1.03]' : ''
-                }`}
-              >
-                <div className="flex h-full flex-col p-6">
-                  {p.saveKey && (
-                    <span className="mb-3 self-start">
-                      <Badge tone="brand">{t(p.saveKey)}</Badge>
-                    </span>
-                  )}
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t(p.nameKey)}</h3>
-                  <p className="mt-3 flex items-baseline gap-1">
-                    <span className="text-4xl font-bold tracking-tight text-ink">
-                      USD {monthlyEquivalent(p.price, p.months)}
-                    </span>
-                    <span className="text-sm font-medium text-ink-muted">{t('landing.pricingPerMonth')}</span>
-                  </p>
-                  <p className="mt-1 text-xs text-ink-muted">{t(p.billedKey, { price: p.price })}</p>
+              <div key={p.id} className={`zl-plan${p.highlighted ? ' zl-plan--featured' : ''}`}>
+                <span className="zl-plan-name">{t(p.nameKey)}</span>
+                <p className="zl-plan-price zl-num">
+                  <span>USD {monthlyEquivalent(p.price, p.months)}</span>
+                  <span className="zl-plan-per">{t('landing.pricingPerMonth')}</span>
+                </p>
+                <p className="zl-plan-billed">{t(p.billedKey, { price: p.price })}</p>
+                {p.saveKey && <span className="zl-plan-tag">{t(p.saveKey)}</span>}
 
-                  <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-soft">
-                    {PRICING_FEATURES.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
-                        {t(f)}
-                      </li>
-                    ))}
-                  </ul>
+                <ul className="zl-plan-features">
+                  {PRICING_FEATURES.map((f) => (
+                    <li key={f} className="zl-plan-feature">
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 10,
+                          height: 10,
+                          marginTop: '0.4rem',
+                          background: p.highlighted ? GOLD : VERMILION,
+                          display: 'block',
+                        }}
+                      />
+                      {t(f)}
+                    </li>
+                  ))}
+                </ul>
 
-                  <Link
-                    to="/registro"
-                    className={`mt-6 flex h-11 items-center justify-center rounded-xl text-sm font-semibold transition-colors ${
-                      p.highlighted
-                        ? 'bg-brand text-white hover:opacity-90'
-                        : 'border border-white/20 text-ink hover:bg-white/5'
-                    }`}
-                  >
-                    {t('landing.pricingCta')}
-                  </Link>
-                </div>
-              </BorderGlow>
+                <Link to="/registro" className={`zl-btn ${p.highlighted ? 'zl-btn--primary' : 'zl-btn--ghost'}`}>
+                  {t('landing.pricingCta')}
+                </Link>
+              </div>
             ))}
           </div>
 
-          <p className="mt-8 text-center text-xs text-ink-muted">{t('landing.pricingFootnote')}</p>
+          <p className="zl-body zl-body--sm" style={{ marginTop: '2rem', maxWidth: 'none' }}>
+            {t('landing.pricingFootnote')}
+          </p>
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="mx-auto max-w-6xl px-6 py-16 sm:px-10">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-brand-deep px-6 py-14 text-center sm:px-16 sm:py-16">
-          <div className="pointer-events-none absolute -left-16 -bottom-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -right-12 -top-20 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-          <div className="relative z-10">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('landing.readyTitle')}</h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-white/70">{t('landing.readyBody')}</p>
-            <StarBorder as={Link} to="/registro" color="#f0626f" speed="5s" thickness={3} className="mx-auto mt-7 w-fit">
-              {t('landing.createAccountFree')}
-              <Icon name="arrowRight" size={17} />
-            </StarBorder>
+      {/* Cierre — una región bermellón entera, sin tarjeta que la contenga */}
+      <section className="zl-region zl-region--vermilion">
+        <div className="zl-wrap zl-close">
+          <div>
+            <h2 className="zl-display" style={{ fontSize: 'clamp(2.25rem, 5vw, 4rem)' }}>
+              {t('landing.readyTitle')}
+            </h2>
+            <p className="zl-body" style={{ marginTop: '1.25rem' }}>{t('landing.readyBody')}</p>
           </div>
+          <Link to="/registro" className="zl-btn zl-btn--primary">
+            {t('landing.createAccountFree')}
+            <Icon name="arrowRight" size={16} />
+          </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-surface-border px-6 py-8 sm:px-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <Wordmark size={16} />
-          <nav className="flex items-center gap-5">
-            <Link to="/blog" className="text-xs font-medium text-ink-soft hover:text-accent">
-              {t('landing.blogLink')}
-            </Link>
-            <Link to="/terminos" className="text-xs font-medium text-ink-soft hover:text-accent">
-              {t('landing.termsOfService')}
-            </Link>
-            <Link to="/privacidad" className="text-xs font-medium text-ink-soft hover:text-accent">
-              {t('landing.privacyPolicy')}
-            </Link>
+      <footer className="zl-foot">
+        <div className="zl-wrap zl-foot-inner">
+          <Wordmark size={16} tone="dark" />
+          <nav className="zl-foot-nav" aria-label={t('landing.footerNavLabel')}>
+            <Link to="/blog" className="zl-foot-link">{t('landing.blogLink')}</Link>
+            <Link to="/terminos" className="zl-foot-link">{t('landing.termsOfService')}</Link>
+            <Link to="/privacidad" className="zl-foot-link">{t('landing.privacyPolicy')}</Link>
           </nav>
-          <p className="text-xs text-ink-muted">{t('landing.copyright', { year: new Date().getFullYear() })}</p>
+          <p className="zl-foot-copy">{t('landing.copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>
     </div>
