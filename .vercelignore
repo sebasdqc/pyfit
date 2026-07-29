@@ -4,13 +4,13 @@ mobile/
 performance-web/
 academy-web/
 
-# Archivos binarios y documentos en la raíz
-*.jpg
-*.jpeg
-*.png
-*.pdf
-*.mp4
-*.mov
+# Archivos binarios y documentos en la raíz (no afecta a public/, que sí debe subir)
+/*.jpg
+/*.jpeg
+/*.png
+/*.pdf
+/*.mp4
+/*.mov
 
 # Dependencias
 node_modules/
