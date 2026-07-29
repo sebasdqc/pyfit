@@ -1,26 +1,61 @@
 // Identidad de marca de Zyfit Academy.
 //
-// El emblema tipo escudo (inspirado en el lenguaje del manual CONMEBOL) que
-// existió acá se retiró por completo del producto: la única marca vigente es
-// el `Wordmark` tipográfico de la landing pública, usado ahora en TODOS los
-// contextos (Sidebar, Login, Register, certificados, reproductor de
-// lecciones, etc.) vía `BrandLockup`.
+// El emblema tipo escudo (inspirado en el lenguaje del manual CONMEBOL) se
+// retiró por completo del producto. Hoy la marca se resuelve así:
+//
+//   tone="dark"  (fondo oscuro) → LOGO REAL, `public/logo-zyfit.png`
+//   tone="light" (fondo claro)  → wordmark tipográfico de respaldo
+//
+// ⚠️ El archivo de logo es BLANCO con sombra sobre transparencia: se vuelve
+// invisible sobre fondos claros. Por eso el logo NO se aplica cuando
+// `tone="light"` — no es un olvido. Cuando exista una versión en tinta oscura
+// del logo, agregarla acá como `LOGO_LIGHT` y usarla en esa rama; ahí sí queda
+// la marca real en el 100% del producto.
 
 import { useTenant } from '@/tenant/TenantContext'
 
-// Wordmark tipográfico puro (sin ícono) — identidad única del producto.
+// Logo oficial de Zyfit (blanco). Vive en `public/`, así que Vite lo copia tal
+// cual a `dist/` y se referencia por ruta absoluta.
+const LOGO_DARK_BG = '/logo-zyfit.png'
+
+// Marca en línea. Sobre fondo oscuro es el logo real; sobre fondo claro cae al
+// wordmark tipográfico (ver nota de arriba).
 export function Wordmark({ size = 19, tone = 'light' }: { size?: number; tone?: 'light' | 'dark' }) {
   const tenant = useTenant()
-  const strong = tone === 'dark' ? 'text-white' : 'text-ink'
-  const soft = tone === 'dark' ? 'text-white/50' : 'text-ink-muted'
+
   const [first, ...rest] = tenant.nombre_plataforma.split(' ')
+
+  if (tone === 'dark') {
+    // El archivo de logo dice solo "ZYFIT". El resto del nombre de la
+    // plataforma ("Academy") se compone al lado para no perder de qué producto
+    // es esta pantalla; el conjunto se lee como un lockup, no como dos marcas.
+    return (
+      <span className="flex items-baseline gap-2 select-none">
+        <img
+          src={LOGO_DARK_BG}
+          alt={first}
+          // El alto manda; el ancho sale de la proporción del archivo.
+          style={{ height: Math.round(size * 0.92), width: 'auto' }}
+          className="block object-contain"
+        />
+        {rest.length > 0 && (
+          <span
+            style={{ fontSize: size }}
+            className="font-medium leading-none tracking-tight text-white/60"
+          >
+            {rest.join(' ')}
+          </span>
+        )}
+      </span>
+    )
+  }
 
   return (
     <span className="flex items-center gap-2 select-none">
       <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-      <span style={{ fontSize: size }} className={`font-bold leading-none tracking-tight ${strong}`}>
+      <span style={{ fontSize: size }} className="font-bold leading-none tracking-tight text-ink">
         {first}
-        {rest.length > 0 && <span className={`ml-1 font-medium ${soft}`}>{rest.join(' ')}</span>}
+        {rest.length > 0 && <span className="ml-1 font-medium text-ink-muted">{rest.join(' ')}</span>}
       </span>
     </span>
   )
@@ -60,10 +95,12 @@ export function BrandLockup({
     )
   }
 
-  // Sin logo propio: wordmark tipográfico (mismo de la landing pública).
+  // Sin logo propio del tenant: sobre fondo oscuro va el logo de Zyfit a la
+  // altura pedida (`size` es la altura del lockup, no un tamaño tipográfico);
+  // sobre fondo claro cae al wordmark, que sí se mide en puntos de texto.
   return (
     <div className="flex flex-col items-start gap-1">
-      <Wordmark size={size * 0.5} tone={tone} />
+      <Wordmark size={tone === 'dark' ? size * 0.78 : size * 0.5} tone={tone} />
       {showTagline && tagline && (
         <span className={`text-[9px] font-medium uppercase tracking-[0.24em] ${sub}`}>
           {tagline}
