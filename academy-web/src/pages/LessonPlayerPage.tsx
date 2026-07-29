@@ -287,7 +287,8 @@ export function LessonPlayerPage() {
         >
           <Icon name="chevronLeft" size={20} />
         </button>
-        <Wordmark size={14} />
+        {/* El tono sigue al tema del reproductor: en oscuro va el logo blanco. */}
+        <Wordmark size={14} tone={theme === 'dark' ? 'dark' : 'light'} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{enr.curso.titulo}</p>
         </div>
