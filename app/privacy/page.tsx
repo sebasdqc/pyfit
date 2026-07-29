@@ -290,6 +290,11 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#f9fafb',
     minHeight: '100vh',
     padding: '40px 16px 80px',
+    // globals.css pone color: var(--ink) (casi blanco) en el body; sin esto el
+    // cuerpo del texto se hereda blanco sobre la tarjeta blanca y no se lee.
+    color: '#1f2937',
+    fontSize: 15,
+    lineHeight: 1.7,
   },
   container: {
     maxWidth: 820,
@@ -372,7 +377,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 40,
     paddingTop: 24,
     borderTop: '1px solid #f3f4f6',
-    color: '#9ca3af',
+    color: '#6b7280',
     fontSize: 13,
   },
 }
