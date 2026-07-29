@@ -212,6 +212,90 @@ export default function LandingPage() {
           </Reveal>
           <Faq />
         </section>
+
+        {/* Ecosistema Zyfit */}
+        <section className="max-w-6xl mx-auto px-6 pb-24">
+          <Reveal>
+            <div
+              className="glass-strong rounded-[2rem] px-8 py-14 sm:py-16 relative overflow-hidden"
+              style={{ boxShadow: 'var(--shadow-lift)' }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ background: 'radial-gradient(ellipse 60% 90% at 50% 0%, rgba(139,123,255,0.16), transparent 70%)' }}
+              />
+              <div className="relative z-10 text-center max-w-2xl mx-auto">
+                <span
+                  className="font-mono-label text-xs uppercase inline-block px-3 py-1 rounded-full glass"
+                  style={{ color: 'var(--accent-light)' }}
+                >
+                  Ecosistema Zyfit
+                </span>
+                <h2 className="section-title mt-4">
+                  Para quienes quieren <span className="font-accent gradient-text">aprender</span>, y para quienes
+                  llevan a sus equipos al <span className="font-accent gradient-text">siguiente nivel</span>.
+                </h2>
+                <p className="mt-4" style={{ color: 'var(--ink-dim)' }}>
+                  Zyfit también vive en la formación de entrenadores y en el alto rendimiento deportivo.
+                </p>
+              </div>
+
+              <div className="relative z-10 mt-10 grid sm:grid-cols-2 gap-4">
+                <div className="glass rounded-2xl p-6 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', boxShadow: '0 0 24px -12px var(--violet)' }}
+                    >
+                      🎓
+                    </div>
+                    <span
+                      className="font-mono-label inline-flex items-center gap-2 text-[10px] uppercase px-3 py-1 rounded-full glass"
+                      style={{ color: 'var(--violet)' }}
+                    >
+                      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--violet)' }} />
+                      En construcción
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg" style={{ color: 'var(--violet)' }}>
+                      Zyfit Academy
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                      Formación y certificación para entrenadores, con tutor de IA incluido.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="glass rounded-2xl p-6 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', boxShadow: '0 0 24px -12px var(--cyan)' }}
+                    >
+                      📊
+                    </div>
+                    <span
+                      className="font-mono-label inline-flex items-center gap-2 text-[10px] uppercase px-3 py-1 rounded-full glass"
+                      style={{ color: 'var(--cyan)' }}
+                    >
+                      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--cyan)' }} />
+                      En construcción
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg" style={{ color: 'var(--cyan)' }}>
+                      Zyfit Performance
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-dim)' }}>
+                      El panel de rendimiento para clubes y centros de alto nivel.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </section>
       </main>
 
       {/* Footer */}
