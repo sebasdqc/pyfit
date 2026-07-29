@@ -200,23 +200,13 @@ racha ni badges core** — es una feature social aparte.
   usa su propio endpoint `/api/academy/me/` (NO `ProfileSerializer`).
 - **Onboarding inicial** (`/bienvenida`, wizard de 4 pasos tras primer login)
   — guardado progresivo vía `/api/academy/me/`.
-- **Landing pública — mundo visual propio (2026-07-28):** sistema **"Retrato de
-  Planos"** (afiche de Ikko Tanaka) que **reemplazó** al rediseño de 2026-07-08
-  (Aurora WebGL + `BorderGlow` + hero oscuro a 100dvh). Papel washi `#f2e8d5`,
-  planos llenos sin contorno, **radio 0, sin sombras, sin degradados, sin
-  blur**, tipografía **Archivo variable** (el ancho hace la jerarquía). El rojo
-  de marca `#cc1f36` queda intacto, en el rol del bermellón.
-  📄 **Detalle completo: [`academy-web/DESIGN.md`](DESIGN.md).**
-  - **Aislamiento (importante):** todo vive bajo la clase `.zl` con variables
-    `--zl-*` en `src/pages/landing.css`. **No toca** `index.css`, `.za-card`,
-    Tailwind ni el dark mode. El producto autenticado, login, `/explorar` y el
-    blog siguen en el sistema anterior — los dos conviven a propósito.
-  - `Aurora`/`BorderGlow`/`StarBorder` **siguen usados por `LoginPage` y
-    `BlogPage`**: no borrarlos, pero tampoco devolverlos a la landing.
-  - `PosterCourseCard` es SOLO de la landing; `ui/CourseCard` sigue sirviendo al
-    catálogo autenticado y a `/explorar`.
-  - Voz del copy de la landing unificada en **"tú"** (antes mezclaba "tú" en el
-    hero con voseo en escuelas/pasos/precios).
+- **Landing pública rediseñada (2026-07-08):** header flotante oscuro,
+  wordmark tipográfico en vez del emblema-escudo, Hero a `100dvh` con fondo
+  Aurora WebGL más dinámico (`speed`/`amplitude` subidos). Ver
+  `project_academy_landing_redesign`. **Gotcha de layout:** el `overflow-hidden`
+  del Hero debe quedar en un `<div>` interno que envuelve SOLO el fondo
+  animado, nunca en el `<section>` completo, o cualquier card que se
+  "derrame" fuera del Hero con margen negativo queda clipeada.
 
 ## ⚠️ GOTCHA recurrente — headers custom y CORS (ya pasó 2 veces)
 
