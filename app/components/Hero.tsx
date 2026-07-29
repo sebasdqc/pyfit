@@ -53,7 +53,7 @@ export default function Hero() {
             sesión y cómo llegas ese día. Nada de plantillas genéricas.
           </p>
 
-          <div className="mt-10 flex flex-col gap-4" id="lista-de-espera">
+          <div className="mt-10 flex flex-col gap-4">
             <WaitlistForm />
             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--ink-dim)' }}>
               <span className="inline-flex items-center gap-1.5">

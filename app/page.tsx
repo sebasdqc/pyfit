@@ -179,7 +179,7 @@ export default function LandingPage() {
         </section>
 
         {/* CTA */}
-        <section className="max-w-6xl mx-auto px-6 py-24">
+        <section id="lista-de-espera" className="max-w-6xl mx-auto px-6 py-24">
           <Reveal>
             <div
               className="glass-strong rounded-[2rem] px-8 py-16 sm:py-20 text-center relative overflow-hidden"

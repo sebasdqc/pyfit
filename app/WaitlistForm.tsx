@@ -5,11 +5,30 @@ import { useState } from 'react'
 export default function WaitlistForm() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.includes('@')) return
-    setSubmitted(true)
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error ?? 'No pudimos guardar tu email, intenta de nuevo.')
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos guardar tu email, intenta de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (submitted) {
@@ -35,22 +54,30 @@ export default function WaitlistForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="tu@email.com"
-        className="flex-1 rounded-xl px-4 py-3.5 text-sm outline-none glass transition-all placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)]"
-        style={{ color: 'var(--ink)' }}
-      />
-      <button
-        type="submit"
-        className="btn-primary rounded-xl px-5 py-3.5 text-sm font-semibold whitespace-nowrap"
-      >
-        Unirme a la lista
-      </button>
-    </form>
+    <div className="w-full max-w-md">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="tu@email.com"
+          className="flex-1 rounded-xl px-4 py-3.5 text-sm outline-none glass transition-all placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)]"
+          style={{ color: 'var(--ink)' }}
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary rounded-xl px-5 py-3.5 text-sm font-semibold whitespace-nowrap disabled:opacity-60"
+        >
+          {loading ? 'Enviando...' : 'Unirme a la lista'}
+        </button>
+      </form>
+      {error && (
+        <p className="text-sm mt-2" style={{ color: 'var(--orange)' }}>
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
