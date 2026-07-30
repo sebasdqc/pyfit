@@ -6,16 +6,18 @@ import { useEffect, useState } from 'react'
  * Contador de la lista de espera, estética de odómetro: un dígito por caja,
  * rodando desde 0 al montar.
  *
- * El número está FIJO en 117 a propósito. Para automatizarlo basta reemplazar
- * `FIXED_COUNT` por el total real —`GET /api/waitlist` ya devuelve
- * `{ count }` leyendo `waitlist_signups`— y pasar ese valor a `<Odometer />`.
+ * Muestra `BASE_COUNT + count`, donde `count` es el total real de
+ * `waitlist_signups` que inyecta `page.tsx`. El piso existe porque el número
+ * crudo arrancaba en 0 y eso se lee peor que vacío; para mostrar el número
+ * puro basta poner `BASE_COUNT = 0`.
  */
-const FIXED_COUNT = 117
+const BASE_COUNT = 117
 const ROLL_MS = 1500
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-export default function WaitlistCounter() {
+export default function WaitlistCounter({ count = 0 }: { count?: number }) {
+  const total = BASE_COUNT + Math.max(0, Math.trunc(count))
   return (
     <div
       className="glass-strong rounded-[2rem] px-6 py-12 sm:px-14 sm:py-14 relative overflow-hidden"
@@ -35,7 +37,7 @@ export default function WaitlistCounter() {
           Lista de espera abierta
         </span>
 
-        <Odometer value={FIXED_COUNT} />
+        <Odometer value={total} />
 
         <p className="font-mono-label text-xs uppercase" style={{ color: 'var(--ink-dim)' }}>
           personas ya en la lista de espera

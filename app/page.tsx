@@ -7,6 +7,7 @@ import FactorBars from './components/FactorBars'
 import LoopSteps from './components/LoopSteps'
 import Faq from './components/Faq'
 import WaitlistCounter from './components/WaitlistCounter'
+import { getWaitlistCount } from './lib/waitlist'
 
 const FEATURES = [
   {
@@ -52,7 +53,20 @@ const MARQUEE = [
   'Ciclismo', 'CrossFit', 'Funcionales', 'Trail',
 ]
 
-export default function LandingPage() {
+/**
+ * El contador de la lista de espera lee el total real de `waitlist_signups`.
+ * Se revalida cada 5 minutos: la landing sigue siendo estática y no pega a la
+ * base en cada visita.
+ */
+export const revalidate = 300
+
+export default async function LandingPage() {
+  const waitlistCount = await getWaitlistCount().catch((err) => {
+    // Si la base falla, la landing igual se muestra: cae al piso.
+    console.error('waitlist count failed', err)
+    return 0
+  })
+
   return (
     <>
       {/* Ambient background */}
@@ -94,7 +108,7 @@ export default function LandingPage() {
         {/* Contador de la lista de espera */}
         <section className="max-w-6xl mx-auto px-6 py-20">
           <Reveal>
-            <WaitlistCounter />
+            <WaitlistCounter count={waitlistCount} />
           </Reveal>
         </section>
 
