@@ -51,7 +51,7 @@ export default function PhoneMockup() {
           <div
             className="relative overflow-hidden rounded-[1.9rem]"
             style={{
-              aspectRatio: '720 / 1566',
+              aspectRatio: '720 / 1564',
               background: '#0b1016',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
             }}
