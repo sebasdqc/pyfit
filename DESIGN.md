@@ -19,6 +19,8 @@ colors:
   glass-highlight: "rgba(255, 255, 255, 0.06)"
   glass-highlight-strong: "rgba(255, 255, 255, 0.07)"
   glass-notch: "rgba(255, 255, 255, 0.14)"
+  well: "rgba(0, 0, 0, 0.18)"
+  well-seam: "rgba(0, 0, 0, 0.45)"
 typography:
   display:
     fontFamily: "Big Shoulders Display, system-ui, sans-serif"
@@ -124,6 +126,10 @@ por color, son acentos decorativos por sección.
 - **Ink Faint** (`#5f6b86`): texto terciario (separadores, copyright,
   placeholder).
 - **Bg** (`#08090c`) / **Bg Soft** (`#0d0f14`) / **Card** (`#0a0b0f`).
+- **Well** (`rgba(0,0,0,0.18)`) / **Well Seam** (`rgba(0,0,0,0.45)`): negros
+  translúcidos de profundidad para superficies *hundidas* — el fondo y la
+  costura de las cajas del odómetro. No son colores de la paleta ni se usan
+  para texto ni para bordes.
 
 ### Named Rules
 **The Confirmed-Aesthetic Rule.** Gradient-text y glass/backdrop-filter
@@ -198,6 +204,17 @@ Radios grandes y suaves: `rounded-2xl`/`rounded-3xl` en tarjetas, `rounded-full`
 - **Background:** `.glass` o `.glass-strong`.
 - **Shadow Strategy:** ver Elevation & Depth.
 - **Border:** hairline `--border`/`--border-strong`.
+
+### Odómetro (contador de lista de espera)
+- **Style:** una caja por dígito (`.odometer-digit`), `rounded.sm`, borde
+  `--border-strong`, fondo con degradado vertical que termina en `--well` y
+  costura horizontal `--well-seam` a media altura — lectura de contador
+  mecánico de taquilla.
+- **Cifras:** escalón "section title" vía `.counter-value` + `gradient-text`,
+  con `tabular-nums`.
+- **Motion:** al montar, cada tira 0-9 rueda de 0 al dígito final
+  (`cubic-bezier(0.16, 1, 0.3, 1)`, 1.5s + 220ms de desfase por dígito para
+  que cierren encadenados). Sin movimiento con `prefers-reduced-motion`.
 
 ### Inputs / Fields
 - **Style:** `.glass`, texto `ink`, placeholder `ink-faint`.

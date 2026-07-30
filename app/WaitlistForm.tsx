@@ -24,8 +24,6 @@ export default function WaitlistForm() {
         throw new Error(data?.error ?? 'No pudimos guardar tu email, intenta de nuevo.')
       }
       setSubmitted(true)
-      // Avisa al contador de la landing para que releva el total sin recargar.
-      window.dispatchEvent(new Event('zyfit:waitlist-signup'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos guardar tu email, intenta de nuevo.')
     } finally {
