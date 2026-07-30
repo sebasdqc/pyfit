@@ -6,6 +6,22 @@ function getSql() {
   return neon(process.env.DATABASE_URL!)
 }
 
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
+  try {
+    const sql = getSql()
+    const rows = await sql`SELECT COUNT(*)::int AS count FROM waitlist_signups`
+    return Response.json(
+      { count: rows[0]?.count ?? 0 },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  } catch (err) {
+    console.error('waitlist count failed', err)
+    return Response.json({ error: 'No pudimos leer el contador.' }, { status: 500 })
+  }
+}
+
 export async function POST(req: Request) {
   let body: unknown
   try {

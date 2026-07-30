@@ -145,7 +145,7 @@ sobre una sans de trabajo neutra para el cuerpo — la parte de la identidad
 
 ### Hierarchy
 - **Display** (700, `clamp(2.8rem, 6.6vw, 5.2rem)`, line-height 0.98): titular del Hero.
-- **Section title** (700, `clamp(2.1rem, 3.8vw, 3.1rem)`, line-height 1): título de cada sección.
+- **Section title** (700, `clamp(2.1rem, 3.8vw, 3.1rem)`, line-height 1): título de cada sección y número del contador de lista de espera (`.counter-value`, con `tabular-nums`).
 - **Accent** (700 itálica + `gradient-text`): la palabra de énfasis dentro de un titular (`.font-accent.gradient-text`).
 - **Body** (400, 1rem, line-height 1.6): párrafos descriptivos.
 - **Label** (500, 0.75rem, uppercase, tracking 0.14em, JetBrains Mono): eyebrows, unidades de stats.
@@ -154,7 +154,9 @@ sobre una sans de trabajo neutra para el cuerpo — la parte de la identidad
 ## Layout
 
 Contenedor central `max-w-6xl`, padding horizontal `px-6`. Grid de 2/3/4
-columnas según breakpoint para stats, pasos y features. Ritmo vertical por
+columnas según breakpoint para pasos y features. Debajo del marquee hay una
+sola tarjeta ancha (`glass-strong`) con el contador de la lista de espera —
+reemplazó a la banda de 4 stats fijos. Ritmo vertical por
 sección: `py-20` a `py-24`. La línea conectora entre los 4 pasos usa un
 degradado horizontal (`transparent → accent → violet → transparent`).
 

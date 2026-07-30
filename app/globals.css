@@ -73,6 +73,23 @@ body {
   font-weight: 700;
 }
 
+/* Número del contador de lista de espera: escalón "section title" de la rampa
+   tipográfica, con cifras de ancho fijo para que no salte al animar. */
+.counter-value {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 3.8vw, 3.1rem);
+  line-height: 1;
+  letter-spacing: -0.005em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter-skel {
+  display: inline-block;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+  animation: loop-shimmer 1.8s ease-in-out infinite;
+}
+
 .section-title {
   font-family: var(--font-display);
   font-size: clamp(2.1rem, 3.8vw, 3.1rem);

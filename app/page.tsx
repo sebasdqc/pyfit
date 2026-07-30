@@ -6,6 +6,7 @@ import ScoreRing from './components/ScoreRing'
 import FactorBars from './components/FactorBars'
 import LoopSteps from './components/LoopSteps'
 import Faq from './components/Faq'
+import WaitlistCounter from './components/WaitlistCounter'
 
 const FEATURES = [
   {
@@ -44,13 +45,6 @@ const FEATURES = [
     title: 'Tus datos, protegidos',
     text: 'Cifrado en tránsito y en reposo, sin venta de datos a terceros ni publicidad dirigida con tu información de entrenamiento.',
   },
-]
-
-const STATS = [
-  { value: '2', unit: 'motores', label: 'Fuerza y running en una sola app' },
-  { value: '0–100', unit: '', label: 'Zyfit Score que resume tu evolución' },
-  { value: '5', unit: 'señales', label: 'Cruzadas en cada recomendación' },
-  { value: '∞', unit: '', label: 'Sesiones únicas — cero plantillas' },
 ]
 
 const MARQUEE = [
@@ -97,27 +91,11 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Stats band */}
+        {/* Contador de la lista de espera */}
         <section className="max-w-6xl mx-auto px-6 py-20">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {STATS.map((s, i) => (
-              <Reveal key={s.label} delay={i * 90}>
-                <div className="glass rounded-2xl p-6 h-full">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-semibold tracking-tight gradient-text">{s.value}</span>
-                    {s.unit && (
-                      <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
-                        {s.unit}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm leading-snug" style={{ color: 'var(--ink-dim)' }}>
-                    {s.label}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          <Reveal>
+            <WaitlistCounter />
+          </Reveal>
         </section>
 
         {/* Cómo funciona */}
