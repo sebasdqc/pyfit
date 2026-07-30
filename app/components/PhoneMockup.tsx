@@ -1,17 +1,20 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import ScoreRing from './ScoreRing'
-
-const EXERCISES = [
-  { name: 'Press banca', sets: '4×6 · RPE 8' },
-  { name: 'Remo con barra', sets: '4×8 · RPE 7' },
-  { name: 'Press militar', sets: '3×10 · RPE 8' },
-]
+import { useEffect, useRef, useState } from 'react'
 
 export default function PhoneMockup() {
   const wrapRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 })
+
+  // Con prefers-reduced-motion el video queda congelado en el poster.
+  useEffect(() => {
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const v = videoRef.current
+    if (!v) return
+    v.pause()
+    v.currentTime = 0
+  }, [])
 
   function handleMove(e: React.MouseEvent) {
     const el = wrapRef.current
@@ -40,54 +43,31 @@ export default function PhoneMockup() {
       >
         {/* Phone body */}
         <div
-          className="relative rounded-[2.4rem] p-5 glass-strong"
+          className="relative rounded-[2.4rem] p-2 glass-strong"
           style={{ boxShadow: 'var(--shadow-lift)' }}
         >
-          {/* notch */}
+          {/* Screen — el video ya trae la status bar y la Dynamic Island reales,
+              por eso no dibujamos notch propio. */}
           <div
-            className="absolute left-1/2 -translate-x-1/2 top-2.5 h-1.5 w-16 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.14)' }}
-          />
-
-          <div className="flex items-center justify-between mb-5 mt-2">
-            <span className="font-mono-label text-[10px] uppercase" style={{ color: 'var(--ink-dim)' }}>
-              Sesión de hoy
-            </span>
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-              style={{ background: 'rgba(79,140,255,0.16)', color: 'var(--accent-light)' }}
-            >
-              Fuerza · Tren superior
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center my-6" style={{ transform: 'translateZ(40px)' }}>
-            <ScoreRing value={82} size={132} stroke={11} />
-          </div>
-
-          <div className="space-y-2">
-            {EXERCISES.map((ex) => (
-              <div
-                key={ex.name}
-                className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid var(--border)' }}
-              >
-                <span className="text-xs font-medium">{ex.name}</span>
-                <span className="font-mono-label text-[10px]" style={{ color: 'var(--ink-dim)' }}>
-                  {ex.sets}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div
-            className="mt-4 rounded-xl px-3 py-2.5 flex items-center gap-2"
-            style={{ background: 'rgba(255,170,50,0.1)', border: '1px solid rgba(255,170,50,0.22)' }}
+            className="relative overflow-hidden rounded-[1.9rem]"
+            style={{
+              aspectRatio: '720 / 1566',
+              background: '#0b1016',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+            }}
           >
-            <span>🔥</span>
-            <span className="text-xs font-medium" style={{ color: 'var(--orange)' }}>
-              Racha de 12 días
-            </span>
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-cover"
+              src="/hero-app.mp4"
+              poster="/hero-app-poster.jpg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label="La app Zyfit generando la sesión del día a partir del check-in"
+            />
           </div>
         </div>
 
