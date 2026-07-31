@@ -334,10 +334,25 @@ class DashboardQueryCountTests(_Base):
         # Fijo independientemente del tamaño del catálogo (3 escuelas × 3 cursos ×
         # hasta 2 matrículas c/u aquí, + 6 insignias de identidad) — si este número
         # empieza a crecer con el fixture, es la señal de una N+1 reintroducida.
-        # 19 = 18 (línea base, incluye el INSERT lazy de AcademyStreak la primera
+        # 24 = 18 (línea base, incluye el INSERT lazy de AcademyStreak la primera
         # vez que este estudiante pide su racha) + 1 por `_puntos_by_course`
         # (agregación de puntos de aprendizaje, sumada 2026-07-10 al reemplazar
-        # `progreso_general`).
-        with self.assertNumQueries(19):
+        # `progreso_general`) + 5 del motor de aprendizaje adaptativo: mastery
+        # del estudiante, matrículas activas, progreso de lecciones, tags de
+        # competencia de las lecciones pendientes y los cursos de la
+        # recomendación.
+        #
+        # Esas 5 son todas por conjunto (`IN (...)`), así que el número sigue
+        # siendo fijo: la guarda no perdió sentido, quedó desactualizada. Se
+        # descubrió justo al montar el CI, con el test en rojo — que es
+        # exactamente para lo que se montó.
+        #
+        # Anotado al pasar, sin corregir porque no es una N+1 y no era el alcance:
+        # dentro de `mastery_service.recomendar_siguiente`, las matrículas
+        # activas del estudiante se consultan dos veces más
+        # (`_candidato_matriculado` y `course_ids_matriculado`) aunque
+        # `build_dashboard` ya trajo TODAS las matrículas del estudiante al
+        # principio. Son 2 queries de menos si alguna vez se toca ese servicio.
+        with self.assertNumQueries(24):
             res = self.client.get('/api/academy/dashboard/')
         self.assertEqual(res.status_code, 200)

@@ -1,0 +1,77 @@
+name: Backend tests
+
+# Corre la suite de Django en cada push y en cada PR a main.
+#
+# Por qué existe: la fuga cross-tenant de los endpoints de quiz de Academy
+# (commit b5cc0f9) vivió tres semanas en producción y la encontró una auditoría
+# manual. Un pipeline que corre los tests en cada push agarra esa clase de fallo
+# el mismo día, sin depender de que alguien se acuerde de auditar.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Un push nuevo cancela la corrida anterior de la misma rama.
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # DEBUG=True reproduce exactamente el entorno en que se corre la suite en
+      # local (que es de donde sale la línea base conocida). No afecta al código
+      # bajo prueba: el runner de Django fuerza DEBUG=False durante los tests;
+      # esto solo elige la rama permisiva de settings.py al importarlo (clave de
+      # desarrollo, ALLOWED_HOSTS con default).
+      DEBUG: 'True'
+      SECRET_KEY: solo-para-ci-no-se-usa-en-ningun-entorno-real
+      # Sin DATABASE_URL, settings.py cae en SQLite y no hace falta levantar un
+      # servicio de Postgres. Los tests no dependen de nada específico de PG.
+      PYTHONUNBUFFERED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Igual que la imagen de producción (Dockerfile: python:3.13-slim).
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar dependencias (sin sentence-transformers)
+        run: |
+          # Se filtra sentence-transformers a propósito: arrastra torch, que en
+          # PyPI para Linux viene con los wheels CUDA (~GB) y volvería el CI
+          # lento y caro. El único consumidor es ai_tutor/embeddings.py, que
+          # importa el modelo de forma diferida y degrada a recuperación por
+          # palabras si no está (ver ai_tutor/retrieval.py), así que la suite
+          # corre igual — es el mismo entorno que el de desarrollo local.
+          #
+          # NO se parte requirements.txt en varios archivos: el Dockerfile hace
+          # `COPY requirements.txt .` y solo ese archivo llega al build de
+          # DigitalOcean, así que un `-r` a un archivo hermano rompería el deploy.
+          grep -v '^sentence-transformers' requirements.txt > /tmp/requirements-ci.txt
+          python -m pip install --upgrade pip
+          pip install -r /tmp/requirements-ci.txt
+
+      - name: Comprobaciones de Django
+        run: python manage.py check
+
+      - name: Migraciones sin aplicar y sin generar
+        # Detecta el caso de un cambio de modelo commiteado sin su migración —
+        # en DO las migraciones corren en entrypoint.sh, así que una migración
+        # faltante se descubre recién en el arranque del contenedor.
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Suite de tests
+        run: python manage.py test --verbosity 2
