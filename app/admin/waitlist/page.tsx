@@ -19,87 +19,109 @@ const FECHA = new Intl.DateTimeFormat('es-AR', {
 export default async function WaitlistAdminPage() {
   if (!(await isAdmin())) {
     return (
-      <main className="bg-canvas min-h-screen flex items-center justify-center px-6 py-20">
-        <AdminLogin />
-      </main>
+      <>
+        <Backdrop />
+        <main className="relative z-10 min-h-screen flex items-center justify-center px-6 py-20">
+          <AdminLogin />
+        </main>
+      </>
     )
   }
 
   const signups = await listWaitlistSignups()
 
   return (
-    <main className="bg-canvas min-h-screen px-6 py-16">
-      <div className="max-w-3xl mx-auto flex flex-col gap-8">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="font-mono-label text-[11px] uppercase" style={{ color: 'var(--accent-light)' }}>
-              Panel privado
-            </span>
-            <h1 className="display text-4xl mt-1">Lista de espera</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--ink-dim)' }}>
-              {signups.length === 0
-                ? 'Todavía no se anotó nadie.'
-                : `${signups.length} ${signups.length === 1 ? 'email guardado' : 'emails guardados'}.`}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {signups.length > 0 && (
-              <a
-                href="/api/waitlist/export"
-                className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
-                download
-              >
-                Descargar CSV
-              </a>
-            )}
-            <LogoutButton />
-          </div>
-        </header>
-
-        {signups.length > 0 && (
-          <div className="glass-strong rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th
-                      className="font-mono-label text-[11px] uppercase text-left px-5 py-3.5"
-                      style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border)' }}
-                    >
-                      Email
-                    </th>
-                    <th
-                      className="font-mono-label text-[11px] uppercase text-right px-5 py-3.5 whitespace-nowrap"
-                      style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border)' }}
-                    >
-                      Se anotó
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {signups.map((s) => (
-                    <tr key={s.id}>
-                      <td
-                        className="px-5 py-3.5 break-all"
-                        style={{ color: 'var(--ink)', borderBottom: '1px solid var(--border)' }}
-                      >
-                        {s.email}
-                      </td>
-                      <td
-                        className="px-5 py-3.5 text-right whitespace-nowrap"
-                        style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}
-                      >
-                        {FECHA.format(new Date(s.created_at))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <>
+      <Backdrop />
+      <main className="relative z-10 min-h-screen px-6 py-16">
+        <div className="max-w-3xl mx-auto flex flex-col gap-8">
+          <header className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="font-mono-label text-[11px] uppercase" style={{ color: 'var(--accent-light)' }}>
+                Panel privado
+              </span>
+              <h1 className="display text-4xl mt-1">Lista de espera</h1>
+              <p className="text-sm mt-1" style={{ color: 'var(--ink-dim)' }}>
+                {signups.length === 0
+                  ? 'Todavía no se anotó nadie.'
+                  : `${signups.length} ${signups.length === 1 ? 'email guardado' : 'emails guardados'}.`}
+              </p>
             </div>
-          </div>
-        )}
-      </div>
-    </main>
+
+            <div className="flex items-center gap-3">
+              {signups.length > 0 && (
+                <a
+                  href="/api/waitlist/export"
+                  className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
+                  download
+                >
+                  Descargar CSV
+                </a>
+              )}
+              <LogoutButton />
+            </div>
+          </header>
+
+          {signups.length > 0 && (
+            <div className="glass-strong rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr>
+                      <th
+                        className="font-mono-label text-[11px] uppercase text-left px-5 py-3.5"
+                        style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border)' }}
+                      >
+                        Email
+                      </th>
+                      <th
+                        className="font-mono-label text-[11px] uppercase text-right px-5 py-3.5 whitespace-nowrap"
+                        style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border)' }}
+                      >
+                        Se anotó
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signups.map((s) => (
+                      <tr key={s.id}>
+                        <td
+                          className="px-5 py-3.5 break-all"
+                          style={{ color: 'var(--ink)', borderBottom: '1px solid var(--border)' }}
+                        >
+                          {s.email}
+                        </td>
+                        <td
+                          className="px-5 py-3.5 text-right whitespace-nowrap"
+                          style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}
+                        >
+                          {FECHA.format(new Date(s.created_at))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </>
+  )
+}
+
+/**
+ * Capa decorativa de fondo. `bg-canvas` es `position: fixed` + `pointer-events:
+ * none`: va como hermana del contenido, NUNCA como contenedor de la página
+ * —si envuelve al `<main>`, nada recibe clics y la página parece congelada.
+ */
+function Backdrop() {
+  return (
+    <div className="bg-canvas" aria-hidden>
+      <div className="aurora aurora-1" />
+      <div className="aurora aurora-2" />
+      <div className="aurora aurora-3" />
+      <div className="noise-overlay" />
+    </div>
   )
 }
