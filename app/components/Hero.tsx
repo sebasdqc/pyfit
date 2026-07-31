@@ -34,15 +34,7 @@ export default function Hero() {
     <section id="top" className="relative glow-soft">
       <div className="relative z-10 max-w-6xl mx-auto px-6 pt-36 pb-24 lg:pt-44 lg:pb-32 grid lg:grid-cols-[1.05fr_0.95fr] gap-16 items-center">
         <div style={{ transform: `translateY(${textShift}px)`, opacity: fade }}>
-          <span
-            className="font-mono-label inline-flex items-center gap-2 text-[11px] uppercase px-3 py-1.5 rounded-full glass"
-            style={{ color: 'var(--accent-light)' }}
-          >
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--green)' }} />
-            IA adaptativa · fuerza + running
-          </span>
-
-          <h1 className="display mt-6">
+          <h1 className="display">
             Un entrenador que{' '}
             <span className="font-accent gradient-text">se adapta</span>{' '}
             a ti, no al revés.
@@ -60,8 +52,6 @@ export default function Hero() {
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--green)' }} />
                 Muy pronto en App Store y Google Play
               </span>
-              <span style={{ color: 'var(--ink-faint)' }}>·</span>
-              <span>Sin spam</span>
             </div>
           </div>
         </div>

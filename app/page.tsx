@@ -13,8 +13,8 @@ const FEATURES = [
   {
     icon: '⚡',
     color: 'var(--accent-light)',
-    title: 'IA adaptativa, fuerza + running',
-    text: 'Una sola app genera tus rutinas de fuerza y tus sesiones de running, ajustándose sesión a sesión según tu feedback real.',
+    title: 'IA adaptativa',
+    text: 'Rutinas de fuerza y de entrenamiento cardiovascular, adaptadas a tus objetivos y a tu nivel.',
   },
   {
     icon: '🎯',
