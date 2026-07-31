@@ -1,12 +1,16 @@
 import type { NextConfig } from "next";
 
 /**
- * CSP de la landing. Orígenes externos reales que usa la página:
- *   - fonts.googleapis.com  → el `@import` de globals.css (Big Shoulders
- *     Display, Public Sans, JetBrains Mono)
- *   - fonts.gstatic.com     → los .woff2 que sirve esa hoja
- * Todo lo demás es propio: el video del hero (`/hero-app.mp4`), su poster y el
- * ruido de fondo (SVG en un data: URI dentro de globals.css).
+ * CSP de la landing. **Cero orígenes externos**: todo lo que carga la página es
+ * propio — el video del hero (`/hero-app.mp4`), su poster, el ruido de fondo
+ * (SVG en un data: URI dentro de globals.css) y las tres tipografías, que desde
+ * que se cargan con `next/font/google` quedan auto-hospedadas en
+ * `/_next/static/media` (ver la nota en `app/layout.tsx`).
+ *
+ * Por eso ya NO están `fonts.googleapis.com` en `style-src` ni
+ * `fonts.gstatic.com` en `font-src`: hacían falta para el `@import` remoto que
+ * se eliminó. Si alguna vez se vuelve a agregar una fuente por URL, hay que
+ * reponerlos o el navegador la bloquea en silencio.
  *
  * ⚠️ `script-src` lleva 'unsafe-inline' porque Next.js inyecta los scripts de
  * hidratación en línea; quitarlo exige nonces por request vía middleware, lo
@@ -17,8 +21,8 @@ import type { NextConfig } from "next";
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self'",
