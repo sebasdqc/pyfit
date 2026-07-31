@@ -86,15 +86,15 @@ def _mejor_tag(tags, mastery):
     return mejor
 
 
-def _candidato_matriculado(student, nivel_acceso, mastery, excluir_lesson_ids):
+def _candidato_matriculado(nivel_acceso, mastery, enrollments, excluir_lesson_ids):
     """Mejor lección no completada de cualquier matrícula ACTIVA del
     estudiante (cruzando escuelas), entre las que tienen al menos un tag de
     competencia. Es el caso fuerte del pitch: nutrición y recuperación
-    pueden compartir competencia sin que el estudiante lo sepa todavía."""
-    enrollments = list(
-        Enrollment.objects.filter(student=student, estado=Enrollment.ESTADO_ACTIVA)
-        .select_related('course', 'course__school'),
-    )
+    pueden compartir competencia sin que el estudiante lo sepa todavía.
+
+    `enrollments` llega ya resuelto desde `recomendar_siguiente` — antes esta
+    función lo consultaba por su cuenta y la rama de descubrimiento volvía a
+    pedir los mismos ids, o sea la misma tabla dos veces por dashboard."""
     if not enrollments:
         return None
     enrollment_by_course_id = {e.course_id: e for e in enrollments}
@@ -175,14 +175,20 @@ def recomendar_siguiente(student, tenant=None, excluir_lesson_ids=()):
     )
     nivel_acceso = nivel_academia_de(student)
 
-    mejor = _candidato_matriculado(student, nivel_acceso, mastery, excluir_lesson_ids)
+    # Las matrículas activas se resuelven UNA vez y las usan las dos ramas: la
+    # de candidato matriculado y, si esa no alcanza el score mínimo, la de
+    # descubrimiento (que solo necesita los course_id).
+    enrollments = list(
+        Enrollment.objects.filter(student=student, estado=Enrollment.ESTADO_ACTIVA)
+        .select_related('course', 'course__school'),
+    )
+
+    mejor = _candidato_matriculado(nivel_acceso, mastery, enrollments, excluir_lesson_ids)
 
     if mejor is None or mejor[0] < SCORE_MINIMO_RECOMENDACION:
-        course_ids_matriculado = Enrollment.objects.filter(
-            student=student, estado=Enrollment.ESTADO_ACTIVA,
-        ).values_list('course_id', flat=True)
         descubrimiento = _candidato_descubrimiento(
-            student, nivel_acceso, mastery, list(course_ids_matriculado), excluir_lesson_ids,
+            student, nivel_acceso, mastery,
+            [e.course_id for e in enrollments], excluir_lesson_ids,
         )
         if descubrimiento and (mejor is None or descubrimiento[0] > mejor[0]):
             mejor = descubrimiento
