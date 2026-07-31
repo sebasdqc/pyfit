@@ -1,4 +1,5 @@
 import { getSql, getWaitlistCount } from '../../lib/waitlist'
+import { WAITLIST_RULE, clientIp, consumeRateLimit } from '../../lib/rateLimit'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -31,6 +32,26 @@ export async function POST(req: Request) {
 
   const normalized = email.trim().toLowerCase()
   const sql = getSql()
+
+  // Límite por IP. Va DESPUÉS de validar el formato para que un typo no gaste
+  // cupo, y ANTES del INSERT: sin esto, un script puede meter miles de
+  // direcciones ajenas, y el día que se enchufe el envío de email eso quema la
+  // reputación del dominio.
+  try {
+    const verdict = await consumeRateLimit(sql, { bucket: `waitlist:ip:${clientIp(req)}`, ...WAITLIST_RULE })
+    if (!verdict.allowed) {
+      return Response.json(
+        { error: 'Demasiados intentos desde esta conexión. Probá de nuevo en un rato.' },
+        { status: 429, headers: { 'Retry-After': String(verdict.retryAfterS) } },
+      )
+    }
+  } catch (err) {
+    // Fail closed: si no se puede contar, no se guarda. La alternativa deja el
+    // endpoint abierto justo cuando la base tiene problemas — y el INSERT de
+    // abajo iba a fallar igual.
+    console.error('waitlist rate limit failed', err)
+    return Response.json({ error: 'No pudimos guardar tu email, intenta de nuevo.' }, { status: 503 })
+  }
 
   try {
     await sql`INSERT INTO waitlist_signups (email) VALUES (${normalized})`
