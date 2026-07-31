@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { ADMIN_COOKIE, safeEqual } from '../../../lib/waitlist'
+import { ADMIN_COOKIE, SESSION_TTL_S, issueAdminToken, safeEqual } from '../../../lib/waitlist'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,12 +29,13 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Clave incorrecta' }, { status: 401 })
   }
 
-  ;(await cookies()).set(ADMIN_COOKIE, expected, {
+  // Se guarda un token de sesión firmado, NUNCA la clave (ver `issueAdminToken`).
+  ;(await cookies()).set(ADMIN_COOKIE, issueAdminToken(expected), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: SESSION_TTL_S,
   })
 
   return Response.json({ ok: true })

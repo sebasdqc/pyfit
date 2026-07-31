@@ -1,14 +1,17 @@
 import { neon } from '@neondatabase/serverless'
 import { cookies } from 'next/headers'
-import { timingSafeEqual } from 'node:crypto'
+import { verifyAdminToken } from './adminToken'
 
 /**
  * Acceso a la lista de espera (`waitlist_signups` en Neon) y control de acceso
  * del panel de administración.
  *
- * Server-only: importa `next/headers` y `node:crypto`, nunca desde un
- * componente `'use client'`.
+ * Server-only: importa `next/headers`, nunca desde un componente `'use client'`.
+ * La firma/verificación del token de sesión vive en `./adminToken`, que no
+ * depende de Next y por eso se puede probar aislado.
  */
+
+export { SESSION_TTL_S, issueAdminToken, safeEqual, verifyAdminToken } from './adminToken'
 
 export const ADMIN_COOKIE = 'zyfit_admin'
 
@@ -42,22 +45,11 @@ export async function listWaitlistSignups(): Promise<WaitlistSignup[]> {
   return rows as WaitlistSignup[]
 }
 
-/**
- * Comparación en tiempo constante: evita filtrar la contraseña por el tiempo
- * que tarda en fallar.
- */
-export function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8')
-  const bufB = Buffer.from(b, 'utf8')
-  if (bufA.length !== bufB.length) return false
-  return timingSafeEqual(bufA, bufB)
-}
-
-/** ¿La request trae la cookie de admin válida? */
+/** ¿La request trae una cookie de sesión de admin válida y vigente? */
 export async function isAdmin(): Promise<boolean> {
-  const expected = process.env.WAITLIST_ADMIN_TOKEN
-  if (!expected) return false
+  const secret = process.env.WAITLIST_ADMIN_TOKEN
+  if (!secret) return false
   const value = (await cookies()).get(ADMIN_COOKIE)?.value
   if (!value) return false
-  return safeEqual(value, expected)
+  return verifyAdminToken(value, secret)
 }

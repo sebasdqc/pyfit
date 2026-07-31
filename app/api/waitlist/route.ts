@@ -36,11 +36,14 @@ export async function POST(req: Request) {
     await sql`INSERT INTO waitlist_signups (email) VALUES (${normalized})`
   } catch (err) {
     const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : undefined
-    if (code === '23505') {
-      return Response.json({ ok: true, already: true })
+    // Email repetido (unique violation): se responde EXACTAMENTE igual que un
+    // alta nueva. Distinguirlos (antes: `{ok:true, already:true}`) convertía
+    // este endpoint en un oráculo para averiguar si una dirección concreta
+    // está en la lista.
+    if (code !== '23505') {
+      console.error('waitlist insert failed', err)
+      return Response.json({ error: 'No pudimos guardar tu email, intenta de nuevo.' }, { status: 500 })
     }
-    console.error('waitlist insert failed', err)
-    return Response.json({ error: 'No pudimos guardar tu email, intenta de nuevo.' }, { status: 500 })
   }
 
   return Response.json({ ok: true })
