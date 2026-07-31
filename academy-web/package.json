@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@sentry/react": "^10.69.0",
     "axios": "^1.7.9",
     "html-to-image": "^1.11.13",
     "ogl": "^1.0.11",

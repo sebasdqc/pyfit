@@ -5,6 +5,7 @@ import { createContext, useCallback, useEffect, useState, type ReactNode } from 
 import { fetchMe, loginRequest } from '@/api/auth'
 import { clearTokens, getAccessToken, setTokens } from '@/api/client'
 import { resetStreakCache } from '@/lib/useStreak'
+import { setSentryUser } from '@/lib/sentry'
 import type { AuthUser } from '@/types'
 
 export interface AuthContextValue {
@@ -45,6 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false
     }
   }, [])
+
+  // Ata los errores que se reporten a Sentry al id del usuario (nunca al
+  // email — ver `setSentryUser`). Un solo efecto cubre los tres caminos por los
+  // que cambia la sesión: rehidratación al cargar, login y logout.
+  useEffect(() => {
+    setSentryUser(user?.id ?? null)
+  }, [user])
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await loginRequest(email, password)
