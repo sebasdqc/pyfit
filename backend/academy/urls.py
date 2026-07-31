@@ -34,7 +34,9 @@ urlpatterns = [
     path('courses/<int:pk>/modules/<int:module_id>/lessons/', views.module_lessons),
     path('courses/<int:pk>/modules/<int:module_id>/lessons/<int:lesson_id>/', views.lesson_detail),
 
-    # Quiz y preguntas (colgados de la lección / del quiz, scope resuelto en la vista)
+    # Quiz y preguntas: cuelgan del id de la lección/quiz, NO del curso, así que
+    # la vista tiene que acotar el tenant a mano con `_lesson_for_scope`/
+    # `_quiz_for_scope` (no pasan por `_course_for_read`/`_course_for_edit`).
     path('lessons/<int:lesson_id>/quiz/', views.lesson_quiz),
     path('quizzes/<int:quiz_id>/questions/', views.quiz_questions),
     path('quizzes/<int:quiz_id>/questions/<int:question_id>/', views.question_detail),

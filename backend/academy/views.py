@@ -184,6 +184,29 @@ def _course_for_edit(user, pk, tenant=None):
     return course
 
 
+def _lesson_for_scope(lesson_id, tenant=None):
+    """Lección acotada al tenant activo, buscando por la cadena
+    `module__course__tenant` — mismo criterio que `_course_for_read`, que filtra
+    `Course.objects.get(pk=..., tenant=tenant)`.
+
+    Los endpoints que cuelgan del id de la lección/quiz (y no del id del curso)
+    tienen que scopear acá: no pasan por `_course_for_*`, así que sin esto
+    buscan por PK global y sirven contenido de cualquier organización
+    (hallazgo de auditoría 2026-07-30)."""
+    return get_object_or_404(
+        Lesson.objects.select_related('module__course'),
+        pk=lesson_id, module__course__tenant=tenant,
+    )
+
+
+def _quiz_for_scope(quiz_id, tenant=None):
+    """Ídem `_lesson_for_scope`, para los endpoints que cuelgan del id del quiz."""
+    return get_object_or_404(
+        Quiz.objects.select_related('lesson__module__course'),
+        pk=quiz_id, lesson__module__course__tenant=tenant,
+    )
+
+
 def _author_context(request, course):
     """Contexto para serializar: incluye la clave de respuestas, el nivel de
     acceso a Academy (gating freemium — autor/admin nunca ven bloqueado) y el
@@ -618,7 +641,7 @@ def _lesson_course(lesson):
 def lesson_quiz(request, lesson_id):
     """GET el quiz de una lección (sin clave si es estudiante); PUT lo crea/actualiza
     (autor). El quiz es 1:1 con la lección; PUT hace upsert."""
-    lesson = get_object_or_404(Lesson, pk=lesson_id)
+    lesson = _lesson_for_scope(lesson_id, getattr(request, 'tenant', None))
     course = _lesson_course(lesson)
 
     if request.method == 'GET':
@@ -648,7 +671,7 @@ def lesson_quiz(request, lesson_id):
 @permission_classes([IsAcademyUser])
 def quiz_questions(request, quiz_id):
     """Lista (lectura) o crea (autor) preguntas de un quiz."""
-    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    quiz = _quiz_for_scope(quiz_id, getattr(request, 'tenant', None))
     course = _lesson_course(quiz.lesson)
 
     if request.method == 'POST':
@@ -671,7 +694,7 @@ def quiz_questions(request, quiz_id):
 @permission_classes([IsAcademyUser])
 def question_detail(request, quiz_id, question_id):
     """Edita o elimina una pregunta de un quiz (autor/admin)."""
-    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    quiz = _quiz_for_scope(quiz_id, getattr(request, 'tenant', None))
     course = _lesson_course(quiz.lesson)
     if not can_edit_course(request.user, course):
         raise PermissionDenied('No puedes editar este curso.')

@@ -76,6 +76,18 @@ class IsAcademyAdmin(BasePermission):
         return not tenant_mismatch(u, request)
 
 
+def tenant_clash(user, obj) -> bool:
+    """¿Este objeto (curso, post, …) pertenece a un tenant DISTINTO del de la
+    cuenta? Misma semántica deliberadamente laxa que `tenant_mismatch`: solo
+    hay choque si AMBOS lados son un tenant concreto. Si cualquiera es None
+    (cuenta anterior a `User.academy_tenant`, o contenido del catálogo raíz de
+    Zyfit) no se bloquea — mantener este criterio evita romper las cuentas y el
+    contenido que existen desde antes del modelo multi-tenant."""
+    user_tenant_id = getattr(user, 'academy_tenant_id', None)
+    obj_tenant_id = getattr(obj, 'tenant_id', None)
+    return bool(user_tenant_id and obj_tenant_id and user_tenant_id != obj_tenant_id)
+
+
 def is_author(user) -> bool:
     """¿Puede esta cuenta CREAR/gestionar contenido (no necesariamente este curso)?"""
     return bool(
@@ -87,9 +99,19 @@ def is_author(user) -> bool:
 def can_edit_course(user, course) -> bool:
     """¿Puede este usuario editar/publicar ESTE curso?
 
-    El admin/staff de producto o el admin de Academy edita cualquier curso;
-    un instructor solo los suyos (los que figura como `instructor`)."""
-    if user.is_admin or user.is_staff or user.academy_admin:
+    El admin/staff de producto de Zyfit edita cualquier curso; el admin de
+    Academy solo dentro de SU organización (`tenant_clash`); un instructor solo
+    los suyos (los que figura como `instructor`).
+
+    ⚠️ El chequeo de tenant vive acá y no solo en el lookup de la vista por el
+    hallazgo de auditoría 2026-07-30: los endpoints de quiz/preguntas
+    resolvían Lesson/Quiz por PK global y llamaban a este helper como único
+    control, así que un `academy_admin` podía editar y borrar contenido de
+    otro tenant. Cualquier endpoint futuro que use este helper sin filtrar por
+    tenant en el lookup queda cubierto."""
+    if user.is_admin or user.is_staff:
+        return True
+    if user.academy_admin and not tenant_clash(user, course):
         return True
     return course.instructor_id == user.id
 
@@ -98,6 +120,8 @@ def can_edit_post(user, post) -> bool:
     """¿Puede este usuario editar/publicar ESTE post del blog? Mismo criterio
     que `can_edit_course`: admin/staff/admin de Academy edita cualquiera, un
     instructor solo los suyos (los que figura como `autor`)."""
-    if user.is_admin or user.is_staff or user.academy_admin:
+    if user.is_admin or user.is_staff:
+        return True
+    if user.academy_admin and not tenant_clash(user, post):
         return True
     return post.autor_id == user.id
