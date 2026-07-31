@@ -11,9 +11,17 @@ from runs.models import RunSession
 
 User = get_user_model()
 
-# PNG 1×1 transparente (válido) como dataURI.
-PNG = ('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
-       'AAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+# PNG 1×1 RGBA transparente, dataURI. **Válido de verdad**: firma, IHDR/IDAT/IEND
+# y CRCs correctos.
+#
+# El fixture anterior decía "válido" pero tenía el CRC del IDAT mal y el IEND
+# truncado. Pasaba igual porque `photo_service` solo valida con Pillow si Pillow
+# está instalado (`except ImportError: pass`) y en el entorno local no lo está —
+# es decir, estos tests venían pasando por el motivo equivocado y NO cubrían el
+# camino de producción, donde Pillow sí está y rechazaba esta imagen. Se
+# descubrió al montar el CI, que instala Pillow y puso los 4 tests en rojo.
+PNG = ('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
+       'AAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=')
 
 
 class SessionPhotoTests(TestCase):

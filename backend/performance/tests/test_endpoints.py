@@ -20,6 +20,22 @@ from performance.models import (
 
 User = get_user_model()
 
+# PNG 1×1 RGBA transparente como data URL. **Válido de verdad**: firma,
+# IHDR/IDAT/IEND y CRCs correctos, así que `Image.verify()` lo acepta.
+#
+# Antes había dos fixtures distintos y ninguno servía: uno era un PNG con el CRC
+# del IDAT mal y el IEND truncado, y el otro era literalmente
+# `'data:image/jpeg;base64,' + 'A' * 200` — basura que ni intenta ser una
+# imagen, y un test afirmaba que el endpoint la aceptaba con 200. Los dos
+# "pasaban" solo porque Pillow no estaba instalado en el entorno local (acá el
+# síntoma era un 500 por ImportError, contabilizado como "fallo preexistente de
+# Pillow" en tres auditorías seguidas). Con Pillow, que es lo que corre en
+# producción y ahora también en CI, el validador los rechazaba con razón.
+PNG_1X1 = (
+    'data:image/png;base64,'
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII='
+)
+
 
 class _Base(TestCase):
     def setUp(self):
@@ -178,7 +194,8 @@ class AthleteEndpointTests(_Base):
     def detail_url(self):
         return f'/api/performance/centers/{self.center.id}/athletes/{self.link_id()}/'
 
-    FOTO = 'data:image/jpeg;base64,' + 'A' * 200
+    # Tiene que ser una imagen válida: el serializer valida con Pillow.
+    FOTO = PNG_1X1
 
     def test_lista_incluye_foto(self):
         res = self.client.get(f'/api/performance/centers/{self.center.id}/athletes/')
@@ -262,11 +279,7 @@ class AthleteFotoSpacesTests(_Base):
     de objetos (foto_img) en vez de guardarse como base64 en la BD. Aquí se simula
     Spaces con InMemoryStorage (no toca disco ni necesita credenciales)."""
 
-    # PNG 1×1 transparente como data URL base64.
-    PNG = (
-        'data:image/png;base64,'
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-    )
+    PNG = PNG_1X1
 
     def link_id(self):
         return CenterAthlete.objects.get(center=self.center, athlete=self.athlete).id
