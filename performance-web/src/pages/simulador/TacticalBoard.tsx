@@ -25,7 +25,7 @@ export interface AthleteLite {
 
 const GREEN = '#32c896'
 const RED = '#ff4444'
-const ACCENT = '#4f8cff'
+const ACCENT = '#14b8a6'
 const TOKEN_FILL = '#0f1525'
 const MIN_TRAZO = 0.03 // longitud mínima (normalizada) para crear un trazo
 

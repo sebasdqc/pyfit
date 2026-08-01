@@ -1,6 +1,6 @@
 // Spinner circular reutilizable de Zyfit Performance: pista tenue + arco de
-// acento azul que gira (animate-spin de Tailwind). Tamaño y grosor configurables.
-// Hereda la identidad azul del panel; úsalo para cualquier estado de carga.
+// acento que gira (animate-spin de Tailwind). Tamaño y grosor configurables.
+// Hereda la identidad de acento del panel; úsalo para cualquier estado de carga.
 
 export function Spinner({
   size = 24,

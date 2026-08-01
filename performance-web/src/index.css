@@ -11,10 +11,11 @@
   }
 
   /* Foco visible global para navegación por teclado (WCAG 2.4.7). Un único
-     anillo de acento azul para todos los controles del panel; el outline sigue
-     el border-radius del elemento en navegadores modernos. Solo con teclado. */
+     anillo de acento (verde azulado) para todos los controles del panel; el
+     outline sigue el border-radius del elemento en navegadores modernos.
+     Solo con teclado. */
   :focus-visible {
-    outline: 2px solid #4f8cff; /* accent Zyfit Performance */
+    outline: 2px solid #14b8a6; /* accent Zyfit Performance */
     outline-offset: 2px;
   }
   /* Sin anillo cuando el foco NO viene del teclado (clic/touch). */

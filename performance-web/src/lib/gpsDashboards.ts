@@ -4,8 +4,8 @@
 // datos viven centralizados y se exponen mediante hooks con la forma
 // { data, loading, error } para poder cambiarlos por llamados reales a Django
 // sin tocar los componentes. La paleta se alinea con el sistema del portal
-// (acento azul + ok/warn/danger): el púrpura de los prototipos es de Zyfit Coach
-// y aquí se mapea al acento.
+// (acento + ok/warn/danger): los colores de los prototipos que pertenecían a
+// otro producto se mapean acá al acento de Performance.
 
 import type { Tone } from './tone'
 
@@ -14,7 +14,7 @@ import type { Tone } from './tone'
 // Hex de los tonos semánticos: se usa donde no podemos pasar clases de Tailwind
 // (rellenos de Recharts, barras SVG inline, agujas, etc.).
 export const TONE_HEX: Record<Tone, string> = {
-  accent: '#4f8cff',
+  accent: '#14b8a6',
   ok: '#32c896',
   warn: '#ffaa32',
   danger: '#ff4444',
@@ -22,11 +22,11 @@ export const TONE_HEX: Record<Tone, string> = {
 
 export type Pos = 'PT' | 'DC' | 'MC' | 'DL'
 
-// Color por demarcación (on-brand: azules + verde + ámbar, distinguibles).
+// Color por demarcación (on-brand: acento + verde + ámbar, distinguibles).
 export const POS_HEX: Record<Pos, string> = {
-  PT: '#4f8cff',
+  PT: '#14b8a6',
   DC: '#32c896',
-  MC: '#7ab6ff',
+  MC: '#5eead4',
   DL: '#ffaa32',
 }
 

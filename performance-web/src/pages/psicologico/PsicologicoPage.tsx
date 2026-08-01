@@ -61,7 +61,7 @@ const ITEMS: { name: keyof Pick<SavedWellness, 'sueno' | 'fatiga' | 'estres' | '
 ]
 const ESTADO_TONE: Record<WellnessEstado, Tone> = { ok: 'ok', duda: 'warn', alerta: 'danger' }
 const ESTADO_LABEL: Record<WellnessEstado, string> = { ok: 'Óptimo', duda: 'Monitorear', alerta: 'Alerta' }
-const ZONE_HEX: Record<Tone, string> = { ok: '#32c896', warn: '#ffaa32', danger: '#ff4444', accent: '#4f8cff' }
+const ZONE_HEX: Record<Tone, string> = { ok: '#32c896', warn: '#ffaa32', danger: '#ff4444', accent: '#14b8a6' }
 const DROP_ALERTA = 15 // caída de índice (pts) vs. check-in anterior que dispara alerta
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -376,7 +376,7 @@ function AthleteView({
                   <XAxis dataKey="fecha" tick={axisTick} tickLine={false} axisLine={false} />
                   <YAxis domain={[0, 100]} tick={axisTick} tickLine={false} axisLine={false} />
                   <Tooltip {...tip} />
-                  <Line type="monotone" dataKey="indice" name="Índice" stroke="#4f8cff" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="indice" name="Índice" stroke="#14b8a6" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

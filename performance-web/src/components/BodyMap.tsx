@@ -97,8 +97,8 @@ export function BodyMap({
       })}
       {pending && (
         <g className="pointer-events-none">
-          <circle cx={pending.x} cy={pending.y} r={12} fill="none" stroke="#4f8cff" strokeWidth={1.5} opacity={0.6} />
-          <circle cx={pending.x} cy={pending.y} r={6} fill="#4f8cff" stroke="#0a0e1a" strokeWidth={2} />
+          <circle cx={pending.x} cy={pending.y} r={12} fill="none" stroke="#14b8a6" strokeWidth={1.5} opacity={0.6} />
+          <circle cx={pending.x} cy={pending.y} r={6} fill="#14b8a6" stroke="#0a0e1a" strokeWidth={2} />
         </g>
       )}
     </svg>

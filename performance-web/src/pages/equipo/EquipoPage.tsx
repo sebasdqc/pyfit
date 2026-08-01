@@ -396,8 +396,8 @@ function AthleteDetail({
                 <Radar
                   name={a.nombre}
                   dataKey="v"
-                  stroke="#4f8cff"
-                  fill="#4f8cff"
+                  stroke="#14b8a6"
+                  fill="#14b8a6"
                   fillOpacity={0.22}
                   strokeWidth={2}
                 />

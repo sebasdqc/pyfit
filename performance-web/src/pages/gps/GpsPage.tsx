@@ -26,7 +26,7 @@ import {
 } from '@/lib/mockGps'
 
 // ── Tema de gráficos (oscuro, plano) ─────────────────────────────────────────
-const ACCENT = '#4f8cff'
+const ACCENT = '#14b8a6'
 const GRID = '#16203a'
 const axisTick = { fontSize: 11, fill: 'rgba(255,255,255,0.4)' }
 const tip = {
@@ -348,7 +348,7 @@ function AthleteView({
   const decTotal = s.decAlta + s.decMedia + s.decBaja
 
   const planeData = [
-    { name: 'Anterior', value: s.planes.anterior, color: '#4f8cff' },
+    { name: 'Anterior', value: s.planes.anterior, color: '#14b8a6' },
     { name: 'Lateral', value: s.planes.lateral, color: '#6ce5ff' },
     { name: 'Vertical', value: s.planes.vertical, color: '#32c896' },
   ]
@@ -546,7 +546,7 @@ function AthleteView({
                 <XAxis dataKey="zona" tick={axisTick} tickLine={false} axisLine={false} />
                 <YAxis tick={axisTick} tickLine={false} axisLine={false} />
                 <Tooltip {...tip} />
-                <Bar dataKey="acc" name="Aceleraciones" fill="#4f8cff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="acc" name="Aceleraciones" fill="#14b8a6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="dec" name="Deceleraciones" fill="#ffaa32" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

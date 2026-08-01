@@ -29,7 +29,7 @@ import type {
 
 // ── Catálogos de etiquetas y colores ────────────────────────────────────────
 const MESO_TIPO: Record<MesoTipo, { label: string; hex: string }> = {
-  prep_general: { label: 'Preparación general', hex: '#4f8cff' },
+  prep_general: { label: 'Preparación general', hex: '#14b8a6' },
   prep_especifica: { label: 'Preparación específica', hex: '#6ce5ff' },
   precompetitivo: { label: 'Precompetitivo', hex: '#ffaa32' },
   competitivo: { label: 'Competitivo', hex: '#32c896' },
@@ -37,9 +37,9 @@ const MESO_TIPO: Record<MesoTipo, { label: string; hex: string }> = {
 }
 const MICRO_TIPO: Record<MicroTipo, { label: string; hex: string }> = {
   ajuste: { label: 'Ajuste', hex: '#6ce5ff' },
-  carga: { label: 'Carga', hex: '#4f8cff' },
+  carga: { label: 'Carga', hex: '#14b8a6' },
   choque: { label: 'Choque', hex: '#ff4444' },
-  activacion: { label: 'Activación', hex: '#7ab6ff' },
+  activacion: { label: 'Activación', hex: '#5eead4' },
   competitivo: { label: 'Competitivo', hex: '#32c896' },
   recuperacion: { label: 'Recuperación', hex: '#5a6b8c' },
 }
@@ -47,13 +47,13 @@ const CARGA_OBJ: Record<CargaObjetivo, string> = { baja: 'Baja', media: 'Media',
 const NIVEL: Record<Nivel, string> = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto' }
 const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const SESION_TIPO: Record<SesionTipo, { label: string; hex: string }> = {
-  fuerza: { label: 'Fuerza', hex: '#4f8cff' },
+  fuerza: { label: 'Fuerza', hex: '#14b8a6' },
   tecnico_tactico: { label: 'Técnico-táctico', hex: '#6ce5ff' },
   fisico: { label: 'Físico', hex: '#ffaa32' },
   recuperacion: { label: 'Recuperación', hex: '#32c896' },
   partido: { label: 'Partido', hex: '#ff4444' },
   descanso: { label: 'Descanso', hex: '#5a6b8c' },
-  otro: { label: 'Otro', hex: '#7ab6ff' },
+  otro: { label: 'Otro', hex: '#5eead4' },
 }
 
 const today = () => new Date().toISOString().slice(0, 10)

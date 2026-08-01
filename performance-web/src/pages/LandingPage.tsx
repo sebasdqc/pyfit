@@ -3,8 +3,9 @@
 // trata el producto); ahora un usuario ya logueado que entra acá es enviado
 // a /dashboard vía useRedirectIfAuthenticated, igual que en Academy.
 //
-// Identidad: azul único (acento de Zyfit Performance), fondos azul-marino
-// planos, SIN GRADIENTES (ver performance-web/CLAUDE.md), fotografía real +
+// Identidad: verde azulado único (acento de Zyfit Performance — antes azul,
+// cambiado por colisionar en el mismo hex con la landing de la APP), fondos
+// azul-marino planos, SIN GRADIENTES (ver performance-web/CLAUDE.md), fotografía real +
 // overlay oscuro + cards de vidrio esmerilado — mismo lenguaje que ya usan
 // LoginPage.tsx/ForgotPasswordPage.tsx. Deliberadamente distinta de la
 // landing de la APP (video de producto) y de la de Academy (aurora WebGL):

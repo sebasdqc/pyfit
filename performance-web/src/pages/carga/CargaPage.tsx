@@ -320,7 +320,7 @@ function AthleteView({
                 <Tooltip {...tip} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 <Bar dataKey="carga" radius={[3, 3, 0, 0]}>
                   {chart.map((_, i) => (
-                    <Cell key={i} fill={i >= chart.length - 7 ? '#4f8cff' : 'rgba(79,140,255,0.4)'} />
+                    <Cell key={i} fill={i >= chart.length - 7 ? '#14b8a6' : 'rgba(20,184,166,0.4)'} />
                   ))}
                 </Bar>
               </BarChart>

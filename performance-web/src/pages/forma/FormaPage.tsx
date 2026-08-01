@@ -278,7 +278,7 @@ function AthleteView({
                 <Tooltip {...tip} />
                 <Legend wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }} />
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
-                <Line type="monotone" dataKey="fitness" name="Fitness" stroke="#4f8cff" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="fitness" name="Fitness" stroke="#14b8a6" dot={false} strokeWidth={2} />
                 <Line type="monotone" dataKey="fatiga" name="Fatiga" stroke="#ffaa32" dot={false} strokeWidth={2} />
                 <Line type="monotone" dataKey="tsb" name="TSB" stroke="#32c896" dot={false} strokeWidth={2} strokeDasharray="4 3" />
               </LineChart>

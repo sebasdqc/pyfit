@@ -1,5 +1,5 @@
-// Tonos semánticos del portal → clases de Tailwind. Único acento azul + verde
-// (ok) / ámbar (warn) / rojo (danger). Compartido por las pantallas.
+// Tonos semánticos del portal → clases de Tailwind. Único acento (verde
+// azulado) + verde (ok) / ámbar (warn) / rojo (danger). Compartido por las pantallas.
 
 export type Tone = 'accent' | 'ok' | 'warn' | 'danger'
 

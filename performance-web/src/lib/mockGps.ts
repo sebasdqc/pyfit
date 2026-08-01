@@ -53,7 +53,7 @@ export interface ZoneMeta {
 }
 // Bandas habituales en fútbol (km/h). Ramp frío→caliente: más rápido = más cálido.
 export const ZONE_META: ZoneMeta[] = [
-  { key: 'z1', label: 'Caminar', rango: '0–7 km/h', color: '#4f8cff', vmed: 4 },
+  { key: 'z1', label: 'Caminar', rango: '0–7 km/h', color: '#14b8a6', vmed: 4 },
   { key: 'z2', label: 'Trote', rango: '7–14 km/h', color: '#32c896', vmed: 10.5 },
   { key: 'z3', label: 'Carrera', rango: '14–20 km/h', color: '#ffd23f', vmed: 16.8 },
   { key: 'z4', label: 'Alta velocidad', rango: '20–25 km/h', color: '#ffaa32', vmed: 22.4 },

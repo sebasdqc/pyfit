@@ -191,7 +191,7 @@ function NavItemRow({
 
   const inner = (
     <>
-      {/* Acento azul a la izquierda del ítem activo */}
+      {/* Acento a la izquierda del ítem activo */}
       {active && !item.soon && (
         <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
       )}

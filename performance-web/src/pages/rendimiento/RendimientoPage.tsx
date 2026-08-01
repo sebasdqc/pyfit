@@ -20,10 +20,10 @@ import { useSquad } from '@/centers/useSquad'
 import { buildPerformance, teamAverages, teamLoadSeries, type AthletePerf } from '@/lib/mockPerformance'
 
 // ── Tema de los gráficos (oscuro, plano) ────────────────────────────────────
-const ACCENT = '#4f8cff'
+const ACCENT = '#14b8a6'
 const MUTED = 'rgba(255,255,255,0.32)'
 const GRID = '#16203a'
-const ZONE_HEX: Record<Tone, string> = { ok: '#32c896', warn: '#ffaa32', danger: '#ff4444', accent: '#4f8cff' }
+const ZONE_HEX: Record<Tone, string> = { ok: '#32c896', warn: '#ffaa32', danger: '#ff4444', accent: '#14b8a6' }
 const axisTick = { fontSize: 11, fill: 'rgba(255,255,255,0.4)' }
 const tip = {
   contentStyle: { background: '#0f1525', border: '1px solid #1c2740', borderRadius: 10, fontSize: 12 },

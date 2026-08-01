@@ -341,7 +341,7 @@ function SeasonsPanel({
                       <span
                         className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
                         style={{
-                          color: est === 'curso' ? '#32c896' : est === 'proxima' ? '#7ab6ff' : 'rgba(255,255,255,0.4)',
+                          color: est === 'curso' ? '#32c896' : est === 'proxima' ? '#5eead4' : 'rgba(255,255,255,0.4)',
                           backgroundColor: est === 'curso' ? 'rgba(50,200,150,0.12)' : est === 'proxima' ? 'rgba(122,182,255,0.12)' : 'rgba(255,255,255,0.05)',
                         }}
                       >
@@ -627,7 +627,7 @@ function EventModal({
 
           <div className="flex items-center gap-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm text-white/75">
-              <input type="checkbox" checked={form.todo_el_dia} onChange={(e) => set('todo_el_dia', e.target.checked)} className="h-4 w-4 accent-[#4f8cff]" />
+              <input type="checkbox" checked={form.todo_el_dia} onChange={(e) => set('todo_el_dia', e.target.checked)} className="h-4 w-4 accent-[#14b8a6]" />
               Todo el día
             </label>
             {!form.todo_el_dia && (

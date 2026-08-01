@@ -479,7 +479,7 @@ export function SimuladorPage() {
 
             <SmallBtn onClick={() => moveFrame(-1)} disabled={playing || frameIndex === 0} label="◀" />
             <SmallBtn onClick={() => moveFrame(1)} disabled={playing || frameIndex === frames.length - 1} label="▶" />
-            <AddBtn onClick={addFrame} color="#4f8cff" label="Frame" />
+            <AddBtn onClick={addFrame} color="#14b8a6" label="Frame" />
             <SmallBtn onClick={deleteFrame} disabled={playing || frames.length <= 1} label="Eliminar frame" />
           </div>
 

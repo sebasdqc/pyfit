@@ -29,7 +29,7 @@ import { useSquad } from '@/centers/useSquad'
 import { AthleteEditModal } from '@/components/AthleteEditModal'
 import { canEditRole } from '@/lib/squadEdit'
 
-const COLOR_A = '#4f8cff' // azul (atleta A / único)
+const COLOR_A = '#14b8a6' // acento (atleta A / único)
 const COLOR_B = '#ffaa32' // ámbar (atleta B en comparativa)
 
 export function PlantillaPage() {

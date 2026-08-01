@@ -28,14 +28,28 @@ Simulador táctico y Calendario. Múltiples roles de staff por centro
 - Para visualizar cambios: **siempre `git push origin main`**, nunca
   `localhost` (regla del CLAUDE.md raíz).
 
-## Identidad de color — AZUL (no confundir con Zyfit Coach, que es morado)
+## Identidad de color — VERDE AZULADO / TEAL (antes azul, cambiado 2026-08-01)
 
-Único acento `#4f8cff` (`accent`) + `accentLight #7ab6ff`; fondos azul-marino
-profundo (`#0a0e1a`); semánticos `ok #32c896`/`warn #ffaa32`/`danger #ff4444`.
-Sin púrpura en ninguna pantalla, login incluido — si un brief de Performance
-dice "púrpura", casi seguro está confundiendo con Zyfit Coach
-(`mobile/lib/coachTheme.ts`, portal de entrenador dentro de la app móvil, otro
-producto).
+Único acento `#14b8a6` (`accent`) + `accentDark #0d9488` + `accentLight
+#5eead4`; fondos azul-marino profundo (`#0a0e1a`, sin cambios — es el fondo,
+no el acento); semánticos `ok #32c896`/`warn #ffaa32`/`danger #ff4444`.
+
+**Por qué cambió:** el azul original (`#4f8cff`/`#7ab6ff`/`#2563ff`) resultó
+ser el mismo hex EXACTO que usa la landing de la APP (`app/globals.css`,
+`--accent`/`--accent-light`/`--accent-dark`) — una colisión real de marca
+entre dos productos del ecosistema, no solo una coincidencia estética.
+Detectado y corregido en la misma sesión que agregó la landing pública de
+Performance (ver `project_performance_landing`/`project_performance_color_rebrand`
+en memoria).
+
+Memorias antiguas y comentarios de código pre-2026-08-01 pueden seguir
+diciendo "azul" o citar `#4f8cff` — ya está desactualizado, verificar
+directamente en `tailwind.config.js` antes de asumir el valor.
+
+No confundir con el rojo de Academy (`#cc1f36`) ni con la identidad del
+Portal de Coach (otro producto dentro de la app móvil, `mobile/lib/
+coachTheme.ts` — históricamente morado; Sebastian mencionó en 2026-08-01 que
+cambió a vinotinto, sin verificar todavía directamente en ese archivo).
 
 ## Arquitectura backend (`backend/performance/`, tablas `performance_*`)
 

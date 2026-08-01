@@ -3,9 +3,9 @@
 // la raíz pública del proyecto) con una capa de oscurecimiento densa que la
 // mantiene legible, y un recuadro (card) que agrupa todos los elementos del
 // login —logo, título y formulario— flotando en la banda izquierda.
-// Identidad: azul (acento único de Zyfit Performance) sobre fondos azul-marino
-// profundo, sin gradientes. El púrpura es de Zyfit Coach (app RN), no de aquí.
-// La lógica de autenticación se conserva intacta.
+// Identidad: verde azulado (acento único de Zyfit Performance) sobre fondos
+// azul-marino profundo, sin gradientes — no confundir con la identidad de
+// otros productos del ecosistema. La lógica de autenticación se conserva intacta.
 
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -154,9 +154,9 @@ export function LoginPage() {
 }
 
 // Campo con etiqueta flotante: la etiqueta actúa como placeholder centrado
-// cuando está vacío y sube a la esquina superior izquierda (pequeña, azul
-// claro) al enfocar o al escribir contenido. El foco pinta el borde azul
-// (--accent), el único acento de Zyfit Performance.
+// cuando está vacío y sube a la esquina superior izquierda (pequeña, del
+// color de acento) al enfocar o al escribir contenido. El foco pinta el
+// borde con el acento (--accent), el único acento de Zyfit Performance.
 function Field({
   id,
   label,

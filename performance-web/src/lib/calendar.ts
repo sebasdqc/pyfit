@@ -16,14 +16,14 @@ export interface TipoMeta {
 }
 
 export const TIPO_META: Record<EventTipo, TipoMeta> = {
-  temporada: { label: 'Temporada', hex: '#4f8cff', range: true, icon: '🗓️' },
+  temporada: { label: 'Temporada', hex: '#14b8a6', range: true, icon: '🗓️' },
   torneo: { label: 'Torneo', hex: '#a855f7', range: true, icon: '🏆' },
   concentracion: { label: 'Concentración', hex: '#6ce5ff', range: true, icon: '🏕️' },
   partido: { label: 'Partido', hex: '#ff4444', range: false, icon: '⚽' },
   entrenamiento: { label: 'Entrenamiento', hex: '#32c896', range: false, icon: '💪' },
   evaluacion: { label: 'Evaluación', hex: '#ffaa32', range: false, icon: '📋' },
   descanso: { label: 'Descanso', hex: '#8a93a6', range: false, icon: '😴' },
-  otro: { label: 'Otro', hex: '#7ab6ff', range: false, icon: '📌' },
+  otro: { label: 'Otro', hex: '#5eead4', range: false, icon: '📌' },
 }
 
 export const TIPO_ORDER: EventTipo[] = [

@@ -1,5 +1,5 @@
 // Pantalla de carga a viewport completo con la identidad de Zyfit Performance
-// (azul de acento sobre azul-marino profundo). Se muestra mientras el panel
+// (acento verde azulado sobre azul-marino profundo). Se muestra mientras el panel
 // rehidrata la sesión al arrancar. El acento es un glow puntual detrás del
 // spinner, no un gradiente de fondo (el fondo se mantiene plano, como el login).
 

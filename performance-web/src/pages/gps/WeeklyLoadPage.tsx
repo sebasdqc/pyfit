@@ -58,7 +58,7 @@ export function WeeklyLoadPage() {
       {/* Barra de zona ACWR */}
       <Panel title="Zona ACWR del equipo — método Banister" action={<span className="text-[11px] text-white/45">ACWR actual: <strong className={SEM[teamRisk].text}>{teamAcwr.toFixed(2)}</strong></span>}>
         <div className="relative mb-1.5 flex h-5 overflow-hidden rounded-full">
-          <div style={{ width: '20%', background: 'rgba(79,140,255,0.4)' }} />
+          <div style={{ width: '20%', background: 'rgba(20,184,166,0.4)' }} />
           <div style={{ width: '25%', background: 'rgba(50,200,150,0.35)' }} />
           <div style={{ width: '25%', background: 'rgba(50,200,150,0.55)' }} />
           <div style={{ width: '15%', background: 'rgba(255,170,50,0.45)' }} />

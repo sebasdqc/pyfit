@@ -1,7 +1,7 @@
 // Dashboard principal de Zyfit Performance — primera pantalla del director
 // técnico. Densidad de información profesional con jerarquía clara: fila de 5
 // métricas + 3 filas de contenido (semáforo de plantilla + microciclo · alertas
-// + ACWR · accesos a módulos). Único acento: el azul. Estados: verde/ámbar/rojo.
+// + ACWR · accesos a módulos). Único acento: verde azulado. Estados: verde/ámbar/rojo.
 //
 // Datos: la plantilla, las métricas agregadas, las alertas y el ACWR se derivan
 // del roster REAL del centro activo (useSquad). El roster (nombres/dorsales/
