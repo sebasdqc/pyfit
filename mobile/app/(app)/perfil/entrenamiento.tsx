@@ -19,6 +19,11 @@ const NIVELES = [
   { k: 'intermedio', labelKey: 'ent_nivel_intermedio' },
   { k: 'avanzado', labelKey: 'ent_nivel_avanzado' },
 ] as const
+const ESTILOS_COACHING = [
+  { k: 'directo', labelKey: 'onboarding_coach_directo_label' },
+  { k: 'calido', labelKey: 'onboarding_coach_calido_label' },
+  { k: 'tecnico', labelKey: 'onboarding_coach_tecnico_label' },
+] as const
 const HORARIOS = [
   { k: 'mañana', labelKey: 'ent_horario_manana' },
   { k: 'tarde', labelKey: 'ent_horario_tarde' },
@@ -91,6 +96,7 @@ export default function EntrenamientoScreen() {
   const [isDirty, setIsDirty] = useState(false)
 
   const [nivel, setNivel] = useState('principiante')
+  const [estiloCoaching, setEstiloCoaching] = useState('')
   const [diasSemana, setDiasSemana] = useState(3)
   const [horario, setHorario] = useState('')
   const [rmSentadilla, setRmSentadilla] = useState('')
@@ -120,6 +126,7 @@ export default function EntrenamientoScreen() {
     apiGet('/api/profile/').then(data => {
       setFullProfile(data)
       setNivel(data.nivel ?? 'principiante')
+      setEstiloCoaching(data.estilo_coaching ?? '')
       setDiasSemana(data.dias_semana ?? 3)
       setHorario(data.horario_preferido ?? '')
       setRmSentadilla(data.rm_sentadilla ? String(data.rm_sentadilla) : '')
@@ -155,7 +162,7 @@ export default function EntrenamientoScreen() {
       const nivelExp = ({ principiante: 2, intermedio: 3, avanzado: 4 } as Record<string, number>)[nivel] ?? 3
       // PRF: PATCH parcial — solo campos de esta pantalla (evita lost update).
       await apiPatch('/api/profile/', {
-        nivel, nivel_experiencia: nivelExp,
+        nivel, nivel_experiencia: nivelExp, estilo_coaching: estiloCoaching,
         dias_semana: diasSemana, horario_preferido: horario,
         rm_sentadilla: rmS, rm_peso_muerto: rmM,
         rm_press_banca: rmB, rm_press_hombro: rmH,
@@ -195,6 +202,13 @@ export default function EntrenamientoScreen() {
               <View style={[styles.chipsRow, { marginBottom: 20 }]}>
                 {NIVELES.map(({ k, labelKey }) => (
                   <Chip key={k} label={t(labelKey)} active={nivel === k} onPress={() => mark(setNivel)(k)} styles={styles} />
+                ))}
+              </View>
+
+              <SectionLabel text={t('ent_coaching_style')} styles={styles} />
+              <View style={[styles.chipsRow, { marginBottom: 20 }]}>
+                {ESTILOS_COACHING.map(({ k, labelKey }) => (
+                  <Chip key={k} label={t(labelKey)} active={estiloCoaching === k} onPress={() => mark(setEstiloCoaching)(k)} styles={styles} />
                 ))}
               </View>
 

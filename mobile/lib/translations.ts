@@ -436,11 +436,11 @@ const translations = {
 
   onboarding_coaching_title: { es: '¿Cómo prefieres que te guíe tu entrenador?', en: 'How do you prefer your coach to guide you?', pt: 'Como você prefere que seu treinador te guie?', fr: 'Comment préférez-vous que votre coach vous guide ?' },
   onboarding_coaching_sub:   { es: 'Esto ajusta el tono de cada interacción. Puedes cambiarlo cuando quieras desde tu perfil.', en: 'This adjusts the tone of every interaction. You can change it anytime from your profile.', pt: 'Isso ajusta o tom de cada interação. Você pode mudar quando quiser no seu perfil.', fr: "Cela ajuste le ton de chaque interaction. Vous pouvez le changer à tout moment depuis votre profil." },
-  onboarding_coach_directo_label: { es: 'Directo y exigente', en: 'Direct and demanding', pt: 'Direto e exigente', fr: 'Direct et exigeant' },
+  onboarding_coach_directo_label: { es: 'Directo y rápido', en: 'Direct and fast', pt: 'Direto e rápido', fr: 'Direct et rapide' },
   onboarding_coach_directo_desc:  { es: 'Sin rodeos. Me dices exactamente qué hacer y con qué intensidad.', en: 'No detours. Tell me exactly what to do and at what intensity.', pt: 'Sem rodeios. Me diga exatamente o que fazer e com que intensidade.', fr: 'Sans détour. Dites-moi exactement quoi faire et à quelle intensité.' },
-  onboarding_coach_calido_label: { es: 'Motivacional y cálido', en: 'Motivational and warm', pt: 'Motivacional e caloroso', fr: 'Motivant et chaleureux' },
+  onboarding_coach_calido_label: { es: 'Motivador', en: 'Motivator', pt: 'Motivador', fr: 'Motivant' },
   onboarding_coach_calido_desc:  { es: 'Me animas, celebras mis avances y me acompañas en los días difíciles.', en: 'You encourage me, celebrate my progress, and support me on tough days.', pt: 'Você me anima, celebra meus avanços e me acompanha nos dias difíceis.', fr: 'Vous m\'encouragez, célébrez mes progrès et m\'accompagnez les jours difficiles.' },
-  onboarding_coach_tecnico_label: { es: 'Técnico y explicativo', en: 'Technical and explanatory', pt: 'Técnico e explicativo', fr: 'Technique et pédagogue' },
+  onboarding_coach_tecnico_label: { es: 'Técnico científico', en: 'Technical and scientific', pt: 'Técnico e científico', fr: 'Technique et scientifique' },
   onboarding_coach_tecnico_desc:  { es: 'Explicas el porqué de cada decisión. Quiero entender, no solo seguir.', en: 'You explain the reasoning behind every decision. I want to understand, not just follow.', pt: 'Você explica o porquê de cada decisão. Quero entender, não só seguir.', fr: 'Vous expliquez le pourquoi de chaque décision. Je veux comprendre, pas juste suivre.' },
 
   onboarding_entreno_title: { es: '¿Qué tipos de entrenamiento te interesan?', en: 'What types of training interest you?', pt: 'Que tipos de treino te interessam?', fr: "Quels types d'entraînement vous intéressent ?" },
@@ -1707,6 +1707,7 @@ const translations = {
   ajt_delete_error_msg: { es: 'Hubo un problema al conectar con el servidor. Inténtalo de nuevo o escríbenos a hola@zyfit.app.', en: 'There was a problem connecting to the server. Please try again or write to us at hola@zyfit.app.', pt: 'Houve um problema ao conectar com o servidor. Tente novamente ou escreva para hola@zyfit.app.', fr: 'Un problème est survenu lors de la connexion au serveur. Réessayez ou écrivez-nous à hola@zyfit.app.' },
   ajt_understood: { es: 'Entendido', en: 'Got it', pt: 'Entendi', fr: 'Compris' },
   ent_level: { es: 'Nivel', en: 'Level', pt: 'Nível', fr: 'Niveau' },
+  ent_coaching_style: { es: 'Estilo de comunicación', en: 'Communication style', pt: 'Estilo de comunicação', fr: 'Style de communication' },
   ent_days_per_week: { es: 'Días por semana', en: 'Days per week', pt: 'Dias por semana', fr: 'Jours par semaine' },
   ent_preferred_time: { es: 'Horario preferido', en: 'Preferred time', pt: 'Horário preferido', fr: 'Horaire préféré' },
   ent_nivel_principiante: { es: 'Principiante', en: 'Beginner', pt: 'Iniciante', fr: 'Débutant' },
