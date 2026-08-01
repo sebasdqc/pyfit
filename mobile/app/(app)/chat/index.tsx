@@ -430,30 +430,34 @@ function InsightCard({ colors, texto, onAskCoach }: {
         style={StyleSheet.absoluteFill} pointerEvents="none"
       />
       <View style={styles.cardContent}>
-        <View style={styles.cardHeaderRow}>
-          <View style={[styles.categChip, { borderColor: cyan + '50', backgroundColor: cyan + '18' }]}>
-            <Text style={[styles.categTxt, { color: cyan }]}>{t('chat_insight_label')}</Text>
+        <View style={styles.cardTop}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.categChip, { borderColor: cyan + '50', backgroundColor: cyan + '18' }]}>
+              <Text style={[styles.categTxt, { color: cyan }]}>{t('chat_insight_label')}</Text>
+            </View>
+            <Text style={styles.cardEmoji}>💡</Text>
           </View>
-          <Text style={styles.cardEmoji}>💡</Text>
+          <View style={[styles.cardDivider, { backgroundColor: cyan + '30' }]} />
+          <Text style={[styles.cardBody, styles.insightBody, { color: colors.inkPrimary }]} numberOfLines={4} ellipsizeMode="tail">
+            {texto || t('chat_no_insight')}
+          </Text>
         </View>
-        <View style={[styles.cardDivider, { backgroundColor: cyan + '30' }]} />
-        <Text style={[styles.cardBody, styles.insightBody, { color: colors.inkPrimary }]}>
-          {texto || t('chat_no_insight')}
-        </Text>
 
         {/* Botón preguntarle al Coach — igual que RecCard */}
-        <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
-        <TouchableOpacity
-          onPress={onAskCoach}
-          activeOpacity={0.75}
-          style={[styles.cardAskBtn, { backgroundColor: cyan + '12', borderColor: cyan + '35' }]}
-        >
-          <View style={styles.cardAskBtnLeft}>
-            <MiniChatIcon color={cyan} size={12} />
-            <Text style={[styles.cardAskBtnTxt, { color: cyan }]}>{t('chat_ask_coach')}</Text>
-          </View>
-          <Text style={[styles.cardAskBtnArrow, { color: cyan }]}>›</Text>
-        </TouchableOpacity>
+        <View style={styles.cardBottom}>
+          <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
+          <TouchableOpacity
+            onPress={onAskCoach}
+            activeOpacity={0.75}
+            style={[styles.cardAskBtn, { backgroundColor: cyan + '12', borderColor: cyan + '35' }]}
+          >
+            <View style={styles.cardAskBtnLeft}>
+              <MiniChatIcon color={cyan} size={12} />
+              <Text style={[styles.cardAskBtnTxt, { color: cyan }]}>{t('chat_ask_coach')}</Text>
+            </View>
+            <Text style={[styles.cardAskBtnArrow, { color: cyan }]}>›</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   )
@@ -482,35 +486,39 @@ function RecCard({ rec, anim, colors, onAskCoach }: {
         style={StyleSheet.absoluteFill} pointerEvents="none"
       />
       <View style={styles.cardContent}>
-        <View style={styles.cardHeaderRow}>
-          <View style={[styles.categChip, { borderColor: rec.color + '50', backgroundColor: rec.color + '18' }]}>
-            <Text style={[styles.categTxt, { color: rec.color }]}>{rec.categoria}</Text>
+        <View style={styles.cardTop}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.categChip, { borderColor: rec.color + '50', backgroundColor: rec.color + '18' }]}>
+              <Text style={[styles.categTxt, { color: rec.color }]}>{rec.categoria}</Text>
+            </View>
+            <Text style={styles.cardEmoji}>{rec.icono}</Text>
           </View>
-          <Text style={styles.cardEmoji}>{rec.icono}</Text>
-        </View>
-        <Text style={[styles.cardTitle, { color: colors.inkPrimary }]}>{rec.titulo}</Text>
-        <View style={[styles.cardDivider, { backgroundColor: rec.color + '30' }]} />
-        <Text style={[styles.cardBody, { color: colors.inkSecondary }]}>{rec.cuerpo}</Text>
+          <Text style={[styles.cardTitle, { color: colors.inkPrimary }]} numberOfLines={2} ellipsizeMode="tail">{rec.titulo}</Text>
+          <View style={[styles.cardDivider, { backgroundColor: rec.color + '30' }]} />
+          <Text style={[styles.cardBody, { color: colors.inkSecondary }]} numberOfLines={4} ellipsizeMode="tail">{rec.cuerpo}</Text>
 
-        {/* Fuente del dato */}
-        <View style={styles.cardFooter}>
-          <View style={[styles.cardFooterDot, { backgroundColor: rec.color }]} />
-          <Text style={[styles.cardFooterTxt, { color: rec.color }]}>{rec.fuente}</Text>
+          {/* Fuente del dato */}
+          <View style={styles.cardFooter}>
+            <View style={[styles.cardFooterDot, { backgroundColor: rec.color }]} />
+            <Text style={[styles.cardFooterTxt, { color: rec.color }]}>{rec.fuente}</Text>
+          </View>
         </View>
 
         {/* Botón preguntarle al Coach */}
-        <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
-        <TouchableOpacity
-          onPress={onAskCoach}
-          activeOpacity={0.75}
-          style={[styles.cardAskBtn, { backgroundColor: rec.color + '12', borderColor: rec.color + '35' }]}
-        >
-          <View style={styles.cardAskBtnLeft}>
-            <MiniChatIcon color={rec.color} size={12} />
-            <Text style={[styles.cardAskBtnTxt, { color: rec.color }]}>{t('chat_ask_coach')}</Text>
-          </View>
-          <Text style={[styles.cardAskBtnArrow, { color: rec.color }]}>›</Text>
-        </TouchableOpacity>
+        <View style={styles.cardBottom}>
+          <View style={[styles.cardAskSeparator, { backgroundColor: colors.borderDefault }]} />
+          <TouchableOpacity
+            onPress={onAskCoach}
+            activeOpacity={0.75}
+            style={[styles.cardAskBtn, { backgroundColor: rec.color + '12', borderColor: rec.color + '35' }]}
+          >
+            <View style={styles.cardAskBtnLeft}>
+              <MiniChatIcon color={rec.color} size={12} />
+              <Text style={[styles.cardAskBtnTxt, { color: rec.color }]}>{t('chat_ask_coach')}</Text>
+            </View>
+            <Text style={[styles.cardAskBtnArrow, { color: rec.color }]}>›</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Animated.View>
   )
@@ -829,9 +837,13 @@ const styles = StyleSheet.create({
   slider: { marginHorizontal: -20 },
   cardPage: { width: SCREEN_W, paddingHorizontal: 20 },
 
-  cardOuter: { borderRadius: 24, borderWidth: 1, overflow: 'hidden', minHeight: 200 },
+  // Altura fija — todas las cards del carrusel (Insight + recomendaciones)
+  // deben verse del mismo tamaño sin importar cuánto texto traiga cada una.
+  cardOuter: { borderRadius: 24, borderWidth: 1, overflow: 'hidden', height: 300 },
   cardTopBar: { height: 3 },
-  cardContent: { padding: 22, paddingTop: 18, gap: 12 },
+  cardContent: { flex: 1, padding: 22, paddingTop: 18, justifyContent: 'space-between' },
+  cardTop: { gap: 12 },
+  cardBottom: { gap: 12 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   categChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   categTxt: {
