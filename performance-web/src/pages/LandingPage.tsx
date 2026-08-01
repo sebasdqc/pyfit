@@ -307,15 +307,15 @@ export function LandingPage() {
           <Reveal className="text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Motor de cálculo</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              El ACWR no es una caja negra — probalo vos mismo
+              Ninguna fórmula es una caja negra — probalas vos mismo
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-white/55">
-              Cargá dos números y mirá en qué zona cae — la misma fórmula y las mismas zonas que usa el panel real
-              para cada atleta.
+              Elegí una calculadora, cargá tus números y mirá el resultado — las mismas fórmulas que usa el panel
+              real para cada atleta.
             </p>
           </Reveal>
           <Reveal delay={100} className="mt-8">
-            <AcwrDemo />
+            <CalculatorDemo />
           </Reveal>
         </div>
       </section>
@@ -397,20 +397,63 @@ export function LandingPage() {
   )
 }
 
-// Demo interactiva del ACWR (agudo:crónico) — mismas zonas documentadas en
-// performance-web/CLAUDE.md (0.8-1.3 sweet spot / >1.5 peligro) y en
-// backend/performance/calculators/. Cálculo trivial hecho en el cliente a
-// propósito: es una demo de marketing, no reemplaza el cálculo real del
-// panel (que sí vive siempre en el servidor, por atleta y por equipo).
-function AcwrDemo() {
+// Demo interactiva de 3 calculadoras reales (chips para elegir cuál probar).
+// Cálculo hecho en el cliente a propósito, con las mismas fórmulas/zonas
+// documentadas en el backend (backend/performance/calculators/) — es una
+// demo de marketing, no reemplaza el cálculo real del panel (que sí vive
+// siempre en el servidor, por atleta y por equipo).
+type CalcKey = 'acwr' | 'srpe' | 'sayers'
+
+const CALCULATORS: { key: CalcKey; chip: string }[] = [
+  { key: 'acwr', chip: 'ACWR' },
+  { key: 'srpe', chip: 'Carga de sesión (sRPE)' },
+  { key: 'sayers', chip: 'Potencia de salto (Sayers)' },
+]
+
+// Input compartido por las 3 calculadoras — misma altura de label (2 líneas
+// reservadas) para que ambas columnas del grid siempre alineen, sin importar
+// si el texto de una etiqueta es más corto que el de la otra.
+function CalcField({
+  label,
+  unit,
+  value,
+  onChange,
+  max,
+}: {
+  label: string
+  unit: string
+  value: string
+  onChange: (v: string) => void
+  max?: number
+}) {
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="min-h-[2rem] text-xs font-medium uppercase leading-tight tracking-wide text-white/50">
+        {label} <span className="normal-case tracking-normal text-white/35">({unit})</span>
+      </span>
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-12 rounded-lg border border-white/10 bg-white/5 px-4 text-lg font-semibold text-white outline-none transition-colors focus:border-accent"
+      />
+    </label>
+  )
+}
+
+function CalculatorDemo() {
+  const [calc, setCalc] = useState<CalcKey>('acwr')
+
+  // ACWR — zonas de performance-web/CLAUDE.md (0.8-1.3 sweet spot / >1.5 peligro).
   const [aguda, setAguda] = useState('420')
   const [cronica, setCronica] = useState('380')
-
   const agudaNum = Number(aguda) || 0
   const cronicaNum = Number(cronica) || 0
   const ratio = cronicaNum > 0 ? agudaNum / cronicaNum : 0
   const markerPct = (Math.min(Math.max(ratio, 0), 2) / 2) * 100
-
   const zone =
     cronicaNum <= 0
       ? { label: 'Cargá ambos valores', color: 'text-white/40' }
@@ -422,71 +465,124 @@ function AcwrDemo() {
             ? { label: 'Zona óptima (sweet spot)', color: 'text-perf-ok' }
             : { label: 'Por debajo del rango óptimo', color: 'text-accentLight' }
 
+  // sRPE — carga = RPE (Borg CR-10) × duración (backend/performance/calculators/carga.py).
+  const [rpe, setRpe] = useState('6')
+  const [duracion, setDuracion] = useState('75')
+  const rpeNum = Math.min(Math.max(Number(rpe) || 0, 0), 10)
+  const duracionNum = Number(duracion) || 0
+  const cargaUa = rpeNum * duracionNum
+
+  // Squat Jump — potencia de Sayers et al. 1999 (backend/performance/calculators/fisicos.py).
+  const [alturaCm, setAlturaCm] = useState('38')
+  const [masaKg, setMasaKg] = useState('72')
+  const alturaNum = Number(alturaCm) || 0
+  const masaNum = Number(masaKg) || 0
+  const potenciaW = 60.7 * alturaNum + 45.3 * masaNum - 2055
+
   return (
     <div className="rounded-2xl border border-white/[0.14] bg-white/[0.05] p-6 backdrop-blur-md sm:p-8">
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/50">
-            Carga aguda (últimos 7 días)
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            value={aguda}
-            onChange={(e) => setAguda(e.target.value)}
-            className="h-12 rounded-lg border border-white/10 bg-white/5 px-4 text-lg font-semibold text-white outline-none transition-colors focus:border-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/50">
-            Carga crónica (promedio, últimas 4 semanas)
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            value={cronica}
-            onChange={(e) => setCronica(e.target.value)}
-            className="h-12 rounded-lg border border-white/10 bg-white/5 px-4 text-lg font-semibold text-white outline-none transition-colors focus:border-accent"
-          />
-        </label>
+      <div className="flex flex-wrap justify-center gap-2">
+        {CALCULATORS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setCalc(c.key)}
+            aria-pressed={calc === c.key}
+            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
+              calc === c.key ? 'bg-accent text-white' : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            {c.chip}
+          </button>
+        ))}
       </div>
 
-      <div className="mt-7">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-3xl font-bold tracking-tight text-white">
-            ACWR {cronicaNum > 0 ? ratio.toFixed(2) : '—'}
-          </p>
-          <p className={`text-sm font-semibold ${zone.color}`}>{zone.label}</p>
-        </div>
-
-        <div className="relative mt-5 h-2.5 w-full">
-          <div className="flex h-full w-full overflow-hidden rounded-full">
-            <div className="h-full bg-accentLight/25" style={{ width: '40%' }} />
-            <div className="h-full bg-perf-ok" style={{ width: '25%' }} />
-            <div className="h-full bg-perf-warn" style={{ width: '10%' }} />
-            <div className="h-full bg-perf-danger" style={{ width: '25%' }} />
+      {calc === 'acwr' && (
+        <div className="mt-7">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <CalcField label="Carga aguda" unit="7 días" value={aguda} onChange={setAguda} />
+            <CalcField label="Carga crónica" unit="prom. 4 semanas" value={cronica} onChange={setCronica} />
           </div>
-          <div
-            className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-perf-bg bg-white shadow-[0_2px_6px_rgba(0,0,0,0.4)] transition-[left] duration-300"
-            style={{ left: `${markerPct}%` }}
-          />
-        </div>
-        <div className="relative mt-2 h-4 text-[10px] font-medium uppercase tracking-wide text-white/35">
-          <span className="absolute left-0">0</span>
-          <span className="absolute -translate-x-1/2" style={{ left: '40%' }}>0.8</span>
-          <span className="absolute -translate-x-1/2" style={{ left: '65%' }}>1.3</span>
-          <span className="absolute -translate-x-1/2" style={{ left: '75%' }}>1.5</span>
-          <span className="absolute right-0">2.0+</span>
-        </div>
-      </div>
 
-      <p className="mt-6 text-xs leading-relaxed text-white/40">
-        Vista simplificada con fines demostrativos — en el panel real, el ACWR se calcula por atleta y por equipo,
-        en variantes de rolling average y EWMA, y se cruza automáticamente con lesiones y planificación. No
-        sustituye el seguimiento diario del cuerpo técnico.
-      </p>
+          <div className="mt-7">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-3xl font-bold tracking-tight text-white">
+                ACWR {cronicaNum > 0 ? ratio.toFixed(2) : '—'}
+              </p>
+              <p className={`text-sm font-semibold ${zone.color}`}>{zone.label}</p>
+            </div>
+
+            <div className="relative mt-5 h-2.5 w-full">
+              <div className="flex h-full w-full overflow-hidden rounded-full">
+                <div className="h-full bg-accentLight/25" style={{ width: '40%' }} />
+                <div className="h-full bg-perf-ok" style={{ width: '25%' }} />
+                <div className="h-full bg-perf-warn" style={{ width: '10%' }} />
+                <div className="h-full bg-perf-danger" style={{ width: '25%' }} />
+              </div>
+              <div
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-perf-bg bg-white shadow-[0_2px_6px_rgba(0,0,0,0.4)] transition-[left] duration-300"
+                style={{ left: `${markerPct}%` }}
+              />
+            </div>
+            <div className="relative mt-2 h-4 text-[10px] font-medium uppercase tracking-wide text-white/35">
+              <span className="absolute left-0">0</span>
+              <span className="absolute -translate-x-1/2" style={{ left: '40%' }}>0.8</span>
+              <span className="absolute -translate-x-1/2" style={{ left: '65%' }}>1.3</span>
+              <span className="absolute -translate-x-1/2" style={{ left: '75%' }}>1.5</span>
+              <span className="absolute right-0">2.0+</span>
+            </div>
+          </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-white/40">
+            Vista simplificada con fines demostrativos — en el panel real, el ACWR se calcula por atleta y por equipo,
+            en variantes de rolling average y EWMA, y se cruza automáticamente con lesiones y planificación. No
+            sustituye el seguimiento diario del cuerpo técnico.
+          </p>
+        </div>
+      )}
+
+      {calc === 'srpe' && (
+        <div className="mt-7">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <CalcField label="RPE percibido" unit="0–10, Borg CR-10" value={rpe} onChange={setRpe} max={10} />
+            <CalcField label="Duración" unit="minutos" value={duracion} onChange={setDuracion} />
+          </div>
+
+          <div className="mt-7">
+            <p className="text-3xl font-bold tracking-tight text-white">
+              {duracionNum > 0 ? Math.round(cargaUa) : '—'} <span className="text-lg font-semibold text-white/50">UA</span>
+            </p>
+            <p className="mt-1 text-sm font-medium text-white/55">Carga interna de la sesión</p>
+          </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-white/40">
+            RPE × duración (Foster/Borg CR-10) — la misma cuenta que registra el módulo de Carga interna, sesión por
+            sesión. El panel real la acumula día a día para calcular monotonía, strain y ACWR.
+          </p>
+        </div>
+      )}
+
+      {calc === 'sayers' && (
+        <div className="mt-7">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <CalcField label="Altura del salto" unit="cm" value={alturaCm} onChange={setAlturaCm} />
+            <CalcField label="Masa corporal" unit="kg" value={masaKg} onChange={setMasaKg} />
+          </div>
+
+          <div className="mt-7">
+            <p className="text-3xl font-bold tracking-tight text-white">
+              {alturaNum > 0 && masaNum > 0 ? Math.round(potenciaW) : '—'}{' '}
+              <span className="text-lg font-semibold text-white/50">W</span>
+            </p>
+            <p className="mt-1 text-sm font-medium text-white/55">Potencia pico estimada (Squat Jump)</p>
+          </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-white/40">
+            Fórmula de Sayers et al. (1999): 60.7 × altura(cm) + 45.3 × masa(kg) − 2055. El panel también puede
+            calcular la altura directo desde el tiempo de vuelo del salto.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
