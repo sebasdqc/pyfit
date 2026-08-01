@@ -155,8 +155,8 @@ export function LandingPage() {
               en un solo panel<span className="text-accent">.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
-              Rendimiento, lesiones, test físicos, planificación y psicológico — un panel para todo el cuerpo técnico
-              de tu centro de alto rendimiento en fútbol y futsal.
+              Rendimiento, lesiones, test físicos, planificación y psicológico — un panel para equipos deportivos,
+              instituciones educativas y atletas de alto rendimiento.
             </p>
           </Reveal>
           <Reveal delay={120}>
@@ -175,6 +175,56 @@ export function LandingPage() {
               </Link>
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      {/* Para quién es */}
+      <section className="px-6 py-20 sm:px-10">
+        <div className="mx-auto max-w-6xl">
+          <Reveal className="max-w-xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Para quién es</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Pensado para quien mide el rendimiento en serio
+            </h2>
+          </Reveal>
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Reveal>
+              <div className="h-full rounded-2xl border border-white/[0.14] bg-white/[0.05] p-6 backdrop-blur-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
+                  <Icon name="plantilla" size={22} />
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">Equipos deportivos</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/55">
+                  Clubes y centros de fútbol o futsal que necesitan a todo su cuerpo técnico —físico, médico,
+                  táctico y psicológico— coordinado en un solo panel.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal delay={80}>
+              <div className="h-full rounded-2xl border border-white/[0.14] bg-white/[0.05] p-6 backdrop-blur-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
+                  <GraduationIcon />
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">Instituciones educativas</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/55">
+                  Escuelas y academias deportivas que forman jóvenes atletas y necesitan seguimiento objetivo de
+                  carga, test y evolución a lo largo de las temporadas.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal delay={160}>
+              <div className="h-full rounded-2xl border border-white/[0.14] bg-white/[0.05] p-6 backdrop-blur-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
+                  <Icon name="gauge" size={22} />
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">Atletas de alto rendimiento</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/55">
+                  Deportistas individuales que entrenan con un cuerpo técnico propio y quieren sus datos de carga,
+                  test y recuperación en un solo lugar.
+                </p>
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
@@ -319,6 +369,19 @@ export function LandingPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+// "Instituciones educativas" no tiene ícono equivalente en el registro
+// compartido (@/components/Icon) — se agrega acá, uso exclusivo de esta
+// sección, con la misma convención (viewBox 24x24, stroke 1.7).
+function GraduationIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m2 9 10-5 10 5-10 5-10-5Z" />
+      <path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+      <path d="M22 9v7" />
+    </svg>
   )
 }
 
