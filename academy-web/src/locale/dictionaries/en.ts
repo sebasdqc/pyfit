@@ -140,6 +140,24 @@ const en: DeepPartial<Dictionary> = {
     pricingFeature4: 'Cancel anytime, no commitment',
     pricingCta: 'Get started',
     pricingFootnote: 'Sign up for free first; choose and activate your Pro plan from your account.',
+    faqEyebrow: 'Frequently asked questions',
+    faqTitle: 'What people ask us the most',
+    faq1Question: 'Do I need prior coaching experience to take the courses?',
+    faq1Answer:
+      'No. There are courses for beginners and others for advanced levels — pick what fits your background ' +
+      'and move from the essentials to advanced topics within each school.',
+    faq2Question: 'Do the courses grant an official certification?',
+    faq2Answer:
+      'Completing 100% of a course\'s lessons and passing every quiz earns you a certificate with a unique ' +
+      'code that anyone can verify.',
+    faq3Question: 'What\'s the difference between the free plan and Academy Pro?',
+    faq3Answer:
+      'A free account gives you access to the courses and modules marked as free. Academy Pro unlocks the ' +
+      'full catalog across all 7 schools and expands your daily AI tutor quota.',
+    faq4Question: 'Do you have courses adapted to CONMEBOL Evolución training?',
+    faq4Answer:
+      'Yes. We offer courses aligned to CONMEBOL Evolución\'s C, B, A, and PRO licenses, each with its own ' +
+      'course load and format.',
   },
   auth: {
     emailLabel: 'Email',

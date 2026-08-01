@@ -1,0 +1,103 @@
+/* Acordeón de FAQ (Faq.tsx) — adaptado de app/globals.css (Zyfit APP) a los
+   tokens de Academy. El bloque global de prefers-reduced-motion en index.css
+   ya neutraliza estas transiciones, así que no repetimos esa media query acá. */
+.faq-item {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.35s ease, background 0.35s ease;
+}
+.faq-item:hover {
+  border-color: rgb(var(--color-accent) / 0.35);
+}
+.faq-item[data-open='true'] {
+  border-color: rgb(var(--color-accent) / 0.4);
+  background: rgb(var(--color-accent) / 0.06);
+}
+
+/* Barra de acento que crece de arriba hacia abajo al abrir */
+.faq-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgb(var(--color-accent));
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open='true'] .faq-bar {
+  transform: scaleY(1);
+}
+
+.faq-q {
+  cursor: pointer;
+}
+.faq-q:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: -2px;
+}
+
+.faq-index {
+  color: var(--color-ink-faint);
+  transition: color 0.35s ease;
+}
+.faq-item[data-open='true'] .faq-index {
+  color: rgb(var(--color-accent));
+}
+
+/* "+" que gira y se convierte en "−" */
+.faq-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open='true'] .faq-icon {
+  transform: rotate(180deg);
+}
+.faq-icon-h,
+.faq-icon-v {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgb(var(--color-accent));
+}
+.faq-icon-h {
+  width: 14px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+}
+.faq-icon-v {
+  width: 2px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-item[data-open='true'] .faq-icon-v {
+  transform: translate(-50%, -50%) scaleY(0);
+}
+
+/* Apertura sin max-height inventado */
+.faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.faq-a > div {
+  overflow: hidden;
+}
+.faq-item[data-open='true'] .faq-a {
+  grid-template-rows: 1fr;
+}
+
+.faq-a-text {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.3s ease 0.06s, transform 0.3s ease 0.06s;
+}
+.faq-item[data-open='true'] .faq-a-text {
+  opacity: 1;
+  transform: none;
+}

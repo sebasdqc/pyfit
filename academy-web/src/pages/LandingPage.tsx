@@ -10,7 +10,9 @@ import Aurora from '@/components/Aurora'
 import { Wordmark } from '@/components/Emblem'
 import BorderGlow from '@/components/effects/BorderGlow'
 import StarBorder from '@/components/effects/StarBorder'
+import Faq from '@/components/Faq'
 import { Icon, type IconName } from '@/components/Icon'
+import Reveal from '@/components/Reveal'
 import { Badge } from '@/components/ui/Badge'
 import { CourseCard } from '@/components/ui/CourseCard'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
@@ -254,21 +256,22 @@ export function LandingPage() {
       {/* Features */}
       <section className={`mx-auto max-w-6xl px-6 sm:px-10 ${showStats ? 'pb-16 pt-14' : 'py-16'}`}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((f) => (
-            <BorderGlow
-              key={f.titleKey}
-              {...CARD_GLOW}
-              backgroundColor="#1f2937"
-              className="group h-full transition-transform hover:-translate-y-0.5"
-            >
-              <div className="flex h-full flex-col p-5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
-                  <Icon name={f.icon} size={20} />
-                </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
-              </div>
-            </BorderGlow>
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.titleKey} delay={i * 70}>
+              <BorderGlow
+                {...CARD_GLOW}
+                backgroundColor="#1f2937"
+                className="group h-full transition-transform hover:-translate-y-0.5"
+              >
+                <div className="flex h-full flex-col p-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+                    <Icon name={f.icon} size={20} />
+                  </span>
+                  <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(f.titleKey)}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(f.bodyKey)}</p>
+                </div>
+              </BorderGlow>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -277,19 +280,20 @@ export function LandingPage() {
       {schools.length > 0 && (
         <section className="bg-surface-soft px-6 py-16 sm:px-10">
           <div className="mx-auto max-w-6xl">
-            <div className="max-w-xl">
+            <Reveal className="max-w-xl">
               <p className="za-eyebrow">{t('landing.schoolsEyebrow')}</p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
                 {t('landing.schoolsTitle')}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.schoolsBody')}</p>
-            </div>
+            </Reveal>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              {schools.map((s) => {
+              {schools.map((s, i) => {
                 const theme = schoolTheme(s.slug)
                 return (
-                  <div
+                  <Reveal
                     key={s.slug}
+                    delay={(i % 4) * 60}
                     className="w-[calc((100%-1rem)/2)] sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)]"
                   >
                     <BorderGlow
@@ -321,7 +325,7 @@ export function LandingPage() {
                         </p>
                       </Link>
                     </BorderGlow>
-                  </div>
+                  </Reveal>
                 )
               })}
             </div>
@@ -332,7 +336,7 @@ export function LandingPage() {
       {/* Cursos destacados */}
       <section className="px-6 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
-          <div className="flex items-end justify-between gap-4">
+          <Reveal className="flex items-end justify-between gap-4">
             <div>
               <p className="za-eyebrow">{t('landing.catalogEyebrow')}</p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.featuredCourses')}</h2>
@@ -344,7 +348,7 @@ export function LandingPage() {
               {t('landing.seeFullCatalog')}
               <Icon name="chevronRight" size={16} />
             </Link>
-          </div>
+          </Reveal>
 
           {loadingCourses ? (
             <div className="flex justify-center py-16">
@@ -354,15 +358,16 @@ export function LandingPage() {
             <p className="mt-8 text-sm text-ink-soft">{t('landing.comingSoon')}</p>
           ) : (
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredCourses.map((c) => (
-                <BorderGlow
-                  key={c.id}
-                  {...CARD_GLOW}
-                  backgroundColor="transparent"
-                  className="transition-transform hover:-translate-y-0.5"
-                >
-                  <CourseCard course={c} to={`/explorar/cursos/${c.id}`} />
-                </BorderGlow>
+              {featuredCourses.map((c, i) => (
+                <Reveal key={c.id} delay={(i % 3) * 70}>
+                  <BorderGlow
+                    {...CARD_GLOW}
+                    backgroundColor="transparent"
+                    className="transition-transform hover:-translate-y-0.5"
+                  >
+                    <CourseCard course={c} to={`/explorar/cursos/${c.id}`} />
+                  </BorderGlow>
+                </Reveal>
               ))}
             </div>
           )}
@@ -380,19 +385,19 @@ export function LandingPage() {
       {/* Cómo funciona */}
       <section className="bg-surface-soft px-6 py-16 sm:px-10">
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-xl">
+          <Reveal className="max-w-xl">
             <p className="za-eyebrow">{t('landing.howEyebrow')}</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.howTitle')}</h2>
-          </div>
+          </Reveal>
           <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
             {HOW_STEPS.map((s, i) => (
-              <div key={s.titleKey}>
+              <Reveal key={s.titleKey} delay={i * 80}>
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
                   {i + 1}
                 </span>
                 <h3 className="mt-4 text-[15px] font-semibold text-ink">{t(s.titleKey)}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(s.bodyKey)}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -401,60 +406,61 @@ export function LandingPage() {
       {/* Precios */}
       <section id="precios" className="scroll-mt-24 px-6 py-16 sm:px-10 sm:scroll-mt-28">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-xl text-center">
+          <Reveal className="mx-auto max-w-xl text-center">
             <p className="za-eyebrow">{t('landing.pricingEyebrow')}</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               {t('landing.pricingTitle')}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('landing.pricingBody')}</p>
-          </div>
+          </Reveal>
 
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {PRICING_PLANS.map((p) => (
-              <BorderGlow
-                key={p.id}
-                {...CARD_GLOW}
-                backgroundColor="#1f2937"
-                className={`h-full transition-transform hover:-translate-y-0.5 ${
-                  p.highlighted ? 'sm:-translate-y-2 sm:scale-[1.03]' : ''
-                }`}
-              >
-                <div className="flex h-full flex-col p-6">
-                  {p.saveKey && (
-                    <span className="mb-3 self-start">
-                      <Badge tone="brand">{t(p.saveKey)}</Badge>
-                    </span>
-                  )}
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t(p.nameKey)}</h3>
-                  <p className="mt-3 flex items-baseline gap-1">
-                    <span className="text-4xl font-bold tracking-tight text-ink">
-                      USD {monthlyEquivalent(p.price, p.months)}
-                    </span>
-                    <span className="text-sm font-medium text-ink-muted">{t('landing.pricingPerMonth')}</span>
-                  </p>
-                  <p className="mt-1 text-xs text-ink-muted">{t(p.billedKey, { price: p.price })}</p>
+            {PRICING_PLANS.map((p, i) => (
+              <Reveal key={p.id} delay={i * 80}>
+                <BorderGlow
+                  {...CARD_GLOW}
+                  backgroundColor="#1f2937"
+                  className={`h-full transition-transform hover:-translate-y-0.5 ${
+                    p.highlighted ? 'sm:-translate-y-2 sm:scale-[1.03]' : ''
+                  }`}
+                >
+                  <div className="flex h-full flex-col p-6">
+                    {p.saveKey && (
+                      <span className="mb-3 self-start">
+                        <Badge tone="brand">{t(p.saveKey)}</Badge>
+                      </span>
+                    )}
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{t(p.nameKey)}</h3>
+                    <p className="mt-3 flex items-baseline gap-1">
+                      <span className="text-4xl font-bold tracking-tight text-ink">
+                        USD {monthlyEquivalent(p.price, p.months)}
+                      </span>
+                      <span className="text-sm font-medium text-ink-muted">{t('landing.pricingPerMonth')}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-ink-muted">{t(p.billedKey, { price: p.price })}</p>
 
-                  <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-soft">
-                    {PRICING_FEATURES.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
-                        {t(f)}
-                      </li>
-                    ))}
-                  </ul>
+                    <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-soft">
+                      {PRICING_FEATURES.map((f) => (
+                        <li key={f} className="flex items-start gap-2.5">
+                          <Icon name="check" size={16} className="mt-0.5 shrink-0 text-ok" />
+                          {t(f)}
+                        </li>
+                      ))}
+                    </ul>
 
-                  <Link
-                    to="/registro"
-                    className={`mt-6 flex h-11 items-center justify-center rounded-xl text-sm font-semibold transition-colors ${
-                      p.highlighted
-                        ? 'bg-brand text-white hover:opacity-90'
-                        : 'border border-white/20 text-ink hover:bg-white/5'
-                    }`}
-                  >
-                    {t('landing.pricingCta')}
-                  </Link>
-                </div>
-              </BorderGlow>
+                    <Link
+                      to="/registro"
+                      className={`mt-6 flex h-11 items-center justify-center rounded-xl text-sm font-semibold transition-colors ${
+                        p.highlighted
+                          ? 'bg-brand text-white hover:opacity-90'
+                          : 'border border-white/20 text-ink hover:bg-white/5'
+                      }`}
+                    >
+                      {t('landing.pricingCta')}
+                    </Link>
+                  </div>
+                </BorderGlow>
+              </Reveal>
             ))}
           </div>
 
@@ -462,9 +468,20 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Preguntas frecuentes */}
+      <section className="px-6 py-16 sm:px-10">
+        <div className="mx-auto max-w-3xl">
+          <Reveal className="max-w-xl">
+            <p className="za-eyebrow">{t('landing.faqEyebrow')}</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t('landing.faqTitle')}</h2>
+          </Reveal>
+          <Faq />
+        </div>
+      </section>
+
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-6 py-16 sm:px-10">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-brand-deep px-6 py-14 text-center sm:px-16 sm:py-16">
+        <Reveal className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-brand-deep px-6 py-14 text-center sm:px-16 sm:py-16">
           <div className="pointer-events-none absolute -left-16 -bottom-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-12 -top-20 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
           <div className="relative z-10">
@@ -475,7 +492,7 @@ export function LandingPage() {
               <Icon name="arrowRight" size={17} />
             </StarBorder>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* Footer */}

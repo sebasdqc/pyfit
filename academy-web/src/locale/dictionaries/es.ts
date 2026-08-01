@@ -136,6 +136,24 @@ const es = {
     pricingFeature4: 'Cancelá cuando quieras, sin permanencia',
     pricingCta: 'Comenzar',
     pricingFootnote: 'Registrate gratis primero; elegís y activás tu plan Pro desde tu cuenta.',
+    faqEyebrow: 'Preguntas frecuentes',
+    faqTitle: 'Lo que más nos preguntan',
+    faq1Question: '¿Necesito experiencia previa como entrenador para tomar los cursos?',
+    faq1Answer:
+      'No. Hay cursos pensados para quienes recién empiezan y otros de nivel avanzado — elegís según tu ' +
+      'perfil y podés avanzar de lo esencial a lo avanzado dentro de cada escuela.',
+    faq2Question: '¿Los cursos otorgan certificación oficial?',
+    faq2Answer:
+      'Al completar el 100% de las lecciones y aprobar todos los quizzes de un curso recibís un certificado ' +
+      'con código único, verificable por cualquiera.',
+    faq3Question: '¿Qué diferencia hay entre el plan gratuito y Academy Pro?',
+    faq3Answer:
+      'Con la cuenta gratuita accedés a los cursos y módulos introductorios marcados como gratuitos. ' +
+      'Academy Pro desbloquea el catálogo completo de las 7 escuelas y amplía la cuota diaria del tutor IA.',
+    faq4Question: '¿Tienen cursos adaptados a la formación CONMEBOL Evolución?',
+    faq4Answer:
+      'Sí. Contamos con cursos alineados a las licencias C, B, A y PRO de CONMEBOL Evolución, con su propia ' +
+      'carga horaria y modalidad.',
   },
   auth: {
     emailLabel: 'Correo electrónico',
