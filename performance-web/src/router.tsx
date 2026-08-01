@@ -4,6 +4,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -27,6 +28,10 @@ import { CargaPage } from '@/pages/carga/CargaPage'
 import { FormaPage } from '@/pages/forma/FormaPage'
 
 export const router = createBrowserRouter([
+  // Landing pública: visitantes sin sesión ven el producto + CTAs a login/
+  // contacto; un usuario ya logueado es redirigido a /dashboard (ver
+  // useRedirectIfAuthenticated dentro de LandingPage).
+  { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/recuperar', element: <ForgotPasswordPage /> },
   {
@@ -35,7 +40,6 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'plantilla', element: <Navigate to="/equipo" replace /> },
           { path: 'equipo', element: <EquipoPage /> },
