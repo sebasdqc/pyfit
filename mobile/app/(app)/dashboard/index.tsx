@@ -461,6 +461,9 @@ function ZyfitScoreCard({
   const reduceMotion = useReduceMotion()
   const animOffset = useRef(new Animated.Value(RING_CIRC)).current
   const prevValorRef = useRef<number | null>(null)
+  // Número que se muestra mientras el anillo anima — cuenta en sincro con el trazo,
+  // en vez de saltar directo al valor final.
+  const [displayValor, setDisplayValor] = useState<number | null>(() => (hasData && valor != null ? 0 : null))
 
   useEffect(() => {
     if (prevValorRef.current === valor) return
@@ -468,14 +471,37 @@ function ZyfitScoreCard({
     const target = hasData && valor != null
       ? RING_CIRC * (1 - valor / 100)
       : RING_CIRC
-    if (reduceMotion) { animOffset.setValue(target); return }
+    if (reduceMotion) { animOffset.setValue(target); setDisplayValor(valor); return }
+    const listenerId = animOffset.addListener(({ value }) => {
+      if (hasData && valor != null) setDisplayValor(Math.round((1 - value / RING_CIRC) * 100))
+    })
     Animated.timing(animOffset, {
       toValue: target,
       duration: 1000,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
-    }).start()
+    }).start(() => {
+      animOffset.removeListener(listenerId)
+      setDisplayValor(valor)
+    })
+    return () => animOffset.removeListener(listenerId)
   }, [valor, hasData, reduceMotion])
+
+  // Respiración lenta del halo del anillo — vida ambiental de fondo, no compite con el número.
+  const breathAnim = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (!hasData || reduceMotion) { breathAnim.setValue(0); return }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [hasData, reduceMotion])
+  const breathOpacity = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] })
+  const breathScale = breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] })
 
   return (
     <View style={styles.zsCard}>
@@ -485,7 +511,11 @@ function ZyfitScoreCard({
 
       {/* ── Anillo héroe, centrado ── */}
       <View style={styles.zsRingWrap}>
-        {hasData && <View style={styles.zsRingGlow} />}
+        {hasData && (
+          <Animated.View
+            style={[styles.zsRingGlow, { opacity: breathOpacity, transform: [{ scale: breathScale }] }]}
+          />
+        )}
         <Svg width={RING_SIZE} height={RING_SIZE}>
           <Circle
             cx={RING_CX} cy={RING_CY} r={RING_R}
@@ -504,7 +534,7 @@ function ZyfitScoreCard({
         <View style={styles.zsRingCenter}>
           {hasData && valor != null ? (
             <>
-              <Text style={styles.zsScore}>{valor}</Text>
+              <Text style={styles.zsScore}>{displayValor ?? valor}</Text>
               <Text style={styles.zsScoreSub}>/ 100</Text>
             </>
           ) : (
@@ -1415,107 +1445,6 @@ function CTACard({
   )
 }
 
-// ─── Helpers — fecha relativa ─────────────────────────────────────────────────
-
-function relativeFecha(iso: string): string {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const d = new Date(iso + 'T00:00:00')
-  const diff = Math.floor((today.getTime() - d.getTime()) / 86400000)
-  if (diff === 0) return 'Hoy'
-  if (diff === 1) return 'Ayer'
-  if (diff < 7)  return `Hace ${diff} días`
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`
-}
-
-// ─── Última Sesión Card ───────────────────────────────────────────────────────
-
-function UltimaSesionCard({ session, colors }: { session: FullSession; colors: Colors }) {
-  const titulo       = session.respuesta_ia?.titulo ?? 'Sesión'
-  const duracion     = session.respuesta_ia?.duracion_total ?? session.duracion_planificada ?? 0
-  const cumplimiento = session.feedback?.cumplimiento ?? null
-  const rpe          = session.feedback?.rpe_real ?? null
-  const fecha        = relativeFecha(session.fecha)
-  const cumpColor    = cumplimiento == null ? colors.inkSecondary
-    : cumplimiento >= 90 ? colors.green
-    : cumplimiento >= 70 ? colors.orange
-    : colors.red
-
-  return (
-    <TouchableOpacity
-      onPress={() => router.push({ pathname: '/(app)/historial', params: { fecha: session.fecha, ts: String(Date.now()) } } as any)}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel={`Última sesión: ${titulo}, ${fecha}. Ver detalle`}
-      style={[ultimaStyles.wrap, { backgroundColor: colors.glassBg, borderColor: colors.borderBright }]}
-    >
-      <GlassLayer />
-      <Text style={[ultimaStyles.sectionLabel, { color: colors.inkMuted }]}>ÚLTIMA SESIÓN</Text>
-      <View style={ultimaStyles.row}>
-        <View style={[ultimaStyles.iconBox, { backgroundColor: accentAlpha(colors.accent, 0.10) }]}>
-          <DisciplineIcon titulo={titulo} color={colors.accent} size={22} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[ultimaStyles.titulo, { color: colors.inkPrimary }]} numberOfLines={1}>{titulo}</Text>
-          <Text style={[ultimaStyles.fecha, { color: colors.inkMuted }]}>{fecha}</Text>
-        </View>
-        <Text style={[ultimaStyles.chevron, { color: colors.inkFaint }]}>›</Text>
-      </View>
-
-      {/* Métricas — solo las que tienen datos */}
-      {(duracion > 0 || cumplimiento != null || rpe != null) && (
-        <View style={[ultimaStyles.metricsRow, { borderTopColor: colors.borderDefault }]}>
-          {duracion > 0 && (
-            <View style={ultimaStyles.metricItem}>
-              <Text style={[ultimaStyles.metricVal, { color: colors.inkSecondary }]}>{duracion} min</Text>
-              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>DURACIÓN</Text>
-            </View>
-          )}
-          {cumplimiento != null && (
-            <View style={ultimaStyles.metricItem}>
-              <Text style={[ultimaStyles.metricVal, { color: cumpColor }]}>{cumplimiento}%</Text>
-              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>CUMPLIMIENTO</Text>
-            </View>
-          )}
-          {rpe != null && (
-            <View style={ultimaStyles.metricItem}>
-              <Text style={[ultimaStyles.metricVal, { color: colors.inkSecondary }]}>RPE {rpe}</Text>
-              <Text style={[ultimaStyles.metricLabel, { color: colors.inkMuted }]}>ESFUERZO</Text>
-            </View>
-          )}
-        </View>
-      )}
-    </TouchableOpacity>
-  )
-}
-
-const ultimaStyles = StyleSheet.create({
-  wrap: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 16, overflow: 'hidden' },
-  sectionLabel: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-    letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconBox: {
-    // backgroundColor se aplica inline con accentAlpha(colors.accent, …) — el
-    // acento sale del tema activo, no de un azul fijo.
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  titulo: { fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 14, letterSpacing: -0.3, lineHeight: 19 },
-  fecha:  { fontFamily: 'JetBrainsMono-Regular', fontSize: 10, letterSpacing: 0.3, marginTop: 1 },
-  chevron: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, flexShrink: 0 },
-  metricsRow: {
-    flexDirection: 'row', marginTop: 12, paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  metricItem: { flex: 1, alignItems: 'center' },
-  metricVal:  { fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, letterSpacing: -0.3, lineHeight: 20 },
-  metricLabel: {
-    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
-    letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 2,
-  },
-})
-
 // ─── Coach Message Card (Zone 5) ─────────────────────────────────────────────
 
 function InsightCard({
@@ -1725,12 +1654,6 @@ export default function DashboardScreen() {
   )
 
 
-  const ultimaSesion = useMemo(() => {
-    const withFeedback = sessions.filter(s => s.feedback != null)
-    if (withFeedback.length === 0) return null
-    return withFeedback.reduce((a, b) => a.fecha > b.fecha ? a : b)
-  }, [sessions])
-
   return (
     <View style={styles.root}>
       {/* Background gradient */}
@@ -1896,11 +1819,6 @@ export default function DashboardScreen() {
           </View>
         ) : !!data?.cta && (
           <CTACard cta={data.cta} colors={colors} styles={styles} t={t} />
-        )}
-
-        {/* ── Última sesión completada con feedback ── */}
-        {!loading && ultimaSesion && (
-          <UltimaSesionCard session={ultimaSesion} colors={colors} />
         )}
 
         {/* ── ZONA 5 — Tu Entrenador ── */}
