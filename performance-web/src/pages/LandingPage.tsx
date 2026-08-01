@@ -116,6 +116,9 @@ export function LandingPage() {
           <a href="#metodologia" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
             Metodología
           </a>
+          <a href="#motor" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
+            Motor de cálculo
+          </a>
           <a href="#preguntas" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
             Preguntas frecuentes
           </a>
@@ -295,6 +298,28 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Motor de cálculo — demo interactiva, el diferenciador de la landing:
+          ningún otro producto del ecosistema deja probar el motor real desde
+          el marketing. Misma estética (glass, sin gradientes, tokens
+          semánticos perf-ok/warn/danger ya existentes). */}
+      <section id="motor" className="px-6 py-20 sm:px-10">
+        <div className="mx-auto max-w-2xl">
+          <Reveal className="text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Motor de cálculo</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              El ACWR no es una caja negra — probalo vos mismo
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-white/55">
+              Cargá dos números y mirá en qué zona cae — la misma fórmula y las mismas zonas que usa el panel real
+              para cada atleta.
+            </p>
+          </Reveal>
+          <Reveal delay={100} className="mt-8">
+            <AcwrDemo />
+          </Reveal>
+        </div>
+      </section>
+
       {/* Cómo funciona */}
       <section className="px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-6xl">
@@ -368,6 +393,100 @@ export function LandingPage() {
           <p className="text-xs text-white/35">© {new Date().getFullYear()} Zyfit Performance</p>
         </div>
       </footer>
+    </div>
+  )
+}
+
+// Demo interactiva del ACWR (agudo:crónico) — mismas zonas documentadas en
+// performance-web/CLAUDE.md (0.8-1.3 sweet spot / >1.5 peligro) y en
+// backend/performance/calculators/. Cálculo trivial hecho en el cliente a
+// propósito: es una demo de marketing, no reemplaza el cálculo real del
+// panel (que sí vive siempre en el servidor, por atleta y por equipo).
+function AcwrDemo() {
+  const [aguda, setAguda] = useState('420')
+  const [cronica, setCronica] = useState('380')
+
+  const agudaNum = Number(aguda) || 0
+  const cronicaNum = Number(cronica) || 0
+  const ratio = cronicaNum > 0 ? agudaNum / cronicaNum : 0
+  const markerPct = (Math.min(Math.max(ratio, 0), 2) / 2) * 100
+
+  const zone =
+    cronicaNum <= 0
+      ? { label: 'Cargá ambos valores', color: 'text-white/40' }
+      : ratio > 1.5
+        ? { label: 'Riesgo elevado', color: 'text-perf-danger' }
+        : ratio > 1.3
+          ? { label: 'Zona de atención', color: 'text-perf-warn' }
+          : ratio >= 0.8
+            ? { label: 'Zona óptima (sweet spot)', color: 'text-perf-ok' }
+            : { label: 'Por debajo del rango óptimo', color: 'text-accentLight' }
+
+  return (
+    <div className="rounded-2xl border border-white/[0.14] bg-white/[0.05] p-6 backdrop-blur-md sm:p-8">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/50">
+            Carga aguda (últimos 7 días)
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            value={aguda}
+            onChange={(e) => setAguda(e.target.value)}
+            className="h-12 rounded-lg border border-white/10 bg-white/5 px-4 text-lg font-semibold text-white outline-none transition-colors focus:border-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/50">
+            Carga crónica (promedio, últimas 4 semanas)
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            value={cronica}
+            onChange={(e) => setCronica(e.target.value)}
+            className="h-12 rounded-lg border border-white/10 bg-white/5 px-4 text-lg font-semibold text-white outline-none transition-colors focus:border-accent"
+          />
+        </label>
+      </div>
+
+      <div className="mt-7">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-3xl font-bold tracking-tight text-white">
+            ACWR {cronicaNum > 0 ? ratio.toFixed(2) : '—'}
+          </p>
+          <p className={`text-sm font-semibold ${zone.color}`}>{zone.label}</p>
+        </div>
+
+        <div className="relative mt-5 h-2.5 w-full">
+          <div className="flex h-full w-full overflow-hidden rounded-full">
+            <div className="h-full bg-accentLight/25" style={{ width: '40%' }} />
+            <div className="h-full bg-perf-ok" style={{ width: '25%' }} />
+            <div className="h-full bg-perf-warn" style={{ width: '10%' }} />
+            <div className="h-full bg-perf-danger" style={{ width: '25%' }} />
+          </div>
+          <div
+            className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-perf-bg bg-white shadow-[0_2px_6px_rgba(0,0,0,0.4)] transition-[left] duration-300"
+            style={{ left: `${markerPct}%` }}
+          />
+        </div>
+        <div className="relative mt-2 h-4 text-[10px] font-medium uppercase tracking-wide text-white/35">
+          <span className="absolute left-0">0</span>
+          <span className="absolute -translate-x-1/2" style={{ left: '40%' }}>0.8</span>
+          <span className="absolute -translate-x-1/2" style={{ left: '65%' }}>1.3</span>
+          <span className="absolute -translate-x-1/2" style={{ left: '75%' }}>1.5</span>
+          <span className="absolute right-0">2.0+</span>
+        </div>
+      </div>
+
+      <p className="mt-6 text-xs leading-relaxed text-white/40">
+        Vista simplificada con fines demostrativos — en el panel real, el ACWR se calcula por atleta y por equipo,
+        en variantes de rolling average y EWMA, y se cruza automáticamente con lesiones y planificación. No
+        sustituye el seguimiento diario del cuerpo técnico.
+      </p>
     </div>
   )
 }
