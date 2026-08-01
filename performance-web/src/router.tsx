@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/LoginPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ProfilePage } from '@/pages/perfil/ProfilePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -27,6 +28,7 @@ import { FormaPage } from '@/pages/forma/FormaPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/recuperar', element: <ForgotPasswordPage /> },
   {
     element: <ProtectedRoute />,
     children: [

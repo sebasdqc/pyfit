@@ -8,7 +8,7 @@
 // La lógica de autenticación se conserva intacta.
 
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 
 // Assets servidos desde performance-web/public/ (raíz «/»): no son URLs externas
@@ -106,6 +106,13 @@ export function LoginPage() {
                 icon={<LockIcon />}
               />
 
+              <Link
+                to="/recuperar"
+                className="-mt-2 self-end text-sm font-medium text-accentLight transition-colors hover:text-accent"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+
               {error && (
                 <p role="alert" className="text-sm text-red-400">
                   {error}
@@ -147,8 +154,9 @@ export function LoginPage() {
 }
 
 // Campo con etiqueta flotante: la etiqueta actúa como placeholder centrado
-// cuando está vacío y sube a la esquina superior izquierda (pequeña, púrpura
-// apagado) al enfocar o al escribir contenido. El foco pinta el borde púrpura.
+// cuando está vacío y sube a la esquina superior izquierda (pequeña, azul
+// claro) al enfocar o al escribir contenido. El foco pinta el borde azul
+// (--accent), el único acento de Zyfit Performance.
 function Field({
   id,
   label,
@@ -166,16 +174,21 @@ function Field({
   autoComplete: string
   icon: ReactNode
 }) {
+  const [show, setShow] = useState(false)
+  const isPassword = type === 'password'
+  const inputType = isPassword && show ? 'text' : type
   return (
     <div className="relative">
       <input
         id={id}
-        type={type}
+        type={inputType}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         placeholder=" "
-        className="peer h-14 w-full rounded-xl border border-white/10 bg-white/5 px-4 pr-12 pt-2 text-[15px] text-white outline-none transition-colors placeholder:text-transparent focus:border-accent"
+        className={`peer h-14 w-full rounded-xl border border-white/10 bg-white/5 px-4 pt-2 text-[15px] text-white outline-none transition-colors placeholder:text-transparent focus:border-accent ${
+          isPassword ? 'pr-20' : 'pr-12'
+        }`}
       />
       <label
         htmlFor={id}
@@ -183,9 +196,21 @@ function Field({
       >
         {label}
       </label>
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/30">
-        {icon}
-      </span>
+      {isPassword ? (
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-pressed={show}
+          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-white/50 transition-colors hover:text-accentLight"
+        >
+          {show ? 'Ocultar' : 'Mostrar'}
+        </button>
+      ) : (
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/30">
+          {icon}
+        </span>
+      )}
     </div>
   )
 }
