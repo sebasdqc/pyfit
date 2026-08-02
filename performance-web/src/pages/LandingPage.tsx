@@ -163,8 +163,8 @@ export function LandingPage() {
       </section>
 
       <section className="hidden min-h-[92vh] items-center bg-perf-bg px-10 pb-20 pt-36 lg:flex">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 items-center gap-16">
-          <div>
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 items-start gap-16">
+          <div className="pt-6">
             <HeroCopy />
           </div>
           <HeroLaserBox />
@@ -441,27 +441,28 @@ function useMatchMedia(query: string): boolean {
   return matches
 }
 
-// Recuadro del Hero de escritorio: LaserFlow (WebGL) detrás de una card con
-// la Batería de test. La card NO va centrada en el frame — su borde superior
-// se ancla justo donde el láser converge (top-1/2, sin -translate-y), igual
-// que el patrón oficial de React Bits (el ejemplo de "reveal" posiciona su
-// caja con `top: 50%` sin centrar verticalmente, a propósito). Se degrada con
-// elegancia en 2 escenarios sin dejar de mostrar la card: prefers-reduced-
-// motion (no se monta el canvas) y mientras se descarga el chunk de `three`
-// (fallback de Suspense = sin canvas).
+// Recuadro del Hero de escritorio: LaserFlow (WebGL) SIN card contenedora —
+// nada de borde/fondo propio, el haz sale a cielo abierto desde el margen
+// superior de la sección (la columna ya no se centra verticalmente, ver
+// `items-start` en la sección de arriba). Solo queda visible la card donde
+// el láser converge, más grande que antes, con el borde superior anclado
+// justo en ese punto de impacto (top-1/2, sin -translate-y — mismo patrón
+// oficial de React Bits). Se degrada con elegancia en 2 escenarios sin dejar
+// de mostrar la card: prefers-reduced-motion (no se monta el canvas) y
+// mientras se descarga el chunk de `three` (fallback de Suspense = sin canvas).
 function HeroLaserBox() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
 
   return (
-    <Reveal delay={100} className="relative h-[560px] overflow-hidden rounded-2xl border border-perf-border bg-perf-bg">
+    <Reveal delay={100} className="relative h-[640px] overflow-hidden">
       {showLaser && (
         <Suspense fallback={null}>
           <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
         </Suspense>
       )}
       <div
-        className="absolute left-1/2 top-1/2 w-[86%] max-w-[300px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-5 shadow-[0_0_50px_-10px_rgba(20,184,166,0.5)]"
+        className="absolute left-1/2 top-1/2 w-[92%] max-w-[380px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-6 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
         style={{
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
