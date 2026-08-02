@@ -461,13 +461,20 @@ function HeroLaserBox() {
           llegar al borde del contenedor — un mask no depende de acertar un
           color exacto contra el fondo, simplemente revela lo que hay detrás.
           Va en su propio div, NO en el mismo contenedor que la card de abajo,
-          para no enmascarar también su borde. */}
+          para no enmascarar también su borde.
+          OJO con el radio: en un radial-gradient, el porcentaje de la elipse
+          es relativo al ANCHO/ALTO completo del contenedor, no a la mitad —
+          un radio de 68% ya se pasa del borde (el centro está al 50%, así
+          que el radio "cabe" solo hasta 50%). Con un radio > 50%, el punto
+          "transparent" del degradado cae afuera del recuadro visible y el
+          borde real queda a mitad de camino del desvanecido — exactamente el
+          corte reportado. Por eso acá el radio va seguro por debajo de 50%. */}
       {showLaser && (
         <div
           className="absolute inset-0"
           style={{
-            WebkitMaskImage: 'radial-gradient(ellipse 68% 62% at 50% 50%, black 42%, transparent 82%)',
-            maskImage: 'radial-gradient(ellipse 68% 62% at 50% 50%, black 42%, transparent 82%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 15%, transparent 100%)',
+            maskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 15%, transparent 100%)',
           }}
         >
           <Suspense fallback={null}>
