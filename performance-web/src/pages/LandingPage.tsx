@@ -162,9 +162,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="hidden min-h-[92vh] items-center bg-perf-bg px-10 pb-20 pt-36 lg:flex">
+      <section className="hidden min-h-[92vh] items-center overflow-hidden bg-perf-bg px-10 pb-20 pt-32 lg:flex">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 items-start gap-16">
-          <div className="pt-6">
+          <div className="pt-16">
             <HeroCopy />
           </div>
           <HeroLaserBox />
@@ -442,72 +442,113 @@ function useMatchMedia(query: string): boolean {
 }
 
 // Recuadro del Hero de escritorio: LaserFlow (WebGL) SIN card contenedora —
-// nada de borde/fondo propio, el haz sale a cielo abierto desde el margen
-// superior de la sección (la columna ya no se centra verticalmente, ver
-// `items-start` en la sección de arriba). Solo queda visible la card donde
-// el láser converge, más grande que antes, con el borde superior anclado
-// justo en ese punto de impacto (top-1/2, sin -translate-y — mismo patrón
-// oficial de React Bits). Se degrada con elegancia en 2 escenarios sin dejar
-// de mostrar la card: prefers-reduced-motion (no se monta el canvas) y
-// mientras se descarga el chunk de `three` (fallback de Suspense = sin canvas).
+// nada de borde/fondo propio, el haz sale a cielo abierto. Un margen negativo
+// sube todo el bloque para que nazca justo debajo del header flotante, en vez
+// de a mitad de sección. Solo queda visible la card donde el láser converge
+// (ahora más ancha y más arriba dentro del bloque, no al medio), con el borde
+// superior anclado en ese punto de impacto. Se degrada con elegancia en 2
+// escenarios sin dejar de mostrar la card: prefers-reduced-motion (no se
+// monta el canvas) y mientras se descarga el chunk de `three` (fallback de
+// Suspense = sin canvas).
 function HeroLaserBox() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
 
   return (
-    <Reveal delay={100} className="relative h-[640px] overflow-hidden">
+    <Reveal delay={100} className="relative -mt-20 h-[680px] overflow-hidden">
       {showLaser && (
         <Suspense fallback={null}>
           <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
         </Suspense>
       )}
       <div
-        className="absolute left-1/2 top-1/2 w-[92%] max-w-[380px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-6 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
+        className="absolute left-1/2 top-[42%] w-full max-w-[520px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
         style={{
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
         }}
       >
-        <TestBatteryCard />
+        <TestCarousel reducedMotion={reducedMotion} />
       </div>
     </Reveal>
   )
 }
 
-// Vista de ejemplo de la Batería de test — 3 tests reales del módulo Test
-// (Squat Jump/Sprint 10m/RSI). Estáticos a propósito: la calculadora
-// interactiva de verdad ya vive en la sección "Motor de cálculo" más abajo;
-// esto es una vista tipo screenshot, marcada como tal (mismo criterio que
-// `DemoBadge` en el panel real: nunca mostrar datos de ejemplo sin avisar).
-// Sin borde/fondo propio — ya los aporta el recuadro de `HeroLaserBox`.
-function TestBatteryCard() {
-  return (
-    <>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Batería de test</p>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-perf-warn/30 bg-perf-warn/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-perf-warn">
-          <span className="h-1.5 w-1.5 rounded-full bg-perf-warn" />
-          Ejemplo
-        </span>
-      </div>
-      <div className="mt-4 flex flex-col gap-2.5">
-        <TestRow icon="tests" label="Squat Jump" value="38 cm · 3.5 kW" />
-        <TestRow icon="trendUp" label="Sprint 10 m" value="1.72 s" />
-        <TestRow icon="gauge" label="RSI (Drop Jump)" value="1.9" />
-      </div>
-    </>
-  )
-}
+// 3 tests reales del módulo Test (Squat Jump/Sprint 10m/RSI — descripciones
+// alineadas a las de backend/performance/calculators/fisicos.py), en formato
+// carrusel: una card grande y descriptiva por test, avanza sola cada 4.5s.
+// Estático a propósito: la calculadora interactiva de verdad ya vive en la
+// sección "Motor de cálculo" más abajo; esto es una vista tipo screenshot,
+// marcada como tal (mismo criterio que `DemoBadge` en el panel real: nunca
+// mostrar datos de ejemplo sin avisar).
+const TEST_SLIDES: { icon: IconName; name: string; body: string; value: string; unit: string }[] = [
+  {
+    icon: 'tests',
+    name: 'Squat Jump',
+    body: 'Salto sin contramovimiento — estima la potencia del tren inferior a partir de la altura alcanzada.',
+    value: '38 cm',
+    unit: '≈ 3.5 kW',
+  },
+  {
+    icon: 'trendUp',
+    name: 'Sprint 10 m',
+    body: 'Capacidad de aceleración inicial en los primeros metros de una carrera lineal.',
+    value: '1.72 s',
+    unit: 'tiempo',
+  },
+  {
+    icon: 'gauge',
+    name: 'RSI · Drop Jump',
+    body: 'Índice de fuerza reactiva: altura del salto dividida el tiempo de contacto con el suelo.',
+    value: '1.9',
+    unit: 'índice',
+  },
+]
 
-function TestRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
+  const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (reducedMotion) return
+    const id = setInterval(() => {
+      setVisible(false)
+      window.setTimeout(() => {
+        setIndex((i) => (i + 1) % TEST_SLIDES.length)
+        setVisible(true)
+      }, 250)
+    }, 4500)
+    return () => clearInterval(id)
+  }, [reducedMotion])
+
+  const slide = TEST_SLIDES[index]
+
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accentLight">
-        <Icon name={icon} size={16} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-white/60">{label}</p>
-        <p className="truncate text-sm font-semibold text-white">{value}</p>
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">Test físico</p>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-perf-warn/30 bg-perf-warn/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-perf-warn">
+            <span className="h-1.5 w-1.5 rounded-full bg-perf-warn" />
+            Ejemplo
+          </span>
+        </div>
+        <div className="flex gap-1.5">
+          {TEST_SLIDES.map((s, i) => (
+            <span key={s.name} className={`h-1.5 w-1.5 rounded-full ${i === index ? 'bg-accent' : 'bg-white/20'}`} />
+          ))}
+        </div>
+      </div>
+
+      <div className={`mt-5 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
+          <Icon name={slide.icon} size={24} />
+        </span>
+        <h3 className="mt-4 text-xl font-bold tracking-tight text-white">{slide.name}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-white/60">{slide.body}</p>
+        <p className="mt-4 text-3xl font-bold tracking-tight text-white">
+          {slide.value} <span className="text-sm font-medium text-white/40">{slide.unit}</span>
+        </p>
       </div>
     </div>
   )
