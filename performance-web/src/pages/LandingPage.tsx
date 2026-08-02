@@ -455,30 +455,28 @@ function HeroLaserBox() {
   const showLaser = !reducedMotion
 
   return (
-    <Reveal delay={100} className="relative -mt-20 h-[680px] overflow-hidden">
-      {/* El canvas se enmascara (mask-image, no un overlay de color por
-          encima) para que el humo se desvanezca a transparente antes de
-          llegar al borde del contenedor — un mask no depende de acertar un
-          color exacto contra el fondo, simplemente revela lo que hay detrás.
-          Va en su propio div, NO en el mismo contenedor que la card de abajo,
-          para no enmascarar también su borde.
-          OJO con el radio: en un radial-gradient, el porcentaje de la elipse
-          es relativo al ANCHO/ALTO completo del contenedor, no a la mitad —
-          un radio de 68% ya se pasa del borde (el centro está al 50%, así
-          que el radio "cabe" solo hasta 50%). Con un radio > 50%, el punto
-          "transparent" del degradado cae afuera del recuadro visible y el
-          borde real queda a mitad de camino del desvanecido — exactamente el
-          corte reportado. Por eso acá el radio va seguro por debajo de 50%. */}
+    <Reveal delay={100} className="relative -mt-20 h-[600px] overflow-hidden">
+      {/* El corte duro NO era el borde del contenedor (esa parte ya estaba
+          bien resuelta con el radio del mask por debajo de 50%) — es el
+          propio humo del shader, que expande la forma del haz con un
+          exponente agresivo (FOG_EXPAND_SHAPE) y "termina" según su propia
+          matemática interna, no según el tamaño del div. Con fogIntensity
+          alto (default 0.45, más ×1.8 interno) y un color saturado como
+          nuestro teal, ese final se percibe como un borde duro — el ejemplo
+          oficial de React Bits usa un azul más apagado y ningún mask, y ahí
+          se ve difuminado. Bajamos fogIntensity para atacar la causa real, y
+          dejamos el mask (radio seguro, ver commit anterior) como red de
+          seguridad adicional con un inicio de desvanecido más temprano. */}
       {showLaser && (
         <div
           className="absolute inset-0"
           style={{
-            WebkitMaskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 15%, transparent 100%)',
-            maskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 15%, transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 5%, transparent 100%)',
+            maskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 5%, transparent 100%)',
           }}
         >
           <Suspense fallback={null}>
-            <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
+            <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} fogIntensity={0.2} />
           </Suspense>
         </div>
       )}
