@@ -461,6 +461,21 @@ function HeroLaserBox() {
           <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
         </Suspense>
       )}
+      {/* Velo de desvanecimiento: el humo del shader toca el borde del canvas
+          antes de terminar de apagarse ahí (corte duro, no un problema de
+          parámetros que se pueda afinar a ciegas sin ver el resultado en
+          vivo) — este overlay lo funde hacia el fondo en vez de dejarlo
+          cortado en seco. */}
+      {showLaser && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 65% 55% at 50% 34%, transparent 35%, rgba(10,14,26,0.65) 72%, #0a0e1a 100%)',
+          }}
+          aria-hidden
+        />
+      )}
       <div
         className="absolute left-1/2 top-[42%] w-full max-w-[520px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
         style={{
