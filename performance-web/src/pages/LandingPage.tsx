@@ -450,12 +450,22 @@ function useMatchMedia(query: string): boolean {
 // calcula midiendo dónde quedó realmente la card: el shader ubica el punto de
 // impacto en W*(0.5 + xFrac) horizontal y H*(0.5 + yFrac) vertical — este
 // último medido desde ABAJO (coordenadas GL), de ahí el signo invertido.
+//
+// El ANCHO de la pluma también se deriva de la card, y no es cosmético: el
+// humo solo vive por encima del punto de impacto (debajo se apaga con caída
+// inversa al cuadrado, casi en seco), así que su "piso" es una línea
+// horizontal. Mientras esa línea coincida con el borde superior de la card se
+// lee natural —la luz choca contra la card—, pero si la pluma se extiende más
+// ancha que la card, el tramo sobrante deja esa línea flotando sobre espacio
+// vacío y parece una rotura. Por eso el glow horizontal se calibra al ancho
+// exacto de la card: 150 unidades uv de radio del shader equivalen a
+// 102.4 = medio ancho del canvas, de ahí el 102.4/150 ≈ 0.68.
 function DesktopHero() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
   const heroRef = useRef<HTMLElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  const [beam, setBeam] = useState({ x: 0.25, y: 0.0 })
+  const [beam, setBeam] = useState({ x: 0.25, y: 0.0, width: 0.25 })
 
   useEffect(() => {
     if (!showLaser) return
@@ -470,6 +480,7 @@ function DesktopHero() {
       setBeam({
         x: (c.left + c.width / 2 - h.left) / h.width - 0.5,
         y: 0.5 - (c.top - h.top) / h.height,
+        width: (c.width / h.width) * 0.68,
       })
     }
 
@@ -486,9 +497,23 @@ function DesktopHero() {
       className="relative hidden min-h-[92vh] items-center overflow-hidden bg-perf-bg px-10 pb-20 pt-32 lg:flex"
     >
       {showLaser && (
-        <div className="pointer-events-none absolute inset-0">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            // Atenúa lo poco que la niebla se derrame hacia la columna del
+            // texto. Es un degradado lineal largo: no puede generar un borde
+            // duro propio, solo evita que quede "piso" visible sobre el H1.
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 26%, #000 50%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 26%, #000 50%)',
+          }}
+        >
           <Suspense fallback={null}>
-            <LaserFlow color="#14b8a6" horizontalBeamOffset={beam.x} verticalBeamOffset={beam.y} />
+            <LaserFlow
+              color="#14b8a6"
+              horizontalBeamOffset={beam.x}
+              verticalBeamOffset={beam.y}
+              horizontalSizing={beam.width}
+            />
           </Suspense>
         </div>
       )}
