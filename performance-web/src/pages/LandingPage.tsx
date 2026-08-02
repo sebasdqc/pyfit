@@ -446,26 +446,35 @@ function useMatchMedia(query: string): boolean {
 // pueda intervenir. Con el canvas ocupando el hero entero, el humo se dispersa
 // por todo el ancho y se apaga solo, lejísimos de cualquier borde.
 //
-// Como el haz ya no está centrado en su propio contenedor, su posición se
-// calcula midiendo dónde quedó realmente la card: el shader ubica el punto de
-// impacto en W*(0.5 + xFrac) horizontal y H*(0.5 + yFrac) vertical — este
-// último medido desde ABAJO (coordenadas GL), de ahí el signo invertido.
+// CLAVE — por qué el canvas es angosto y va centrado en la card:
+// el alcance de la NIEBLA no lo fija `horizontalSizing` (eso es el haz), sino
+// `radialFade` dentro del shader, que la apaga a los 84 de las 204.8 unidades
+// uv del lienzo: exactamente el 41% del ANCHO DEL CANVAS, medido desde el
+// punto de impacto. Con el canvas ocupando todo el hero, ese 41% llegaba de
+// lleno al H1 — y como el humo solo vive por encima del impacto (debajo cae
+// con inversa al cuadrado, casi en seco), su "piso" es una línea horizontal
+// que sobre espacio vacío se lee como una rotura.
 //
-// El ANCHO de la pluma también se deriva de la card, y no es cosmético: el
-// humo solo vive por encima del punto de impacto (debajo se apaga con caída
-// inversa al cuadrado, casi en seco), así que su "piso" es una línea
-// horizontal. Mientras esa línea coincida con el borde superior de la card se
-// lee natural —la luz choca contra la card—, pero si la pluma se extiende más
-// ancha que la card, el tramo sobrante deja esa línea flotando sobre espacio
-// vacío y parece una rotura. Por eso el glow horizontal se calibra al ancho
-// exacto de la card: 150 unidades uv de radio del shader equivalen a
-// 102.4 = medio ancho del canvas, de ahí el 102.4/150 ≈ 0.68.
+// Atando el ancho del canvas al de la card (×1.5) se resuelven las dos cosas a
+// la vez: la niebla queda contenida cerca de la card —su piso coincide con el
+// borde superior, que es lo que lo hace legible como "la luz choca ahí"— y
+// además el 41% del radio cae holgadamente dentro del 50% que da el propio
+// canvas, así que la niebla se apaga sola ANTES de tocar ningún borde (nada
+// que recortar, ni falta ningún mask). La proporción escala sola: la card y la
+// columna del H1 salen del mismo contenedor, así que la holgura se mantiene en
+// cualquier viewport.
+//
+// Con el canvas ya centrado en la card, el offset horizontal del haz es 0; el
+// vertical se sigue midiendo (el shader ubica el impacto en H*(0.5 + yFrac),
+// contado desde ABAJO por ser coordenadas GL — de ahí el signo invertido).
+const LASER_CANVAS_TO_CARD = 1.5
+
 function DesktopHero() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
   const heroRef = useRef<HTMLElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  const [beam, setBeam] = useState({ x: 0.25, y: 0.0, width: 0.25 })
+  const [laser, setLaser] = useState({ left: 0, width: 0, y: 0 })
 
   useEffect(() => {
     if (!showLaser) return
@@ -476,11 +485,12 @@ function DesktopHero() {
     const compute = () => {
       const h = hero.getBoundingClientRect()
       const c = card.getBoundingClientRect()
-      if (!h.width || !h.height) return
-      setBeam({
-        x: (c.left + c.width / 2 - h.left) / h.width - 0.5,
+      if (!h.width || !h.height || !c.width) return
+      const width = c.width * LASER_CANVAS_TO_CARD
+      setLaser({
+        left: c.left + c.width / 2 - h.left - width / 2,
+        width,
         y: 0.5 - (c.top - h.top) / h.height,
-        width: (c.width / h.width) * 0.68,
       })
     }
 
@@ -496,23 +506,17 @@ function DesktopHero() {
       ref={heroRef}
       className="relative hidden min-h-[92vh] items-center overflow-hidden bg-perf-bg px-10 pb-20 pt-32 lg:flex"
     >
-      {showLaser && (
+      {showLaser && laser.width > 0 && (
         <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            // Atenúa lo poco que la niebla se derrame hacia la columna del
-            // texto. Es un degradado lineal largo: no puede generar un borde
-            // duro propio, solo evita que quede "piso" visible sobre el H1.
-            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 26%, #000 50%)',
-            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 26%, #000 50%)',
-          }}
+          className="pointer-events-none absolute inset-y-0"
+          style={{ left: laser.left, width: laser.width }}
         >
           <Suspense fallback={null}>
             <LaserFlow
               color="#14b8a6"
-              horizontalBeamOffset={beam.x}
-              verticalBeamOffset={beam.y}
-              horizontalSizing={beam.width}
+              horizontalBeamOffset={0}
+              verticalBeamOffset={laser.y}
+              horizontalSizing={0.68 / LASER_CANVAS_TO_CARD}
             />
           </Suspense>
         </div>
