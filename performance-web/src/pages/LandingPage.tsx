@@ -442,21 +442,31 @@ function useMatchMedia(query: string): boolean {
 }
 
 // Recuadro del Hero de escritorio: LaserFlow (WebGL) detrás de una card con
-// la Batería de test. Se degrada con elegancia en 2 escenarios sin dejar de
-// mostrar la card: prefers-reduced-motion (no se monta el canvas) y mientras
-// se descarga el chunk de `three` (fallback de Suspense = sin canvas).
+// la Batería de test. La card NO va centrada en el frame — su borde superior
+// se ancla justo donde el láser converge (top-1/2, sin -translate-y), igual
+// que el patrón oficial de React Bits (el ejemplo de "reveal" posiciona su
+// caja con `top: 50%` sin centrar verticalmente, a propósito). Se degrada con
+// elegancia en 2 escenarios sin dejar de mostrar la card: prefers-reduced-
+// motion (no se monta el canvas) y mientras se descarga el chunk de `three`
+// (fallback de Suspense = sin canvas).
 function HeroLaserBox() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
 
   return (
-    <Reveal delay={100} className="relative h-[440px] overflow-hidden rounded-2xl border border-perf-border bg-perf-bg">
+    <Reveal delay={100} className="relative h-[560px] overflow-hidden rounded-2xl border border-perf-border bg-perf-bg">
       {showLaser && (
         <Suspense fallback={null}>
-          <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={-0.05} />
+          <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
         </Suspense>
       )}
-      <div className="absolute inset-0 flex items-center justify-center p-8">
+      <div
+        className="absolute left-1/2 top-1/2 w-[86%] max-w-[300px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-5 shadow-[0_0_50px_-10px_rgba(20,184,166,0.5)]"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
+          backgroundSize: '18px 18px',
+        }}
+      >
         <TestBatteryCard />
       </div>
     </Reveal>
@@ -468,9 +478,10 @@ function HeroLaserBox() {
 // interactiva de verdad ya vive en la sección "Motor de cálculo" más abajo;
 // esto es una vista tipo screenshot, marcada como tal (mismo criterio que
 // `DemoBadge` en el panel real: nunca mostrar datos de ejemplo sin avisar).
+// Sin borde/fondo propio — ya los aporta el recuadro de `HeroLaserBox`.
 function TestBatteryCard() {
   return (
-    <div className="w-full max-w-[280px] rounded-2xl border border-white/[0.14] bg-white/[0.06] p-5 backdrop-blur-md">
+    <>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Batería de test</p>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-perf-warn/30 bg-perf-warn/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-perf-warn">
@@ -483,7 +494,7 @@ function TestBatteryCard() {
         <TestRow icon="trendUp" label="Sprint 10 m" value="1.72 s" />
         <TestRow icon="gauge" label="RSI (Drop Jump)" value="1.9" />
       </div>
-    </div>
+    </>
   )
 }
 
