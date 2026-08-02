@@ -13,7 +13,7 @@
 // (LaserFlow, ver más abajo) contenido en un recuadro angosto, no full-bleed
 // como la aurora de Academy, para no terminar pareciendo el mismo producto.
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { Icon, type IconName } from '@/components/Icon'
@@ -147,9 +147,9 @@ export function LandingPage() {
           Mobile (lg:hidden) conserva el diseño original (foto real + overlay
           denso plano, sin gradiente, texto directo sobre la foto) — sin
           LaserFlow, por batería/rendimiento en celulares.
-          Desktop (hidden lg:flex) reemplaza la foto por un layout de 2
-          columnas: texto alineado a la izquierda + un recuadro angosto con
-          LaserFlow (no full-bleed) mostrando la Batería de test. */}
+          Desktop (DesktopHero) reemplaza la foto por 2 columnas: texto a la
+          izquierda + la Batería de test a la derecha, con el láser cubriendo
+          toda la sección por detrás. */}
       <section className="relative flex min-h-[92vh] items-center overflow-hidden px-6 pb-20 pt-32 sm:px-10 sm:pt-36 lg:hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -162,14 +162,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="hidden min-h-[92vh] items-center overflow-hidden bg-perf-bg px-10 pb-20 pt-32 lg:flex">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 items-start gap-16">
-          <div className="pt-16">
-            <HeroCopy />
-          </div>
-          <HeroLaserBox />
-        </div>
-      </section>
+      <DesktopHero />
 
       {/* Para quién es */}
       <section className="px-6 py-20 sm:px-10">
@@ -441,60 +434,87 @@ function useMatchMedia(query: string): boolean {
   return matches
 }
 
-// Recuadro del Hero de escritorio: LaserFlow (WebGL) SIN card contenedora —
-// nada de borde/fondo propio, el haz sale a cielo abierto. Un margen negativo
-// sube todo el bloque para que nazca justo debajo del header flotante, en vez
-// de a mitad de sección. Solo queda visible la card donde el láser converge
-// (ahora más ancha y más arriba dentro del bloque, no al medio), con el borde
-// superior anclado en ese punto de impacto. Se degrada con elegancia en 2
-// escenarios sin dejar de mostrar la card: prefers-reduced-motion (no se
-// monta el canvas) y mientras se descarga el chunk de `three` (fallback de
-// Suspense = sin canvas).
-function HeroLaserBox() {
+// Hero de escritorio. El canvas del LaserFlow es FULL-BLEED sobre TODA la
+// sección — no vive dentro de la columna derecha del grid.
+//
+// Ese era el bug de fondo del "humo cortado": el canvas medía apenas el ancho
+// de una columna (~540px), y la nube de humo, que se expande bastante más que
+// eso, chocaba contra el borde del propio canvas y quedaba recortada en seco
+// (la línea recta vertical del lado del H1). Ningún arreglo desde afuera podía
+// funcionar —ni un overlay de color, ni `mask-image`, ni bajar `fogIntensity`—
+// porque el recorte ocurre DENTRO del canvas, antes de que el CSS externo
+// pueda intervenir. Con el canvas ocupando el hero entero, el humo se dispersa
+// por todo el ancho y se apaga solo, lejísimos de cualquier borde.
+//
+// Como el haz ya no está centrado en su propio contenedor, su posición se
+// calcula midiendo dónde quedó realmente la card: el shader ubica el punto de
+// impacto en W*(0.5 + xFrac) horizontal y H*(0.5 + yFrac) vertical — este
+// último medido desde ABAJO (coordenadas GL), de ahí el signo invertido.
+function DesktopHero() {
   const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
   const showLaser = !reducedMotion
+  const heroRef = useRef<HTMLElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [beam, setBeam] = useState({ x: 0.25, y: 0.0 })
+
+  useEffect(() => {
+    if (!showLaser) return
+    const hero = heroRef.current
+    const card = cardRef.current
+    if (!hero || !card) return
+
+    const compute = () => {
+      const h = hero.getBoundingClientRect()
+      const c = card.getBoundingClientRect()
+      if (!h.width || !h.height) return
+      setBeam({
+        x: (c.left + c.width / 2 - h.left) / h.width - 0.5,
+        y: 0.5 - (c.top - h.top) / h.height,
+      })
+    }
+
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(hero)
+    ro.observe(card)
+    return () => ro.disconnect()
+  }, [showLaser])
 
   return (
-    <Reveal delay={100} className="relative -mt-20 h-[600px] overflow-hidden">
-      {/* El corte duro NO era el borde del contenedor (esa parte ya estaba
-          bien resuelta con el radio del mask por debajo de 50%) — es el
-          propio humo del shader, que expande la forma del haz con un
-          exponente agresivo (FOG_EXPAND_SHAPE) y "termina" según su propia
-          matemática interna, no según el tamaño del div. Con fogIntensity
-          alto (default 0.45, más ×1.8 interno) y un color saturado como
-          nuestro teal, ese final se percibe como un borde duro — el ejemplo
-          oficial de React Bits usa un azul más apagado y ningún mask, y ahí
-          se ve difuminado. Bajamos fogIntensity para atacar la causa real, y
-          dejamos el mask (radio seguro, ver commit anterior) como red de
-          seguridad adicional con un inicio de desvanecido más temprano. */}
+    <section
+      ref={heroRef}
+      className="relative hidden min-h-[92vh] items-center overflow-hidden bg-perf-bg px-10 pb-20 pt-32 lg:flex"
+    >
       {showLaser && (
-        <div
-          className="absolute inset-0"
-          style={{
-            WebkitMaskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 5%, transparent 100%)',
-            maskImage: 'radial-gradient(ellipse 42% 46% at 50% 46%, black 5%, transparent 100%)',
-          }}
-        >
+        <div className="pointer-events-none absolute inset-0">
           <Suspense fallback={null}>
-            <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} fogIntensity={0.2} />
+            <LaserFlow color="#14b8a6" horizontalBeamOffset={beam.x} verticalBeamOffset={beam.y} />
           </Suspense>
         </div>
       )}
-      {/* top-1/2 (no top-[42%]): es el punto donde el láser converge por
-          calibración del shader (mismo valor que usa el ejemplo oficial de
-          React Bits) — moverlo sin mover también el offset del haz hace que
-          el láser se "meta" adentro de la card en vez de terminar en su
-          borde superior, que es exactamente el bug reportado. */}
-      <div
-        className="absolute left-1/2 top-1/2 w-full max-w-[520px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
-          backgroundSize: '18px 18px',
-        }}
-      >
-        <TestCarousel reducedMotion={reducedMotion} />
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-2 items-center gap-16">
+        <div>
+          <HeroCopy />
+        </div>
+        {/* El ref va en este wrapper, no dentro de <Reveal>: la animación de
+            entrada usa un transform, que no altera la caja de layout de este
+            div — así la medición del punto de impacto es estable desde el
+            primer frame, sin esperar a que termine el fade. */}
+        <div ref={cardRef}>
+          <Reveal delay={100}>
+            <div
+              className="rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
+              style={{
+                backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundSize: '18px 18px',
+              }}
+            >
+              <TestCarousel reducedMotion={reducedMotion} />
+            </div>
+          </Reveal>
+        </div>
       </div>
-    </Reveal>
+    </section>
   )
 }
 

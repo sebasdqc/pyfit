@@ -86,11 +86,7 @@ uniform float uFade;
 #define FOG_BEAM_MIN 0.0
 #define FOG_BEAM_MAX 0.75
 #define FOG_MASK_GAMMA 0.5
-// Bajado de 12.2 a 2.6: con el valor original, la máscara del humo pasa de
-// "apagada" a "totalmente encendida" en muy poco espacio — dibuja un borde
-// geométrico definido (el corte reportado) en vez de un desvanecido gradual.
-// Un exponente más bajo estira esa transición sobre más distancia.
-#define FOG_EXPAND_SHAPE 2.6
+#define FOG_EXPAND_SHAPE 12.2
 #define FOG_EDGE_MIX 0.5
 
 #define HFOG_EDGE_START 0.20
