@@ -456,28 +456,32 @@ function HeroLaserBox() {
 
   return (
     <Reveal delay={100} className="relative -mt-20 h-[680px] overflow-hidden">
-      {showLaser && (
-        <Suspense fallback={null}>
-          <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
-        </Suspense>
-      )}
-      {/* Velo de desvanecimiento: el humo del shader toca el borde del canvas
-          antes de terminar de apagarse ahí (corte duro, no un problema de
-          parámetros que se pueda afinar a ciegas sin ver el resultado en
-          vivo) — este overlay lo funde hacia el fondo en vez de dejarlo
-          cortado en seco. */}
+      {/* El canvas se enmascara (mask-image, no un overlay de color por
+          encima) para que el humo se desvanezca a transparente antes de
+          llegar al borde del contenedor — un mask no depende de acertar un
+          color exacto contra el fondo, simplemente revela lo que hay detrás.
+          Va en su propio div, NO en el mismo contenedor que la card de abajo,
+          para no enmascarar también su borde. */}
       {showLaser && (
         <div
-          className="pointer-events-none absolute inset-0"
+          className="absolute inset-0"
           style={{
-            background:
-              'radial-gradient(ellipse 65% 55% at 50% 34%, transparent 35%, rgba(10,14,26,0.65) 72%, #0a0e1a 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 68% 62% at 50% 50%, black 42%, transparent 82%)',
+            maskImage: 'radial-gradient(ellipse 68% 62% at 50% 50%, black 42%, transparent 82%)',
           }}
-          aria-hidden
-        />
+        >
+          <Suspense fallback={null}>
+            <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={0.0} />
+          </Suspense>
+        </div>
       )}
+      {/* top-1/2 (no top-[42%]): es el punto donde el láser converge por
+          calibración del shader (mismo valor que usa el ejemplo oficial de
+          React Bits) — moverlo sin mover también el offset del haz hace que
+          el láser se "meta" adentro de la card en vez de terminar en su
+          borde superior, que es exactamente el bug reportado. */}
       <div
-        className="absolute left-1/2 top-[42%] w-full max-w-[520px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
+        className="absolute left-1/2 top-1/2 w-full max-w-[520px] -translate-x-1/2 rounded-2xl border-2 border-accent/70 bg-perf-bg/90 p-7 shadow-[0_0_60px_-8px_rgba(20,184,166,0.55)]"
         style={{
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
@@ -528,10 +532,13 @@ function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
     if (reducedMotion) return
     const id = setInterval(() => {
       setVisible(false)
+      // El timeout tiene que ser MAYOR que duration-300 de abajo — si dispara
+      // antes de que termine el fade-out, el cambio de contenido se ve a
+      // mitad de la transición (texto viejo y nuevo superpuestos un frame).
       window.setTimeout(() => {
         setIndex((i) => (i + 1) % TEST_SLIDES.length)
         setVisible(true)
-      }, 250)
+      }, 320)
     }, 4500)
     return () => clearInterval(id)
   }, [reducedMotion])
