@@ -8,15 +8,21 @@
 // azul-marino planos, SIN GRADIENTES (ver performance-web/CLAUDE.md), fotografía real +
 // overlay oscuro + cards de vidrio esmerilado — mismo lenguaje que ya usan
 // LoginPage.tsx/ForgotPasswordPage.tsx. Deliberadamente distinta de la
-// landing de la APP (video de producto) y de la de Academy (aurora WebGL):
-// esta es una herramienta profesional B2B, no un producto de consumo.
+// landing de la APP (video de producto) y de la de Academy (aurora WebGL) —
+// con una excepción puntual: el Hero de escritorio usa un efecto WebGL propio
+// (LaserFlow, ver más abajo) contenido en un recuadro angosto, no full-bleed
+// como la aurora de Academy, para no terminar pareciendo el mismo producto.
 
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { Icon, type IconName } from '@/components/Icon'
 import { Reveal } from '@/components/Reveal'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+
+// three.js pesa ~500-600kB — se separa en su propio chunk y solo se pide
+// cuando el Hero de escritorio realmente lo necesita (ver `showLaser` abajo).
+const LaserFlow = lazy(() => import('@/components/LaserFlow').then((m) => ({ default: m.LaserFlow })))
 
 const BG_IMAGE = '/FVF.jpg'
 const SECOND_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
@@ -137,48 +143,31 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — foto real + overlay denso plano (sin gradiente), texto
-          directo sobre la foto (a diferencia del Login, que sí usa card por
-          ser un formulario chico). */}
-      <section className="relative flex min-h-[92vh] items-center overflow-hidden px-6 pb-20 pt-32 sm:px-10 sm:pt-36">
+      {/* Hero — dos versiones deliberadamente distintas, no una sola responsiva:
+          Mobile (lg:hidden) conserva el diseño original (foto real + overlay
+          denso plano, sin gradiente, texto directo sobre la foto) — sin
+          LaserFlow, por batería/rendimiento en celulares.
+          Desktop (hidden lg:flex) reemplaza la foto por un layout de 2
+          columnas: texto alineado a la izquierda + un recuadro angosto con
+          LaserFlow (no full-bleed) mostrando la Batería de test. */}
+      <section className="relative flex min-h-[92vh] items-center overflow-hidden px-6 pb-20 pt-32 sm:px-10 sm:pt-36 lg:hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('${BG_IMAGE}')` }}
           aria-hidden
         />
         <div className="absolute inset-0 bg-[rgba(6,9,18,0.86)]" aria-hidden />
-
         <div className="relative z-10 mx-auto max-w-3xl">
-          <Reveal>
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
-              Panel B2B · Alto rendimiento deportivo
-            </p>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
-              Ciencia deportiva,
-              <br />
-              en un solo panel<span className="text-accent">.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
-              Rendimiento, lesiones, test físicos, planificación y psicológico — un panel para equipos deportivos,
-              instituciones educativas y atletas de alto rendimiento.
-            </p>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a
-                href={CONTACT_HREF}
-                className="flex h-12 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accentDark"
-              >
-                Solicitar acceso
-              </a>
-              <Link
-                to="/login"
-                className="flex h-12 items-center justify-center rounded-lg border border-white/15 px-6 text-sm font-medium text-white/85 transition-colors hover:bg-white/5"
-              >
-                Ya tengo acceso · Ingresar
-              </Link>
-            </div>
-          </Reveal>
+          <HeroCopy />
+        </div>
+      </section>
+
+      <section className="hidden min-h-[92vh] items-center bg-perf-bg px-10 pb-20 pt-36 lg:flex">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 items-center gap-16">
+          <div>
+            <HeroCopy />
+          </div>
+          <HeroLaserBox />
         </div>
       </section>
 
@@ -394,6 +383,120 @@ export function LandingPage() {
           <p className="text-xs text-white/35">© {new Date().getFullYear()} Zyfit Performance</p>
         </div>
       </footer>
+    </div>
+  )
+}
+
+// Texto + CTAs del Hero — compartido entre la versión mobile (sin LaserFlow)
+// y la de escritorio (2 columnas), para no duplicar copy en dos lugares.
+function HeroCopy() {
+  return (
+    <>
+      <Reveal>
+        <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
+          Panel B2B · Alto rendimiento deportivo
+        </p>
+        <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
+          Ciencia deportiva,
+          <br />
+          en un solo panel<span className="text-accent">.</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
+          Rendimiento, lesiones, test físicos, planificación y psicológico — un panel para equipos deportivos,
+          instituciones educativas y atletas de alto rendimiento.
+        </p>
+      </Reveal>
+      <Reveal delay={120}>
+        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+          <a
+            href={CONTACT_HREF}
+            className="flex h-12 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accentDark"
+          >
+            Solicitar acceso
+          </a>
+          <Link
+            to="/login"
+            className="flex h-12 items-center justify-center rounded-lg border border-white/15 px-6 text-sm font-medium text-white/85 transition-colors hover:bg-white/5"
+          >
+            Ya tengo acceso · Ingresar
+          </Link>
+        </div>
+      </Reveal>
+    </>
+  )
+}
+
+// Hook chico para gatear tanto el layout (solo desktop) como la carga del
+// chunk de `three` (nunca se pide en mobile) y el respeto a prefers-reduced-
+// motion. Sin librería: un matchMedia + listener, suficiente para este uso.
+function useMatchMedia(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    const handler = () => setMatches(mql.matches)
+    handler()
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [query])
+  return matches
+}
+
+// Recuadro del Hero de escritorio: LaserFlow (WebGL) detrás de una card con
+// la Batería de test. Se degrada con elegancia en 2 escenarios sin dejar de
+// mostrar la card: prefers-reduced-motion (no se monta el canvas) y mientras
+// se descarga el chunk de `three` (fallback de Suspense = sin canvas).
+function HeroLaserBox() {
+  const reducedMotion = useMatchMedia('(prefers-reduced-motion: reduce)')
+  const showLaser = !reducedMotion
+
+  return (
+    <Reveal delay={100} className="relative h-[440px] overflow-hidden rounded-2xl border border-perf-border bg-perf-bg">
+      {showLaser && (
+        <Suspense fallback={null}>
+          <LaserFlow color="#14b8a6" horizontalBeamOffset={0.1} verticalBeamOffset={-0.05} />
+        </Suspense>
+      )}
+      <div className="absolute inset-0 flex items-center justify-center p-8">
+        <TestBatteryCard />
+      </div>
+    </Reveal>
+  )
+}
+
+// Vista de ejemplo de la Batería de test — 3 tests reales del módulo Test
+// (Squat Jump/Sprint 10m/RSI). Estáticos a propósito: la calculadora
+// interactiva de verdad ya vive en la sección "Motor de cálculo" más abajo;
+// esto es una vista tipo screenshot, marcada como tal (mismo criterio que
+// `DemoBadge` en el panel real: nunca mostrar datos de ejemplo sin avisar).
+function TestBatteryCard() {
+  return (
+    <div className="w-full max-w-[280px] rounded-2xl border border-white/[0.14] bg-white/[0.06] p-5 backdrop-blur-md">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Batería de test</p>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-perf-warn/30 bg-perf-warn/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-perf-warn">
+          <span className="h-1.5 w-1.5 rounded-full bg-perf-warn" />
+          Ejemplo
+        </span>
+      </div>
+      <div className="mt-4 flex flex-col gap-2.5">
+        <TestRow icon="tests" label="Squat Jump" value="38 cm · 3.5 kW" />
+        <TestRow icon="trendUp" label="Sprint 10 m" value="1.72 s" />
+        <TestRow icon="gauge" label="RSI (Drop Jump)" value="1.9" />
+      </div>
+    </div>
+  )
+}
+
+function TestRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accentLight">
+        <Icon name={icon} size={16} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-white/60">{label}</p>
+        <p className="truncate text-sm font-semibold text-white">{value}</p>
+      </div>
     </div>
   )
 }
