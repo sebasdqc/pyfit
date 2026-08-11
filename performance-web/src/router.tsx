@@ -7,6 +7,8 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { PricingPage } from '@/pages/PricingPage'
+import { AudiencePage } from '@/pages/AudiencePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ProfilePage } from '@/pages/perfil/ProfilePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -34,6 +36,8 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/recuperar', element: <ForgotPasswordPage /> },
+  { path: '/precio', element: <PricingPage /> },
+  { path: '/para-quien/:segment', element: <AudiencePage /> },
   {
     element: <ProtectedRoute />,
     children: [

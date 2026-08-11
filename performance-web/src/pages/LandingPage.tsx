@@ -17,8 +17,11 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRedirectIfAuthenticated } from '@/auth/useRedirectIfAuthenticated'
 import { Icon, type IconName } from '@/components/Icon'
+import { PublicFooter } from '@/components/layout/PublicFooter'
+import { PublicHeader } from '@/components/layout/PublicHeader'
 import { Reveal } from '@/components/Reveal'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { CONTACT_HREF, MODULES } from '@/lib/publicSite'
 
 // three.js pesa ~500-600kB — se separa en su propio chunk y solo se pide
 // cuando el Hero de escritorio realmente lo necesita (ver `showLaser` abajo).
@@ -26,46 +29,6 @@ const LaserFlow = lazy(() => import('@/components/LaserFlow').then((m) => ({ def
 
 const BG_IMAGE = '/FVF.jpg'
 const SECOND_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
-const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
-const CONTACT_HREF = 'https://pyfit.app'
-
-const MODULES: { name: string; icon: IconName; body: string }[] = [
-  {
-    name: 'Rendimiento',
-    icon: 'rendimiento',
-    body: 'Carga interna, forma (fitness-fatiga) y ACWR con seguimiento por atleta y por equipo.',
-  },
-  {
-    name: 'Lesiones',
-    icon: 'lesiones',
-    body: 'Registro con mapa corporal, seguimiento de recuperación y contexto de riesgo para el resto del panel.',
-  },
-  {
-    name: 'Test físicos',
-    icon: 'tests',
-    body: 'Baterías con las fórmulas de siempre —Bangsbo IR2, Draper & Whyte RAST, entre otras— calculadas en el servidor.',
-  },
-  {
-    name: 'Planificación',
-    icon: 'planificacion',
-    body: 'Meso y microciclos por equipo, con un asesor de solo lectura que sugiere ajustes según carga y lesiones.',
-  },
-  {
-    name: 'Psicológico',
-    icon: 'psicologico',
-    body: 'BRUMS/POMS, RESTQ-Sport, CSAI-2 y ABQ — psicometría deportiva junto al resto de los datos del atleta.',
-  },
-  {
-    name: 'Simulador táctico',
-    icon: 'simulador',
-    body: 'Pizarra táctica animada, fútbol o futsal, para preparar y compartir jugadas con el plantel.',
-  },
-  {
-    name: 'Calendario',
-    icon: 'calendario',
-    body: 'Torneos, concentraciones, partidos y entrenamientos de toda la temporada en una sola línea de tiempo.',
-  },
-]
 
 const STEPS = [
   {
@@ -103,45 +66,25 @@ const FAQS = [
 
 export function LandingPage() {
   const redirecting = useRedirectIfAuthenticated('/dashboard')
+
+  // Los links de PublicHeader hacia acá usan "/#modulos" etc. para funcionar
+  // desde otras páginas (Precio, Para quién) — eso implica una navegación
+  // completa a "/", no un scroll dentro del documento, así que el navegador
+  // no siempre resuelve el fragmento solo. Se refuerza acá al montar.
+  useEffect(() => {
+    if (!window.location.hash) return
+    const id = window.location.hash.slice(1)
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+    return () => window.clearTimeout(t)
+  }, [])
+
   if (redirecting) return <LoadingScreen />
 
   return (
     <div className="min-h-screen bg-perf-bg">
-      {/* Header — barra flotante de vidrio, siempre visible (a diferencia de
-          la APP no depende del scroll: ya es suficientemente distinta). */}
-      <header className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-6xl items-center justify-between rounded-2xl border border-white/[0.14] bg-white/[0.05] px-5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md sm:inset-x-8 sm:top-6">
-        <div className="flex items-center gap-2.5">
-          <img src={LOGO_IMAGE} alt="Zyfit" className="h-5 w-auto sm:h-6" />
-          <span className="pb-0.5 text-[10px] font-medium uppercase tracking-[0.28em] text-white/55">
-            Performance
-          </span>
-        </div>
-        <nav className="hidden items-center gap-1 sm:flex">
-          <a href="#modulos" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
-            Módulos
-          </a>
-          <a href="#metodologia" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
-            Metodología
-          </a>
-          <a href="#motor" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
-            Motor de cálculo
-          </a>
-          <a href="#preguntas" className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:text-white">
-            Preguntas frecuentes
-          </a>
-        </nav>
-        <div className="flex items-center gap-2">
-          <Link to="/login" className="rounded-lg px-2.5 py-2 text-sm font-medium text-white/75 transition-colors hover:text-white sm:px-3">
-            Ingresar
-          </Link>
-          <a
-            href={CONTACT_HREF}
-            className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-accentDark sm:px-3.5"
-          >
-            Solicitar acceso
-          </a>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Hero — dos versiones deliberadamente distintas, no una sola responsiva:
           Mobile (lg:hidden) conserva el diseño original (foto real + overlay
@@ -363,19 +306,7 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-perf-border px-6 py-8 sm:px-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="flex items-center gap-2.5">
-            <img src={LOGO_IMAGE} alt="Zyfit" className="h-5 w-auto opacity-80" />
-            <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/40">Performance</span>
-          </div>
-          <a href={CONTACT_HREF} className="text-xs font-medium text-white/45 transition-colors hover:text-accentLight">
-            Contacto
-          </a>
-          <p className="text-xs text-white/35">© {new Date().getFullYear()} Zyfit Performance</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   )
 }
