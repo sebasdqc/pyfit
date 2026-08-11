@@ -6,7 +6,7 @@
 // (mismo patrón que el resto del panel) hasta que el backend exponga atletas reales.
 
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
@@ -51,6 +51,10 @@ const FAMILIAS: { id: TestFamilia; label: string }[] = [
 const FAMILIA_LABEL: Record<TestFamilia, string> = {
   fisico: 'Físico', carga: 'Carga interna', prevencion: 'Prevención',
   tecnico: 'Técnico', tactico: 'Táctico',
+}
+const FAMILIA_IDS = new Set<string>(FAMILIAS.map((f) => f.id))
+function familiaFromParam(raw: string | undefined): 'todos' | TestFamilia {
+  return raw && FAMILIA_IDS.has(raw) ? (raw as TestFamilia) : 'todos'
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -98,11 +102,20 @@ function buildInputs(schema: TestSchemaField[], values: Values): Record<string, 
 
 export function TestPage() {
   const { athletes: squad, loading: squadLoading, isRealRoster, centerId } = useSquad()
+  const { familia: familiaParam } = useParams<{ familia?: string }>()
+  const navigate = useNavigate()
   const [catalog, setCatalog] = useState<TestCatalogItem[]>([])
   const [loadErr, setLoadErr] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const [familia, setFamilia] = useState<'todos' | TestFamilia>('todos')
+  // La familia activa vive en la URL (/tests/:familia), no en estado local: así
+  // el sidebar puede enlazar directo a una familia (ver Sidebar.tsx → "Pruebas")
+  // y el resaltado de ítem activo funciona con el mismo matchPath por prefijo
+  // que ya usa el resto del sidebar.
+  const familia = familiaFromParam(familiaParam)
+  function setFamilia(id: 'todos' | TestFamilia) {
+    navigate(id === 'todos' ? '/tests' : `/tests/${id}`, { replace: true })
+  }
   const [slug, setSlug] = useState<string | null>(null)
   const [athleteId, setAthleteId] = useState<string>('')
 

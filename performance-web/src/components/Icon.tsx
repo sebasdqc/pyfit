@@ -36,6 +36,9 @@ export type IconName =
   | 'eye'
   | 'carga'
   | 'check'
+  | 'tecnico'
+  | 'tactico'
+  | 'chat'
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="m5 12 5 5 9-11" />,
@@ -204,6 +207,27 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="m16 17 5-5-5-5" />
       <path d="M21 12H9" />
+    </>
+  ),
+  tecnico: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+    </>
+  ),
+  tactico: (
+    <>
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="6" cy="18" r="2" />
+      <circle cx="18" cy="18" r="2" />
+      <path d="M12 7v5M12 12 7 16M12 12l5 4" />
+    </>
+  ),
+  chat: (
+    <>
+      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M8 10h.01M12 10h.01M16 10h.01" />
     </>
   ),
 }

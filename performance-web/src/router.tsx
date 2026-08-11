@@ -28,6 +28,7 @@ import { WeeklyLoadPage } from '@/pages/gps/WeeklyLoadPage'
 import { PlayerProfilePage } from '@/pages/gps/PlayerProfilePage'
 import { CargaPage } from '@/pages/carga/CargaPage'
 import { FormaPage } from '@/pages/forma/FormaPage'
+import { AsesorPage } from '@/pages/asesor/AsesorPage'
 
 export const router = createBrowserRouter([
   // Landing pública: visitantes sin sesión ven el producto + CTAs a login/
@@ -51,8 +52,10 @@ export const router = createBrowserRouter([
           { path: 'rendimiento', element: <RendimientoPage /> },
           { path: 'lesiones', element: <LesionesPage /> },
           { path: 'tests', element: <TestPage /> },
+          { path: 'tests/:familia', element: <TestPage /> },
           { path: 'carga', element: <CargaPage /> },
           { path: 'forma', element: <FormaPage /> },
+          { path: 'asesor', element: <AsesorPage /> },
           { path: 'gps', element: <GpsPage /> },
           { path: 'gps/match-day', element: <MatchDayPage /> },
           { path: 'gps/post-sesion', element: <PostSessionPage /> },

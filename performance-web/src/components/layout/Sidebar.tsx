@@ -31,42 +31,55 @@ interface NavItem {
   children?: NavItem[]
 }
 
-// Navegación del portal. Dashboard ya está cableado; el resto son destinos
-// previstos (pendientes de ruteo) — se muestran como ítems del menú. "Monitoreo"
-// agrupa los módulos de seguimiento del atleta: Físicos (tests) y Psicológico.
+// Navegación del portal, simplificada (2026-08-11): 6 ítems de primer nivel +
+// "Más" (agrupa lo que antes vivía suelto: Rendimiento, Lesiones,
+// Planificación, Carga interna, Forma, GPS, Reportes) para no perder acceso a
+// nada, solo bajarlo de jerarquía. "Pruebas" reemplaza al viejo grupo
+// "Monitoreo": sus 3 primeros hijos son las familias técnico/táctico/físico
+// del MISMO catálogo de calculadoras que ya alimentaba el filtro de /tests
+// (ver TestPage.tsx), solo enlazadas directo a una familia via ruta
+// (/tests/:familia) en vez de arrancar en "Todos". Psicológico no es una
+// familia de ese catálogo (BRUMS/POMS viven en su propio modelo/página), así
+// que se suma como cuarto hijo con su propia ruta. "Asesor" es una pantalla
+// nueva con forma de chat que envuelve el mismo asesor de solo lectura que ya
+// existía como banner dentro de Planificación (mismo endpoint, sin backend
+// nuevo) — ver AsesorPage.tsx.
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
   {
-    id: 'gps',
-    label: 'GPS',
-    icon: 'gps',
+    id: 'pruebas',
+    label: 'Pruebas',
+    icon: 'tests',
     children: [
-      { id: 'gps-resumen', label: 'Resumen de campo', icon: 'eye', to: '/gps', exact: true },
-      { id: 'gps-match', label: 'Match Day', icon: 'rendimiento', to: '/gps/match-day' },
-      { id: 'gps-post', label: 'Post-sesión', icon: 'report', to: '/gps/post-sesion' },
-      { id: 'gps-carga', label: 'Carga semanal', icon: 'carga', to: '/gps/carga-semanal' },
-      { id: 'gps-jugador', label: 'Perfil de jugador', icon: 'plantilla', to: '/gps/jugador' },
+      { id: 'pruebas-tecnicas', label: 'Técnicas', icon: 'tecnico', to: '/tests/tecnico' },
+      { id: 'pruebas-tacticas', label: 'Tácticas', icon: 'tactico', to: '/tests/tactico' },
+      { id: 'pruebas-fisicas', label: 'Físicas', icon: 'tests', to: '/tests/fisico', moduleId: 'test' },
+      { id: 'pruebas-psicologicas', label: 'Psicológicas', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
     ],
   },
   { id: 'calendario', label: 'Calendario', icon: 'calendario', to: '/calendario' },
-  { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
-  { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
-  { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones', moduleId: 'lesiones' },
+  { id: 'simulador', label: 'Simulador', icon: 'simulador', to: '/simulador' },
+  { id: 'asesor', label: 'Asesor', icon: 'chat', to: '/asesor' },
   {
-    id: 'monitoreo',
-    label: 'Monitoreo',
+    id: 'mas',
+    label: 'Más',
     icon: 'monitoreo',
     children: [
-      { id: 'fisicos', label: 'Físicos', icon: 'tests', to: '/tests', moduleId: 'test' },
+      { id: 'rendimiento', label: 'Rendimiento', icon: 'rendimiento', to: '/rendimiento', moduleId: 'rendimiento' },
+      { id: 'lesiones', label: 'Lesiones', icon: 'lesiones', to: '/lesiones', moduleId: 'lesiones' },
+      { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
       { id: 'carga', label: 'Carga interna', icon: 'carga', to: '/carga', moduleId: 'rendimiento' },
       { id: 'forma', label: 'Forma', icon: 'gauge', to: '/forma', moduleId: 'rendimiento' },
-      { id: 'psicologico', label: 'Psicológico', icon: 'psicologico', to: '/psicologico', moduleId: 'psicologico' },
+      { id: 'gps-resumen', label: 'GPS · Resumen', icon: 'eye', to: '/gps', exact: true },
+      { id: 'gps-match', label: 'GPS · Match Day', icon: 'rendimiento', to: '/gps/match-day' },
+      { id: 'gps-post', label: 'GPS · Post-sesión', icon: 'report', to: '/gps/post-sesion' },
+      { id: 'gps-carga', label: 'GPS · Carga semanal', icon: 'carga', to: '/gps/carga-semanal' },
+      { id: 'gps-jugador', label: 'GPS · Jugador', icon: 'plantilla', to: '/gps/jugador' },
+      { id: 'reportes', label: 'Reportes', icon: 'reportes', to: '/reportes' },
     ],
   },
-  { id: 'planificacion', label: 'Planificación', icon: 'planificacion', to: '/planificacion', moduleId: 'planificacion' },
-  { id: 'simulador', label: 'Simulador', icon: 'simulador', to: '/simulador' },
-  { id: 'reportes', label: 'Reportes', icon: 'reportes', to: '/reportes' },
+  { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
   { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
 ]
 
