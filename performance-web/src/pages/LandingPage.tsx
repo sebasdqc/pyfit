@@ -22,6 +22,7 @@ import { PublicHeader } from '@/components/layout/PublicHeader'
 import { Reveal } from '@/components/Reveal'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { CONTACT_HREF, MODULES } from '@/lib/publicSite'
+import { useT } from '@/locale/useT'
 
 // three.js pesa ~500-600kB — se separa en su propio chunk y solo se pide
 // cuando el Hero de escritorio realmente lo necesita (ver `showLaser` abajo).
@@ -30,42 +31,19 @@ const LaserFlow = lazy(() => import('@/components/LaserFlow').then((m) => ({ def
 const BG_IMAGE = '/FVF.jpg'
 const SECOND_IMAGE = '/high-angle-man-tying-shoelaces.jpg'
 
-const STEPS = [
-  {
-    title: 'El director registra el centro',
-    body: 'Se da de alta el centro deportivo y se suma al staff con su rol correspondiente — director técnico, preparador físico, fisioterapeuta, analista, planificador o psicólogo.',
-  },
-  {
-    title: 'Cada rol carga sus datos',
-    body: 'Test, sesiones, lesiones y evaluaciones psicológicas se registran donde ocurren, no en una planilla aparte al final de la semana.',
-  },
-  {
-    title: 'El panel devuelve contexto, no solo números',
-    body: 'ACWR, forma, riesgo y planificación se cruzan automáticamente para que el cuerpo técnico decida con datos, no solo con percepción.',
-  },
-]
-
-const FAQS = [
-  {
-    q: '¿El panel es para atletas o para el cuerpo técnico?',
-    a: 'Es para el staff: director técnico, preparador físico, fisioterapeuta, analista, planificador y psicólogo. Los atletas no inician sesión — el director o el staff los registra dentro de cada centro.',
-  },
-  {
-    q: '¿Funciona para fútbol y futsal?',
-    a: 'Sí, el simulador táctico y la carga de datos contemplan ambas disciplinas desde el diseño del panel.',
-  },
-  {
-    q: '¿Quién ve los datos de cada atleta?',
-    a: 'El acceso es por módulo y por rol dentro de cada centro — un preparador físico, por ejemplo, no ve las evaluaciones psicológicas si ese módulo no está habilitado para su rol.',
-  },
-  {
-    q: '¿Cómo se suma un centro nuevo al panel?',
-    a: 'Contactanos y coordinamos el alta del centro y de los roles de tu cuerpo técnico — hoy el acceso se gestiona directamente con nuestro equipo, no es autoservicio.',
-  },
-]
-
 export function LandingPage() {
+  const t = useT()
   const redirecting = useRedirectIfAuthenticated('/dashboard')
+
+  const STEPS = [0, 1, 2].map((i) => ({
+    title: t(`landing.howItWorks.steps.${i}.title`),
+    body: t(`landing.howItWorks.steps.${i}.body`),
+  }))
+
+  const FAQS = [0, 1, 2, 3].map((i) => ({
+    q: t(`landing.faq.items.${i}.q`),
+    a: t(`landing.faq.items.${i}.a`),
+  }))
 
   // Los links de PublicHeader hacia acá usan "/#modulos" etc. para funcionar
   // desde otras páginas (Precio, Para quién) — eso implica una navegación
@@ -111,9 +89,11 @@ export function LandingPage() {
       <section className="px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <Reveal className="max-w-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Para quién es</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.audienceSection.eyebrow')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Pensado para quien mide el rendimiento en serio
+              {t('landing.audienceSection.title')}
             </h2>
           </Reveal>
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -122,10 +102,11 @@ export function LandingPage() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
                   <Icon name="plantilla" size={22} />
                 </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-white">Equipos deportivos</h3>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">
+                  {t('landing.audienceSection.equipos.title')}
+                </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-white/55">
-                  Clubes y centros de fútbol o futsal que necesitan a todo su cuerpo técnico —físico, médico,
-                  táctico y psicológico— coordinado en un solo panel.
+                  {t('landing.audienceSection.equipos.body')}
                 </p>
               </div>
             </Reveal>
@@ -134,10 +115,11 @@ export function LandingPage() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
                   <GraduationIcon />
                 </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-white">Instituciones educativas</h3>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">
+                  {t('landing.audienceSection.instituciones.title')}
+                </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-white/55">
-                  Escuelas y academias deportivas que forman jóvenes atletas y necesitan seguimiento objetivo de
-                  carga, test y evolución a lo largo de las temporadas.
+                  {t('landing.audienceSection.instituciones.body')}
                 </p>
               </div>
             </Reveal>
@@ -146,10 +128,11 @@ export function LandingPage() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accentLight">
                   <Icon name="gauge" size={22} />
                 </span>
-                <h3 className="mt-4 text-[15px] font-semibold text-white">Atletas de alto rendimiento</h3>
+                <h3 className="mt-4 text-[15px] font-semibold text-white">
+                  {t('landing.audienceSection.atletas.title')}
+                </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-white/55">
-                  Deportistas individuales que entrenan con un cuerpo técnico propio y quieren sus datos de carga,
-                  test y recuperación en un solo lugar.
+                  {t('landing.audienceSection.atletas.body')}
                 </p>
               </div>
             </Reveal>
@@ -161,24 +144,23 @@ export function LandingPage() {
       <section id="modulos" className="px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <Reveal className="max-w-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Módulos</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Todo el cuerpo técnico, en un solo lugar
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/55">
-              Cada rol —director técnico, preparador físico, fisioterapeuta, analista, planificador, psicólogo—
-              accede solo a lo que le corresponde.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.modulesSection.eyebrow')}
             </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              {t('landing.modulesSection.title')}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/55">{t('landing.modulesSection.subtitle')}</p>
           </Reveal>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {MODULES.map((m, i) => (
-              <Reveal key={m.name} delay={(i % 4) * 70}>
+              <Reveal key={m.id} delay={(i % 4) * 70}>
                 <div className="h-full rounded-2xl border border-perf-border bg-perf-surface p-5 transition-colors hover:border-accent/40">
                   <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
                     <Icon name={m.icon} size={20} />
                   </span>
-                  <h3 className="mt-4 text-[15px] font-semibold text-white">{m.name}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/50">{m.body}</p>
+                  <h3 className="mt-4 text-[15px] font-semibold text-white">{t(`modules.${m.id}.name`)}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/50">{t(`modules.${m.id}.body`)}</p>
                 </div>
               </Reveal>
             ))}
@@ -190,31 +172,26 @@ export function LandingPage() {
       <section id="metodologia" className="bg-perf-surface px-6 py-20 sm:px-10">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
           <Reveal>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Metodología</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.methodology.eyebrow')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              25 calculadoras con la ciencia citada, no una caja negra
+              {t('landing.methodology.title')}
             </h2>
-            <p className="mt-4 text-sm leading-relaxed text-white/55">
-              Cada fórmula del panel —sRPE, monotonía y strain de Foster, ACWR (agudo:crónico) en sus variantes de
-              rolling average y EWMA, TRIMP de Edwards, forma (fitness-fatiga estilo Banister)— está documentada y se
-              calcula siempre en el servidor. El staff nunca depende de una planilla aparte.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-white/55">
-              Somos honestos con los límites: el ACWR es un indicador contextual de carga, no un predictor causal de
-              lesión. El panel da el número y el contexto — la decisión sigue siendo del cuerpo técnico.
-            </p>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">{t('landing.methodology.p1')}</p>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">{t('landing.methodology.p2')}</p>
             <ul className="mt-6 flex flex-col gap-2.5 text-sm text-white/70">
               <li className="flex items-start gap-2.5">
                 <Icon name="check" size={16} className="mt-0.5 shrink-0 text-perf-ok" />
-                25 calculadoras + batería psicométrica completa (BRUMS/POMS/RESTQ-Sport/CSAI-2/ABQ)
+                {t('landing.methodology.bullets.0')}
               </li>
               <li className="flex items-start gap-2.5">
                 <Icon name="check" size={16} className="mt-0.5 shrink-0 text-perf-ok" />
-                Todo el cálculo vive en el servidor — el panel nunca improvisa un número
+                {t('landing.methodology.bullets.1')}
               </li>
               <li className="flex items-start gap-2.5">
                 <Icon name="check" size={16} className="mt-0.5 shrink-0 text-perf-ok" />
-                Roles de staff independientes por centro, con acceso por módulo
+                {t('landing.methodology.bullets.2')}
               </li>
             </ul>
           </Reveal>
@@ -231,13 +208,14 @@ export function LandingPage() {
       <section id="motor" className="px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
           <Reveal className="text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Motor de cálculo</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.engine.eyebrow')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Ninguna fórmula es una caja negra — probalas vos mismo
+              {t('landing.engine.title')}
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-white/55">
-              Elegí una calculadora, cargá tus números y mirá el resultado — las mismas fórmulas que usa el panel
-              real para cada atleta.
+              {t('landing.engine.subtitle')}
             </p>
           </Reveal>
           <Reveal delay={100} className="mt-8">
@@ -250,9 +228,11 @@ export function LandingPage() {
       <section className="px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <Reveal className="max-w-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Cómo funciona</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.howItWorks.eyebrow')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              De centro nuevo a decisiones con datos
+              {t('landing.howItWorks.title')}
             </h2>
           </Reveal>
           <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
@@ -273,9 +253,11 @@ export function LandingPage() {
       <section id="preguntas" className="bg-perf-surface px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-3xl">
           <Reveal className="max-w-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Preguntas frecuentes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('landing.faq.eyebrow')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Lo que más nos preguntan los centros
+              {t('landing.faq.title')}
             </h2>
           </Reveal>
           <div className="mt-8 space-y-3">
@@ -292,16 +274,14 @@ export function LandingPage() {
       <section className="px-6 py-20 sm:px-10">
         <Reveal className="mx-auto max-w-6xl rounded-3xl bg-accent px-6 py-14 text-center sm:px-16 sm:py-16">
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            ¿Listo para profesionalizar tu cuerpo técnico?
+            {t('landing.ctaFinal.title')}
           </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-white/85">
-            Contactanos y coordinamos el alta de tu centro deportivo y los roles de tu staff.
-          </p>
+          <p className="mx-auto mt-3 max-w-md text-sm text-white/85">{t('landing.ctaFinal.body')}</p>
           <a
             href={CONTACT_HREF}
             className="mx-auto mt-7 flex h-12 w-fit items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-accentDark transition-colors hover:bg-white/90"
           >
-            Solicitar acceso
+            {t('landing.ctaFinal.cta')}
           </a>
         </Reveal>
       </section>
@@ -314,21 +294,20 @@ export function LandingPage() {
 // Texto + CTAs del Hero — compartido entre la versión mobile (sin LaserFlow)
 // y la de escritorio (2 columnas), para no duplicar copy en dos lugares.
 function HeroCopy() {
+  const t = useT()
   return (
     <>
       <Reveal>
         <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
-          Panel B2B · Alto rendimiento deportivo
+          {t('landing.hero.eyebrow')}
         </p>
         <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
-          Ciencia deportiva,
+          {t('landing.hero.titleLine1')}
           <br />
-          en un solo panel<span className="text-accent">.</span>
+          {t('landing.hero.titleLine2')}
+          <span className="text-accent">.</span>
         </h1>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
-          Rendimiento, lesiones, test físicos, planificación y psicológico — un panel para equipos deportivos,
-          instituciones educativas y atletas de alto rendimiento.
-        </p>
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">{t('landing.hero.body')}</p>
       </Reveal>
       <Reveal delay={120}>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -336,13 +315,13 @@ function HeroCopy() {
             href={CONTACT_HREF}
             className="flex h-12 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accentDark"
           >
-            Solicitar acceso
+            {t('landing.hero.ctaPrimary')}
           </a>
           <Link
             to="/login"
             className="flex h-12 items-center justify-center rounded-lg border border-white/15 px-6 text-sm font-medium text-white/85 transition-colors hover:bg-white/5"
           >
-            Ya tengo acceso · Ingresar
+            {t('landing.hero.ctaSecondary')}
           </Link>
         </div>
       </Reveal>
@@ -485,31 +464,21 @@ function DesktopHero() {
 // sección "Motor de cálculo" más abajo; esto es una vista tipo screenshot,
 // marcada como tal (mismo criterio que `DemoBadge` en el panel real: nunca
 // mostrar datos de ejemplo sin avisar).
-const TEST_SLIDES: { icon: IconName; name: string; body: string; value: string; unit: string }[] = [
-  {
-    icon: 'tests',
-    name: 'Squat Jump',
-    body: 'Salto sin contramovimiento — estima la potencia del tren inferior a partir de la altura alcanzada.',
-    value: '38 cm',
-    unit: '≈ 3.5 kW',
-  },
-  {
-    icon: 'trendUp',
-    name: 'Sprint 10 m',
-    body: 'Capacidad de aceleración inicial en los primeros metros de una carrera lineal.',
-    value: '1.72 s',
-    unit: 'tiempo',
-  },
-  {
-    icon: 'gauge',
-    name: 'RSI · Drop Jump',
-    body: 'Índice de fuerza reactiva: altura del salto dividida el tiempo de contacto con el suelo.',
-    value: '1.9',
-    unit: 'índice',
-  },
+// `value` (la medición numérica) no se traduce — solo `unit` (la etiqueta).
+const TEST_SLIDE_META: { icon: IconName; value: string }[] = [
+  { icon: 'tests', value: '38 cm' },
+  { icon: 'trendUp', value: '1.72 s' },
+  { icon: 'gauge', value: '1.9' },
 ]
 
 function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
+  const t = useT()
+  const TEST_SLIDES = TEST_SLIDE_META.map((meta, i) => ({
+    ...meta,
+    name: t(`landing.testCarousel.slides.${i}.name`),
+    body: t(`landing.testCarousel.slides.${i}.body`),
+    unit: t(`landing.testCarousel.slides.${i}.unit`),
+  }))
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(true)
 
@@ -521,7 +490,7 @@ function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
       // antes de que termine el fade-out, el cambio de contenido se ve a
       // mitad de la transición (texto viejo y nuevo superpuestos un frame).
       window.setTimeout(() => {
-        setIndex((i) => (i + 1) % TEST_SLIDES.length)
+        setIndex((i) => (i + 1) % TEST_SLIDE_META.length)
         setVisible(true)
       }, 320)
     }, 4500)
@@ -534,10 +503,12 @@ function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
     <div>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">Test físico</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
+            {t('landing.testCarousel.label')}
+          </p>
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-perf-warn/30 bg-perf-warn/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-perf-warn">
             <span className="h-1.5 w-1.5 rounded-full bg-perf-warn" />
-            Ejemplo
+            {t('landing.testCarousel.badge')}
           </span>
         </div>
         <div className="flex gap-1.5">
@@ -567,12 +538,6 @@ function TestCarousel({ reducedMotion }: { reducedMotion: boolean }) {
 // demo de marketing, no reemplaza el cálculo real del panel (que sí vive
 // siempre en el servidor, por atleta y por equipo).
 type CalcKey = 'acwr' | 'srpe' | 'sayers'
-
-const CALCULATORS: { key: CalcKey; chip: string }[] = [
-  { key: 'acwr', chip: 'ACWR' },
-  { key: 'srpe', chip: 'Carga de sesión (sRPE)' },
-  { key: 'sayers', chip: 'Potencia de salto (Sayers)' },
-]
 
 // Input compartido por las 3 calculadoras — misma altura de label (2 líneas
 // reservadas) para que ambas columnas del grid siempre alineen, sin importar
@@ -609,6 +574,12 @@ function CalcField({
 }
 
 function CalculatorDemo() {
+  const t = useT()
+  const CALCULATORS: { key: CalcKey; chip: string }[] = [
+    { key: 'acwr', chip: t('landing.engine.calculators.acwr') },
+    { key: 'srpe', chip: t('landing.engine.calculators.srpe') },
+    { key: 'sayers', chip: t('landing.engine.calculators.sayers') },
+  ]
   const [calc, setCalc] = useState<CalcKey>('acwr')
 
   // ACWR — zonas de performance-web/CLAUDE.md (0.8-1.3 sweet spot / >1.5 peligro).
@@ -620,14 +591,14 @@ function CalculatorDemo() {
   const markerPct = (Math.min(Math.max(ratio, 0), 2) / 2) * 100
   const zone =
     cronicaNum <= 0
-      ? { label: 'Cargá ambos valores', color: 'text-white/40' }
+      ? { label: t('landing.engine.acwr.placeholder'), color: 'text-white/40' }
       : ratio > 1.5
-        ? { label: 'Riesgo elevado', color: 'text-perf-danger' }
+        ? { label: t('landing.engine.acwr.zoneRiesgo'), color: 'text-perf-danger' }
         : ratio > 1.3
-          ? { label: 'Zona de atención', color: 'text-perf-warn' }
+          ? { label: t('landing.engine.acwr.zoneAtencion'), color: 'text-perf-warn' }
           : ratio >= 0.8
-            ? { label: 'Zona óptima (sweet spot)', color: 'text-perf-ok' }
-            : { label: 'Por debajo del rango óptimo', color: 'text-accentLight' }
+            ? { label: t('landing.engine.acwr.zoneOptima'), color: 'text-perf-ok' }
+            : { label: t('landing.engine.acwr.zoneBaja'), color: 'text-accentLight' }
 
   // sRPE — carga = RPE (Borg CR-10) × duración (backend/performance/calculators/carga.py).
   const [rpe, setRpe] = useState('6')
@@ -664,8 +635,18 @@ function CalculatorDemo() {
       {calc === 'acwr' && (
         <div className="mt-7">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <CalcField label="Carga aguda" unit="7 días" value={aguda} onChange={setAguda} />
-            <CalcField label="Carga crónica" unit="prom. 4 semanas" value={cronica} onChange={setCronica} />
+            <CalcField
+              label={t('landing.engine.acwr.fieldAguda')}
+              unit={t('landing.engine.acwr.unitAguda')}
+              value={aguda}
+              onChange={setAguda}
+            />
+            <CalcField
+              label={t('landing.engine.acwr.fieldCronica')}
+              unit={t('landing.engine.acwr.unitCronica')}
+              value={cronica}
+              onChange={setCronica}
+            />
           </div>
 
           <div className="mt-7">
@@ -697,40 +678,54 @@ function CalculatorDemo() {
             </div>
           </div>
 
-          <p className="mt-6 text-xs leading-relaxed text-white/40">
-            Vista simplificada con fines demostrativos — en el panel real, el ACWR se calcula por atleta y por equipo,
-            en variantes de rolling average y EWMA, y se cruza automáticamente con lesiones y planificación. No
-            sustituye el seguimiento diario del cuerpo técnico.
-          </p>
+          <p className="mt-6 text-xs leading-relaxed text-white/40">{t('landing.engine.acwr.disclaimer')}</p>
         </div>
       )}
 
       {calc === 'srpe' && (
         <div className="mt-7">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <CalcField label="RPE percibido" unit="0–10, Borg CR-10" value={rpe} onChange={setRpe} max={10} />
-            <CalcField label="Duración" unit="minutos" value={duracion} onChange={setDuracion} />
+            <CalcField
+              label={t('landing.engine.srpe.fieldRpe')}
+              unit={t('landing.engine.srpe.unitRpe')}
+              value={rpe}
+              onChange={setRpe}
+              max={10}
+            />
+            <CalcField
+              label={t('landing.engine.srpe.fieldDuracion')}
+              unit={t('landing.engine.srpe.unitDuracion')}
+              value={duracion}
+              onChange={setDuracion}
+            />
           </div>
 
           <div className="mt-7">
             <p className="text-3xl font-bold tracking-tight text-white">
               {duracionNum > 0 ? Math.round(cargaUa) : '—'} <span className="text-lg font-semibold text-white/50">UA</span>
             </p>
-            <p className="mt-1 text-sm font-medium text-white/55">Carga interna de la sesión</p>
+            <p className="mt-1 text-sm font-medium text-white/55">{t('landing.engine.srpe.resultLabel')}</p>
           </div>
 
-          <p className="mt-6 text-xs leading-relaxed text-white/40">
-            RPE × duración (Foster/Borg CR-10) — la misma cuenta que registra el módulo de Carga interna, sesión por
-            sesión. El panel real la acumula día a día para calcular monotonía, strain y ACWR.
-          </p>
+          <p className="mt-6 text-xs leading-relaxed text-white/40">{t('landing.engine.srpe.disclaimer')}</p>
         </div>
       )}
 
       {calc === 'sayers' && (
         <div className="mt-7">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <CalcField label="Altura del salto" unit="cm" value={alturaCm} onChange={setAlturaCm} />
-            <CalcField label="Masa corporal" unit="kg" value={masaKg} onChange={setMasaKg} />
+            <CalcField
+              label={t('landing.engine.sayers.fieldAltura')}
+              unit={t('landing.engine.sayers.unitAltura')}
+              value={alturaCm}
+              onChange={setAlturaCm}
+            />
+            <CalcField
+              label={t('landing.engine.sayers.fieldMasa')}
+              unit={t('landing.engine.sayers.unitMasa')}
+              value={masaKg}
+              onChange={setMasaKg}
+            />
           </div>
 
           <div className="mt-7">
@@ -738,13 +733,10 @@ function CalculatorDemo() {
               {alturaNum > 0 && masaNum > 0 ? Math.round(potenciaW) : '—'}{' '}
               <span className="text-lg font-semibold text-white/50">W</span>
             </p>
-            <p className="mt-1 text-sm font-medium text-white/55">Potencia pico estimada (Squat Jump)</p>
+            <p className="mt-1 text-sm font-medium text-white/55">{t('landing.engine.sayers.resultLabel')}</p>
           </div>
 
-          <p className="mt-6 text-xs leading-relaxed text-white/40">
-            Fórmula de Sayers et al. (1999): 60.7 × altura(cm) + 45.3 × masa(kg) − 2055. El panel también puede
-            calcular la altura directo desde el tiempo de vuelo del salto.
-          </p>
+          <p className="mt-6 text-xs leading-relaxed text-white/40">{t('landing.engine.sayers.disclaimer')}</p>
         </div>
       )}
     </div>

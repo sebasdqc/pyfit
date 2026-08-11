@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import { AuthProvider } from '@/auth/AuthContext'
 import { ActiveCenterProvider } from '@/centers/ActiveCenterContext'
 import { SquadProvider } from '@/centers/SquadContext'
+import { LocaleProvider } from '@/locale/LocaleContext'
 import { router } from '@/router'
 
 const queryClient = new QueryClient()
@@ -12,13 +13,15 @@ const queryClient = new QueryClient()
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ActiveCenterProvider>
-          <SquadProvider>
-            <RouterProvider router={router} />
-          </SquadProvider>
-        </ActiveCenterProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <ActiveCenterProvider>
+            <SquadProvider>
+              <RouterProvider router={router} />
+            </SquadProvider>
+          </ActiveCenterProvider>
+        </AuthProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   )
 }

@@ -10,6 +10,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 
 // Assets servidos desde performance-web/public/ (raíz «/»): no son URLs externas
 // ni van embebidos en el código. Si el fondo no carga, cae a bg-perf-bg.
@@ -23,6 +25,7 @@ const CONTACT_HREF = 'https://pyfit.app'
 const GUEST_PORTAL_HREF = 'https://pyfit.app' // Portal Invitado
 
 export function LoginPage() {
+  const t = useT()
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -38,7 +41,7 @@ export function LoginPage() {
       await login(email, password)
       navigate('/dashboard', { replace: true })
     } catch {
-      setError('No se pudo iniciar sesión. Verifica tus credenciales y tu acceso al panel.')
+      setError(t('login.errorLogin'))
     } finally {
       setSubmitting(false)
     }
@@ -54,6 +57,9 @@ export function LoginPage() {
       />
       {/* Capa de oscurecimiento plana, densa (sin gradiente) para legibilidad. */}
       <div className="absolute inset-0 bg-[rgba(6,9,18,0.86)]" aria-hidden />
+      <div className="absolute right-4 top-4 z-20">
+        <LocaleToggle />
+      </div>
 
       {/* Contenido principal: recuadro en la banda izquierda, centrado vertical. */}
       <main className="relative z-10 flex h-full items-center">
@@ -69,27 +75,28 @@ export function LoginPage() {
             </div>
 
             <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
-              Acceso profesional
+              {t('login.accesoProfesional')}
             </p>
 
             <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
-              Accede a tu portal<span className="text-accent">.</span>
+              {t('login.title')}
+              <span className="text-accent">.</span>
             </h1>
 
             <p className="mt-4 text-sm text-white/50">
-              ¿No tienes acceso aún?{' '}
+              {t('login.noTienesAcceso')}{' '}
               <a
                 href={CONTACT_HREF}
                 className="font-medium text-accentLight transition-colors hover:text-accent"
               >
-                Contáctanos
+                {t('login.contactanos')}
               </a>
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
               <Field
                 id="email"
-                label="Correo electrónico"
+                label={t('login.correo')}
                 type="email"
                 value={email}
                 onChange={setEmail}
@@ -98,7 +105,7 @@ export function LoginPage() {
               />
               <Field
                 id="password"
-                label="Contraseña"
+                label={t('login.contrasena')}
                 type="password"
                 value={password}
                 onChange={setPassword}
@@ -110,7 +117,7 @@ export function LoginPage() {
                 to="/recuperar"
                 className="-mt-2 self-end text-sm font-medium text-accentLight transition-colors hover:text-accent"
               >
-                ¿Olvidaste tu contraseña?
+                {t('login.olvidasteContrasena')}
               </Link>
 
               {error && (
@@ -126,14 +133,14 @@ export function LoginPage() {
                   href={GUEST_PORTAL_HREF}
                   className="flex h-12 flex-1 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
                 >
-                  Portal Invitado
+                  {t('login.portalInvitado')}
                 </a>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="h-12 flex-1 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:opacity-60"
                 >
-                  {submitting ? 'Accediendo…' : 'Acceder'}
+                  {submitting ? t('login.accediendo') : t('login.acceder')}
                 </button>
               </div>
 
@@ -143,7 +150,7 @@ export function LoginPage() {
                 className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white"
               >
                 <SupportIcon />
-                Contactar a soporte
+                {t('login.contactarSoporte')}
               </a>
             </form>
           </div>
@@ -174,6 +181,7 @@ function Field({
   autoComplete: string
   icon: ReactNode
 }) {
+  const t = useT()
   const [show, setShow] = useState(false)
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
@@ -201,10 +209,10 @@ function Field({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
-          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-label={show ? t('login.ocultarContrasena') : t('login.mostrarContrasena')}
           className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-white/50 transition-colors hover:text-accentLight"
         >
-          {show ? 'Ocultar' : 'Mostrar'}
+          {show ? t('login.ocultar') : t('login.mostrar')}
         </button>
       ) : (
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/30">

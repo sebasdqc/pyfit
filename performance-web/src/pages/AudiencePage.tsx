@@ -8,124 +8,60 @@ import { Icon, type IconName } from '@/components/Icon'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { PublicHeader } from '@/components/layout/PublicHeader'
 import { Reveal } from '@/components/Reveal'
-import { CONTACT_HREF, MODULES } from '@/lib/publicSite'
+import { CONTACT_HREF, MODULES, type ModuleId } from '@/lib/publicSite'
+import { useT } from '@/locale/useT'
 
 type Segment = 'equipos' | 'atletas' | 'instituciones'
 
-type AudienceContent = {
-  eyebrow: string
-  title: string
-  subtitle: string
-  note?: string
-  benefits: { icon: IconName; title: string; body: string }[]
-  moduleNames: string[]
-  closingTitle: string
-  closingBody: string
-}
-
-const AUDIENCES: Record<Segment, AudienceContent> = {
+// Solo la estructura (íconos por beneficio + ids de módulos relevantes) vive
+// acá — el copy (eyebrow/title/benefits/closing) se resuelve con `t()` en el
+// componente, indexado por `segment`, así se traduce sin duplicar la
+// estructura. `moduleIds` reemplaza los antiguos `moduleNames` en español:
+// filtrar por nombre traducido rompía en inglés, filtrar por id no.
+const AUDIENCE_META: Record<
+  Segment,
+  { icons: IconName[]; hasNote?: boolean; moduleIds: ModuleId[] }
+> = {
   equipos: {
-    eyebrow: 'Para equipos deportivos',
-    title: 'Todo tu cuerpo técnico, coordinado en un solo panel.',
-    subtitle:
-      'Clubes y centros de fútbol o futsal que necesitan a todo su staff —físico, médico, táctico y psicológico— trabajando sobre los mismos datos, no en planillas sueltas.',
-    benefits: [
-      {
-        icon: 'plantilla',
-        title: 'Un plantel, todos los roles',
-        body: 'Director técnico, preparador físico, fisioterapeuta, analista, planificador y psicólogo acceden al mismo plantel, cada uno solo a los módulos que le corresponden.',
-      },
-      {
-        icon: 'planificacion',
-        title: 'Sesiones de equipo generadas con IA',
-        body: 'El planificador arma meso y microciclos por equipo —no por atleta, porque en fútbol y futsal se entrena junto— con un asesor de solo lectura que sugiere ajustes según carga y lesiones.',
-      },
-      {
-        icon: 'lesiones',
-        title: 'Riesgo de lesión con contexto, no solo el parte médico',
-        body: 'El ACWR y la carga se cruzan automáticamente con el estado de cada jugador, para que el cuerpo técnico decida con datos, no solo con el diagnóstico aislado.',
-      },
-      {
-        icon: 'simulador',
-        title: 'Simulador táctico incluido',
-        body: 'Pizarra táctica animada para fútbol o futsal, para preparar y compartir jugadas con el plantel — disponible para todo el staff, sin gating de módulo.',
-      },
-    ],
-    moduleNames: ['Rendimiento', 'Lesiones', 'Planificación', 'Simulador táctico', 'Calendario', 'Psicológico'],
-    closingTitle: '¿Listo para profesionalizar tu cuerpo técnico?',
-    closingBody: 'Contactanos y coordinamos el alta de tu centro deportivo y los roles de tu staff.',
+    icons: ['plantilla', 'planificacion', 'lesiones', 'simulador'],
+    moduleIds: ['rendimiento', 'lesiones', 'planificacion', 'simulador', 'calendario', 'psicologico'],
   },
   atletas: {
-    eyebrow: 'Para atletas de alto rendimiento',
-    title: 'Tu carga, tus test y tu recuperación, en un solo lugar.',
-    subtitle:
-      'Deportistas individuales que entrenan con un cuerpo técnico propio —preparador físico, fisioterapeuta, psicólogo— y quieren ver sus datos cruzados, no repartidos en apps sueltas.',
-    note: 'Vos no cargás tus propios datos: tu preparador o fisioterapeuta te registra dentro de su panel, igual que un club haría con su plantel — así todo tu equipo técnico trabaja sobre la misma información. Los atletas no inician sesión de forma directa.',
-    benefits: [
-      {
-        icon: 'gauge',
-        title: 'Tu ACWR y tu forma, siempre al día',
-        body: 'Carga interna (sRPE), monotonía, strain y forma (fitness-fatiga) calculadas en el servidor, sesión por sesión — no una planilla que alguien tiene que actualizar a mano.',
-      },
-      {
-        icon: 'tests',
-        title: 'Test físicos con fórmulas citadas',
-        body: 'Squat Jump, Sprint, RSI y el resto de la batería física con las mismas fórmulas documentadas que usa un club — Sayers, Bangsbo IR2, Draper & Whyte RAST, entre otras.',
-      },
-      {
-        icon: 'psicologico',
-        title: 'Lo psicológico, junto a lo físico',
-        body: 'BRUMS/POMS, RESTQ-Sport, CSAI-2 y ABQ — tu estado mental al lado de tu carga de entrenamiento, no en una consulta aparte.',
-      },
-      {
-        icon: 'lesiones',
-        title: 'Historial de lesiones con contexto',
-        body: 'Registro con mapa corporal y seguimiento de recuperación, visible para todo tu equipo técnico — no solo para quien te atendió ese día.',
-      },
-    ],
-    moduleNames: ['Rendimiento', 'Test físicos', 'Psicológico', 'Lesiones'],
-    closingTitle: '¿Listo para que tu equipo técnico entrene con datos?',
-    closingBody: 'Contactanos y coordinamos el alta tuya y de tu cuerpo técnico dentro del panel.',
+    icons: ['gauge', 'tests', 'psicologico', 'lesiones'],
+    hasNote: true,
+    moduleIds: ['rendimiento', 'tests', 'psicologico', 'lesiones'],
   },
   instituciones: {
-    eyebrow: 'Para instituciones educativas',
-    title: 'Seguimiento objetivo de tus jóvenes atletas, temporada tras temporada.',
-    subtitle:
-      'Escuelas y academias deportivas que forman jóvenes atletas y necesitan ver su evolución de carga, test y desarrollo a lo largo de varias temporadas — no solo de un torneo.',
-    benefits: [
-      {
-        icon: 'tests',
-        title: 'Test físicos comparables en el tiempo',
-        body: 'La misma batería de test, con las mismas fórmulas, repetida temporada tras temporada — para ver evolución real de cada alumno, no solo una foto aislada.',
-      },
-      {
-        icon: 'calendario',
-        title: 'Toda la temporada en una línea de tiempo',
-        body: 'Torneos, concentraciones, partidos y entrenamientos organizados junto con la carga real de cada categoría.',
-      },
-      {
-        icon: 'planificacion',
-        title: 'Planificación por categoría',
-        body: 'Meso y microciclos por equipo, adaptados a cada categoría formativa, con un asesor de solo lectura que sugiere ajustes según carga y lesiones.',
-      },
-      {
-        icon: 'reportes',
-        title: 'Reportes para familias y directivos',
-        body: 'Datos objetivos de rendimiento y desarrollo, no solo la percepción del entrenador — útiles puertas adentro y para comunicar resultados.',
-      },
-    ],
-    moduleNames: ['Rendimiento', 'Test físicos', 'Planificación', 'Calendario'],
-    closingTitle: '¿Listo para llevar el seguimiento de tu institución a un solo panel?',
-    closingBody: 'Contactanos y coordinamos el alta de tu institución y de los roles de tu staff.',
+    icons: ['tests', 'calendario', 'planificacion', 'reportes'],
+    moduleIds: ['rendimiento', 'tests', 'planificacion', 'calendario'],
   },
 }
 
 export function AudiencePage() {
+  const t = useT()
   const { segment } = useParams<{ segment: string }>()
-  const content = segment && segment in AUDIENCES ? AUDIENCES[segment as Segment] : null
-  if (!content) return <Navigate to="/" replace />
+  const meta = segment && segment in AUDIENCE_META ? AUDIENCE_META[segment as Segment] : null
+  if (!meta || !segment) return <Navigate to="/" replace />
 
-  const modules = MODULES.filter((m) => content.moduleNames.includes(m.name))
+  const content = {
+    eyebrow: t(`audience.segments.${segment}.eyebrow`),
+    title: t(`audience.segments.${segment}.title`),
+    subtitle: t(`audience.segments.${segment}.subtitle`),
+    note: meta.hasNote ? t(`audience.segments.${segment}.note`) : undefined,
+    benefits: meta.icons.map((icon, i) => ({
+      icon,
+      title: t(`audience.segments.${segment}.benefits.${i}.title`),
+      body: t(`audience.segments.${segment}.benefits.${i}.body`),
+    })),
+    closingTitle: t(`audience.segments.${segment}.closingTitle`),
+    closingBody: t(`audience.segments.${segment}.closingBody`),
+  }
+
+  const modules = MODULES.filter((m) => meta.moduleIds.includes(m.id)).map((m) => ({
+    ...m,
+    name: t(`modules.${m.id}.name`),
+    body: t(`modules.${m.id}.body`),
+  }))
 
   return (
     <div className="min-h-screen bg-perf-bg">
@@ -150,13 +86,13 @@ export function AudiencePage() {
                 href={CONTACT_HREF}
                 className="flex h-12 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accentDark"
               >
-                Solicitar acceso
+                {t('audience.solicitarAcceso')}
               </a>
               <Link
                 to="/precio"
                 className="flex h-12 items-center justify-center rounded-lg border border-white/15 px-6 text-sm font-medium text-white/85 transition-colors hover:bg-white/5"
               >
-                Ver planes
+                {t('audience.verPlanes')}
               </Link>
             </div>
           </Reveal>
@@ -190,9 +126,11 @@ export function AudiencePage() {
       <section className="bg-perf-surface px-6 py-20 sm:px-10">
         <div className="mx-auto max-w-6xl">
           <Reveal className="max-w-xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Módulos relevantes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              {t('audience.modulosRelevantes')}
+            </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Lo que vas a usar todos los días
+              {t('audience.loQueVasAUsar')}
             </h2>
           </Reveal>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -219,7 +157,7 @@ export function AudiencePage() {
             href={CONTACT_HREF}
             className="mx-auto mt-7 flex h-12 w-fit items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-accentDark transition-colors hover:bg-white/90"
           >
-            Solicitar acceso
+            {t('audience.solicitarAcceso')}
           </a>
         </Reveal>
       </section>

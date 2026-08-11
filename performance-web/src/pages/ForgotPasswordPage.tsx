@@ -10,19 +10,22 @@ import { isAxiosError } from 'axios'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { confirmPasswordReset, requestPasswordReset } from '@/api/auth'
+import { LocaleToggle } from '@/components/ui/LocaleToggle'
+import { useT } from '@/locale/useT'
 
 const BG_IMAGE = '/FVF.jpg'
 const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
-function extractErrorMessage(err: unknown): string {
+function extractErrorMessage(err: unknown, t: (path: string) => string): string {
   if (isAxiosError(err) && err.response?.status === 400) {
     const data = err.response.data as { error?: string } | undefined
     if (data?.error) return data.error
   }
-  return 'El código ingresado no es válido o expiró.'
+  return t('forgotPassword.errorCodigoInvalido')
 }
 
 export function ForgotPasswordPage() {
+  const t = useT()
   const navigate = useNavigate()
   const [step, setStep] = useState<'email' | 'verify' | 'listo'>('email')
   const [email, setEmail] = useState('')
@@ -50,11 +53,11 @@ export function ForgotPasswordPage() {
     e.preventDefault()
     setError(null)
     if (newPassword.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
+      setError(t('forgotPassword.errorContrasenaCorta'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
+      setError(t('forgotPassword.errorNoCoinciden'))
       return
     }
     setSubmitting(true)
@@ -62,7 +65,7 @@ export function ForgotPasswordPage() {
       await confirmPasswordReset(email.trim().toLowerCase(), code.trim(), newPassword)
       setStep('listo')
     } catch (err) {
-      setError(extractErrorMessage(err))
+      setError(extractErrorMessage(err, t))
     } finally {
       setSubmitting(false)
     }
@@ -76,6 +79,9 @@ export function ForgotPasswordPage() {
         aria-hidden
       />
       <div className="absolute inset-0 bg-[rgba(6,9,18,0.86)]" aria-hidden />
+      <div className="absolute right-4 top-4 z-20">
+        <LocaleToggle />
+      </div>
 
       <main className="relative z-10 flex h-full items-center">
         <div className="w-full px-6 sm:px-10 md:px-12 lg:px-20">
@@ -93,29 +99,32 @@ export function ForgotPasswordPage() {
                   <CheckIcon />
                 </span>
                 <h1 className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl">
-                  Contraseña actualizada<span className="text-accent">.</span>
+                  {t('forgotPassword.listoTitle')}
+                  <span className="text-accent">.</span>
                 </h1>
-                <p className="mt-4 text-sm text-white/50">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+                <p className="mt-4 text-sm text-white/50">{t('forgotPassword.listoBody')}</p>
                 <button
                   onClick={() => navigate('/login', { replace: true })}
                   className="mt-8 h-12 w-full rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accentDark"
                 >
-                  Ir a iniciar sesión
+                  {t('forgotPassword.irAIniciarSesion')}
                 </button>
               </>
             ) : (
               <>
                 <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accentLight/80">
-                  Recuperar acceso
+                  {t('forgotPassword.recuperarAcceso')}
                 </p>
                 <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
                   {step === 'email' ? (
                     <>
-                      ¿Olvidaste tu contraseña<span className="text-accent">?</span>
+                      {t('forgotPassword.titleEmail')}
+                      <span className="text-accent">?</span>
                     </>
                   ) : (
                     <>
-                      Ingresa el código<span className="text-accent">.</span>
+                      {t('forgotPassword.titleVerify')}
+                      <span className="text-accent">.</span>
                     </>
                   )}
                 </h1>
@@ -123,15 +132,15 @@ export function ForgotPasswordPage() {
                 {step === 'email' ? (
                   <>
                     <p className="mt-4 text-sm text-white/50">
-                      Ingresa tu correo y te enviaremos un código para restablecerla.{' '}
+                      {t('forgotPassword.step1Body')}{' '}
                       <Link to="/login" className="font-medium text-accentLight transition-colors hover:text-accent">
-                        Volver a iniciar sesión
+                        {t('forgotPassword.volver')}
                       </Link>
                     </p>
                     <form onSubmit={handleSendCode} className="mt-8 flex flex-col gap-4">
                       <Field
                         id="email"
-                        label="Correo electrónico"
+                        label={t('forgotPassword.correo')}
                         type="email"
                         value={email}
                         onChange={setEmail}
@@ -143,20 +152,17 @@ export function ForgotPasswordPage() {
                         disabled={submitting || !email.trim()}
                         className="mt-2 h-12 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:opacity-60"
                       >
-                        {submitting ? 'Enviando…' : 'Enviar código'}
+                        {submitting ? t('forgotPassword.enviando') : t('forgotPassword.enviarCodigo')}
                       </button>
                     </form>
                   </>
                 ) : (
                   <>
-                    <p className="mt-4 text-sm text-white/50">
-                      Enviamos un código a <strong className="break-words text-white/80">{email}</strong>. Ingrésalo
-                      junto con tu nueva contraseña.
-                    </p>
+                    <p className="mt-4 text-sm text-white/50">{t('forgotPassword.step2Body', { email })}</p>
                     <form onSubmit={handleConfirm} className="mt-8 flex flex-col gap-4">
                       <Field
                         id="code"
-                        label="Código de verificación"
+                        label={t('forgotPassword.codigo')}
                         type="text"
                         value={code}
                         onChange={setCode}
@@ -165,7 +171,7 @@ export function ForgotPasswordPage() {
                       />
                       <Field
                         id="new-password"
-                        label="Nueva contraseña"
+                        label={t('forgotPassword.nuevaContrasena')}
                         type="password"
                         value={newPassword}
                         onChange={setNewPassword}
@@ -174,7 +180,7 @@ export function ForgotPasswordPage() {
                       />
                       <Field
                         id="confirm-password"
-                        label="Confirmar contraseña"
+                        label={t('forgotPassword.confirmarContrasena')}
                         type="password"
                         value={confirmPassword}
                         onChange={setConfirmPassword}
@@ -193,7 +199,7 @@ export function ForgotPasswordPage() {
                         disabled={submitting}
                         className="mt-2 h-12 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accentDark disabled:opacity-60"
                       >
-                        {submitting ? 'Actualizando…' : 'Cambiar contraseña'}
+                        {submitting ? t('forgotPassword.actualizando') : t('forgotPassword.cambiarContrasena')}
                       </button>
                       <button
                         type="button"
@@ -204,7 +210,7 @@ export function ForgotPasswordPage() {
                         }}
                         className="h-11 text-center text-sm font-medium text-accentLight transition-colors hover:text-accent"
                       >
-                        ¿No recibiste el código? Reenviar
+                        {t('forgotPassword.noRecibisteCodigo')}
                       </button>
                     </form>
                   </>
@@ -237,6 +243,7 @@ function Field({
   autoComplete: string
   icon: ReactNode
 }) {
+  const t = useT()
   const [show, setShow] = useState(false)
   const isPassword = type === 'password'
   const inputType = isPassword && show ? 'text' : type
@@ -264,10 +271,10 @@ function Field({
           type="button"
           onClick={() => setShow((s) => !s)}
           aria-pressed={show}
-          aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-label={show ? t('forgotPassword.ocultarContrasena') : t('forgotPassword.mostrarContrasena')}
           className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-3 text-[11px] font-semibold uppercase tracking-wide text-white/50 transition-colors hover:text-accentLight"
         >
-          {show ? 'Ocultar' : 'Mostrar'}
+          {show ? t('forgotPassword.ocultar') : t('forgotPassword.mostrar')}
         </button>
       ) : (
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/30">
