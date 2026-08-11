@@ -17,6 +17,14 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Rutas públicas (ver router.tsx): un token muerto en localStorage (de una
+// sesión vieja) no debe expulsar de la landing/precio/para-quién a un
+// visitante que ni siquiera está tratando de entrar al panel.
+const PUBLIC_PATHS = ['/', '/login', '/recuperar', '/precio']
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/para-quien')
+}
+
 // ── Gestión de tokens (localStorage) ────────────────────────────────────────
 export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
@@ -78,9 +86,11 @@ api.interceptors.response.use(
       }
       // Refresh falló: sesión muerta. Limpia tokens SIEMPRE (si quedara un access
       // sin refresh, la rehidratación volvería a pedir /me/ → 401 → recarga infinita)
-      // y redirige solo si no estamos ya en /login (evita el bucle de recarga).
+      // y redirige solo si estamos en una ruta que REQUIERE sesión — en una
+      // pública (landing, precio, para-quién), un token viejo y muerto no debe
+      // expulsar a un visitante que ni siquiera intentaba entrar al panel.
       clearTokens()
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
         window.location.href = '/login'
       }
     }
