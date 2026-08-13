@@ -13,8 +13,8 @@ from .models import (
 
 @admin.register(SportsCenter)
 class SportsCenterAdmin(ModelAdmin):
-    list_display = ('nombre', 'slug', 'ciudad', 'disciplina', 'activo', 'created_at')
-    list_filter = ('activo', 'pais')
+    list_display = ('nombre', 'slug', 'tipo', 'ciudad', 'disciplina', 'activo', 'created_at')
+    list_filter = ('tipo', 'activo', 'pais')
     search_fields = ('nombre', 'slug', 'ciudad')
     prepopulated_fields = {'slug': ('nombre',)}
 

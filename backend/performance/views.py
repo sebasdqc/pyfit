@@ -196,6 +196,10 @@ def _user_payload(user):
         {
             'center_id': m.center_id,
             'center_nombre': m.center.nombre,
+            # Público del centro: decide navegación y vocabulario del panel.
+            # Viaja acá (y no en una petición aparte) porque la barra lateral lo
+            # necesita en el primer render, antes de pedir nada más.
+            'center_tipo': m.center.tipo,
             'rol': m.rol,
             'modulos': m.modulos,
         }
@@ -285,7 +289,20 @@ def centers_view(request):
         serializer = SportsCenterSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        center = serializer.save(director_principal=request.user)
+        # Si el cliente no manda `tipo`, se siembra con el segmento que quien
+        # crea el centro contestó en su onboarding. Es el caso normal: el centro
+        # se crea desde el último paso del wizard, justo después de elegirlo.
+        extra = {'director_principal': request.user}
+        if not serializer.validated_data.get('tipo'):
+            segmento = (
+                PerformanceOnboarding.objects
+                .filter(user=request.user)
+                .values_list('segmento', flat=True)
+                .first()
+            )
+            if segmento:
+                extra['tipo'] = segmento
+        center = serializer.save(**extra)
         # El creador queda como director técnico del centro.
         CenterMembership.objects.get_or_create(
             center=center, user=request.user,

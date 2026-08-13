@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node src/lib/squadEdit.test.ts"
+    "test": "node src/lib/squadEdit.test.ts && node src/lib/perfiles.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",

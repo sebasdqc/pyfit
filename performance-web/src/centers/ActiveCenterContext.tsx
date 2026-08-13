@@ -13,7 +13,8 @@ import {
 import { useAuth } from '@/auth/useAuth'
 import { listCenters } from '@/api/performance'
 import { MODULES } from '@/lib/constants'
-import type { CenterMembershipSummary, ModuleId } from '@/types'
+import { perfilDe, type PerfilCentro, type TerminoId } from '@/lib/perfiles'
+import type { CenterMembershipSummary, ModuleId, TipoCentro } from '@/types'
 
 const STORAGE_KEY = 'zperf_active_center'
 const ALL_MODULE_IDS: ModuleId[] = MODULES.map((m) => m.id)
@@ -26,6 +27,12 @@ export interface ActiveCenterValue {
   // Gating fino: ¿el usuario puede ver este módulo en el centro activo?
   // Admin/director ven todo; el staff, solo los módulos de su membresía.
   canSeeModule: (moduleId: ModuleId) => boolean
+  // Público del centro activo y su perfil de producto (navegación + vocabulario).
+  // Ver lib/perfiles.ts. Sin centro resuelto todavía, cae a la línea base.
+  tipoCentro: TipoCentro
+  perfil: PerfilCentro
+  // Vocabulario: el mismo concepto nombrado como lo nombra este público.
+  termino: (id: TerminoId) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -71,6 +78,7 @@ export function ActiveCenterProvider({ children }: { children: ReactNode }) {
           cs.map((c) => ({
             center_id: c.id,
             center_nombre: c.nombre,
+            center_tipo: c.tipo,
             rol: 'director_tecnico' as const,
             modulos: ALL_MODULE_IDS,
           })),
@@ -125,9 +133,21 @@ export function ActiveCenterProvider({ children }: { children: ReactNode }) {
     [isAdminOrDirector, activeCenter],
   )
 
+  // 'equipos' mientras no haya centro resuelto: es la línea base y coincide con
+  // el default del backend, así que el primer render nunca recorta el panel.
+  const tipoCentro: TipoCentro = activeCenter?.center_tipo ?? 'equipos'
+  const perfil = useMemo(() => perfilDe(tipoCentro), [tipoCentro])
+  const termino = useCallback((id: TerminoId) => perfil.terminos[id], [perfil])
+
   const value = useMemo<ActiveCenterValue>(
-    () => ({ centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule }),
-    [centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule],
+    () => ({
+      centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
+      tipoCentro, perfil, termino,
+    }),
+    [
+      centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
+      tipoCentro, perfil, termino,
+    ],
   )
 
   return <ActiveCenterContext.Provider value={value}>{children}</ActiveCenterContext.Provider>

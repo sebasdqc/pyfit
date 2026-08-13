@@ -44,6 +44,30 @@ MODULE_CHOICES = [
 
 ALL_MODULES = [m[0] for m in MODULE_CHOICES]
 
+# ─── Públicos del producto (segmento / tipo de centro) ────────────────────────
+# Los tres que la landing pública ya diferencia en "Para quién"
+# (/para-quien/:segment). Mismos IDs a propósito, y definidos ACÁ ARRIBA porque
+# ya no son un detalle del onboarding: los usan dos cosas distintas.
+#
+#   PerformanceOnboarding.segmento → ATRIBUCIÓN. Quién llegó y desde dónde.
+#                                    Se lee en el admin, no toca la interfaz.
+#   SportsCenter.tipo              → PRODUCTO. Cómo se comporta el panel.
+#
+# Son dos campos con dos trabajos, no una duplicación: la experiencia es una
+# propiedad de la organización, no de la persona (un mismo fisioterapeuta puede
+# trabajar para un club y para un colegio, y debe ver el panel correcto en cada
+# centro).
+SEGMENTO_EQUIPOS = 'equipos'
+SEGMENTO_INSTITUCIONES = 'instituciones'
+SEGMENTO_ATLETAS = 'atletas'
+
+SEGMENTO_CHOICES = [
+    (SEGMENTO_EQUIPOS, 'Equipos deportivos'),
+    (SEGMENTO_INSTITUCIONES, 'Instituciones educativas'),
+    (SEGMENTO_ATLETAS, 'Atletas de alto rendimiento'),
+]
+
+
 
 class SportsCenter(models.Model):
     """Centro deportivo de alto rendimiento — entidad raíz del vertical B2B.
@@ -53,6 +77,21 @@ class SportsCenter(models.Model):
     """
 
     nombre = models.CharField(max_length=160)
+    # Público del centro: es lo que MANDA sobre cómo se comporta el panel
+    # (navegación, vocabulario, tarjetas del dashboard). Se siembra con la
+    # respuesta del onboarding de quien crea el centro y el director lo puede
+    # corregir después desde el admin.
+    #
+    # Default 'equipos' a propósito: es exactamente el panel que ya venían
+    # usando todos los centros existentes, así que la migración no cambia nada
+    # para nadie.
+    #
+    # ⚠️ NO es un permiso. Que el panel oculte un módulo por tipo de centro es
+    # relevancia, no seguridad: el límite real sigue siendo
+    # permissions.can_access_module en el servidor.
+    tipo = models.CharField(
+        max_length=20, choices=SEGMENTO_CHOICES, default=SEGMENTO_EQUIPOS,
+    )
     # Identificador legible para rutas / subdominio del panel (p. ej. 'cd-aguilas').
     slug = models.SlugField(max_length=80, unique=True)
     ciudad = models.CharField(max_length=120, blank=True)
@@ -846,20 +885,6 @@ class CalendarEvent(models.Model):
 # exclusivos del producto B2B y Profile ya carga el onboarding de Zyfit Academy
 # (`onboarding_academia_completo`) además del onboarding fitness de la app móvil.
 # Mezclarlos ahí haría que un cambio de un producto tocara a los tres.
-
-# Los tres públicos que la landing pública ya diferencia en "Para quién"
-# (/para-quien/:segment). Mismos IDs a propósito: si alguien llegó por la
-# página de "Instituciones educativas", el onboarding tiene que hablarle de lo
-# mismo y no volver a empezar de cero.
-SEGMENTO_EQUIPOS = 'equipos'
-SEGMENTO_INSTITUCIONES = 'instituciones'
-SEGMENTO_ATLETAS = 'atletas'
-
-SEGMENTO_CHOICES = [
-    (SEGMENTO_EQUIPOS, 'Equipos deportivos'),
-    (SEGMENTO_INSTITUCIONES, 'Instituciones educativas'),
-    (SEGMENTO_ATLETAS, 'Atletas de alto rendimiento'),
-]
 
 CARGO_CHOICES = [
     ('preparador_fisico', 'Preparador físico'),

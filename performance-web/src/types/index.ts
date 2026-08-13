@@ -1,6 +1,11 @@
 // Tipos compartidos del panel. Espejan las respuestas del backend Django
 // (performance/serializers.py + views._user_payload).
 
+// Público al que sirve un centro. Mismos IDs que el segmento del onboarding y
+// que /para-quien/:segment en la landing — es deliberadamente el mismo
+// vocabulario en los tres lugares. Ver SportsCenter.tipo en el backend.
+export type TipoCentro = 'equipos' | 'instituciones' | 'atletas'
+
 export type ModuleId =
   | 'rendimiento'
   | 'lesiones'
@@ -21,6 +26,9 @@ export type CenterRole =
 export interface CenterMembershipSummary {
   center_id: number
   center_nombre: string
+  // Público del centro: decide navegación y vocabulario del panel (ver
+  // lib/perfiles.ts). Viaja en /me/ para tenerlo en el primer render.
+  center_tipo: TipoCentro
   rol: CenterRole
   modulos: ModuleId[]
 }
@@ -51,6 +59,7 @@ export interface SportsCenter {
   id: number
   nombre: string
   slug: string
+  tipo: TipoCentro
   ciudad: string
   pais: string
   disciplina: string
@@ -498,8 +507,10 @@ export interface TrainingPlanDetail extends TrainingPlan {
 // Los IDs espejan performance/models.py: CARGO_CHOICES, DISCIPLINA_CHOICES,
 // TAMANO_PLANTEL_CHOICES, NECESIDAD_CHOICES y CANAL_CHOICES.
 
-// Mismos IDs que /para-quien/:segment en la landing pública, a propósito.
-export type SegmentoId = 'equipos' | 'instituciones' | 'atletas'
+// El segmento del onboarding y el tipo de centro son el MISMO conjunto de
+// valores con dos usos distintos (atribución vs. producto), así que comparten
+// tipo en vez de duplicarlo y dejar que diverjan.
+export type SegmentoId = TipoCentro
 
 export type CargoId =
   | 'preparador_fisico' | 'entrenador' | 'analista' | 'coordinador'

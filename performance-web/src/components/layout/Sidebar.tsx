@@ -44,6 +44,9 @@ interface NavItem {
 // nueva con forma de chat que envuelve el mismo asesor de solo lectura que ya
 // existía como banner dentro de Planificación (mismo endpoint, sin backend
 // nuevo) — ver AsesorPage.tsx.
+// Las etiquetas de acá son las del público por defecto (clubes). Un centro de
+// otro tipo las reemplaza vía `perfil.navEtiquetas` — el destino es el mismo,
+// cambia el nombre. Ver lib/perfiles.ts.
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
@@ -103,19 +106,42 @@ export function Sidebar({
   onNavigate: () => void
 }) {
   const { user } = useAuth()
-  const { canSeeModule } = useActiveCenter()
+  const { canSeeModule, perfil } = useActiveCenter()
   const { pathname } = useLocation()
 
-  // Gating fino: oculta los módulos que la membresía del usuario no incluye en
-  // el centro activo (admin/director ven todos). En los grupos se podan los hijos
-  // ocultos y, si no queda ninguno visible, se oculta el grupo entero.
-  const nav = NAV.map((item) =>
-    item.children
-      ? { ...item, children: item.children.filter((c) => !c.moduleId || canSeeModule(c.moduleId)) }
-      : item,
-  ).filter((item) =>
-    item.children ? item.children.length > 0 : !item.moduleId || canSeeModule(item.moduleId),
-  )
+  // Dos filtros distintos, en este orden y sin mezclarse:
+  //
+  //   1. PERMISO   — `canSeeModule`: qué módulos incluye la membresía del
+  //                  usuario en el centro activo (admin/director ven todos).
+  //                  Refleja el gating real del servidor.
+  //   2. RELEVANCIA — el perfil del centro (club / institución / atleta):
+  //                  qué ítems no tienen sentido para ese público, y cómo se
+  //                  llaman los que sí. Es presentación, NUNCA seguridad.
+  //
+  // En los grupos se podan los hijos ocultos y, si no queda ninguno visible,
+  // se oculta el grupo entero.
+  const etiquetar = (item: NavItem): NavItem => {
+    const label = perfil.navEtiquetas[item.id]
+    return label ? { ...item, label } : item
+  }
+  const relevante = (item: NavItem) => !perfil.navOculta.includes(item.id)
+
+  const nav = NAV.filter(relevante)
+    .map(etiquetar)
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children
+              .filter(relevante)
+              .filter((c) => !c.moduleId || canSeeModule(c.moduleId))
+              .map(etiquetar),
+          }
+        : item,
+    )
+    .filter((item) =>
+      item.children ? item.children.length > 0 : !item.moduleId || canSeeModule(item.moduleId),
+    )
 
   return (
     <aside

@@ -19,7 +19,7 @@ class SportsCenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = SportsCenter
         fields = [
-            'id', 'nombre', 'slug', 'ciudad', 'pais', 'disciplina',
+            'id', 'nombre', 'slug', 'tipo', 'ciudad', 'pais', 'disciplina',
             'director_principal', 'activo', 'created_at',
             'total_atletas', 'total_staff',
         ]
