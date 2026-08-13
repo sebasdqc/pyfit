@@ -847,11 +847,25 @@ class CalendarEvent(models.Model):
 # (`onboarding_academia_completo`) además del onboarding fitness de la app móvil.
 # Mezclarlos ahí haría que un cambio de un producto tocara a los tres.
 
+# Los tres públicos que la landing pública ya diferencia en "Para quién"
+# (/para-quien/:segment). Mismos IDs a propósito: si alguien llegó por la
+# página de "Instituciones educativas", el onboarding tiene que hablarle de lo
+# mismo y no volver a empezar de cero.
+SEGMENTO_EQUIPOS = 'equipos'
+SEGMENTO_INSTITUCIONES = 'instituciones'
+SEGMENTO_ATLETAS = 'atletas'
+
+SEGMENTO_CHOICES = [
+    (SEGMENTO_EQUIPOS, 'Equipos deportivos'),
+    (SEGMENTO_INSTITUCIONES, 'Instituciones educativas'),
+    (SEGMENTO_ATLETAS, 'Atletas de alto rendimiento'),
+]
+
 CARGO_CHOICES = [
     ('preparador_fisico', 'Preparador físico'),
     ('entrenador', 'Entrenador / DT'),
     ('analista', 'Analista de rendimiento'),
-    ('coordinador', 'Coordinador de formativas'),
+    ('coordinador', 'Coordinador deportivo'),
     ('director_deportivo', 'Director deportivo'),
     ('dueno', 'Dueño / directivo del club'),
     ('fisioterapeuta', 'Fisioterapeuta / kinesiólogo'),
@@ -859,6 +873,11 @@ CARGO_CHOICES = [
     ('nutricionista', 'Nutricionista deportivo'),
     ('psicologo', 'Psicólogo deportivo'),
     ('atleta', 'Atleta independiente'),
+    # Propios de instituciones educativas
+    ('profesor_ef', 'Profesor de educación física'),
+    ('director_institucion', 'Director de la institución'),
+    # Propio de atletas individuales
+    ('entrenador_personal', 'Entrenador personal'),
     ('otro', 'Otro'),
 ]
 
@@ -933,6 +952,10 @@ class PerformanceOnboarding(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='performance_onboarding',
     )
+    # Público al que pertenece la cuenta. Es la primera pregunta del wizard
+    # porque encuadra a todas las siguientes: el listado de cargos y parte del
+    # copy cambian según el segmento.
+    segmento = models.CharField(max_length=20, choices=SEGMENTO_CHOICES, blank=True)
     # ISO 3166-1 alfa-2 ('AR', 'CL', …). El nombre visible lo resuelve el
     # frontend con Intl.DisplayNames en el idioma activo, así no hay que
     # mantener una tabla de países traducida en el backend.

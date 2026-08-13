@@ -17,6 +17,7 @@ from performance.models import PerformanceOnboarding
 User = get_user_model()
 
 RESPUESTAS_COMPLETAS = {
+    'segmento': 'equipos',
     'pais': 'AR',
     'cargo': 'preparador_fisico',
     'disciplina': 'futbol',
@@ -112,6 +113,41 @@ class OnboardingTests(TestCase):
         )
         self.assertEqual(res.status_code, 400)
 
+    # ── Segmento de público ───────────────────────────────────────────────────
+
+    def test_acepta_los_tres_segmentos_de_la_landing(self):
+        # Mismos IDs que /para-quien/:segment en la landing pública.
+        for seg in ['equipos', 'instituciones', 'atletas']:
+            res = self.client.patch(
+                '/api/performance/onboarding/', {'segmento': seg}, format='json',
+            )
+            self.assertEqual(res.status_code, 200, f'rechazó el segmento {seg}')
+            self.assertEqual(res.data['segmento'], seg)
+
+    def test_segmento_desconocido_rechazado(self):
+        res = self.client.patch(
+            '/api/performance/onboarding/', {'segmento': 'gimnasios'}, format='json',
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_cargos_propios_de_cada_segmento(self):
+        # Cargos que solo tienen sentido fuera de un club: institución educativa
+        # y atleta individual. Si el catálogo los pierde, el wizard se rompe.
+        for cargo in ['profesor_ef', 'director_institucion', 'entrenador_personal']:
+            res = self.client.patch(
+                '/api/performance/onboarding/', {'cargo': cargo}, format='json',
+            )
+            self.assertEqual(res.status_code, 200, f'rechazó el cargo {cargo}')
+
+    def test_no_se_puede_completar_sin_segmento(self):
+        sin_segmento = {k: v for k, v in RESPUESTAS_COMPLETAS.items() if k != 'segmento'}
+        self.client.patch('/api/performance/onboarding/', sin_segmento, format='json')
+        res = self.client.patch(
+            '/api/performance/onboarding/', {'completado': True}, format='json',
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.data['faltantes'], ['segmento'])
+
     # ── Cierre del wizard ─────────────────────────────────────────────────────
 
     def test_no_se_puede_completar_con_pasos_faltantes(self):
@@ -120,6 +156,7 @@ class OnboardingTests(TestCase):
             '/api/performance/onboarding/', {'completado': True}, format='json',
         )
         self.assertEqual(res.status_code, 400)
+        self.assertIn('segmento', res.data['faltantes'])
         self.assertIn('cargo', res.data['faltantes'])
         self.assertFalse(PerformanceOnboarding.objects.get(user=self.user).completado)
 

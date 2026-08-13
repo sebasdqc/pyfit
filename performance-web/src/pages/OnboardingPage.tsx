@@ -36,6 +36,7 @@ import type {
   NecesidadId,
   OnboardingPatch,
   OnboardingState,
+  SegmentoId,
   TamanoPlantelId,
 } from '@/types'
 
@@ -45,11 +46,32 @@ const LOGO_IMAGE = '/Logo-Zyfit-Blanco.png'
 
 // Catálogos: espejan performance/models.py. El orden acá es el orden en que se
 // muestran — los cargos más frecuentes primero, "Otro" siempre al final.
-const CARGOS: CargoId[] = [
-  'preparador_fisico', 'entrenador', 'analista', 'coordinador',
-  'director_deportivo', 'dueno', 'fisioterapeuta', 'medico',
-  'nutricionista', 'psicologo', 'atleta', 'otro',
-]
+
+// Los tres públicos que la landing ya diferencia en "Para quién". Mismos IDs
+// que /para-quien/:segment, así el onboarding continúa la conversación que
+// esa página empezó en vez de arrancar de cero.
+const SEGMENTOS: SegmentoId[] = ['equipos', 'instituciones', 'atletas']
+
+// El segmento filtra los cargos: a una escuela no le sirve "dueño del club" y
+// a un atleta individual no le sirve media lista de un cuerpo técnico. Es lo
+// que hace que elegir el público cambie algo de verdad y no sea una pregunta
+// decorativa. El backend acepta la unión de los tres.
+const CARGOS_POR_SEGMENTO: Record<SegmentoId, CargoId[]> = {
+  equipos: [
+    'preparador_fisico', 'entrenador', 'analista', 'coordinador',
+    'director_deportivo', 'dueno', 'fisioterapeuta', 'medico',
+    'nutricionista', 'psicologo', 'otro',
+  ],
+  instituciones: [
+    'profesor_ef', 'coordinador', 'entrenador', 'preparador_fisico',
+    'director_institucion', 'analista', 'fisioterapeuta', 'medico',
+    'nutricionista', 'psicologo', 'otro',
+  ],
+  atletas: [
+    'atleta', 'entrenador_personal', 'preparador_fisico', 'fisioterapeuta',
+    'nutricionista', 'psicologo', 'otro',
+  ],
+}
 const DISCIPLINAS: DisciplinaId[] = [
   'futbol', 'futsal', 'basquet', 'voley', 'handball', 'rugby',
   'atletismo', 'natacion', 'ciclismo', 'tenis', 'combate', 'multideporte', 'otro',
@@ -64,11 +86,11 @@ const CANALES: CanalId[] = [
   'academy', 'prensa', 'otro',
 ]
 
-type PasoId = 'pais' | 'cargo' | 'plantel' | 'necesidades' | 'canal' | 'centro'
+type PasoId = 'segmento' | 'pais' | 'cargo' | 'plantel' | 'necesidades' | 'canal' | 'centro'
 type Fase = 'intro' | 'pasos' | 'fin'
 
 const ESTADO_VACIO: OnboardingState = {
-  pais: '', cargo: '', cargo_otro: '', disciplina: '', disciplina_otro: '',
+  segmento: '', pais: '', cargo: '', cargo_otro: '', disciplina: '', disciplina_otro: '',
   tamano_plantel: '', necesidades: [], canal: '', canal_otro: '',
   completado: false, completado_at: null, updated_at: '',
 }
@@ -92,6 +114,7 @@ export function OnboardingPage() {
 
   const pasos = useMemo<{ id: PasoId; label: string }[]>(() => {
     const base: { id: PasoId; label: string }[] = [
+      { id: 'segmento', label: t('onboarding.rail.segmento') },
       { id: 'pais', label: t('onboarding.rail.pais') },
       { id: 'cargo', label: t('onboarding.rail.cargo') },
       { id: 'plantel', label: t('onboarding.rail.plantel') },
@@ -116,14 +139,17 @@ export function OnboardingPage() {
       // `necesidades` no cuenta acá — vacío es una respuesta válida, así que no
       // hay forma de distinguir "no lo contestó" de "no marcó ninguna".
       const contestado: Record<string, boolean> = {
+        segmento: !!data.segmento,
         pais: !!data.pais,
         cargo: !!data.cargo,
         plantel: !!(data.disciplina && data.tamano_plantel),
         necesidades: true,
         canal: !!data.canal,
       }
-      const orden: PasoId[] = ['pais', 'cargo', 'plantel', 'necesidades', 'canal']
-      const yaEmpezo = ['pais', 'cargo', 'plantel', 'canal'].some((p) => contestado[p])
+      const orden: PasoId[] = ['segmento', 'pais', 'cargo', 'plantel', 'necesidades', 'canal']
+      const yaEmpezo = ['segmento', 'pais', 'cargo', 'plantel', 'canal'].some(
+        (p) => contestado[p],
+      )
       if (yaEmpezo) {
         setFase('pasos')
         const primerVacio = orden.findIndex((p) => !contestado[p])
@@ -170,6 +196,8 @@ export function OnboardingPage() {
   // respuesta que el usuario ya cambió.
   function patchDelPaso(id: PasoId): OnboardingPatch {
     switch (id) {
+      case 'segmento':
+        return { segmento: borrador.segmento }
       case 'pais':
         return { pais: borrador.pais }
       case 'cargo':
@@ -199,6 +227,8 @@ export function OnboardingPage() {
   // ninguna es una respuesta legítima.
   function puedeAvanzar(id: PasoId | undefined): boolean {
     switch (id) {
+      case 'segmento':
+        return !!borrador.segmento
       case 'pais':
         return borrador.pais.length === 2
       case 'cargo':
@@ -277,6 +307,16 @@ export function OnboardingPage() {
     setBorrador((b) => ({ ...b, ...cambio }))
   }
 
+  // Cambiar de segmento puede dejar elegido un cargo que ya no se ofrece
+  // (p. ej. "dueño del club" tras pasar a atleta individual): se limpia, o
+  // quedaría un valor invisible en el formulario.
+  function elegirSegmento(id: SegmentoId) {
+    setBorrador((b) => {
+      const cargoSigueValido = !!b.cargo && CARGOS_POR_SEGMENTO[id].includes(b.cargo)
+      return { ...b, segmento: id, cargo: cargoSigueValido ? b.cargo : '' }
+    })
+  }
+
   function alternarNecesidad(id: NecesidadId) {
     setBorrador((b) => ({
       ...b,
@@ -285,6 +325,16 @@ export function OnboardingPage() {
         : [...b.necesidades, id],
     }))
   }
+
+  // Un atleta individual no "sigue atletas": se le pregunta por su propio
+  // entrenamiento. Mismo dato, redacción que no suena ajena.
+  const esAtletaIndividual = borrador.segmento === 'atletas'
+  const cargosVisibles = borrador.segmento
+    ? CARGOS_POR_SEGMENTO[borrador.segmento]
+    : CARGOS_POR_SEGMENTO.equipos
+  const etiquetaTamano = esAtletaIndividual
+    ? t('onboarding.tamanoLabelAtletas')
+    : t('onboarding.tamanoLabel')
 
   const opciones = <T extends string>(ids: T[], ns: string, conHint = false): Opcion<T>[] =>
     ids.map((id) => ({
@@ -375,7 +425,11 @@ export function OnboardingPage() {
                 <span className="text-accent">.</span>
               </h1>
               <p className="mt-5 max-w-lg text-base leading-relaxed text-white/65">
-                {t('onboarding.introBody')}
+                {t('onboarding.introBody', {
+                  // El paso de crear centro no es una pregunta de perfilado:
+                  // no cuenta para la promesa de "son N preguntas".
+                  n: pasos.filter((p) => p.id !== 'centro').length,
+                })}
               </p>
 
               <ul className="mt-8 flex flex-col gap-3.5 border-l border-white/12 pl-5">
@@ -428,6 +482,22 @@ export function OnboardingPage() {
               tabIndex={-1}
               className="onb-entrada flex-1 outline-none"
             >
+              {pasoActual === 'segmento' && (
+                <Pregunta
+                  titulo={t('onboarding.segmentoTitle')}
+                  cuerpo={t('onboarding.segmentoBody')}
+                >
+                  <RadioGrid
+                    name="segmento"
+                    legend={t('onboarding.segmentoTitle')}
+                    opciones={opciones(SEGMENTOS, 'segmento', true)}
+                    valor={borrador.segmento}
+                    onChange={elegirSegmento}
+                    columnas={1}
+                  />
+                </Pregunta>
+              )}
+
               {pasoActual === 'pais' && (
                 <Pregunta titulo={t('onboarding.paisTitle')} cuerpo={t('onboarding.paisBody')}>
                   <div className="max-w-sm">
@@ -449,7 +519,7 @@ export function OnboardingPage() {
                   <RadioGrid
                     name="cargo"
                     legend={t('onboarding.cargoTitle')}
-                    opciones={opciones(CARGOS, 'cargo')}
+                    opciones={opciones(cargosVisibles, 'cargo')}
                     valor={borrador.cargo}
                     onChange={(id) => actualizar({ cargo: id })}
                   >
@@ -494,11 +564,11 @@ export function OnboardingPage() {
 
                     <div>
                       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
-                        {t('onboarding.tamanoLabel')}
+                        {etiquetaTamano}
                       </p>
                       <RadioGrid
                         name="tamano"
-                        legend={t('onboarding.tamanoLabel')}
+                        legend={etiquetaTamano}
                         opciones={opciones(TAMANOS, 'tamano', true)}
                         valor={borrador.tamano_plantel}
                         onChange={(id) => actualizar({ tamano_plantel: id })}
@@ -560,6 +630,7 @@ export function OnboardingPage() {
                   onOmitir={() => void cerrarWizard()}
                   bloqueado={guardando}
                   errorGlobal={error}
+                  esAtletaIndividual={esAtletaIndividual}
                 />
               )}
             </div>
@@ -661,6 +732,7 @@ function PasoCentro({
   onOmitir,
   bloqueado,
   errorGlobal,
+  esAtletaIndividual,
 }: {
   onCreado: (nombre: string) => void | Promise<void>
   onOmitir: () => void
@@ -668,6 +740,9 @@ function PasoCentro({
   // Error del cierre del wizard: acá no se muestra la barra de navegación, así
   // que este paso también tiene que poder reportarlo.
   errorGlobal: string
+  // Para un atleta individual "centro deportivo" suena a otra cosa: mismo
+  // objeto del backend, nombrado como lo que es para él.
+  esAtletaIndividual: boolean
 }) {
   const t = useT()
   const { refreshUser } = useAuth()
@@ -702,15 +777,17 @@ function PasoCentro({
   return (
     <section>
       <h1 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-        {t('onboarding.centroTitle')}
+        {t(esAtletaIndividual ? 'onboarding.centroTitleAtleta' : 'onboarding.centroTitle')}
       </h1>
       <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-white/60">
-        {t('onboarding.centroBody')}
+        {t(esAtletaIndividual ? 'onboarding.centroBodyAtleta' : 'onboarding.centroBody')}
       </p>
 
       <div className="mt-7 flex max-w-sm flex-col gap-4">
         <label className="block">
-          <span className="text-xs font-medium text-white/60">Nombre del centro</span>
+          <span className="text-xs font-medium text-white/60">
+            {t(esAtletaIndividual ? 'onboarding.centroNombreAtleta' : 'onboarding.centroNombre')}
+          </span>
           <input
             autoFocus
             value={nombre}
@@ -727,7 +804,7 @@ function PasoCentro({
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-white/60">Ciudad (opcional)</span>
+          <span className="text-xs font-medium text-white/60">{t('onboarding.centroCiudad')}</span>
           <input
             value={ciudad}
             maxLength={120}

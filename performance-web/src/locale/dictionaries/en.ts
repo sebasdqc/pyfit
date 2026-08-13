@@ -54,6 +54,7 @@ const en = {
   landing: {
     hero: {
       rail: {
+      segmento: 'Profile',
       pais: 'Country',
       cargo: 'Role',
       plantel: 'Squad',
@@ -356,11 +357,28 @@ const en = {
     cerrarSesion: 'Sign out',
     // Step 0 — intro
     introTitle: 'Hi, {{nombre}}',
-    introBody: 'Before we open the panel we want to understand how you work. Five questions, under a minute.',
-    introPunto1: 'We arrange the panel around your sport and squad size.',
+    introBody: 'Before we open the panel we want to understand how you work. {{n}} questions, under a minute.',
+    introPunto1: 'We arrange the panel around your kind of organization, your sport and your squad size.',
     introPunto2: 'We prioritize the modules you actually came for.',
     introPunto3: 'It tells us who is using Performance, and from where.',
-    // Step 1 — country
+    // Step 1 — audience segment (same three as the landing)
+    segmentoTitle: 'Which one describes you best?',
+    segmentoBody: 'This is what changes the panel layout the most. You can adjust the rest later.',
+    segmento: {
+      equipos: 'Sports team',
+      equipos_hint: 'A club or center with a full coaching staff working on the same squad.',
+      instituciones: 'Educational institution',
+      instituciones_hint: 'A school or academy training young athletes and tracking them across seasons.',
+      atletas: 'High-performance athlete',
+      atletas_hint: 'An individual athlete with their own staff, who wants their data in one place.',
+    },
+    tamanoLabelAtletas: 'Do you train alone or with a group?',
+    centroTitleAtleta: 'Create your workspace',
+    centroBodyAtleta: 'It is where your tests, load and planning live. Name it after yourself or your support team.',
+    centroNombre: 'Center name',
+    centroNombreAtleta: 'Workspace name',
+    centroCiudad: 'City (optional)',
+    // Step 2 — country
     paisTitle: 'Which country do you work from?',
     paisBody: 'We use it for calendar time zones and to know where Performance is growing.',
     paisLabel: 'Country',
@@ -368,30 +386,30 @@ const en = {
     paisSinResultados: 'No country matches that search.',
     paisSugeridos: 'Suggested',
     paisTodos: 'All countries',
-    // Step 2 — role
+    // Step 3 — role
     cargoTitle: "What's your role?",
     cargoBody: 'It sets what your panel shows first, and in how much detail.',
     cargoOtroLabel: 'Tell us your role',
     cargoOtroPlaceholder: 'e.g. Return-to-play specialist',
-    // Step 3 — sport and squad
+    // Step 4 — sport and squad
     planteTitle: 'Who do you work with?',
     planteBody: 'Sport and group size change which metrics are worth showing you.',
     disciplinaLabel: 'Main sport',
     disciplinaOtroLabel: 'Tell us which one',
     disciplinaOtroPlaceholder: 'e.g. Field hockey',
     tamanoLabel: 'How many athletes do you track?',
-    // Step 4 — needs
+    // Step 5 — needs
     necesidadesTitle: 'What do you need to solve?',
     necesidadesBody: "Check everything that applies. You can change it later — it doesn't lock any module.",
     necesidadesOpcional: 'You can continue without checking anything.',
     necesidadesSeleccionadas: '{{n}} selected',
     necesidadesUna: '1 selected',
-    // Step 5 — channel
+    // Step 6 — channel
     canalTitle: 'How did you find Zyfit Performance?',
     canalBody: 'Last one. It helps us know what is worth keeping up.',
     canalOtroLabel: 'Tell us how',
     canalOtroPlaceholder: 'e.g. A YouTube video',
-    // Step 6 — create center (only for directors/admins with no center yet)
+    // Step 7 — create center (only for directors/admins with no center yet)
     centroTitle: 'Create your sports center',
     centroBody: 'It is where your squad, tests and planning live. You will be its technical director and can add staff later.',
     centroOmitir: "I'll create it later",
@@ -406,7 +424,7 @@ const en = {
       preparador_fisico: 'Strength & conditioning coach',
       entrenador: 'Head coach',
       analista: 'Performance analyst',
-      coordinador: 'Youth academy coordinator',
+      coordinador: 'Sports coordinator',
       director_deportivo: 'Sporting director',
       dueno: 'Club owner / board member',
       fisioterapeuta: 'Physiotherapist',
@@ -414,6 +432,9 @@ const en = {
       nutricionista: 'Sports nutritionist',
       psicologo: 'Sports psychologist',
       atleta: 'Independent athlete',
+      profesor_ef: 'Physical education teacher',
+      director_institucion: 'Institution director',
+      entrenador_personal: 'Personal trainer',
       otro: 'Other',
     },
     disciplina: {

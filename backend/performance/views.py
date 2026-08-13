@@ -231,7 +231,9 @@ def _user_payload(user):
 # Pasos que el wizard exige contestar para darse por completo. `necesidades` no
 # está: alguien puede legítimamente no marcar ninguna, y bloquearlo por eso
 # convertiría una pregunta de perfilado en un peaje.
-_ONBOARDING_REQUERIDOS = ['pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal']
+_ONBOARDING_REQUERIDOS = [
+    'segmento', 'pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal',
+]
 
 
 @api_view(['GET', 'PATCH'])

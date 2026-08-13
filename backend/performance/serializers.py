@@ -492,7 +492,7 @@ class PerformanceOnboardingSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerformanceOnboarding
         fields = [
-            'pais', 'cargo', 'cargo_otro', 'disciplina', 'disciplina_otro',
+            'segmento', 'pais', 'cargo', 'cargo_otro', 'disciplina', 'disciplina_otro',
             'tamano_plantel', 'necesidades', 'canal', 'canal_otro',
             'completado', 'completado_at', 'updated_at',
         ]

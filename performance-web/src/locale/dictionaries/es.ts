@@ -53,6 +53,7 @@ const es = {
   landing: {
     hero: {
       rail: {
+      segmento: 'Perfil',
       pais: 'País',
       cargo: 'Cargo',
       plantel: 'Plantel',
@@ -355,11 +356,28 @@ const es = {
     cerrarSesion: 'Cerrar sesión',
     // Paso 0 — presentación
     introTitle: 'Hola, {{nombre}}',
-    introBody: 'Antes de abrir el panel queremos conocer tu contexto de trabajo. Son cinco preguntas y toma menos de un minuto.',
-    introPunto1: 'Ordenamos el panel según tu deporte y el tamaño de tu plantel.',
+    introBody: 'Antes de abrir el panel queremos conocer tu contexto de trabajo. Son {{n}} preguntas y toma menos de un minuto.',
+    introPunto1: 'Ordenamos el panel según tu tipo de organización, tu deporte y el tamaño de tu plantel.',
     introPunto2: 'Priorizamos los módulos que viniste a buscar.',
     introPunto3: 'Nos dice quién está usando Performance y desde dónde.',
-    // Paso 1 — país
+    // Paso 1 — segmento de público (mismos 3 que la landing)
+    segmentoTitle: '¿Cuál describe mejor tu caso?',
+    segmentoBody: 'Es lo que más cambia cómo se ordena el panel. Puedes ajustar el resto después.',
+    segmento: {
+      equipos: 'Equipo deportivo',
+      equipos_hint: 'Un club o centro con cuerpo técnico completo trabajando sobre el mismo plantel.',
+      instituciones: 'Institución educativa',
+      instituciones_hint: 'Escuela o academia que forma jóvenes atletas y sigue su evolución por temporadas.',
+      atletas: 'Atleta de alto rendimiento',
+      atletas_hint: 'Deportista individual con su propio cuerpo técnico, que quiere sus datos en un solo lugar.',
+    },
+    tamanoLabelAtletas: '¿Entrenas solo o con un grupo?',
+    centroTitleAtleta: 'Crea tu espacio de trabajo',
+    centroBodyAtleta: 'Es donde viven tus tests, tu carga y tu planificación. Puedes ponerle tu nombre o el de tu equipo de trabajo.',
+    centroNombre: 'Nombre del centro',
+    centroNombreAtleta: 'Nombre del espacio',
+    centroCiudad: 'Ciudad (opcional)',
+    // Paso 2 — país
     paisTitle: '¿Desde qué país trabajas?',
     paisBody: 'Lo usamos para las zonas horarias del calendario y para saber dónde crece Performance.',
     paisLabel: 'País',
@@ -367,30 +385,30 @@ const es = {
     paisSinResultados: 'Ningún país coincide con esa búsqueda.',
     paisSugeridos: 'Sugeridos',
     paisTodos: 'Todos los países',
-    // Paso 2 — cargo
+    // Paso 3 — cargo
     cargoTitle: '¿Cuál es tu cargo?',
     cargoBody: 'Determina qué se muestra primero en tu panel y con qué nivel de detalle.',
     cargoOtroLabel: 'Contanos tu cargo',
     cargoOtroPlaceholder: 'p. ej. Readaptador físico',
-    // Paso 3 — deporte y plantel
+    // Paso 4 — deporte y plantel
     planteTitle: '¿Con quiénes trabajas?',
     planteBody: 'El deporte y el tamaño del grupo cambian qué métricas tienen sentido para ti.',
     disciplinaLabel: 'Deporte principal',
     disciplinaOtroLabel: 'Contanos cuál',
     disciplinaOtroPlaceholder: 'p. ej. Hockey sobre césped',
     tamanoLabel: '¿Cuántos atletas sigues?',
-    // Paso 4 — necesidades
+    // Paso 5 — necesidades
     necesidadesTitle: '¿Qué necesitas resolver?',
     necesidadesBody: 'Marca todo lo que aplique. Puedes cambiarlo después: no bloquea ningún módulo.',
     necesidadesOpcional: 'Puedes continuar sin marcar nada.',
     necesidadesSeleccionadas: '{{n}} seleccionadas',
     necesidadesUna: '1 seleccionada',
-    // Paso 5 — canal
+    // Paso 6 — canal
     canalTitle: '¿Cómo llegaste a Zyfit Performance?',
     canalBody: 'La última. Nos ayuda a saber qué vale la pena sostener.',
     canalOtroLabel: 'Contanos cómo',
     canalOtroPlaceholder: 'p. ej. Un video de YouTube',
-    // Paso 6 — crear centro (solo si es director/admin y no tiene ninguno)
+    // Paso 7 — crear centro (solo si es director/admin y no tiene ninguno)
     centroTitle: 'Crea tu centro deportivo',
     centroBody: 'Es el espacio donde viven tu plantel, tus tests y tu planificación. Serás su director técnico y podrás sumar staff después.',
     centroOmitir: 'Lo creo más tarde',
@@ -405,7 +423,7 @@ const es = {
       preparador_fisico: 'Preparador físico',
       entrenador: 'Entrenador / DT',
       analista: 'Analista de rendimiento',
-      coordinador: 'Coordinador de formativas',
+      coordinador: 'Coordinador deportivo',
       director_deportivo: 'Director deportivo',
       dueno: 'Dueño / directivo del club',
       fisioterapeuta: 'Fisioterapeuta / kinesiólogo',
@@ -413,6 +431,9 @@ const es = {
       nutricionista: 'Nutricionista deportivo',
       psicologo: 'Psicólogo deportivo',
       atleta: 'Atleta independiente',
+      profesor_ef: 'Profesor de educación física',
+      director_institucion: 'Director de la institución',
+      entrenador_personal: 'Entrenador personal',
       otro: 'Otro',
     },
     disciplina: {

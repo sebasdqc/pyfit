@@ -498,10 +498,15 @@ export interface TrainingPlanDetail extends TrainingPlan {
 // Los IDs espejan performance/models.py: CARGO_CHOICES, DISCIPLINA_CHOICES,
 // TAMANO_PLANTEL_CHOICES, NECESIDAD_CHOICES y CANAL_CHOICES.
 
+// Mismos IDs que /para-quien/:segment en la landing pública, a propósito.
+export type SegmentoId = 'equipos' | 'instituciones' | 'atletas'
+
 export type CargoId =
   | 'preparador_fisico' | 'entrenador' | 'analista' | 'coordinador'
   | 'director_deportivo' | 'dueno' | 'fisioterapeuta' | 'medico'
-  | 'nutricionista' | 'psicologo' | 'atleta' | 'otro'
+  | 'nutricionista' | 'psicologo' | 'atleta'
+  | 'profesor_ef' | 'director_institucion' | 'entrenador_personal'
+  | 'otro'
 
 export type DisciplinaId =
   | 'futbol' | 'futsal' | 'basquet' | 'voley' | 'handball' | 'rugby'
@@ -519,6 +524,7 @@ export type CanalId =
   | 'academy' | 'prensa' | 'otro'
 
 export interface OnboardingState {
+  segmento: SegmentoId | ''
   pais: string // ISO 3166-1 alfa-2 ('AR', 'CL', …) o '' si no se contestó
   cargo: CargoId | ''
   cargo_otro: string

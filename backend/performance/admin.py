@@ -130,8 +130,8 @@ class PerformanceOnboardingAdmin(ModelAdmin):
     equipo sobre de dónde llega cada cuenta y qué vino a buscar, así que se
     muestra en la lista en vez de esconderse en el detalle."""
 
-    list_display = ('user', 'pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'completado', 'completado_at')
-    list_filter = ('completado', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'pais')
+    list_display = ('user', 'segmento', 'pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'completado', 'completado_at')
+    list_filter = ('completado', 'segmento', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'pais')
     search_fields = ('user__email', 'cargo_otro', 'disciplina_otro', 'canal_otro')
     autocomplete_fields = ('user',)
     readonly_fields = ('created_at', 'updated_at', 'completado_at')
