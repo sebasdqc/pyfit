@@ -8,6 +8,7 @@ from .models import (
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
     CalendarEvent, PlannedSession,
+    PerformanceOnboarding, NECESIDAD_CHOICES, NECESIDAD_IDS,
 )
 
 
@@ -478,3 +479,53 @@ class CalendarEventSerializer(serializers.ModelSerializer):
                 {'fecha_fin': 'La fecha de fin no puede ser anterior a la de inicio.'}
             )
         return attrs
+
+
+class PerformanceOnboardingSerializer(serializers.ModelSerializer):
+    """Wizard de primer inicio de sesión del panel.
+
+    Todos los campos son opcionales a nivel de serializer porque el guardado es
+    progresivo (un PATCH por paso). Lo que exige que el wizard esté realmente
+    contestado es `_ONBOARDING_REQUERIDOS` en la vista, al marcar `completado`.
+    """
+
+    class Meta:
+        model = PerformanceOnboarding
+        fields = [
+            'pais', 'cargo', 'cargo_otro', 'disciplina', 'disciplina_otro',
+            'tamano_plantel', 'necesidades', 'canal', 'canal_otro',
+            'completado', 'completado_at', 'updated_at',
+        ]
+        read_only_fields = ['completado', 'completado_at', 'updated_at']
+
+    def validate_pais(self, value):
+        # ISO 3166-1 alfa-2 en mayúsculas; vacío es válido (paso sin contestar).
+        value = (value or '').strip().upper()
+        if value and (len(value) != 2 or not value.isalpha()):
+            raise serializers.ValidationError('Código de país inválido.')
+        return value
+
+    def validate_necesidades(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Debe ser una lista.')
+        desconocidas = [v for v in value if v not in NECESIDAD_IDS]
+        if desconocidas:
+            raise serializers.ValidationError(f'Opciones desconocidas: {", ".join(map(str, desconocidas))}.')
+        # Sin duplicados y en el orden canónico del catálogo, para que el dato
+        # quede comparable entre cuentas sin depender del orden de clic.
+        return [c[0] for c in NECESIDAD_CHOICES if c[0] in set(value)]
+
+    def _validate_texto_libre(self, value, etiqueta):
+        value = (value or '').strip()
+        if value and contains_unsafe_chars(value):
+            raise serializers.ValidationError(f'{etiqueta} contiene caracteres no permitidos.')
+        return value
+
+    def validate_cargo_otro(self, value):
+        return self._validate_texto_libre(value, 'El cargo')
+
+    def validate_disciplina_otro(self, value):
+        return self._validate_texto_libre(value, 'La disciplina')
+
+    def validate_canal_otro(self, value):
+        return self._validate_texto_libre(value, 'La respuesta')

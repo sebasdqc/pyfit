@@ -35,6 +35,10 @@ export interface AuthUser {
   is_director: boolean
   modulos_globales: ModuleId[]
   centros: CenterMembershipSummary[]
+  // Wizard de bienvenida del primer inicio de sesión. Viaja en el mismo payload
+  // (no en una petición aparte) para decidir el destino de la sesión sin un
+  // parpadeo entre el dashboard y /bienvenida.
+  onboarding_completo: boolean
 }
 
 export interface LoginResponse {
@@ -488,3 +492,48 @@ export interface TrainingPlan {
 export interface TrainingPlanDetail extends TrainingPlan {
   mesociclos: Mesocycle[]
 }
+
+
+// ─── Onboarding de bienvenida (POST /performance/onboarding/) ────────────────
+// Los IDs espejan performance/models.py: CARGO_CHOICES, DISCIPLINA_CHOICES,
+// TAMANO_PLANTEL_CHOICES, NECESIDAD_CHOICES y CANAL_CHOICES.
+
+export type CargoId =
+  | 'preparador_fisico' | 'entrenador' | 'analista' | 'coordinador'
+  | 'director_deportivo' | 'dueno' | 'fisioterapeuta' | 'medico'
+  | 'nutricionista' | 'psicologo' | 'atleta' | 'otro'
+
+export type DisciplinaId =
+  | 'futbol' | 'futsal' | 'basquet' | 'voley' | 'handball' | 'rugby'
+  | 'atletismo' | 'natacion' | 'ciclismo' | 'tenis' | 'combate'
+  | 'multideporte' | 'otro'
+
+export type TamanoPlantelId = 'solo_1' | '2_15' | '16_30' | '31_60' | '61_mas'
+
+export type NecesidadId =
+  | 'rendimiento' | 'lesiones' | 'tests' | 'carga' | 'planificacion'
+  | 'gps' | 'psicologico' | 'calendario' | 'reportes' | 'asesor_ia'
+
+export type CanalId =
+  | 'recomendacion' | 'equipo_zyfit' | 'redes' | 'buscador' | 'evento'
+  | 'academy' | 'prensa' | 'otro'
+
+export interface OnboardingState {
+  pais: string // ISO 3166-1 alfa-2 ('AR', 'CL', …) o '' si no se contestó
+  cargo: CargoId | ''
+  cargo_otro: string
+  disciplina: DisciplinaId | ''
+  disciplina_otro: string
+  tamano_plantel: TamanoPlantelId | ''
+  necesidades: NecesidadId[]
+  canal: CanalId | ''
+  canal_otro: string
+  completado: boolean
+  completado_at: string | null
+  updated_at: string
+}
+
+// Todo es parcial: el wizard guarda paso a paso.
+export type OnboardingPatch = Partial<
+  Omit<OnboardingState, 'completado' | 'completado_at' | 'updated_at'>
+> & { completado?: true }

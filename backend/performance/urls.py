@@ -8,6 +8,8 @@ urlpatterns = [
     # Auth
     path('auth/login/', views.performance_login),
     path('me/', views.performance_me),
+    # Wizard de bienvenida del primer inicio de sesión (guardado progresivo).
+    path('onboarding/', views.performance_onboarding),
 
     # Módulo TEST: catálogo de tests y cálculo en vivo (no acotado a un centro)
     path('tests/catalog/', views.tests_catalog),

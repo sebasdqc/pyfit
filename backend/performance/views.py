@@ -24,6 +24,7 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -39,6 +40,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     Mesocycle, Microcycle, PlannedSession, WellnessCheckin, TacticalPlay, CalendarEvent,
+    PerformanceOnboarding,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
@@ -49,6 +51,7 @@ from .serializers import (
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
     MesocycleSerializer, MicrocycleSerializer, PlannedSessionSerializer,
     WellnessCheckinSerializer, TacticalPlaySerializer, CalendarEventSerializer,
+    PerformanceOnboardingSerializer,
 )
 
 User = get_user_model()
@@ -200,6 +203,16 @@ def _user_payload(user):
     ]
     # El admin/staff ve todos los módulos en cualquier centro.
     es_admin = user.is_admin or user.is_staff
+    # Flag del wizard de primer inicio de sesión. Va en el payload (y no en
+    # una petición aparte) para que el frontend sepa a dónde mandar la sesión
+    # apenas termina el login, sin un parpadeo entre dashboard y bienvenida.
+    # Consulta explícita a propósito: `user.performance_onboarding` cachea el
+    # objeto en la instancia, y si el wizard se completó dentro de la misma
+    # instancia de usuario (mismo request, o un cliente de test que la reusa)
+    # el descriptor devuelve el estado viejo y el usuario vuelve a /bienvenida.
+    onboarding_completo = PerformanceOnboarding.objects.filter(
+        user=user, completado=True,
+    ).exists()
     return {
         'id': user.id,
         'email': user.email,
@@ -209,7 +222,53 @@ def _user_payload(user):
         'is_director': user.is_director,
         'modulos_globales': ALL_MODULES if es_admin else [],
         'centros': centros,
+        'onboarding_completo': onboarding_completo,
     }
+
+
+# ─── Onboarding de primer inicio de sesión ────────────────────────────────────
+
+# Pasos que el wizard exige contestar para darse por completo. `necesidades` no
+# está: alguien puede legítimamente no marcar ninguna, y bloquearlo por eso
+# convertiría una pregunta de perfilado en un peaje.
+_ONBOARDING_REQUERIDOS = ['pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal']
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsPerformanceUser])
+def performance_onboarding(request):
+    """Estado y guardado progresivo del wizard de bienvenida del panel.
+
+    GET    devuelve las respuestas guardadas (creando la fila vacía la primera vez).
+    PATCH  guarda uno o varios campos. Con `{"completado": true}` cierra el
+           wizard: valida que los pasos obligatorios estén contestados y sella
+           `completado_at`. Es idempotente — re-completar no pisa la fecha
+           original ni vuelve a validar.
+    """
+    onboarding, _ = PerformanceOnboarding.objects.get_or_create(user=request.user)
+
+    if request.method == 'PATCH':
+        serializer = PerformanceOnboardingSerializer(onboarding, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # `completado` es read-only en el serializer: se resuelve acá, para que
+        # cerrar el wizard sea una decisión de la vista y no un campo que el
+        # cliente pueda escribir en cualquier momento.
+        if request.data.get('completado') is True and not onboarding.completado:
+            onboarding.refresh_from_db()
+            faltantes = [c for c in _ONBOARDING_REQUERIDOS if not getattr(onboarding, c)]
+            if faltantes:
+                return Response(
+                    {'detail': 'Faltan pasos por completar.', 'faltantes': faltantes},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            onboarding.completado = True
+            onboarding.completado_at = timezone.now()
+            onboarding.save(update_fields=['completado', 'completado_at', 'updated_at'])
+
+    onboarding.refresh_from_db()
+    return Response(PerformanceOnboardingSerializer(onboarding).data)
 
 
 # ─── Centros ──────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
-    CalendarEvent, PlannedSession,
+    CalendarEvent, PlannedSession, PerformanceOnboarding,
 )
 
 
@@ -122,3 +122,16 @@ class CalendarEventAdmin(ModelAdmin):
     search_fields = ('titulo', 'descripcion', 'rival', 'center__nombre')
     autocomplete_fields = ('center', 'registrado_por')
     date_hierarchy = 'fecha_inicio'
+
+
+@admin.register(PerformanceOnboarding)
+class PerformanceOnboardingAdmin(ModelAdmin):
+    """Respuestas del wizard de bienvenida. Es la única lectura que tiene el
+    equipo sobre de dónde llega cada cuenta y qué vino a buscar, así que se
+    muestra en la lista en vez de esconderse en el detalle."""
+
+    list_display = ('user', 'pais', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'completado', 'completado_at')
+    list_filter = ('completado', 'cargo', 'disciplina', 'tamano_plantel', 'canal', 'pais')
+    search_fields = ('user__email', 'cargo_otro', 'disciplina_otro', 'canal_otro')
+    autocomplete_fields = ('user',)
+    readonly_fields = ('created_at', 'updated_at', 'completado_at')

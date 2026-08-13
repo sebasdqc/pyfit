@@ -3,6 +3,7 @@
 
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
+import { OnboardingGate, OnboardingRoute } from '@/auth/OnboardingGate'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -29,6 +30,7 @@ import { PlayerProfilePage } from '@/pages/gps/PlayerProfilePage'
 import { CargaPage } from '@/pages/carga/CargaPage'
 import { FormaPage } from '@/pages/forma/FormaPage'
 import { AsesorPage } from '@/pages/asesor/AsesorPage'
+import { OnboardingPage } from '@/pages/OnboardingPage'
 
 export const router = createBrowserRouter([
   // Landing pública: visitantes sin sesión ven el producto + CTAs a login/
@@ -42,41 +44,58 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      // Wizard de bienvenida: fuera de <AppLayout> (ocupa el viewport completo,
+      // sin sidebar ni topbar) y fuera de <OnboardingGate>, que es justo quien
+      // manda acá. <OnboardingRoute> impide volver a entrar una vez completado.
       {
-        element: <AppLayout />,
+        path: 'bienvenida',
+        element: (
+          <OnboardingRoute>
+            <OnboardingPage />
+          </OnboardingRoute>
+        ),
+      },
+      {
+        // Nadie llega al panel sin haber pasado por el onboarding.
+        element: <OnboardingGate />,
         children: [
-          { path: 'dashboard', element: <DashboardPage /> },
-          { path: 'plantilla', element: <Navigate to="/equipo" replace /> },
-          { path: 'equipo', element: <EquipoPage /> },
-          { path: 'calendario', element: <CalendarioPage /> },
-          { path: 'rendimiento', element: <RendimientoPage /> },
-          { path: 'lesiones', element: <LesionesPage /> },
-          { path: 'tests', element: <TestPage /> },
-          { path: 'tests/:familia', element: <TestPage /> },
-          { path: 'carga', element: <CargaPage /> },
-          { path: 'forma', element: <FormaPage /> },
-          { path: 'asesor', element: <AsesorPage /> },
-          { path: 'gps', element: <GpsPage /> },
-          { path: 'gps/match-day', element: <MatchDayPage /> },
-          { path: 'gps/post-sesion', element: <PostSessionPage /> },
-          { path: 'gps/carga-semanal', element: <WeeklyLoadPage /> },
-          { path: 'gps/jugador', element: <PlayerProfilePage /> },
-          { path: 'planificacion', element: <PlanificacionPage /> },
-          { path: 'psicologico', element: <PsicologicoPage /> },
-          { path: 'simulador', element: <SimuladorPage /> },
-          { path: 'reportes', element: <ReportesPage /> },
-          { path: 'perfil', element: <ProfilePage /> },
           {
-            path: 'centers/:centerId',
+            element: <AppLayout />,
             children: [
+              { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'plantilla', element: <Navigate to="/equipo" replace /> },
+              { path: 'equipo', element: <EquipoPage /> },
+              { path: 'calendario', element: <CalendarioPage /> },
               { path: 'rendimiento', element: <RendimientoPage /> },
               { path: 'lesiones', element: <LesionesPage /> },
-              { path: 'test', element: <TestPage /> },
+              { path: 'tests', element: <TestPage /> },
+              { path: 'tests/:familia', element: <TestPage /> },
+              { path: 'carga', element: <CargaPage /> },
+              { path: 'forma', element: <FormaPage /> },
+              { path: 'asesor', element: <AsesorPage /> },
               { path: 'gps', element: <GpsPage /> },
+              { path: 'gps/match-day', element: <MatchDayPage /> },
+              { path: 'gps/post-sesion', element: <PostSessionPage /> },
+              { path: 'gps/carga-semanal', element: <WeeklyLoadPage /> },
+              { path: 'gps/jugador', element: <PlayerProfilePage /> },
               { path: 'planificacion', element: <PlanificacionPage /> },
               { path: 'psicologico', element: <PsicologicoPage /> },
               { path: 'simulador', element: <SimuladorPage /> },
-              { path: 'calendario', element: <CalendarioPage /> },
+              { path: 'reportes', element: <ReportesPage /> },
+              { path: 'perfil', element: <ProfilePage /> },
+              {
+                path: 'centers/:centerId',
+                children: [
+                  { path: 'rendimiento', element: <RendimientoPage /> },
+                  { path: 'lesiones', element: <LesionesPage /> },
+                  { path: 'test', element: <TestPage /> },
+                  { path: 'gps', element: <GpsPage /> },
+                  { path: 'planificacion', element: <PlanificacionPage /> },
+                  { path: 'psicologico', element: <PsicologicoPage /> },
+                  { path: 'simulador', element: <SimuladorPage /> },
+                  { path: 'calendario', element: <CalendarioPage /> },
+                ],
+              },
             ],
           },
         ],

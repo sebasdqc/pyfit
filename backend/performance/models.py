@@ -838,3 +838,126 @@ class CalendarEvent(models.Model):
 
     def __str__(self):
         return f'{self.titulo} ({self.fecha_inicio})'
+
+
+# ─── Onboarding de primer inicio de sesión ────────────────────────────────────
+# Perfilado que se pide una sola vez, la primera vez que alguien entra al panel.
+# Vive en la app `performance` (no en users.Profile) a propósito: son datos
+# exclusivos del producto B2B y Profile ya carga el onboarding de Zyfit Academy
+# (`onboarding_academia_completo`) además del onboarding fitness de la app móvil.
+# Mezclarlos ahí haría que un cambio de un producto tocara a los tres.
+
+CARGO_CHOICES = [
+    ('preparador_fisico', 'Preparador físico'),
+    ('entrenador', 'Entrenador / DT'),
+    ('analista', 'Analista de rendimiento'),
+    ('coordinador', 'Coordinador de formativas'),
+    ('director_deportivo', 'Director deportivo'),
+    ('dueno', 'Dueño / directivo del club'),
+    ('fisioterapeuta', 'Fisioterapeuta / kinesiólogo'),
+    ('medico', 'Médico deportivo'),
+    ('nutricionista', 'Nutricionista deportivo'),
+    ('psicologo', 'Psicólogo deportivo'),
+    ('atleta', 'Atleta independiente'),
+    ('otro', 'Otro'),
+]
+
+DISCIPLINA_CHOICES = [
+    ('futbol', 'Fútbol'),
+    ('futsal', 'Futsal'),
+    ('basquet', 'Básquetbol'),
+    ('voley', 'Vóleibol'),
+    ('handball', 'Handball'),
+    ('rugby', 'Rugby'),
+    ('atletismo', 'Atletismo'),
+    ('natacion', 'Natación'),
+    ('ciclismo', 'Ciclismo'),
+    ('tenis', 'Tenis'),
+    ('combate', 'Deportes de combate'),
+    ('multideporte', 'Multideporte'),
+    ('otro', 'Otro'),
+]
+
+# "solo_1" es su propia categoría, no un rango: cambia el producto de un panel
+# de plantel a un seguimiento individual (preparador con un solo atleta).
+TAMANO_PLANTEL_CHOICES = [
+    ('solo_1', 'Solo 1 atleta'),
+    ('2_15', '2 a 15 atletas'),
+    ('16_30', '16 a 30 atletas'),
+    ('31_60', '31 a 60 atletas'),
+    ('61_mas', 'Más de 60 atletas'),
+]
+
+# Cada necesidad corresponde a algo que el panel YA hace (una sección real del
+# sidebar). No listar aquí nada que no exista todavía: el onboarding no debe
+# prometer funcionalidad inexistente.
+NECESIDAD_CHOICES = [
+    ('rendimiento', 'Seguimiento de rendimiento'),
+    ('lesiones', 'Control y prevención de lesiones'),
+    ('tests', 'Tests y evaluaciones físicas'),
+    ('carga', 'Carga de entrenamiento y ACWR'),
+    ('planificacion', 'Planificación y periodización'),
+    ('gps', 'Datos GPS de sesiones y partidos'),
+    ('psicologico', 'Bienestar y psicología deportiva'),
+    ('calendario', 'Calendario de temporada'),
+    ('reportes', 'Reportes e informes'),
+    ('asesor_ia', 'Asesor con inteligencia artificial'),
+]
+
+NECESIDAD_IDS = {c[0] for c in NECESIDAD_CHOICES}
+
+CANAL_CHOICES = [
+    ('recomendacion', 'Recomendación de un colega'),
+    ('equipo_zyfit', 'Contacto del equipo Zyfit'),
+    ('redes', 'Redes sociales'),
+    ('buscador', 'Búsqueda en internet'),
+    ('evento', 'Congreso, curso o evento'),
+    ('academy', 'Zyfit Academy'),
+    ('prensa', 'Prensa o publicación deportiva'),
+    ('otro', 'Otro'),
+]
+
+
+class PerformanceOnboarding(models.Model):
+    """Respuestas del wizard de primer inicio de sesión del panel.
+
+    Se crea vacío la primera vez que el frontend consulta el endpoint y se va
+    completando paso a paso (guardado progresivo): si alguien cierra el
+    navegador a mitad del wizard, retoma donde estaba en vez de empezar de cero.
+
+    `completado` es la única fuente de verdad de "ya pasó por el onboarding" y
+    se expone en el payload de /me/ y del login, para que el frontend decida el
+    destino de la sesión sin una petición extra.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='performance_onboarding',
+    )
+    # ISO 3166-1 alfa-2 ('AR', 'CL', …). El nombre visible lo resuelve el
+    # frontend con Intl.DisplayNames en el idioma activo, así no hay que
+    # mantener una tabla de países traducida en el backend.
+    pais = models.CharField(max_length=2, blank=True, default='')
+    cargo = models.CharField(max_length=30, choices=CARGO_CHOICES, blank=True)
+    # Solo se usa cuando cargo == 'otro'; texto corto que el usuario escribe.
+    cargo_otro = models.CharField(max_length=80, blank=True, default='')
+    disciplina = models.CharField(max_length=20, choices=DISCIPLINA_CHOICES, blank=True)
+    disciplina_otro = models.CharField(max_length=80, blank=True, default='')
+    tamano_plantel = models.CharField(max_length=10, choices=TAMANO_PLANTEL_CHOICES, blank=True)
+    # Lista de IDs de NECESIDAD_CHOICES (multi-selección). Se valida en la vista.
+    necesidades = models.JSONField(default=list, blank=True)
+    canal = models.CharField(max_length=20, choices=CANAL_CHOICES, blank=True)
+    canal_otro = models.CharField(max_length=120, blank=True, default='')
+
+    completado = models.BooleanField(default=False)
+    completado_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_onboarding'
+        verbose_name = 'Onboarding de Performance'
+        verbose_name_plural = 'Onboardings de Performance'
+
+    def __str__(self):
+        estado = 'completo' if self.completado else 'en curso'
+        return f'Onboarding de {self.user_id} ({estado})'

@@ -11,7 +11,8 @@ import { createCenter } from '@/api/performance'
 import type { SportsCenter } from '@/types'
 
 // slug legible: minúsculas, sin acentos, espacios→guiones, solo [a-z0-9-].
-function slugify(s: string): string {
+// Exportado: el paso de "crea tu centro" del onboarding lo reutiliza.
+export function slugify(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
