@@ -45,7 +45,8 @@ export const PERFILES: Record<TipoCentro, PerfilCentro> = {
   // Línea base: el panel tal cual venía. No ocultar ni renombrar nada acá es
   // lo que garantiza que la migración de los centros existentes sea invisible.
   equipos: {
-    navOculta: [],
+    // Categorías y protección de datos son destinos de institución educativa.
+    navOculta: ['categorias', 'proteccion'],
     navEtiquetas: {},
     terminos: {
       grupo: 'Plantel',
@@ -86,7 +87,7 @@ export const PERFILES: Record<TipoCentro, PerfilCentro> = {
   // convocatoria son conceptos de plantel y no significan nada para una sola
   // persona. El resto (carga, forma, pruebas, asesor) aplica igual.
   atletas: {
-    navOculta: ['simulador', 'convocatoria'],
+    navOculta: ['simulador', 'convocatoria', 'categorias', 'proteccion'],
     navEtiquetas: {
       dashboard: 'Mi temporada',
       equipo: 'Mi ficha',

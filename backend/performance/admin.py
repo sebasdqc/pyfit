@@ -8,13 +8,14 @@ from .models import (
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
     CalendarEvent, PlannedSession, PerformanceOnboarding,
+    Categoria, ConsentimientoTutor,
 )
 
 
 @admin.register(SportsCenter)
 class SportsCenterAdmin(ModelAdmin):
-    list_display = ('nombre', 'slug', 'tipo', 'ciudad', 'disciplina', 'activo', 'created_at')
-    list_filter = ('tipo', 'activo', 'pais')
+    list_display = ('nombre', 'slug', 'tipo', 'proteccion_menores', 'ciudad', 'disciplina', 'activo', 'created_at')
+    list_filter = ('tipo', 'proteccion_menores', 'activo', 'pais')
     search_fields = ('nombre', 'slug', 'ciudad')
     prepopulated_fields = {'slug': ('nombre',)}
 
@@ -135,3 +136,27 @@ class PerformanceOnboardingAdmin(ModelAdmin):
     search_fields = ('user__email', 'cargo_otro', 'disciplina_otro', 'canal_otro')
     autocomplete_fields = ('user',)
     readonly_fields = ('created_at', 'updated_at', 'completado_at')
+
+
+@admin.register(Categoria)
+class CategoriaAdmin(ModelAdmin):
+    list_display = ('nombre', 'temporada', 'center', 'responsable', 'activa', 'orden')
+    list_filter = ('center', 'activa', 'temporada')
+    search_fields = ('nombre', 'temporada', 'center__nombre')
+    autocomplete_fields = ('center', 'responsable')
+
+
+@admin.register(ConsentimientoTutor)
+class ConsentimientoTutorAdmin(ModelAdmin):
+    """Trazabilidad de las autorizaciones para tratar datos de menores.
+
+    Se muestra `revocado_en` en la lista a propósito: un consentimiento revocado
+    sigue existiendo (no se borra nunca) y hay que poder distinguirlo de uno
+    vigente de un vistazo.
+    """
+
+    list_display = ('athlete', 'tutor_nombre', 'tutor_relacion', 'otorgado_en', 'revocado_en', 'registrado_por')
+    list_filter = ('tutor_relacion', 'otorgado_en', 'revocado_en')
+    search_fields = ('tutor_nombre', 'tutor_email', 'documento_ref', 'athlete__athlete__email')
+    autocomplete_fields = ('athlete', 'registrado_por')
+    readonly_fields = ('created_at', 'updated_at')

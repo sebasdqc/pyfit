@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { RadioGrid, type Opcion } from '@/components/ui/OptionGrid'
+import { Toggle } from '@/components/ui/Toggle'
 import { useAuth } from '@/auth/useAuth'
 import { useActiveCenter } from '@/centers/useActiveCenter'
 import { getCenter, updateCenter } from '@/api/performance'
@@ -69,6 +70,7 @@ export function AjustesPage() {
   const [tipo, setTipo] = useState<TipoCentro>('equipos')
   const [ciudad, setCiudad] = useState('')
   const [disciplina, setDisciplina] = useState('')
+  const [proteccionMenores, setProteccionMenores] = useState(false)
 
   const puedeEditar = !!user && (user.is_admin || user.is_director)
 
@@ -88,6 +90,7 @@ export function AjustesPage() {
         setTipo(c.tipo)
         setCiudad(c.ciudad ?? '')
         setDisciplina(c.disciplina ?? '')
+        setProteccionMenores(c.proteccion_menores)
       })
       .catch(() => {
         if (vivo) setError('No se pudo cargar el centro.')
@@ -105,7 +108,8 @@ export function AjustesPage() {
     (nombre.trim() !== centro.nombre ||
       tipo !== centro.tipo ||
       ciudad.trim() !== (centro.ciudad ?? '') ||
-      disciplina.trim() !== (centro.disciplina ?? ''))
+      disciplina.trim() !== (centro.disciplina ?? '') ||
+      proteccionMenores !== centro.proteccion_menores)
 
   async function guardar() {
     if (activeCenterId == null || !hayCambios || guardando) return
@@ -118,6 +122,7 @@ export function AjustesPage() {
         tipo,
         ciudad: ciudad.trim(),
         disciplina: disciplina.trim(),
+        proteccion_menores: proteccionMenores,
       })
       setCentro(actualizado)
       // El tipo viaja en /me/: refrescar reordena la barra lateral al instante.
@@ -186,6 +191,33 @@ export function AjustesPage() {
             columnas={1}
           />
         </div>
+      </Panel>
+
+      {/* Protección de datos de menores */}
+      <Panel>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-white">Protección de datos de menores</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-white/50">
+              Exige el consentimiento de la tutoría para registrar datos de salud, psicológicos y
+              antropométricos de las personas menores de edad del centro. Mientras falte, el
+              servidor rechaza el registro — no es un aviso, es un bloqueo.
+            </p>
+          </div>
+          <Toggle
+            checked={proteccionMenores}
+            onChange={(v) => puedeEditar && setProteccionMenores(v)}
+            disabled={!puedeEditar}
+            label="Protección de datos de menores"
+          />
+        </div>
+        {proteccionMenores && !centro.proteccion_menores && (
+          <p className="mt-4 rounded-lg bg-perf-warn/10 px-3.5 py-2.5 text-xs leading-relaxed text-perf-warn">
+            Antes de guardar: quien no tenga fecha de nacimiento cargada se tratará como menor de
+            edad, y su registro de lesiones y evaluaciones quedará bloqueado hasta que haya
+            consentimiento. Revisa las fichas primero.
+          </p>
+        )}
       </Panel>
 
       {/* Datos generales */}

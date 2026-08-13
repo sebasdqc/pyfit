@@ -50,6 +50,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
   { id: 'equipo', label: 'Equipo', icon: 'shield', to: '/equipo' },
+  // Solo instituciones educativas (ver lib/perfiles.ts: el resto los oculta).
+  { id: 'categorias', label: 'Categorías', icon: 'plantilla', to: '/categorias' },
+  { id: 'proteccion', label: 'Protección de datos', icon: 'shield', to: '/proteccion' },
   {
     id: 'pruebas',
     label: 'Pruebas',

@@ -4,6 +4,8 @@
 
 import { api } from './client'
 import type {
+  Categoria, CategoriaPayload, ConsentimientoPayload, ConsentimientoTutor,
+  ProteccionCentro,
   CenterAthlete, CenterRole, CenterStaff, ModuleId, SportsCenter, TestCatalogItem, TestComputeResponse,
   TrainingPlan, TrainingPlanDetail, Mesocycle, Microcycle, PlannedSession, AdvisorResponse,
   TacticalPlay, Escena, WellnessRecord, CalendarEvent,
@@ -41,7 +43,9 @@ export async function getCenter(centerId: number): Promise<SportsCenter> {
 // ciudad, país y disciplina — el slug es el identificador estable y no se toca.
 export async function updateCenter(
   centerId: number,
-  payload: Partial<Pick<SportsCenter, 'nombre' | 'tipo' | 'ciudad' | 'pais' | 'disciplina'>>,
+  payload: Partial<Pick<
+    SportsCenter, 'nombre' | 'tipo' | 'ciudad' | 'pais' | 'disciplina' | 'proteccion_menores'
+  >>,
 ): Promise<SportsCenter> {
   const res = await api.patch<SportsCenter>(`/performance/centers/${centerId}/`, payload)
   return res.data
@@ -526,5 +530,59 @@ export async function scoreInstrument(
   instrument: string, subescalas: Record<string, number>,
 ): Promise<PsychScore> {
   const res = await api.post<PsychScore>('/performance/psicologico/instruments/score/', { instrument, subescalas })
+  return res.data
+}
+
+
+// ── Categorías / cohortes (unidad de trabajo de las instituciones) ───────────
+export async function listCategorias(centerId: number): Promise<Categoria[]> {
+  const res = await api.get<Categoria[]>(`/performance/centers/${centerId}/categorias/`)
+  return res.data
+}
+
+export async function createCategoria(centerId: number, payload: CategoriaPayload): Promise<Categoria> {
+  const res = await api.post<Categoria>(`/performance/centers/${centerId}/categorias/`, payload)
+  return res.data
+}
+
+export async function updateCategoria(
+  centerId: number, categoriaId: number, payload: CategoriaPayload,
+): Promise<Categoria> {
+  const res = await api.patch<Categoria>(
+    `/performance/centers/${centerId}/categorias/${categoriaId}/`, payload,
+  )
+  return res.data
+}
+
+export async function deleteCategoria(centerId: number, categoriaId: number): Promise<void> {
+  await api.delete(`/performance/centers/${centerId}/categorias/${categoriaId}/`)
+}
+
+// ── Protección de datos de menores ──────────────────────────────────────────
+// El estado del plantel completo en una sola petición: la pregunta que resuelve
+// es "a cuáles de mis alumnos les falta consentimiento", no la de uno solo.
+export async function getProteccionCentro(centerId: number): Promise<ProteccionCentro> {
+  const res = await api.get<ProteccionCentro>(`/performance/centers/${centerId}/proteccion/`)
+  return res.data
+}
+
+export async function createConsentimiento(
+  centerId: number, athleteId: number, payload: ConsentimientoPayload,
+): Promise<ConsentimientoTutor> {
+  const res = await api.post<ConsentimientoTutor>(
+    `/performance/centers/${centerId}/athletes/${athleteId}/consentimientos/`, payload,
+  )
+  return res.data
+}
+
+// Revocar = PATCH con `revocado_en`. Nunca se borra: perder la constancia de
+// que hubo consentimiento sería perder la trazabilidad.
+export async function revocarConsentimiento(
+  centerId: number, athleteId: number, consentimientoId: number, fecha: string,
+): Promise<ConsentimientoTutor> {
+  const res = await api.patch<ConsentimientoTutor>(
+    `/performance/centers/${centerId}/athletes/${athleteId}/consentimientos/${consentimientoId}/`,
+    { revocado_en: fecha },
+  )
   return res.data
 }

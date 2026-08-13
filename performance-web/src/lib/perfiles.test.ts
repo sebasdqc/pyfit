@@ -23,9 +23,18 @@ const TERMINOS: TerminoId[] = [
 
 // ── Compatibilidad: `equipos` es la línea base intocable ────────────────────
 
+// La regla real no es "equipos no oculta nada" sino "equipos no oculta nada de
+// lo que YA existía": todos los centros preexistentes migraron a este tipo, así
+// que quitarles un destino que venían usando les rompe el panel sin aviso.
+// Ocultar destinos NUEVOS (categorías, protección de datos) no les quita nada,
+// porque nunca los tuvieron.
+const NAV_PREEXISTENTE = [
+  'dashboard', 'equipo', 'pruebas', 'calendario', 'simulador', 'asesor', 'mas',
+  'convocatoria', 'ajustes',
+]
 check(
-  'equipos no oculta ningún ítem (los centros existentes migraron a este tipo)',
-  PERFILES.equipos.navOculta.length === 0,
+  'equipos no oculta ningún destino que ya existía antes de la capa de perfil',
+  NAV_PREEXISTENTE.every((id) => !PERFILES.equipos.navOculta.includes(id)),
 )
 check(
   'equipos no renombra ningún ítem',

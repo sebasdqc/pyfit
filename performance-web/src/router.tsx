@@ -31,6 +31,8 @@ import { CargaPage } from '@/pages/carga/CargaPage'
 import { FormaPage } from '@/pages/forma/FormaPage'
 import { AsesorPage } from '@/pages/asesor/AsesorPage'
 import { AjustesPage } from '@/pages/ajustes/AjustesPage'
+import { CategoriasPage } from '@/pages/categorias/CategoriasPage'
+import { ProteccionPage } from '@/pages/proteccion/ProteccionPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
 
 export const router = createBrowserRouter([
@@ -85,6 +87,8 @@ export const router = createBrowserRouter([
               { path: 'reportes', element: <ReportesPage /> },
               { path: 'perfil', element: <ProfilePage /> },
               { path: 'ajustes', element: <AjustesPage /> },
+              { path: 'categorias', element: <CategoriasPage /> },
+              { path: 'proteccion', element: <ProteccionPage /> },
               {
                 path: 'centers/:centerId',
                 children: [

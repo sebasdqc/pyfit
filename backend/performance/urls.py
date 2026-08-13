@@ -25,8 +25,17 @@ urlpatterns = [
     path('centers/<int:pk>/', views.center_detail),
     path('centers/<int:pk>/staff/', views.center_staff),
     path('centers/<int:pk>/staff/<int:membership_pk>/', views.center_staff_detail),
+    # Categorías / cohortes (unidad de trabajo de las instituciones educativas)
+    path('centers/<int:pk>/categorias/', views.center_categorias),
+    path('centers/<int:pk>/categorias/<int:categoria_id>/', views.categoria_detail),
+
     path('centers/<int:pk>/athletes/', views.center_athletes),
     path('centers/<int:pk>/athletes/<int:athlete_pk>/', views.center_athlete_detail),
+    # Protección de datos de menores: consentimiento de la tutoría y estado
+    path('centers/<int:pk>/proteccion/', views.center_proteccion),
+    path('centers/<int:pk>/athletes/<int:athlete_pk>/proteccion/', views.athlete_proteccion),
+    path('centers/<int:pk>/athletes/<int:athlete_pk>/consentimientos/', views.athlete_consentimientos),
+    path('centers/<int:pk>/athletes/<int:athlete_pk>/consentimientos/<int:consentimiento_id>/', views.consentimiento_detail),
 
     # Módulos del centro (barra lateral del panel)
     path('centers/<int:pk>/rendimiento/', views.module_rendimiento),

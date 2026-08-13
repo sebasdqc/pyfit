@@ -24,6 +24,7 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.db.models import Count
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -40,18 +41,22 @@ from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
     Mesocycle, Microcycle, PlannedSession, WellnessCheckin, TacticalPlay, CalendarEvent,
-    PerformanceOnboarding,
+    PerformanceOnboarding, Categoria, ConsentimientoTutor,
+    DATO_SALUD, DATO_PSICOLOGICO, DATOS_SENSIBLES, SEGMENTO_INSTITUCIONES,
     ALL_MODULES, MODULE_RENDIMIENTO, MODULE_LESIONES, MODULE_TEST,
     MODULE_PLANIFICACION, MODULE_PSICOLOGICO,
 )
-from .permissions import IsPerformanceUser, IsDirectorOrAdmin, user_centers, can_access_module
+from .permissions import (
+    IsPerformanceUser, IsDirectorOrAdmin, user_centers, can_access_module,
+    puede_registrar_dato_sensible,
+)
 from .serializers import (
     SportsCenterSerializer, CenterMembershipSerializer, CenterAthleteSerializer,
     PerformanceMetricSerializer, InjuryReportSerializer, PhysicalTestSerializer,
     TrainingPlanSerializer, TrainingPlanDetailSerializer, PsychAssessmentSerializer,
     MesocycleSerializer, MicrocycleSerializer, PlannedSessionSerializer,
     WellnessCheckinSerializer, TacticalPlaySerializer, CalendarEventSerializer,
-    PerformanceOnboardingSerializer,
+    PerformanceOnboardingSerializer, CategoriaSerializer, ConsentimientoTutorSerializer,
 )
 
 User = get_user_model()
@@ -302,6 +307,13 @@ def centers_view(request):
             )
             if segmento:
                 extra['tipo'] = segmento
+        # Un centro educativo nuevo nace con la protección de menores activa: su
+        # población son alumnos. Los centros que YA existían quedan en False (ver
+        # SportsCenter.proteccion_menores) — activarlo retroactivamente rompería
+        # su operación, y esa decisión es del director desde Ajustes.
+        tipo_final = serializer.validated_data.get('tipo') or extra.get('tipo')
+        if tipo_final == SEGMENTO_INSTITUCIONES and 'proteccion_menores' not in request.data:
+            extra['proteccion_menores'] = True
         center = serializer.save(**extra)
         # El creador queda como director técnico del centro.
         CenterMembership.objects.get_or_create(
@@ -321,7 +333,7 @@ def centers_view(request):
 # propósito: es el identificador estable del centro y cambiarlo desde la UI
 # invita a romper enlaces guardados sin ganar nada. Si alguna vez hace falta,
 # es una operación de admin.
-_CENTER_EDITABLE = ['nombre', 'tipo', 'ciudad', 'pais', 'disciplina']
+_CENTER_EDITABLE = ['nombre', 'tipo', 'ciudad', 'pais', 'disciplina', 'proteccion_menores']
 
 
 @api_view(['GET', 'PATCH'])
@@ -351,6 +363,187 @@ def center_detail(request, pk):
         return Response(serializer.data)
 
     return Response(SportsCenterSerializer(center).data)
+
+
+# ─── Categorías del centro (instituciones educativas) ─────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def center_categorias(request, pk):
+    """Categorías del centro. POST es de director/admin: definir la estructura
+    de categorías es una decisión de la institución, no de cada staff."""
+    center = _get_center_or_404(request.user, pk)
+
+    if request.method == 'POST':
+        if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CategoriaSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            serializer.save(center=center)
+        except IntegrityError:
+            return Response(
+                {'detail': 'Ya existe una categoría con ese nombre en esa temporada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = (
+        Categoria.objects.filter(center=center)
+        .select_related('responsable')
+        .annotate(atletas_count=Count('atletas'))
+    )
+    if request.query_params.get('activa') == 'true':
+        qs = qs.filter(activa=True)
+    return Response(CategoriaSerializer(qs, many=True).data)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsPerformanceUser])
+def categoria_detail(request, pk, categoria_id):
+    center = _get_center_or_404(request.user, pk)
+    categoria = get_object_or_404(Categoria, pk=categoria_id, center=center)
+
+    if request.method == 'GET':
+        return Response(CategoriaSerializer(categoria).data)
+
+    if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+        return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'DELETE':
+        # Los atletas NO se borran: quedan sin categoría (FK con SET_NULL).
+        categoria.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    serializer = CategoriaSerializer(categoria, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        serializer.save()
+    except IntegrityError:
+        return Response(
+            {'detail': 'Ya existe una categoría con ese nombre en esa temporada.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(serializer.data)
+
+
+# ─── Consentimiento de la tutoría (datos de menores) ──────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsPerformanceUser])
+def athlete_consentimientos(request, pk, athlete_pk):
+    """Consentimientos de un alumno/atleta del centro.
+
+    Registrar un consentimiento es de director/admin: es el acto que habilita a
+    todo el staff a tratar datos de salud de un menor, y debe quedar en manos
+    de quien responde por la institución.
+    """
+    center = _get_center_or_404(request.user, pk)
+    ca = get_object_or_404(CenterAthlete, pk=athlete_pk, center=center)
+
+    if request.method == 'POST':
+        if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        data = {**request.data, 'athlete': ca.id}
+        serializer = ConsentimientoTutorSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(registrado_por=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    qs = ConsentimientoTutor.objects.filter(athlete=ca).select_related('registrado_por')
+    return Response(ConsentimientoTutorSerializer(qs, many=True).data)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsPerformanceUser])
+def consentimiento_detail(request, pk, athlete_pk, consentimiento_id):
+    """Actualiza un consentimiento — en la práctica, revocarlo o corregir su
+    alcance. No se borra nunca: perder la constancia de que hubo consentimiento
+    sería perder justamente la trazabilidad que este registro existe para dar."""
+    center = _get_center_or_404(request.user, pk)
+    if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+        return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+    ca = get_object_or_404(CenterAthlete, pk=athlete_pk, center=center)
+    consentimiento = get_object_or_404(ConsentimientoTutor, pk=consentimiento_id, athlete=ca)
+
+    serializer = ConsentimientoTutorSerializer(consentimiento, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+def _estado_proteccion(ca):
+    """Estado de protección de un CenterAthlete, en la forma que consume la UI."""
+    consentimiento = ca.consentimiento_vigente()
+    permisos = {}
+    for dato in DATOS_SENSIBLES:
+        permitido, motivo = puede_registrar_dato_sensible(ca, dato)
+        permisos[dato] = {'permitido': permitido, 'motivo': motivo}
+    return {
+        'athlete': ca.id,
+        'nombre': (ca.athlete.get_full_name() or ca.athlete.first_name
+                   or ca.athlete.email.split('@')[0]),
+        'proteccion_activa': ca.center.proteccion_menores,
+        'fecha_nacimiento': str(ca.fecha_nacimiento) if ca.fecha_nacimiento else None,
+        'edad': ca.edad(),
+        'es_menor': ca.es_menor(),
+        'consentimiento': (
+            ConsentimientoTutorSerializer(consentimiento).data if consentimiento else None
+        ),
+        'permisos': permisos,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def center_proteccion(request, pk):
+    """Estado de protección de datos de TODO el plantel del centro.
+
+    La pregunta real de una institución no es "¿este alumno tiene
+    consentimiento?" sino "¿a cuáles de mis 40 alumnos les falta?". Pedir el
+    detalle uno por uno serían 40 peticiones para responder eso.
+    """
+    center = _get_center_or_404(request.user, pk)
+    atletas = (
+        CenterAthlete.objects
+        .filter(center=center)
+        .select_related('center', 'athlete__profile')
+        .prefetch_related('consentimientos')
+        .order_by('athlete__first_name', 'athlete__email')
+    )
+    filas = [_estado_proteccion(ca) for ca in atletas]
+    pendientes = sum(
+        1 for f in filas
+        if any(not p['permitido'] for p in f['permisos'].values())
+    )
+    return Response({
+        'proteccion_activa': center.proteccion_menores,
+        'total': len(filas),
+        'pendientes': pendientes,
+        'atletas': filas,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def athlete_proteccion(request, pk, athlete_pk):
+    """Estado de protección de datos de un alumno: si es menor, si el centro
+    aplica la capa, y qué categorías de dato están hoy autorizadas.
+
+    Lo consume la ficha del atleta para explicar POR QUÉ un módulo está
+    bloqueado, en vez de dejar al staff adivinando ante un 403.
+    """
+    center = _get_center_or_404(request.user, pk)
+    ca = get_object_or_404(
+        CenterAthlete.objects.select_related('center', 'athlete__profile'),
+        pk=athlete_pk, center=center,
+    )
+    return Response(_estado_proteccion(ca))
+
 
 
 # ─── Staff del centro ─────────────────────────────────────────────────────────
@@ -476,7 +669,33 @@ def center_athlete_detail(request, pk, athlete_pk):
 
 # ─── Módulos (rendimiento / lesiones / test / planificación / psicológico) ────
 
-def _module_endpoint(request, pk, model, serializer_cls, owner_field, modulo):
+def _assert_dato_sensible(center, athlete_id, dato):
+    """403 si el centro protege a sus menores y falta consentimiento para este dato.
+
+    Es una capa DISTINTA de `_assert_module`: aquella pregunta si el usuario
+    puede ver el módulo, esta pregunta si el TITULAR del dato (el alumno) está
+    en condiciones de que se registre. Un preparador físico con el módulo de
+    lesiones habilitado igual no puede cargar la lesión de un chico de 14 sin
+    la autorización de su tutoría.
+    """
+    if not center.proteccion_menores or not athlete_id:
+        return
+    ca = (
+        CenterAthlete.objects
+        .select_related('center', 'athlete__profile')
+        .filter(center=center, athlete_id=athlete_id)
+        .first()
+    )
+    if ca is None:
+        # El atleta no pertenece al centro: de eso ya se encarga el serializer,
+        # y adelantarnos acá filtraría si existe o no en otro centro.
+        return
+    permitido, motivo = puede_registrar_dato_sensible(ca, dato)
+    if not permitido:
+        raise PermissionDenied(motivo)
+
+
+def _module_endpoint(request, pk, model, serializer_cls, owner_field, modulo, *, dato_sensible=None):
     """Lista/crea registros de un módulo, siempre acotados al centro.
 
     owner_field: nombre del FK que guarda al staff autor ('registrado_por' o
@@ -486,6 +705,8 @@ def _module_endpoint(request, pk, model, serializer_cls, owner_field, modulo):
     center = _get_center_or_404(request.user, pk)
     _assert_module(request.user, center, modulo)
     if request.method == 'POST':
+        if dato_sensible:
+            _assert_dato_sensible(center, request.data.get('athlete'), dato_sensible)
         data = {**request.data, 'center': center.id}
         serializer = serializer_cls(data=data)
         if not serializer.is_valid():
@@ -533,7 +754,10 @@ def module_rendimiento(request, pk):
 @api_view(['GET', 'POST'])
 @permission_classes([IsPerformanceUser])
 def module_lesiones(request, pk):
-    return _module_endpoint(request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por', MODULE_LESIONES)
+    return _module_endpoint(
+        request, pk, InjuryReport, InjuryReportSerializer, 'registrado_por', MODULE_LESIONES,
+        dato_sensible=DATO_SALUD,
+    )
 
 
 # ─── Módulo CARGA INTERNA (sRPE → ACWR) — reutiliza PerformanceMetric ──────────
@@ -1028,6 +1252,7 @@ def module_psicologico(request, pk):
     center = _get_center_or_404(request.user, pk)
     _assert_module(request.user, center, MODULE_PSICOLOGICO)
     if request.method == 'POST':
+        _assert_dato_sensible(center, request.data.get('athlete'), DATO_PSICOLOGICO)
         slug = (request.data.get('instrument') or '').strip()
         data = {
             'center': center.id,
@@ -1083,6 +1308,7 @@ def psicologico_wellness(request, pk):
     center = _get_center_or_404(request.user, pk)
     _assert_module(request.user, center, MODULE_PSICOLOGICO)
     if request.method == 'POST':
+        _assert_dato_sensible(center, request.data.get('athlete'), DATO_PSICOLOGICO)
         data = {**request.data, 'center': center.id}
         serializer = WellnessCheckinSerializer(data=data)
         if not serializer.is_valid():

@@ -9,6 +9,7 @@ from .models import (
     TestDefinition, Mesocycle, Microcycle, WellnessCheckin, TacticalPlay,
     CalendarEvent, PlannedSession,
     PerformanceOnboarding, NECESIDAD_CHOICES, NECESIDAD_IDS,
+    Categoria, ConsentimientoTutor, DATOS_SENSIBLES,
 )
 
 
@@ -20,7 +21,7 @@ class SportsCenterSerializer(serializers.ModelSerializer):
         model = SportsCenter
         fields = [
             'id', 'nombre', 'slug', 'tipo', 'ciudad', 'pais', 'disciplina',
-            'director_principal', 'activo', 'created_at',
+            'proteccion_menores', 'director_principal', 'activo', 'created_at',
             'total_atletas', 'total_staff',
         ]
         read_only_fields = ['id', 'created_at']
@@ -529,3 +530,99 @@ class PerformanceOnboardingSerializer(serializers.ModelSerializer):
 
     def validate_canal_otro(self, value):
         return self._validate_texto_libre(value, 'La respuesta')
+
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    """Categoría / cohorte de un centro. `total_atletas` evita que el frontend
+    tenga que pedir el roster solo para mostrar un contador."""
+
+    responsable_nombre = serializers.SerializerMethodField()
+    total_atletas = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Categoria
+        fields = [
+            'id', 'center', 'nombre', 'temporada', 'orden',
+            'responsable', 'responsable_nombre', 'activa',
+            'total_atletas', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'center', 'responsable_nombre', 'total_atletas',
+                            'created_at', 'updated_at']
+
+    def get_responsable_nombre(self, obj):
+        return _display_name(obj.responsable)
+
+    def get_total_atletas(self, obj):
+        # `atletas_count` lo anota la vista cuando lista; en detalle cae al count.
+        return getattr(obj, 'atletas_count', None) or obj.atletas.count()
+
+    def validate_nombre(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('El nombre no puede estar vacío.')
+        if contains_unsafe_chars(value):
+            raise serializers.ValidationError('El nombre contiene caracteres no permitidos.')
+        return value
+
+    def validate_temporada(self, value):
+        value = (value or '').strip()
+        if value and contains_unsafe_chars(value):
+            raise serializers.ValidationError('La temporada contiene caracteres no permitidos.')
+        return value
+
+
+class ConsentimientoTutorSerializer(serializers.ModelSerializer):
+    """Consentimiento de la tutoría para tratar datos sensibles de un menor.
+
+    `alcance` es la lista de categorías autorizadas: es el campo que decide qué
+    se puede registrar, así que se valida contra el catálogo y no se acepta
+    vacío — un consentimiento que no autoriza nada es ruido que además aparenta
+    cobertura.
+    """
+
+    vigente = serializers.BooleanField(read_only=True)
+    registrado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConsentimientoTutor
+        fields = [
+            'id', 'athlete', 'tutor_nombre', 'tutor_relacion', 'tutor_email',
+            'alcance', 'documento_ref', 'otorgado_en', 'revocado_en', 'vigente',
+            'registrado_por', 'registrado_por_nombre', 'notas',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'registrado_por', 'registrado_por_nombre',
+                            'vigente', 'created_at', 'updated_at']
+
+    def get_registrado_por_nombre(self, obj):
+        return _display_name(obj.registrado_por)
+
+    def validate_alcance(self, value):
+        if not isinstance(value, list) or not value:
+            raise serializers.ValidationError(
+                'Indica al menos una categoría de dato autorizada.'
+            )
+        desconocidas = [v for v in value if v not in DATOS_SENSIBLES]
+        if desconocidas:
+            raise serializers.ValidationError(
+                f'Categorías desconocidas: {", ".join(map(str, desconocidas))}.'
+            )
+        # Orden canónico, sin duplicados: el dato queda comparable entre fichas.
+        return [d for d in DATOS_SENSIBLES if d in set(value)]
+
+    def validate_tutor_nombre(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Indica quién autoriza.')
+        if contains_unsafe_chars(value):
+            raise serializers.ValidationError('El nombre contiene caracteres no permitidos.')
+        return value
+
+    def validate(self, attrs):
+        revocado = attrs.get('revocado_en', getattr(self.instance, 'revocado_en', None))
+        otorgado = attrs.get('otorgado_en', getattr(self.instance, 'otorgado_en', None))
+        if revocado and otorgado and revocado < otorgado:
+            raise serializers.ValidationError(
+                {'revocado_en': 'La revocación no puede ser anterior al otorgamiento.'}
+            )
+        return attrs

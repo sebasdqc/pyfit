@@ -106,6 +106,18 @@ class SportsCenter(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='centros_dirigidos',
     )
+    # Exige consentimiento de la tutoría para tratar datos de salud,
+    # psicométricos y antropométricos de los menores del centro (ver
+    # permissions.puede_registrar_dato_sensible).
+    #
+    # Default False a propósito, y NO porque un menor en un club merezca menos
+    # protección que uno en un colegio — merece la misma. Es que activarlo de
+    # golpe en los centros que ya existen bloquearía el registro de lesiones de
+    # cualquier atleta sin fecha de nacimiento cargada, que hoy son muchos: se
+    # rompería el panel de gente que está trabajando. Los centros nuevos de tipo
+    # `instituciones` nacen con esto en True (ver centers_view), y cualquier otro
+    # centro puede activarlo desde Ajustes cuando tenga las fechas cargadas.
+    proteccion_menores = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -215,7 +227,17 @@ class CenterAthlete(models.Model):
     posicion = models.CharField(max_length=80, blank=True)
     grupo = models.CharField(
         max_length=80, blank=True,
-        help_text='Subgrupo / categoría dentro del centro (sub-18, primer equipo…).',
+        help_text=(
+            'LEGADO: subgrupo como texto libre. Para instituciones educativas usar '
+            '`categoria` (modelo Categoria), que sí permite comparar entre categorías '
+            'y seguir al alumno entre temporadas. Se conserva para no perder datos ya '
+            'cargados; no se migra automáticamente porque el texto libre no es fiable '
+            'como fuente (la misma categoría escrita de tres formas serían tres filas).'
+        ),
+    )
+    categoria = models.ForeignKey(
+        'Categoria', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='atletas',
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
     foto = models.TextField(
@@ -242,6 +264,41 @@ class CenterAthlete(models.Model):
 
     def __str__(self):
         return f'{self.athlete_id} @ {self.center_id} [{self.estado}]'
+
+    @property
+    def fecha_nacimiento(self):
+        """Fecha de nacimiento del alumno/atleta, o None si no está cargada.
+
+        Vive en users.Profile — no se duplica acá. Si no hay Profile o el campo
+        está vacío devuelve None, y quien decide sobre menores debe tratar ese
+        None como "no sé" (ver `es_menor`)."""
+        perfil = getattr(self.athlete, 'profile', None)
+        return getattr(perfil, 'fecha_nacimiento', None) if perfil else None
+
+    def edad(self, hoy=None):
+        """Edad en años cumplidos, o None si no hay fecha de nacimiento."""
+        nacimiento = self.fecha_nacimiento
+        if not nacimiento:
+            return None
+        from datetime import date
+        hoy = hoy or date.today()
+        return hoy.year - nacimiento.year - (
+            (hoy.month, hoy.day) < (nacimiento.month, nacimiento.day)
+        )
+
+    def es_menor(self, hoy=None) -> bool:
+        """¿Hay que tratar a esta persona como menor de edad?
+
+        Sin fecha de nacimiento devuelve True: NO se asume mayoría de edad. Un
+        dato faltante no puede convertirse en permiso para tratar datos de salud
+        de un chico sin autorización — se falla hacia el lado seguro y el centro
+        resuelve cargando la fecha."""
+        edad = self.edad(hoy)
+        return True if edad is None else edad < EDAD_MAYORIA
+
+    def consentimiento_vigente(self):
+        """Consentimiento no revocado más reciente, o None."""
+        return self.consentimientos.filter(revocado_en__isnull=True).first()
 
 
 # ─── Mixin común a los registros de módulo ────────────────────────────────────
@@ -1009,3 +1066,155 @@ class PerformanceOnboarding(models.Model):
     def __str__(self):
         estado = 'completo' if self.completado else 'en curso'
         return f'Onboarding de {self.user_id} ({estado})'
+
+
+# ─── Categorías (instituciones educativas) ────────────────────────────────────
+# `CenterAthlete.grupo` era texto libre ("sub-18", "Sub 18", "SUB-18"…): servía
+# para etiquetar, no para comparar entre categorías ni para seguir a un alumno a
+# través de los años. Una institución trabaja sobre categorías, no sobre un
+# plantel: es su unidad real.
+#
+# `grupo` se conserva y NO se migra automáticamente — el texto libre existente no
+# es fiable como fuente para crear categorías (mismas categorías escritas de
+# tres formas distintas se convertirían en tres filas). La asignación es manual
+# y explícita.
+
+class Categoria(models.Model):
+    """Categoría / cohorte dentro de un centro (Sub-14, Primer equipo, …).
+
+    `temporada` permite que la MISMA categoría exista año tras año y que un
+    alumno la atraviese: es lo que habilita la lectura longitudinal que hoy no
+    existe (un chico pasa seis años en la institución cruzando categorías).
+    """
+
+    center = models.ForeignKey(
+        SportsCenter, on_delete=models.CASCADE, related_name='categorias',
+    )
+    nombre = models.CharField(max_length=80)
+    # Texto libre a propósito: hay temporadas '2026', '2026/27' y 'Ciclo lectivo
+    # 2026' según el país y el deporte. Normalizarlo a un entero rompería la
+    # mitad de los casos reales.
+    temporada = models.CharField(max_length=20, blank=True, default='')
+    # Orden de presentación (Sub-12 antes que Sub-14). Sin esto se ordenarían
+    # alfabéticamente y "Sub-10" caería después de "Sub-1".
+    orden = models.PositiveSmallIntegerField(default=0)
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='categorias_a_cargo',
+    )
+    activa = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_categorias'
+        ordering = ['orden', 'nombre']
+        # Una categoría es única por centro Y temporada: "Sub-14 2026" y
+        # "Sub-14 2027" son filas distintas, y es justamente lo que permite
+        # comparar la misma categoría entre años.
+        unique_together = [['center', 'nombre', 'temporada']]
+        indexes = [models.Index(fields=['center', 'activa'])]
+
+    def __str__(self):
+        return f'{self.nombre} {self.temporada}'.strip()
+
+
+# ─── Consentimiento para datos de menores ─────────────────────────────────────
+# Una institución educativa trabaja con alumnos menores de edad, y el panel
+# guarda sobre ellos datos de salud (lesiones), psicométricos (BRUMS, ansiedad
+# competitiva) y antropométricos. Eso NO se puede registrar sin autorización de
+# quien ejerce la tutoría.
+#
+# Decisiones tomadas (ver también permissions.puede_registrar_dato_sensible):
+#
+#   · Umbral: 18 años. Las leyes de la región fijan distintos umbrales para el
+#     consentimiento digital (13–16 según el país), pero para DATOS DE SALUD de
+#     un menor la autorización del tutor es el denominador común. Se elige el
+#     criterio más protector en vez de intentar codificar cada jurisdicción.
+#   · Sin fecha de nacimiento NO se asume mayoría de edad: se trata como menor
+#     y se exige consentimiento. Fallar hacia el lado seguro.
+#   · El consentimiento es POR ALUMNO y por categoría de dato, revocable, y deja
+#     constancia de quién lo registró.
+#   · Esto habilita el cumplimiento; NO lo garantiza. El texto del formulario,
+#     la base legal y los plazos de conservación los define el centro con su
+#     asesoría — el panel provee el mecanismo y la trazabilidad.
+
+# Categorías de dato que exigen consentimiento explícito para un menor. Los
+# datos de rendimiento puro (carga, tests físicos) no entran acá: son la
+# finalidad ordinaria del servicio que la institución contrató.
+DATO_SALUD = 'salud'
+DATO_PSICOLOGICO = 'psicologico'
+DATO_ANTROPOMETRICO = 'antropometrico'
+
+DATO_SENSIBLE_CHOICES = [
+    (DATO_SALUD, 'Salud y lesiones'),
+    (DATO_PSICOLOGICO, 'Evaluación psicológica'),
+    (DATO_ANTROPOMETRICO, 'Antropometría y maduración'),
+]
+
+DATOS_SENSIBLES = [c[0] for c in DATO_SENSIBLE_CHOICES]
+
+
+def dict_datos_sensibles():
+    """{id: etiqueta} de las categorías de dato sensible, para mensajes de error."""
+    return dict(DATO_SENSIBLE_CHOICES)
+
+# Edad a partir de la cual el propio atleta consiente por sí mismo.
+EDAD_MAYORIA = 18
+
+
+class ConsentimientoTutor(models.Model):
+    """Autorización de quien ejerce la tutoría para tratar datos sensibles de un
+    alumno menor de edad.
+
+    Es un registro de trazabilidad, no el documento en sí: `documento_ref`
+    apunta al consentimiento firmado que conserva la institución (expediente,
+    formulario en papel, gestor documental). El panel guarda QUIÉN autorizó,
+    QUÉ alcance, CUÁNDO y QUIÉN lo registró.
+    """
+
+    RELACION_CHOICES = [
+        ('madre', 'Madre'),
+        ('padre', 'Padre'),
+        ('tutor', 'Tutor/a legal'),
+        ('otro', 'Otro'),
+    ]
+
+    athlete = models.ForeignKey(
+        CenterAthlete, on_delete=models.CASCADE, related_name='consentimientos',
+    )
+    tutor_nombre = models.CharField(max_length=160)
+    tutor_relacion = models.CharField(max_length=20, choices=RELACION_CHOICES, default='tutor')
+    tutor_email = models.EmailField(blank=True, default='')
+    # Lista de DATOS_SENSIBLES autorizados. Vacía = ninguno (equivale a no tener
+    # consentimiento); se valida en el serializer.
+    alcance = models.JSONField(default=list, blank=True)
+    # Referencia al documento firmado que conserva la institución.
+    documento_ref = models.CharField(max_length=200, blank=True, default='')
+    otorgado_en = models.DateField()
+    # Revocación: no se borra la fila, se marca. Perder la constancia de que
+    # hubo consentimiento sería perder justamente la trazabilidad.
+    revocado_en = models.DateField(null=True, blank=True)
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='consentimientos_registrados',
+    )
+    notas = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'performance_consentimientos'
+        ordering = ['-otorgado_en', '-created_at']
+        indexes = [models.Index(fields=['athlete', 'revocado_en'])]
+
+    def __str__(self):
+        estado = 'revocado' if self.revocado_en else 'vigente'
+        return f'Consentimiento de {self.athlete_id} ({estado})'
+
+    @property
+    def vigente(self) -> bool:
+        return self.revocado_en is None
+
+    def autoriza(self, dato: str) -> bool:
+        return self.vigente and dato in (self.alcance or [])

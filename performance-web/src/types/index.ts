@@ -60,6 +60,9 @@ export interface SportsCenter {
   nombre: string
   slug: string
   tipo: TipoCentro
+  // Exige consentimiento de la tutoría para datos de salud, psicométricos y
+  // antropométricos de los menores del centro.
+  proteccion_menores: boolean
   ciudad: string
   pais: string
   disciplina: string
@@ -554,3 +557,82 @@ export interface OnboardingState {
 export type OnboardingPatch = Partial<
   Omit<OnboardingState, 'completado' | 'completado_at' | 'updated_at'>
 > & { completado?: true }
+
+
+// ─── Categorías y protección de datos de menores (instituciones) ─────────────
+
+export interface Categoria {
+  id: number
+  center: number
+  nombre: string
+  temporada: string
+  orden: number
+  responsable: number | null
+  responsable_nombre: string
+  activa: boolean
+  total_atletas: number
+  created_at: string
+  updated_at: string
+}
+
+export type CategoriaPayload = Partial<
+  Pick<Categoria, 'nombre' | 'temporada' | 'orden' | 'responsable' | 'activa'>
+>
+
+// Categorías de dato que exigen consentimiento explícito para un menor.
+export type DatoSensible = 'salud' | 'psicologico' | 'antropometrico'
+
+export type RelacionTutor = 'madre' | 'padre' | 'tutor' | 'otro'
+
+export interface ConsentimientoTutor {
+  id: number
+  athlete: number
+  tutor_nombre: string
+  tutor_relacion: RelacionTutor
+  tutor_email: string
+  alcance: DatoSensible[]
+  documento_ref: string
+  otorgado_en: string
+  revocado_en: string | null
+  vigente: boolean
+  registrado_por: number | null
+  registrado_por_nombre: string
+  notas: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ConsentimientoPayload {
+  tutor_nombre: string
+  tutor_relacion: RelacionTutor
+  tutor_email?: string
+  alcance: DatoSensible[]
+  documento_ref?: string
+  otorgado_en: string
+  notas?: string
+}
+
+export interface PermisoDato {
+  permitido: boolean
+  // Qué falta y cómo resolverlo — se muestra tal cual al usuario.
+  motivo: string
+}
+
+export interface EstadoProteccion {
+  athlete: number
+  nombre: string
+  proteccion_activa: boolean
+  fecha_nacimiento: string | null
+  edad: number | null
+  es_menor: boolean
+  consentimiento: ConsentimientoTutor | null
+  permisos: Record<DatoSensible, PermisoDato>
+}
+
+export interface ProteccionCentro {
+  proteccion_activa: boolean
+  total: number
+  // Cuántos tienen al menos una categoría de dato bloqueada.
+  pendientes: number
+  atletas: EstadoProteccion[]
+}

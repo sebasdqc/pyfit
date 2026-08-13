@@ -81,3 +81,53 @@ def can_access_module(user, center, modulo) -> bool:
         .first()
     )
     return bool(membership and membership.puede_ver(modulo))
+
+
+# ─── Datos sensibles de menores ───────────────────────────────────────────────
+
+def puede_registrar_dato_sensible(center_athlete, dato: str, hoy=None):
+    """¿Se puede tratar `dato` (salud / psicológico / antropométrico) de esta persona?
+
+    Devuelve (permitido: bool, motivo: str). El motivo va al usuario, así que
+    dice qué falta y cómo resolverlo, no solo que está prohibido.
+
+    Reglas:
+      · Mayor de edad → sí, sin más (consiente por sí mismo al usar el servicio).
+      · Menor → hace falta un consentimiento vigente de su tutoría que incluya
+        esa categoría de dato en su alcance.
+      · Sin fecha de nacimiento → se trata como menor. Un dato faltante no puede
+        volverse permiso para registrar la salud de un chico sin autorización.
+
+    NO es un permiso de rol: el rol ya se resolvió antes (can_access_module).
+    Esto es una capa distinta — sobre QUIÉN es el titular del dato, no sobre
+    quién lo consulta.
+    """
+    # El centro decide si aplica esta capa (ver SportsCenter.proteccion_menores:
+    # activarla retroactivamente en centros existentes rompería su operación).
+    if not center_athlete.center.proteccion_menores:
+        return True, ''
+
+    if not center_athlete.es_menor(hoy):
+        return True, ''
+
+    if center_athlete.fecha_nacimiento is None:
+        return False, (
+            'Falta la fecha de nacimiento de esta persona. Sin ella se trata como '
+            'menor de edad y no se pueden registrar datos de salud, psicológicos '
+            'ni antropométricos. Cárgala en su ficha para continuar.'
+        )
+
+    consentimiento = center_athlete.consentimiento_vigente()
+    if consentimiento is None:
+        return False, (
+            'Es menor de edad y no tiene un consentimiento de su tutoría registrado. '
+            'Regístralo en su ficha antes de cargar este dato.'
+        )
+    if not consentimiento.autoriza(dato):
+        from .models import dict_datos_sensibles
+        etiqueta = dict_datos_sensibles().get(dato, dato)
+        return False, (
+            f'El consentimiento registrado no autoriza la categoría "{etiqueta}". '
+            'Actualiza el alcance del consentimiento para incluirla.'
+        )
+    return True, ''
