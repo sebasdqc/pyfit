@@ -83,7 +83,7 @@ const NAV: NavItem[] = [
     ],
   },
   { id: 'convocatoria', label: 'Convocatoria', icon: 'convocatoria', soon: true },
-  { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', soon: true },
+  { id: 'ajustes', label: 'Ajustes', icon: 'ajustes', to: '/ajustes' },
 ]
 
 // Ítem activo: por defecto coincide por prefijo; con `exact`, solo coincidencia

@@ -73,13 +73,16 @@ function apiError(e: unknown): string {
 
 // ── Página ─────────────────────────────────────────────────────────────────
 export function EquipoPage() {
-  const { centers, activeCenterId, setActiveCenterId } = useActiveCenter()
+  const { centers, activeCenterId, setActiveCenterId, termino, etiquetaNav } = useActiveCenter()
+  // El sidebar renombra este destino según el público (Equipo / Categorías /
+  // Mi ficha); el encabezado tiene que coincidir con el enlace que trajo acá.
+  const titulo = etiquetaNav('equipo', 'Equipo del centro')
   const [tab, setTab] = useState<'atletas' | 'staff'>('atletas')
 
   if (activeCenterId == null) {
     return (
       <div className="mx-auto max-w-[1400px]">
-        <h1 className="text-xl font-semibold text-white">Equipo del centro</h1>
+        <h1 className="text-xl font-semibold text-white">{titulo}</h1>
         <p className="mt-2 text-sm text-white/45">
           {centers.length === 0
             ? 'Tu cuenta no tiene un centro asignado todavía.'
@@ -98,8 +101,10 @@ export function EquipoPage() {
     <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">Equipo del centro</h1>
-          <p className="text-xs text-white/45">Atletas, staff y ficha técnica por jugador</p>
+          <h1 className="text-xl font-semibold tracking-tight text-white">{titulo}</h1>
+          <p className="text-xs text-white/45">
+            Atletas, staff y ficha técnica por {termino('persona').toLowerCase()}
+          </p>
         </div>
         {centers.length > 1 && (
           <select

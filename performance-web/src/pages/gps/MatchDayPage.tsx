@@ -15,10 +15,12 @@ import {
   useMatchDay, loadTone, SPEED_ZONES, POS_HEX, TONE_HEX, type MatchPlayer, type Pos,
 } from '@/lib/gpsDashboards'
 import { DashHeader, Kpi, StatusPill, GRID, axisTick, tip } from './dashboardKit'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 const POLL_MS = 5000 // sondeo simulado (en producción: refetch al endpoint)
 
 export function MatchDayPage() {
+  const { termino } = useActiveCenter()
   const { data } = useMatchDay()
   const [players, setPlayers] = useState<MatchPlayer[]>(data.players)
 
@@ -88,7 +90,7 @@ export function MatchDayPage() {
                 <tr className="border-b border-perf-border text-left text-[10px] uppercase tracking-wide text-white/40">
                   <th className="px-3 py-2.5 font-medium">#</th>
                   <th className="px-3 py-2.5 font-medium">Pos</th>
-                  <th className="px-3 py-2.5 font-medium">Jugador</th>
+                  <th className="px-3 py-2.5 font-medium">{termino('persona')}</th>
                   <th className="px-3 py-2.5 font-medium">Min</th>
                   <th className="px-3 py-2.5 font-medium">Player Load</th>
                   <th className="px-3 py-2.5 text-right font-medium">km</th>

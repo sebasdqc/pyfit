@@ -6,7 +6,7 @@ Estructura de la API (montada bajo /api/performance/ en pyfit/urls.py):
     GET  /me/                                 usuario + centros + módulos visibles
 
     GET/POST  /centers/                       listar / crear centros
-    GET       /centers/<id>/                  detalle de centro
+    GET/PATCH /centers/<id>/                  detalle de centro / editar (Ajustes)
     GET/POST  /centers/<id>/staff/            staff del centro / alta de staff
     GET/POST  /centers/<id>/athletes/         atletas / registrar atleta (director)
 
@@ -317,10 +317,39 @@ def centers_view(request):
     return Response(SportsCenterSerializer(qs, many=True).data)
 
 
-@api_view(['GET'])
+# Campos que el panel deja editar desde Ajustes. `slug` queda afuera a
+# propósito: es el identificador estable del centro y cambiarlo desde la UI
+# invita a romper enlaces guardados sin ganar nada. Si alguna vez hace falta,
+# es una operación de admin.
+_CENTER_EDITABLE = ['nombre', 'tipo', 'ciudad', 'pais', 'disciplina']
+
+
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsPerformanceUser])
 def center_detail(request, pk):
+    """Detalle del centro y edición de sus datos (Ajustes del panel).
+
+    PATCH es de director/admin: `tipo` decide cómo se comporta el panel para
+    todo el staff del centro, así que no puede cambiarlo cualquiera. Hasta
+    ahora el único camino para corregirlo era el admin de Django.
+    """
     center = _get_center_or_404(request.user, pk)
+
+    if request.method == 'PATCH':
+        if not (request.user.is_director or request.user.is_admin or request.user.is_staff):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        data = {k: v for k, v in request.data.items() if k in _CENTER_EDITABLE}
+        if not data:
+            return Response(
+                {'detail': 'No hay campos editables en la petición.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = SportsCenterSerializer(center, data=data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
     return Response(SportsCenterSerializer(center).data)
 
 

@@ -24,6 +24,7 @@ import {
   buildGps, teamGpsSummary, teamZoneAverages, GPS_SESSIONS, ZONE_META,
   type GpsSample, type GpsSessionDef,
 } from '@/lib/mockGps'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 // ── Tema de gráficos (oscuro, plano) ─────────────────────────────────────────
 const ACCENT = '#14b8a6'
@@ -139,6 +140,7 @@ function SessionPicker({ session, onSelect }: { session: GpsSessionDef; onSelect
 type SortKey = 'distancia' | 'distMin' | 'hsr' | 'sprints' | 'maxVel' | 'playerLoad' | 'accdec' | 'duracion'
 
 function TeamView({ samples, session }: { samples: GpsSample[]; session: GpsSessionDef }) {
+  const { termino } = useActiveCenter()
   const sum = useMemo(() => teamGpsSummary(samples), [samples])
   const zoneAvg = useMemo(() => teamZoneAverages(samples), [samples])
   const [sortKey, setSortKey] = useState<SortKey>('distancia')
@@ -204,7 +206,7 @@ function TeamView({ samples, session }: { samples: GpsSample[]; session: GpsSess
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-perf-border text-left text-[11px] uppercase tracking-wide text-white/40">
-                <th className="px-4 py-2.5 font-medium">Jugador</th>
+                <th className="px-4 py-2.5 font-medium">{termino('persona')}</th>
                 <th className="px-2 py-2.5 font-medium">Pos</th>
                 <Th label="Min" k="duracion" sortKey={sortKey} desc={desc} onSort={toggleSort} />
                 <Th label="Dist (m)" k="distancia" sortKey={sortKey} desc={desc} onSort={toggleSort} />

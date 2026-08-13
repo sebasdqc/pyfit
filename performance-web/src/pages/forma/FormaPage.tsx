@@ -22,6 +22,7 @@ import type { Athlete } from '@/lib/mockSquad'
 import type { FormaMetrics, FormaTeamRow } from '@/types'
 import { listFormaTeam, getFormaAthlete } from '@/api/performance'
 import { demoSeries, formaFromSerie, demoFormaTeamRow, formaTone } from '@/lib/cargaDemo'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 const tip = {
   contentStyle: { background: '#0f1525', border: '1px solid #1c2740', borderRadius: 10, fontSize: 12 },
@@ -93,6 +94,7 @@ function TeamView({
   centerId: number | null
   onGoAthlete: (id: string) => void
 }) {
+  const { termino } = useActiveCenter()
   const [rows, setRows] = useState<FormaTeamRow[] | null>(null)
 
   useEffect(() => {
@@ -126,7 +128,7 @@ function TeamView({
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Plantilla" value={`${rows.length}`} tone="accent" />
+        <Kpi label={termino('grupo')} value={`${rows.length}`} tone="accent" />
         <Kpi label="Fresco" value={`${fresco}`} tone="ok" />
         <Kpi label="Neutro / transición" value={`${neutro}`} tone="warn" />
         <Kpi label="Fatigado" value={`${fatigado}`} tone="danger" />

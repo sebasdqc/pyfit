@@ -1,4 +1,6 @@
-// Controles de selección del wizard de bienvenida.
+// Controles de selección de una lista de opciones (radio / checkbox).
+// Nacieron en el wizard de bienvenida y los reusa Ajustes del centro, así que
+// viven en ui/ y no en onboarding/.
 //
 // Se apoyan en <input type="radio"|"checkbox"> reales, visualmente ocultos: el
 // navegador ya trae la navegación por flechas dentro del grupo, el foco, el

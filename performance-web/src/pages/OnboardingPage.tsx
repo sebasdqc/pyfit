@@ -25,7 +25,7 @@ import {
   CheckboxGrid,
   RadioGrid,
   type Opcion,
-} from '@/components/onboarding/OptionGrid'
+} from '@/components/ui/OptionGrid'
 import { slugify } from '@/components/CreateCenterModal'
 import { createCenter } from '@/api/performance'
 import { fetchOnboarding, saveOnboarding } from '@/api/onboarding'

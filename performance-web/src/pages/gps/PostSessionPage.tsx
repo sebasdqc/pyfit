@@ -12,10 +12,12 @@ import {
   usePostSession, SPEED_ZONES, POS_HEX, POS_LABEL, TONE_HEX, type Pos,
 } from '@/lib/gpsDashboards'
 import { DashHeader, Kpi, StatusPill, GRID, axisTick, tip } from './dashboardKit'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 const fmt = (n: number) => n.toLocaleString('es-ES')
 
 export function PostSessionPage() {
+  const { termino } = useActiveCenter()
   const { data } = usePostSession()
   const { session, kpis, speedZonesPct, posLoad, compare, players, recommendations } = data
 
@@ -133,7 +135,7 @@ export function PostSessionPage() {
             <thead>
               <tr className="border-b border-perf-border text-left text-[10px] uppercase tracking-wide text-white/40">
                 <th className="px-3 py-2.5 font-medium">#</th>
-                <th className="px-3 py-2.5 font-medium">Jugador</th>
+                <th className="px-3 py-2.5 font-medium">{termino('persona')}</th>
                 <th className="px-3 py-2.5 font-medium">Pos</th>
                 <th className="px-3 py-2.5 text-right font-medium">Dist (km)</th>
                 <th className="px-3 py-2.5 text-right font-medium">Sprint (m)</th>

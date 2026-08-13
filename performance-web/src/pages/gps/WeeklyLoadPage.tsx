@@ -14,8 +14,10 @@ import {
   useWeeklyLoad, acwr, acwrRisk, acwrNeedlePct, RISK_META, TONE_HEX,
 } from '@/lib/gpsDashboards'
 import { DashHeader, Kpi, StatusPill, GRID, axisTick, tip } from './dashboardKit'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 export function WeeklyLoadPage() {
+  const { termino } = useActiveCenter()
   const { data } = useWeeklyLoad()
   const { week, trend, dayDist, summary, nextWeek } = data
 
@@ -51,7 +53,7 @@ export function WeeklyLoadPage() {
         <Kpi label="Carga aguda (sem.)" value={data.agudaTeam.toLocaleString('es-ES')} unit="ua Player Load prom." delta={`${agudaDelta >= 0 ? '+' : ''}${agudaDelta}% vs sem. anterior`} tone="accent" />
         <Kpi label="Carga crónica (4 sem.)" value={data.cronicaTeam.toLocaleString('es-ES')} unit="ua promedio rodante" delta="Referencia estable" tone="accent" />
         <Kpi label="ACWR equipo" value={teamAcwr.toFixed(2)} unit="Zona segura: 0.80–1.30" delta={teamRisk === 'ok' ? '✓ En rango óptimo' : RISK_META[teamRisk].label} tone={teamRisk} />
-        <Kpi label="Jugadores en riesgo" value={`${enRiesgo}`} unit="ACWR >1.4 esta semana" delta={enRiesgo > 0 ? '▲ Acción requerida' : '✓ Sin alertas'} tone={enRiesgo > 0 ? 'danger' : 'ok'} />
+        <Kpi label={`${termino('personas')} en riesgo`} value={`${enRiesgo}`} unit="ACWR >1.4 esta semana" delta={enRiesgo > 0 ? '▲ Acción requerida' : '✓ Sin alertas'} tone={enRiesgo > 0 ? 'danger' : 'ok'} />
         <Kpi label="Monotonía semanal" value={data.monotonia.toFixed(1)} unit="Recomendado: <2.0" delta={data.monotonia < 2 ? '✓ Dentro del rango' : '▲ Elevada'} tone={data.monotonia < 2 ? 'warn' : 'danger'} />
       </div>
 
@@ -111,7 +113,7 @@ export function WeeklyLoadPage() {
               <thead>
                 <tr className="border-b border-perf-border text-left text-[10px] uppercase tracking-wide text-white/40">
                   <th className="px-3 py-2.5 font-medium">#</th>
-                  <th className="px-3 py-2.5 font-medium">Jugador</th>
+                  <th className="px-3 py-2.5 font-medium">{termino('persona')}</th>
                   <th className="px-3 py-2.5 text-right font-medium">Aguda</th>
                   <th className="px-3 py-2.5 text-right font-medium">Crónica</th>
                   <th className="px-3 py-2.5 text-right font-medium">ACWR</th>

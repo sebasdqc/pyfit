@@ -33,6 +33,11 @@ export interface ActiveCenterValue {
   perfil: PerfilCentro
   // Vocabulario: el mismo concepto nombrado como lo nombra este público.
   termino: (id: TerminoId) => string
+  // Etiqueta de un ítem de navegación para este público, con su valor por
+  // defecto. Lo usan los títulos de página: el encabezado tiene que decir lo
+  // mismo que el enlace del sidebar que te trajo hasta acá, o la navegación
+  // deja de tener sentido apenas el perfil renombra algo.
+  etiquetaNav: (navId: string, porDefecto: string) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -138,15 +143,19 @@ export function ActiveCenterProvider({ children }: { children: ReactNode }) {
   const tipoCentro: TipoCentro = activeCenter?.center_tipo ?? 'equipos'
   const perfil = useMemo(() => perfilDe(tipoCentro), [tipoCentro])
   const termino = useCallback((id: TerminoId) => perfil.terminos[id], [perfil])
+  const etiquetaNav = useCallback(
+    (navId: string, porDefecto: string) => perfil.navEtiquetas[navId] ?? porDefecto,
+    [perfil],
+  )
 
   const value = useMemo<ActiveCenterValue>(
     () => ({
       centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
-      tipoCentro, perfil, termino,
+      tipoCentro, perfil, termino, etiquetaNav,
     }),
     [
       centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
-      tipoCentro, perfil, termino,
+      tipoCentro, perfil, termino, etiquetaNav,
     ],
   )
 

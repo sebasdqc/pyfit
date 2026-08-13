@@ -78,7 +78,7 @@ interface Metric {
 
 // ── Página ─────────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const { activeCenter } = useActiveCenter()
+  const { activeCenter, termino } = useActiveCenter()
   const { athletes: squad, loading, error, isRealRoster } = useSquad()
   const navigate = useNavigate()
   const centro = activeCenter?.center_nombre ?? 'Tu centro deportivo'
@@ -229,7 +229,7 @@ export function DashboardPage() {
           {/* Fila 3 — accesos directos a módulos */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <ModuleCard icon="rendimiento" title="Rendimiento" metric={`${Math.round(d.carga)} UA`} detail="Carga media de la plantilla" onClick={() => navigate('/rendimiento')} />
-            <ModuleCard icon="lesiones" title="Lesiones" metric={`${d.baja} ${d.baja === 1 ? 'activa' : 'activas'}`} detail={d.duda ? `${d.duda} en duda` : 'Plantilla disponible'} onClick={() => navigate('/lesiones')} />
+            <ModuleCard icon="lesiones" title="Lesiones" metric={`${d.baja} ${d.baja === 1 ? 'activa' : 'activas'}`} detail={d.duda ? `${d.duda} en duda` : `${termino('grupo')} disponible`} onClick={() => navigate('/lesiones')} />
             <ModuleCard icon="wellness" title="Psicológico" metric={`${d.bienestar.toFixed(1)}/10`} detail="Bienestar medio del plantel" onClick={() => navigate('/psicologico')} />
           </div>
         </>

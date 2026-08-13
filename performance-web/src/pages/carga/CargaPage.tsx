@@ -22,6 +22,7 @@ import { listCargaTeam, getCargaAthlete, createCarga, deleteCarga } from '@/api/
 import {
   demoSeries, demoRecords, demoTeamRow, metricsFromSerie, zonaTone,
 } from '@/lib/cargaDemo'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -95,6 +96,7 @@ function TeamView({
   centerId: number | null
   onGoAthlete: (id: string) => void
 }) {
+  const { termino } = useActiveCenter()
   const [rows, setRows] = useState<CargaTeamRow[] | null>(null)
 
   useEffect(() => {
@@ -128,7 +130,7 @@ function TeamView({
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-        <Kpi label="Plantilla" value={`${rows.length}`} tone="accent" />
+        <Kpi label={termino('grupo')} value={`${rows.length}`} tone="accent" />
         <Kpi label="En sweet spot" value={`${sweet}`} tone="ok" />
         <Kpi label="En peligro (ACWR)" value={`${peligro}`} tone="danger" />
         <Kpi label="Monotonía alta" value={`${monoAlta}`} tone="warn" />

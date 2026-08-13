@@ -37,6 +37,16 @@ export async function getCenter(centerId: number): Promise<SportsCenter> {
   return res.data
 }
 
+// Edición del centro desde Ajustes. El backend solo acepta nombre, tipo,
+// ciudad, país y disciplina — el slug es el identificador estable y no se toca.
+export async function updateCenter(
+  centerId: number,
+  payload: Partial<Pick<SportsCenter, 'nombre' | 'tipo' | 'ciudad' | 'pais' | 'disciplina'>>,
+): Promise<SportsCenter> {
+  const res = await api.patch<SportsCenter>(`/performance/centers/${centerId}/`, payload)
+  return res.data
+}
+
 // ── Staff del centro (CenterMembership) ──────────────────────────────────────
 export async function listStaff(centerId: number): Promise<CenterStaff[]> {
   const res = await api.get<CenterStaff[]>(`/performance/centers/${centerId}/staff/`)

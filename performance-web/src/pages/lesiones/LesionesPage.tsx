@@ -20,6 +20,7 @@ import {
 import { loadInjuries, saveInjuryLocal, updateInjuryLocal, deleteInjuryLocal } from '@/lib/injuryStore'
 import { listInjuries, createInjury, updateInjury, deleteInjury } from '@/api/performance'
 import type { InjuryReport } from '@/types'
+import { useActiveCenter } from '@/centers/useActiveCenter'
 
 const today = () => new Date().toISOString().slice(0, 10)
 function daysSince(iso: string): number {
@@ -58,6 +59,7 @@ function fromServerInjury(r: InjuryReport, userToLink: Map<number, string>): Inj
 
 export function LesionesPage() {
   const { athletes: squad, loading, error, isRealRoster, centerId } = useSquad()
+  const { termino } = useActiveCenter()
   const noContent = loading || error || (isRealRoster && squad.length === 0)
 
   // Roster real → partes del servidor; demo → localStorage (sembrado de la muestra).
@@ -193,7 +195,7 @@ export function LesionesPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
             <Kpi label="Lesiones activas" value={`${kpi.activas}`} tone="warn" />
-            <Kpi label="Jugadores de baja" value={`${kpi.baja}`} tone="danger" />
+            <Kpi label={`${termino('personas')} de baja`} value={`${kpi.baja}`} tone="danger" />
             <Kpi label="En recuperación" value={`${kpi.recup}`} tone="warn" />
             <Kpi label="Días perdidos" value={`${kpi.dias}`} tone="accent" />
             <Kpi label="Nuevas (7 días)" value={`${kpi.nuevas}`} tone="warn" />
@@ -257,7 +259,7 @@ export function LesionesPage() {
               ))}
 
               {altas.length > 0 && (
-                <Panel title="Altas recientes" subtitle="Jugadores reincorporados">
+                <Panel title="Altas recientes" subtitle={`${termino('personas')} reincorporados`}>
                   <ul className="flex flex-col divide-y divide-perf-border">
                     {altas.map((inj) => (
                       <li key={inj.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
