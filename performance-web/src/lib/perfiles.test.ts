@@ -54,6 +54,25 @@ check(
   new Set(TIPOS.map((t) => PERFILES[t].terminos.grupo)).size === TIPOS.length,
 )
 
+// ── Etiquetas de eventos del calendario ─────────────────────────────────────
+
+check(
+  'equipos no renombra ningún tipo de evento',
+  Object.keys(PERFILES.equipos.eventos).length === 0,
+)
+check(
+  'un atleta compite, no juega un partido',
+  PERFILES.atletas.eventos.partido === 'Competencia',
+)
+check(
+  'instituciones conserva "partido" (una academia sí juega)',
+  PERFILES.instituciones.eventos.partido === undefined,
+)
+check(
+  'los tres perfiles definen el mapa de eventos',
+  TIPOS.every((t) => typeof PERFILES[t].eventos === 'object'),
+)
+
 // ── Diferenciación real ─────────────────────────────────────────────────────
 
 check(

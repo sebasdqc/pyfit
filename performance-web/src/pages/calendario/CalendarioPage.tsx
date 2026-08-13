@@ -265,12 +265,17 @@ function Header({
   year: number; month: number; centerName?: string
   onPrev: () => void; onNext: () => void; onToday: () => void; onNew: () => void; disabled?: boolean
 }) {
+  const { etiquetaNav, etiquetaEvento } = useActiveCenter()
+  // El encabezado tiene que decir lo mismo que el enlace del sidebar
+  // (Calendario / Año lectivo / Competencias).
+  const titulo = etiquetaNav('calendario', 'Calendario')
+  const resumen = `Temporadas, torneos, ${etiquetaEvento('partido', 'Partido').toLowerCase()}s y eventos`
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-white">Calendario</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-white">{titulo}</h1>
         <p className="text-xs text-white/45">
-          Temporadas, torneos, partidos y eventos{centerName ? ` · ${centerName}` : ''}
+          {resumen}{centerName ? ` · ${centerName}` : ''}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -366,12 +371,13 @@ function SeasonsPanel({
 function UpcomingPanel({
   events, hoy, onPick,
 }: { events: CalendarEvent[]; hoy: string; onPick: (e: CalendarEvent) => void }) {
+  const { etiquetaEvento } = useActiveCenter()
   const upcoming = [...events]
     .filter((e) => (e.fecha_fin || e.fecha_inicio) >= hoy)
     .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? ''))
     .slice(0, 6)
   return (
-    <Panel title="Próximos eventos" subtitle="Partidos, tests y sesiones" bodyClassName="p-3">
+    <Panel title="Próximos eventos" subtitle={`${etiquetaEvento('partido', 'Partido')}s, tests y sesiones`} bodyClassName="p-3">
       {upcoming.length === 0 ? (
         <p className="px-2 py-6 text-center text-sm text-white/55">Sin eventos próximos.</p>
       ) : (
@@ -412,13 +418,14 @@ function UpcomingPanel({
 }
 
 function Legend() {
+  const { etiquetaEvento } = useActiveCenter()
   return (
     <Panel title="Leyenda" bodyClassName="p-3">
       <div className="flex flex-wrap gap-x-3 gap-y-2">
         {TIPO_ORDER.map((t) => (
           <span key={t} className="flex items-center gap-1.5 text-[11px] text-white/60">
             <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: TIPO_META[t].hex }} />
-            {TIPO_META[t].label}
+            {etiquetaEvento(t, TIPO_META[t].label)}
           </span>
         ))}
       </div>
@@ -521,6 +528,10 @@ function EventModal({
   onSave: (payload: EventPayload, id?: number) => Promise<void>
   onDelete: (id: number) => Promise<void>
 }) {
+  const { etiquetaEvento, tipoCentro } = useActiveCenter()
+  // Rival y localía son conceptos de plantel: a un atleta individual no se
+  // le piden (compite, no juega contra un rival).
+  const esAtletaIndividual = tipoCentro === 'atletas'
   const [form, setForm] = useState<EventForm>(() => toForm(event, defaultDay))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -600,7 +611,7 @@ function EventModal({
                   }
                 >
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TIPO_META[t].hex }} />
-                  {TIPO_META[t].label}
+                  {etiquetaEvento(t, TIPO_META[t].label)}
                 </button>
               ))}
             </div>
@@ -635,7 +646,7 @@ function EventModal({
             )}
           </div>
 
-          {form.tipo === 'partido' && (
+          {form.tipo === 'partido' && !esAtletaIndividual && (
             <div className="grid grid-cols-2 gap-3">
               <L label="Rival">
                 <input value={form.rival} onChange={(e) => set('rival', e.target.value)} placeholder="Equipo rival" className={INPUT} />

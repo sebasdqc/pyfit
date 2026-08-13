@@ -38,6 +38,8 @@ export interface ActiveCenterValue {
   // mismo que el enlace del sidebar que te trajo hasta acá, o la navegación
   // deja de tener sentido apenas el perfil renombra algo.
   etiquetaNav: (navId: string, porDefecto: string) => string
+  // Igual que etiquetaNav pero para los tipos de evento del calendario.
+  etiquetaEvento: (tipo: string, porDefecto: string) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -147,15 +149,19 @@ export function ActiveCenterProvider({ children }: { children: ReactNode }) {
     (navId: string, porDefecto: string) => perfil.navEtiquetas[navId] ?? porDefecto,
     [perfil],
   )
+  const etiquetaEvento = useCallback(
+    (tipo: string, porDefecto: string) => perfil.eventos[tipo] ?? porDefecto,
+    [perfil],
+  )
 
   const value = useMemo<ActiveCenterValue>(
     () => ({
       centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
-      tipoCentro, perfil, termino, etiquetaNav,
+      tipoCentro, perfil, termino, etiquetaNav, etiquetaEvento,
     }),
     [
       centers, activeCenterId, activeCenter, setActiveCenterId, canSeeModule,
-      tipoCentro, perfil, termino, etiquetaNav,
+      tipoCentro, perfil, termino, etiquetaNav, etiquetaEvento,
     ],
   )
 

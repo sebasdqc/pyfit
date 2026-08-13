@@ -34,6 +34,10 @@ export interface PerfilCentro {
   navOculta: string[]
   navEtiquetas: Record<string, string>
   terminos: Record<TerminoId, string>
+  // Tipos de evento del calendario que este público nombra distinto. Clave =
+  // id del tipo (ver lib/calendar.ts TIPO_META); vacío = se usa la etiqueta
+  // por defecto. Solo la etiqueta cambia: el dato guardado es el mismo.
+  eventos: Record<string, string>
 }
 
 export const PERFILES: Record<TipoCentro, PerfilCentro> = {
@@ -51,6 +55,7 @@ export const PERFILES: Record<TipoCentro, PerfilCentro> = {
       asistencia: 'Convocatoria',
       informe: 'Informe técnico',
     },
+    eventos: {},
   },
 
   // ── Escuelas y academias deportivas ───────────────────────────────────────
@@ -72,6 +77,8 @@ export const PERFILES: Record<TipoCentro, PerfilCentro> = {
       asistencia: 'Presentismo',
       informe: 'Boletín',
     },
+    // Una academia sí juega partidos: no hay nada que renombrar acá.
+    eventos: {},
   },
 
   // ── Atletas individuales con su propio cuerpo técnico ─────────────────────
@@ -93,6 +100,9 @@ export const PERFILES: Record<TipoCentro, PerfilCentro> = {
       asistencia: 'Asistencia',
       informe: 'Informe',
     },
+    // Un atleta individual no juega contra un rival: compite. Los campos de
+    // rival y localía tampoco se le piden (ver CalendarioPage).
+    eventos: { partido: 'Competencia' },
   },
 }
 

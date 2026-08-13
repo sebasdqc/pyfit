@@ -12,14 +12,16 @@
 
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Icon, type IconName } from '@/components/Icon'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { useActiveCenter } from '@/centers/useActiveCenter'
 import { useSquad } from '@/centers/useSquad'
-import { SEM, acwrTone, type Tone } from '@/lib/tone'
+import { Badge, Legend, MetricCard, ModuleCard, type Metric } from '@/components/ui/dashboard'
+import { MODULO_BADGE, MODULO_ROUTE, alertaPrincipal, type ModuloAlerta } from '@/lib/alertas'
+import { AthleteDashboardPage } from './AthleteDashboardPage'
+import { SEM, acwrTone } from '@/lib/tone'
 import { ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
 
 // ── Microciclo (muestra — pertenece a Planificación, no al roster) ───────────
@@ -30,32 +32,17 @@ const MICROCICLO: { d: string; load: number; match?: boolean }[] = [
 ]
 
 // ── Alertas derivadas del roster ─────────────────────────────────────────────
-type Modulo = 'lesion' | 'acwr' | 'psico'
-const MODULO_BADGE: Record<Modulo, { label: string; tone: Tone }> = {
-  lesion: { label: 'Lesión', tone: 'danger' },
-  acwr: { label: 'ACWR', tone: 'warn' },
-  psico: { label: 'Psicológico', tone: 'accent' },
-}
-// A qué módulo lleva cada alerta al hacer clic.
-const MODULO_ROUTE: Record<Modulo, string> = {
-  lesion: '/lesiones',
-  acwr: '/rendimiento',
-  psico: '/psicologico',
-}
+// Los umbrales viven en lib/alertas.ts: los comparte con el dashboard de
+// atleta individual, para que el mismo dato no dispare avisos distintos según
+// desde qué pantalla se mire.
+interface Alerta { id: string; n: string; foto?: string; desc: string; mod: ModuloAlerta; sev: number }
 
-interface Alerta { id: string; n: string; foto?: string; desc: string; mod: Modulo; sev: number }
-
-// Una alerta (la más relevante) por atleta, ordenadas por severidad. Mismas
-// reglas que el resto del panel: ACWR ≥1.50 / baja / bienestar bajo / ACWR ≥1.30.
+// Una alerta (la más relevante) por atleta, ordenadas por severidad.
 function buildAlertas(squad: Athlete[]): Alerta[] {
   const out: Alerta[] = []
   for (const a of squad) {
-    const base = { id: a.id, n: a.nombre, foto: a.foto }
-    if (a.acwr >= 1.5) out.push({ ...base, desc: `ACWR ${a.acwr.toFixed(2)} — carga aguda elevada`, mod: 'acwr', sev: 100 + a.acwr })
-    else if (a.estado === 'baja') out.push({ ...base, desc: 'No disponible — seguimiento de lesión', mod: 'lesion', sev: 90 })
-    else if (a.bienestar < 6) out.push({ ...base, desc: `Bienestar ${a.bienestar.toFixed(1)}/10 — ánimo/sueño bajos`, mod: 'psico', sev: 70 + (6 - a.bienestar) })
-    else if (a.acwr >= 1.3) out.push({ ...base, desc: `ACWR ${a.acwr.toFixed(2)} — monitorizar progresión`, mod: 'acwr', sev: 50 + a.acwr })
-    else if (a.estado === 'duda') out.push({ ...base, desc: 'En duda para el próximo partido', mod: 'lesion', sev: 40 })
+    const principal = alertaPrincipal(a)
+    if (principal) out.push({ id: a.id, n: a.nombre, foto: a.foto, ...principal })
   }
   return out.sort((x, y) => y.sev - x.sev).slice(0, 6)
 }
@@ -67,17 +54,19 @@ function shortName(n: string): string {
   return p.length > 1 ? p[p.length - 1] : (p[0] ?? '—')
 }
 
-interface Metric {
-  label: string
-  value: string
-  unit?: string
-  icon: IconName
-  tone: Tone
-  foot?: string
+// ── Página ─────────────────────────────────────────────────────────────────
+// Un centro de un solo atleta necesita OTRA portada, no la misma con etiquetas
+// cambiadas: el dashboard de equipo está hecho de agregados (media de
+// bienestar, semáforo de plantilla, "atletas a vigilar") y sobre una persona
+// una media es su propio valor. El switch vive en su propio componente porque
+// devolver antes de los hooks de TeamDashboard rompería las reglas de hooks.
+export function DashboardPage() {
+  const { tipoCentro } = useActiveCenter()
+  if (tipoCentro === 'atletas') return <AthleteDashboardPage />
+  return <TeamDashboard />
 }
 
-// ── Página ─────────────────────────────────────────────────────────────────
-export function DashboardPage() {
+function TeamDashboard() {
   const { activeCenter, termino } = useActiveCenter()
   const { athletes: squad, loading, error, isRealRoster } = useSquad()
   const navigate = useNavigate()
@@ -235,64 +224,5 @@ export function DashboardPage() {
         </>
       )}
     </div>
-  )
-}
-
-// ── Componentes ────────────────────────────────────────────────────────────
-function MetricCard({ m, className = '' }: { m: Metric; className?: string }) {
-  const sem = SEM[m.tone]
-  return (
-    <div className={`rounded-2xl border border-perf-border bg-perf-surface p-4 ${className}`}>
-      <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${sem.soft} ${sem.text}`}>
-        <Icon name={m.icon} size={17} />
-      </span>
-      <p className="mt-3 text-xs text-white/45">{m.label}</p>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-2xl font-bold tracking-tight text-white">{m.value}</span>
-        {m.unit && <span className="text-xs text-white/40">{m.unit}</span>}
-      </div>
-      {m.foot && <p className="mt-1.5 text-xs text-white/45">{m.foot}</p>}
-    </div>
-  )
-}
-
-function ModuleCard({ icon, title, metric, detail, onClick }: { icon: IconName; title: string; metric: string; detail: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-perf-border bg-perf-surface p-5 text-left transition-colors hover:bg-perf-surface2"
-    >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-        <Icon name={icon} size={22} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-lg font-bold text-white">{metric}</span>
-        </p>
-        <p className="truncate text-xs text-white/45">{detail}</p>
-      </div>
-      <Icon name="chevronRight" size={18} className="shrink-0 text-white/30 transition-colors group-hover:text-white/60" />
-    </button>
-  )
-}
-
-function Badge({ tone, label }: { tone: Tone; label: string }) {
-  const sem = SEM[tone]
-  return (
-    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${sem.soft} ${sem.text}`}>
-      {label}
-    </span>
-  )
-}
-
-function Legend({ tone, label, count }: { tone: Tone; label: string; count?: number }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`h-2 w-2 rounded-full ${SEM[tone].bg}`} />
-      {label}
-      {count !== undefined && <span className="font-semibold text-white/80">{count}</span>}
-    </span>
   )
 }
