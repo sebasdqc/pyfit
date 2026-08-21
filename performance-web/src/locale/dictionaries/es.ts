@@ -103,9 +103,9 @@ const es = {
     },
     engine: {
       eyebrow: 'Motor de cálculo',
-      title: 'Ninguna fórmula es una caja negra — probalas vos mismo',
+      title: 'Ninguna fórmula es una caja negra — pruébalas tú mismo',
       subtitle:
-        'Elegí una calculadora, cargá tus números y mirá el resultado — las mismas fórmulas que usa el panel real para cada atleta.',
+        'Elige una calculadora, carga tus números y mira el resultado — las mismas fórmulas que usa el panel real para cada atleta.',
       calculators: {
         acwr: 'ACWR',
         srpe: 'Carga de sesión (sRPE)',
@@ -252,8 +252,8 @@ const es = {
         },
       },
     },
-    ctaTitle: '¿No sabés qué plan es el tuyo?',
-    ctaBody: 'Contanos cómo está armado tu cuerpo técnico y te ayudamos a elegir.',
+    ctaTitle: '¿No sabes qué plan es el tuyo?',
+    ctaBody: 'Cuéntanos cómo está armado tu cuerpo técnico y te ayudamos a elegir.',
   },
   audience: {
     solicitarAcceso: 'Solicitar acceso',

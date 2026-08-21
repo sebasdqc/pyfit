@@ -164,7 +164,7 @@ export function AsesorPage() {
           </div>
         ) : plans.length === 0 ? (
           <BotBubble>
-            Todavía no hay ningún macrociclo creado en este centro. Andá a{' '}
+            Todavía no hay ningún macrociclo creado en este centro. Ve a{' '}
             <Link to="/planificacion" className="font-medium text-accentLight hover:text-accent">Planificación</Link>{' '}
             para crear el primero — en cuanto tenga semanas con fechas, voy a poder analizarlas acá.
           </BotBubble>

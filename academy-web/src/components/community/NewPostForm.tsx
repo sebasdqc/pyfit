@@ -83,7 +83,7 @@ export function NewPostForm({
           required
           rows={5}
           className="input !h-auto py-3"
-          placeholder="Contá con más detalle qué querés preguntar"
+          placeholder="Cuenta con más detalle qué quieres preguntar"
         />
       </label>
 

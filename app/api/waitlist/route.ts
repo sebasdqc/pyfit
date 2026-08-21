@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const verdict = await consumeRateLimit(sql, { bucket: `waitlist:ip:${clientIp(req)}`, ...WAITLIST_RULE })
     if (!verdict.allowed) {
       return Response.json(
-        { error: 'Demasiados intentos desde esta conexión. Probá de nuevo en un rato.' },
+        { error: 'Demasiados intentos desde esta conexión. Prueba de nuevo en un rato.' },
         { status: 429, headers: { 'Retry-After': String(verdict.retryAfterS) } },
       )
     }

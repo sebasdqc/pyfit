@@ -157,3 +157,13 @@ actual.
 6. Al agregar un header HTTP custom en cualquier frontend, sumarlo en el
    mismo commit a `CORS_ALLOW_HEADERS` en `backend/pyfit/settings.py` — ya
    causó fallas de conexión "fantasma" dos veces (ver `backend/CLAUDE.md`).
+7. **Voz del copy: español neutro, tratamiento de "tú" — NUNCA voseo
+   argentino** (nada de "vos", "tenés", "sabés", "elegí", "andá", etc.), en
+   ningún producto ni superficie: landing de la app (`app/`), landing y UI
+   de Zyfit Performance, landing y UI de Zyfit Academy. Esto ya se había
+   confirmado explícitamente para la landing de `app/` (ver `PRODUCT.md`,
+   2026-07-24) pero se coló voseo por default del modelo en varios textos
+   de Academy y Performance (diccionarios `es.ts`, componentes de
+   comunidad/soporte, un error de rate-limit de la API) — corregido
+   2026-08-21. Si aparece voseo nuevo, es una regresión del modelo, no una
+   instrucción del proyecto: corregirlo a "tú" sin preguntar.

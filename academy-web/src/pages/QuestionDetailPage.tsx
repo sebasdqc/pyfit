@@ -132,7 +132,7 @@ export function QuestionDetailPage() {
 
       {sinRespuestas && post.curso && (
         <div className="za-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-ink-soft">¿Nadie respondió todavía? Probá con el tutor IA del curso.</p>
+          <p className="text-sm text-ink-soft">¿Nadie respondió todavía? Prueba con el tutor IA del curso.</p>
           <Link
             to={`/cursos/${post.curso}`}
             className="flex w-fit shrink-0 items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/20"

@@ -46,7 +46,7 @@ export function ReplyItem({
           type="button"
           onClick={onVote}
           disabled={isOwn}
-          title={isOwn ? 'No podés votar tu propia respuesta' : 'Votar como útil'}
+          title={isOwn ? 'No puedes votar tu propia respuesta' : 'Votar como útil'}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-ink-soft transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Icon name="thumbUp" size={14} />

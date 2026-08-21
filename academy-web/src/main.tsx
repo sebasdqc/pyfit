@@ -48,7 +48,7 @@ function PantallaDeError() {
           Algo se rompió de nuestro lado
         </h1>
         <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink-muted, #6b7280)', marginBottom: '1.5rem' }}>
-          Ya nos llegó el aviso. Volvé a cargar la página; si sigue pasando, escribinos desde Soporte.
+          Ya nos llegó el aviso. Vuelve a cargar la página; si sigue pasando, escríbenos desde Soporte.
         </p>
         <button
           type="button"
