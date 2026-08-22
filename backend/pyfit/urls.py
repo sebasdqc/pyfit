@@ -140,11 +140,15 @@ urlpatterns = [
     # Runs (Free Run + future Planned Run)
     path('api/runs/', include('runs.urls')),
 
+    # Rides (Free Ride + Planned Ride). Sin RidePoint (tracking GPS) — las
+    # métricas agregadas las reporta el cliente al completar, no se derivan
+    # de una traza. Espejo de api/runs/.
+    path('api/rides/', include('cycling.urls')),
+
     # Running inteligente (motor de generación de rutinas de carrera)
     path('api/running/', include('ai_running.urls')),
 
-    # Ciclismo inteligente (motor de generación de sesiones de bici). Sin CRUD
-    # de RideSession todavía (eso es tracking GPS, fuera de esta fase) — solo
+    # Ciclismo inteligente (motor de generación de sesiones de bici) —
     # perfil/baseline/plan/generación, espejo de api/running/.
     path('api/cycling/', include('ai_cycling.urls')),
 
