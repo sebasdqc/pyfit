@@ -15,6 +15,7 @@ import { getRestPhrase } from '../../../lib/restPhrases'
 import { apiGet, apiPost } from '../../../lib/api'
 import { fetchMiCoach, fetchAssignedToday } from '../../../lib/coachApi'
 import { runModeForEntorno } from '../../../lib/runMode'
+import { tieneMotorInteligente as discTieneMotor } from '../../../lib/disciplinas'
 import { getShareUserLabel } from '../../../lib/shareCard'
 import WorkoutShareCard from '../../../components/WorkoutShareCard'
 
@@ -99,6 +100,7 @@ const DISCIPLINA_OPTS = [
 type TipoDisciplina = typeof DISCIPLINA_OPTS[number]['id']
 type DisciplinaCat = typeof DISCIPLINA_OPTS[number]['cat']
 
+
 // Layout circular de d4_sub: cada opción es un círculo posicionado por trigonometría
 // sobre un anillo (radio = 34% del contenedor cuadrado), no un listado vertical.
 const CIRCLE_ITEM_SIZE = 72
@@ -180,6 +182,10 @@ type ScreenId = typeof SCREENS[number]
 const SEQ_RUNNING:     ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado', 'd5']
 // Trail es SIEMPRE en exteriores → se omite la pantalla de entorno (d5).
 const SEQ_RUNNING_TRAIL: ScreenId[] = ['d4', 'd4_sub', 'd4b_running', 'd_estado']
+// Cardio SIN motor propio todavía (ciclismo, natación, caminata): mismo flujo de
+// entorno + tracking, pero se omite d4b_running porque no hay nada "inteligente"
+// que elegir — ver DISCIPLINAS_MOTOR_INTELIGENTE.
+const SEQ_CARDIO_LIBRE: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd5']
 const SEQ_MUSCULACION: ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5', 'd5b_grupo']
 const SEQ_OTHER:       ScreenId[] = ['d4', 'd4_sub', 'd_estado', 'd3', 'd5']
 // Descanso: solo categoría → estado de hoy (sin disciplina, tiempo, ubicación ni grupo).
@@ -701,13 +707,20 @@ export default function CheckinScreen() {
   // Free Run se marca como trail (card "TRAIL RUNNING" + DESNIVEL).
   const isTrail = disciplina === 'trail'
 
+  // ¿Esta disciplina tiene motor inteligente real? Solo entonces se ofrece elegir
+  // entre tracking libre y sesión generada (pantalla d4b_running). Ver lib/disciplinas.ts.
+  const tieneMotorInteligente = discTieneMotor(disciplina)
+
   // Progress bar: pick the right sequence based on the disciplina's path
   const interactiveSeq: ScreenId[] = useMemo(() => {
     if (isDescanso)                 return SEQ_DESCANSO
-    if (discPath === 'running')     return isTrail ? SEQ_RUNNING_TRAIL : SEQ_RUNNING
+    if (discPath === 'running')     {
+      if (!tieneMotorInteligente)   return SEQ_CARDIO_LIBRE
+      return isTrail ? SEQ_RUNNING_TRAIL : SEQ_RUNNING
+    }
     if (discPath === 'musculacion') return SEQ_MUSCULACION
     return SEQ_OTHER
-  }, [discPath, isDescanso, isTrail])
+  }, [discPath, isDescanso, isTrail, tieneMotorInteligente])
 
   const nInteractive = interactiveSeq.length
   const interactiveStep = interactiveSeq.indexOf(currentScreen as ScreenId) + 1 // 0 if not in seq
@@ -828,7 +841,9 @@ export default function CheckinScreen() {
     ]).start(() => {
       const path = DISCIPLINA_OPTS.find(d => d.id === id)?.path ?? null
       setPendingDisc(null)
-      setScreenIndex(path === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
+      // Solo las disciplinas con motor propio abren la elección libre/inteligente.
+      const abreModo = path === 'running' && discTieneMotor(id)
+      setScreenIndex(abreModo ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
     })
   }
 
@@ -838,7 +853,9 @@ export default function CheckinScreen() {
     // GPS; el resto a la subdisciplina.
     if (currentScreen === 'd_estado') {
       if (isDescanso) { setScreenIndex(SCREENS.indexOf('d4')); return }
-      setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d4_sub'))
+      setScreenIndex(discPath === 'running' && tieneMotorInteligente
+        ? SCREENS.indexOf('d4b_running')
+        : SCREENS.indexOf('d4_sub'))
       return
     }
     setScreenIndex(i => i - 1)
@@ -851,7 +868,9 @@ export default function CheckinScreen() {
 
     // d4_sub → cardio abre el paso GPS; el resto va al estado combinado
     if (currentScreen === 'd4_sub') {
-      setScreenIndex(discPath === 'running' ? SCREENS.indexOf('d4b_running') : SCREENS.indexOf('d_estado'))
+      setScreenIndex(discPath === 'running' && tieneMotorInteligente
+        ? SCREENS.indexOf('d4b_running')
+        : SCREENS.indexOf('d_estado'))
       return
     }
 
@@ -1631,7 +1650,10 @@ export default function CheckinScreen() {
         {/* CTA */}
         <View style={[styles.resumenFooter, { paddingBottom: Math.max(insets.bottom, 28) }]}>
           {discPath === 'running' ? (
-            runningMode === 'inteligente' ? (
+            // `tieneMotorInteligente` es redundante hoy (sin motor, d4b_running nunca
+            // se muestra y runningMode queda null), pero deja la garantía explícita:
+            // ninguna disciplina sin motor puede caer en /(app)/running.
+            runningMode === 'inteligente' && tieneMotorInteligente ? (
               <TouchableOpacity
                 style={styles.nextWrap}
                 onPress={() => router.replace(`/(app)/running?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`)}
