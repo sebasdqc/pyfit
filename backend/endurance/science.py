@@ -35,11 +35,15 @@ DELOAD_CADENCE_WEEKS = (3, 4)
 MIN_EASY_DAYS_BY_NIVEL = {'principiante': 2, 'intermedio': 1, 'avanzado': 1}
 
 
-def apply_ten_percent_rule(prev, propuesto) -> float:
+def apply_ten_percent_rule(prev, propuesto, cap: float = TEN_PERCENT) -> float:
     """No subir el volumen semanal (en la unidad que sea: km, horas) más de
-    un 10% sobre la semana previa."""
+    `cap` sobre la semana previa — 10% por defecto (Nielsen 2012, específico
+    de running: el mecanismo de riesgo es la carga de impacto óseo/tendinoso
+    acumulada). Un deporte SIN esa carga de impacto (ciclismo) puede pasar su
+    propio `cap` más permisivo — no hay evidencia de que el 10% de running
+    aplique igual sin el mecanismo de lesión que lo justifica."""
     if prev and float(prev) > 0:
-        return round(min(float(propuesto), float(prev) * TEN_PERCENT), 1)
+        return round(min(float(propuesto), float(prev) * cap), 1)
     return round(float(propuesto), 1)
 
 
@@ -49,12 +53,14 @@ def polarized_distribution(total) -> dict:
     return {'easy_km': easy, 'quality_km': round(float(total) - easy, 1)}
 
 
-def volume_target(*, base_volume, fase: str, prev_realized=None) -> float:
+def volume_target(*, base_volume, fase: str, prev_realized=None,
+                  cap: float = TEN_PERCENT) -> float:
     """Volumen objetivo de la semana: `base_volume` (ya resuelto por el motor
     del deporte — p. ej. km base × factor de nivel, u horas × factor de
-    nivel) × multiplicador de fase; acotado por la regla del 10% en fases de
-    carga; reducción directa (sin cap, porque bajar no es progresar) en
-    taper/recovery.
+    nivel) × multiplicador de fase; acotado por `cap` en fases de carga
+    (10% por defecto — ver `apply_ten_percent_rule` para por qué un deporte
+    sin impacto puede pasar uno mayor); reducción directa (sin cap, porque
+    bajar no es progresar) en taper/recovery.
 
     `prev_realized` = lo REALIZADO la semana previa, no lo planificado —
     quien llama decide esa distinción (ver `_realized_km_last_week` en
@@ -63,7 +69,42 @@ def volume_target(*, base_volume, fase: str, prev_realized=None) -> float:
     if fase in ('taper', 'recovery'):
         ref = float(prev_realized) if prev_realized else float(base_volume)
         return round(ref * PHASE_VOLUME_FACTOR[fase], 1)
-    return apply_ten_percent_rule(prev_realized, objetivo)
+    return apply_ten_percent_rule(prev_realized, objetivo, cap=cap)
+
+
+def karvonen_zones(fc_max, fc_reposo, pct_table: dict) -> dict:
+    """{zona: (bpm_lo, bpm_hi)} por Karvonen (% de la FC de reserva = FCmáx −
+    FCreposo). Requiere FCmáx > FCreposo.
+
+    `pct_table` = {zona: (pct_lo, pct_hi)} — cada deporte define su propia
+    tabla de zonas (running: 5 zonas por ritmo; ciclismo: 7 por potencia,
+    modelo Coggan); la fórmula de reserva cardíaca es la misma para
+    cualquiera — es fisiología, no depende de correr ni pedalear.
+
+    Referencia: Karvonen, Kentala & Mustala 1957.
+    """
+    reserva = float(fc_max) - float(fc_reposo)
+    return {z: (round(fc_reposo + lo * reserva), round(fc_reposo + hi * reserva))
+            for z, (lo, hi) in pct_table.items()}
+
+
+def fc_max_tanaka(edad: int) -> int:
+    """FCmáx estimada por edad (Tanaka, Monahan & Seals 2001: 208 − 0.7·edad).
+    Más precisa que la vieja 220−edad. Válida para cualquier deporte."""
+    return round(208 - 0.7 * float(edad))
+
+
+def pick_reps(rango: tuple, nivel: str, fase: str = None) -> int:
+    """Elige nº de repeticiones dentro de (mín, máx) según nivel y fase de
+    periodización. Mismo criterio para cualquier deporte con sesiones de
+    intervalos: principiante = mínimo, avanzado (o fases de carga build/peak)
+    = máximo, el resto = punto medio."""
+    lo, hi = rango
+    if nivel == 'principiante':
+        return lo
+    if nivel == 'avanzado' or fase in ('build', 'peak'):
+        return hi
+    return round((lo + hi) / 2)
 
 
 def pick_quality_days(days: list, anchor_day: int, n: int, min_gap: int = 2) -> set:

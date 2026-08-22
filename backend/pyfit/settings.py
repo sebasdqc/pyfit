@@ -69,6 +69,10 @@ INSTALLED_APPS = [
     # (running, y ciclismo cuando exista) — sin modelos propios, la usan
     # ai_running y en el futuro el motor de ciclismo. Ver endurance/science.py.
     'endurance',
+    # Motor de ciclismo — Fase 2 del plan running+ciclismo: SOLO ciencia
+    # (training_science_cycling.py), espejo del F0 de ai_running. Sin modelos
+    # todavía (eso es Fase 3) ni endpoints. Ancla FC+RPE, potencia opcional.
+    'ai_cycling',
     'devices',
     # Vertical B2B "Zyfit Performance" (panel web para centros deportivos).
     'performance',

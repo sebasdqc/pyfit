@@ -14,6 +14,10 @@ class TenPercentRuleTests(SimpleTestCase):
         self.assertEqual(sc.apply_ten_percent_rule(0, 30), 30.0)
         self.assertEqual(sc.apply_ten_percent_rule(None, 30), 30.0)
 
+    def test_cap_configurable_para_deportes_sin_impacto(self):
+        # 15% en vez de 10% — el caso de ciclismo (sin carga de impacto óseo).
+        self.assertEqual(sc.apply_ten_percent_rule(40, 60, cap=1.15), 46.0)
+
 
 class PolarizedDistributionTests(SimpleTestCase):
     def test_80_20(self):
@@ -39,6 +43,45 @@ class VolumeTargetTests(SimpleTestCase):
     def test_fase_desconocida_no_aplica_factor(self):
         v = sc.volume_target(base_volume=30, fase='inventada', prev_realized=None)
         self.assertEqual(v, 30.0)
+
+    def test_cap_configurable_se_propaga(self):
+        v = sc.volume_target(base_volume=50, fase='build', prev_realized=40, cap=1.15)
+        self.assertEqual(v, 46.0)   # 40 × 1.15, no 44 (10% default)
+
+
+class PickRepsTests(SimpleTestCase):
+    def test_principiante_toma_el_minimo(self):
+        self.assertEqual(sc.pick_reps((4, 8), 'principiante'), 4)
+
+    def test_avanzado_toma_el_maximo(self):
+        self.assertEqual(sc.pick_reps((4, 8), 'avanzado'), 8)
+
+    def test_fase_de_carga_toma_el_maximo_aunque_sea_intermedio(self):
+        self.assertEqual(sc.pick_reps((4, 8), 'intermedio', fase='build'), 8)
+        self.assertEqual(sc.pick_reps((4, 8), 'intermedio', fase='peak'), 8)
+
+    def test_intermedio_sin_fase_de_carga_toma_el_punto_medio(self):
+        self.assertEqual(sc.pick_reps((4, 8), 'intermedio', fase='base'), 6)
+
+
+class KarvonenZonesTests(SimpleTestCase):
+    def test_reserva_cardiaca_por_tabla_de_2_zonas(self):
+        # FCmáx 190, FCreposo 50 → reserva 140. Z1 50-60% → 50+70=120 / 50+84=134
+        zonas = sc.karvonen_zones(190, 50, {'Z1': (0.50, 0.60)})
+        self.assertEqual(zonas['Z1'], (120, 134))
+
+    def test_tabla_distinta_por_deporte_no_se_mezcla(self):
+        # Misma FC, tablas de running (5 zonas) y ciclismo (7) dan resultados
+        # propios — la función no asume ninguna tabla fija.
+        running_z1 = sc.karvonen_zones(190, 50, {'Z1': (0.50, 0.60)})
+        ciclismo_z1 = sc.karvonen_zones(190, 50, {'Z1': (0.0, 0.68)})
+        self.assertNotEqual(running_z1['Z1'], ciclismo_z1['Z1'])
+
+
+class FcMaxTanakaTests(SimpleTestCase):
+    def test_formula_208_menos_07_por_edad(self):
+        self.assertEqual(sc.fc_max_tanaka(30), round(208 - 0.7 * 30))
+        self.assertEqual(sc.fc_max_tanaka(50), round(208 - 0.7 * 50))
 
 
 class PickQualityDaysTests(SimpleTestCase):

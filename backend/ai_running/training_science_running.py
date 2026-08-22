@@ -41,6 +41,7 @@ from endurance import science as _sc  # noqa: F401  (reexport útil)
 from endurance.science import (  # noqa: F401  (reexport útil)
     POLARIZED_SPLIT, TEN_PERCENT, PHASE_VOLUME_FACTOR, DELOAD_CADENCE_WEEKS,
     MIN_EASY_DAYS_BY_NIVEL, apply_ten_percent_rule, polarized_distribution,
+    fc_max_tanaka,
 )
 
 
@@ -114,15 +115,9 @@ def pace_zones(threshold_pace_s_km: int) -> dict:
 
 
 def hr_zones(fc_max: int, fc_reposo: int) -> dict:
-    """{zona: (bpm_lo, bpm_hi)} por Karvonen. Requiere FCmáx > FCreposo."""
-    reserva = float(fc_max) - float(fc_reposo)
-    return {z: (round(fc_reposo + lo * reserva), round(fc_reposo + hi * reserva))
-            for z, (lo, hi) in HR_ZONE_PCT.items()}
-
-
-def fc_max_tanaka(edad: int) -> int:
-    """FCmáx estimada por edad (Tanaka 2001: 208 − 0.7·edad). Más precisa que 220−edad."""
-    return round(208 - 0.7 * float(edad))
+    """{zona: (bpm_lo, bpm_hi)} por Karvonen (fórmula sport-agnostic en
+    endurance.science.karvonen_zones; acá solo la tabla de zonas de running)."""
+    return _sc.karvonen_zones(fc_max, fc_reposo, HR_ZONE_PCT)
 
 
 def derive_zones(*, threshold_pace_s_km=None, fc_max=None, fc_reposo=None,
@@ -287,13 +282,8 @@ COOLDOWN_MIN = 10
 
 
 def _pick_reps(rango: tuple, nivel: str, fase: str = None) -> int:
-    """Elige nº de repeticiones dentro de (mín, máx) según nivel y fase."""
-    lo, hi = rango
-    if nivel == 'principiante':
-        return lo
-    if nivel == 'avanzado' or fase in ('build', 'peak'):
-        return hi
-    return round((lo + hi) / 2)
+    """Elige nº de repeticiones — ver endurance.science.pick_reps (sport-agnostic)."""
+    return _sc.pick_reps(rango, nivel, fase)
 
 
 def _zone_pace_mid(zona: str, zonas: dict, nivel: str) -> float:
