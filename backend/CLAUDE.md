@@ -103,7 +103,8 @@ curl -s -i -X OPTIONS https://sea-lion-app-a2j4f.ondigitalocean.app/api/<product
 | `ai_workout` | APP | Generación de rutinas de fuerza — **el prompt más crítico del producto**, ver `mobile/CLAUDE.md` |
 | `runs` | APP | RunSession/RunPoint/RunnerProfile/RunningPlan (modelos de running) |
 | `ai_running` | APP | Generación adaptativa de sesiones de running |
-| `endurance` | APP (compartida running + futuro ciclismo) | SIN modelos ni URLs — lógica pura de resistencia (readiness, ACWR/sRPE, periodización, espaciado de calidad, polarización 80/20). `ai_running` delega ahí; el motor de ciclismo la reusará |
+| `endurance` | APP (compartida running + ciclismo) | SIN modelos ni URLs — lógica pura de resistencia (readiness, ACWR/sRPE, periodización, espaciado de calidad, polarización 80/20, Karvonen/Tanaka, pick_reps). `ai_running` y `ai_cycling` delegan ahí |
+| `ai_cycling` | APP (motor de ciclismo, en construcción) | Solo ciencia F0 (`training_science_cycling.py`) — SIN modelos ni endpoints todavía (Fase 3 pendiente). Ancla FC+RPE, potencia opcional; volumen en horas, no km |
 | `devices` | APP | Integraciones Garmin/Apple Health |
 | `performance` | Zyfit Performance | SportsCenter/CenterMembership/CenterAthlete, 5 módulos, calculators/, Simulador, Calendario, Planificación+IA equipo |
 | `academy` | Zyfit Academy | School/Course/Module/Lesson/Quiz, Enrollment/Certificate, streak, badges, comunidad, onboarding anónimo, submissions |
