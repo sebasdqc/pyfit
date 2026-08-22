@@ -105,7 +105,7 @@ curl -s -i -X OPTIONS https://sea-lion-app-a2j4f.ondigitalocean.app/api/<product
 | `ai_running` | APP | Generación adaptativa de sesiones de running |
 | `endurance` | APP (compartida running + ciclismo) | SIN modelos ni URLs — lógica pura de resistencia (readiness, ACWR/sRPE, periodización, espaciado de calidad, polarización 80/20, Karvonen/Tanaka, pick_reps). `ai_running` y `ai_cycling` delegan ahí |
 | `ai_cycling` | APP (motor de ciclismo) | Ciencia (`training_science_cycling.py`, ancla FC+RPE, potencia opcional, volumen en horas) + motor adaptativo (`adaptive_engine_cycling.py`, delega en `endurance/`) + endpoints `/api/cycling/*` (perfil/baseline/plan/generate). Generable desde el backend; SIN pantallas móviles ni CRUD de RideSession (tracking) |
-| `cycling` | APP (modelos de ciclismo) | CyclistProfile/RidePlan/PlannedRide/RideSession (espejo de `runs`). SIN RidePoint (tracking GPS) — es trabajo de mobile nativo, no de backend |
+| `cycling` | APP (modelos + CRUD de ciclismo) | CyclistProfile/RidePlan/PlannedRide/RideSession + CRUD `/api/rides/` (espejo de `runs`). SIN RidePoint (tracking GPS) — métricas agregadas las reporta el cliente al completar, no se derivan de una traza |
 | `devices` | APP | Integraciones Garmin/Apple Health |
 | `performance` | Zyfit Performance | SportsCenter/CenterMembership/CenterAthlete, 5 módulos, calculators/, Simulador, Calendario, Planificación+IA equipo |
 | `academy` | Zyfit Academy | School/Course/Module/Lesson/Quiz, Enrollment/Certificate, streak, badges, comunidad, onboarding anónimo, submissions |
