@@ -1216,7 +1216,32 @@ export default function CheckinScreen() {
   }
 
   function renderD4b() {
-    const opts = [
+    // Esta pantalla se comparte entre TODAS las disciplinas con motor propio
+    // (ver DISCIPLINAS_MOTOR_INTELIGENTE en lib/disciplinas.ts) — hoy running/
+    // trail (mismo copy de siempre) y ciclismo (copy propio: sin GPS en v1,
+    // "pedalear" no "correr"). Si se suma un deporte nuevo acá, este es el
+    // lugar a tocar — no asumir que "no ciclismo" significa "running".
+    const esCiclismo = disciplina === 'ciclismo'
+    const opts = esCiclismo ? [
+      {
+        id: 'libre' as const,
+        label: 'Entrenamiento libre',
+        sub: 'Sal a pedalear y registra tu salida',
+        color: '#ff8c42',
+        bg: 'rgba(255,140,66,0.1)',
+        border: 'rgba(255,140,66,0.45)',
+        tag: null,
+      },
+      {
+        id: 'inteligente' as const,
+        label: 'Entrenamiento inteligente',
+        sub: 'Plan de ciclismo adaptativo con IA',
+        color: '#4f8cff',
+        bg: 'rgba(79,140,255,0.1)',
+        border: 'rgba(79,140,255,0.45)',
+        tag: null,
+      },
+    ] : [
       {
         id: 'libre' as const,
         label: 'Entrenamiento libre',
@@ -1239,8 +1264,8 @@ export default function CheckinScreen() {
 
     return (
       <>
-        <Text style={styles.eyebrow}>{t('checkin_running_eyebrow')}</Text>
-        <Text style={styles.question}>{t('checkin_running_question')}</Text>
+        <Text style={styles.eyebrow}>{t(esCiclismo ? 'checkin_cycling_eyebrow' : 'checkin_running_eyebrow')}</Text>
+        <Text style={styles.question}>{t(esCiclismo ? 'checkin_cycling_question' : 'checkin_running_question')}</Text>
         <Text style={styles.questionSub}>{t('checkin_running_sub')}</Text>
 
         <View style={styles.optionsWrap}>
@@ -1493,6 +1518,7 @@ export default function CheckinScreen() {
 
   function renderD6() {
     const isRunning = discPath === 'running'
+    const isCiclismo = disciplina === 'ciclismo'
     if (error) {
       return (
         <View style={styles.procesandoWrap}>
@@ -1516,7 +1542,10 @@ export default function CheckinScreen() {
           {isDescanso ? 'Guardando tu\ndía de descanso...' : isRunning ? 'Guardando tu\ncheck-in...' : 'Construyendo tu\nentrenamiento de hoy...'}
         </Text>
         <Text style={styles.procesandoSub}>
-          {isDescanso ? 'Registrando tu recuperación' : isRunning ? 'Preparando tu sesión de running' : 'Calibrando tu sesión...'}
+          {isDescanso ? 'Registrando tu recuperación'
+            : isCiclismo ? 'Preparando tu sesión de ciclismo'
+            : isRunning ? 'Preparando tu sesión de running'
+            : 'Calibrando tu sesión...'}
         </Text>
       </View>
     )
@@ -1652,11 +1681,17 @@ export default function CheckinScreen() {
           {discPath === 'running' ? (
             // `tieneMotorInteligente` es redundante hoy (sin motor, d4b_running nunca
             // se muestra y runningMode queda null), pero deja la garantía explícita:
-            // ninguna disciplina sin motor puede caer en /(app)/running.
+            // ninguna disciplina sin motor puede caer en /(app)/running o /(app)/cycling.
+            // Ciclismo NO manda modo/trail — son parámetros de GPS/entorno de running,
+            // sin sentido en las pantallas de bici (sin GPS en v1, ver ridesApi.ts).
             runningMode === 'inteligente' && tieneMotorInteligente ? (
               <TouchableOpacity
                 style={styles.nextWrap}
-                onPress={() => router.replace(`/(app)/running?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`)}
+                onPress={() => router.replace(
+                  disciplina === 'ciclismo'
+                    ? '/(app)/cycling'
+                    : `/(app)/running?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`
+                )}
                 activeOpacity={0.88}>
                 <LinearGradient
                   colors={['#4f8cff', '#2563ff']}
@@ -1668,13 +1703,19 @@ export default function CheckinScreen() {
             ) : (
               <TouchableOpacity
                 style={styles.nextWrap}
-                onPress={() => router.replace(`/(app)/run?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`)}
+                onPress={() => router.replace(
+                  disciplina === 'ciclismo'
+                    ? '/(app)/ride'
+                    : `/(app)/run?modo=${runModeForEntorno(entornoCardio)}${isTrail ? '&trail=1' : ''}`
+                )}
                 activeOpacity={0.88}>
                 <LinearGradient
                   colors={['#ff8c42', '#e06c28']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={styles.nextBtn}>
-                  <Text style={styles.nextBtnText}>{t('checkin_btn_run')}</Text>
+                  <Text style={styles.nextBtnText}>
+                    {t(disciplina === 'ciclismo' ? 'checkin_btn_ride' : 'checkin_btn_run')}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             )

@@ -43,6 +43,30 @@ const SEG_STRIDES = [
     pace_objetivo: [270, 297], fc_objetivo: [176, 190], rpe: 9 },
 ]
 
+// Ciclismo (threshold, con FTP) — copiado de la salida REAL de
+// ai_cycling.training_science_cycling.prescribe_ride_session (FTHR 165,
+// FTP 250, nivel intermedio, fase build). Sin pace_objetivo — ciclismo no
+// tiene ritmo, tiene potencia. Sin trabajo por distancia — todo en tiempo.
+const SEG_CYCLING_THRESHOLD = [
+  { fase: 'calentamiento', repeticiones: 1, trabajo: { min: 15 }, recuperacion: null,
+    fc_objetivo: [134, 147], potencia_objetivo: [140, 188], rpe: 4 },
+  { fase: 'principal', repeticiones: 4, trabajo: { min: 10 },
+    recuperacion: { min: 5, tipo: 'pedaleo suave' },
+    fc_objetivo: [162, 170], potencia_objetivo: [238, 262], rpe: 8 },
+  { fase: 'enfriamiento', repeticiones: 1, trabajo: { min: 10 }, recuperacion: null,
+    fc_objetivo: [0, 134], potencia_objetivo: [0, 138], rpe: 3 },
+]
+
+// Mismo threshold, pero SIN FTP (el caso más común: sin potenciómetro) —
+// derive_zones deja zonas.power = None y el motor no manda potencia_objetivo.
+const SEG_CYCLING_SIN_POTENCIA = [
+  { fase: 'calentamiento', repeticiones: 1, trabajo: { min: 15 }, recuperacion: null,
+    fc_objetivo: [134, 147], potencia_objetivo: null, rpe: 4 },
+  { fase: 'principal', repeticiones: 4, trabajo: { min: 10 },
+    recuperacion: { min: 5, tipo: 'pedaleo suave' },
+    fc_objetivo: [162, 170], potencia_objetivo: null, rpe: 8 },
+]
+
 describe('expandirPasos — intervalos VO2máx (5 × 1 km)', () => {
   const pasos = expandirPasos(SEG_VO2)
 
@@ -159,6 +183,44 @@ describe('expandirPasos — sesiones continuas y casos borde', () => {
       { fase: 'principal', repeticiones: 1, trabajo: {}, recuperacion: null, rpe: 5 },
     ])
     expect(pasos[0].manual).toBe(true)
+  })
+})
+
+describe('expandirPasos — ciclismo (mismo módulo, sin cambios propios)', () => {
+  it('lee potencia_objetivo, que running nunca manda', () => {
+    const pasos = expandirPasos(SEG_CYCLING_THRESHOLD)
+    const principal = pasos.find(p => p.tipo === 'trabajo')!
+    expect(principal.objetivo.powerRange).toEqual([238, 262])
+    expect(principal.objetivo.hrRange).toEqual([162, 170])
+    expect(principal.objetivo.paceRange).toBeNull()   // ciclismo no tiene ritmo
+  })
+
+  it('todo en tiempo — nunca hay metaDistanciaM en un segmento de ciclismo', () => {
+    const pasos = expandirPasos(SEG_CYCLING_THRESHOLD)
+    for (const p of pasos) {
+      expect(p.metaDistanciaM).toBeNull()
+      if (!p.manual) expect(p.metaDuracionS).toBeGreaterThan(0)
+    }
+  })
+
+  it('4 repeticiones → 4 trabajos y 3 recuperaciones de "pedaleo suave"', () => {
+    const pasos = expandirPasos(SEG_CYCLING_THRESHOLD)
+    const trabajos = pasos.filter(p => p.tipo === 'trabajo')
+    const recus = pasos.filter(p => p.tipo === 'recuperacion')
+    expect(trabajos).toHaveLength(4)
+    expect(recus).toHaveLength(3)
+    expect(recus[0].etiqueta).toBe('Recuperación · pedaleo suave')
+  })
+
+  it('sin potenciómetro (el caso más común): powerRange null, hrRange presente', () => {
+    // Los pasos de RECUPERACIÓN nunca traen objetivo (rpe=0, todo null) — se
+    // filtran acá; lo que importa es que los de TRABAJO tengan FC sin potencia.
+    const pasos = expandirPasos(SEG_CYCLING_SIN_POTENCIA).filter(p => p.tipo !== 'recuperacion')
+    for (const p of pasos) {
+      expect(p.objetivo.powerRange).toBeNull()
+      expect(p.objetivo.hrRange).not.toBeNull()
+      expect(p.objetivo.rpe).toBeGreaterThan(0)
+    }
   })
 })
 

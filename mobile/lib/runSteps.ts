@@ -20,14 +20,21 @@
  *
  * Lógica pura, sin React/RN, testeable sin montar la pantalla ni el GPS —
  * mismo criterio que runMode.ts y disciplinas.ts.
+ *
+ * ⚠️ `potencia_objetivo` (ai_cycling) se sumó DESPUÉS de escribir este módulo
+ * (Fase 4, antes de que existiera el motor de ciclismo) — por eso está acá
+ * junto a pace/FC en vez de en un módulo aparte. running nunca manda esa
+ * clave, así que `powerRange` siempre da null ahí; no cambia nada para running.
  */
 
 export type PasoTipo = 'calentamiento' | 'trabajo' | 'recuperacion' | 'enfriamiento'
 
-/** Objetivos del paso. `rpe` SIEMPRE existe; ritmo y FC pueden faltar (cold-start). */
+/** Objetivos del paso. `rpe` SIEMPRE existe; el resto puede faltar según el
+ * deporte y los datos disponibles (cold-start, sin potenciómetro, etc.). */
 export interface PasoObjetivo {
-  paceRange: [number, number] | null   // s/km
-  hrRange: [number, number] | null     // ppm
+  paceRange: [number, number] | null    // s/km (running)
+  hrRange: [number, number] | null      // ppm (running y ciclismo — ancla de ciclismo)
+  powerRange: [number, number] | null   // W (ciclismo, solo si hay FTP/potenciómetro)
   rpe: number
 }
 
@@ -58,6 +65,7 @@ interface SegmentoCrudo {
   recuperacion?: (Record<string, unknown> & { tipo?: string }) | null
   pace_objetivo?: unknown
   fc_objetivo?: unknown
+  potencia_objetivo?: unknown
   rpe?: number
 }
 
@@ -115,6 +123,7 @@ export function expandirPasos(segmentos: unknown): Paso[] {
     const objetivo: PasoObjetivo = {
       paceRange: rango(seg.pace_objetivo),
       hrRange: rango(seg.fc_objetivo),
+      powerRange: rango(seg.potencia_objetivo),
       rpe: typeof seg.rpe === 'number' ? seg.rpe : 0,
     }
     const tipo = tipoDeFase(seg.fase)
@@ -148,7 +157,7 @@ export function expandirPasos(segmentos: unknown): Paso[] {
           metaDuracionS: recMeta.duracionS,
           // Sin duración declarada (p. ej. "bajar trotando") → lo cierra el usuario.
           manual: recMeta.distanciaM === null && recMeta.duracionS === null,
-          objetivo: { paceRange: null, hrRange: null, rpe: 0 },
+          objetivo: { paceRange: null, hrRange: null, powerRange: null, rpe: 0 },
           repIndex: null,
           repTotal: null,
         })

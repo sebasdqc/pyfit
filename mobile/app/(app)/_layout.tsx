@@ -173,7 +173,7 @@ const ROUTE_LABEL_KEY: Record<string, string> = {
 
 // Rutas donde NO se muestra la barra inferior: durante el entrenamiento y su
 // feedback, para evitar fugas a otras pantallas a mitad de la sesión.
-const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'generate/index', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]', 'running/index']
+const HIDDEN_TABBAR_ROUTES = ['ejecutar/[id]', 'feedback/[id]', 'generate/index', 'run/index', 'run/resumen/[id]', 'run/feedback/[id]', 'running/index', 'ride/index', 'ride/feedback/[id]', 'cycling/index']
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
@@ -374,6 +374,10 @@ export default function AppLayout() {
       <Tabs.Screen name="run/feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
       {/* Running inteligente (sesión generada) — fuera del tab bar */}
       <Tabs.Screen name="running/index" options={{ href: null, tabBarLabel: '' }} />
+      {/* Free Ride + ciclismo inteligente — sin GPS en v1, ver mobile/lib/ridesApi.ts */}
+      <Tabs.Screen name="ride/index" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="ride/feedback/[id]" options={{ href: null, tabBarLabel: '' }} />
+      <Tabs.Screen name="cycling/index" options={{ href: null, tabBarLabel: '' }} />
       {/* Admin (modo staff) */}
       <Tabs.Screen name="admin/index" options={{ href: null, tabBarLabel: '' }} />
       </Tabs>

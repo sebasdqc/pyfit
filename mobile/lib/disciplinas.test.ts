@@ -8,11 +8,12 @@ describe('tieneMotorInteligente (disciplina → puede ofrecer sesión generada)'
     expect(tieneMotorInteligente('trail')).toBe(true)
   })
 
-  // El bug que este módulo cierra: estas 3 disciplinas comparten path 'running'
-  // en el check-in y por eso recibían una sesión de CARRERA, con objetivos en
-  // min/km derivados de threshold_pace_s_km, que no significan nada fuera de correr.
-  it('ciclismo → false (el ritmo en bici depende de viento y pendiente)', () => {
-    expect(tieneMotorInteligente('ciclismo')).toBe(false)
+  // El bug que este módulo cierra sigue vigente para estas 2: comparten path
+  // 'running' en el check-in y por eso recibirían una sesión de CARRERA, con
+  // objetivos en min/km derivados de threshold_pace_s_km, que no significan
+  // nada fuera de correr — sin motor propio, siguen yendo solo a libre.
+  it('ciclismo → true (motor propio desde 2026-08-22: ai_cycling, ancla FC/potencia)', () => {
+    expect(tieneMotorInteligente('ciclismo')).toBe(true)
   })
   it('natacion → false (no hay motor de natación)', () => {
     expect(tieneMotorInteligente('natacion')).toBe(false)
@@ -47,9 +48,11 @@ describe('DISCIPLINAS_MOTOR_INTELIGENTE (contrato del catálogo)', () => {
       expect(tieneMotorInteligente(d)).toBe(true)
     }
   })
-  it('ciclismo NO está en el catálogo hasta que exista su motor propio', () => {
-    // Este test debe fallar (y actualizarse a propósito) el día que se sume el
-    // motor de ciclismo con anclaje en FC/potencia — no antes.
-    expect(DISCIPLINAS_MOTOR_INTELIGENTE).not.toContain('ciclismo')
+  it('ciclismo SÍ está en el catálogo — tiene motor propio (ai_cycling)', () => {
+    expect(DISCIPLINAS_MOTOR_INTELIGENTE).toContain('ciclismo')
+  })
+  it('natacion/caminata NO están — sin motor propio, no inventar uno', () => {
+    expect(DISCIPLINAS_MOTOR_INTELIGENTE).not.toContain('natacion')
+    expect(DISCIPLINAS_MOTOR_INTELIGENTE).not.toContain('caminata')
   })
 })
