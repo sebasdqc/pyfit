@@ -227,9 +227,9 @@ En el check-in, **todas** las disciplinas CARDIOVASCULAR comparten
 — pero eso hacía que Ciclismo, Natación y Caminata ofrecieran "Entrenamiento
 inteligente" y recibieran una sesión de CARRERA. Corregido 2026-08-21:
 `mobile/lib/disciplinas.ts` es el **único** lugar que decide qué disciplina
-tiene motor propio (hoy `running` y `trail`). Cuando exista el motor de
-ciclismo —con anclaje en FC/potencia, no en ritmo— se suma ahí, no en la
-pantalla.
+tiene motor propio (hoy `running`, `trail` y, desde 2026-08-22, `ciclismo`
+— ver sección propia más abajo). Natación y caminata siguen sin motor: no
+inventar uno solo por simetría.
 
 ### Ejecución guiada (`mobile/lib/runSteps.ts`)
 
@@ -249,6 +249,53 @@ Dos reglas que hay que respetar si se toca:
 Los tests de `lib/runSteps.test.ts` usan fixtures copiados de la salida real
 de `prescribe_run_session` — si el backend cambia de forma, fallan a
 propósito.
+
+## Ciclismo — motor propio, SIN GPS en v1
+
+Espejo de Running, con las mismas piezas del lado backend (`backend/cycling/`,
+`backend/ai_cycling/`, `backend/endurance/` compartida) y del lado mobile:
+`mobile/lib/cyclingApi.ts` (motor, `/api/cycling/*`) + `mobile/lib/ridesApi.ts`
+(CRUD, `/api/rides/*`) — mismo split que `runningApi.ts`/`runsApi.ts`.
+Pantallas: `app/(app)/cycling/` (generación) y `app/(app)/ride/` (ejecución +
+`ride/feedback/[id]`).
+
+**Decisión de producto (2026-08-22): sin tracking GPS por ahora.**
+`app/(app)/ride/index.tsx` es SOLO timer + guía por pasos — nada de mapa,
+distancia ni ritmo en vivo. Las métricas agregadas (potencia/cadencia/FC/
+distancia) las reporta el cliente al completar la `RideSession` (ver
+`backend/cycling/serializers.py`), no se derivan de una traza — no hay
+`RidePoint` (equivalente a `RunPoint`) todavía. Si se pide tracking en vivo,
+es una feature de mobile nativo aparte, no una extensión silenciosa de esta
+pantalla.
+
+**Ancla FC + RPE, potencia OPCIONAL** (no FTP): la mayoría de quien pedalea
+no tiene potenciómetro. `potencia_objetivo` es `null` en ese caso — el caso
+ESPERADO, nunca lo trates como un estado degradado.
+
+### ⚠️ Acoplamiento que no era obvio al planear esto
+
+Activar `ciclismo` en `DISCIPLINAS_MOTOR_INTELIGENTE` **sin** las pantallas
+`cycling/`/`ride/` ya construidas habría hecho que el botón "Entrenamiento
+inteligente" del check-in (que navegaba SIEMPRE a `/(app)/running`,
+sin mirar la disciplina) le diera a un ciclista una sesión de CARRERA con
+ritmos en min/km — el mismo bug que cerró la Fase 0, por una puerta
+distinta. Las tres piezas van juntas: pantallas propias + generalizar el
+copy de `checkin/index.tsx` (`esCiclismo`/`isCiclismo` en `renderD4b`/
+`renderD6`, routing del CTA final) + la entrada en `disciplinas.ts`. Si se
+suma otro deporte cardio con motor propio en el futuro, repetir el trío
+completo — sumar solo a `disciplinas.ts` reintroduce el bug.
+
+**Gap conocido, no bloqueante:** el paso "¿exteriores o interiores?" (d5 del
+check-in) se sigue mostrando para ciclismo porque comparte secuencia de
+pantallas con running, pero ninguna pantalla de ciclismo lee esa respuesta
+(no hay distinción indoor/outdoor sin GPS). No corrompe nada — solo pregunta
+algo que hoy no se usa.
+
+`mobile/lib/runSteps.ts` (Fase 4 de running) se escribió **antes** de que
+existiera el motor de ciclismo — no sabía leer `potencia_objetivo`. Se le
+sumó `powerRange` a `PasoObjetivo` (retrocompatible: running nunca manda esa
+clave, sigue dando `null` ahí) — si se toca `runSteps.ts`, tener presente que
+ahora lo usan los dos deportes.
 
 ## Gamificación (fuerza — Academy tiene la suya, NO mezclar)
 
