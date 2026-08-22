@@ -32,6 +32,8 @@ import { Colors, readableTextOn } from '../../../lib/colors'
 import { useReduceMotion } from '../../../lib/useReduceMotion'
 import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
 import { completePlannedRun, getRunSessionToday } from '../../../lib/runningApi'
+import { expandirPasos, progresoPaso, pasoCompletado, type Paso } from '../../../lib/runSteps'
+import * as Haptics from 'expo-haptics'
 import { useKeepAwake } from 'expo-keep-awake'
 
 // Clave de consentimiento de la disclosure prominente de ubicación en segundo
@@ -111,6 +113,30 @@ function mmss(s: number): string {
   return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`
 }
 
+// Color del bloque en curso — sigue el código de fases del producto
+// (calentamiento naranja, principal azul, vuelta a la calma verde).
+function pasoColor(paso: Paso, colors: Colors): string {
+  if (paso.tipo === 'calentamiento') return colors.orange
+  if (paso.tipo === 'enfriamiento') return colors.green
+  if (paso.tipo === 'recuperacion') return colors.inkMuted
+  return colors.accent
+}
+
+// Cuánto falta para cerrar el bloque, en su propia unidad (metros o tiempo).
+function restanteTexto(paso: Paso, distanciaEnPasoM: number, tiempoEnPasoS: number): string {
+  if (paso.metaDistanciaM) {
+    const falta = Math.max(0, paso.metaDistanciaM - distanciaEnPasoM)
+    return falta >= 1000
+      ? `Faltan ${(falta / 1000).toFixed(2)} km de ${(paso.metaDistanciaM / 1000).toFixed(2)} km`
+      : `Faltan ${Math.round(falta)} m de ${Math.round(paso.metaDistanciaM)} m`
+  }
+  if (paso.metaDuracionS) {
+    const falta = Math.max(0, paso.metaDuracionS - tiempoEnPasoS)
+    return `Faltan ${mmss(falta)} de ${mmss(paso.metaDuracionS)}`
+  }
+  return ''
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function RunScreen() {
@@ -143,11 +169,13 @@ export default function RunScreen() {
   // durante la sesión; se envía al crear la RunSession para el card "TRAIL RUNNING".
   const [isTrail] = useState(() => isTrailFromParam(trail))
   // Guía de la sesión inteligente (presente solo si venimos de una PlannedRunSession).
-  const [guidance, setGuidance] = useState<{
-    paceRange: [number, number] | null
-    hrRange: [number, number] | null
-    rpe: number; zona: string; titulo: string
-  } | null>(null)
+  // `pasos` es la sesión desplegada en bloques ejecutables (ver lib/runSteps.ts);
+  // `pasoIdx` es el bloque en curso y `pasoOffset` guarda distancia/tiempo
+  // acumulados al empezarlo, para medir el avance DENTRO del paso.
+  const [pasos, setPasos] = useState<Paso[]>([])
+  const [pasoIdx, setPasoIdx] = useState(0)
+  const [pasoOffset, setPasoOffset] = useState({ distanciaM: 0, tiempoS: 0 })
+  const [zonaSesion, setZonaSesion] = useState('')
   const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const [userWeightKg, setUserWeightKg] = useState(70)
@@ -180,27 +208,43 @@ export default function RunScreen() {
       .catch(() => {})
   }, [])
 
-  // Cargar la guía de la sesión inteligente (objetivo de ritmo/FC/RPE del bloque
-  // principal). Solo si llegamos con ?planned=<id>. El Free Run normal no la usa.
+  // Cargar la sesión inteligente y desplegarla en pasos ejecutables. Solo si
+  // llegamos con ?planned=<id>. El Free Run normal no la usa.
   useEffect(() => {
     if (!planned) return
     getRunSessionToday()
       .then((d: any) => {
-        const segs: any[] = d?.estructura_fases?.segmentos || []
-        if (!segs.length) return
-        const principal = segs.filter(x => x.fase === 'principal')
-        const pool = principal.length ? principal : segs
-        const target = pool.reduce((a, b) => ((b.rpe || 0) > (a.rpe || 0) ? b : a))
-        setGuidance({
-          paceRange: Array.isArray(target.pace_objetivo) ? target.pace_objetivo : null,
-          hrRange: Array.isArray(target.fc_objetivo) ? target.fc_objetivo : null,
-          rpe: target.rpe || 0,
-          zona: d?.respuesta_ia?.zona_principal || d?.zona_principal || '',
-          titulo: d?.respuesta_ia?.titulo || '',
-        })
+        const expandidos = expandirPasos(d?.estructura_fases?.segmentos)
+        if (!expandidos.length) return
+        setPasos(expandidos)
+        setZonaSesion(d?.respuesta_ia?.zona_principal || d?.zona_principal || '')
       })
       .catch(() => {})
   }, [planned])
+
+  // ── Guía paso a paso ───────────────────────────────────────────────────────
+  const pasoActual: Paso | null = pasos[pasoIdx] ?? null
+  const pasoSiguiente: Paso | null = pasos[pasoIdx + 1] ?? null
+  const sesionGuiadaCompleta = pasos.length > 0 && pasoIdx >= pasos.length
+  // Avance DENTRO del paso en curso = total acumulado − lo que ya había al empezarlo.
+  const distanciaEnPaso = Math.max(0, totalDistance - pasoOffset.distanciaM)
+  const tiempoEnPaso = Math.max(0, elapsedSeconds - pasoOffset.tiempoS)
+  const progresoActual = pasoActual ? progresoPaso(pasoActual, distanciaEnPaso, tiempoEnPaso) : 0
+
+  // Cierra el paso en curso y arranca el siguiente desde los totales de AHORA.
+  // Sirve tanto al avance automático como al botón de los pasos manuales.
+  const avanzarPaso = React.useCallback(() => {
+    setPasoOffset({ distanciaM: totalDistance, tiempoS: elapsedSeconds })
+    setPasoIdx(i => i + 1)
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+  }, [totalDistance, elapsedSeconds])
+
+  // Avance automático al cumplirse la meta del paso. Solo con la carrera en
+  // marcha: en pausa el reloj no corre y no debe consumirse el bloque.
+  useEffect(() => {
+    if (status !== 'active' || !pasoActual) return
+    if (pasoCompletado(pasoActual, distanciaEnPaso, tiempoEnPaso)) avanzarPaso()
+  }, [status, pasoActual, distanciaEnPaso, tiempoEnPaso, avanzarPaso])
 
   // GPS fetch — skip entirely for indoor mode
   useEffect(() => {
@@ -388,10 +432,10 @@ export default function RunScreen() {
   const polylineCoords = coordinates.map(c => ({ latitude: c.latitude, longitude: c.longitude }))
   const caloriesEstimated = estimateCalories(elapsedSeconds, userWeightKg, isIndoor)
 
-  // Estado de ritmo en vivo vs el objetivo de la sesión inteligente (solo exterior).
+  // Estado de ritmo en vivo vs el objetivo DEL PASO EN CURSO (solo exterior).
   let paceStatus: { label: string; color: string } | null = null
-  if (inProgress && !isIndoor && guidance?.paceRange && currentPace > 0) {
-    const [lo, hi] = guidance.paceRange
+  if (inProgress && !isIndoor && pasoActual?.objetivo.paceRange && currentPace > 0) {
+    const [lo, hi] = pasoActual.objetivo.paceRange
     if (currentPace < lo) paceStatus = { label: 'MUY RÁPIDO', color: colors.red }
     else if (currentPace > hi) paceStatus = { label: 'MUY LENTO', color: colors.orange }
     else paceStatus = { label: 'EN ZONA', color: colors.green }
@@ -487,35 +531,25 @@ export default function RunScreen() {
           </View>
         )}
 
-        {/* Guía de la sesión inteligente: objetivo de ritmo/FC/RPE + estado en vivo. */}
-        {guidance && (
+        {/* Guía paso a paso de la sesión inteligente: bloque en curso, su avance,
+            los objetivos de ESE bloque y qué viene después. */}
+        {pasoActual && (
           <View style={{
             borderWidth: 1, borderColor: colors.borderDefault, backgroundColor: colors.glassBg,
             borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12,
           }}>
-            <Text style={{
-              fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1,
-              color: colors.accent, marginBottom: 6,
-            }}>
-              OBJETIVO{guidance.zona ? `  ·  ${guidance.zona}` : ''}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              {!isIndoor && guidance.paceRange && (
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: colors.inkPrimary }}>
-                  {mmss(guidance.paceRange[0])}–{mmss(guidance.paceRange[1])} /km
-                </Text>
-              )}
-              {guidance.hrRange && (
-                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.red }}>
-                  {guidance.hrRange[0]}–{guidance.hrRange[1]} ppm
-                </Text>
-              )}
-              <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.inkSecondary }}>
-                RPE {guidance.rpe}
+            {/* Cabecera: nombre del bloque + estado de ritmo en vivo. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{
+                fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1,
+                color: pasoColor(pasoActual, colors), flex: 1,
+              }} numberOfLines={1}>
+                {pasoActual.etiqueta.toUpperCase()}
+                {zonaSesion && pasoActual.tipo === 'trabajo' ? `  ·  ${zonaSesion}` : ''}
               </Text>
               {paceStatus && (
                 <View style={{
-                  marginLeft: 'auto', borderWidth: 1, borderColor: paceStatus.color,
+                  borderWidth: 1, borderColor: paceStatus.color,
                   borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
                 }}>
                   <Text style={{ fontFamily: 'JetBrainsMono-Medium', fontSize: 11, color: paceStatus.color }}>
@@ -524,6 +558,85 @@ export default function RunScreen() {
                 </View>
               )}
             </View>
+
+            {/* Avance del bloque: barra + cuánto falta. Los pasos manuales no
+                tienen contra qué medirse, así que muestran su botón de cierre. */}
+            {pasoActual.manual ? (
+              <TouchableOpacity
+                onPress={avanzarPaso}
+                activeOpacity={0.85}
+                style={{
+                  borderWidth: 1, borderColor: colors.borderBright, borderRadius: 10,
+                  paddingVertical: 9, alignItems: 'center', marginBottom: 8,
+                }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: colors.accent }}>
+                  Listo — siguiente bloque
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ marginBottom: 8 }}>
+                <View style={{
+                  height: 6, borderRadius: 999, overflow: 'hidden',
+                  backgroundColor: colors.borderDefault, marginBottom: 5,
+                }}>
+                  <View style={{
+                    width: `${Math.round(progresoActual * 100)}%`, height: '100%',
+                    borderRadius: 999, backgroundColor: pasoColor(pasoActual, colors),
+                  }} />
+                </View>
+                <Text style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 11, color: colors.inkMuted }}>
+                  {restanteTexto(pasoActual, distanciaEnPaso, tiempoEnPaso)}
+                </Text>
+              </View>
+            )}
+
+            {/* Objetivos del bloque. RPE siempre; ritmo y FC solo si el motor
+                pudo derivarlos (en cold-start no hay umbral todavía). */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              {!isIndoor && pasoActual.objetivo.paceRange && (
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: colors.inkPrimary }}>
+                  {mmss(pasoActual.objetivo.paceRange[0])}–{mmss(pasoActual.objetivo.paceRange[1])} /km
+                </Text>
+              )}
+              {pasoActual.objetivo.hrRange && (
+                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.red }}>
+                  {pasoActual.objetivo.hrRange[0]}–{pasoActual.objetivo.hrRange[1]} ppm
+                </Text>
+              )}
+              {pasoActual.objetivo.rpe > 0 && (
+                <Text style={{ fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: colors.inkSecondary }}>
+                  RPE {pasoActual.objetivo.rpe}
+                </Text>
+              )}
+            </View>
+
+            {pasoSiguiente && (
+              <Text style={{
+                fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.inkMuted, marginTop: 8,
+              }} numberOfLines={1}>
+                Luego: {pasoSiguiente.etiqueta}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Sesión guiada terminada: la carrera puede seguir, pero ya no hay
+            bloques que prescribir. */}
+        {sesionGuiadaCompleta && (
+          <View style={{
+            borderWidth: 1, borderColor: colors.green, backgroundColor: colors.glassBg,
+            borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12,
+          }}>
+            <Text style={{
+              fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1, color: colors.green,
+            }}>
+              SESIÓN COMPLETADA
+            </Text>
+            <Text style={{
+              fontFamily: 'SpaceGrotesk-Regular', fontSize: 12, color: colors.inkMuted, marginTop: 5,
+            }}>
+              Cumpliste todos los bloques. Puedes seguir a ritmo libre o finalizar.
+            </Text>
           </View>
         )}
 
