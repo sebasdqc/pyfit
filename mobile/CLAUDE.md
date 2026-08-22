@@ -216,6 +216,40 @@ mismo patrón "el motor fija los números (ritmo/duración/zona), el LLM solo
 redacta" que usa `ai_workout` y que luego copió el generador de equipo de
 Zyfit Performance. Pantallas: `mobile/app/(app)/run/` y `running/`.
 
+### ⚠️ El motor de running SOLO sirve para correr
+
+`ai_running` ancla **toda** la intensidad en `threshold_pace_s_km` y devuelve
+objetivos en min/km. Eso no significa nada sobre una bici (viento y pendiente
+destruyen el ritmo) ni en una piscina.
+
+En el check-in, **todas** las disciplinas CARDIOVASCULAR comparten
+`path: 'running'` porque el FLUJO es el mismo (elegir entorno → tracking GPS)
+— pero eso hacía que Ciclismo, Natación y Caminata ofrecieran "Entrenamiento
+inteligente" y recibieran una sesión de CARRERA. Corregido 2026-08-21:
+`mobile/lib/disciplinas.ts` es el **único** lugar que decide qué disciplina
+tiene motor propio (hoy `running` y `trail`). Cuando exista el motor de
+ciclismo —con anclaje en FC/potencia, no en ritmo— se suma ahí, no en la
+pantalla.
+
+### Ejecución guiada (`mobile/lib/runSteps.ts`)
+
+`estructura_fases.segmentos` describe la sesión de forma comprimida: un
+segmento puede valer 5 repeticiones. `expandirPasos()` lo despliega en la
+secuencia de bloques ejecutables que el tracker recorre uno a uno.
+
+Dos reglas que hay que respetar si se toca:
+1. **La recuperación va solo ENTRE repeticiones**, nunca tras la última —
+   es la misma regla con la que el backend calcula la duración total
+   (`n_rec = max(0, reps - 1)`). Contarlo distinto hace que la sesión guiada
+   dure más que la prescrita.
+2. **Hay bloques sin duración declarada** (la recuperación de cuestas es
+   `{tipo: 'bajar trotando'}`, sin `min` ni `seg`). Se modelan como `manual`
+   y los cierra el usuario; no inventarles un tiempo.
+
+Los tests de `lib/runSteps.test.ts` usan fixtures copiados de la salida real
+de `prescribe_run_session` — si el backend cambia de forma, fallan a
+propósito.
+
 ## Gamificación (fuerza — Academy tiene la suya, NO mezclar)
 
 Niveles por total de sesiones: Rookie (0-4), Atleta (5-14), Élite (15-29),
