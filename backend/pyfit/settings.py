@@ -65,6 +65,10 @@ INSTALLED_APPS = [
     # Motor de running inteligente (espejo de ai_workout): ciencia + adaptación +
     # generación. Sus modelos de datos viven en la app 'runs'.
     'ai_running',
+    # Ciencia/readiness/periodización SPORT-AGNOSTIC de deportes de resistencia
+    # (running, y ciclismo cuando exista) — sin modelos propios, la usan
+    # ai_running y en el futuro el motor de ciclismo. Ver endurance/science.py.
+    'endurance',
     'devices',
     # Vertical B2B "Zyfit Performance" (panel web para centros deportivos).
     'performance',

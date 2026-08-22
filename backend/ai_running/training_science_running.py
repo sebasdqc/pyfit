@@ -32,6 +32,17 @@ Referencias:
 # NIVEL_FACTOR se comparte con el motor de fuerza (mismo escalado por nivel).
 from ai_workout.training_science import NIVEL_FACTOR, _norm  # noqa: F401  (reexport útil)
 
+# Reglas de progresión/periodización SPORT-AGNOSTIC (polarización 80/20, regla
+# del 10%, multiplicador de volumen por fase, espaciado de días de calidad) —
+# viven en endurance.science para compartirse con el motor de ciclismo cuando
+# exista. Re-exportadas acá con sus nombres de siempre para no romper a nadie
+# que ya hace `ts.POLARIZED_SPLIT`, `ts.apply_ten_percent_rule`, etc.
+from endurance import science as _sc  # noqa: F401  (reexport útil)
+from endurance.science import (  # noqa: F401  (reexport útil)
+    POLARIZED_SPLIT, TEN_PERCENT, PHASE_VOLUME_FACTOR, DELOAD_CADENCE_WEEKS,
+    MIN_EASY_DAYS_BY_NIVEL, apply_ten_percent_rule, polarized_distribution,
+)
+
 
 # ─── Catálogo de tipos de sesión de carrera ───────────────────────────────────
 #
@@ -213,44 +224,24 @@ def weekly_volume_baseline(runs_last_28d) -> float | None:
 # ─── Volumen semanal, progresión y polarización ───────────────────────────────
 #
 # km/semana base para nivel INTERMEDIO por meta; se escala por NIVEL_FACTOR.
+# La FÓRMULA de progresión (fase × 10% cap) es SPORT-AGNOSTIC y vive en
+# endurance.science.volume_target — acá solo quedan los números propios de
+# correr (esta tabla en km) y el nombre con el que el resto del motor de
+# running ya la conoce.
 
 VOLUME_BASE_KM = {
     '5k': 25, '10k': 35, '21k': 50, '42k': 65,
     'fitness_general': 30, 'otra': 30,
 }
 
-# Multiplicador de volumen por fase de periodización.
-PHASE_VOLUME_FACTOR = {
-    'base': 1.0, 'build': 1.10, 'peak': 1.0, 'taper': 0.55, 'recovery': 0.60,
-}
-
-POLARIZED_SPLIT = (0.80, 0.20)   # 80% fácil (Z1-Z2) / 20% calidad (Z3-Z5)
-TEN_PERCENT = 1.10               # tope de incremento semanal de volumen
-
-
-def apply_ten_percent_rule(prev_km, propuesto_km) -> float:
-    """No subir el volumen semanal más de un 10% sobre la semana previa."""
-    if prev_km and float(prev_km) > 0:
-        return round(min(float(propuesto_km), float(prev_km) * TEN_PERCENT), 1)
-    return round(float(propuesto_km), 1)
-
-
-def polarized_distribution(total_km) -> dict:
-    """Reparte el volumen semanal en 80% fácil / 20% calidad."""
-    easy = round(float(total_km) * POLARIZED_SPLIT[0], 1)
-    return {'easy_km': easy, 'quality_km': round(float(total_km) - easy, 1)}
-
 
 def weekly_volume_target(*, meta_tipo: str, nivel: str, fase: str,
                          prev_km=None) -> float:
-    """km objetivo de la semana: base por meta×nivel×fase, acotado por la regla del
-    10% en fases de carga; reducción directa en taper/recovery."""
+    """km objetivo de la semana: base por meta×nivel, fórmula de fase/10% en
+    endurance.science.volume_target (misma que usará ciclismo con su propia
+    base en horas)."""
     base = VOLUME_BASE_KM.get(meta_tipo, 30) * NIVEL_FACTOR.get(nivel, 1.0)
-    objetivo = base * PHASE_VOLUME_FACTOR.get(fase, 1.0)
-    if fase in ('taper', 'recovery'):
-        ref = float(prev_km) if prev_km else base
-        return round(ref * PHASE_VOLUME_FACTOR[fase], 1)
-    return apply_ten_percent_rule(prev_km, objetivo)
+    return _sc.volume_target(base_volume=base, fase=fase, prev_realized=prev_km)
 
 
 # ─── Reglas duras de seguridad (texto para el prompt + constantes de runtime) ──
@@ -264,9 +255,6 @@ RUN_SAFETY_RULES = {
     'long_run_cap':               'El long run no supera ~30-35% del volumen semanal.',
 }
 
-# Días easy mínimos entre dos sesiones de calidad, por nivel.
-MIN_EASY_DAYS_BY_NIVEL = {'principiante': 2, 'intermedio': 1, 'avanzado': 1}
-DELOAD_CADENCE_WEEKS = (3, 4)
 LONG_RUN_MAX_PCT = 0.35
 
 

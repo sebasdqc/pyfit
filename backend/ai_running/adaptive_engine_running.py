@@ -5,7 +5,6 @@ re-adaptación de la sesión del día según la readiness. Reutiliza el motor de
 ACWR del vertical Performance (performance.carga_service.athlete_carga), construyendo
 la serie de sRPE diaria desde las RunSession del propio corredor.
 """
-import math
 from datetime import timedelta
 
 from django.utils import timezone
@@ -13,6 +12,7 @@ from django.utils import timezone
 from runs.models import RunSession, PlannedRunSession
 from workouts.models import Competition
 from performance.carga_service import athlete_carga
+from endurance import periodization, readiness, science
 from . import training_science_running as ts
 
 
@@ -29,11 +29,9 @@ QUALITY_TYPES_BY_PHASE = {
     'taper': ['tempo'], 'recovery': [],
 }
 
-# Zonas de carga (ACWR EWMA) que disparan precaución / degradación.
-ACWR_ZONAS_ALTAS = ('Zona de peligro', 'Riesgo alto')
-ACWR_ZONAS_PRECAUCION = ('Precaución',) + ACWR_ZONAS_ALTAS
-
-# Dolor en zona de carga del corredor (tren inferior + columna).
+# Dolor en zona de carga del corredor (tren inferior + columna). Dato PROPIO de
+# running (ciclismo tendrá el suyo: sillín, cuello, lumbar...) — se lo inyecta
+# a endurance.readiness.compute_readiness, que no sabe qué es "correr".
 RUN_LOAD_PAIN_KEYWORDS = (
     'rodilla', 'tobillo', 'cadera', 'lumbar', 'espalda', 'muslo', 'pierna',
     'gemelo', 'pantorrilla', 'isquio', 'pie', 'talon', 'aquiles', 'tibial', 'planta',
@@ -127,194 +125,49 @@ class RunningAdaptiveEngineService:
         total_m = sum((r.total_distance_m or 0) for r in qs)
         return round(total_m / 1000.0, 1)
 
-    def _dolor_carga(self) -> str | None:
-        if not self.checkin:
-            return None
-        txt = ts._norm(getattr(self.checkin, 'dolor_hoy', '') or '')
-        if not txt:
-            return None
-        for kw in RUN_LOAD_PAIN_KEYWORDS:
-            if kw in txt:
-                return kw
-        return None
-
-    def _is_rest_checkin(self) -> bool:
-        if not self.checkin:
-            return False
-        foco = getattr(self.checkin, 'foco_entrenamiento', None) or []
-        return any('descanso' in ts._norm(f) for f in foco)
-
     def compute_readiness(self, hoy=None) -> dict:
-        """Señales objetivas + subjetivas para decidir la sesión del día."""
+        """Señales objetivas + subjetivas para decidir la sesión del día.
+        Delega en endurance.readiness — solo inyecta el dato propio de
+        running (qué palabras de dolor importan)."""
         hoy = hoy or timezone.localdate()
         carga = self._carga(hoy)
-        suficiente = bool(carga and carga.get('suficiente'))
-        zona = carga.get('zona') if carga else 'Acumulando datos'
-        riesgo_alto = bool(carga and (carga.get('riesgo_alerta') or zona in ACWR_ZONAS_ALTAS))
-        infracarga = bool(suficiente and zona == 'Infracarga')
-
-        score = 70
-        flags: list[str] = []
-        has_checkin = self.checkin is not None
-        animo = None
-        sueno_bad = False
-        hrv_low = False
-
-        if has_checkin:
-            animo = self.checkin.estado_animo
-            score += {5: 10, 4: 5, 3: 0, 2: -10, 1: -20}.get(animo, 0)
-            cs = float(self.checkin.calidad_sueno or 7)
-            if cs <= 4:                               # escala de dispositivo (1–4)
-                score += {1: -15, 2: -5}.get(int(cs), 5)
-                sueno_bad = cs <= 2
-            else:                                     # horas (check-in manual)
-                if cs < 6:
-                    score -= 15
-                    sueno_bad = True
-                elif cs < 7:
-                    score -= 5
-                else:
-                    score += 5
-            hrv = self.checkin.hrv
-            if hrv and hrv < 45:
-                hrv_low = True
-                score -= 10
-            elif hrv and hrv > 80:
-                score += 5
-
-        if suficiente:
-            if riesgo_alto:
-                score -= 20
-                flags.append('acwr_alto')
-            elif zona in ('Precaución',):
-                score -= 8
-                flags.append('acwr_precaucion')
-            elif infracarga:
-                flags.append('infracarga')
-
-        dolor = self._dolor_carga()
-        if dolor:
-            score -= 15
-            flags.append(f'dolor:{dolor}')
-
-        return {
-            'score': max(0, min(100, score)),
-            'suficiente': suficiente,
-            'zona_acwr': zona,
-            'acwr_ewma': (carga.get('acwr_ewma') if carga else None),
-            'riesgo_alto': riesgo_alto,
-            'infracarga': infracarga,
-            'has_checkin': has_checkin,
-            'animo': animo,
-            'sueno_bad': sueno_bad,
-            'hrv_low': hrv_low,
-            'dolor': dolor,
-            'rest_checkin': self._is_rest_checkin(),
-            'flags': flags,
-        }
+        return readiness.compute_readiness(
+            carga=carga, checkin=self.checkin, pain_keywords=RUN_LOAD_PAIN_KEYWORDS)
 
     def adapt_today(self, planned: PlannedRunSession, signals: dict) -> dict:
         """Tabla de re-adaptación (primera regla que dispara, gana). Devuelve el tipo
-        de sesión final + estado + factores para prescribe_run_session."""
-        es_cal = planned.es_calidad
-        tipo = planned.tipo_sesion
-        out = {'tipo_sesion': tipo, 'estado': 'planificada',
-               'ajuste_aplicado': 'confirmada', 'rpe_cap': None, 'km_factor': 1.0}
-
-        def adj(t, ajuste, rpe_cap=None, km=1.0):
-            out.update({'tipo_sesion': t, 'estado': 'ajustada',
-                        'ajuste_aplicado': ajuste, 'rpe_cap': rpe_cap, 'km_factor': km})
-
-        # 1) Dolor en zona de carga.
-        if signals['dolor']:
-            if es_cal:
-                adj('easy', 'dolor_a_easy', rpe_cap=5, km=0.7)
-            else:
-                adj('rest', 'dolor_a_descanso')
-            return out
-        # 2) Check-in de descanso explícito.
-        if signals['rest_checkin']:
-            adj('rest', 'checkin_descanso')
-            return out
-        # 3) ACWR alto (solo con ventana suficiente).
-        if signals['suficiente'] and signals['riesgo_alto']:
-            if es_cal:
-                adj('easy', 'acwr_alto_degradado', rpe_cap=6, km=0.75)
-            else:
-                out.update({'estado': 'ajustada', 'ajuste_aplicado': 'acwr_alto_recorta',
-                            'km_factor': 0.8})
-            return out
-        # 4) Día sin check-in → neutro (no intensificar).
-        if not signals['has_checkin']:
-            out['ajuste_aplicado'] = 'sin_checkin_neutro'
-            return out
-        # 5) Readiness baja (HRV/sueño/score).
-        if signals['hrv_low'] or signals['sueno_bad'] or signals['score'] < 45:
-            if es_cal:
-                adj('easy', 'readiness_baja_suaviza', rpe_cap=6, km=0.85)
-            else:
-                out.update({'estado': 'ajustada', 'ajuste_aplicado': 'readiness_baja_recorta',
-                            'km_factor': 0.85})
-            return out
-        # 6) Ánimo bajo.
-        if signals['animo'] is not None and signals['animo'] <= 2:
-            out.update({'estado': 'ajustada', 'ajuste_aplicado': 'animo_bajo_suaviza',
-                        'km_factor': 0.85,
-                        'rpe_cap': max(4, ts.RPE_BY_ZONE.get(planned.zona_principal, 6) - 1)})
-            return out
-        # 7) Infracarga con readiness alta → permitir leve progresión.
-        if signals['infracarga'] and signals['score'] >= 70:
-            out.update({'ajuste_aplicado': 'infracarga_ok', 'km_factor': 1.05})
-            return out
-        # 8) Todo verde → confirmar.
+        de sesión final + estado + factores para prescribe_run_session. La tabla en
+        sí vive en endurance.readiness (misma para cualquier deporte de resistencia);
+        acá solo se renombra `factor` → `km_factor`, el vocabulario que ya conoce
+        el resto de este motor."""
+        out = readiness.adapt_today(
+            tipo_sesion=planned.tipo_sesion, es_calidad=planned.es_calidad,
+            zona_principal=planned.zona_principal, rpe_by_zone=ts.RPE_BY_ZONE,
+            signals=signals,
+        )
+        out['km_factor'] = out.pop('factor')
         return out
 
     # ─── periodización / microciclo ───────────────────────────────────────────
 
     def resolve_phase(self, ref_date) -> str:
-        """Fase de periodización para la semana de ref_date."""
-        if self._competition_anchor(ref_date):
-            return 'taper'
+        """Fase de periodización para la semana de ref_date. Delega en
+        endurance.periodization — solo resuelve el booleano "hay competencia
+        cerca" (running-specific: consulta workouts.Competition), la fórmula
+        de fases es sport-agnostic."""
         plan = self.plan
-        if plan.meta_fecha:
-            weeks_to = max(0, math.ceil((plan.meta_fecha - ref_date).days / 7))
-            if weeks_to <= 1:
-                return 'taper'
-            if weeks_to <= 3:
-                return 'peak'
-            total = max(1, math.ceil((plan.meta_fecha - plan.started_at).days / 7))
-            elapsed = total - weeks_to
-            return 'base' if elapsed <= total / 3 else 'build'
-        # Modo continuo (fitness general): ciclo perpetuo de 4 semanas.
-        pos = ((plan.semana_actual or 1) - 1) % 4
-        if pos == 3:
-            return 'recovery'
-        if pos == 2:
-            return 'build'
-        return 'base'
+        return periodization.resolve_phase(
+            ref_date=ref_date,
+            has_competition_soon=bool(self._competition_anchor(ref_date)),
+            meta_fecha=plan.meta_fecha, started_at=plan.started_at,
+            semana_actual=plan.semana_actual,
+        )
 
     @staticmethod
     def _pick_quality_days(days: list[int], long_day: int, n: int, min_gap: int = 2) -> set:
-        """Elige n días de calidad maximizando la separación al long run y entre sí,
-        respetando un mínimo de `min_gap` días entre días duros ('no dos calidades
-        consecutivas'). Si ningún día respeta el mínimo, coloca MENOS calidades (las
-        restantes quedan como easy) en vez de forzar adyacencia."""
-        pool = [d for d in days if d != long_day]
-        chosen: list[int] = []
-        hard = [long_day]
-        for _ in range(n):
-            best, best_gap = None, -1
-            for d in pool:
-                if d in chosen:
-                    continue
-                gap = min(abs(d - h) for h in hard)
-                if gap > best_gap:
-                    best_gap, best = gap, d
-            if best is None or best_gap < min_gap:
-                break
-            chosen.append(best)
-            hard.append(best)
-        return set(chosen)
+        """Espaciado de días de calidad — ver endurance.science.pick_quality_days
+        (algoritmo sport-agnostic, sin nada propio de running)."""
+        return science.pick_quality_days(days, long_day, n, min_gap)
 
     def _upsert_planned(self, fecha, tipo, fase, km, nivel):
         """Crea/actualiza la PlannedRunSession del día. No toca lo ya ejecutado/ajustado."""
@@ -354,7 +207,7 @@ class RunningAdaptiveEngineService:
                                      fase=fase, prev_km=prev)
         # Cap por ACWR: si la carga ya está en precaución/peligro, no subir volumen.
         carga = self._carga(week_start)
-        if carga and carga.get('suficiente') and carga.get('zona') in ACWR_ZONAS_PRECAUCION and prev:
+        if carga and carga.get('suficiente') and carga.get('zona') in readiness.ZONAS_PRECAUCION and prev:
             km = min(km, prev)
 
         days = self._training_days()
