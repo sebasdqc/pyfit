@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from runs.models import RunSession, RunnerProfile
+from endurance import user_signals as _us
 from . import training_science_running as ts
 
 
@@ -27,25 +28,13 @@ def _runs_for_baseline(user, days: int = 120) -> list[dict]:
 
 
 def _edad(user) -> int | None:
-    perfil = getattr(user, 'profile', None)
-    fn = getattr(perfil, 'fecha_nacimiento', None)
-    if not fn:
-        return None
-    hoy = timezone.localdate()
-    return hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
+    """Ver endurance.user_signals.edad_from_user — sport-agnostic, no reimplementar."""
+    return _us.edad_from_user(user)
 
 
 def _resting_hr_from_device(user) -> int | None:
-    """FC de reposo del último dato de dispositivo (Garmin/Apple Health), si existe.
-    Defensivo: si el modelo/campo cambia, devuelve None sin romper la estimación."""
-    try:
-        from devices.models import DeviceIntegration
-        di = (DeviceIntegration.objects
-              .filter(user=user, resting_hr__isnull=False)
-              .order_by('-id').first())
-        return di.resting_hr if di else None
-    except Exception:
-        return None
+    """Ver endurance.user_signals.resting_hr_from_device — sport-agnostic."""
+    return _us.resting_hr_from_device(user)
 
 
 def recompute_runner_baseline(user, *, declared=None) -> RunnerProfile:

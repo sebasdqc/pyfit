@@ -107,6 +107,16 @@ def pick_reps(rango: tuple, nivel: str, fase: str = None) -> int:
     return round((lo + hi) / 2)
 
 
+# Días de entrenamiento por defecto (lun=0 … dom=6) cuando el usuario no fijó
+# `dias_preferidos`, con el último = día del entreno largo (long run/salida
+# larga). Distribución de días de la semana según cuántas sesiones caben —
+# no depende de qué deporte se entrena.
+DEFAULT_TRAINING_DAYS = {
+    1: [5], 2: [2, 5], 3: [1, 3, 5], 4: [1, 3, 5, 6],
+    5: [0, 2, 3, 5, 6], 6: [0, 1, 2, 3, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6],
+}
+
+
 def pick_quality_days(days: list, anchor_day: int, n: int, min_gap: int = 2) -> set:
     """Elige `n` días de calidad maximizando la separación al día ancla (el
     día duro fijo del microciclo — el long run en running) y entre sí,

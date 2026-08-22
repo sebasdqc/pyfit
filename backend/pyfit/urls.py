@@ -143,6 +143,11 @@ urlpatterns = [
     # Running inteligente (motor de generación de rutinas de carrera)
     path('api/running/', include('ai_running.urls')),
 
+    # Ciclismo inteligente (motor de generación de sesiones de bici). Sin CRUD
+    # de RideSession todavía (eso es tracking GPS, fuera de esta fase) — solo
+    # perfil/baseline/plan/generación, espejo de api/running/.
+    path('api/cycling/', include('ai_cycling.urls')),
+
     # Training Cycle (periodization)
     path('api/training-cycle/', workout_views.training_cycle_view),
     path('api/training-cycle/advance/', workout_views.training_cycle_advance),
