@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, FlatList,
+  View, Text, TextInput, TouchableOpacity, ScrollView, FlatList, Image,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Alert,
   PanResponder, BackHandler, AccessibilityInfo, findNodeHandle, Animated,
 } from 'react-native'
@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
-import Svg, { G, Rect, Circle, Ellipse } from 'react-native-svg'
 import { router } from 'expo-router'
 import { useTheme } from '../../lib/theme'
 import { useTranslation, type ScalarKey } from '../../lib/i18n'
@@ -33,6 +32,7 @@ type Lesion = {
   gravedad?: LesionGravedad
   especialista?: boolean
   tiempo?: LesionTiempo
+  nota?: string
 }
 
 type ScreenId =
@@ -63,6 +63,7 @@ type FormData = {
   ejerciciosEvitar: string[]
   motivoLimitacion: string
   condicionesMedicas: string[]
+  condicionesBajoTratamiento: string[]
   condicionOtra: string
   notasMedicas: string
   lugares: string[]
@@ -287,6 +288,9 @@ const GYM_COMPLETO = ['Mancuernas', 'Barras', 'Máquinas', 'Kettlebells', 'TRX',
 const GYM_BASICO   = ['Mancuernas', 'Barras', 'Kettlebells', 'Bandas elásticas']
 
 function mapEquipamientoToCategorias(labels: string[]): string[] {
+  // "No sé qué equipo hay disponible" — asumimos el kit básico razonable de
+  // un gimnasio, en vez de restringir al usuario a solo peso corporal.
+  if (labels.includes('no_se')) return GYM_BASICO
   const out = new Set<string>()
   for (const l of labels) {
     if (l === 'ninguno') continue
@@ -391,6 +395,7 @@ const COACHING_STYLES = [
 const TIPOS_ENTRENAMIENTO = [
   { id: 'musculacion', icon: '🏋️', labelKey: 'onboarding_entreno_musculacion_label', subKey: 'onboarding_entreno_musculacion_sub' },
   { id: 'running',     icon: '🏃', labelKey: 'onboarding_entreno_running_label',     subKey: 'onboarding_entreno_running_sub' },
+  { id: 'ciclismo',    icon: '🚴', labelKey: 'onboarding_entreno_ciclismo_label',    subKey: 'onboarding_entreno_ciclismo_sub' },
   { id: 'libre',       icon: '⚡', labelKey: 'onboarding_entreno_libre_label',       subKey: 'onboarding_entreno_libre_sub' },
 ] as const
 
@@ -455,9 +460,9 @@ function getBlockTitle(screen: ScreenId, t: (k: ScalarKey) => string): string {
 }
 
 // Etiqueta accesible por zona: nombre + estado de lesión si existe. Compartida
-// entre el body map SVG (zonas <Rect> transparentes, poco fiables para
-// lectores de pantalla en algunas versiones) y su alternativa en lista de
-// texto plano — ambas deben describir la misma zona de la misma forma.
+// entre el body map (zonas táctiles pequeñas sobre una imagen, poco fiables
+// para lectores de pantalla) y su alternativa en lista de texto plano —
+// ambas deben describir la misma zona de la misma forma.
 function zoneA11yLabelExternal(id: string, lesiones: Lesion[], t: (k: ScalarKey) => string): string {
   const label = zoneLabel(id, t)
   const inj = lesiones.find(l => l.zona === id)
@@ -465,7 +470,35 @@ function zoneA11yLabelExternal(id: string, lesiones: Lesion[], t: (k: ScalarKey)
   return `${label}, ${inj.estado === 'activa' ? t('onboarding_zone_status_active') : t('onboarding_zone_status_resolved')}`
 }
 
-// ─── SVG Body Map ─────────────────────────────────────────────────────────────
+// ─── Anatomical Body Map (imagen real + zonas táctiles por porcentaje) ────────
+// Reemplaza el silueta SVG abstracta anterior por las imágenes anatómicas
+// reales (mobile/assets/body-frontal.png). Cada zona es un View absoluto
+// posicionado en % sobre la imagen — mismo concepto que los <Rect
+// fill="transparent"> de antes, pero sobre una <Image> en vez de un <Svg>.
+type BodyZoneRect = { id: string; top: number; left: number; width: number; height: number }
+
+const FRONT_BODY_ZONES: BodyZoneRect[] = [
+  { id: 'cabeza',      top: 0,    left: 40, width: 20, height: 15.5 },
+  { id: 'hombro_izq',  top: 15.5, left: 24, width: 16, height: 9.5 },
+  { id: 'hombro_der',  top: 15.5, left: 60, width: 16, height: 9.5 },
+  { id: 'pecho',       top: 15.5, left: 36, width: 28, height: 13.5 },
+  { id: 'abdomen',     top: 29,   left: 37, width: 26, height: 10 },
+  { id: 'cadera',      top: 39,   left: 34, width: 32, height: 6 },
+  { id: 'brazo_izq',   top: 17,   left: 8,  width: 26, height: 23 },
+  { id: 'brazo_der',   top: 17,   left: 66, width: 26, height: 23 },
+  { id: 'muneca_izq',  top: 40,   left: 3,  width: 16, height: 9 },
+  { id: 'muneca_der',  top: 40,   left: 81, width: 16, height: 9 },
+  { id: 'muslo_izq',   top: 45,   left: 34, width: 15, height: 19 },
+  { id: 'muslo_der',   top: 45,   left: 51, width: 15, height: 19 },
+  { id: 'rodilla_izq', top: 64,   left: 35, width: 14, height: 6 },
+  { id: 'rodilla_der', top: 64,   left: 51, width: 14, height: 6 },
+  { id: 'tobillo_izq', top: 70,   left: 35, width: 14, height: 15 },
+  { id: 'tobillo_der', top: 70,   left: 51, width: 14, height: 15 },
+]
+
+// Solo lumbar: el resto de la espalda no tiene zona propia, se mantiene igual
+// que antes (ver comentario en renderLesiones sobre "no visible desde frente").
+const BACK_LUMBAR_ZONE: Omit<BodyZoneRect, 'id'> = { top: 30, left: 38, width: 24, height: 9 }
 
 function BodyMap({
   lesiones,
@@ -482,144 +515,92 @@ function BodyMap({
   function zoneFill(id: string) {
     if (editingZona === id) return accentAlpha(colors.accent, 0.32)
     const inj = lesiones.find(l => l.zona === id)
-    if (!inj) return colors.glassBg
-    return inj.estado === 'activa' ? 'rgba(255,68,68,0.26)' : 'rgba(50,200,150,0.22)'
+    if (!inj) return 'transparent'
+    return inj.estado === 'activa' ? 'rgba(255,68,68,0.30)' : 'rgba(50,200,150,0.26)'
   }
-  function zoneStroke(id: string) {
+  function zoneBorder(id: string) {
     if (editingZona === id) return colors.accent
     const inj = lesiones.find(l => l.zona === id)
-    if (!inj) return colors.borderBright
-    return inj.estado === 'activa' ? '#ff4444' : '#32c896'
-  }
-  function dotColor(id: string) {
-    const inj = lesiones.find(l => l.zona === id)
-    if (!inj) return null
+    if (!inj) return 'transparent'
     return inj.estado === 'activa' ? '#ff4444' : '#32c896'
   }
   function press(id: string) { return () => onZonePress(id) }
   const zoneA11yLabel = (id: string) => zoneA11yLabelExternal(id, lesiones, t)
 
-  // ViewBox: 0 0 180 360  (centered at x=90)
   return (
-    <Svg width={160} height={320} viewBox="0 0 180 360">
+    <View style={{ width: 190, height: 316 }}>
+      <Image
+        source={require('../../assets/body-frontal.png')}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      {FRONT_BODY_ZONES.map(z => (
+        <TouchableOpacity
+          key={z.id}
+          onPress={press(z.id)}
+          activeOpacity={0.75}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={zoneA11yLabel(z.id)}
+          style={{
+            position: 'absolute',
+            top: `${z.top}%`, left: `${z.left}%`,
+            width: `${z.width}%`, height: `${z.height}%`,
+            backgroundColor: zoneFill(z.id),
+            borderWidth: zoneBorder(z.id) === 'transparent' ? 0 : 1.5,
+            borderColor: zoneBorder(z.id),
+            borderRadius: 8,
+          }}
+        />
+      ))}
+    </View>
+  )
+}
 
-      {/* ── Decorative body shapes (visual layer) ── */}
+// Miniatura de la vista trasera — reemplaza el chip de texto plano que
+// representaba "lumbar" (zona no visible desde el frente).
+function BackLumbarThumb({
+  lesiones,
+  editingZona,
+  onPress,
+  t,
+}: {
+  lesiones: Lesion[]
+  editingZona: string | null
+  onPress: () => void
+  t: (k: ScalarKey) => string
+}) {
+  const { colors } = useTheme()
+  const inj = lesiones.find(l => l.zona === 'lumbar')
+  const isEditing = editingZona === 'lumbar'
+  const fill = isEditing
+    ? accentAlpha(colors.accent, 0.32)
+    : inj ? (inj.estado === 'activa' ? 'rgba(255,68,68,0.30)' : 'rgba(50,200,150,0.26)') : 'transparent'
+  const border = isEditing
+    ? colors.accent
+    : inj ? (inj.estado === 'activa' ? '#ff4444' : '#32c896') : colors.borderBright
 
-      {/* Head */}
-      <Circle cx={90} cy={26} r={20} fill={zoneFill('cabeza')} stroke={zoneStroke('cabeza')} strokeWidth={1.2} />
-      {/* Neck */}
-      <Rect x={82} y={46} width={16} height={13} rx={4} fill={zoneFill('cabeza')} stroke={zoneStroke('cabeza')} strokeWidth={1.2} />
-
-      {/* Left shoulder */}
-      <Ellipse cx={57} cy={65} rx={17} ry={10} fill={zoneFill('hombro_izq')} stroke={zoneStroke('hombro_izq')} strokeWidth={1.2} />
-      {/* Right shoulder */}
-      <Ellipse cx={123} cy={65} rx={17} ry={10} fill={zoneFill('hombro_der')} stroke={zoneStroke('hombro_der')} strokeWidth={1.2} />
-
-      {/* Chest */}
-      <Rect x={63} y={57} width={54} height={54} rx={10} fill={zoneFill('pecho')} stroke={zoneStroke('pecho')} strokeWidth={1.2} />
-      {/* Abdomen */}
-      <Rect x={65} y={111} width={50} height={43} rx={8} fill={zoneFill('abdomen')} stroke={zoneStroke('abdomen')} strokeWidth={1.2} />
-      {/* Hips */}
-      <Rect x={58} y={153} width={64} height={29} rx={10} fill={zoneFill('cadera')} stroke={zoneStroke('cadera')} strokeWidth={1.2} />
-
-      {/* Left upper arm */}
-      <Rect x={38} y={60} width={20} height={52} rx={10} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
-      {/* Left elbow */}
-      <Circle cx={48} cy={117} r={9} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
-      {/* Left forearm */}
-      <Rect x={39} y={125} width={18} height={36} rx={9} fill={zoneFill('brazo_izq')} stroke={zoneStroke('brazo_izq')} strokeWidth={1.2} />
-      {/* Left hand */}
-      <Rect x={37} y={162} width={22} height={20} rx={7} fill={zoneFill('muneca_izq')} stroke={zoneStroke('muneca_izq')} strokeWidth={1.2} />
-
-      {/* Right upper arm */}
-      <Rect x={122} y={60} width={20} height={52} rx={10} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
-      {/* Right elbow */}
-      <Circle cx={132} cy={117} r={9} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
-      {/* Right forearm */}
-      <Rect x={123} y={125} width={18} height={36} rx={9} fill={zoneFill('brazo_der')} stroke={zoneStroke('brazo_der')} strokeWidth={1.2} />
-      {/* Right hand */}
-      <Rect x={121} y={162} width={22} height={20} rx={7} fill={zoneFill('muneca_der')} stroke={zoneStroke('muneca_der')} strokeWidth={1.2} />
-
-      {/* Left thigh */}
-      <Rect x={60} y={182} width={26} height={56} rx={9} fill={zoneFill('muslo_izq')} stroke={zoneStroke('muslo_izq')} strokeWidth={1.2} />
-      {/* Left knee */}
-      <Circle cx={73} cy={243} r={11} fill={zoneFill('rodilla_izq')} stroke={zoneStroke('rodilla_izq')} strokeWidth={1.2} />
-      {/* Left calf */}
-      <Rect x={62} y={254} width={22} height={48} rx={9} fill={zoneFill('tobillo_izq')} stroke={zoneStroke('tobillo_izq')} strokeWidth={1.2} />
-      {/* Left foot */}
-      <Rect x={58} y={300} width={28} height={18} rx={7} fill={zoneFill('tobillo_izq')} stroke={zoneStroke('tobillo_izq')} strokeWidth={1.2} />
-
-      {/* Right thigh */}
-      <Rect x={94} y={182} width={26} height={56} rx={9} fill={zoneFill('muslo_der')} stroke={zoneStroke('muslo_der')} strokeWidth={1.2} />
-      {/* Right knee */}
-      <Circle cx={107} cy={243} r={11} fill={zoneFill('rodilla_der')} stroke={zoneStroke('rodilla_der')} strokeWidth={1.2} />
-      {/* Right calf */}
-      <Rect x={96} y={254} width={22} height={48} rx={9} fill={zoneFill('tobillo_der')} stroke={zoneStroke('tobillo_der')} strokeWidth={1.2} />
-      {/* Right foot */}
-      <Rect x={94} y={300} width={28} height={18} rx={7} fill={zoneFill('tobillo_der')} stroke={zoneStroke('tobillo_der')} strokeWidth={1.2} />
-
-      {/* ── Injury indicator dots ── */}
-      {([
-        ['cabeza',      90,  26],
-        ['hombro_izq',  55,  65],
-        ['hombro_der', 125,  65],
-        ['brazo_izq',   48, 100],
-        ['brazo_der',  132, 100],
-        ['muneca_izq',  48, 172],
-        ['muneca_der', 132, 172],
-        ['pecho',       90,  84],
-        ['abdomen',     90, 132],
-        ['cadera',      90, 167],
-        ['muslo_izq',   73, 210],
-        ['muslo_der',  107, 210],
-        ['rodilla_izq', 73, 243],
-        ['rodilla_der',107, 243],
-        ['tobillo_izq', 73, 278],
-        ['tobillo_der',107, 278],
-      ] as [string, number, number][]).map(([id, cx, cy]) => {
-        const c = dotColor(id)
-        return c ? <Circle key={id} cx={cx} cy={cy} r={5} fill={c} opacity={0.9} /> : null
-      })}
-
-      {/* ── Touch zones (transparent overlays, drawn last = on top) ── */}
-
-      <Rect x={65} y={57} width={50} height={56} fill="transparent" onPress={press('pecho')}
-        accessible accessibilityLabel={zoneA11yLabel('pecho')} />
-      <Rect x={65} y={111} width={50} height={44} fill="transparent" onPress={press('abdomen')}
-        accessible accessibilityLabel={zoneA11yLabel('abdomen')} />
-      <Rect x={54} y={153} width={72} height={30} fill="transparent" onPress={press('cadera')}
-        accessible accessibilityLabel={zoneA11yLabel('cadera')} />
-
-      <Rect x={56} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('muslo_izq')} />
-      <Rect x={88} y={182} width={32} height={64} fill="transparent" onPress={press('muslo_der')}
-        accessible accessibilityLabel={zoneA11yLabel('muslo_der')} />
-      <Rect x={56} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('rodilla_izq')} />
-      <Rect x={90} y={234} width={30} height={24} fill="transparent" onPress={press('rodilla_der')}
-        accessible accessibilityLabel={zoneA11yLabel('rodilla_der')} />
-      <Rect x={54} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('tobillo_izq')} />
-      <Rect x={92} y={252} width={34} height={72} fill="transparent" onPress={press('tobillo_der')}
-        accessible accessibilityLabel={zoneA11yLabel('tobillo_der')} />
-
-      <Rect x={32} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('brazo_izq')} />
-      <Rect x={116} y={88} width={32} height={80} fill="transparent" onPress={press('brazo_der')}
-        accessible accessibilityLabel={zoneA11yLabel('brazo_der')} />
-      <Rect x={32} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('muneca_izq')} />
-      <Rect x={116} y={158} width={32} height={28} fill="transparent" onPress={press('muneca_der')}
-        accessible accessibilityLabel={zoneA11yLabel('muneca_der')} />
-
-      <Rect x={32} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_izq')}
-        accessible accessibilityLabel={zoneA11yLabel('hombro_izq')} />
-      <Rect x={112} y={56} width={36} height={34} fill="transparent" onPress={press('hombro_der')}
-        accessible accessibilityLabel={zoneA11yLabel('hombro_der')} />
-
-      <Rect x={64} y={2} width={52} height={66} fill="transparent" onPress={press('cabeza')}
-        accessible accessibilityLabel={zoneA11yLabel('cabeza')} />
-    </Svg>
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={zoneA11yLabelExternal('lumbar', lesiones, t)}
+      style={{ width: 76, height: 128 }}>
+      <Image
+        source={require('../../assets/body-trasero.png')}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      <View style={{
+        position: 'absolute',
+        top: `${BACK_LUMBAR_ZONE.top}%`, left: `${BACK_LUMBAR_ZONE.left}%`,
+        width: `${BACK_LUMBAR_ZONE.width}%`, height: `${BACK_LUMBAR_ZONE.height}%`,
+        backgroundColor: fill, borderWidth: 1.5, borderColor: border, borderRadius: 6,
+      }} />
+    </TouchableOpacity>
   )
 }
 
@@ -746,6 +727,7 @@ export default function OnboardingScreen() {
   const { t, ta, lang } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReduceMotion()
 
   // Listas grandes (deportes/ejercicios/condiciones): el VALOR guardado sigue
   // siendo el string en español (compatibilidad con el backend, sin cambios
@@ -783,7 +765,7 @@ export default function OnboardingScreen() {
     usaCicloMenstrual: false, experienciaEntrenando: null, frecuenciaHistorica: null, deportes: [],
     calidadSueno: null, nivelEstres: null, tipoTrabajo: null, lesiones: [],
     ejerciciosEvitar: [], motivoLimitacion: '',
-    condicionesMedicas: [], condicionOtra: '', notasMedicas: '',
+    condicionesMedicas: [], condicionesBajoTratamiento: [], condicionOtra: '', notasMedicas: '',
     lugares: [], equipamiento: [],
     tiempoNormal: '45-60', tiempoOcupado: '20-30',
     horarios: [], diasFijos: null,
@@ -818,10 +800,14 @@ export default function OnboardingScreen() {
   const [ejerciciosExpanded, setEjerciciosExpanded] = useState(false)
   const [ejerciciosQuery, setEjerciciosQuery] = useState('')
 
+  // ── Block 2 — condiciones médicas: buscador con autocompletado ───────────
+  const [condExpanded, setCondExpanded] = useState(false)
+  const [condQuery, setCondQuery] = useState('')
+
   // ── Block 2 — lesiones: alternativa accesible al body map ─────────────────
-  // El body map es SVG con zonas táctiles pequeñas — poco fiable para lectores
-  // de pantalla en algunas versiones. Esta lista en texto plano cubre las
-  // mismas 17 zonas con controles RN normales, sin depender del SVG.
+  // El body map tiene zonas táctiles pequeñas sobre una imagen — poco fiable
+  // para lectores de pantalla en algunas versiones. Esta lista en texto plano
+  // cubre las mismas 17 zonas con controles RN normales.
   const [zonesListOpen, setZonesListOpen] = useState(false)
 
   // ── Block 2 — lesion modal ─────────────────────────────────────────────────
@@ -830,6 +816,7 @@ export default function OnboardingScreen() {
   const [draftGravedad, setDraftGravedad] = useState<LesionGravedad | null>(null)
   const [draftEspecialista, setDraftEspecialista] = useState(false)
   const [draftTiempo, setDraftTiempo] = useState<LesionTiempo | null>(null)
+  const [draftNota, setDraftNota] = useState('')
   const [lesionError, setLesionError] = useState('')
   const lesionErrorRef = useRef<Text>(null)
 
@@ -842,6 +829,7 @@ export default function OnboardingScreen() {
   // ── Block 6 ────────────────────────────────────────────────────────────────
   const [animCount, setAnimCount] = useState(0)
   const [saveComplete, setSaveComplete] = useState(false)
+  const betaFade = useRef(new Animated.Value(0)).current
 
   // ── Screens array ─────────────────────────────────────────────────────────
   const screens = useMemo<ScreenId[]>(() => [
@@ -856,7 +844,8 @@ export default function OnboardingScreen() {
     'b2_limitaciones',
     'b2_historial_medico',
     'b3_lugar',
-    'b3_equipamiento',
+    ...(data.lugares.includes('casa_equipado') || data.lugares.includes('gimnasio_basico')
+      ? ['b3_equipamiento' as ScreenId] : []),
     'b3_tiempo_horario',
     'b4_objetivo',
     'b4_horizonte',
@@ -865,7 +854,7 @@ export default function OnboardingScreen() {
     'b5_entreno',
     'b6_procesando',
     'b6_beta',
-  ], [data.sexo])
+  ], [data.sexo, data.lugares])
 
   const currentScreen = screens[screenIndex]
   const isLast = screenIndex === screens.length - 1
@@ -1048,6 +1037,7 @@ export default function OnboardingScreen() {
       // injuries that the user marked as superada without a gravedad value.
       const lesionesEstructuradas = data.lesiones.map(l => {
         const partes: string[] = []
+        if (l.nota)         partes.push(l.nota)
         if (l.tiempo)       partes.push(`hace ${t(TIEMPO_LABEL_KEYS[l.tiempo]).toLowerCase()}`)
         if (l.especialista) partes.push('vio especialista')
         if (l.estado === 'superada') partes.push('superada')
@@ -1086,9 +1076,11 @@ export default function OnboardingScreen() {
           // Si el usuario escribió texto en "Otro", lo emitimos como
           // "Otro: <texto>". Si marcó "Otro" pero no escribió nada, se omite
           // (para no enviar el literal "Otro" sin valor descriptivo).
-          if (c !== COND_OTRO) return [c]
+          const enTratamiento = data.condicionesBajoTratamiento.includes(c)
+          if (c !== COND_OTRO) return [enTratamiento ? `${c} (en tratamiento)` : c]
           const extra = data.condicionOtra.trim()
-          return extra ? [`Otro: ${extra}`] : []
+          if (!extra) return []
+          return [enTratamiento ? `Otro: ${extra} (en tratamiento)` : `Otro: ${extra}`]
         }),
         notas_medicas: data.notasMedicas.trim(),
         motivo_limitacion: data.motivoLimitacion.trim(),
@@ -1186,6 +1178,17 @@ export default function OnboardingScreen() {
     return () => clearTimeout(t)
   }, [saveComplete, currentScreen])
 
+  // Fade-in leve de "Perfil Listo" — evita que los textos aparezcan de golpe.
+  useEffect(() => {
+    if (currentScreen !== 'b6_beta') return
+    betaFade.setValue(0)
+    Animated.timing(betaFade, {
+      toValue: 1,
+      duration: reduceMotion ? 0 : 500,
+      useNativeDriver: true,
+    }).start()
+  }, [currentScreen]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Bloquear el back físico de Android mientras se guarda el perfil. Sin esto,
   // un back mid-save retrocede al paso anterior con la petición todavía en vuelo
   // y al completarse intenta avanzar desde un screenIndex incorrecto.
@@ -1203,6 +1206,7 @@ export default function OnboardingScreen() {
     setDraftGravedad(existing?.gravedad ?? null)
     setDraftEspecialista(existing?.especialista ?? false)
     setDraftTiempo(existing?.tiempo ?? null)
+    setDraftNota(existing?.nota ?? '')
     setLesionError('')
     setEditingZona(zona)
   }
@@ -1213,12 +1217,14 @@ export default function OnboardingScreen() {
     if (draftEstado === 'activa' && !draftGravedad) { setLesionError(t('onboarding_err_lesion_gravedad')); return }
     if (draftEstado === 'superada' && !draftTiempo) { setLesionError(t('onboarding_err_lesion_tiempo')); return }
 
+    const notaTrim = draftNota.trim()
     const lesion: Lesion = {
       zona: editingZona,
       estado: draftEstado,
       ...(draftEstado === 'activa'
         ? { gravedad: draftGravedad!, especialista: draftEspecialista }
         : { tiempo: draftTiempo! }),
+      ...(notaTrim ? { nota: notaTrim } : {}),
     }
     set('lesiones', [...data.lesiones.filter(l => l.zona !== editingZona), lesion])
     setEditingZona(null)
@@ -1341,7 +1347,7 @@ export default function OnboardingScreen() {
         showsVerticalScrollIndicator={false}>
 
         <Text style={styles.sectionLabel}>{t('onboarding_ciclo_section')}</Text>
-        <Text style={styles.cicloDesc}>{t('onboarding_ciclo_desc')}</Text>
+        <Text style={styles.cicloDesc}>{t('onboarding_ciclo_desc').replace('{nombre}', data.nombre.trim())}</Text>
 
         <TouchableOpacity onPress={() => set('usaCicloMenstrual', !on)} activeOpacity={0.88}
           accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
@@ -1629,33 +1635,27 @@ export default function OnboardingScreen() {
         <Text style={styles.lesionesTitle}>{t('onboarding_lesiones_title')}</Text>
         <Text style={styles.lesionesSub}>{t('onboarding_lesiones_sub')}</Text>
 
-        {/* Body silhouette */}
+        {/* Body map: vista frontal (16 zonas) + miniatura trasera (lumbar) */}
         <View style={styles.bodyMapWrap}>
-          <BodyMap
-            lesiones={data.lesiones}
-            editingZona={editingZona}
-            onZonePress={openLesionModal}
-            t={t}
-          />
+          <View style={styles.bodyMapRow}>
+            <BodyMap
+              lesiones={data.lesiones}
+              editingZona={editingZona}
+              onZonePress={openLesionModal}
+              t={t}
+            />
 
-          {/* Lumbar chip — not visible from front view */}
-          <TouchableOpacity
-            style={[
-              styles.lumbarChip,
-              data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipOn,
-            ]}
-            onPress={() => openLesionModal('lumbar')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={{ selected: !!data.lesiones.find(l => l.zona === 'lumbar') }}
-            accessibilityLabel={zoneA11yLabelExternal('lumbar', data.lesiones, t)}>
-            <Text style={[
-              styles.lumbarChipText,
-              data.lesiones.find(l => l.zona === 'lumbar') && styles.lumbarChipTextOn,
-            ]}>
-              {t('onboarding_lumbar_chip')}
-            </Text>
-          </TouchableOpacity>
+            {/* Vista trasera — solo zona lumbar, no visible desde el frente */}
+            <View style={styles.lumbarThumbWrap}>
+              <BackLumbarThumb
+                lesiones={data.lesiones}
+                editingZona={editingZona}
+                onPress={() => openLesionModal('lumbar')}
+                t={t}
+              />
+              <Text style={styles.lumbarThumbLabel}>{t('onboarding_lumbar_chip')}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Legend */}
@@ -1668,14 +1668,11 @@ export default function OnboardingScreen() {
             <View style={[styles.legendDot, { backgroundColor: '#32c896' }]} />
             <Text style={styles.legendText}>{t('onboarding_legend_superada')}</Text>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-            <Text style={styles.legendText}>{t('onboarding_legend_seleccionada')}</Text>
-          </View>
         </View>
 
         {/* Alternativa accesible: lista en texto plano de las 17 zonas, para
-            quien usa lector de pantalla (el body map es SVG). */}
+            quien usa lector de pantalla (los tap targets del body map son
+            pequeños y están sobre una imagen). */}
         <View style={styles.deportesSection}>
           <TouchableOpacity style={styles.deportesHeader}
             onPress={() => setZonesListOpen(v => !v)} activeOpacity={0.8}
@@ -1843,6 +1840,20 @@ export default function OnboardingScreen() {
   // ── Block 2: medical history ───────────────────────────────────────────────
 
   function renderHistorialMedico() {
+    const filteredCond = condQuery.length > 1
+      ? condicionesPairs.filter(p => normalize(p.label).includes(normalize(condQuery)))
+      : condicionesPairs
+
+    function toggleCondicion(value: string, on: boolean) {
+      if (on) {
+        set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== value))
+        set('condicionesBajoTratamiento', data.condicionesBajoTratamiento.filter(x => x !== value))
+        if (value === COND_OTRO) set('condicionOtra', '')
+      } else {
+        set('condicionesMedicas', [...data.condicionesMedicas, value])
+      }
+    }
+
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -1851,29 +1862,79 @@ export default function OnboardingScreen() {
         <Text style={styles.medTitle}>{t('onboarding_med_title')}</Text>
         <Text style={styles.medSub}>{t('onboarding_med_sub')}</Text>
 
-        {/* Conditions chip grid */}
-        <View style={styles.condGrid}>
-          {condicionesPairs.map(p => {
-            const on = data.condicionesMedicas.includes(p.value)
-            return (
-              <TouchableOpacity key={p.value}
-                style={[styles.condChip, on && styles.condChipOn]}
-                onPress={() => {
-                  if (on) {
-                    set('condicionesMedicas', data.condicionesMedicas.filter(x => x !== p.value))
-                    if (p.value === COND_OTRO) set('condicionOtra', '')
-                  } else {
-                    set('condicionesMedicas', [...data.condicionesMedicas, p.value])
-                  }
-                }}
-                activeOpacity={0.8}
-                accessibilityRole="checkbox" accessibilityState={{ checked: on }}
-                accessibilityLabel={p.label}>
-                {on && <Text style={styles.condCheckmark}>✓ </Text>}
-                <Text style={[styles.condChipText, on && styles.condChipTextOn]} numberOfLines={1} ellipsizeMode="tail">{p.label}</Text>
-              </TouchableOpacity>
-            )
-          })}
+        {/* Buscador con autocompletado + condiciones seleccionadas */}
+        <View style={styles.deportesSection}>
+          <TouchableOpacity style={styles.deportesHeader}
+            onPress={() => setCondExpanded(e => !e)} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityState={{ expanded: condExpanded }}
+            accessibilityLabel={t('onboarding_med_a11y')}>
+            <View>
+              <Text style={styles.deportesLabel}>{t('onboarding_med_label')}</Text>
+              {data.condicionesMedicas.length > 0 && (
+                <Text style={styles.deportesCount}>
+                  {data.condicionesMedicas.length} {t('onboarding_selected_suffix')}
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.deportesChevron, condExpanded && styles.deportesChevronUp]}>›</Text>
+          </TouchableOpacity>
+
+          {data.condicionesMedicas.length > 0 && (
+            <View style={styles.condSelectedList}>
+              {data.condicionesMedicas.map(value => {
+                const label = condicionesPairs.find(p => p.value === value)?.label ?? value
+                const bajoTratamiento = data.condicionesBajoTratamiento.includes(value)
+                return (
+                  <View key={value} style={styles.condSelectedRow}>
+                    <Text style={styles.condSelectedLabel} numberOfLines={2}>{label}</Text>
+                    <TouchableOpacity
+                      style={styles.condTratamientoRow}
+                      onPress={() => {
+                        if (bajoTratamiento) set('condicionesBajoTratamiento', data.condicionesBajoTratamiento.filter(x => x !== value))
+                        else set('condicionesBajoTratamiento', [...data.condicionesBajoTratamiento, value])
+                      }}
+                      activeOpacity={0.8}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: bajoTratamiento }}
+                      accessibilityLabel={t('onboarding_med_bajo_tratamiento')}>
+                      <View style={[styles.miniCheck, bajoTratamiento && styles.miniCheckOn]}>
+                        {bajoTratamiento && <Text style={styles.miniCheckMark}>✓</Text>}
+                      </View>
+                      <Text style={styles.condTratamientoText}>{t('onboarding_med_bajo_tratamiento')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => toggleCondicion(value, true)}
+                      accessibilityRole="button" accessibilityLabel={`Quitar ${label}`}>
+                      <Text style={styles.selectedChipX}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              })}
+            </View>
+          )}
+
+          {condExpanded && (
+            <View style={styles.deportesDropdown}>
+              <TextInput style={styles.deportesSearch} placeholder={t('onboarding_med_search_placeholder')}
+                placeholderTextColor={colors.inkMuted} value={condQuery}
+                onChangeText={setCondQuery} autoCorrect={false} />
+              <View style={styles.deportesGrid}>
+                {filteredCond.map(p => {
+                  const on = data.condicionesMedicas.includes(p.value)
+                  return (
+                    <TouchableOpacity key={p.value}
+                      style={[styles.deporteChip, on && styles.deporteChipOn]}
+                      onPress={() => toggleCondicion(p.value, on)}
+                      activeOpacity={0.75}
+                      accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                      accessibilityLabel={p.label}>
+                      <Text style={[styles.deporteChipText, on && styles.deporteChipTextOn]}>
+                        {on ? '✓ ' : ''}{p.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* "Otro" — campo de texto libre cuando el chip está activo */}
@@ -1960,16 +2021,18 @@ export default function OnboardingScreen() {
 
   function renderEquipamiento() {
     const sinNada = data.equipamiento.includes('ninguno')
+    const noSe = data.equipamiento.includes('no_se')
 
     function toggleEquip(item: string) {
-      if (item === 'ninguno') {
-        set('equipamiento', sinNada ? [] : ['ninguno'])
+      if (item === 'ninguno' || item === 'no_se') {
+        const isOn = data.equipamiento.includes(item)
+        set('equipamiento', isOn ? [] : [item])
       } else {
-        const withoutNinguno = data.equipamiento.filter(x => x !== 'ninguno')
-        if (withoutNinguno.includes(item))
-          set('equipamiento', withoutNinguno.filter(x => x !== item))
+        const cleaned = data.equipamiento.filter(x => x !== 'ninguno' && x !== 'no_se')
+        if (cleaned.includes(item))
+          set('equipamiento', cleaned.filter(x => x !== item))
         else
-          set('equipamiento', [...withoutNinguno, item])
+          set('equipamiento', [...cleaned, item])
       }
     }
 
@@ -1992,8 +2055,20 @@ export default function OnboardingScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* "No sé" toggle — un principiante puede no conocer el equipo del lugar */}
+        <TouchableOpacity
+          style={[styles.ningunCard, noSe && styles.ningunCardOn]}
+          onPress={() => toggleEquip('no_se')}
+          activeOpacity={0.8}
+          accessibilityRole="checkbox" accessibilityState={{ checked: noSe }}
+          accessibilityLabel={t('onboarding_equip_no_se')}>
+          <Text style={[styles.ningunLabel, noSe && styles.ningunLabelOn]}>
+            {noSe ? '✓  ' : ''}{t('onboarding_equip_no_se')}
+          </Text>
+        </TouchableOpacity>
+
         {/* Equipment categories */}
-        {!sinNada && EQUIPAMIENTO_CATS.map(cat => (
+        {!sinNada && !noSe && EQUIPAMIENTO_CATS.map(cat => (
           <View key={cat.catKey} style={styles.equipCat}>
             <Text style={styles.equipCatLabel}>{t(cat.catKey).toUpperCase()}</Text>
             <View style={styles.deportesGrid}>
@@ -2017,7 +2092,7 @@ export default function OnboardingScreen() {
           </View>
         ))}
 
-        {!sinNada && data.equipamiento.length === 0 && (
+        {!sinNada && !noSe && data.equipamiento.length === 0 && (
           <Text style={styles.skipNote}>{t('onboarding_equip_skip')}</Text>
         )}
       </ScrollView>
@@ -2303,25 +2378,37 @@ export default function OnboardingScreen() {
 
   function renderBeta() {
     const total = countVariables()
+    // Entrada escalonada: cada bloque se desplaza en un sub-tramo de betaFade
+    // (0→1) para que los textos no aparezcan todos de golpe.
+    const stagger = (start: number, span = 0.4) => ({
+      opacity: betaFade.interpolate({
+        inputRange: [start, Math.min(start + span, 1)], outputRange: [0, 1], extrapolate: 'clamp',
+      }),
+      transform: [{
+        translateY: betaFade.interpolate({
+          inputRange: [start, Math.min(start + span, 1)], outputRange: [12, 0], extrapolate: 'clamp',
+        }),
+      }],
+    })
     return (
       <View style={styles.betaWrap}>
         <View style={styles.betaContent}>
-          <Text style={styles.betaEyebrow}>{t('onboarding_beta_eyebrow')}</Text>
-          <Text style={styles.betaTitle}>{t('onboarding_beta_title')}</Text>
-          <Text style={styles.betaBody}>
+          <Animated.Text style={[styles.betaEyebrow, stagger(0)]}>{t('onboarding_beta_eyebrow')}</Animated.Text>
+          <Animated.Text style={[styles.betaTitle, stagger(0.1)]}>{t('onboarding_beta_title')}</Animated.Text>
+          <Animated.Text style={[styles.betaBody, stagger(0.22)]}>
             {t('onboarding_beta_body_prefix')}{' '}
             <Text style={styles.betaAccent}>{total} {t('onboarding_procesando_num_label')}</Text>
             {' '}{t('onboarding_beta_body_suffix')}
-          </Text>
+          </Animated.Text>
 
-          <View style={styles.betaDivider} />
+          <Animated.View style={[styles.betaDivider, stagger(0.34)]} />
 
-          <View style={styles.betaTagRow}>
+          <Animated.View style={[styles.betaTagRow, stagger(0.44)]}>
             <View style={styles.betaTag}>
               <Text style={styles.betaTagText}>{t('onboarding_beta_tag')}</Text>
             </View>
-          </View>
-          <Text style={styles.betaBetaDesc}>{t('onboarding_beta_desc')}</Text>
+          </Animated.View>
+          <Animated.Text style={[styles.betaBetaDesc, stagger(0.52)]}>{t('onboarding_beta_desc')}</Animated.Text>
         </View>
 
         <View style={styles.betaFooter}>
@@ -2716,6 +2803,20 @@ export default function OnboardingScreen() {
                 </View>
               </>
             )}
+
+            {/* Nota libre — qué tipo de lesión fue, útil para entender su dimensión */}
+            <Text style={styles.sheetSectionLabel}>{t('onboarding_sheet_nota_label')}</Text>
+            <TextInput
+              style={[styles.input, styles.textarea]}
+              placeholder={t('onboarding_sheet_nota_placeholder')}
+              placeholderTextColor={colors.inkMuted}
+              value={draftNota}
+              onChangeText={setDraftNota}
+              multiline
+              numberOfLines={2}
+              maxLength={150}
+              textAlignVertical="top"
+            />
 
             {!!lesionError && (
               <Text ref={lesionErrorRef} style={styles.lesionModalError}
@@ -3154,17 +3255,19 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Regular', fontSize: 14,
       color: c.inkMuted, lineHeight: 21, marginBottom: 24,
     },
-    condGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-    condChip: {
-      flexDirection: 'row', alignItems: 'center',
-      flexBasis: '48%', flexGrow: 0, flexShrink: 0,
-      paddingHorizontal: 10, paddingVertical: 9, borderRadius: 16,
+    condSelectedList: { paddingHorizontal: 18, paddingBottom: 14, gap: 10 },
+    condSelectedRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
       backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderDefault,
+      borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10,
     },
-    condChipOn: { backgroundColor: 'rgba(255,170,50,0.1)', borderColor: '#ffaa32' },
-    condCheckmark: { fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: '#ffaa32' },
-    condChipText: { flexShrink: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 11.5, color: c.inkSecondary },
-    condChipTextOn: { color: '#ffaa32' },
+    condSelectedLabel: {
+      flex: 1, fontFamily: 'SpaceGrotesk-Medium', fontSize: 13, color: c.inkPrimary,
+    },
+    condTratamientoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    condTratamientoText: {
+      fontFamily: 'SpaceGrotesk-Regular', fontSize: 11.5, color: c.inkMuted, maxWidth: 90,
+    },
 
     // Block 2 — lesiones
     lesionesTitle: {
@@ -3176,15 +3279,12 @@ function makeStyles(c: Colors) {
       color: c.inkMuted, lineHeight: 20, marginBottom: 24,
     },
     bodyMapWrap: { alignItems: 'center', marginBottom: 16 },
-    lumbarChip: {
-      marginTop: 14,
-      paddingHorizontal: 20, paddingVertical: 10,
-      backgroundColor: c.glassBg, borderWidth: 1, borderColor: c.borderBright,
-      borderRadius: 20,
+    bodyMapRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 16 },
+    lumbarThumbWrap: { alignItems: 'center', paddingBottom: 4 },
+    lumbarThumbLabel: {
+      fontFamily: 'SpaceGrotesk-Medium', fontSize: 11, color: c.inkMuted,
+      marginTop: 6, textAlign: 'center', maxWidth: 90,
     },
-    lumbarChipOn: { backgroundColor: 'rgba(255,68,68,0.12)', borderColor: '#ff4444' },
-    lumbarChipText: { fontFamily: 'SpaceGrotesk-Medium', fontSize: 14, color: c.inkSecondary },
-    lumbarChipTextOn: { color: '#ff4444' },
 
     legendRow: {
       flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 24,

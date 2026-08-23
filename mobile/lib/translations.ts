@@ -190,7 +190,7 @@ const translations = {
 
   // Bloque 1 — ciclo menstrual
   onboarding_ciclo_section:   { es: 'CICLO MENSTRUAL', en: 'MENSTRUAL CYCLE', pt: 'CICLO MENSTRUAL', fr: 'CYCLE MENSTRUEL' },
-  onboarding_ciclo_desc:      { es: 'El ciclo menstrual afecta tu fuerza, energía y recuperación de formas muy concretas. Si quieres, Zyfit lo integra en tu entrenamiento.', en: 'Your menstrual cycle affects your strength, energy, and recovery in very concrete ways. If you\'d like, Zyfit factors it into your training.', pt: 'O ciclo menstrual afeta sua força, energia e recuperação de formas bem concretas. Se quiser, o Zyfit o integra ao seu treino.', fr: "Le cycle menstruel affecte votre force, votre énergie et votre récupération de manières bien concrètes. Si vous le souhaitez, Zyfit l'intègre à votre entraînement." },
+  onboarding_ciclo_desc:      { es: '{nombre}, el ciclo menstrual afecta tu fuerza, energía y recuperación de formas muy concretas. Si quieres, Zyfit lo integra en tu entrenamiento.', en: '{nombre}, your menstrual cycle affects your strength, energy, and recovery in very concrete ways. If you\'d like, Zyfit factors it into your training.', pt: '{nombre}, o ciclo menstrual afeta sua força, energia e recuperação de formas bem concretas. Se quiser, o Zyfit o integra ao seu treino.', fr: "{nombre}, le cycle menstruel affecte votre force, votre énergie et votre récupération de manières bien concrètes. Si vous le souhaitez, Zyfit l'intègre à votre entraînement." },
   onboarding_ciclo_config_later: { es: 'Lo configuro después desde mi perfil', en: 'I\'ll set it up later from my profile', pt: 'Vou configurar depois no meu perfil', fr: 'Je le configurerai plus tard depuis mon profil' },
   onboarding_ciclo_toggle_note:  { es: 'Puedes activarlo o desactivarlo cuando quieras desde tu perfil.', en: 'You can turn it on or off anytime from your profile.', pt: 'Você pode ativar ou desativar quando quiser no seu perfil.', fr: "Vous pouvez l'activer ou le désactiver à tout moment depuis votre profil." },
 
@@ -208,7 +208,7 @@ const translations = {
   onboarding_sueno_sub: { es: 'El sueño es uno de los factores que más impacta tu recuperación y progreso.', en: 'Sleep is one of the factors that most impacts your recovery and progress.', pt: 'O sono é um dos fatores que mais impacta sua recuperação e progresso.', fr: 'Le sommeil est l\'un des facteurs qui affecte le plus votre récupération et vos progrès.' },
 
   // Bloque 1 — contexto de vida
-  onboarding_b1_context2:  { es: 'Tu vida fuera del gimnasio define cuánta recuperación tienes disponible', en: 'Your life outside the gym defines how much recovery you have available', pt: 'Sua vida fora da academia define quanta recuperação você tem disponível', fr: 'Votre vie en dehors de la salle définit la récupération dont vous disposez' },
+  onboarding_b1_context2:  { es: 'Tu estilo de vida define qué tan bien puedes recuperarte', en: 'Your lifestyle defines how well you can recover', pt: 'Seu estilo de vida define o quão bem você consegue se recuperar', fr: 'Votre mode de vie définit votre capacité à récupérer' },
   onboarding_stress_section:  { es: 'NIVEL DE ESTRÉS HABITUAL', en: 'USUAL STRESS LEVEL', pt: 'NÍVEL DE ESTRESSE HABITUAL', fr: 'NIVEAU DE STRESS HABITUEL' },
   onboarding_worktype_section: { es: 'TIPO DE TRABAJO / ACTIVIDAD DIARIA', en: 'TYPE OF WORK / DAILY ACTIVITY', pt: 'TIPO DE TRABALHO / ATIVIDADE DIÁRIA', fr: "TYPE DE TRAVAIL / ACTIVITÉ QUOTIDIENNE" },
 
@@ -233,7 +233,6 @@ const translations = {
   onboarding_beta_body_suffix: { es: 'para construir algo que se adapta a ti — no al revés.', en: 'to build something that adapts to you — not the other way around.', pt: 'para construir algo que se adapta a você — não o contrário.', fr: "pour construire quelque chose qui s'adapte à vous — pas l'inverse." },
   onboarding_beta_tag: { es: 'BETA · ACCESO TEMPRANO', en: 'BETA · EARLY ACCESS', pt: 'BETA · ACESSO ANTECIPADO', fr: 'BÊTA · ACCÈS ANTICIPÉ' },
   onboarding_beta_desc: { es: 'Estás entre los primeros en usar Zyfit. Tu uso y feedback construyen la versión final. Gracias por confiar desde el principio.', en: "You're among the first to use Zyfit. Your usage and feedback shape the final version. Thanks for trusting us from the start.", pt: 'Você está entre os primeiros a usar o Zyfit. Seu uso e feedback constroem a versão final. Obrigado por confiar desde o início.', fr: 'Vous faites partie des premiers à utiliser Zyfit. Votre utilisation et vos retours façonnent la version finale. Merci de nous faire confiance dès le début.' },
-  onboarding_legend_seleccionada:{ es: 'Seleccionada', en: 'Selected', pt: 'Selecionada', fr: 'Sélectionnée' },
   onboarding_zones_list_toggle:  { es: 'O ELIGE DESDE UNA LISTA', en: 'OR CHOOSE FROM A LIST', pt: 'OU ESCOLHA DE UMA LISTA', fr: 'OU CHOISISSEZ DANS UNE LISTE' },
   onboarding_zones_list_a11y:    { es: 'Seleccionar zona desde una lista', en: 'Select area from a list', pt: 'Selecionar área de uma lista', fr: 'Sélectionner une zone dans une liste' },
   onboarding_lesiones_registradas: { es: 'LESIONES REGISTRADAS', en: 'REGISTERED INJURIES', pt: 'LESÕES REGISTRADAS', fr: 'BLESSURES ENREGISTRÉES' },
@@ -277,6 +276,8 @@ const translations = {
   onboarding_sheet_gravedad:     { es: 'GRAVEDAD', en: 'SEVERITY', pt: 'GRAVIDADE', fr: 'GRAVITÉ' },
   onboarding_sheet_especialista: { es: 'Ya fue evaluada por un especialista', en: 'Already evaluated by a specialist', pt: 'Já foi avaliada por um especialista', fr: 'Déjà évaluée par un spécialiste' },
   onboarding_sheet_tiempo_q:     { es: '¿HACE CUÁNTO SE SUPERÓ?', en: 'HOW LONG SINCE IT RESOLVED?', pt: 'HÁ QUANTO TEMPO FOI SUPERADA?', fr: 'DEPUIS QUAND EST-ELLE GUÉRIE ?' },
+  onboarding_sheet_nota_label:   { es: 'NOTA (OPCIONAL)', en: 'NOTE (OPTIONAL)', pt: 'NOTA (OPCIONAL)', fr: 'NOTE (OPTIONNEL)' },
+  onboarding_sheet_nota_placeholder: { es: 'Ej: fue un esguince, fractura de hombro...', en: 'E.g. it was a sprain, shoulder fracture...', pt: 'Ex: foi uma entorse, fratura no ombro...', fr: 'Ex : c\'était une entorse, une fracture de l\'épaule...' },
   onboarding_sheet_eliminar:     { es: 'Eliminar', en: 'Delete', pt: 'Excluir', fr: 'Supprimer' },
   onboarding_sheet_eliminar_a11y:{ es: 'Eliminar lesión', en: 'Delete injury', pt: 'Excluir lesão', fr: 'Supprimer la blessure' },
   onboarding_sheet_actualizar:   { es: 'Actualizar', en: 'Update', pt: 'Atualizar', fr: 'Mettre à jour' },
@@ -300,6 +301,10 @@ const translations = {
   onboarding_med_notas_label: { es: 'NOTAS ADICIONALES (OPCIONAL)', en: 'ADDITIONAL NOTES (OPTIONAL)', pt: 'NOTAS ADICIONAIS (OPCIONAL)', fr: 'NOTES SUPPLÉMENTAIRES (OPTIONNEL)' },
   onboarding_med_notas_placeholder: { es: 'Cualquier otra cosa que debamos saber. Breve.', en: 'Anything else we should know. Keep it brief.', pt: 'Qualquer outra coisa que devêssemos saber. Seja breve.', fr: "Toute autre chose que nous devrions savoir. Soyez bref." },
   onboarding_med_skip:    { es: 'Sin condiciones relevantes — puedes continuar.', en: 'No relevant conditions — you can continue.', pt: 'Nenhuma condição relevante — você pode continuar.', fr: 'Aucune condition pertinente — vous pouvez continuer.' },
+  onboarding_med_label: { es: 'CONDICIONES MÉDICAS', en: 'MEDICAL CONDITIONS', pt: 'CONDIÇÕES MÉDICAS', fr: 'CONDITIONS MÉDICALES' },
+  onboarding_med_a11y:  { es: 'Condiciones médicas', en: 'Medical conditions', pt: 'Condições médicas', fr: 'Conditions médicales' },
+  onboarding_med_search_placeholder: { es: 'Buscar condición...', en: 'Search condition...', pt: 'Buscar condição...', fr: 'Rechercher une condition...' },
+  onboarding_med_bajo_tratamiento: { es: 'Está bajo tratamiento actualmente', en: 'Currently under treatment', pt: 'Está em tratamento atualmente', fr: 'Actuellement en traitement' },
 
   // Bloque 3 — lugar / equipamiento / tiempo-horario
   onboarding_lugar_title: { es: '¿Dónde entrenas?', en: 'Where do you train?', pt: 'Onde você treina?', fr: 'Où vous entraînez-vous ?' },
@@ -318,6 +323,7 @@ const translations = {
   onboarding_equip_title: { es: '¿Con qué equipamiento cuentas?', en: 'What equipment do you have?', pt: 'Com que equipamento você conta?', fr: 'De quel équipement disposez-vous ?' },
   onboarding_equip_sub:   { es: 'Incluye lo que tengas disponible, ya sea en casa o en tu lugar de entrenamiento habitual.', en: 'Include whatever you have available, whether at home or at your usual training place.', pt: 'Inclua o que você tem disponível, seja em casa ou no seu local de treino habitual.', fr: "Incluez tout ce dont vous disposez, à la maison ou dans votre lieu d'entraînement habituel." },
   onboarding_equip_ninguno: { es: 'Solo mi cuerpo — sin equipamiento', en: 'Just my body — no equipment', pt: 'Só o meu corpo — sem equipamento', fr: 'Juste mon corps — sans équipement' },
+  onboarding_equip_no_se: { es: 'No sé qué equipo hay disponible', en: "I don't know what equipment is available", pt: 'Não sei que equipamento está disponível', fr: 'Je ne sais pas quel équipement est disponible' },
   onboarding_equip_cat_pesas:    { es: 'Pesas y barras', en: 'Weights and barbells', pt: 'Pesos e barras', fr: 'Poids et barres' },
   onboarding_equip_cat_maquinas: { es: 'Máquinas y accesorios', en: 'Machines and accessories', pt: 'Máquinas e acessórios', fr: 'Machines et accessoires' },
   onboarding_equip_cat_cardio:   { es: 'Cardio y movilidad', en: 'Cardio and mobility', pt: 'Cardio e mobilidade', fr: 'Cardio et mobilité' },
@@ -445,10 +451,12 @@ const translations = {
 
   onboarding_entreno_title: { es: '¿Qué tipos de entrenamiento te interesan?', en: 'What types of training interest you?', pt: 'Que tipos de treino te interessam?', fr: "Quels types d'entraînement vous intéressent ?" },
   onboarding_entreno_sub:   { es: 'Sin jerarquía — todos son igual de válidos. Selecciona los que te llaman.', en: 'No hierarchy — they\'re all equally valid. Select the ones that appeal to you.', pt: 'Sem hierarquia — todos são igualmente válidos. Selecione os que te chamam.', fr: 'Sans hiérarchie — tous sont également valables. Sélectionnez ceux qui vous attirent.' },
-  onboarding_entreno_musculacion_label: { es: 'Musculación', en: 'Strength training', pt: 'Musculação', fr: 'Musculation' },
+  onboarding_entreno_musculacion_label: { es: 'Entrenamiento de fuerza', en: 'Strength training', pt: 'Treino de força', fr: 'Entraînement de force' },
   onboarding_entreno_musculacion_sub:   { es: 'Fuerza e hipertrofia', en: 'Strength and hypertrophy', pt: 'Força e hipertrofia', fr: 'Force et hypertrophie' },
   onboarding_entreno_running_label: { es: 'Running', en: 'Running', pt: 'Corrida', fr: 'Course à pied' },
   onboarding_entreno_running_sub:   { es: 'Trabajo aeróbico y resistencia', en: 'Aerobic work and endurance', pt: 'Trabalho aeróbico e resistência', fr: 'Travail aérobie et endurance' },
+  onboarding_entreno_ciclismo_label: { es: 'Ciclismo', en: 'Cycling', pt: 'Ciclismo', fr: 'Cyclisme' },
+  onboarding_entreno_ciclismo_sub:   { es: 'Ruta, indoor o MTB', en: 'Road, indoor, or MTB', pt: 'Estrada, indoor ou MTB', fr: 'Route, indoor ou VTT' },
   onboarding_entreno_libre_label: { es: 'Entrenamiento Libre', en: 'Free training', pt: 'Treino Livre', fr: 'Entraînement libre' },
   onboarding_entreno_libre_sub:   { es: 'Sin estructura fija', en: 'No fixed structure', pt: 'Sem estrutura fixa', fr: 'Sans structure fixe' },
   onboarding_entreno_skip: { es: 'Opcional — puedes continuar sin seleccionar.', en: 'Optional — you can continue without selecting.', pt: 'Opcional — você pode continuar sem selecionar.', fr: 'Facultatif — vous pouvez continuer sans sélectionner.' },
@@ -853,9 +861,6 @@ const translations = {
   historial_search:           { es: 'Buscar sesión...',                  en: 'Search session...',                   pt: 'Buscar sessão...',                    fr: 'Rechercher une séance...' },
   historial_view_list:        { es: 'Lista',                             en: 'List',                                pt: 'Lista',                               fr: 'Liste' },
   historial_view_calendar:    { es: 'Calendario',                        en: 'Calendar',                            pt: 'Calendário',                          fr: 'Calendrier' },
-  historial_stat_sessions:    { es: 'SESIONES',                          en: 'SESSIONS',                            pt: 'SESSÕES',                             fr: 'SÉANCES' },
-  historial_stat_weeks:       { es: 'SEMANAS',                           en: 'WEEKS',                               pt: 'SEMANAS',                             fr: 'SEMAINES' },
-  historial_stat_top:         { es: 'MÁS FRECUENTE',                     en: 'MOST FREQUENT',                      pt: 'MAIS FREQUENTE',                      fr: 'PLUS FRÉQUENT' },
   historial_empty:            { es: 'Sin sesiones registradas',           en: 'No sessions recorded',               pt: 'Sem sessões registradas',             fr: 'Aucune séance enregistrée' },
   historial_empty_sub:        { es: 'Tus entrenamientos aparecerán aquí', en: 'Your workouts will appear here',     pt: 'Seus treinos aparecerão aqui',        fr: 'Vos entraînements apparaîtront ici' },
   historial_legend_high:      { es: 'Alta',                              en: 'High',                                pt: 'Alta',                                fr: 'Haute' },

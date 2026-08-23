@@ -259,42 +259,6 @@ function matchesTipo(item: HistorialItem, tipo: FilterTipo): boolean {
   return inferTipoItem(item) === tipo
 }
 
-function countActiveWeeks(items: HistorialItem[]): number {
-  const weeks = new Set<string>()
-  for (const s of items) {
-    const d = new Date(Date.UTC(
-      parseInt(s.fecha.slice(0, 4)),
-      parseInt(s.fecha.slice(5, 7)) - 1,
-      parseInt(s.fecha.slice(8, 10)),
-    ))
-    const dayNum = d.getUTCDay() || 7
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-    const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-    weeks.add(`${d.getUTCFullYear()}-W${weekNo}`)
-  }
-  return weeks.size
-}
-
-function getMostFrequent(items: HistorialItem[]): { tipo: string; count: number } | null {
-  if (!items.length) return null
-  const map = new Map<string, { count: number; lastFecha: string }>()
-  for (const s of items) {
-    const tipo = inferTipoItem(s)
-    const entry = map.get(tipo) ?? { count: 0, lastFecha: '' }
-    entry.count++
-    if (s.fecha > entry.lastFecha) entry.lastFecha = s.fecha
-    map.set(tipo, entry)
-  }
-  let best: { tipo: string; count: number; lastFecha: string } | null = null
-  for (const [tipo, v] of map) {
-    if (!best || v.count > best.count || (v.count === best.count && v.lastFecha > best.lastFecha)) {
-      best = { tipo, count: v.count, lastFecha: v.lastFecha }
-    }
-  }
-  return best ? { tipo: best.tipo, count: best.count } : null
-}
-
 // ─── Calendar month grid ──────────────────────────────────────────────────────
 
 /** Mes actual + 5 anteriores, más reciente primero. */
@@ -1450,56 +1414,6 @@ function DayModal({
   )
 }
 
-// ─── Summary Block ───────────────────────────────────────────────────────────
-
-function SummaryBlock({
-  sessions, styles, colors,
-}: {
-  sessions: HistorialItem[]
-  styles: ReturnType<typeof makeStyles>
-  colors: Colors
-}) {
-  const { t } = useTranslation()
-  const totalSesiones  = sessions.length
-  const semanasActivas = countActiveWeeks(sessions)
-  const masFrec        = getMostFrequent(sessions)
-
-  return (
-    <View style={styles.summaryGrid}>
-      {/* Row 1: dos cards de igual ancho */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t('historial_stat_sessions')}</Text>
-          <Text style={styles.summaryNumber}>{totalSesiones}</Text>
-          <Text style={styles.summarySub}>Completadas</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t('historial_stat_weeks')}</Text>
-          <Text style={styles.summaryNumber}>{semanasActivas}</Text>
-          <Text style={styles.summarySub}>Activas</Text>
-        </View>
-      </View>
-
-      {/* Row 2: card full-width horizontal */}
-      <View style={[styles.summaryCard, styles.summaryCardWide]}>
-        <View style={{ flex: 1, gap: 5 }}>
-          <Text style={styles.summaryLabel}>{t('historial_stat_top')}</Text>
-          <Text style={styles.summaryWideTitle} numberOfLines={1}>
-            {masFrec?.tipo ?? '—'}
-          </Text>
-        </View>
-        {masFrec && (
-          <View style={[styles.summaryBadge, { backgroundColor: `${colors.accent}20` }]}>
-            <Text style={[styles.summaryBadgeText, { color: colors.accent }]}>
-              {masFrec.count} veces
-            </Text>
-          </View>
-        )}
-      </View>
-    </View>
-  )
-}
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HistorialScreen({ embedded = false }: { embedded?: boolean } = {}) {
@@ -1775,11 +1689,6 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
           </View>
         )}
 
-        {/* ── Summary ── */}
-        {!loading && !error && allItems.length > 0 && (
-          <SummaryBlock sessions={allItems} styles={styles} colors={colors} />
-        )}
-
         {/* ── View toggle ── */}
         {!loading && !error && (
           <View style={styles.toggleRow}>
@@ -1940,65 +1849,6 @@ function makeStyles(c: Colors) {
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 10,
       letterSpacing: 0.4,
-    },
-    summaryGrid: {
-      gap: 10,
-      marginBottom: 20,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    summaryCard: {
-      flex: 1,
-      backgroundColor: c.cardBg,
-      borderWidth: 1,
-      borderColor: c.borderDefault,
-      borderRadius: 16,
-      padding: 16,
-      gap: 3,
-    },
-    summaryCardWide: {
-      flex: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    summaryLabel: {
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 8,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase',
-    },
-    summaryNumber: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-Bold',
-      fontSize: 28,
-      letterSpacing: -0.8,
-      lineHeight: 32,
-    },
-    summarySub: {
-      color: c.inkMuted,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 11,
-    },
-    summaryWideTitle: {
-      color: c.inkPrimary,
-      fontFamily: 'SpaceGrotesk-SemiBold',
-      fontSize: 15,
-      letterSpacing: -0.3,
-      flex: 1,
-    },
-    summaryBadge: {
-      borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    summaryBadgeText: {
-      fontFamily: 'JetBrainsMono-Medium',
-      fontSize: 10,
-      letterSpacing: 0.3,
     },
     toggleRow: {
       flexDirection: 'row',
