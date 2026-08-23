@@ -11,7 +11,7 @@ import { router } from 'expo-router'
 import { COLORS, Colors } from '../../lib/colors'
 import { useTheme } from '../../lib/theme'
 
-const LAST_UPDATED = '14 de mayo de 2026'
+const LAST_UPDATED = '23 de agosto de 2026'
 const COMPANY = 'Zyfit Technologies'
 const APP_NAME = 'Zyfit'
 const CONTACT_EMAIL = 'legal@zyfit.app'
@@ -101,7 +101,8 @@ export default function PrivacidadScreen() {
           </P>
           <Li s={s}>Datos biométricos: peso, altura, fecha de nacimiento, sexo.</Li>
           <Li s={s}>Marcas de rendimiento: repetición máxima (RM) en sentadilla, peso muerto, press de banca y press de hombro.</Li>
-          <Li s={s}>Lesiones activas o pasadas: zona corporal afectada y nivel de severidad.</Li>
+          <Li s={s}>Lesiones activas o pasadas: zona corporal afectada, nivel de severidad y una nota descriptiva opcional (por ejemplo, el tipo de lesión).</Li>
+          <Li s={s}>Condiciones médicas declaradas (por ejemplo, hipertensión o diabetes), si están bajo tratamiento actualmente, y notas médicas adicionales.</Li>
           <Li s={s}>Ciclo menstrual: fecha de inicio y duración (completamente opcional).</Li>
           <Li s={s}>Estado de ánimo diario (escala 1-5).</Li>
           <Li s={s}>Calidad del sueño (escala horaria).</Li>
@@ -114,6 +115,8 @@ export default function PrivacidadScreen() {
           <Li s={s}>Check-ins diarios: estado de ánimo, sueño, foco de entrenamiento y duración disponible.</Li>
           <Li s={s}>Ubicaciones de entrenamiento y equipamiento disponible.</Li>
           <Li s={s}>Objetivos de entrenamiento, estilo y preferencias.</Li>
+          <Li s={s}>Nivel de experiencia entrenando, nivel de estrés habitual y tipo de trabajo (sedentario, mixto o activo).</Li>
+          <Li s={s}>Ejercicios favoritos, ejercicios a evitar y horario de entrenamiento preferido.</Li>
           <Li s={s}>Competencias o eventos deportivos registrados.</Li>
 
           <Text style={s.subTitle}>2.4 Datos de ubicación (GPS)</Text>
@@ -163,6 +166,7 @@ export default function PrivacidadScreen() {
             Los datos relativos a la salud constituyen una categoría especial de datos personales que requieren protección reforzada. En {APP_NAME} tratamos los siguientes datos de salud únicamente con su consentimiento explícito:
           </P>
           <Li s={s}>Lesiones corporales y su severidad.</Li>
+          <Li s={s}>Condiciones médicas declaradas y notas médicas adicionales.</Li>
           <Li s={s}>Datos del ciclo menstrual (solo si el Usuario activa esta función voluntariamente).</Li>
           <Li s={s}>Métricas de recuperación como HRV y calidad del sueño.</Li>
           <P s={s}>
