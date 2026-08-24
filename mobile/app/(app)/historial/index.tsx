@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
-  TextInput,
   Animated,
   Easing,
   ActivityIndicator,
@@ -98,8 +97,6 @@ type HistorialItem = GymItem | RunItem
 
 type FilterTipo = 'Todo' | 'Musculación' | 'Running' | 'Libre'
 
-const FILTER_TIPOS: FilterTipo[] = ['Todo', 'Musculación', 'Running', 'Libre']
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // Fallback static arrays (used only before i18n hook is available in non-hook contexts)
@@ -145,6 +142,38 @@ function getEjerciciosSintesis(ia?: RespuestaIA, max = 3): string {
   const shown = nombres.slice(0, max)
   const rest = nombres.length - shown.length
   return shown.join(' · ') + (rest > 0 ? ` +${rest}` : '')
+}
+
+// Categoriza el bloque principal por grupo muscular dominante para el título
+// corto de la card de Historial — mismo criterio que getShareCardTitle en
+// feedback/[id].tsx, pero con label capitalizado para el prefijo "Fuerza -".
+const CARD_TITLE_CATEGORIES: { label: string; pattern: RegExp }[] = [
+  { label: 'Piernas',  pattern: /sentadilla|zancada|prensa|femoral|cuádricep|cuadricep|glúteo|gluteo|pantorrilla|peso muerto|hip thrust|squat|lunge|deadlift|leg press|leg curl|leg extension/i },
+  { label: 'Pecho',    pattern: /pecho|press banca|press de banca|bench press|aperturas|fondos|pectoral|push[\s-]?up|flexion(es)? de brazos/i },
+  { label: 'Espalda',  pattern: /espalda|jalón|jalon|remo|dominada|pull[\s-]?up|pulldown|\brow\b|dorsal/i },
+  { label: 'Hombros',  pattern: /hombro|press militar|elevaciones laterales|deltoide|overhead press/i },
+  { label: 'Brazos',   pattern: /bíceps|biceps|tríceps|triceps|curl/i },
+  { label: 'Core',     pattern: /abdominal|\bcore\b|plancha|plank|oblicuo/i },
+]
+
+function getSessionCardTitle(ia?: RespuestaIA): string {
+  const nombres = ia?.fases?.flatMap(f => f.ejercicios.map(e => e.nombre)) ?? []
+  const counts = new Map<string, number>()
+  for (const nombre of nombres) {
+    const cat = CARD_TITLE_CATEGORIES.find(c => c.pattern.test(nombre))
+    if (cat) counts.set(cat.label, (counts.get(cat.label) ?? 0) + 1)
+  }
+  let best: string | null = null
+  let bestCount = 0
+  for (const [label, count] of counts) {
+    if (count > bestCount) { best = label; bestCount = count }
+  }
+  return best ? `Entrenamiento de Fuerza - ${best}` : 'Entrenamiento de Fuerza'
+}
+
+function getSessionTotalSeries(ia?: RespuestaIA): number {
+  const ejercicios = ia?.fases?.flatMap(f => f.ejercicios) ?? []
+  return ejercicios.reduce((sum, ej) => sum + (ej.series || 0), 0)
 }
 
 function formatPace(paceS: number): string {
@@ -201,62 +230,11 @@ function getRpeColor(rpe: number): string {
   return '#ff4444'
 }
 
-// ─── Week grouping ────────────────────────────────────────────────────────────
-
-function getWeekStartDate(dateStr: string): Date {
-  const d = new Date(Date.UTC(
-    parseInt(dateStr.slice(0, 4)),
-    parseInt(dateStr.slice(5, 7)) - 1,
-    parseInt(dateStr.slice(8, 10)),
-  ))
-  const dow = d.getUTCDay() || 7  // 1=Mon … 7=Sun
-  d.setUTCDate(d.getUTCDate() - (dow - 1))
-  return d
-}
-
-function formatWeekLabel(ws: Date, monthNames: string[]): string {
-  const we = new Date(ws)
-  we.setUTCDate(we.getUTCDate() + 6)
-  const sd = ws.getUTCDate()
-  const ed = we.getUTCDate()
-  const sm = monthNames[ws.getUTCMonth()].toLowerCase()
-  const em = monthNames[we.getUTCMonth()].toLowerCase()
-  if (sm === em) return `Semana del ${sd} al ${ed} de ${sm}`
-  return `Semana del ${sd} de ${sm} al ${ed} de ${em}`
-}
-
-function groupByWeek(items: HistorialItem[], monthNames: string[]): { key: string; label: string; sessions: HistorialItem[] }[] {
-  const map = new Map<string, { ws: Date; sessions: HistorialItem[] }>()
-  for (const s of items) {
-    const ws = getWeekStartDate(s.fecha)
-    const key = `${ws.getUTCFullYear()}-${String(ws.getUTCMonth() + 1).padStart(2, '0')}-${String(ws.getUTCDate()).padStart(2, '0')}`
-    if (!map.has(key)) map.set(key, { ws, sessions: [] })
-    map.get(key)!.sessions.push(s)
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([key, { ws, sessions: sArr }]) => ({
-      key,
-      label: formatWeekLabel(ws, monthNames),
-      sessions: sArr.sort((a, b) => b.fecha.localeCompare(a.fecha)),
-    }))
-}
-
 function inferTipoSesion(ia?: RespuestaIA): FilterTipo {
   const text = ((ia?.titulo ?? '') + ' ' + (ia?.objetivo_sesion ?? '')).toLowerCase()
   if (/running|correr|cardio|aeróbico|aerobico|trote|kilómetro|kilómetros|ritmo|resistencia cardiovascular/.test(text)) return 'Running'
   if (/fuerza|hipertrofia|pecho|espalda|pierna|cuádricep|femoral|glúteo|bícep|trícep|hombro|sentadilla|press|jalón|musculación|musculacion/.test(text)) return 'Musculación'
   return 'Libre'
-}
-
-function inferTipoItem(item: HistorialItem): FilterTipo {
-  if (item._tipo === 'run') return 'Running'
-  return inferTipoSesion(item.respuesta_ia)
-}
-
-function matchesTipo(item: HistorialItem, tipo: FilterTipo): boolean {
-  if (tipo === 'Todo') return true
-  return inferTipoItem(item) === tipo
 }
 
 // ─── Calendar month grid ──────────────────────────────────────────────────────
@@ -700,25 +678,15 @@ function SessionCard({
   styles: ReturnType<typeof makeStyles>
   colors: Colors
 }) {
-  const rotAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
   const { t, ta } = useTranslation()
 
   const monthShort = ta('historial_months')
   const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-  useEffect(() => {
-    Animated.timing(rotAnim, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [isExpanded])
-
-  const chevronRotate = rotAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] })
-
   const ia          = session.respuesta_ia
-  const titulo      = ia?.titulo ?? 'Sesión de entrenamiento'
+  const titulo      = getSessionCardTitle(ia)
   const duracion    = ia?.duracion_total ?? session.duracion_planificada
+  const totalSeries = getSessionTotalSeries(ia)
   const feedback    = session.feedback
   const checkin     = session.checkin
   const tipoConf    = getTipoConfig(ia)
@@ -740,8 +708,12 @@ function SessionCard({
         <View style={styles.cardCenter}>
           <Text style={styles.cardTitle} numberOfLines={isExpanded ? 2 : 1}>{titulo}</Text>
           <View style={styles.cardMeta}>
-            <Text style={styles.cardMetaDate}>{formatDate(session.fecha, monthShort, weekdayShort)}</Text>
-            <View style={styles.metaDot} />
+            {totalSeries > 0 && (
+              <>
+                <Text style={styles.cardMetaDur}>{totalSeries} series</Text>
+                <View style={styles.metaDot} />
+              </>
+            )}
             <Text style={styles.cardMetaDur}>⏱ {duracion}m</Text>
             {dolor ? (
               <View style={styles.dolorTag}>
@@ -749,6 +721,7 @@ function SessionCard({
               </View>
             ) : null}
           </View>
+          <Text style={styles.cardDateLine}>{formatDate(session.fecha, monthShort, weekdayShort)}</Text>
         </View>
 
         {/* Right */}
@@ -759,10 +732,6 @@ function SessionCard({
               <Text style={styles.rpeBadgeLabel}>RPE</Text>
             </View>
           ) : <View style={styles.rpeBadgeSpacer} />}
-
-          <Animated.Text style={[styles.chevron, { transform: [{ rotate: chevronRotate }] }]}>
-            ⌄
-          </Animated.Text>
         </View>
       </View>
 
@@ -810,12 +779,14 @@ function SessionCard({
 
 function RunCard({
   run,
-  onPress,
+  isExpanded,
+  onToggle,
   styles,
   colors,
 }: {
   run: RunItem
-  onPress: () => void
+  isExpanded: boolean
+  onToggle: () => void
   styles: ReturnType<typeof makeStyles>
   colors: Colors
 }) {
@@ -824,34 +795,51 @@ function RunCard({
   const weekdayShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const icon = run.is_trail ? '🏔️' : '🏃'
   const rpe = run.rpe_real
+  const titulo = run.is_trail ? 'Entrenamiento de Trail' : 'Entrenamiento de Running'
+
+  // Igual que SessionModal: la lista trae los campos básicos, el desglose
+  // completo (desnivel/calorías/FC/fotos/feedback) se busca al desplegar.
+  const [detail, setDetail] = useState<any>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isExpanded || detail) return
+    setDetailLoading(true)
+    apiGet(`/api/runs/${run.id}/`)
+      .then(d => setDetail(d))
+      .catch(() => {})
+      .finally(() => setDetailLoading(false))
+  }, [isExpanded])
+
+  const d = detail ?? run
+  const photos: any[] = detail?.photos ?? []
+
+  const extraStats = [
+    ...(run.elevation_gain_m > 0 ? [{ label: 'DESNIVEL',  value: `↑${Math.round(run.elevation_gain_m)}m` }] : []),
+    ...(d.calories_burned  ? [{ label: 'CALORÍAS', value: `${Math.round(d.calories_burned)} kcal` }] : []),
+    ...(d.avg_heart_rate   ? [{ label: 'FC MEDIA', value: `${d.avg_heart_rate} bpm` }] : []),
+  ]
+
   return (
-    <TouchableOpacity style={styles.sessionCard2} onPress={onPress} activeOpacity={0.78}>
+    <TouchableOpacity style={styles.sessionCard2} onPress={onToggle} activeOpacity={0.78}>
       <View style={styles.cardRow}>
         <View style={[styles.typeIconBox, { backgroundColor: 'rgba(108,229,255,0.12)' }]}>
           <Text style={styles.typeIconText}>{icon}</Text>
         </View>
         <View style={styles.cardCenter}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {formatDistanceKm(run.total_distance_m)}
-            {run.is_trail ? '  🏔 Trail' : ''}
-          </Text>
+          <Text style={styles.cardTitle} numberOfLines={isExpanded ? 2 : 1}>{titulo}</Text>
           <View style={styles.cardMeta}>
-            <Text style={styles.cardMetaDate}>{formatDate(run.fecha, monthShort, weekdayShort)}</Text>
-            <View style={styles.metaDot} />
-            <Text style={styles.cardMetaDur}>⏱ {formatDuration(run.total_duration_s)}</Text>
+            <Text style={styles.cardMetaDur}>{formatDistanceKm(run.total_distance_m)}</Text>
             {run.avg_pace_s_per_km > 0 && (
               <>
                 <View style={styles.metaDot} />
                 <Text style={styles.cardMetaDur}>🚀 {formatPace(run.avg_pace_s_per_km)}</Text>
               </>
             )}
-            {run.elevation_gain_m > 0 && (
-              <>
-                <View style={styles.metaDot} />
-                <Text style={styles.cardMetaDur}>↑{Math.round(run.elevation_gain_m)}m</Text>
-              </>
-            )}
+            <View style={styles.metaDot} />
+            <Text style={styles.cardMetaDur}>⏱ {formatDuration(run.total_duration_s)}</Text>
           </View>
+          <Text style={styles.cardDateLine}>{formatDate(run.fecha, monthShort, weekdayShort)}</Text>
         </View>
         <View style={styles.cardRight}>
           {rpe != null ? (
@@ -860,9 +848,52 @@ function RunCard({
               <Text style={styles.rpeBadgeLabel}>RPE</Text>
             </View>
           ) : <View style={styles.rpeBadgeSpacer} />}
-          <Text style={[styles.chevron, { color: colors.inkFaint }]}>›</Text>
         </View>
       </View>
+
+      {/* ── Desglose de ritmo/desnivel/feedback ── */}
+      {isExpanded && (
+        <>
+          <View style={styles.expandDivider} />
+          <View style={styles.expandContent}>
+
+            {extraStats.length > 0 && (
+              <View style={styles.runStatRow}>
+                {extraStats.map(({ label, value }) => (
+                  <View key={label} style={styles.runStatChip}>
+                    <Text style={styles.runStatValue}>{value}</Text>
+                    <Text style={styles.runStatLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {detailLoading && !detail && (
+              <ActivityIndicator color={colors.accent} size="small" />
+            )}
+
+            {(run.rating != null || run.cumplimiento != null) && (
+              <Text style={styles.runFeedbackLine}>
+                {run.rating != null ? `Rating: ${'⭐'.repeat(run.rating)}` : ''}
+                {run.rating != null && run.cumplimiento != null ? '   ·   ' : ''}
+                {run.cumplimiento != null ? `Completado: ${run.cumplimiento}%` : ''}
+              </Text>
+            )}
+
+            {d.feedback_notas ? (
+              <View style={styles.noteBlock}>
+                <Text style={styles.noteIcon}>📝</Text>
+                <Text style={styles.noteText}>{d.feedback_notas}</Text>
+              </View>
+            ) : null}
+
+            {photos.length > 0 && (
+              <SessionPhotos kind="run" sessionId={run.id} initialPhotos={photos} editable={false} />
+            )}
+
+          </View>
+        </>
+      )}
     </TouchableOpacity>
   )
 }
@@ -979,38 +1010,32 @@ function EmptyState({ icon, title, subtitle }: { icon: string; title: string; su
 }
 
 // ─── List View ────────────────────────────────────────────────────────────────
-
-type WeekGroup = { key: string; label: string; sessions: HistorialItem[] }
+// Lista plana ordenada por fecha (sin agrupar por semana) — cada card resume su
+// propia fecha, así que el encabezado "Semana del X al X" ya no aporta nada.
 
 function ListView({
-  weeks,
-  hasFilters,
+  items,
   hasMore,
   isLoadingMore,
-  onSelectSession,
-  onSelectRun,
 }: {
-  weeks: WeekGroup[]
-  hasFilters: boolean
+  items: HistorialItem[]
   hasMore: boolean
   isLoadingMore: boolean
-  onSelectSession: (s: GymItem) => void
-  onSelectRun: (r: RunItem) => void
 }) {
   const { colors } = useTheme()
   const { t } = useTranslation()
   const styles = useMemo(() => makeStyles(colors), [colors])
 
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  function handleToggle(id: number) {
-    setExpandedId(prev => prev === id ? null : id)
+  function handleToggle(key: string) {
+    setExpandedKey(prev => prev === key ? null : key)
   }
 
-  if (!weeks.length) {
+  if (!items.length) {
     return (
       <EmptyState
-        icon={hasFilters ? '🔍' : '🏋️'}
+        icon="🏋️"
         title={t('historial_empty')}
         subtitle={t('historial_empty_sub')}
       />
@@ -1019,31 +1044,28 @@ function ListView({
 
   return (
     <>
-      {weeks.map(group => (
-        <View key={group.key} style={styles.weekGroup}>
-          <Text style={styles.weekLabel}>{group.label.toUpperCase()}</Text>
-          {group.sessions.map(item => item._tipo === 'run'
-            ? (
-              <RunCard
-                key={`run-${item.id}`}
-                run={item}
-                onPress={() => onSelectRun(item)}
-                styles={styles}
-                colors={colors}
-              />
-            ) : (
-              <SessionCard
-                key={`gym-${item.id}`}
-                session={item}
-                isExpanded={expandedId === item.id}
-                onToggle={() => handleToggle(item.id)}
-                styles={styles}
-                colors={colors}
-              />
-            )
-          )}
-        </View>
-      ))}
+      {items.map(item => {
+        const key = `${item._tipo}-${item.id}`
+        return item._tipo === 'run' ? (
+          <RunCard
+            key={key}
+            run={item}
+            isExpanded={expandedKey === key}
+            onToggle={() => handleToggle(key)}
+            styles={styles}
+            colors={colors}
+          />
+        ) : (
+          <SessionCard
+            key={key}
+            session={item}
+            isExpanded={expandedKey === key}
+            onToggle={() => handleToggle(key)}
+            styles={styles}
+            colors={colors}
+          />
+        )
+      })}
 
       {/* Footer */}
       <View style={styles.listFooter}>
@@ -1170,30 +1192,66 @@ function CalendarView({
                 <Text key={idx} style={calStyles.weekHeaderCell}>{d}</Text>
               ))}
             </View>
-            {Array.from({ length: rows }, (_, row) => (
-              <View key={row} style={calStyles.weekRow}>
-                {Array.from({ length: 7 }, (_, col) => {
-                  const cellIndex = row * 7 + col
-                  const dayIndex = cellIndex - firstOffset
-                  if (dayIndex < 0 || dayIndex >= days.length) {
-                    return <View key={col} style={calStyles.dayCell} />
-                  }
-                  const day = days[dayIndex]
-                  const dayItems = itemsByDate.get(localDateStr(day)) ?? []
-                  return (
-                    <CalendarDayCell
-                      key={col}
-                      date={day}
-                      items={dayItems}
-                      today={today}
-                      colors={colors}
-                      calStyles={calStyles}
-                      onPress={() => dayItems.length > 0 && onSelectDay(dayItems)}
+            {Array.from({ length: rows }, (_, row) => {
+              // Sombreado que conecta los días de entrenamiento consecutivos de
+              // esta fila (de la primera a la última sesión de la racha) — un
+              // rectángulo redondeado detrás de los círculos del día, visible en
+              // los espacios entre ellos.
+              const rowHasSession = Array.from({ length: 7 }, (_, col) => {
+                const dayIndex = row * 7 + col - firstOffset
+                if (dayIndex < 0 || dayIndex >= days.length) return false
+                return (itemsByDate.get(localDateStr(days[dayIndex])) ?? []).length > 0
+              })
+              const shadeSegments: { start: number; end: number }[] = []
+              for (let col = 0; col < 7; col++) {
+                if (!rowHasSession[col]) continue
+                let end = col
+                while (end + 1 < 7 && rowHasSession[end + 1]) end++
+                if (end > col) shadeSegments.push({ start: col, end })
+                col = end
+              }
+
+              return (
+                <View key={row} style={calStyles.weekRowWrap}>
+                  {shadeSegments.map((seg, si) => (
+                    <View
+                      key={si}
+                      pointerEvents="none"
+                      style={[
+                        calStyles.streakShade,
+                        {
+                          left: `${(seg.start / 7) * 100}%`,
+                          width: `${((seg.end - seg.start + 1) / 7) * 100}%`,
+                          backgroundColor: `${colors.accent}26`,
+                        },
+                      ]}
                     />
-                  )
-                })}
-              </View>
-            ))}
+                  ))}
+                  <View style={calStyles.weekRow}>
+                    {Array.from({ length: 7 }, (_, col) => {
+                      const cellIndex = row * 7 + col
+                      const dayIndex = cellIndex - firstOffset
+                      if (dayIndex < 0 || dayIndex >= days.length) {
+                        return <View key={col} style={calStyles.dayCell} />
+                      }
+                      const day = days[dayIndex]
+                      const dayItems = itemsByDate.get(localDateStr(day)) ?? []
+                      return (
+                        <CalendarDayCell
+                          key={col}
+                          date={day}
+                          items={dayItems}
+                          today={today}
+                          colors={colors}
+                          calStyles={calStyles}
+                          onPress={() => dayItems.length > 0 && onSelectDay(dayItems)}
+                        />
+                      )
+                    })}
+                  </View>
+                </View>
+              )
+            })}
           </View>
         )
       })}
@@ -1230,6 +1288,15 @@ function makeCalStyles(c: Colors) {
       fontSize: 9,
       letterSpacing: 0.3,
       paddingBottom: 6,
+    },
+    weekRowWrap: {
+      position: 'relative',
+    },
+    streakShade: {
+      position: 'absolute',
+      top: 3,
+      height: 30,
+      borderRadius: 15,
     },
     weekRow: {
       flexDirection: 'row',
@@ -1441,11 +1508,6 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const [refreshing, setRefreshing] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
 
-  // ── Search & filters ───────────────────────────────────────────────────────
-  const [searchOpen,  setSearchOpen]  = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [tipoFilter,  setTipoFilter]  = useState<FilterTipo>('Todo')
-
   // ── View: Lista / Calendario ────────────────────────────────────────────────
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
 
@@ -1458,12 +1520,6 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
   const [dayModalVisible,     setDayModalVisible]     = useState(false)
   const [calendarDayItems,        setCalendarDayItems]        = useState<HistorialItem[]>([])
   const [calendarDayModalVisible, setCalendarDayModalVisible] = useState(false)
-
-  // i18n month names for week label formatter
-  const monthNamesI18n = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ]
 
   const fetchAll = useCallback(async () => {
     try {
@@ -1517,67 +1573,31 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
     }
   }, [paramFecha, paramTs, loading, gymSessions])
 
-  const filteredItems = useMemo(() => {
-    let result = allItems
+  // ── Pagination (lista plana, sin agrupar por semana) ────────────────────────
+  const PAGE_SIZE = 10
+  const [visibleCount,  setVisibleCount]  = useState(PAGE_SIZE)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
-    if (tipoFilter !== 'Todo') {
-      result = result.filter(s => matchesTipo(s, tipoFilter))
-    }
+  // Reset visible range whenever the underlying data changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allItems])
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(item => {
-        if (item._tipo === 'run') {
-          const tipo = 'running'
-          const trail = item.is_trail ? 'trail' : ''
-          return tipo.includes(q) || trail.includes(q)
-        }
-        const titulo   = (item.respuesta_ia?.titulo          ?? '').toLowerCase()
-        const objetivo = (item.respuesta_ia?.objetivo_sesion ?? '').toLowerCase()
-        const tipo     = inferTipoSesion(item.respuesta_ia).toLowerCase()
-        const ejercs   = item.respuesta_ia?.fases?.flatMap(f => f.ejercicios.map(e => e.nombre.toLowerCase())) ?? []
-        return titulo.includes(q) || objetivo.includes(q) || tipo.includes(q) || ejercs.some(n => n.includes(q))
-      })
-    }
-
-    return result
-  }, [allItems, searchQuery, tipoFilter])
-
-  const hasFilters = searchQuery.trim().length > 0 || tipoFilter !== 'Todo'
-
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  const allWeeks = useMemo(() => groupByWeek(filteredItems, monthNamesI18n), [filteredItems])
-  const [visibleWeekCount, setVisibleWeekCount] = useState(3)
-  const [isLoadingMore,    setIsLoadingMore]    = useState(false)
-
-  // Reset visible range whenever filters change
-  useEffect(() => { setVisibleWeekCount(3) }, [filteredItems])
-
-  const visibleWeeks = useMemo(() => allWeeks.slice(0, visibleWeekCount), [allWeeks, visibleWeekCount])
-  const hasMore      = visibleWeekCount < allWeeks.length
+  const visibleItems = useMemo(() => allItems.slice(0, visibleCount), [allItems, visibleCount])
+  const hasMore       = visibleCount < allItems.length
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore) return
     setIsLoadingMore(true)
     setTimeout(() => {
-      setVisibleWeekCount(prev => Math.min(prev + 3, allWeeks.length))
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, allItems.length))
       setIsLoadingMore(false)
     }, 400)
-  }, [hasMore, isLoadingMore, allWeeks.length])
+  }, [hasMore, isLoadingMore, allItems.length])
 
   function handleScroll({ nativeEvent }: any) {
     const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250 - insets.bottom) {
       loadMore()
     }
-  }
-
-  function toggleSearch() {
-    if (searchOpen) {
-      setSearchQuery('')
-      setTipoFilter('Todo')
-    }
-    setSearchOpen(v => !v)
   }
 
   function openSession(s: GymItem) {
@@ -1638,56 +1658,7 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
           <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
             {loading ? '...' : `${allItems.length} ${t('historial_sessions_suffix')}.`}
           </Text>
-          <TouchableOpacity
-            onPress={toggleSearch}
-            activeOpacity={0.7}
-            style={[styles.searchBtn, { borderColor: searchOpen ? colors.accent : colors.borderBright }]}
-          >
-            <Text style={[styles.searchBtnIcon, { color: searchOpen ? colors.accent : colors.inkMuted }]}>
-              {searchOpen ? '✕' : '⌕'}
-            </Text>
-          </TouchableOpacity>
         </View>
-
-        {/* ── Search block ── */}
-        {searchOpen && (
-          <View style={styles.searchBlock}>
-            <TextInput
-              style={[styles.searchInput, { color: colors.inkPrimary, borderColor: colors.borderBright }]}
-              placeholder={t('historial_search')}
-              placeholderTextColor={colors.inkMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-              returnKeyType="search"
-              clearButtonMode="while-editing"
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {FILTER_TIPOS.map(tipo => {
-                const active = tipoFilter === tipo
-                return (
-                  <TouchableOpacity
-                    key={tipo}
-                    onPress={() => setTipoFilter(tipo)}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.filterPill,
-                      active && { backgroundColor: colors.accent, borderColor: colors.accent },
-                    ]}
-                  >
-                    <Text style={[styles.filterPillText, { color: active ? '#fff' : colors.inkMuted }]}>
-                      {tipo}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          </View>
-        )}
 
         {/* ── View toggle ── */}
         {!loading && !error && (
@@ -1723,15 +1694,12 @@ export default function HistorialScreen({ embedded = false }: { embedded?: boole
           </View>
         ) : view === 'lista' ? (
           <ListView
-            weeks={visibleWeeks}
-            hasFilters={hasFilters}
+            items={visibleItems}
             hasMore={hasMore}
             isLoadingMore={isLoadingMore}
-            onSelectSession={openSession}
-            onSelectRun={openRun}
           />
         ) : (
-          <CalendarView items={filteredItems} onSelectDay={openCalendarDay} />
+          <CalendarView items={allItems} onSelectDay={openCalendarDay} />
         )}
 
         <View style={{ height: 40 }} />
@@ -1805,50 +1773,6 @@ function makeStyles(c: Colors) {
       fontFamily: 'SpaceGrotesk-Bold',
       fontSize: 28,
       letterSpacing: -0.8,
-    },
-    searchBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      borderWidth: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: c.cardBg,
-    },
-    searchBtnIcon: {
-      fontSize: 18,
-      lineHeight: 20,
-    },
-    searchBlock: {
-      marginBottom: 14,
-      gap: 10,
-    },
-    searchInput: {
-      backgroundColor: c.glassBg,
-      borderWidth: 1,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
-      fontFamily: 'SpaceGrotesk-Regular',
-      fontSize: 14,
-    },
-    filterRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingVertical: 2,
-    },
-    filterPill: {
-      borderRadius: 20,
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderWidth: 1,
-      borderColor: c.borderBright,
-      backgroundColor: c.cardBg,
-    },
-    filterPillText: {
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 10,
-      letterSpacing: 0.4,
     },
     toggleRow: {
       flexDirection: 'row',
@@ -1943,17 +1867,6 @@ function makeStyles(c: Colors) {
       fontSize: 13,
       textAlign: 'center',
     },
-    weekGroup: {
-      marginBottom: 24,
-    },
-    weekLabel: {
-      color: c.inkMuted,
-      fontFamily: 'JetBrainsMono-Regular',
-      fontSize: 12,
-      letterSpacing: 0.6,
-      textTransform: 'uppercase',
-      marginBottom: 10,
-    },
     // ── Session Card 2 (accordion) ──────────────────────────────────────────
     sessionCard2: {
       backgroundColor: c.cardBg,
@@ -1997,11 +1910,12 @@ function makeStyles(c: Colors) {
       gap: 5,
       flexWrap: 'wrap',
     },
-    cardMetaDate: {
+    cardDateLine: {
       color: c.inkMuted,
       fontFamily: 'JetBrainsMono-Regular',
       fontSize: 9,
       letterSpacing: 0.2,
+      marginTop: 1,
     },
     metaDot: {
       width: 3,
@@ -2054,11 +1968,6 @@ function makeStyles(c: Colors) {
     },
     rpeBadgeSpacer: {
       height: 36,
-    },
-    chevron: {
-      color: c.inkMuted,
-      fontSize: 16,
-      lineHeight: 18,
     },
     expandDivider: {
       height: 1,
@@ -2123,6 +2032,39 @@ function makeStyles(c: Colors) {
       fontSize: 13,
       lineHeight: 19,
       fontStyle: 'italic',
+    },
+    runStatRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    runStatChip: {
+      backgroundColor: c.glassBg,
+      borderWidth: 1,
+      borderColor: c.borderDefault,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      alignItems: 'center',
+      minWidth: 72,
+    },
+    runStatValue: {
+      color: c.inkPrimary,
+      fontFamily: 'SpaceGrotesk-Bold',
+      fontSize: 14,
+      letterSpacing: -0.3,
+    },
+    runStatLabel: {
+      color: c.inkMuted,
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 8,
+      letterSpacing: 0.4,
+      marginTop: 2,
+    },
+    runFeedbackLine: {
+      color: c.inkSecondary,
+      fontFamily: 'SpaceGrotesk-Regular',
+      fontSize: 12,
     },
     listFooter: {
       paddingVertical: 24,

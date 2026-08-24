@@ -1317,27 +1317,13 @@ export default function StatsScreen() {
   const insets     = useSafeAreaInsets()
   const styles     = React.useMemo(() => makeHostStyles(colors), [colors])
 
-  const [tab, setTab]           = useState<'estadisticas' | 'historial'>('estadisticas')
-  const [exporting, setExporting] = useState(false)
-
-  async function handleExport() {
-    if (exporting) return
-    setExporting(true)
-    try {
-      const { exportMonthlyReport } = await import('../../../lib/monthlyReport')
-      await exportMonthlyReport()
-    } catch (e: any) {
-      Alert.alert('Error al exportar', e?.message ?? 'No se pudo generar el PDF. Intenta de nuevo.')
-    } finally {
-      setExporting(false)
-    }
-  }
+  const [tab, setTab] = useState<'estadisticas' | 'historial'>('estadisticas')
 
   return (
     <View style={styles.root}>
       <LinearGradient colors={[colors.gradientTop, 'transparent']} style={styles.gradient} />
 
-      {/* ── Chips + botón PDF ── */}
+      {/* ── Chips ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <View style={[styles.chipRow, { flex: 1 }]}>
@@ -1360,21 +1346,6 @@ export default function StatsScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            onPress={handleExport}
-            activeOpacity={0.75}
-            disabled={exporting}
-            style={[styles.pdfBtn, { borderColor: colors.borderBright, backgroundColor: colors.cardBg, opacity: exporting ? 0.5 : 1 }]}
-          >
-            {exporting
-              ? <ActivityIndicator size="small" color={colors.accent} />
-              : <>
-                  <Text style={styles.pdfIcon}>📄</Text>
-                  <Text style={[styles.pdfText, { color: colors.accent }]}>PDF</Text>
-                </>
-            }
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -1417,17 +1388,6 @@ function makeHostStyles(c: Colors) {
       letterSpacing: 0.2,
     },
     chipTextActive: { color: readableTextOn(c.accent) },
-    pdfBtn: {
-      flexDirection: 'row', alignItems: 'center', gap: 4,
-      borderWidth: 1, borderRadius: 12,
-      paddingHorizontal: 12, paddingVertical: 9,
-      minWidth: 60, justifyContent: 'center',
-    },
-    pdfIcon: { fontSize: 14 },
-    pdfText: {
-      fontFamily: 'JetBrainsMono-Regular', fontSize: 10,
-      letterSpacing: 1, textTransform: 'uppercase',
-    },
   })
 }
 
