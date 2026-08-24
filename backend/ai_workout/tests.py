@@ -4,7 +4,9 @@ from django.test import SimpleTestCase
 
 from ai_workout import training_science as ts
 from ai_workout.adaptive_engine import AdaptiveEngineService, _MIN_FOCUS_POOL
-from ai_workout.views import _format_exercise_pool_enriched, _eval_sueno, calcular_fatiga
+from ai_workout.views import (
+    _format_exercise_pool_enriched, _eval_sueno, calcular_fatiga, _dedup_and_backfill_session,
+)
 
 
 def _ex(nombre, patron, primarios, secundarios=None):
@@ -557,3 +559,116 @@ class FatigaExecutedOnlyTests(SimpleTestCase):
             _FakeSession(recent, inicio_real=recent),  # 1 reciente
         ])
         self.assertEqual(calcular_fatiga(qs), 'bajo')
+
+
+class DedupAndBackfillSessionTests(SimpleTestCase):
+    """`_dedup_and_backfill_session` corre después de las redes de seguridad
+    (contraindicaciones/equipo) y repara duplicados y fases vacías — GEN-6."""
+
+    def _pool_entry(self, nombre, patron='empuje_horizontal', **kw):
+        e = {
+            'nombre': nombre, 'patron_movimiento': patron,
+            'reps_objetivo': (8, 12), 'rpe_objetivo': 7, 'rir_objetivo': 3,
+            'descanso_objetivo_s': 90,
+        }
+        e.update(kw)
+        return e
+
+    def test_quita_ejercicio_duplicado_en_la_misma_fase(self):
+        sesion = {'fases': [
+            {'nombre': 'Bloque principal', 'ejercicios': [
+                {'nombre': 'Sentadilla'}, {'nombre': 'Sentadilla'},
+            ]},
+        ]}
+        _dedup_and_backfill_session(sesion, [], {}, rpe_target=7, user_id=1)
+        nombres = [ej['nombre'] for ej in sesion['fases'][0]['ejercicios']]
+        self.assertEqual(nombres, ['Sentadilla'])
+
+    def test_quita_duplicado_entre_fases_distintas(self):
+        sesion = {'fases': [
+            {'nombre': 'Bloque principal', 'ejercicios': [{'nombre': 'Press banca'}]},
+            {'nombre': 'Bloque principal 2', 'ejercicios': [{'nombre': 'press banca'}]},  # distinto casing
+        ]}
+        _dedup_and_backfill_session(sesion, [], {}, rpe_target=7, user_id=1)
+        total = sum(len(f['ejercicios']) for f in sesion['fases'])
+        self.assertEqual(total, 1)
+
+    def test_repone_fase_de_fuerza_vacia_con_candidato_de_fuerza_no_usado(self):
+        sesion = {'fases': [
+            {'nombre': 'Bloque principal', 'ejercicios': [{'nombre': 'Sentadilla'}]},
+            {'nombre': 'Bloque principal 2', 'ejercicios': []},  # vacía por red de seguridad
+        ]}
+        pool = [
+            self._pool_entry('Sentadilla', patron='sentadilla'),  # ya usado, no debe repetirse
+            self._pool_entry('Press banca', patron='empuje_horizontal'),
+        ]
+        _dedup_and_backfill_session(sesion, pool, {}, rpe_target=7, user_id=1)
+        repuesta = sesion['fases'][1]['ejercicios']
+        self.assertEqual(len(repuesta), 1)
+        self.assertEqual(repuesta[0]['nombre'], 'Press banca')
+
+    def test_repone_calentamiento_vacio_con_movilidad_no_con_fuerza(self):
+        """Bug encontrado en la re-auditoría: reponer una fase de calentamiento
+        vacía NUNCA debe traer un ejercicio de fuerza si hay uno de
+        movilidad/cardio disponible en el banco."""
+        sesion = {'fases': [
+            {'nombre': 'Calentamiento', 'ejercicios': []},
+            {'nombre': 'Bloque principal', 'ejercicios': [{'nombre': 'Sentadilla'}]},
+        ]}
+        pool = [
+            self._pool_entry('Press banca', patron='empuje_horizontal'),
+            self._pool_entry('Movilidad de cadera', patron='movilidad'),
+        ]
+        _dedup_and_backfill_session(sesion, pool, {}, rpe_target=7, user_id=1)
+        repuesto = sesion['fases'][0]['ejercicios']
+        self.assertEqual(len(repuesto), 1)
+        self.assertEqual(repuesto[0]['nombre'], 'Movilidad de cadera')
+
+    def test_repone_vuelta_a_la_calma_con_cardio_usando_pool_legacy(self):
+        """Con el pool legacy (agrupado por patrón, sin prescripción) también
+        debe respetar el tipo de fase, no solo con el pool enriquecido."""
+        sesion = {'fases': [
+            {'nombre': 'Vuelta a la calma', 'ejercicios': []},
+        ]}
+        pool_legacy = {'sentadilla': ['Sentadilla'], 'cardio': ['Trote suave']}
+        _dedup_and_backfill_session(sesion, None, pool_legacy, rpe_target=7, user_id=1)
+        repuesto = sesion['fases'][0]['ejercicios']
+        self.assertEqual(len(repuesto), 1)
+        self.assertEqual(repuesto[0]['nombre'], 'Trote suave')
+
+    def test_cae_a_fuerza_si_no_hay_movilidad_disponible_para_calentamiento(self):
+        """Sin candidato del tipo correcto, es mejor un ejercicio de fuerza que
+        dejar el calentamiento completamente vacío."""
+        sesion = {'fases': [
+            {'nombre': 'Calentamiento', 'ejercicios': []},
+        ]}
+        pool = [self._pool_entry('Press banca', patron='empuje_horizontal')]
+        _dedup_and_backfill_session(sesion, pool, {}, rpe_target=7, user_id=1)
+        repuesto = sesion['fases'][0]['ejercicios']
+        self.assertEqual(len(repuesto), 1)
+        self.assertEqual(repuesto[0]['nombre'], 'Press banca')
+
+    def test_elimina_fase_vacia_sin_candidatos_y_descuenta_duracion(self):
+        sesion = {
+            'duracion_total': 60,
+            'fases': [
+                {'nombre': 'Calentamiento', 'duracion_minutos': 10, 'ejercicios': []},
+                {'nombre': 'Bloque principal', 'ejercicios': [{'nombre': 'Sentadilla'}]},
+            ],
+        }
+        _dedup_and_backfill_session(sesion, [], {}, rpe_target=7, user_id=1)
+        self.assertEqual(len(sesion['fases']), 1)
+        self.assertEqual(sesion['fases'][0]['nombre'], 'Bloque principal')
+        self.assertEqual(sesion['duracion_total'], 50)
+
+    def test_duracion_total_no_numerica_no_rompe(self):
+        sesion = {
+            'duracion_total': 'sesenta',
+            'fases': [{'nombre': 'Calentamiento', 'duracion_minutos': 10, 'ejercicios': []}],
+        }
+        _dedup_and_backfill_session(sesion, [], {}, rpe_target=7, user_id=1)
+        self.assertEqual(sesion['fases'], [])
+        self.assertEqual(sesion['duracion_total'], 'sesenta')
+
+    def test_no_crashea_con_sesion_no_dict(self):
+        _dedup_and_backfill_session(None, [], {}, rpe_target=7, user_id=1)  # no debe lanzar

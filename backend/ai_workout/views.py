@@ -1448,6 +1448,14 @@ def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id, body
     return dropped
 
 
+_FASE_CALENTAMIENTO_KEYWORDS = ('calent', 'vuelta a la calma', 'vuelta', 'enfriamiento', 'cool')
+
+
+def _is_warmup_or_cooldown_fase(fase: dict) -> bool:
+    nombre = str(fase.get('nombre', '')).lower()
+    return any(kw in nombre for kw in _FASE_CALENTAMIENTO_KEYWORDS)
+
+
 def _dedup_and_backfill_session(sesion_generada, exercise_pool_enriched, exercise_pool_legacy, rpe_target, user_id):
     """Repara la sesión generada DESPUÉS de las redes de seguridad de arriba
     (GEN-3 contraindicaciones, GEN-5 equipamiento):
@@ -1458,7 +1466,10 @@ def _dedup_and_backfill_session(sesion_generada, exercise_pool_enriched, exercis
     2) Si una fase quedó sin ejercicios tras los descartes de seguridad, la
        repone con un candidato del banco (que ya viene filtrado por
        equipamiento/contraindicaciones/nivel para este usuario) que no se
-       haya usado en la sesión. Si no hay ningún candidato disponible,
+       haya usado en la sesión — respetando el tipo de fase: Calentamiento/
+       Vuelta a la calma se repone con movilidad/cardio (`ts.ALWAYS_KEEP_PATTERNS`)
+       si hay disponible, nunca con un ejercicio de fuerza, y viceversa. Si no
+       hay ningún candidato disponible (ni del tipo correcto ni de respaldo),
        elimina la fase vacía y descuenta su duración de `duracion_total` en
        vez de dejar una fase fantasma sin ejercicios.
     """
@@ -1485,23 +1496,32 @@ def _dedup_and_backfill_session(sesion_generada, exercise_pool_enriched, exercis
 
     # Candidatos de reemplazo para fases que quedaron vacías: preferimos el pool
     # enriquecido (ya trae prescripción calculada); si estamos en el fallback
-    # legacy solo hay nombres, así que usamos una prescripción genérica.
+    # legacy solo hay nombres agrupados por patrón, así que usamos una
+    # prescripción genérica pero conservamos el patrón para poder separar
+    # movilidad/cardio de fuerza igual que con el pool enriquecido.
     candidates: list[dict] = []
     if exercise_pool_enriched:
         candidates = [ex for ex in exercise_pool_enriched if ex['nombre'].lower() not in used_names]
     elif exercise_pool_legacy:
-        for nombres in exercise_pool_legacy.values():
+        for patron, nombres in exercise_pool_legacy.items():
             for nombre in nombres:
                 if nombre.lower() not in used_names:
-                    candidates.append({'nombre': nombre})
+                    candidates.append({'nombre': nombre, 'patron_movimiento': patron})
+
+    warm_candidates      = [c for c in candidates if c.get('patron_movimiento') in ts.ALWAYS_KEEP_PATTERNS]
+    strength_candidates  = [c for c in candidates if c.get('patron_movimiento') not in ts.ALWAYS_KEEP_PATTERNS]
 
     fases_finales = []
     for fase in fases:
         if fase.get('ejercicios'):
             fases_finales.append(fase)
             continue
-        if candidates:
-            cand = candidates.pop(0)
+
+        is_warmup = _is_warmup_or_cooldown_fase(fase)
+        preferred, fallback = (warm_candidates, strength_candidates) if is_warmup else (strength_candidates, warm_candidates)
+        cand = preferred.pop(0) if preferred else (fallback.pop(0) if fallback else None)
+
+        if cand:
             used_names.add(cand['nombre'].lower())
             reps_obj = cand.get('reps_objetivo')
             if reps_obj:
