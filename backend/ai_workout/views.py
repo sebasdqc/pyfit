@@ -45,7 +45,7 @@ def _sanitize_prompt_text(value, max_len: int) -> str:
     if not value:
         return ''
     return str(value).replace('\n', ' ').replace('\r', ' ').strip()[:max_len]
-from ai_workout.adaptive_engine import AdaptiveEngineService, DOLOR_KEYWORDS
+from ai_workout.adaptive_engine import AdaptiveEngineService, DOLOR_KEYWORDS, NIVEL_MAP, _MIN_FOCUS_POOL
 from ai_workout import training_science as ts
 
 logger = logging.getLogger(__name__)
@@ -331,16 +331,26 @@ def process_device_data(user, checkin) -> tuple:
 
 # ─── Phase 1 & 2: Exercise pool ───────────────────────────────────────────────
 
-def _get_exercise_pool(user, location, dolor_hoy=''):
+def _get_exercise_pool(user, location, dolor_hoy='', foco_entrenamiento=None, nivel=None, nivel_experiencia=None):
     """
     Returns (grouped_dict, flat_list) of valid exercises for this user/location.
 
-    Filtering rules:
+    Este es el fallback degradado del motor adaptativo (se activa cuando
+    `AdaptiveEngineService.get_exercise_pool()` da <5 ejercicios) — replica los
+    mismos filtros duros que ese motor para no perder foco/nivel al caer acá:
     - Only active exercises
     - equipamiento must be a subset of location.implementos ([] = always valid)
     - Exclude exercises whose contraindicaciones overlap with:
         * active user injury zones
         * zones mentioned in dolor_hoy text
+    - technical_level no debe superar nivel_usuario + 1
+    - foco_entrenamiento: filtro duro por grupo de volumen elegido en el
+      check-in, con relajación a músculos secundarios si el resultado queda
+      muy chico — mismo criterio que
+      AdaptiveEngineService._apply_focus_filter, para que "el usuario
+      especificó un foco de entrenamiento, la sesión DEBE centrarse en ese
+      foco" (restricción absoluta del prompt) también se cumpla en este
+      camino degradado.
     """
     implementos_disponibles = set(location.implementos or [])
 
@@ -356,11 +366,12 @@ def _get_exercise_pool(user, location, dolor_hoy=''):
             if kw in dolor_lower:
                 injury_zones.add(zona)
 
+    nivel_usuario = nivel_experiencia or NIVEL_MAP.get(nivel, 3)
+    allowed_groups = ts.volume_groups_for_foco(foco_entrenamiento)
+
     all_active = Exercise.objects.filter(activo=True)
 
-    flat_list = []
-    grouped = {}
-
+    candidatos = []
     for ex in all_active:
         # Equipment check: exercise equipment must be subset of available
         eq_set = set(ex.equipamiento)
@@ -372,6 +383,33 @@ def _get_exercise_pool(user, location, dolor_hoy=''):
         if contra_set & injury_zones:
             continue
 
+        # Technical level check
+        if ex.technical_level is not None and ex.technical_level > nivel_usuario + 1:
+            continue
+
+        candidatos.append(ex)
+
+    if allowed_groups:
+        keep, relax = [], []
+        for ex in candidatos:
+            if ex.patron_movimiento in ts.ALWAYS_KEEP_PATTERNS:
+                keep.append(ex)
+                continue
+            primary_vg = ts.primary_volume_group(ex.musculos_primarios)
+            if primary_vg in allowed_groups:
+                keep.append(ex)
+                continue
+            sec_vgs = {ts.volume_group_for_muscle(m) for m in (ex.musculos_secundarios or [])}
+            if sec_vgs & allowed_groups:
+                relax.append(ex)
+        if len(keep) < _MIN_FOCUS_POOL and relax:
+            keep.extend(relax[:_MIN_FOCUS_POOL - len(keep)])
+        candidatos = keep
+
+    flat_list = []
+    grouped = {}
+
+    for ex in candidatos:
         flat_list.append(ex.nombre)
         patron = ex.patron_movimiento
         if patron not in grouped:
@@ -580,13 +618,17 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict, objetivo_princi
     # usuario (goal_tags) y usa evidence_score como desempate — NUNCA como
     # filtro excluyente: un ejercicio de score bajo o sin clasificar (None)
     # sigue entrando si es el único disponible para ese equipo/nivel/patrón
-    # (ver zyfit-evidencia-ejercicios-spec.md sección 6).
+    # (ver zyfit-evidencia-ejercicios-spec.md sección 6). Último desempate:
+    # veces_realizado ASCENDENTE (menos usado primero) — el pool solo manda al
+    # LLM los primeros 8 de cada patrón, así que ordenar por más-usado-primero
+    # empujaba fuera del banco justo a los ejercicios menos repetidos,
+    # reforzando la monotonía en vez de variarla.
     for pat in by_patron:
         by_patron[pat].sort(key=lambda x: (
             not x['es_compuesto'],
             not (objetivo_principal and objetivo_principal in (x.get('goal_tags') or [])),
             -(x.get('evidence_score') or 0),
-            -x.get('veces_realizado', 0),
+            x.get('veces_realizado', 0),
         ))
 
     # Build ordered patron list
@@ -963,7 +1005,7 @@ Formato de cada línea: • ejercicio · músculo principal · REPS @RPE RIR DES
 
 {exercise_pool_text}
 
-INSTRUCCIÓN CRÍTICA: Elige ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba. NO inventes ejercicios fuera del banco; si necesitas más volumen, repite o varía dentro del banco. Solo en el caso límite de que el banco sea insuficiente para completar una fase podrás añadir un ejercicio adicional que requiera ÚNICAMENTE los implementos disponibles ({', '.join(ctx['implementos']) if ctx['implementos'] else 'peso corporal'}) y sin contraindicaciones — NUNCA uno que necesite equipamiento no disponible.
+INSTRUCCIÓN CRÍTICA: Elige ejercicios EXCLUSIVAMENTE del banco de ejercicios validados listado arriba, y NUNCA repitas el mismo ejercicio (mismo nombre) dos veces en la sesión — ni dentro de la misma fase ni entre fases distintas. NO inventes ejercicios fuera del banco. Si necesitas más volumen para un patrón, agrega más series al ejercicio ya elegido o elige OTRO ejercicio distinto del mismo patrón dentro del banco — nunca dupliques una entrada. Solo en el caso límite de que el banco sea insuficiente para completar una fase con ejercicios distintos podrás añadir un ejercicio adicional que requiera ÚNICAMENTE los implementos disponibles ({', '.join(ctx['implementos']) if ctx['implementos'] else 'peso corporal'}) y sin contraindicaciones — NUNCA uno que necesite equipamiento no disponible.
 
 ---
 
@@ -1002,7 +1044,7 @@ PRINCIPIOS CIENTÍFICOS QUE DEBES APLICAR OBLIGATORIAMENTE:
    - NUNCA incluyas ejercicios que requieran implementos no disponibles
    - Prioriza ejercicios multiarticulares (mayor estímulo hormonal y neuromuscular)
    - Ajusta la complejidad técnica al nivel del atleta: a menor nivel de experiencia, patrones más simples y estables; a mayor nivel, mayor demanda técnica y coordinativa permitida
-   - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión
+   - Incluye variedad: no repitas el mismo patrón de movimiento más de 2 veces en la misma sesión, y nunca repitas el mismo ejercicio (mismo nombre) más de una vez en toda la sesión
    - Respeta ejercicios a evitar: {_s_evitar or 'ninguno'}
    - Considera ejercicios favoritos cuando sea apropiado: {_s_fav or 'ninguno especificado'}
 
@@ -1035,6 +1077,7 @@ INSTRUCCIONES FINALES:
    - Si el usuario especificó un foco de entrenamiento, la sesión DEBE centrarse en ese foco.
    - Los implementos disponibles son: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}. NUNCA uses un implemento que no esté en esta lista.
    - ELIGE ÚNICAMENTE ejercicios del banco de ejercicios validados listado arriba.
+   - NUNCA repitas el mismo ejercicio (mismo nombre) más de una vez en la sesión, ni en la misma fase ni entre fases distintas.
    - NO superes {max_sets} sets en el bloque principal.{restriccion_medica}{directiva_coach}
 1. Genera UNA sesión completa para HOY, no un plan semanal
 2. Cada ejercicio debe ser ejecutable con los implementos disponibles — verifica esto antes de incluirlo
@@ -1185,7 +1228,11 @@ def generate_session(request):
         exercise_pool_legacy = {}
     else:
         # Legacy fallback: build grouped dict and skip enrichment
-        exercise_pool_legacy, _ = _get_exercise_pool(user, loc, dolor_hoy=checkin.dolor_hoy or '')
+        exercise_pool_legacy, _ = _get_exercise_pool(
+            user, loc, dolor_hoy=checkin.dolor_hoy or '',
+            foco_entrenamiento=checkin.foco_entrenamiento or [],
+            nivel=perfil.nivel, nivel_experiencia=perfil.nivel_experiencia,
+        )
         session_meta = {'deload_session': False, 'max_sets_sesion': 20}
 
     ctx = {
@@ -1284,6 +1331,11 @@ def generate_session(request):
     # GEN-5: red de seguridad de equipamiento — descarta ejercicios que requieran
     # implementos no disponibles (coherencia casa/gimnasio), simétrica a la anterior.
     engine.drop_unavailable_equipment(sesion_generada, user.id)
+    # GEN-6: quita duplicados y repone/elimina fases que quedaron vacías tras
+    # los descartes de arriba (ver _dedup_and_backfill_session).
+    _dedup_and_backfill_session(
+        sesion_generada, exercise_pool_enriched, exercise_pool_legacy, rpe_target, user.id,
+    )
 
     volumen = 'bajo' if fatiga == 'alto' else 'medio' if fatiga == 'medio' else 'alto'
 
@@ -1394,6 +1446,91 @@ def _drop_contraindicated_exercises(sesion_generada, injury_zones, user_id, body
             keep.append(ej)
         fase['ejercicios'] = keep
     return dropped
+
+
+def _dedup_and_backfill_session(sesion_generada, exercise_pool_enriched, exercise_pool_legacy, rpe_target, user_id):
+    """Repara la sesión generada DESPUÉS de las redes de seguridad de arriba
+    (GEN-3 contraindicaciones, GEN-5 equipamiento):
+
+    1) Quita ejercicios duplicados (mismo nombre, en toda la sesión) — el LLM
+       puede repetir un ejercicio para "sumar volumen" pese a la instrucción
+       del prompt; esto lo corrige en el peor caso.
+    2) Si una fase quedó sin ejercicios tras los descartes de seguridad, la
+       repone con un candidato del banco (que ya viene filtrado por
+       equipamiento/contraindicaciones/nivel para este usuario) que no se
+       haya usado en la sesión. Si no hay ningún candidato disponible,
+       elimina la fase vacía y descuenta su duración de `duracion_total` en
+       vez de dejar una fase fantasma sin ejercicios.
+    """
+    if not isinstance(sesion_generada, dict):
+        return
+
+    fases = sesion_generada.get('fases', []) or []
+    used_names: set[str] = set()
+    for fase in fases:
+        keep = []
+        for ej in (fase.get('ejercicios', []) or []):
+            nombre = str(ej.get('nombre', '')).strip()
+            key = nombre.lower()
+            if not nombre:
+                continue
+            if key in used_names:
+                logger.warning(
+                    'generate: ejercicio duplicado descartado "%s" user=%s', nombre, user_id,
+                )
+                continue
+            used_names.add(key)
+            keep.append(ej)
+        fase['ejercicios'] = keep
+
+    # Candidatos de reemplazo para fases que quedaron vacías: preferimos el pool
+    # enriquecido (ya trae prescripción calculada); si estamos en el fallback
+    # legacy solo hay nombres, así que usamos una prescripción genérica.
+    candidates: list[dict] = []
+    if exercise_pool_enriched:
+        candidates = [ex for ex in exercise_pool_enriched if ex['nombre'].lower() not in used_names]
+    elif exercise_pool_legacy:
+        for nombres in exercise_pool_legacy.values():
+            for nombre in nombres:
+                if nombre.lower() not in used_names:
+                    candidates.append({'nombre': nombre})
+
+    fases_finales = []
+    for fase in fases:
+        if fase.get('ejercicios'):
+            fases_finales.append(fase)
+            continue
+        if candidates:
+            cand = candidates.pop(0)
+            used_names.add(cand['nombre'].lower())
+            reps_obj = cand.get('reps_objetivo')
+            if reps_obj:
+                lo, hi = reps_obj
+                repeticiones = f'{lo}-{hi}' if lo != hi else str(lo)
+            else:
+                repeticiones = '10-12'
+            fase['ejercicios'] = [{
+                'nombre': cand['nombre'],
+                'series': 3,
+                'repeticiones': repeticiones,
+                'descanso_segundos': cand.get('descanso_objetivo_s', 60),
+                'rpe_sugerido': cand.get('rpe_objetivo', rpe_target),
+                'notas': '',
+            }]
+            logger.warning(
+                'generate: fase repuesta con "%s" tras quedar vacía por redes de seguridad user=%s',
+                cand['nombre'], user_id,
+            )
+            fases_finales.append(fase)
+        else:
+            duracion_fase = fase.get('duracion_minutos') or 0
+            if duracion_fase and isinstance(sesion_generada.get('duracion_total'), (int, float)):
+                sesion_generada['duracion_total'] = max(0, sesion_generada['duracion_total'] - duracion_fase)
+            logger.warning(
+                'generate: fase "%s" eliminada por quedar vacía sin candidato de reemplazo user=%s',
+                fase.get('nombre', '?'), user_id,
+            )
+    sesion_generada['fases'] = fases_finales
 
 
 def _persist_session_exercises(sesion, sesion_generada):
@@ -1687,7 +1824,11 @@ def session_ajustar(request, pk):
         )
         exercise_pool_legacy = {}
     else:
-        exercise_pool_legacy, _ = _get_exercise_pool(user, loc, dolor_hoy=dolor_hoy)
+        exercise_pool_legacy, _ = _get_exercise_pool(
+            user, loc, dolor_hoy=dolor_hoy,
+            foco_entrenamiento=checkin_for_engine.foco_entrenamiento or [],
+            nivel=perfil.nivel, nivel_experiencia=perfil.nivel_experiencia,
+        )
         session_meta = {'deload_session': False, 'max_sets_sesion': 20}
 
     ctx = {
@@ -1772,6 +1913,9 @@ def session_ajustar(request, pk):
         body_zones=engine._get_body_zones(),
     )
     engine.drop_unavailable_equipment(sesion_generada, user.id)
+    _dedup_and_backfill_session(
+        sesion_generada, exercise_pool_enriched, exercise_pool_legacy, nuevo_rpe, user.id,
+    )
 
     with transaction.atomic():
         session.respuesta_ia         = sesion_generada
