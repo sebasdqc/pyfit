@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import Profile
 from checkins.models import DailyCheckin
-from .models import RunSession, RunPoint
+from .models import RunSession, RunPoint, RunningPlan, PlannedRunSession, RunTypeProfile
 from .serializers import haversine_distance, downsample_points
 
 User = get_user_model()
@@ -331,6 +331,31 @@ class RunPointsAPITests(TestCase):
         res = self.client.post(f'/api/runs/{other_session.pk}/points/', payload, format='json')
         self.assertEqual(res.status_code, 404)
 
+    def test_batch_over_max_points_is_rejected(self):
+        from .views import MAX_POINTS_PER_BATCH
+        payload = {'points': [
+            {'lat': 40.4168, 'lng': -3.7038, 'accuracy_m': 10,
+             'timestamp': iso(NOW + timedelta(seconds=i))}
+            for i in range(MAX_POINTS_PER_BATCH + 1)
+        ]}
+        res = self.client.post(f'/api/runs/{self.session.pk}/points/', payload, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(RunPoint.objects.filter(session=self.session).count(), 0)
+
+    def test_retry_of_same_batch_does_not_duplicate_points(self):
+        """Bug corregido: un reintento de red que reenvía un batch ya
+        insertado (mismo session+timestamp) no debe duplicar filas."""
+        payload = {'points': [
+            {'lat': 40.4168, 'lng': -3.7038, 'accuracy_m': 10, 'timestamp': iso(NOW)},
+            {'lat': 40.4170, 'lng': -3.7040, 'accuracy_m': 8,
+             'timestamp': iso(NOW + timedelta(seconds=2))},
+        ]}
+        r1 = self.client.post(f'/api/runs/{self.session.pk}/points/', payload, format='json')
+        r2 = self.client.post(f'/api/runs/{self.session.pk}/points/', payload, format='json')
+        self.assertEqual(r1.status_code, 201)
+        self.assertEqual(r2.status_code, 201)
+        self.assertEqual(RunPoint.objects.filter(session=self.session).count(), 2)
+
 
 class RunSessionConstraintTests(TestCase):
     def setUp(self):
@@ -372,6 +397,95 @@ class RunSessionConstraintTests(TestCase):
             'ended_at': iso(NOW - timedelta(hours=1)),
         }, format='json')
         self.assertEqual(res.status_code, 400)
+
+    def test_negative_distance_rejected_at_db_level(self):
+        """Antes solo el serializer de feedback validaba rangos — un
+        .create() directo (admin, shell) podía guardar valores absurdos sin
+        que la BD lo impidiera."""
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user, started_at=NOW, status='active', total_distance_m=-5,
+                )
+
+    def test_negative_duration_rejected_at_db_level(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user, started_at=NOW, status='active', total_duration_s=-1,
+                )
+
+    def test_rpe_real_out_of_range_rejected_at_db_level(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user, started_at=NOW, status='active', rpe_real=11,
+                )
+
+    def test_rating_out_of_range_rejected_at_db_level(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user, started_at=NOW, status='active', rating=0,
+                )
+
+    def test_cumplimiento_out_of_range_rejected_at_db_level(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RunSession.objects.create(
+                    user=self.user, started_at=NOW, status='active', cumplimiento=150,
+                )
+
+    def test_null_feedback_fields_are_allowed(self):
+        """Los campos de feedback son opcionales — None nunca debe disparar
+        el constraint de rango (regresión: el rango no debe exigir NOT NULL)."""
+        session = RunSession.objects.create(
+            user=self.user, started_at=NOW, status='active',
+            rpe_real=None, rating=None, cumplimiento=None,
+        )
+        self.assertIsNone(session.rpe_real)
+
+
+class RunSessionAbandonsOrphanedTests(TestCase):
+    """Bug corregido: sesiones active/paused huérfanas (crash de la app,
+    doble tap en "empezar") se acumulaban sin que nada las cerrara."""
+
+    def setUp(self):
+        self.user = make_user('orphan@test.com')
+        self.client = auth_client(self.user)
+
+    def test_starting_new_session_abandons_prior_active_ones(self):
+        old_active = RunSession.objects.create(user=self.user, started_at=NOW, status='active')
+        old_paused = RunSession.objects.create(
+            user=self.user, started_at=NOW - timedelta(hours=1), status='paused')
+        res = self.client.post('/api/runs/', {
+            'started_at': iso(NOW + timedelta(minutes=5)), 'session_type': 'free',
+        }, format='json')
+        self.assertEqual(res.status_code, 201)
+        old_active.refresh_from_db()
+        old_paused.refresh_from_db()
+        self.assertEqual(old_active.status, 'abandoned')
+        self.assertEqual(old_paused.status, 'abandoned')
+
+    def test_does_not_touch_other_users_sessions(self):
+        other = make_user('orphan_other@test.com')
+        other_active = RunSession.objects.create(user=other, started_at=NOW, status='active')
+        self.client.post('/api/runs/', {
+            'started_at': iso(NOW + timedelta(minutes=5)), 'session_type': 'free',
+        }, format='json')
+        other_active.refresh_from_db()
+        self.assertEqual(other_active.status, 'active')
+
+    def test_does_not_touch_completed_sessions(self):
+        completed = RunSession.objects.create(
+            user=self.user, started_at=NOW, ended_at=NOW + timedelta(minutes=10),
+            status='completed',
+        )
+        self.client.post('/api/runs/', {
+            'started_at': iso(NOW + timedelta(minutes=5)), 'session_type': 'free',
+        }, format='json')
+        completed.refresh_from_db()
+        self.assertEqual(completed.status, 'completed')
 
 
 class RunFeedbackEndpointTests(TestCase):
@@ -423,6 +537,74 @@ class RunFeedbackEndpointTests(TestCase):
     def test_unauthenticated_rejected(self):
         res = APIClient().post(f'/api/runs/{self.session.pk}/feedback/', {'rating': 3}, format='json')
         self.assertIn(res.status_code, (401, 403))
+
+
+class RunTypeProfileFeedbackTests(TestCase):
+    """Bug corregido: rpe_real/cumplimiento se guardaban y nunca se releían
+    para nada — RunTypeProfile es lo que cierra ese loop, actualizado desde
+    run_feedback cuando la RunSession está vinculada a una PlannedRunSession."""
+
+    def setUp(self):
+        self.user = make_user('typeprofile@test.com')
+        self.client = auth_client(self.user)
+        self.plan = RunningPlan.objects.create(
+            user=self.user, started_at=date(2024, 6, 1), week_start=date(2024, 6, 3))
+
+    def _linked_session(self, tipo_sesion='vo2', rpe_target=9, fecha=date(2024, 6, 3)):
+        started = datetime.combine(fecha, NOW.time(), tzinfo=timezone.utc)
+        run = RunSession.objects.create(
+            user=self.user, started_at=started, ended_at=started + timedelta(minutes=30),
+            status='completed',
+        )
+        planned = PlannedRunSession.objects.create(
+            user=self.user, plan=self.plan, fecha=fecha, tipo_sesion=tipo_sesion,
+            rpe_target=rpe_target, run_session=run,
+        )
+        return run, planned
+
+    def test_feedback_crea_el_profile_del_tipo(self):
+        run, _ = self._linked_session(tipo_sesion='vo2', rpe_target=9)
+        res = self.client.post(f'/api/runs/{run.pk}/feedback/',
+                               {'rpe_real': 9, 'cumplimiento': 90}, format='json')
+        self.assertEqual(res.status_code, 200)
+        rtp = RunTypeProfile.objects.get(user=self.user, tipo_sesion='vo2')
+        self.assertEqual(rtp.veces_realizado, 1)
+        self.assertEqual(float(rtp.rpe_promedio_real), 9.0)
+        self.assertEqual(float(rtp.rpe_promedio_target), 9.0)
+        self.assertEqual(float(rtp.cumplimiento_promedio), 90.0)
+        self.assertEqual(rtp.ultima_vez, date(2024, 6, 3))
+
+    def test_feedback_acumula_el_promedio_entre_sesiones_del_mismo_tipo(self):
+        run1, _ = self._linked_session(tipo_sesion='tempo', rpe_target=7, fecha=date(2024, 6, 3))
+        self.client.post(f'/api/runs/{run1.pk}/feedback/', {'rpe_real': 9}, format='json')
+        run2, _ = self._linked_session(tipo_sesion='tempo', rpe_target=7, fecha=date(2024, 6, 10))
+        self.client.post(f'/api/runs/{run2.pk}/feedback/', {'rpe_real': 5}, format='json')
+        rtp = RunTypeProfile.objects.get(user=self.user, tipo_sesion='tempo')
+        self.assertEqual(rtp.veces_realizado, 2)
+        self.assertEqual(float(rtp.rpe_promedio_real), 7.0)   # (9+5)/2
+        self.assertEqual(rtp.ultima_vez, date(2024, 6, 10))
+
+    def test_free_run_sin_vincular_no_crea_profile(self):
+        """Una carrera libre no vinculada a un plan no tiene tipo_sesion al
+        que atribuir el feedback — se ignora a propósito."""
+        run = RunSession.objects.create(
+            user=self.user, started_at=NOW, ended_at=NOW + timedelta(minutes=30),
+            status='completed',
+        )
+        res = self.client.post(f'/api/runs/{run.pk}/feedback/', {'rpe_real': 8}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(RunTypeProfile.objects.filter(user=self.user).count(), 0)
+
+    def test_distintos_tipos_de_sesion_tienen_perfiles_separados(self):
+        run_vo2, _ = self._linked_session(tipo_sesion='vo2', rpe_target=9, fecha=date(2024, 6, 3))
+        self.client.post(f'/api/runs/{run_vo2.pk}/feedback/', {'rpe_real': 9}, format='json')
+        run_easy, _ = self._linked_session(tipo_sesion='easy', rpe_target=4, fecha=date(2024, 6, 4))
+        self.client.post(f'/api/runs/{run_easy.pk}/feedback/', {'rpe_real': 4}, format='json')
+        self.assertEqual(RunTypeProfile.objects.filter(user=self.user).count(), 2)
+        self.assertEqual(
+            RunTypeProfile.objects.get(user=self.user, tipo_sesion='vo2').veces_realizado, 1)
+        self.assertEqual(
+            RunTypeProfile.objects.get(user=self.user, tipo_sesion='easy').veces_realizado, 1)
 
 
 class RunIsTrailTests(TestCase):

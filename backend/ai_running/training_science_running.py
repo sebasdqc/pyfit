@@ -175,13 +175,39 @@ def _vdot_like(threshold_pace_s_km) -> float | None:
 # un sprint de 200 m de un free run casual contamine la estimación).
 MIN_RUN_KM_FOR_BASELINE = 2.0
 
+# Confianza 'alta' por historial (sin tiempo declarado): antes el techo por
+# historial era SIEMPRE 'media', sin importar cuántos meses de datos
+# consistentes se acumularan — un atleta que corre 3x/semana 6 meses seguidos
+# nunca veía subir su confianza salvo que declarara un tiempo a mano. Ahora
+# gradúa a 'alta' con suficiente volumen de muestras Y baja dispersión entre
+# ellas (evita premiar con 'alta' un historial ruidoso que solo por cantidad
+# de filas ya calificaría).
+CONFIANZA_ALTA_MIN_RUNS = 8
+CONFIANZA_ALTA_MAX_CV = 0.06   # coef. de variación (SD/media) del mejor km entre corridas
+
+
+def _confianza_historial(quality_runs: list) -> str:
+    n = len(quality_runs)
+    if n < 3:
+        return 'baja'
+    if n < CONFIANZA_ALTA_MIN_RUNS:
+        return 'media'
+    paces = [r['best_pace_s_km'] for r in quality_runs]
+    media = sum(paces) / n
+    if media <= 0:
+        return 'media'
+    varianza = sum((p - media) ** 2 for p in paces) / n
+    cv = (varianza ** 0.5) / media
+    return 'alta' if cv <= CONFIANZA_ALTA_MAX_CV else 'media'
+
 
 def estimate_threshold_pace(*, declared=None, runs=None, nivel: str = 'intermedio') -> dict:
     """Estima el ritmo de umbral en cascada de confianza.
 
     declared : (tiempo_s, distancia_km) de una carrera reciente declarada → ALTA.
     runs     : lista de dicts de RunSession completadas, con al menos
-               {'best_pace_s_km', 'distance_km'} → MEDIA (≥3) / BAJA (1–2).
+               {'best_pace_s_km', 'distance_km'} → ALTA (≥8, dispersión baja) /
+               MEDIA (3-7, o ≥8 con dispersión alta) / BAJA (1-2).
     Sin datos → cold-start (threshold_pace_s_km=None).
 
     Devuelve {threshold_pace_s_km, fuente, confianza, n, vo2_estimado}."""
@@ -202,12 +228,56 @@ def estimate_threshold_pace(*, declared=None, runs=None, nivel: str = 'intermedi
         tp = _threshold_from_effort(best_1km, 1.0)
         n = len(quality)
         return {'threshold_pace_s_km': tp, 'fuente': 'historial',
-                'confianza': 'media' if n >= 3 else 'baja', 'n': n,
+                'confianza': _confianza_historial(quality), 'n': n,
                 'vo2_estimado': _vdot_like(tp)}
 
     # 3) Cold-start — sin dato fiable; el motor usará solo RPE.
     return {'threshold_pace_s_km': None, 'fuente': 'cold_start',
             'confianza': 'baja', 'n': 0, 'vo2_estimado': None}
+
+
+# ─── Progresión por tipo de sesión (equivalente a rpe_bias en ai_workout) ─────
+#
+# El motor de fuerza ajusta el RPE objetivo de la próxima sesión con
+# UserAdaptationProfile.rpe_bias (EMA de rpe_real − rpe_target). En running el
+# dial que se ajusta no es el RPE (es fijo por zona, RPE_BY_ZONE) sino el
+# RITMO objetivo dentro de la zona — por eso el sesgo se expresa en % de
+# ritmo, no en puntos de RPE, aunque la señal de entrada (delta de RPE) sea
+# la misma idea. Sin esto, un atleta que reporta RPE 9 (casi al fallo) en su
+# última sesión de VO2máx recibe el MISMO ritmo objetivo en la próxima
+# VO2máx que si hubiera reportado RPE 6 — el motor solo reaccionaba a la
+# readiness del día, nunca al historial de esfuerzo por tipo de sesión.
+
+PACE_BIAS_PCT_PER_RPE = 0.02   # +1 RPE de más duro de lo esperado ≈ 2% más lento
+PACE_BIAS_CAP_PCT = 0.05       # nunca ajusta más de ±5% — es un afinado, no una re-derivación del umbral
+
+
+def pace_bias_from_profile(rpe_promedio_real, rpe_promedio_target) -> float:
+    """% de ajuste del ritmo objetivo según cómo se sintieron REALMENTE las
+    últimas sesiones de este tipo vs su RPE objetivo. Positivo = sesiones
+    sintiéndose más duras de lo esperado → ritmo más lento (conservador);
+    negativo = se sintieron más fáciles → ritmo más exigente. Capado a ±5%:
+    es un afinado dentro de la zona ya derivada del umbral, no un reemplazo
+    de `recompute_runner_baseline` (que sigue siendo la fuente del umbral en
+    sí)."""
+    if rpe_promedio_real is None or rpe_promedio_target is None:
+        return 0.0
+    delta = float(rpe_promedio_real) - float(rpe_promedio_target)
+    return max(-PACE_BIAS_CAP_PCT, min(PACE_BIAS_CAP_PCT, delta * PACE_BIAS_PCT_PER_RPE))
+
+
+def apply_pace_bias(zonas: dict, pct: float) -> dict:
+    """Copia de `zonas` con el ritmo de cada zona ajustado por `pct`
+    (positivo = más lento, ritmo en s/km). No muta el original — `zonas`
+    viene directo de `RunnerProfile.zonas`, compartido por otras lecturas."""
+    if not pct or not (zonas or {}).get('pace'):
+        return zonas
+    ajustadas = dict(zonas)
+    ajustadas['pace'] = {
+        z: (round(lo * (1 + pct)), round(hi * (1 + pct)))
+        for z, (lo, hi) in zonas['pace'].items()
+    }
+    return ajustadas
 
 
 def weekly_volume_baseline(runs_last_28d) -> float | None:

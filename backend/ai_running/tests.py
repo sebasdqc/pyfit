@@ -98,6 +98,62 @@ class BaselineTests(SimpleTestCase):
         self.assertIsNone(ts._threshold_from_effort(0, 5))
         self.assertIsNone(ts._threshold_from_effort(1200, 0))
 
+    def test_confianza_historial_gradua_a_alta_con_suficiente_volumen_estable(self):
+        """Bug corregido: antes el techo por historial (sin tiempo declarado)
+        era SIEMPRE 'media', sin importar cuántas corridas consistentes se
+        acumularan. Ahora gradúa a 'alta' con ≥8 corridas y baja dispersión."""
+        runs_estables = [{'best_pace_s_km': 300 + (i % 2), 'distance_km': 5} for i in range(8)]
+        r = ts.estimate_threshold_pace(runs=runs_estables)
+        self.assertEqual(r['confianza'], 'alta')
+        self.assertEqual(r['n'], 8)
+
+    def test_confianza_historial_no_gradua_a_alta_con_pocas_corridas(self):
+        runs_pocas = [{'best_pace_s_km': 300, 'distance_km': 5} for _ in range(5)]
+        r = ts.estimate_threshold_pace(runs=runs_pocas)
+        self.assertEqual(r['confianza'], 'media')
+
+    def test_confianza_historial_no_gradua_a_alta_con_dispersion_alta(self):
+        """Muchas corridas pero muy dispares entre sí (ruido, no fitness
+        estable) → se queda en 'media', no 'alta'."""
+        runs_dispersas = [
+            {'best_pace_s_km': p, 'distance_km': 5}
+            for p in [260, 340, 270, 330, 250, 350, 280, 320]
+        ]
+        r = ts.estimate_threshold_pace(runs=runs_dispersas)
+        self.assertEqual(r['confianza'], 'media')
+
+    def test_pace_bias_from_profile_positivo_cuando_se_sintio_mas_duro(self):
+        pct = ts.pace_bias_from_profile(rpe_promedio_real=9.0, rpe_promedio_target=7.0)
+        self.assertAlmostEqual(pct, 0.04, places=4)   # (9-7) × 0.02
+
+    def test_pace_bias_from_profile_negativo_cuando_se_sintio_mas_facil(self):
+        pct = ts.pace_bias_from_profile(rpe_promedio_real=5.0, rpe_promedio_target=7.0)
+        self.assertAlmostEqual(pct, -0.04, places=4)
+
+    def test_pace_bias_from_profile_capado_a_5_por_ciento(self):
+        pct = ts.pace_bias_from_profile(rpe_promedio_real=10.0, rpe_promedio_target=3.0)
+        self.assertEqual(pct, ts.PACE_BIAS_CAP_PCT)
+
+    def test_pace_bias_from_profile_sin_historial_devuelve_cero(self):
+        self.assertEqual(ts.pace_bias_from_profile(None, None), 0.0)
+
+    def test_apply_pace_bias_ajusta_todas_las_zonas(self):
+        zonas = {'pace': {'Z2': (330, 360), 'Z5': (250, 270)}, 'hr': {'Z2': (130, 145)}}
+        ajustadas = ts.apply_pace_bias(zonas, 0.10)
+        self.assertEqual(ajustadas['pace']['Z2'], (363, 396))   # +10%, más lento
+        self.assertEqual(ajustadas['pace']['Z5'], (275, 297))
+        self.assertEqual(ajustadas['hr'], zonas['hr'])          # FC no se toca
+        # No muta el original.
+        self.assertEqual(zonas['pace']['Z2'], (330, 360))
+
+    def test_apply_pace_bias_sin_pct_devuelve_zonas_intactas(self):
+        zonas = {'pace': {'Z2': (330, 360)}}
+        self.assertIs(ts.apply_pace_bias(zonas, 0.0), zonas)
+
+    def test_apply_pace_bias_sin_zonas_de_pace_no_crashea(self):
+        self.assertEqual(ts.apply_pace_bias({'pace': None}, 0.05), {'pace': None})
+        self.assertEqual(ts.apply_pace_bias({}, 0.05), {})
+
 
 # ─── Volumen, regla del 10% y polarización ────────────────────────────────────
 

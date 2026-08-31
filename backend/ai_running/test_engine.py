@@ -67,6 +67,67 @@ class ResolvePhaseTests(TestCase):
         self.assertEqual(eng.resolve_phase(MONDAY), 'taper')
 
 
+class MarcarSesionesSaltadasTests(TestCase):
+    """Bug corregido: el choice 'saltada' existía en el modelo pero nunca se
+    asignaba — una sesión prescrita que el atleta nunca ejecutó (ni vinculó a
+    una RunSession real) quedaba huérfana en 'planificada' para siempre, sin
+    ninguna señal de adherencia al plan."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='saltada', password='x')
+        self.rp = _runner_profile(self.user)
+        self.plan = RunningPlan.objects.create(
+            user=self.user, meta_tipo='fitness_general', dias_semana=3,
+            started_at=MONDAY, week_start=MONDAY)
+        self.eng = RunningAdaptiveEngineService(self.user, None, self.rp, self.plan)
+
+    def test_sesion_pasada_sin_ejecutar_se_marca_saltada(self):
+        pasada = PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='tempo',
+            estado='planificada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        pasada.refresh_from_db()
+        self.assertEqual(pasada.estado, 'saltada')
+
+    def test_sesion_ajustada_pasada_tambien_se_marca_saltada(self):
+        ajustada = PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='easy',
+            estado='ajustada', ajuste_aplicado='readiness_baja_suaviza')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        ajustada.refresh_from_db()
+        self.assertEqual(ajustada.estado, 'saltada')
+
+    def test_no_toca_sesiones_de_hoy_o_futuras(self):
+        futura = PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY + timedelta(days=2),
+            tipo_sesion='easy', estado='planificada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        futura.refresh_from_db()
+        self.assertEqual(futura.estado, 'planificada')
+
+    def test_no_toca_sesion_ya_completada(self):
+        completada = PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='tempo',
+            estado='completada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        completada.refresh_from_db()
+        self.assertEqual(completada.estado, 'completada')
+
+    def test_no_toca_sesion_vinculada_a_una_run_session_real(self):
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        when = tz.make_aware(datetime.combine(MONDAY, time(9, 0)))
+        run = RunSession.objects.create(
+            user=self.user, started_at=when, ended_at=when + timedelta(minutes=30),
+            status='completed')
+        vinculada = PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='tempo',
+            estado='planificada', run_session=run)
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        vinculada.refresh_from_db()
+        self.assertEqual(vinculada.estado, 'planificada')
+
+
 class QualitySpacingTests(TestCase):
     def test_pick_quality_days_separa_del_long(self):
         chosen = RunningAdaptiveEngineService._pick_quality_days([1, 3, 5], long_day=5, n=1)

@@ -53,6 +53,19 @@ class GenerateRunTests(TestCase):
         self.assertEqual(plan.meta_tipo, '10k')
         self.assertGreater(plan.sessions.count(), 0)
 
+    def test_get_or_create_active_plan_es_idempotente(self):
+        """Bug corregido: antes era filter+create suelto — dos llamadas que
+        ven 'sin plan activo' a la vez podían chocar contra el
+        UniqueConstraint con un IntegrityError de 500 sin manejar.
+        get_or_create() debe devolver el MISMO plan sin duplicar."""
+        from ai_running.views import _get_or_create_active_plan
+        from datetime import date
+        hoy = date.today()
+        p1 = _get_or_create_active_plan(self.user, hoy)
+        p2 = _get_or_create_active_plan(self.user, hoy)
+        self.assertEqual(p1.pk, p2.pk)
+        self.assertEqual(RunningPlan.objects.filter(user=self.user, is_active=True).count(), 1)
+
     def test_microcycle_endpoint(self):
         self.client.post('/api/running/sessions/generate/', {}, format='json')
         res = self.client.get('/api/running/plan/microcycle/')
@@ -67,6 +80,13 @@ class GenerateRunTests(TestCase):
         self.assertIn('respuesta_ia', res.data)
         self.assertTrue(res.data['respuesta_ia']['fases'])          # estructura presente
         self.assertIn(res.data['estado'], ('planificada', 'ajustada'))
+        # Sin LLM_API_KEY, la narración SIEMPRE cae al fallback determinístico
+        # — el flag de observabilidad debe reflejarlo (si el estado terminó en
+        # 'rest' por readiness, no pasa por esta rama y no aplica).
+        if 'id' in res.data:
+            planned = PlannedRunSession.objects.get(pk=res.data['id'])
+            if planned.tipo_sesion != 'rest':
+                self.assertTrue(planned.narracion_fallback)
 
     @override_settings(LLM_API_KEY='test-key')
     def test_generate_con_llm_redacta_pero_motor_manda_numeros(self):
@@ -79,6 +99,17 @@ class GenerateRunTests(TestCase):
         self.assertEqual(planned.tokens_in, 120)                    # métricas del motor
         # Los números (rpe_target) los fija el motor, no el LLM.
         self.assertIsNotNone(planned.rpe_target)
+        self.assertFalse(planned.narracion_fallback)   # Groq respondió bien — no fue fallback
+
+    @override_settings(LLM_API_KEY='test-key')
+    def test_narracion_fallback_true_cuando_groq_falla(self):
+        with patch('ai_running.views._call_groq', side_effect=RuntimeError('timeout')):
+            res = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        self.assertEqual(res.status_code, 200)
+        if 'id' in res.data:
+            planned = PlannedRunSession.objects.get(pk=res.data['id'])
+            if planned.tipo_sesion != 'rest':
+                self.assertTrue(planned.narracion_fallback)
 
     @override_settings(LLM_API_KEY='')
     def test_indoor_vacia_los_ritmos(self):
@@ -252,6 +283,32 @@ class GenerateRunTests(TestCase):
             status='completed', session_type='free', total_distance_m=5000, total_duration_s=1800)
         detail = self.client.get(f'/api/runs/{run.id}/')
         self.assertIsNone(detail.data['planned'])
+
+    @override_settings(LLM_API_KEY='')
+    def test_fase_se_recalcula_en_vivo_no_usa_fase_actual_desactualizada(self):
+        """Bug corregido: plan.fase_actual solo se refresca al regenerar el
+        microciclo (1x/semana, ver ensure_current_week) — una competencia
+        agregada a mitad de semana debe forzar 'taper' HOY sin esperar al
+        próximo lunes. Se observa vía reps: nivel intermedio en 'build'/'peak'
+        usa el TOPE del template (6 para vo2); en cualquier otra fase (incl.
+        'taper') usa el punto medio (5) — ver endurance.science.pick_reps."""
+        from workouts.models import Competition
+        # Sin Profile (perfil=None), engine._nivel() ya defaultea a
+        # 'intermedio' — el nivel discriminante que hace observable el bug.
+        # Fase persistida desactualizada A PROPÓSITO: si el motor confiara en
+        # este campo en vez de recalcular, usaría el tope de reps de 'build'.
+        self.plan.fase_actual = 'build'
+        self.plan.save()
+        Competition.objects.create(
+            user=self.user, nombre='10K Ciudad', fecha=date.today() + timedelta(days=5))
+        PlannedRunSession.objects.create(
+            plan=self.plan, user=self.user, fecha=date.today(), tipo_sesion='vo2',
+            es_calidad=True, estado='planificada')
+        res = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        self.assertEqual(res.status_code, 200)
+        principal = next(f for f in res.data['respuesta_ia']['fases'] if f['nombre'] == 'Principal')
+        reps = principal['segmentos'][0]['repeticiones']
+        self.assertEqual(reps, 5)   # taper (resolve_phase) → punto medio, NO 6 (tope de build)
 
     @override_settings(LLM_API_KEY='')
     def test_dolor_de_carga_degrada_a_descanso_o_easy(self):

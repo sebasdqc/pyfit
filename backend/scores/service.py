@@ -26,6 +26,7 @@ import logging
 from collections import defaultdict
 from datetime import timedelta
 
+from django.db.models import Count
 from django.utils import timezone
 
 from checkins.models import DailyCheckin
@@ -407,16 +408,20 @@ def _rendimiento_cardio(user, p1_desde, p1_hasta, p0_desde, p0_hasta):
     """Nivel A únicamente (GPS + RPE reportado vía run_feedback). Nivel B
     (sin GPS) no tiene ningún productor de datos hoy — no hay endpoint ni UI
     de entrada manual — así que naturalmente cae a "sin pares comparables"."""
+    # `.count()` sobre un related manager SIEMPRE emite un COUNT nuevo, incluso
+    # con prefetch_related — no usa esa caché. Anotar con Count evita cargar
+    # los RunPoint de cada sesión a memoria solo para descartarlos (podían ser
+    # miles por sesión larga, ver RunPoint) y evita el N+1 de un COUNT por fila.
     runs = (
         RunSession.objects
         .filter(user=user, status='completed', rpe_real__isnull=False,
                 started_at__date__gte=p0_desde - timedelta(days=1),
                 started_at__date__lte=p1_hasta + timedelta(days=1))
-        .prefetch_related('points')
+        .annotate(n_points=Count('points'))
     )
     p1_runs, p0_runs = [], []
     for r in runs:
-        if not r.avg_pace_s_per_km or r.points.count() < 2:
+        if not r.avg_pace_s_per_km or r.n_points < 2:
             continue
         d = timezone.localdate(r.started_at)
         bloque = _bucket(d, p1_desde, p1_hasta, p0_desde, p0_hasta)

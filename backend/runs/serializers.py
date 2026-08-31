@@ -65,6 +65,12 @@ class RunSessionCreateSerializer(serializers.ModelSerializer):
         request = self.context['request']
         from checkins.views import _get_write_date
         hoy = _get_write_date(request)
+        # Cierra cualquier sesión active/paused huérfana del usuario (crash de
+        # la app, doble tap en "empezar" desde dos pantallas) antes de abrir
+        # una nueva — sin esto se acumulan sin que nada las expire nunca.
+        RunSession.objects.filter(
+            user=request.user, status__in=['active', 'paused'],
+        ).update(status='abandoned')
         validated_data['user'] = request.user
         validated_data['status'] = 'active'
         # Fecha local del dispositivo al crear la sesión — ver el comentario de

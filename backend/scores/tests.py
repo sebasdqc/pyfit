@@ -20,7 +20,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from checkins.models import DailyCheckin
-from runs.models import RunSession
+from runs.models import RunSession, RunPoint
 from users.models import Profile
 from workouts.models import Exercise, Session, SessionExercise, SessionFeedback
 
@@ -292,6 +292,53 @@ class RendimientoFuerzaTests(TestCase):
         )
         self.assertIsNone(valor)
         self.assertIsNone(fuente)
+
+
+class RendimientoCardioTests(TestCase):
+    """`_rendimiento_cardio` filtraba antes con `r.points.count() < 2` sobre un
+    prefetch_related que no servía (N+1 + traía todos los RunPoint a memoria
+    solo para descartarlos) — ahora usa `Count('points')` anotado. Estos tests
+    fijan el comportamiento observable: el filtro de "al menos 2 puntos GPS"
+    debe seguir funcionando igual con la query anotada."""
+
+    def _run(self, user, cuando, rpe, pace, n_points):
+        r = RunSession.objects.create(
+            user=user, started_at=cuando, ended_at=cuando + timedelta(minutes=30),
+            status='completed', session_type='free', rpe_real=rpe, avg_pace_s_per_km=pace,
+        )
+        RunPoint.objects.bulk_create([
+            RunPoint(session=r, lat=40.0 + i * 0.001, lng=-3.0, accuracy_m=10,
+                     timestamp=cuando + timedelta(seconds=i * 5))
+            for i in range(n_points)
+        ])
+        return r
+
+    def test_excluye_sesiones_con_menos_de_dos_puntos(self):
+        user = make_user(goal='potencia')
+        hoy = date.today()
+        p1_desde, p1_hasta = hoy - timedelta(days=27), hoy
+        p0_desde, p0_hasta = hoy - timedelta(days=55), hoy - timedelta(days=28)
+        # Ambos períodos solo tienen sesiones con 0-1 puntos GPS → sin pares comparables.
+        self._run(user, timezone.now() - timedelta(days=5), rpe=7, pace=300, n_points=1)
+        self._run(user, timezone.now() - timedelta(days=40), rpe=7, pace=310, n_points=0)
+        valor, fuente = service._rendimiento_cardio(user, p1_desde, p1_hasta, p0_desde, p0_hasta)
+        self.assertIsNone(valor)
+        self.assertIsNone(fuente)
+
+    def test_incluye_sesiones_con_dos_o_mas_puntos(self):
+        user = make_user(goal='potencia')
+        hoy = date.today()
+        p1_desde, p1_hasta = hoy - timedelta(days=27), hoy
+        p0_desde, p0_hasta = hoy - timedelta(days=55), hoy - timedelta(days=28)
+        # Mismo RPE en ambos períodos, P1 más rápido (pace menor) → delta de
+        # progreso positivo (la función devuelve la fracción cruda de mejora
+        # de pace, no un "valor" 0-100 — eso lo escala una capa más arriba).
+        self._run(user, timezone.now() - timedelta(days=5), rpe=7, pace=270, n_points=5)
+        self._run(user, timezone.now() - timedelta(days=40), rpe=7, pace=300, n_points=5)
+        delta, fuente = service._rendimiento_cardio(user, p1_desde, p1_hasta, p0_desde, p0_hasta)
+        self.assertIsNotNone(delta)
+        self.assertAlmostEqual(delta, 0.1, delta=0.01)   # (300-270)/300 = 10% más rápido
+        self.assertEqual(fuente, 'gps_pace_rpe')
 
 
 class RedistribucionPesosTests(TestCase):

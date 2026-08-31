@@ -14,6 +14,13 @@ class RunSession(models.Model):
         ('active', 'Active'),
         ('paused', 'Paused'),
         ('completed', 'Completed'),
+        # Sesión `active`/`paused` que quedó huérfana (crash de la app, doble
+        # inicio) y se cerró automáticamente al arrancar una carrera nueva —
+        # ver RunSessionCreateSerializer.create(). No es un CheckConstraint de
+        # "una sola activa por usuario" a propósito: no hay forma de verificar
+        # desde acá si datos ya en producción lo violarían, y una migración que
+        # falla al aplicar tumba el deploy (ver backend/CLAUDE.md).
+        ('abandoned', 'Abandoned'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='run_sessions')
@@ -48,20 +55,29 @@ class RunSession(models.Model):
     #     related_name='run_sessions'
     # )
 
-    # Métricas agregadas (se calculan al completar la sesión)
-    total_distance_m = models.FloatField(default=0)
-    total_duration_s = models.IntegerField(default=0)
-    avg_pace_s_per_km = models.IntegerField(default=0)
-    best_pace_s_per_km = models.IntegerField(default=0)
-    calories_burned = models.FloatField(default=0)
-    elevation_gain_m = models.FloatField(default=0)
+    # Métricas agregadas (se calculan al completar la sesión). MinValueValidator
+    # valida en formularios/serializers (full_clean) — el CheckConstraint de
+    # abajo es el que realmente blinda contra escrituras que lo saltean (admin,
+    # shell, un management command futuro), igual que ya hace SessionFeedback
+    # (workouts/models.py) con sus propios rangos.
+    total_distance_m = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    total_duration_s = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    avg_pace_s_per_km = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    best_pace_s_per_km = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    calories_burned = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    elevation_gain_m = models.FloatField(default=0, validators=[MinValueValidator(0)])
     avg_heart_rate = models.IntegerField(null=True, blank=True)  # preparado para HR monitor
 
     # ── Feedback post-sesión (paralelo al SessionFeedback de las sesiones de gym) ──
     # Nulos = sesión sin feedback todavía. `feedback_at` marca cuándo se registró.
-    rpe_real = models.IntegerField(null=True, blank=True)        # esfuerzo percibido 1-10
-    rating = models.IntegerField(null=True, blank=True)          # valoración general 1-5
-    cumplimiento = models.IntegerField(null=True, blank=True)    # 0-100
+    # Mismos rangos que workouts.SessionFeedback (rpe_real 1-10, cumplimiento
+    # 0-100, rating 1-5) — antes solo se validaban en RunFeedbackSerializer.
+    rpe_real = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    rating = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    cumplimiento = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
     molestias = models.JSONField(default=list, blank=True)       # zonas con molestia post-sesión
     feedback_notas = models.TextField(null=True, blank=True)
     feedback_at = models.DateTimeField(null=True, blank=True)
@@ -74,6 +90,11 @@ class RunSession(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['user', 'session_type']),
+            # El patrón de query dominante del módulo: generate_run_session (ACWR
+            # y volumen semanal), Zyfit Score y el historial (`GET /api/runs/`)
+            # filtran+ordenan por (user, started_at) en cada request — sin esto,
+            # cada uno era un full scan de las filas del usuario.
+            models.Index(fields=['user', 'started_at']),
         ]
         constraints = [
             # ended_at, si existe, nunca puede ser anterior a started_at.
@@ -91,6 +112,55 @@ class RunSession(models.Model):
                     | models.Q(ended_at__isnull=False)
                 ),
                 name='run_completed_has_ended_at',
+            ),
+            # Blindaje a nivel de BD de las métricas agregadas y del feedback —
+            # los validators de arriba solo corren si algo llama full_clean()
+            # (formularios/DRF); esto atrapa admin, shell, o un management
+            # command futuro que haga .save() directo.
+            models.CheckConstraint(
+                condition=models.Q(total_distance_m__gte=0),
+                name='run_distance_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_duration_s__gte=0),
+                name='run_duration_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(avg_pace_s_per_km__gte=0),
+                name='run_avg_pace_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(best_pace_s_per_km__gte=0),
+                name='run_best_pace_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(calories_burned__gte=0),
+                name='run_calories_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(elevation_gain_m__gte=0),
+                name='run_elevation_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(rpe_real__isnull=True)
+                    | models.Q(rpe_real__gte=1, rpe_real__lte=10)
+                ),
+                name='run_rpe_real_in_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(rating__isnull=True)
+                    | models.Q(rating__gte=1, rating__lte=5)
+                ),
+                name='run_rating_in_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(cumplimiento__isnull=True)
+                    | models.Q(cumplimiento__gte=0, cumplimiento__lte=100)
+                ),
+                name='run_cumplimiento_in_range',
             ),
         ]
 
@@ -112,6 +182,14 @@ class RunPoint(models.Model):
         ordering = ['timestamp']
         indexes = [
             models.Index(fields=['session', 'timestamp']),
+        ]
+        constraints = [
+            # Protege contra el reintento de red: `flushPoints` (mobile) reencola
+            # el batch completo si el POST falla, aunque el servidor ya lo haya
+            # insertado — sin esto, un timeout tras un insert exitoso duplica
+            # las filas. Con esto + bulk_create(ignore_conflicts=True), el
+            # reintento simplemente no inserta de nuevo lo que ya existe.
+            models.UniqueConstraint(fields=['session', 'timestamp'], name='unique_point_per_session_timestamp'),
         ]
 
 
@@ -260,10 +338,15 @@ class PlannedRunSession(models.Model):
     run_session = models.ForeignKey('runs.RunSession', on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name='planned_origin')
 
-    # Salud del motor (mismo patrón que workouts.Session).
+    # Salud del motor. `narracion_fallback` = True si Groq falló/no respondió
+    # JSON válido y se usó la narración determinística de respaldo
+    # (`_fallback_narration` en ai_running/views.py) — antes esto no quedaba
+    # registrado en ningún lado, sin observabilidad de cuántas sesiones se
+    # redactan sin LLM.
     generacion_ms = models.IntegerField(null=True, blank=True)
     tokens_in = models.IntegerField(null=True, blank=True)
     tokens_out = models.IntegerField(null=True, blank=True)
+    narracion_fallback = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -282,3 +365,36 @@ class PlannedRunSession(models.Model):
 
     def __str__(self):
         return f"PlannedRun<{self.user.username}> {self.fecha} {self.tipo_sesion} [{self.estado}]"
+
+
+class RunTypeProfile(models.Model):
+    """Progresión por tipo de sesión — equivalente a `workouts.UserExerciseProfile`
+    del motor de fuerza, pero por `tipo_sesion` (vo2/tempo/easy/...) en vez de por
+    ejercicio individual (running no tiene un catálogo de "ejercicios" que
+    progresar uno a uno). Se actualiza en `run_feedback` cuando el feedback llega
+    de una RunSession vinculada a una PlannedRunSession (Free Runs sin vincular no
+    tienen `tipo_sesion` al que atribuir el dato). Se consume en
+    `generate_run_session` vía `training_science_running.pace_bias_from_profile()`
+    para afinar el ritmo objetivo de la PRÓXIMA sesión de ese tipo — sin esto, el
+    motor solo reaccionaba a la readiness del día, nunca al historial de esfuerzo
+    reportado en sesiones pasadas del mismo tipo."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='run_type_profiles')
+    tipo_sesion = models.CharField(max_length=12, choices=PlannedRunSession.TIPO_SESION)
+    veces_realizado = models.IntegerField(default=0)
+    rpe_promedio_real = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    rpe_promedio_target = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    cumplimiento_promedio = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    ultima_vez = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'run_type_profiles'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'tipo_sesion'], name='unique_run_type_profile_per_user'),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'tipo_sesion']),
+        ]
+
+    def __str__(self):
+        return f"RunTypeProfile<{self.user.username}> {self.tipo_sesion} x{self.veces_realizado}"

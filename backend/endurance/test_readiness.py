@@ -58,6 +58,23 @@ class ComputeReadinessTests(SimpleTestCase):
         r = rd.compute_readiness(carga=None, checkin=checkin, pain_keywords=PAIN_KEYWORDS)
         self.assertTrue(r['rest_checkin'])
 
+    def test_monotonia_alta_baja_score_y_marca_flag(self):
+        """Bug corregido: monotonia_alerta ya venía calculado en athlete_carga()
+        (Foster) pero se descartaba antes de llegar a compute_readiness."""
+        carga = {'suficiente': True, 'zona': 'Óptimo', 'riesgo_alerta': False,
+                 'acwr_ewma': 1.0, 'monotonia_alerta': True}
+        r = rd.compute_readiness(carga=carga, checkin=None, pain_keywords=PAIN_KEYWORDS)
+        self.assertTrue(r['monotonia_alta'])
+        self.assertIn('monotonia_alta', r['flags'])
+        self.assertEqual(r['score'], 65)   # 70 − 5
+
+    def test_sin_monotonia_alerta_no_marca_flag(self):
+        carga = {'suficiente': True, 'zona': 'Óptimo', 'riesgo_alerta': False,
+                 'acwr_ewma': 1.0, 'monotonia_alerta': False}
+        r = rd.compute_readiness(carga=carga, checkin=None, pain_keywords=PAIN_KEYWORDS)
+        self.assertFalse(r['monotonia_alta'])
+        self.assertNotIn('monotonia_alta', r['flags'])
+
     def test_acwr_riesgo_alto_baja_score_y_marca_flag(self):
         carga = {'suficiente': True, 'zona': 'Riesgo alto', 'riesgo_alerta': True, 'acwr_ewma': 1.6}
         r = rd.compute_readiness(carga=carga, checkin=None, pain_keywords=PAIN_KEYWORDS)
@@ -94,6 +111,7 @@ class AdaptTodayTests(SimpleTestCase):
     def _signals(self, **over):
         s = {'score': 75, 'suficiente': False, 'zona_acwr': 'Acumulando datos',
              'acwr_ewma': None, 'riesgo_alto': False, 'infracarga': False,
+             'monotonia_alta': False,
              'has_checkin': True, 'animo': 4, 'sueno_bad': False, 'hrv_low': False,
              'dolor': None, 'rest_checkin': False, 'flags': []}
         s.update(over)
@@ -152,6 +170,19 @@ class AdaptTodayTests(SimpleTestCase):
                              rpe_by_zone=RPE_BY_ZONE, signals=self._signals(animo=1))
         self.assertEqual(out['ajuste_aplicado'], 'animo_bajo_suaviza')
         self.assertEqual(out['rpe_cap'], 8)   # max(4, RPE_BY_ZONE['Z5'](9) - 1)
+
+    def test_monotonia_alta_suaviza_calidad_sin_cancelarla(self):
+        out = rd.adapt_today(tipo_sesion='vo2', es_calidad=True, zona_principal='Z5',
+                             rpe_by_zone=RPE_BY_ZONE, signals=self._signals(monotonia_alta=True))
+        self.assertEqual(out['ajuste_aplicado'], 'monotonia_alta_varia')
+        self.assertEqual(out['tipo_sesion'], 'vo2')   # NO cancela, solo suaviza (factor+rpe_cap)
+        self.assertEqual(out['factor'], 0.85)
+        self.assertEqual(out['rpe_cap'], 8)
+
+    def test_monotonia_alta_sin_calidad_no_dispara_la_regla(self):
+        out = rd.adapt_today(tipo_sesion='easy', es_calidad=False, zona_principal='Z2',
+                             rpe_by_zone=RPE_BY_ZONE, signals=self._signals(monotonia_alta=True))
+        self.assertEqual(out['ajuste_aplicado'], 'confirmada')
 
     def test_infracarga_permite_progresion(self):
         out = rd.adapt_today(tipo_sesion='easy', es_calidad=False, zona_principal='Z2',

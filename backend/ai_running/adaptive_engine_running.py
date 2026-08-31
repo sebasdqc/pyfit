@@ -258,9 +258,25 @@ class RunningAdaptiveEngineService:
                                       'semana_actual', 'updated_at'])
         return rows
 
+    def _marcar_sesiones_saltadas(self, hoy):
+        """Sesión prescrita para un día que ya pasó, nunca vinculada a una
+        RunSession real ni resuelta por readiness (sigue en 'planificada'/
+        'ajustada') → 'saltada'. El choice ya existía en el modelo pero nunca
+        se asignaba — sin esto, un atleta que reemplaza sistemáticamente sus
+        sesiones prescritas por Free Runs nunca generaba ninguna señal de
+        adherencia al plan: la PlannedRunSession quedaba huérfana para
+        siempre. No se limita al plan activo — un atleta puede haber
+        cambiado de plan a mitad de una semana sin resolver, y esas sesiones
+        del plan viejo igual deberían contar como saltadas."""
+        PlannedRunSession.objects.filter(
+            user=self.user, fecha__lt=hoy, estado__in=['planificada', 'ajustada'],
+            run_session__isnull=True,
+        ).update(estado='saltada')
+
     def ensure_current_week(self, hoy):
         """Asegura que el microciclo de la semana de `hoy` esté generado; avanza el
         contador de semana si el plan venía de una semana anterior. Devuelve el lunes."""
+        self._marcar_sesiones_saltadas(hoy)
         monday = hoy - timedelta(days=hoy.weekday())
         es_semana_nueva = self.plan.week_start is None or self.plan.week_start < monday
         # También (re)generar si la semana actual está vacía (p. ej. plan recién creado).

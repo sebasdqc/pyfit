@@ -126,6 +126,16 @@ def compute_readiness(*, carga: dict | None, checkin, pain_keywords,
         elif infracarga:
             flags.append('infracarga')
 
+    # Monotonía (Foster et al. 1998-2001): carga diaria pareja día tras día
+    # predice sobreentrenamiento/lesión de forma INDEPENDIENTE del ACWR — un
+    # atleta puede tener un acute:chronic "sano" y aun así entrenar siempre
+    # igual, sin variedad de estímulo. `athlete_carga()` ya la calcula
+    # (performance/calculators/carga.py); antes se descartaba acá sin usarse.
+    monotonia_alta = bool(suficiente and carga and carga.get('monotonia_alerta'))
+    if monotonia_alta:
+        score -= 5
+        flags.append('monotonia_alta')
+
     dolor_texto = getattr(checkin, 'dolor_hoy', '') if checkin else ''
     dolor = detectar_dolor(dolor_texto, pain_keywords)
     if dolor:
@@ -141,6 +151,7 @@ def compute_readiness(*, carga: dict | None, checkin, pain_keywords,
         'acwr_ewma': (carga.get('acwr_ewma') if carga else None),
         'riesgo_alto': riesgo_alto,
         'infracarga': infracarga,
+        'monotonia_alta': monotonia_alta,
         'has_checkin': has_checkin,
         'animo': animo,
         'sueno_bad': sueno_bad,
@@ -213,9 +224,18 @@ def adapt_today(*, tipo_sesion: str, es_calidad: bool, zona_principal: str,
                     'factor': 0.85,
                     'rpe_cap': max(4, rpe_by_zone.get(zona_principal, 6) - 1)})
         return out
-    # 7) Infracarga con readiness alta → permitir leve progresión.
+    # 7) Monotonía alta (Foster) en una sesión de calidad → mismo criterio que
+    # ánimo bajo: no cancela la sesión, la suaviza (menos reps/minutos + cap
+    # de RPE) para introducir algo de variación en vez de repetir el mismo
+    # patrón de carga que ya viene siendo demasiado uniforme.
+    if signals.get('monotonia_alta') and es_calidad:
+        out.update({'estado': 'ajustada', 'ajuste_aplicado': 'monotonia_alta_varia',
+                    'factor': 0.85,
+                    'rpe_cap': max(4, rpe_by_zone.get(zona_principal, 6) - 1)})
+        return out
+    # 8) Infracarga con readiness alta → permitir leve progresión.
     if signals['infracarga'] and signals['score'] >= 70:
         out.update({'estado': 'ajustada', 'ajuste_aplicado': 'infracarga_ok', 'factor': 1.05})
         return out
-    # 8) Todo verde → confirmar.
+    # 9) Todo verde → confirmar.
     return out
