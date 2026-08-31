@@ -136,6 +136,23 @@ class RestAndEquipmentTests(SimpleTestCase):
         self.assertTrue(ts.is_free_weight(nombre='Sentadilla con barra'))
         self.assertFalse(ts.is_free_weight(equipment_categories=['Máquina'], nombre='Prensa'))
 
+    def test_requires_equipment_jsonfield_fallback(self):
+        # Ruta JSON (has_equipment_data=False): usa Exercise.equipamiento tal cual.
+        con_equipo = SimpleNamespace(equipamiento=['Mancuernas'])
+        sin_equipo = SimpleNamespace(equipamiento=[])
+        peso_corporal_explicito = SimpleNamespace(equipamiento=['Ninguno'])
+        self.assertTrue(
+            AdaptiveEngineService._exercise_requires_equipment(None, con_equipo, has_equipment_data=False)
+        )
+        self.assertFalse(
+            AdaptiveEngineService._exercise_requires_equipment(None, sin_equipo, has_equipment_data=False)
+        )
+        self.assertFalse(
+            AdaptiveEngineService._exercise_requires_equipment(
+                None, peso_corporal_explicito, has_equipment_data=False,
+            )
+        )
+
 
 class FocoMappingTests(SimpleTestCase):
     def test_body_part_tokens(self):
@@ -296,6 +313,35 @@ class WeeklyVolumeTests(SimpleTestCase):
         avan = ts.weekly_budget({'pecho': 0}, 'avanzado')['pecho']['mrv']
         self.assertLess(prin, avan)
 
+    def test_weekly_budget_always_includes_untouched_groups(self):
+        # Primera sesión de la semana: done_by_group viene vacío. Antes, esto
+        # devolvía {} y la sesión no tenía NINGUNA directiva de volumen.
+        b = ts.weekly_budget({}, 'intermedio')
+        self.assertIn('pecho', b)
+        self.assertEqual(b['pecho']['hechas'], 0)
+        self.assertEqual(b['pecho']['restante'], b['pecho']['mrv'])
+
+    def test_weekly_budget_sugerido_hoy_full_restante_when_one_session_left(self):
+        # Frecuencia 1x/semana, primera (única) sesión: no hay a quién repartirle
+        # el volumen, así que sugerido_hoy debe ser el restante completo.
+        b = ts.weekly_budget({'pecho': 0}, 'intermedio', dias_semana=1, sesiones_transcurridas=0)['pecho']
+        self.assertEqual(b['sugerido_hoy'], b['restante'])
+
+    def test_weekly_budget_sugerido_hoy_shrinks_with_higher_frequency(self):
+        # Misma fase de la semana (nada hecho aún), pero más sesiones por delante
+        # → la porción sugerida para HOY debe ser menor, no todo el restante.
+        baja = ts.weekly_budget({'pecho': 0}, 'intermedio', dias_semana=1, sesiones_transcurridas=0)['pecho']
+        alta = ts.weekly_budget({'pecho': 0}, 'intermedio', dias_semana=4, sesiones_transcurridas=0)['pecho']
+        self.assertLess(alta['sugerido_hoy'], baja['sugerido_hoy'])
+        self.assertEqual(alta['restante'], baja['restante'])  # el techo semanal no cambia
+
+    def test_weekly_budget_sugerido_hoy_uses_remaining_sessions_not_total(self):
+        # A mitad de semana (2 de 4 sesiones ya pasaron), sugerido_hoy se reparte
+        # entre las 2 sesiones que faltan, no entre las 4 totales.
+        b = ts.weekly_budget({'pecho': 0}, 'intermedio', dias_semana=4, sesiones_transcurridas=2)['pecho']
+        import math
+        self.assertEqual(b['sugerido_hoy'], math.ceil(b['restante'] / 2))
+
 
 class ParseRepRangeTests(SimpleTestCase):
     def test_basic_ranges(self):
@@ -424,6 +470,30 @@ class FormatPoolCompactTests(SimpleTestCase):
         self.assertEqual(len(bullets), 3)  # ninguno se excluye
         # El que matchea el objetivo va primero, aunque su evidence_score sea menor.
         self.assertIn('Press con banda', bullets[0])
+
+    def test_prioriza_equipo_sobre_peso_corporal_cuando_hay_implementos(self):
+        """Si el usuario tiene equipo disponible (evidenciado por al menos un
+        ejercicio requiere_equipo=True en el pool), el ejercicio con equipo debe
+        ir antes que el de peso corporal puro dentro del mismo patrón, aunque
+        ambos sean compuestos."""
+        con_equipo = self._entry('Press banca con mancuernas', requiere_equipo=True)
+        peso_corporal = self._entry('Flexiones de pecho', requiere_equipo=False)
+        pool = [peso_corporal, con_equipo]  # orden de entrada invertido a propósito
+        out = _format_exercise_pool_enriched(pool, {'priorizados': [], 'evitar': [], 'razon_evitar': {}})
+        bullets = [l for l in out.splitlines() if l.strip().startswith('•')]
+        self.assertIn('Press banca con mancuernas', bullets[0])
+
+    def test_no_reordena_por_equipo_si_nadie_en_el_pool_lo_requiere(self):
+        """Si NINGÚN ejercicio del pool usa equipo (usuario sin implementos), el
+        orden no debe verse afectado por el nuevo criterio — no hay 'equipo
+        disponible' que priorizar, así que se preserva el comportamiento previo
+        (desempate por objetivo/evidence_score)."""
+        primero = self._entry('Flexiones de pecho', requiere_equipo=False, evidence_score=5)
+        segundo = self._entry('Flexiones diamante', requiere_equipo=False, evidence_score=2)
+        pool = [segundo, primero]
+        out = _format_exercise_pool_enriched(pool, {'priorizados': [], 'evitar': [], 'razon_evitar': {}})
+        bullets = [l for l in out.splitlines() if l.strip().startswith('•')]
+        self.assertIn('Flexiones de pecho', bullets[0])  # gana por evidence_score, no por equipo
 
 
 # ─── Hallazgo #1: red de seguridad de equipamiento (coherencia casa/gimnasio) ──

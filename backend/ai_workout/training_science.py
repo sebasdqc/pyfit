@@ -25,6 +25,7 @@ Referencias:
   · Descansos: Grgic et al. 2018 (meta-análisis de descanso entre series); NSCA 2022.
 """
 import unicodedata
+from math import ceil
 
 from users.onboarding_goals import resolve_goal_from_objetivo
 
@@ -378,20 +379,42 @@ def aggregate_done_sets(rows, vg_by_nombre: dict) -> dict:
     return done
 
 
-def weekly_budget(done_by_group: dict, nivel: str = 'intermedio') -> dict:
+def weekly_budget(
+    done_by_group: dict,
+    nivel: str = 'intermedio',
+    dias_semana: int = 3,
+    sesiones_transcurridas: int = 0,
+) -> dict:
     """Presupuesto semanal por grupo a partir de las series ya hechas.
-    Devuelve {grupo: {hechas, mav, mrv, restante}} (restante contra el MRV = techo)."""
+
+    Además del techo semanal duro (`restante` contra el MRV), calcula
+    `sugerido_hoy`: el restante prorrateado entre las sesiones que faltan
+    esta semana (`dias_semana - sesiones_transcurridas`, mínimo 1). Con baja
+    frecuencia (ej. 1 día/semana) `sugerido_hoy` tiende al restante completo
+    — es la única oportunidad del grupo esa semana; con alta frecuencia se
+    reparte en porciones más chicas para no concentrar todo el volumen
+    semanal en una sola sesión (ej. el lunes).
+
+    Siempre incluye todos los grupos con landmarks conocidos, aunque
+    `done_by_group` venga vacío (primera sesión de la semana → hechas=0,
+    restante=MRV completo) — sin esto, la primera sesión de la semana
+    quedaba sin ninguna directiva de volumen.
+
+    Devuelve {grupo: {hechas, mav, mrv, restante, sugerido_hoy}}."""
+    sesiones_restantes = max(1, dias_semana - sesiones_transcurridas)
     out: dict = {}
-    for vg, done in done_by_group.items():
+    for vg in set(LANDMARKS_BASE) | set(done_by_group):
         lm = weekly_landmarks(vg, nivel)
         if not lm:
             continue
-        d = round(done)
+        d = round(done_by_group.get(vg, 0))
+        restante = max(0, lm['mrv'] - d)
         out[vg] = {
-            'hechas':   d,
-            'mav':      lm['mav'],
-            'mrv':      lm['mrv'],
-            'restante': max(0, lm['mrv'] - d),
+            'hechas':       d,
+            'mav':          lm['mav'],
+            'mrv':          lm['mrv'],
+            'restante':     restante,
+            'sugerido_hoy': ceil(restante / sesiones_restantes) if restante else 0,
         }
     return out
 

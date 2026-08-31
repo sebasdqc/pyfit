@@ -613,19 +613,30 @@ def _format_exercise_pool_enriched(pool: list, priorities: dict, objetivo_princi
     for ex in pool:
         by_patron.setdefault(ex['patron_movimiento'], []).append(ex)
 
+    # Prioridad de equipamiento: si el usuario tiene algún implemento disponible
+    # (evidenciado por al menos un ejercicio con requiere_equipo=True en el pool
+    # — el filtro duro de equipamiento ya garantiza que solo entran ejercicios
+    # con equipo REALMENTE disponible), los ejercicios que usan ese equipo deben
+    # preferirse sobre los de peso corporal puro: quien entrena en gimnasio o
+    # tiene implementos en casa espera usarlos, no que el generador caiga por
+    # defecto en flexiones/sentadillas al aire pudiendo cargar peso externo.
+    equipo_disponible = any(x.get('requiere_equipo') for x in pool)
+
     # Sort within each patron: compuestos primero (sin cambio de comportamiento
-    # existente); luego, entre los que empatan, prioriza el objetivo del
-    # usuario (goal_tags) y usa evidence_score como desempate — NUNCA como
-    # filtro excluyente: un ejercicio de score bajo o sin clasificar (None)
-    # sigue entrando si es el único disponible para ese equipo/nivel/patrón
-    # (ver zyfit-evidencia-ejercicios-spec.md sección 6). Último desempate:
-    # veces_realizado ASCENDENTE (menos usado primero) — el pool solo manda al
-    # LLM los primeros 8 de cada patrón, así que ordenar por más-usado-primero
-    # empujaba fuera del banco justo a los ejercicios menos repetidos,
-    # reforzando la monotonía en vez de variarla.
+    # existente); luego, si hay equipo disponible, prioriza ejercicios que lo
+    # usan por encima de los de peso corporal; luego, entre los que empatan,
+    # prioriza el objetivo del usuario (goal_tags) y usa evidence_score como
+    # desempate — NUNCA como filtro excluyente: un ejercicio de score bajo o
+    # sin clasificar (None) sigue entrando si es el único disponible para ese
+    # equipo/nivel/patrón (ver zyfit-evidencia-ejercicios-spec.md sección 6).
+    # Último desempate: veces_realizado ASCENDENTE (menos usado primero) — el
+    # pool solo manda al LLM los primeros 8 de cada patrón, así que ordenar por
+    # más-usado-primero empujaba fuera del banco justo a los ejercicios menos
+    # repetidos, reforzando la monotonía en vez de variarla.
     for pat in by_patron:
         by_patron[pat].sort(key=lambda x: (
             not x['es_compuesto'],
+            not (equipo_disponible and x.get('requiere_equipo')),
             not (objetivo_principal and objetivo_principal in (x.get('goal_tags') or [])),
             -(x.get('evidence_score') or 0),
             x.get('veces_realizado', 0),
@@ -857,6 +868,11 @@ def build_prompt(ctx):
     # Presupuesto de volumen semanal (Fase 2): tope DURO de series por grupo muscular.
     # Se muestran solo los grupos del foco de hoy y los que están cerca/encima del MRV,
     # para no inflar el prompt con los 13 grupos.
+    # `sugerido_hoy` (calculado en weekly_budget) ya reparte el `restante` entre las
+    # sesiones que faltan esta semana según Profile.dias_semana — es la cifra que se
+    # le pide al LLM para HOY, para que no concentre todo el volumen semanal de un
+    # grupo en una sola sesión (ej. el lunes). `restante` sigue siendo el techo duro
+    # semanal absoluto que nunca se puede superar, sea cual sea la sesión.
     volume_budget = session_meta.get('volume_budget') or {}
     focus_vgs = ts.volume_groups_for_foco(ctx.get('foco_entrenamiento')) or set()
     relevantes = {
@@ -871,10 +887,19 @@ def build_prompt(ctx):
             if b['restante'] <= 0:
                 maxed.append(label)
             else:
-                en_curso.append(f"{label}: quedan {b['restante']} series (semana {b['hechas']}/{b['mrv']})")
+                en_curso.append(
+                    f"{label}: no más de {b['sugerido_hoy']} series HOY "
+                    f"(quedan {b['restante']} en la semana, {b['hechas']}/{b['mrv']} ya hechas)"
+                )
         _vol_lines = []
         if en_curso:
-            _vol_lines.append('- Volumen semanal restante por grupo (NO superar el restante): ' + '; '.join(en_curso))
+            _vol_lines.append(
+                '- Volumen por grupo — reparte entre las sesiones de la semana según la '
+                'cifra "HOY" de cada grupo; NO concentres todo el restante semanal en esta '
+                'sesión salvo que sea la única vez que se entrena ese grupo en toda la '
+                'semana (ej. frecuencia 1x/semana). El "restante" es el techo absoluto que '
+                'nunca se puede superar en NINGUNA sesión: ' + '; '.join(en_curso)
+            )
         if maxed:
             _vol_lines.append('- Grupos YA en el máximo semanal (NO añadir volumen directo): ' + ', '.join(maxed))
         volumen_directiva = '\n' + '\n'.join(_vol_lines)
@@ -990,6 +1015,7 @@ SESIÓN DE HOY:
 - Ubicación: {ctx['ubicacion_nombre']} ({ctx['ubicacion_tipo']})
 - Implementos disponibles: {', '.join(ctx['implementos']) if ctx['implementos'] else 'solo peso corporal'}
 - Duración disponible: {ctx['duracion']} minutos
+{("- El usuario tiene implementos disponibles (" + ', '.join(ctx['implementos']) + "): PRIORIZA ejercicios con carga externa (barra/mancuerna/máquina/polea/kettlebell) sobre variantes de peso corporal — el banco de abajo ya viene ordenado con esa prioridad cuando aplica, así que ante empate elige el ejercicio con equipo, no el de peso corporal. Usa peso corporal solo cuando no haya alternativa con equipo disponible para ese patrón de movimiento.") if ctx['implementos'] else ''}
 
 COMPETICIÓN PRÓXIMA:
 {f"- {ctx['competicion_nombre']} el {ctx['competicion_fecha']}" if ctx.get('competicion_nombre') else '- Ninguna en los próximos 14 días'}

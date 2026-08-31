@@ -403,6 +403,19 @@ class AdaptiveEngineService:
         eq_set = set(ex.equipamiento or [])
         return not (eq_set and not eq_set.issubset(implementos_disponibles))
 
+    def _exercise_requires_equipment(self, ex, has_equipment_data: bool) -> bool:
+        """¿El ejercicio necesita algún implemento (no es peso corporal puro)?
+        Mismo criterio de EQUIPO_LIBRE que `_exercise_equipment_ok`, pero sin
+        comparar contra la disponibilidad — se usa para PRIORIZAR (no excluir)
+        ejercicios con equipo cuando el usuario sí lo tiene disponible."""
+        if has_equipment_data:
+            return any(
+                ee.equipment.name.lower().strip() not in EQUIPO_LIBRE
+                for ee in ex.equipment_links.all() if ee.is_required
+            )
+        eq_set = {str(e).lower().strip() for e in (ex.equipamiento or [])}
+        return bool(eq_set - EQUIPO_LIBRE)
+
     # ─── Paso 3 ───────────────────────────────────────────────────────────────
 
     def get_exercise_pool(self) -> list[dict]:
@@ -520,6 +533,7 @@ class AdaptiveEngineService:
                 equipamiento_names=ex.equipamiento,
                 nombre=ex.nombre,
             )
+            requiere_equipo = self._exercise_requires_equipment(ex, has_equipment_data)
 
             pool.append({
                 'id':                   ex.id,
@@ -527,6 +541,7 @@ class AdaptiveEngineService:
                 'patron_movimiento':    ex.patron_movimiento,
                 'es_compuesto':         ex.es_compuesto,
                 'peso_libre':           peso_libre,
+                'requiere_equipo':      requiere_equipo,
                 'error_risk':           ex.error_risk,
                 'bilateral':            ex.bilateral,
                 'dificultad':           ex.dificultad,
@@ -610,6 +625,7 @@ class AdaptiveEngineService:
             peso_libre = ts.is_free_weight(
                 equipamiento_names=ex.equipamiento, nombre=ex.nombre,
             )
+            requiere_equipo = self._exercise_requires_equipment(ex, has_equipment_data=False)
 
             pool.append({
                 'id':                   ex.id,
@@ -617,6 +633,7 @@ class AdaptiveEngineService:
                 'patron_movimiento':    ex.patron_movimiento,
                 'es_compuesto':         ex.es_compuesto,
                 'peso_libre':           peso_libre,
+                'requiere_equipo':      requiere_equipo,
                 'error_risk':           ex.error_risk,
                 'bilateral':            ex.bilateral,
                 'dificultad':           ex.dificultad,
@@ -962,46 +979,59 @@ class AdaptiveEngineService:
 
     def get_weekly_volume_budget(self, nivel: str | None = None) -> dict:
         """Series ya entrenadas esta semana ISO por grupo de volumen y presupuesto
-        restante contra el MRV (techo semanal duro). Failure-safe: ante cualquier
-        error devuelve {} para no romper la generación.
+        restante contra el MRV (techo semanal duro), prorrateado entre las sesiones
+        que faltan esta semana según la frecuencia declarada (`Profile.dias_semana`)
+        — así una sesión aislada no recibe todo el restante semanal de golpe, y la
+        porción por sesión se achica cuanto más días/semana entrena el atleta.
+        Failure-safe: ante cualquier error devuelve {} para no romper la generación.
 
-        Devuelve {grupo_volumen: {hechas, mav, mrv, restante}}."""
-        from workouts.models import SessionExercise
+        Devuelve {grupo_volumen: {hechas, mav, mrv, restante, sugerido_hoy}}."""
+        from workouts.models import Session, SessionExercise
         try:
             nivel = nivel or getattr(self.perfil, 'nivel', None) or 'intermedio'
+            dias_semana = getattr(self.perfil, 'dias_semana', None) or 3
             hoy = date.today()
             inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes ISO
+
+            # Sesiones ya registradas esta semana (antes de la que se está generando
+            # ahora) — determina cuántas sesiones quedan para repartir el restante.
+            sesiones_transcurridas = (
+                Session.objects
+                .filter(user=self.user, fecha__gte=inicio_semana)
+                .values('id').distinct().count()
+            )
 
             rows = list(
                 SessionExercise.objects
                 .filter(session__user=self.user, session__fecha__gte=inicio_semana)
                 .values('nombre', 'series')
             )
-            if not rows:
-                return {}
 
-            nombres = {r['nombre'] for r in rows}
             vg_by_nombre: dict = {}
-            for ex in (Exercise.objects.filter(nombre__in=nombres)
-                       .prefetch_related('muscles__muscle')):
-                # El calentamiento/movilidad no suma volumen de entrenamiento.
-                if ex.patron_movimiento in ts.NON_STRENGTH_PATTERNS:
-                    vg_by_nombre[ex.nombre] = (set(), set())
-                    continue
-                muscles = list(ex.muscles.all())
-                if muscles:
-                    prim = [em.muscle.name for em in muscles if em.role == 'primario']
-                    sec  = [em.muscle.name for em in muscles if em.role == 'secundario']
-                else:  # fallback JSONField
-                    prim = list(ex.musculos_primarios or [])
-                    sec  = list(ex.musculos_secundarios or [])
-                vg_by_nombre[ex.nombre] = (
-                    {ts.volume_group_for_muscle(m) for m in prim},
-                    {ts.volume_group_for_muscle(m) for m in sec},
-                )
+            if rows:
+                nombres = {r['nombre'] for r in rows}
+                for ex in (Exercise.objects.filter(nombre__in=nombres)
+                           .prefetch_related('muscles__muscle')):
+                    # El calentamiento/movilidad no suma volumen de entrenamiento.
+                    if ex.patron_movimiento in ts.NON_STRENGTH_PATTERNS:
+                        vg_by_nombre[ex.nombre] = (set(), set())
+                        continue
+                    muscles = list(ex.muscles.all())
+                    if muscles:
+                        prim = [em.muscle.name for em in muscles if em.role == 'primario']
+                        sec  = [em.muscle.name for em in muscles if em.role == 'secundario']
+                    else:  # fallback JSONField
+                        prim = list(ex.musculos_primarios or [])
+                        sec  = list(ex.musculos_secundarios or [])
+                    vg_by_nombre[ex.nombre] = (
+                        {ts.volume_group_for_muscle(m) for m in prim},
+                        {ts.volume_group_for_muscle(m) for m in sec},
+                    )
 
+            # done_by_group puede venir vacío (primera sesión de la semana): weekly_budget
+            # igual devuelve todos los grupos con hechas=0 y restante=MRV completo.
             done = ts.aggregate_done_sets(rows, vg_by_nombre)
-            return ts.weekly_budget(done, nivel)
+            return ts.weekly_budget(done, nivel, dias_semana, sesiones_transcurridas)
         except Exception:
             logger.exception(
                 'get_weekly_volume_budget failed user=%s', getattr(self.user, 'id', '?'),
