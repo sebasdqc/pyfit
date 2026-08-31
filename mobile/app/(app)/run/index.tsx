@@ -31,8 +31,10 @@ import { useTheme } from '../../../lib/theme'
 import { Colors, readableTextOn } from '../../../lib/colors'
 import { useReduceMotion } from '../../../lib/useReduceMotion'
 import { BgLocationDisclosure } from '../../../components/BgLocationDisclosure'
+import { RunTimelineSheet } from '../../../components/RunTimelineSheet'
 import { completePlannedRun, getRunSessionToday } from '../../../lib/runningApi'
 import { expandirPasos, progresoPaso, pasoCompletado, type Paso } from '../../../lib/runSteps'
+import { TIPO_COLOR_KEY } from '../../../lib/runTimeline'
 import * as Haptics from 'expo-haptics'
 import { useKeepAwake } from 'expo-keep-awake'
 
@@ -115,11 +117,11 @@ function mmss(s: number): string {
 
 // Color del bloque en curso — sigue el código de fases del producto
 // (calentamiento naranja, principal azul, vuelta a la calma verde).
+// TIPO_COLOR_KEY (lib/runTimeline.ts) es la fuente única: la comparte con
+// RunTimelineSheet para que un bloque nunca tenga un color distinto entre
+// la guía compacta y la rutina completa.
 function pasoColor(paso: Paso, colors: Colors): string {
-  if (paso.tipo === 'calentamiento') return colors.orange
-  if (paso.tipo === 'enfriamiento') return colors.green
-  if (paso.tipo === 'recuperacion') return colors.inkMuted
-  return colors.accent
+  return colors[TIPO_COLOR_KEY[paso.tipo]]
 }
 
 // Cuánto falta para cerrar el bloque, en su propia unidad (metros o tiempo).
@@ -176,6 +178,12 @@ export default function RunScreen() {
   const [pasoIdx, setPasoIdx] = useState(0)
   const [pasoOffset, setPasoOffset] = useState({ distanciaM: 0, tiempoS: 0 })
   const [zonaSesion, setZonaSesion] = useState('')
+  // Metadata de la sesión inteligente para el header de la rutina completa
+  // (título, duración/distancia estimadas) — no afecta el tracking en sí.
+  const [sesionMeta, setSesionMeta] = useState<{
+    titulo: string; duracionMin: number | null; distanciaKm: number | null
+  }>({ titulo: '', duracionMin: null, distanciaKm: null })
+  const [timelineVisible, setTimelineVisible] = useState(false)
   const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationReady, setLocationReady] = useState(false)
   const [userWeightKg, setUserWeightKg] = useState(70)
@@ -218,6 +226,11 @@ export default function RunScreen() {
         if (!expandidos.length) return
         setPasos(expandidos)
         setZonaSesion(d?.respuesta_ia?.zona_principal || d?.zona_principal || '')
+        setSesionMeta({
+          titulo: d?.respuesta_ia?.titulo || '',
+          duracionMin: d?.respuesta_ia?.duracion_total_min ?? null,
+          distanciaKm: d?.respuesta_ia?.distancia_total_km ?? null,
+        })
       })
       .catch(() => {})
   }, [planned])
@@ -531,6 +544,46 @@ export default function RunScreen() {
           </View>
         )}
 
+        {/* Tira de progreso de TODA la sesión (no solo el bloque actual) + acceso
+            a la rutina completa como timeline. Antes solo se veía el bloque en
+            curso; con 13 pasos típicos en una sesión de intervalos, el atleta
+            no tenía forma de ubicarse dentro de la sesión entera sin salir del
+            mapa (ver RunTimelineSheet). */}
+        {pasos.length > 0 && (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{
+                flex: 1, fontFamily: 'JetBrainsMono-Regular', fontSize: 9.5,
+                letterSpacing: 1, textTransform: 'uppercase', color: colors.inkMuted,
+              }} numberOfLines={1}>
+                {pasoActual
+                  ? `${pasoActual.etiqueta} · paso ${Math.min(pasoIdx + 1, pasos.length)}/${pasos.length}`
+                  : 'Sesión guiada completada'}
+              </Text>
+              <TouchableOpacity onPress={() => setTimelineVisible(true)} activeOpacity={0.7}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 12, color: colors.accent }}>
+                  Rutina completa ▴
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 12 }}>
+              {pasos.map((p, i) => (
+                <View
+                  key={p.id}
+                  style={{
+                    flex: 1, height: 5, borderRadius: 3,
+                    backgroundColor: i < pasoIdx
+                      ? pasoColor(p, colors)
+                      : i === pasoIdx
+                        ? pasoColor(p, colors) + '40'
+                        : colors.borderDefault,
+                  }}
+                />
+              ))}
+            </View>
+          </>
+        )}
+
         {/* Guía paso a paso de la sesión inteligente: bloque en curso, su avance,
             los objetivos de ESE bloque y qué viene después. */}
         {pasoActual && (
@@ -748,6 +801,20 @@ export default function RunScreen() {
         visible={disclosureVisible}
         onAccept={handleDisclosureAccept}
         onDismiss={() => setDisclosureVisible(false)}
+      />
+
+      {/* Rutina completa de la sesión inteligente — sube encima del mapa, no lo
+          reemplaza (el tracking sigue corriendo detrás). */}
+      <RunTimelineSheet
+        visible={timelineVisible}
+        onClose={() => setTimelineVisible(false)}
+        pasos={pasos}
+        pasoIdx={pasoIdx}
+        isIndoor={isIndoor}
+        tituloSesion={sesionMeta.titulo}
+        duracionTotalMin={sesionMeta.duracionMin}
+        distanciaTotalKm={sesionMeta.distanciaKm}
+        colors={colors}
       />
     </View>
   )
