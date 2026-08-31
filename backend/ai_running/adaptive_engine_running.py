@@ -86,20 +86,36 @@ class RunningAdaptiveEngineService:
             return 4
         return 5
 
+    @staticmethod
+    def _local_date(r: RunSession):
+        """Fecha LOCAL del atleta para una RunSession — `local_date` (capturado del
+        header X-Local-Date al crear la sesión, ver el modelo) si existe; si no
+        (filas previas a este campo), cae a `started_at.date()` en la timezone
+        activa del proceso (día UTC del servidor — el mismo comportamiento de
+        antes, no es peor, solo ya no es la única fuente para filas nuevas)."""
+        if r.local_date:
+            return r.local_date
+        return timezone.localdate(r.started_at) if timezone.is_aware(r.started_at) else r.started_at.date()
+
     def _build_srpe_series(self, ref_date, days: int = 35) -> list[tuple]:
-        """Serie (fecha, sRPE) de las RunSession completadas. sRPE = RPE × min (Foster)."""
+        """Serie (fecha, sRPE) de las RunSession completadas. sRPE = RPE × min (Foster).
+        Filtra por started_at con 1 día de margen a cada lado (la ventana real se
+        aplica en Python sobre `_local_date`, que puede diferir del día UTC de
+        started_at) y no por `started_at__date` — ver `RunSession.local_date`."""
         since = ref_date - timedelta(days=days)
         qs = RunSession.objects.filter(
             user=self.user, status='completed',
-            started_at__date__gte=since, started_at__date__lte=ref_date,
+            started_at__date__gte=since - timedelta(days=1),
+            started_at__date__lte=ref_date + timedelta(days=1),
         )
         loads = []
         for r in qs:
             dur_min = (r.total_duration_s or 0) / 60.0
             if dur_min <= 0:
                 continue
-            d = timezone.localdate(r.started_at) if timezone.is_aware(r.started_at) else r.started_at.date()
-            loads.append((d, self._estimate_rpe(r) * dur_min))
+            d = self._local_date(r)
+            if since <= d <= ref_date:
+                loads.append((d, self._estimate_rpe(r) * dur_min))
         return loads
 
     def _carga(self, ref_date):
@@ -109,14 +125,22 @@ class RunningAdaptiveEngineService:
         """Km REALMENTE corridos (RunSession completadas) en la semana previa. Base
         correcta para la regla del 10%: progresa sobre lo hecho, no lo planificado, y
         tras una inactividad cae a ~0 → re-entrada en volumen base (sin arrastrar un
-        volumen que el atleta ya perdió)."""
+        volumen que el atleta ya perdió).
+
+        Filtra por `started_at` con 1 día de margen y recorta la ventana exacta en
+        Python sobre `_local_date` — no por `started_at__date` directo, que
+        bucketea por el día UTC del servidor y puede excluir/incluir carreras cerca
+        de medianoche local (ver `RunSession.local_date`)."""
         ini = week_start - timedelta(days=7)
         fin = week_start - timedelta(days=1)
         qs = RunSession.objects.filter(
             user=self.user, status='completed',
-            started_at__date__gte=ini, started_at__date__lte=fin,
+            started_at__date__gte=ini - timedelta(days=1),
+            started_at__date__lte=fin + timedelta(days=1),
         )
-        total_m = sum((r.total_distance_m or 0) for r in qs)
+        total_m = sum(
+            (r.total_distance_m or 0) for r in qs if ini <= self._local_date(r) <= fin
+        )
         return round(total_m / 1000.0, 1)
 
     def compute_readiness(self, hoy=None) -> dict:

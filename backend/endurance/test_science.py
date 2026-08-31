@@ -48,6 +48,24 @@ class VolumeTargetTests(SimpleTestCase):
         v = sc.volume_target(base_volume=50, fase='build', prev_realized=40, cap=1.15)
         self.assertEqual(v, 46.0)   # 40 × 1.15, no 44 (10% default)
 
+    def test_reingreso_tras_inactividad_no_hereda_factor_de_fase(self):
+        """Bug corregido: fase='build' (avanzada por calendario, no por
+        entrenamiento real) + prev_realized=None (inactividad) NO debe
+        prescribir base×1.10 de una — debe reiniciar en base_volume, igual
+        que un usuario nuevo en su semana 1."""
+        v = sc.volume_target(base_volume=35, fase='build', prev_realized=None)
+        self.assertEqual(v, 35.0)          # NO 38.5 (35 × 1.10)
+
+    def test_reingreso_en_peak_tampoco_hereda_factor(self):
+        v = sc.volume_target(base_volume=35, fase='peak', prev_realized=0)
+        self.assertEqual(v, 35.0)
+
+    def test_primera_semana_real_sin_prev_sigue_funcionando(self):
+        """Usuario nuevo en fase 'base' (factor 1.0): el cap no cambia nada,
+        el objetivo ya era base_volume."""
+        v = sc.volume_target(base_volume=35, fase='base', prev_realized=None)
+        self.assertEqual(v, 35.0)
+
 
 class PickRepsTests(SimpleTestCase):
     def test_principiante_toma_el_minimo(self):

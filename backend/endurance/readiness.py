@@ -62,13 +62,26 @@ def es_checkin_de_descanso(foco_entrenamiento) -> bool:
     return any('descanso' in _norm(f) for f in (foco_entrenamiento or []))
 
 
-def compute_readiness(*, carga: dict | None, checkin, pain_keywords) -> dict:
+def compute_readiness(*, carga: dict | None, checkin, pain_keywords,
+                       sueno_es_score: bool = False) -> dict:
     """Señales objetivas (ACWR) + subjetivas (check-in) → score 0-100 y flags.
 
     `carga` = salida de `athlete_carga()`, o None si aún no hay carga.
     `checkin` = objeto tipo `DailyCheckin`, o None (día sin check-in — el
     score arranca en 70 sin ajustes subjetivos, pero SIGUE reaccionando a
-    ACWR/dolor si hubiera datos objetivos)."""
+    ACWR/dolor si hubiera datos objetivos).
+
+    `sueno_es_score` = el llamador CONFIRMA que `checkin.calidad_sueno` es un
+    score de dispositivo (1-4), no horas. `DailyCheckin.calidad_sueno` está
+    deliberadamente sobrecargado (el check-in manual guarda horas 3-12; solo
+    cuando el llamador reemplaza ese valor por un sleep score de Garmin/Apple
+    Health en tiempo de generación pasa `sueno_es_score=True`). Adivinar la
+    escala por magnitud (como hacía antes esta función) lee un manual "3/4
+    horas" como score de dispositivo excelente y premia al atleta en vez de
+    penalizarlo — bug ya identificado y corregido con este mismo patrón de
+    flag explícito en `ai_workout.views._eval_sueno`. Default False porque
+    hoy NINGÚN llamador de running/ciclismo conecta datos de dispositivo acá
+    (a diferencia de `ai_workout`) — todo `calidad_sueno` que llega es horas."""
     suficiente = bool(carga and carga.get('suficiente'))
     zona = carga.get('zona') if carga else 'Acumulando datos'
     riesgo_alto = bool(carga and (carga.get('riesgo_alerta') or zona in ZONAS_ALTAS))
@@ -85,10 +98,10 @@ def compute_readiness(*, carga: dict | None, checkin, pain_keywords) -> dict:
         animo = checkin.estado_animo
         score += {5: 10, 4: 5, 3: 0, 2: -10, 1: -20}.get(animo, 0)
         cs = float(checkin.calidad_sueno or 7)
-        if cs <= 4:                               # escala de dispositivo (1–4)
+        if sueno_es_score:                         # score de dispositivo (1–4), confirmado por el llamador
             score += {1: -15, 2: -5}.get(int(cs), 5)
             sueno_bad = cs <= 2
-        else:                                     # horas (check-in manual)
+        else:                                     # horas (check-in manual, o sin dispositivo conectado)
             if cs < 6:
                 score -= 15
                 sueno_bad = True
@@ -191,7 +204,10 @@ def adapt_today(*, tipo_sesion: str, es_calidad: bool, zona_principal: str,
             out.update({'estado': 'ajustada', 'ajuste_aplicado': 'readiness_baja_recorta',
                         'factor': 0.85})
         return out
-    # 6) Ánimo bajo.
+    # 6) Ánimo bajo. A diferencia de 3/5 (señales objetivas: ACWR, HRV/sueño),
+    # el ánimo NO degrada tipo_sesion — se mantiene la sesión de calidad
+    # planificada, pero más corta: `factor` reduce reps (intervalos) o
+    # minutos (tempo) en `prescribe_run_session`, además del cap de RPE.
     if signals['animo'] is not None and signals['animo'] <= 2:
         out.update({'estado': 'ajustada', 'ajuste_aplicado': 'animo_bajo_suaviza',
                     'factor': 0.85,
@@ -199,7 +215,7 @@ def adapt_today(*, tipo_sesion: str, es_calidad: bool, zona_principal: str,
         return out
     # 7) Infracarga con readiness alta → permitir leve progresión.
     if signals['infracarga'] and signals['score'] >= 70:
-        out.update({'ajuste_aplicado': 'infracarga_ok', 'factor': 1.05})
+        out.update({'estado': 'ajustada', 'ajuste_aplicado': 'infracarga_ok', 'factor': 1.05})
         return out
     # 8) Todo verde → confirmar.
     return out

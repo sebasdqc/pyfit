@@ -111,6 +111,30 @@ class GenerateRunTests(TestCase):
         run.refresh_from_db()
         self.assertEqual(run.session_type, 'planned')
 
+    @override_settings(LLM_API_KEY='')
+    def test_completar_sin_run_session_id_rechaza(self):
+        """Bug corregido: antes se podía marcar 'completada' sin ninguna
+        carrera real vinculada."""
+        gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        res = self.client.post(f"/api/running/sessions/{gen.data['id']}/complete/",
+                               {}, format='json')
+        self.assertEqual(res.status_code, 400)
+        planned = PlannedRunSession.objects.get(pk=gen.data['id'])
+        self.assertNotEqual(planned.estado, 'completada')
+
+    @override_settings(LLM_API_KEY='')
+    def test_completar_con_run_activa_rechaza(self):
+        """Bug corregido: antes se podía vincular una RunSession que ni
+        siquiera había terminado (status='active'/'paused')."""
+        gen = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        run = RunSession.objects.create(
+            user=self.user, started_at=timezone.now(), status='active', session_type='free')
+        res = self.client.post(f"/api/running/sessions/{gen.data['id']}/complete/",
+                               {'run_session_id': run.id}, format='json')
+        self.assertEqual(res.status_code, 400)
+        planned = PlannedRunSession.objects.get(pk=gen.data['id'])
+        self.assertNotEqual(planned.estado, 'completada')
+
     @override_settings(LLM_API_KEY='test-key')
     def test_generate_idempotente_no_rellama_llm(self):
         # Reabrir la pantalla el mismo día devuelve la sesión ya generada (sin re-LLM).
@@ -119,6 +143,52 @@ class GenerateRunTests(TestCase):
             r2 = self.client.post('/api/running/sessions/generate/', {}, format='json')
         self.assertEqual(m.call_count, 1)
         self.assertEqual(r1.data['id'], r2.data['id'])
+
+    @override_settings(LLM_API_KEY='')
+    def test_checkin_reenviado_con_dolor_degrada_sesion_ya_generada(self):
+        """Bug corregido: la idempotencia dejaba 'atascada' una sesión de
+        calidad ya generada aunque el atleta reenviara el check-in con dolor
+        DESPUÉS. Ahora se re-chequea la señal de seguridad (sin gastar LLM)
+        y se degrada si corresponde."""
+        from checkins.models import DailyCheckin
+        checkin = DailyCheckin.objects.create(
+            user=self.user, fecha=date.today(), estado_animo=3, calidad_sueno=8,
+            duracion_disponible=45, dolor_hoy='')
+        res1 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        self.assertEqual(res1.status_code, 200)
+        planned = PlannedRunSession.objects.get(pk=res1.data['id'])
+        tipo_original = planned.tipo_sesion
+        self.assertNotEqual(tipo_original, 'rest')
+
+        # Reenvía el check-in con dolor — forzamos updated_at estrictamente
+        # posterior para no depender de la resolución del reloj entre saves
+        # consecutivos en un test rápido.
+        checkin.dolor_hoy = 'Me duele la rodilla'
+        checkin.save()
+        DailyCheckin.objects.filter(pk=checkin.pk).update(
+            updated_at=timezone.now() + timedelta(seconds=5))
+
+        with patch('ai_running.views._call_groq') as m:
+            res2 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        m.assert_not_called()   # el downgrade de seguridad no gasta una generación de LLM
+        self.assertEqual(res2.status_code, 200)
+        planned.refresh_from_db()
+        self.assertIn(planned.ajuste_aplicado, ('dolor_a_easy', 'dolor_a_descanso'))
+        self.assertNotEqual(planned.tipo_sesion, tipo_original)
+
+    @override_settings(LLM_API_KEY='')
+    def test_checkin_sin_cambios_no_reevalua(self):
+        """Reabrir la pantalla sin que el check-in haya cambiado sigue sin
+        tocar la sesión ya generada — no reevalúa en cada request."""
+        self.client.post('/api/running/sessions/generate/', {}, format='json')
+        res1 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        planned1 = PlannedRunSession.objects.get(pk=res1.data['id'])
+        ajuste1, tipo1 = planned1.ajuste_aplicado, planned1.tipo_sesion
+        res2 = self.client.post('/api/running/sessions/generate/', {}, format='json')
+        planned1.refresh_from_db()
+        self.assertEqual(planned1.ajuste_aplicado, ajuste1)
+        self.assertEqual(planned1.tipo_sesion, tipo1)
+        self.assertEqual(res1.data['id'], res2.data['id'])
 
     @override_settings(LLM_API_KEY='')
     def test_completar_no_pisa_baseline_declarado(self):

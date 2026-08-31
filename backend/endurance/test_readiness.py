@@ -65,6 +65,30 @@ class ComputeReadinessTests(SimpleTestCase):
         self.assertIn('acwr_alto', r['flags'])
         self.assertEqual(r['score'], 50)   # 70 − 20
 
+    def test_sueno_manual_de_pocas_horas_penaliza_por_default(self):
+        """Bug corregido: sin sueno_es_score explícito (default False, el caso
+        real de running/ciclismo hoy — ningún llamador conecta datos de
+        dispositivo acá), un check-in manual de 3-4 horas es MALA noche real y
+        debe penalizar, nunca leerse como si fuera un sleep score de
+        dispositivo (que antes premiaba por error con +5)."""
+        checkin = SimpleNamespace(estado_animo=3, calidad_sueno=4.0, hrv=None,
+                                  dolor_hoy='', foco_entrenamiento=[])
+        r = rd.compute_readiness(carga=None, checkin=checkin, pain_keywords=PAIN_KEYWORDS)
+        self.assertEqual(r['score'], 55)   # 70 + 0(ánimo neutro) − 15(sueño<6 horas)
+        self.assertTrue(r['sueno_bad'])
+
+    def test_sueno_score_de_dispositivo_con_flag_explicito(self):
+        """Con sueno_es_score=True (el llamador confirma que YA reemplazó el
+        valor por un sleep score 1-4 de un dispositivo conectado), el mismo
+        número 4 se interpreta correctamente como score bueno, no como horas."""
+        checkin = SimpleNamespace(estado_animo=3, calidad_sueno=4.0, hrv=None,
+                                  dolor_hoy='', foco_entrenamiento=[])
+        r = rd.compute_readiness(
+            carga=None, checkin=checkin, pain_keywords=PAIN_KEYWORDS, sueno_es_score=True,
+        )
+        self.assertEqual(r['score'], 75)   # 70 + 0(ánimo neutro) + 5(score 4/4 bueno)
+        self.assertFalse(r['sueno_bad'])
+
 
 class AdaptTodayTests(SimpleTestCase):
     def _signals(self, **over):
@@ -135,6 +159,10 @@ class AdaptTodayTests(SimpleTestCase):
                              signals=self._signals(suficiente=True, infracarga=True, score=80))
         self.assertEqual(out['ajuste_aplicado'], 'infracarga_ok')
         self.assertGreater(out['factor'], 1.0)
+        # Bug corregido: aplica +5% de volumen real → debe persistirse como
+        # 'ajustada', no quedar en 'planificada' (inconsistente con el resto
+        # de reglas que sí modifican factor).
+        self.assertEqual(out['estado'], 'ajustada')
 
     def test_todo_verde_confirma(self):
         out = rd.adapt_today(tipo_sesion='tempo', es_calidad=True, zona_principal='Z4',

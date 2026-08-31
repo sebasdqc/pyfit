@@ -297,7 +297,64 @@ def generate_run_session(request):
     # Idempotente para el día: si la sesión ya fue generada (tiene respuesta_ia), se
     # devuelve sin re-llamar al LLM ni recalcular —la decisión del día ya se tomó tras
     # el check-in; reabrir la pantalla no debe cambiar la sesión ni gastar tokens.
+    #
+    # EXCEPCIÓN de seguridad: si el check-in se reenvió (mismo día, misma fila —
+    # `create_checkin` actualiza en vez de crear otra) DESPUÉS de que esta sesión
+    # ya se generó, y la nueva readiness dispara una señal de downgrade (dolor,
+    # ACWR alto, readiness baja/HRV/sueño — las mismas reglas 1/3/5 de
+    # endurance.readiness) que antes no aplicaba, se re-aplica el downgrade sin
+    # LLM (mismo camino sin tokens que la rama 'rest' de abajo). Nunca sube
+    # intensidad de vuelta ni gasta una generación nueva — solo puede volverse
+    # más conservador que lo ya persistido.
     if planned.respuesta_ia:
+        checkin_reenviado = bool(
+            checkin and planned.updated_at and checkin.updated_at > planned.updated_at
+        )
+        if checkin_reenviado and planned.tipo_sesion != 'rest':
+            readiness_re = engine.compute_readiness(hoy)
+            adj_re = engine.adapt_today(planned, readiness_re)
+            es_downgrade_nuevo = (
+                adj_re['ajuste_aplicado'] not in ('confirmada', planned.ajuste_aplicado)
+                and adj_re['tipo_sesion'] in ('rest', 'easy')
+                and adj_re['tipo_sesion'] != planned.tipo_sesion
+            )
+            if es_downgrade_nuevo:
+                if adj_re['tipo_sesion'] == 'rest':
+                    planned.tipo_sesion = 'rest'
+                    planned.es_calidad = False
+                    planned.duracion_objetivo_min = None
+                    planned.distancia_objetivo_km = None
+                    planned.rpe_target = None
+                    planned.respuesta_ia = {
+                        'titulo': 'Descanso recomendado', 'tipo_sesion': 'rest',
+                        'objetivo_sesion': 'Recuperación', 'fases': [],
+                        'nota_del_coach': (
+                            'Tu check-in cambió desde que generaste la sesión de hoy — '
+                            'con esta nueva información, mejor descansar. Volvemos mañana.'
+                        ),
+                    }
+                else:  # 'easy'
+                    presc_re = ts.prescribe_run_session(
+                        tipo_sesion='easy', zonas=runner_profile.zonas or {},
+                        nivel=engine._nivel(),
+                        readiness={'rpe_cap': adj_re['rpe_cap'], 'km_factor': adj_re['km_factor']},
+                        periodizacion={'fase': plan.fase_actual,
+                                       'km_objetivo_semana': plan.km_objetivo_semana},
+                    )
+                    planned.tipo_sesion = 'easy'
+                    planned.es_calidad = False
+                    planned.zona_principal = presc_re.get('zona_principal') or ''
+                    planned.duracion_objetivo_min = presc_re.get('duracion_min')
+                    planned.distancia_objetivo_km = presc_re.get('distancia_km')
+                    planned.rpe_target = presc_re.get('rpe_target') or None
+                    planned.estructura_fases = presc_re
+                    planned.respuesta_ia = _build_respuesta_ia(
+                        presc_re, _fallback_narration(presc_re, adj_re['ajuste_aplicado']), indoor,
+                    )
+                planned.estado = adj_re['estado']
+                planned.ajuste_aplicado = adj_re['ajuste_aplicado']
+                planned.readiness_snapshot = readiness_re
+                planned.save()
         return Response(PlannedRunSessionSerializer(planned).data)
 
     readiness = engine.compute_readiness(hoy)
@@ -446,15 +503,27 @@ def plan_microcycle(request):
 @permission_classes([IsAuthenticated])
 def complete_planned(request, pk):
     """Vincula la ejecución real (RunSession) a la sesión planificada y la marca
-    completada. Body: { "run_session_id": <int> }."""
+    completada. Body: { "run_session_id": <int> } — requerido y debe ser una
+    carrera propia ya `completed`: el cliente siempre lo manda (ver
+    `completePlannedRun` en mobile/lib/runningApi.ts, tipado no-opcional), y
+    completar sin una carrera real vinculada (o con una todavía `active`/
+    `paused`) deja el historial de adherencia/ACWR con una sesión que nunca
+    ocurrió de verdad."""
     planned = get_object_or_404(PlannedRunSession, pk=pk, user=request.user)
     run_id = request.data.get('run_session_id')
-    if run_id:
-        run = get_object_or_404(RunSession, pk=run_id, user=request.user)
-        planned.run_session = run
-        if run.session_type != 'planned':
-            run.session_type = 'planned'
-            run.save(update_fields=['session_type', 'updated_at'])
+    if not run_id:
+        return Response({'error': 'run_session_id es requerido'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    run = get_object_or_404(RunSession, pk=run_id, user=request.user)
+    if run.status != 'completed':
+        return Response(
+            {'error': 'La carrera vinculada todavía no está completada'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    planned.run_session = run
+    if run.session_type != 'planned':
+        run.session_type = 'planned'
+        run.save(update_fields=['session_type', 'updated_at'])
     planned.estado = 'completada'
     planned.save(update_fields=['run_session', 'estado', 'updated_at'])
     # Cierra el loop también para el umbral/zonas: recalcula el baseline desde el

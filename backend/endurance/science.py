@@ -64,11 +64,23 @@ def volume_target(*, base_volume, fase: str, prev_realized=None,
 
     `prev_realized` = lo REALIZADO la semana previa, no lo planificado —
     quien llama decide esa distinción (ver `_realized_km_last_week` en
-    `ai_running`); acá solo se aplica la fórmula."""
-    objetivo = float(base_volume) * PHASE_VOLUME_FACTOR.get(fase, 1.0)
+    `ai_running`); acá solo se aplica la fórmula.
+
+    Sin `prev_realized` (None/0) en una fase de carga, el objetivo NUNCA
+    supera `base_volume` — sin importar el multiplicador de fase. `fase` es
+    puramente de calendario (`endurance.periodization.resolve_phase`): no
+    sabe si el atleta efectivamente entrenó. Un plan que ya avanzó a
+    build/peak por fecha, combinado con varias semanas de inactividad real
+    (`prev_realized=None`), no debe prescribir `base_volume × 1.10` de una —
+    eso es exactamente el salto sin rampa que la regla del 10% (Nielsen 2012)
+    existe para evitar. Sin evidencia de volumen reciente, el reingreso
+    reinicia en `base_volume` como cualquier semana 1."""
     if fase in ('taper', 'recovery'):
         ref = float(prev_realized) if prev_realized else float(base_volume)
         return round(ref * PHASE_VOLUME_FACTOR[fase], 1)
+    objetivo = float(base_volume) * PHASE_VOLUME_FACTOR.get(fase, 1.0)
+    if not prev_realized:
+        objetivo = min(objetivo, float(base_volume))
     return apply_ten_percent_rule(prev_realized, objetivo, cap=cap)
 
 

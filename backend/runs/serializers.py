@@ -63,8 +63,15 @@ class RunSessionCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context['request']
+        from checkins.views import _get_write_date
+        hoy = _get_write_date(request)
         validated_data['user'] = request.user
         validated_data['status'] = 'active'
+        # Fecha local del dispositivo al crear la sesión — ver el comentario de
+        # `RunSession.local_date`. Se captura acá porque es el único momento en
+        # que tenemos el header X-Local-Date; después de esto solo queda
+        # `started_at`, cuyo `.date()` es el día UTC del servidor, no el del atleta.
+        validated_data['local_date'] = hoy
         # ¿El cliente marcó la carrera como trail explícitamente? (el check-in de
         # trail envía is_trail=true al navegar al Free Run). Es el camino fiable y
         # no depende del emparejamiento por fecha.
@@ -74,8 +81,6 @@ class RunSessionCreateSerializer(serializers.ModelSerializer):
         # Se usa la misma fecha local (X-Local-Date) con la que el check-in escribió
         # `fecha`, así el emparejamiento es exacto pese a TIME_ZONE=UTC.
         if not explicit_trail:
-            from checkins.views import _get_write_date
-            hoy = _get_write_date(request)
             checkin = request.user.checkins.filter(fecha=hoy).order_by('-created_at').first()
             if checkin and 'trail' in (checkin.foco_entrenamiento or []):
                 instance.is_trail = True

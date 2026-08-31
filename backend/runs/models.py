@@ -20,6 +20,16 @@ class RunSession(models.Model):
 
     # Metadata
     started_at = models.DateTimeField()
+    # Fecha LOCAL del dispositivo al crear la sesión (header X-Local-Date, mismo
+    # patrón que checkins.DailyCheckin.fecha) — no derivable de forma confiable
+    # desde `started_at` después del hecho: el server corre en TIME_ZONE=UTC sin
+    # activación de timezone por request, así que `started_at.date()`/
+    # `timezone.localdate()` bucketean por el día UTC, no el día del atleta. Una
+    # carrera nocturna en UTC- puede caer en el día siguiente y desalinear el
+    # volumen semanal (regla del 10%) y la serie de sRPE del ACWR. Nullable:
+    # filas previas a este campo caen al fallback de `started_at.date()` en
+    # RunningAdaptiveEngineService._local_date().
+    local_date = models.DateField(null=True, blank=True, db_index=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
 

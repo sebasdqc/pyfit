@@ -199,6 +199,53 @@ class PrescribeTests(SimpleTestCase):
         for seg in out['segmentos']:
             self.assertLessEqual(seg['rpe'], 5)
 
+    def test_km_factor_reduce_repeticiones_de_intervalos(self):
+        """Bug corregido: el km_factor de readiness (ej. ánimo bajo → 0.85)
+        antes no afectaba en nada a las sesiones de intervalos — reps salía
+        siempre del template sin importar el factor. Ahora sí reduce reps,
+        nunca por debajo del mínimo del template."""
+        base = ts.prescribe_run_session(
+            tipo_sesion='vo2', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion={'fase': 'build', 'km_objetivo_semana': 35},
+        )
+        suavizada = ts.prescribe_run_session(
+            tipo_sesion='vo2', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion={'fase': 'build', 'km_objetivo_semana': 35},
+            readiness={'km_factor': 0.85},
+        )
+        reps_base = base['segmentos'][1]['repeticiones']
+        reps_suave = suavizada['segmentos'][1]['repeticiones']
+        self.assertEqual(reps_base, 6)          # avanzado en build → tope del template (4,6)
+        self.assertEqual(reps_suave, 5)          # round(6 × 0.85) = 5
+        self.assertGreaterEqual(reps_suave, 4)   # nunca por debajo del mínimo del template
+
+    def test_km_factor_reduce_duracion_de_tempo(self):
+        base = ts.prescribe_run_session(
+            tipo_sesion='tempo', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion=self.PERIODIZ,
+        )
+        suavizada = ts.prescribe_run_session(
+            tipo_sesion='tempo', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion=self.PERIODIZ, readiness={'km_factor': 0.85},
+        )
+        self.assertEqual(base['segmentos'][1]['trabajo']['min'], 30)
+        self.assertLess(suavizada['segmentos'][1]['trabajo']['min'], 30)
+
+    def test_hills_cuenta_la_recuperacion_en_la_duracion(self):
+        """Bug corregido: INTERVAL_TEMPLATES['hills']['rec'] no traía 'min'/'seg'
+        → _seg_min_km computaba rec_min=0 y la duración salía subestimada
+        (~solo el trabajo, sin el tiempo de bajar trotando entre repeticiones)."""
+        out = ts.prescribe_run_session(tipo_sesion='hills', zonas=_zonas_completas(),
+                                       nivel='avanzado', periodizacion=self.PERIODIZ)
+        principal = out['segmentos'][1]
+        reps = principal['repeticiones']
+        self.assertGreater(reps, 1)
+        work_min = reps * (45 / 60.0)
+        # Con recuperación contabilizada, la duración total debe superar
+        # claramente el tiempo de solo trabajo (antes eran ~iguales, ya que
+        # rec_min=0 hacía que el bloque principal fuera solo work_min).
+        self.assertGreater(out['duracion_min'], work_min + ts.WARMUP_MIN + ts.COOLDOWN_MIN)
+
     def test_tipo_desconocido_lanza(self):
         with self.assertRaises(ValueError):
             ts.prescribe_run_session(tipo_sesion='maraton_invertido', zonas={},

@@ -31,6 +31,12 @@ class DailyCheckin(models.Model):
     dolor_hoy = models.TextField(blank=True, null=True)
     notas = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # `create_checkin` reutiliza la misma fila del día en vez de crear una nueva
+    # (comentario en checkins/views.py:88-90) — sin esto no había forma de saber
+    # si el check-in se reenvió DESPUÉS de que una sesión (fuerza o running) ya
+    # se generó con el check-in viejo. Usado por ai_running para re-chequear
+    # señales de seguridad si el atleta actualiza el check-in tras generar.
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'daily_checkin'

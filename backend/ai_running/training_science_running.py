@@ -263,8 +263,11 @@ INTERVAL_TEMPLATES = {
                 'rec': {'min': 2, 'tipo': 'trote suave'}},
     'fartlek': {'reps': (6, 8),  'work': {'min': 2},            'work_zona': 'Z3',
                 'rec': {'min': 2, 'tipo': 'trote suave'}},
+    # 'rec' con duración explícita (no solo 'tipo'): sin 'min'/'seg', _seg_min_km
+    # computa rec_min=0 y la sesión sale subestimada — bajar trotando la cuesta
+    # toma aprox. lo mismo que subirla a esfuerzo (estimación conservadora 1:1).
     'hills':   {'reps': (6, 10), 'work': {'seg': 45},           'work_zona': 'Z4',
-                'rec': {'tipo': 'bajar trotando'}},
+                'rec': {'seg': 45, 'tipo': 'bajar trotando'}},
     'strides': {'reps': (4, 8),  'work': {'seg': 20},           'work_zona': 'Z5',
                 'rec': {'seg': 60, 'tipo': 'caminar/trote'}},
 }
@@ -384,6 +387,16 @@ def prescribe_run_session(*, tipo_sesion: str, zonas: dict, nivel: str,
     if tipo_sesion in INTERVAL_TEMPLATES:
         tmpl = INTERVAL_TEMPLATES[tipo_sesion]
         reps = _pick_reps(tmpl['reps'], nivel, fase)
+        if km_factor != 1.0:
+            # La readiness (ej. ánimo bajo, regla 6 de endurance.readiness)
+            # puede pedir "suavizar" una sesión de calidad sin degradarla a
+            # easy — para intervalos eso solo puede significar MENOS
+            # repeticiones (el ritmo/zona de trabajo no se suaviza, es lo que
+            # define el tipo de sesión). Nunca por debajo del mínimo del
+            # template: menos que eso deja de ser un estímulo válido de ese
+            # tipo de sesión.
+            lo_reps, hi_reps = tmpl['reps']
+            reps = max(lo_reps, min(hi_reps, round(reps * km_factor)))
         wz = tmpl['work_zona']
         if spec['es_calidad']:
             add('calentamiento', 1, {'min': WARMUP_MIN}, None, 'Z2', RPE_BY_ZONE['Z2'])
@@ -395,9 +408,11 @@ def prescribe_run_session(*, tipo_sesion: str, zonas: dict, nivel: str,
             add('enfriamiento', 1, {'min': COOLDOWN_MIN}, None, 'Z1', RPE_BY_ZONE['Z1'])
 
     elif tipo_sesion == 'tempo':
+        # Mismo criterio que en INTERVAL_TEMPLATES: el factor de readiness
+        # suaviza acortando el bloque de tempo, no bajando la zona/ritmo.
+        tempo_min = max(10, round(TEMPO_MIN_BY_NIVEL.get(nivel, 22) * km_factor))
         add('calentamiento', 1, {'min': WARMUP_MIN}, None, 'Z2', RPE_BY_ZONE['Z2'])
-        add('principal', 1, {'min': TEMPO_MIN_BY_NIVEL.get(nivel, 22)}, None, 'Z4',
-            RPE_BY_ZONE['Z4'])
+        add('principal', 1, {'min': tempo_min}, None, 'Z4', RPE_BY_ZONE['Z4'])
         add('enfriamiento', 1, {'min': COOLDOWN_MIN}, None, 'Z1', RPE_BY_ZONE['Z1'])
 
     else:

@@ -130,6 +130,38 @@ class MicrocycleTests(TestCase):
             status='completed', session_type='free', total_distance_m=6000, total_duration_s=1800)
         self.assertEqual(self.eng._realized_km_last_week(MONDAY), 6.0)
 
+    def test_realized_km_usa_local_date_no_dia_utc_del_servidor(self):
+        """Bug corregido: carrera nocturna en UTC- cuyo started_at (UTC) cae al
+        día SIGUIENTE del día local del atleta. TIME_ZONE=UTC del servidor, sin
+        activación por request, así que started_at.date() daría el domingo
+        23:00 local → lunes 02:00 UTC = fuera de la semana previa. local_date
+        (capturado del header X-Local-Date al crear la sesión) trae el domingo
+        correcto y debe contar."""
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        domingo_local = MONDAY - timedelta(days=1)               # último día de la semana previa
+        started_utc = tz.make_aware(
+            datetime.combine(MONDAY, time(2, 0)))                # ya es "lunes" en UTC
+        RunSession.objects.create(
+            user=self.user, started_at=started_utc, local_date=domingo_local,
+            ended_at=started_utc + timedelta(minutes=30), status='completed',
+            session_type='free', total_distance_m=5000, total_duration_s=1800)
+        # started_at__date (UTC) = MONDAY → fuera de [ini, fin=domingo] si se
+        # filtrara solo por started_at__date; local_date lo ubica correctamente.
+        self.assertEqual(self.eng._realized_km_last_week(MONDAY), 5.0)
+
+    def test_realized_km_sin_local_date_cae_a_started_at_date(self):
+        """Filas previas a este campo (local_date=None) siguen funcionando con
+        el comportamiento anterior — no rompe datos históricos."""
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        when = tz.make_aware(datetime.combine(MONDAY - timedelta(days=2), time(9, 0)))
+        RunSession.objects.create(
+            user=self.user, started_at=when, local_date=None,
+            ended_at=when + timedelta(minutes=30), status='completed',
+            session_type='free', total_distance_m=4000, total_duration_s=1800)
+        self.assertEqual(self.eng._realized_km_last_week(MONDAY), 4.0)
+
     def test_no_progresa_sobre_volumen_planificado_obsoleto(self):
         # Bug de rollover: volumen planificado alto pero SIN carreras recientes
         # (inactividad) → re-entra en base, no progresa +10% sobre el volumen viejo.
@@ -138,6 +170,16 @@ class MicrocycleTests(TestCase):
         self.eng.generate_microcycle(MONDAY)
         self.plan.refresh_from_db()
         self.assertLess(self.plan.km_objetivo_semana, 80)
+
+    def test_reingreso_tras_inactividad_reinicia_en_base_no_en_fase_build(self):
+        # setUp: semana_actual=3 → fase 'build' (factor ×1.10), sin RunSession
+        # completada → prev_realized=None. Antes del fix, esto prescribía
+        # base×1.10=33 de una; debe reiniciar en el volumen base (30 —
+        # 'fitness_general' × NIVEL_FACTOR['intermedio']), no en 33.
+        self.eng.generate_microcycle(MONDAY)
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.fase_actual, 'build')
+        self.assertEqual(self.plan.km_objetivo_semana, 30.0)
 
 
 class ReadinessTests(TestCase):
