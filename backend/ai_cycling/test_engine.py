@@ -108,6 +108,32 @@ class MicrocycleTests(TestCase):
         self.plan.refresh_from_db()
         self.assertLess(self.plan.horas_objetivo_semana, 20)
 
+    def test_realized_hours_usa_local_date_no_dia_utc_del_servidor(self):
+        """Bug corregido: mismo fix que running — bucketear por started_at
+        (día UTC del servidor) en vez de local_date puede excluir una salida
+        nocturna cerca de medianoche local de la semana previa."""
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        domingo_local = MONDAY - timedelta(days=1)
+        started_utc = tz.make_aware(datetime.combine(MONDAY, time(2, 0)))  # ya "lunes" en UTC
+        RideSession.objects.create(
+            user=self.user, started_at=started_utc, local_date=domingo_local,
+            ended_at=started_utc + timedelta(hours=1), status='completed',
+            session_type='free', total_duration_s=3600,
+        )
+        self.assertEqual(self.eng._realized_hours_last_week(MONDAY), 1.0)
+
+    def test_realized_hours_sin_local_date_cae_a_started_at_date(self):
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        when = tz.make_aware(datetime.combine(MONDAY - timedelta(days=2), time(9, 0)))
+        RideSession.objects.create(
+            user=self.user, started_at=when, local_date=None,
+            ended_at=when + timedelta(hours=1), status='completed',
+            session_type='free', total_duration_s=3600,
+        )
+        self.assertEqual(self.eng._realized_hours_last_week(MONDAY), 1.0)
+
     def test_cap_de_progresion_es_el_de_ciclismo_no_el_de_running(self):
         from datetime import datetime, time
         from django.utils import timezone as tz
@@ -120,6 +146,58 @@ class MicrocycleTests(TestCase):
         self.eng.generate_microcycle(MONDAY)
         self.plan.refresh_from_db()
         self.assertLessEqual(self.plan.horas_objetivo_semana, round(5.0 * ts.CYCLING_PROGRESSION_CAP, 1))
+
+
+class MarcarSesionesSaltadasTests(TestCase):
+    """Bug corregido: el choice 'saltada' existía en PlannedRide.ESTADO pero
+    nunca se asignaba — mismo fix que ai_running.
+    _marcar_sesiones_saltadas."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='saltada_cyc', password='x')
+        self.cp = _cyclist_profile(self.user)
+        self.plan = RidePlan.objects.create(
+            user=self.user, meta_tipo='fitness_general', dias_semana=3,
+            started_at=MONDAY, week_start=MONDAY)
+        self.eng = CyclingAdaptiveEngineService(self.user, None, self.cp, self.plan)
+
+    def test_sesion_pasada_sin_ejecutar_se_marca_saltada(self):
+        pasada = PlannedRide.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='threshold',
+            estado='planificada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        pasada.refresh_from_db()
+        self.assertEqual(pasada.estado, 'saltada')
+
+    def test_no_toca_sesiones_de_hoy_o_futuras(self):
+        futura = PlannedRide.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY + timedelta(days=2),
+            tipo_sesion='easy', estado='planificada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        futura.refresh_from_db()
+        self.assertEqual(futura.estado, 'planificada')
+
+    def test_no_toca_sesion_ya_completada(self):
+        completada = PlannedRide.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='threshold',
+            estado='completada')
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        completada.refresh_from_db()
+        self.assertEqual(completada.estado, 'completada')
+
+    def test_no_toca_sesion_vinculada_a_una_ride_session_real(self):
+        from datetime import datetime, time
+        from django.utils import timezone as tz
+        when = tz.make_aware(datetime.combine(MONDAY, time(9, 0)))
+        ride = RideSession.objects.create(
+            user=self.user, started_at=when, ended_at=when + timedelta(hours=1),
+            status='completed')
+        vinculada = PlannedRide.objects.create(
+            plan=self.plan, user=self.user, fecha=MONDAY, tipo_sesion='threshold',
+            estado='planificada', ride_session=ride)
+        self.eng.ensure_current_week(MONDAY + timedelta(days=2))
+        vinculada.refresh_from_db()
+        self.assertEqual(vinculada.estado, 'planificada')
 
 
 class ReadinessWiringTests(TestCase):

@@ -91,6 +91,84 @@ class EstimateThresholdTests(SimpleTestCase):
         r = ts.estimate_threshold(declared_test={})
         self.assertEqual(r['fuente'], 'cold_start')
 
+    def test_declared_test_gana_sobre_historial(self):
+        rides = [{'duration_min': 60, 'rpe_real': 8, 'normalized_power_w': 250,
+                  'avg_heart_rate': 160}] * 8
+        r = ts.estimate_threshold(declared_test={'avg_power_w': 260, 'avg_hr_20min': 165}, rides=rides)
+        self.assertEqual(r['fuente'], 'test_20min')
+
+    def test_historial_gradua_a_alta_con_suficientes_salidas_estables(self):
+        """Bug corregido: antes no había ningún nivel 'historial' — el techo
+        sin test declarado era siempre cold_start/baja."""
+        rides = [
+            {'duration_min': 60, 'rpe_real': 8, 'normalized_power_w': 250 + (i % 2),
+             'avg_heart_rate': 165}
+            for i in range(8)
+        ]
+        r = ts.estimate_threshold(rides=rides)
+        self.assertEqual(r['fuente'], 'historial')
+        self.assertEqual(r['confianza'], 'alta')
+        self.assertEqual(r['ftp_w'], round(251 * 0.95))   # max(250,251) × 0.95
+        self.assertEqual(r['n'], 8)
+
+    def test_historial_con_pocas_salidas_confianza_baja(self):
+        rides = [{'duration_min': 60, 'rpe_real': 8, 'avg_power_w': 250, 'avg_heart_rate': 160}]
+        r = ts.estimate_threshold(rides=rides)
+        self.assertEqual(r['fuente'], 'historial')
+        self.assertEqual(r['confianza'], 'baja')
+
+    def test_salida_corta_no_califica_para_historial(self):
+        """Menos de MIN_RIDE_MIN_FOR_BASELINE (40 min) no es un proxy creíble
+        de un test de 20 min sostenido."""
+        rides = [{'duration_min': 15, 'rpe_real': 9, 'avg_power_w': 300, 'avg_heart_rate': 170}]
+        r = ts.estimate_threshold(rides=rides)
+        self.assertEqual(r['fuente'], 'cold_start')
+
+    def test_salida_facil_no_califica_para_historial(self):
+        """RPE bajo (rodaje fácil) no calibra un umbral aunque dure mucho."""
+        rides = [{'duration_min': 90, 'rpe_real': 3, 'avg_power_w': 150, 'avg_heart_rate': 130}]
+        r = ts.estimate_threshold(rides=rides)
+        self.assertEqual(r['fuente'], 'cold_start')
+
+    def test_historial_sin_potenciometro_usa_fc(self):
+        rides = [{'duration_min': 45, 'rpe_real': 7, 'avg_heart_rate': 158}]
+        r = ts.estimate_threshold(rides=rides)
+        self.assertEqual(r['fuente'], 'historial')
+        self.assertIsNone(r['ftp_w'])
+        self.assertEqual(r['fthr_bpm'], 158)
+
+
+class PowerBiasTests(SimpleTestCase):
+    def test_positivo_cuando_se_sintio_mas_duro(self):
+        pct = ts.power_bias_from_profile(rpe_promedio_real=9.0, rpe_promedio_target=7.0)
+        self.assertAlmostEqual(pct, 0.04, places=4)
+
+    def test_negativo_cuando_se_sintio_mas_facil(self):
+        pct = ts.power_bias_from_profile(rpe_promedio_real=5.0, rpe_promedio_target=7.0)
+        self.assertAlmostEqual(pct, -0.04, places=4)
+
+    def test_capado_a_5_por_ciento(self):
+        pct = ts.power_bias_from_profile(rpe_promedio_real=10.0, rpe_promedio_target=3.0)
+        self.assertEqual(pct, ts.POWER_BIAS_CAP_PCT)
+
+    def test_sin_historial_devuelve_cero(self):
+        self.assertEqual(ts.power_bias_from_profile(None, None), 0.0)
+
+    def test_apply_power_bias_ajusta_power_y_hr_hacia_abajo_si_se_sintio_duro(self):
+        zonas = {'power': {'Z4': (238, 263)}, 'hr': {'Z4': (162, 170)}}
+        # pct positivo = se sintió más duro → objetivo MENOR (a diferencia del
+        # ritmo de running, donde "más lento" es un número MAYOR).
+        ajustadas = ts.apply_power_bias(zonas, 0.10)
+        self.assertEqual(ajustadas['power']['Z4'], (round(238 * 0.9), round(263 * 0.9)))
+        self.assertEqual(ajustadas['hr']['Z4'], (round(162 * 0.9), round(170 * 0.9)))
+        self.assertEqual(zonas['power']['Z4'], (238, 263))   # no muta el original
+
+    def test_apply_power_bias_sin_power_no_crashea(self):
+        zonas = {'power': None, 'hr': {'Z2': (120, 140)}}
+        ajustadas = ts.apply_power_bias(zonas, 0.05)
+        self.assertIsNone(ajustadas['power'])
+        self.assertIsNotNone(ajustadas['hr'])
+
 
 # ─── Volumen semanal en horas y cap de progresión propio ──────────────────────
 
@@ -186,6 +264,37 @@ class PrescribeTests(SimpleTestCase):
                                         nivel='intermedio', periodizacion=self.PERIODIZ)
         self.assertEqual(out['segmentos'], [])
         self.assertEqual(out['duracion_min'], 0)
+
+    def test_horas_factor_reduce_repeticiones_de_intervalos(self):
+        """Bug corregido: horas_factor (readiness — ej. ánimo bajo/monotonía)
+        antes no afectaba en nada a las sesiones de intervalos — solo escalaba
+        horas_sem, que esa rama no lee. Mismo fix que running."""
+        base = ts.prescribe_ride_session(
+            tipo_sesion='vo2max', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion={'fase': 'build', 'horas_objetivo_semana': 6.0},
+        )
+        suavizada = ts.prescribe_ride_session(
+            tipo_sesion='vo2max', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion={'fase': 'build', 'horas_objetivo_semana': 6.0},
+            readiness={'horas_factor': 0.85},
+        )
+        reps_base = base['segmentos'][1]['repeticiones']
+        reps_suave = suavizada['segmentos'][1]['repeticiones']
+        self.assertEqual(reps_base, 8)          # avanzado en build → tope del template (5,8)
+        self.assertEqual(reps_suave, 7)          # round(8 × 0.85) = 7
+        self.assertGreaterEqual(reps_suave, 5)   # nunca por debajo del mínimo del template
+
+    def test_horas_factor_reduce_duracion_de_sweet_spot(self):
+        base = ts.prescribe_ride_session(
+            tipo_sesion='sweet_spot', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion=self.PERIODIZ,
+        )
+        suavizada = ts.prescribe_ride_session(
+            tipo_sesion='sweet_spot', zonas=_zonas_completas(), nivel='avanzado',
+            periodizacion=self.PERIODIZ, readiness={'horas_factor': 0.85},
+        )
+        self.assertEqual(base['segmentos'][1]['trabajo']['min'], 45)
+        self.assertLess(suavizada['segmentos'][1]['trabajo']['min'], 45)
 
     def test_sin_zonas_solo_rpe(self):
         zonas = {'hr': None, 'power': None}

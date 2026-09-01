@@ -17,7 +17,7 @@ from rest_framework import status
 
 from pyfit.throttles import GenerateSessionRateThrottle
 from checkins.models import DailyCheckin
-from cycling.models import RideSession, RidePlan, PlannedRide
+from cycling.models import RideSession, RidePlan, PlannedRide, CyclistTypeProfile
 from workouts.models import DailyGenerationCount
 # Reutilizamos el caller genérico de Groq y la fecha local del motor de fuerza
 # (mismos que ya reusa ai_running — utilidades sport-agnostic).
@@ -151,13 +151,21 @@ def _fmt_rec(rec):
 
 
 def _get_or_create_active_plan(user, hoy) -> RidePlan:
-    plan = RidePlan.objects.filter(user=user, is_active=True).first()
-    if plan:
-        return plan
+    """`get_or_create` (no filter+create suelto): dos requests concurrentes del
+    mismo usuario que ven "sin plan activo" a la vez pueden ambos intentar
+    crear uno — el UniqueConstraint `unique_active_ride_plan_per_user` evita
+    el duplicado, pero un `.create()` sin protección deja al perdedor de la
+    carrera con un IntegrityError de 500 sin manejar. Mismo fix que
+    ai_running.views._get_or_create_active_plan."""
     monday = hoy - timedelta(days=hoy.weekday())
-    return RidePlan.objects.create(
-        user=user, meta_tipo='fitness_general', started_at=hoy,
-        week_start=monday, semana_actual=1, is_active=True)
+    plan, _ = RidePlan.objects.get_or_create(
+        user=user, is_active=True,
+        defaults={
+            'meta_tipo': 'fitness_general', 'started_at': hoy,
+            'week_start': monday, 'semana_actual': 1,
+        },
+    )
+    return plan
 
 
 def build_ride_prompt(ctx: dict) -> str:
@@ -268,79 +276,154 @@ def generate_ride_session(request):
 
     engine = CyclingAdaptiveEngineService(user, perfil, cyclist_profile, plan, checkin)
     engine.ensure_current_week(hoy)
+    # `plan.fase_actual` es un cache que solo se refresca al regenerar el
+    # microciclo (1x/semana) — recalcular siempre en vivo para decidir la
+    # sesión de HOY, igual que ai_running.views.generate_run_session.
+    fase_hoy = engine.resolve_phase(hoy)
 
-    planned = PlannedRide.objects.filter(plan=plan, fecha=hoy).first()
-
-    if planned is None:
-        return Response({
-            'es_rest': True, 'tipo_sesion': 'rest', 'estado': 'planificada',
-            'respuesta_ia': {'titulo': 'Día de descanso', 'tipo_sesion': 'rest',
-                             'objetivo_sesion': 'Recuperación', 'fases': [],
-                             'nota_del_coach': 'Hoy toca descansar. El descanso es parte del plan.'},
-        })
-
-    if planned.estado == 'completada':
-        return Response(PlannedRideSerializer(planned).data)
-
-    # Idempotente para el día: mismo criterio que running — reabrir la
-    # pantalla no debe cambiar la sesión ni gastar tokens de nuevo.
-    if planned.respuesta_ia:
-        return Response(PlannedRideSerializer(planned).data)
-
-    readiness_data = engine.compute_readiness(hoy)
-    adj = engine.adapt_today(planned, readiness_data)
-
-    if adj['tipo_sesion'] == 'rest':
-        planned.tipo_sesion = 'rest'
-        planned.es_calidad = False
-        planned.estado = adj['estado']
-        planned.ajuste_aplicado = adj['ajuste_aplicado']
-        planned.readiness_snapshot = readiness_data
-        planned.respuesta_ia = {
-            'titulo': 'Descanso recomendado', 'tipo_sesion': 'rest',
-            'objetivo_sesion': 'Recuperación', 'fases': [],
-            'nota_del_coach': 'Tu estado de hoy aconseja descansar. Volvemos mañana.',
-        }
-        planned.save()
-        return Response(PlannedRideSerializer(planned).data)
-
-    # Límite diario de generaciones con IA — contador COMPARTIDO con fuerza y
-    # running (mismo presupuesto de Groq, máx. 5/día por usuario en total).
-    if DailyGenerationCount.reached_limit(user, hoy):
-        return Response({'error': 'Alcanzaste tu límite diario', 'code': 'daily_limit'},
-                        status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-    presc = ts.prescribe_ride_session(
-        tipo_sesion=adj['tipo_sesion'], zonas=cyclist_profile.zonas or {},
-        nivel=engine._nivel(),
-        readiness={'rpe_cap': adj['rpe_cap'], 'horas_factor': adj['horas_factor']},
-        periodizacion={'fase': plan.fase_actual, 'horas_objetivo_semana': plan.horas_objetivo_semana},
-    )
-
-    anchor = engine._competition_anchor(hoy)
-    ctx = {
-        'presc': presc, 'nivel': engine._nivel(),
-        'fase': plan.fase_actual, 'ajuste': adj['ajuste_aplicado'],
-        'confianza': cyclist_profile.confianza,
-        'readiness_resumen': _sanitize_prompt_text(
-            f"score {readiness_data['score']}/100, carga {readiness_data['zona_acwr']}", 120),
-        'competicion': (f"{anchor['nombre']} en {anchor['dias']} días" if anchor else None),
-    }
-
-    prompt = build_ride_prompt(ctx)
-    usage, narration = {}, None
-    try:
-        from django.conf import settings
-        if settings.LLM_API_KEY:
-            narration, usage = _call_groq(prompt, max_tokens=1200, user_id=user.id, return_usage=True)
-    except Exception as e:   # noqa: BLE001 — degradación controlada a fallback determinístico
-        logger.warning('generate_ride: Groq falló (%s) — uso fallback determinístico', e)
-    if not isinstance(narration, dict):
-        narration = _fallback_narration(presc, adj['ajuste_aplicado'])
-
-    respuesta_ia = _build_respuesta_ia(presc, narration)
-
+    # Todo el resto de la función va bajo un solo lock de fila
+    # (select_for_update) sobre el PlannedRide del día — evita el doble-LLM en
+    # requests concurrentes. Mismo fix que ai_running.views.generate_run_session.
     with transaction.atomic():
+        planned = (
+            PlannedRide.objects
+            .select_for_update()
+            .filter(plan=plan, fecha=hoy)
+            .first()
+        )
+
+        if planned is None:
+            return Response({
+                'es_rest': True, 'tipo_sesion': 'rest', 'estado': 'planificada',
+                'respuesta_ia': {'titulo': 'Día de descanso', 'tipo_sesion': 'rest',
+                                 'objetivo_sesion': 'Recuperación', 'fases': [],
+                                 'nota_del_coach': 'Hoy toca descansar. El descanso es parte del plan.'},
+            })
+
+        if planned.estado == 'completada':
+            return Response(PlannedRideSerializer(planned).data)
+
+        # Idempotente para el día: mismo criterio que running — reabrir la
+        # pantalla no debe cambiar la sesión ni gastar tokens de nuevo.
+        #
+        # EXCEPCIÓN de seguridad: si el check-in se reenvió DESPUÉS de que esta
+        # sesión ya se generó y la nueva readiness dispara un downgrade que
+        # antes no aplicaba, se re-aplica sin LLM — mismo fix que
+        # ai_running.views.generate_run_session.
+        if planned.respuesta_ia:
+            checkin_reenviado = bool(
+                checkin and planned.updated_at and checkin.updated_at > planned.updated_at
+            )
+            if checkin_reenviado and planned.tipo_sesion != 'rest':
+                readiness_re = engine.compute_readiness(hoy)
+                adj_re = engine.adapt_today(planned, readiness_re)
+                es_downgrade_nuevo = (
+                    adj_re['ajuste_aplicado'] not in ('confirmada', planned.ajuste_aplicado)
+                    and adj_re['tipo_sesion'] in ('rest', 'easy')
+                    and adj_re['tipo_sesion'] != planned.tipo_sesion
+                )
+                if es_downgrade_nuevo:
+                    if adj_re['tipo_sesion'] == 'rest':
+                        planned.tipo_sesion = 'rest'
+                        planned.es_calidad = False
+                        planned.duracion_objetivo_min = None
+                        planned.rpe_target = None
+                        planned.respuesta_ia = {
+                            'titulo': 'Descanso recomendado', 'tipo_sesion': 'rest',
+                            'objetivo_sesion': 'Recuperación', 'fases': [],
+                            'nota_del_coach': (
+                                'Tu check-in cambió desde que generaste la sesión de hoy — '
+                                'con esta nueva información, mejor descansar. Volvemos mañana.'
+                            ),
+                        }
+                    else:  # 'easy'
+                        presc_re = ts.prescribe_ride_session(
+                            tipo_sesion='easy', zonas=cyclist_profile.zonas or {},
+                            nivel=engine._nivel(),
+                            readiness={'rpe_cap': adj_re['rpe_cap'], 'horas_factor': adj_re['horas_factor']},
+                            periodizacion={'fase': fase_hoy,
+                                           'horas_objetivo_semana': plan.horas_objetivo_semana},
+                        )
+                        planned.tipo_sesion = 'easy'
+                        planned.es_calidad = False
+                        planned.zona_principal = presc_re.get('zona_principal') or ''
+                        planned.duracion_objetivo_min = presc_re.get('duracion_min')
+                        planned.rpe_target = presc_re.get('rpe_target') or None
+                        planned.estructura_fases = presc_re
+                        planned.respuesta_ia = _build_respuesta_ia(
+                            presc_re, _fallback_narration(presc_re, adj_re['ajuste_aplicado']),
+                        )
+                    planned.estado = adj_re['estado']
+                    planned.ajuste_aplicado = adj_re['ajuste_aplicado']
+                    planned.readiness_snapshot = readiness_re
+                    planned.save()
+            return Response(PlannedRideSerializer(planned).data)
+
+        readiness_data = engine.compute_readiness(hoy)
+        adj = engine.adapt_today(planned, readiness_data)
+
+        if adj['tipo_sesion'] == 'rest':
+            planned.tipo_sesion = 'rest'
+            planned.es_calidad = False
+            planned.estado = adj['estado']
+            planned.ajuste_aplicado = adj['ajuste_aplicado']
+            planned.readiness_snapshot = readiness_data
+            planned.respuesta_ia = {
+                'titulo': 'Descanso recomendado', 'tipo_sesion': 'rest',
+                'objetivo_sesion': 'Recuperación', 'fases': [],
+                'nota_del_coach': 'Tu estado de hoy aconseja descansar. Volvemos mañana.',
+            }
+            planned.save()
+            return Response(PlannedRideSerializer(planned).data)
+
+        # Límite diario de generaciones con IA — contador COMPARTIDO con fuerza y
+        # running (mismo presupuesto de Groq, máx. 5/día por usuario en total).
+        if DailyGenerationCount.reached_limit(user, hoy):
+            return Response({'error': 'Alcanzaste tu límite diario', 'code': 'daily_limit'},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Afina la potencia/FC objetivo con el historial de ESTE tipo de sesión
+        # — ver CyclistTypeProfile y power_bias_from_profile. Mismo fix que
+        # ai_running.views.generate_run_session (RunTypeProfile).
+        tipo_profile = CyclistTypeProfile.objects.filter(
+            user=user, tipo_sesion=adj['tipo_sesion']).first()
+        power_bias_pct = ts.power_bias_from_profile(
+            tipo_profile.rpe_promedio_real if tipo_profile else None,
+            tipo_profile.rpe_promedio_target if tipo_profile else None,
+        )
+        zonas_ajustadas = ts.apply_power_bias(cyclist_profile.zonas or {}, power_bias_pct)
+
+        presc = ts.prescribe_ride_session(
+            tipo_sesion=adj['tipo_sesion'], zonas=zonas_ajustadas,
+            nivel=engine._nivel(),
+            readiness={'rpe_cap': adj['rpe_cap'], 'horas_factor': adj['horas_factor']},
+            periodizacion={'fase': fase_hoy, 'horas_objetivo_semana': plan.horas_objetivo_semana},
+        )
+
+        anchor = engine._competition_anchor(hoy)
+        ctx = {
+            'presc': presc, 'nivel': engine._nivel(),
+            'fase': fase_hoy, 'ajuste': adj['ajuste_aplicado'],
+            'confianza': cyclist_profile.confianza,
+            'readiness_resumen': _sanitize_prompt_text(
+                f"score {readiness_data['score']}/100, carga {readiness_data['zona_acwr']}", 120),
+            'competicion': (f"{anchor['nombre']} en {anchor['dias']} días" if anchor else None),
+        }
+
+        prompt = build_ride_prompt(ctx)
+        usage, narration = {}, None
+        try:
+            from django.conf import settings
+            if settings.LLM_API_KEY:
+                narration, usage = _call_groq(prompt, max_tokens=1200, user_id=user.id, return_usage=True)
+        except Exception as e:   # noqa: BLE001 — degradación controlada a fallback determinístico
+            logger.warning('generate_ride: Groq falló (%s) — uso fallback determinístico', e)
+        uso_fallback = not isinstance(narration, dict)
+        if uso_fallback:
+            narration = _fallback_narration(presc, adj['ajuste_aplicado'])
+
+        respuesta_ia = _build_respuesta_ia(presc, narration)
+
         planned.tipo_sesion = adj['tipo_sesion']
         planned.es_calidad = ts.SESSION_TYPES.get(adj['tipo_sesion'], {}).get('es_calidad', False)
         planned.zona_principal = presc.get('zona_principal') or ''
@@ -355,6 +438,7 @@ def generate_ride_session(request):
         planned.generacion_ms = usage.get('elapsed_ms')
         planned.tokens_in = usage.get('tokens_in')
         planned.tokens_out = usage.get('tokens_out')
+        planned.narracion_fallback = uso_fallback
         planned.save()
 
     DailyGenerationCount.record(user, hoy)
@@ -429,19 +513,40 @@ def plan_microcycle(request):
 @permission_classes([IsAuthenticated])
 def complete_planned(request, pk):
     """Vincula la ejecución real (RideSession) a la sesión planificada y la marca
-    completada. Body: { "ride_session_id": <int> }."""
+    completada. Body: { "ride_session_id": <int> } — requerido y debe ser una
+    salida propia ya `completed`: completar sin una RideSession real vinculada
+    (o con una todavía `active`/`paused`) deja el historial de adherencia/ACWR
+    con una sesión que nunca ocurrió de verdad. Mismo fix que
+    ai_running.views.complete_planned."""
     planned = get_object_or_404(PlannedRide, pk=pk, user=request.user)
     ride_id = request.data.get('ride_session_id')
-    if ride_id:
-        ride = get_object_or_404(RideSession, pk=ride_id, user=request.user)
+    if not ride_id:
+        return Response({'error': 'ride_session_id es requerido'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    ride = get_object_or_404(RideSession, pk=ride_id, user=request.user)
+    if ride.status != 'completed':
+        return Response(
+            {'error': 'La salida vinculada todavía no está completada'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Atómico: si el proceso muere entre los dos save(), no debe quedar
+    # RideSession.session_type='planned' con PlannedRide todavía en
+    # 'planificada' sin ride_session vinculado.
+    with transaction.atomic():
         planned.ride_session = ride
         if ride.session_type != 'planned':
             ride.session_type = 'planned'
             ride.save(update_fields=['session_type', 'updated_at'])
-    planned.estado = 'completada'
-    planned.save(update_fields=['ride_session', 'estado', 'updated_at'])
-    # Cierra el loop del umbral/zonas: recalcula el baseline SOLO si la fuente
-    # actual no es de mayor confianza que un recálculo automático (no aplica
-    # historial todavía — ver nota en training_science_cycling.estimate_threshold;
-    # por ahora esto es un no-op salvo que se declare un test nuevo a mano).
+        planned.estado = 'completada'
+        planned.save(update_fields=['ride_session', 'estado', 'updated_at'])
+    # Cierra el loop del umbral/zonas: recalcula el baseline desde el
+    # historial actualizado, salvo que el ciclista haya declarado/fijado uno a
+    # mano (no pisamos una fuente de mayor confianza con una estimación de
+    # historial) — mismo criterio que ai_running.views.complete_planned.
+    cp = get_or_create_cyclist_profile(request.user)
+    if cp.fuente_baseline in ('cold_start', 'historial'):
+        try:
+            recompute_cyclist_baseline(request.user)
+        except Exception:
+            logger.warning('complete_planned: fallo al recalcular baseline user=%s', request.user.id)
     return Response(PlannedRideSerializer(planned).data)

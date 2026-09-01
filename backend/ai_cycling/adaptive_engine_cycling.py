@@ -90,20 +90,36 @@ class CyclingAdaptiveEngineService:
             return 4
         return 5
 
+    @staticmethod
+    def _local_date(r: RideSession):
+        """Fecha LOCAL del ciclista para una RideSession — `local_date`
+        (capturado del header X-Local-Date al crear la sesión) si existe; si
+        no (filas previas a este campo), cae a `started_at.date()` en la
+        timezone activa del proceso (día UTC del servidor, sin activación por
+        request). Mismo fix que `RunningAdaptiveEngineService._local_date`."""
+        if r.local_date:
+            return r.local_date
+        return timezone.localdate(r.started_at) if timezone.is_aware(r.started_at) else r.started_at.date()
+
     def _build_srpe_series(self, ref_date, days: int = 35) -> list[tuple]:
-        """Serie (fecha, sRPE) de las RideSession completadas. sRPE = RPE × min (Foster)."""
+        """Serie (fecha, sRPE) de las RideSession completadas. sRPE = RPE × min (Foster).
+        Filtra por started_at con 1 día de margen a cada lado — la ventana real
+        se aplica en Python sobre `_local_date`, que puede diferir del día UTC
+        de started_at (ver RideSession.local_date)."""
         since = ref_date - timedelta(days=days)
         qs = RideSession.objects.filter(
             user=self.user, status='completed',
-            started_at__date__gte=since, started_at__date__lte=ref_date,
+            started_at__date__gte=since - timedelta(days=1),
+            started_at__date__lte=ref_date + timedelta(days=1),
         )
         loads = []
         for r in qs:
             dur_min = (r.total_duration_s or 0) / 60.0
             if dur_min <= 0:
                 continue
-            d = timezone.localdate(r.started_at) if timezone.is_aware(r.started_at) else r.started_at.date()
-            loads.append((d, self._estimate_rpe(r) * dur_min))
+            d = self._local_date(r)
+            if since <= d <= ref_date:
+                loads.append((d, self._estimate_rpe(r) * dur_min))
         return loads
 
     def _carga(self, ref_date):
@@ -112,14 +128,17 @@ class CyclingAdaptiveEngineService:
     def _realized_hours_last_week(self, week_start) -> float:
         """Horas REALMENTE pedaleadas (RideSession completadas) en la semana previa.
         Base correcta para el cap de progresión: progresa sobre lo hecho, no lo
-        planificado (mismo criterio que _realized_km_last_week de running)."""
+        planificado (mismo criterio que _realized_km_last_week de running).
+        Filtra started_at con margen y recorta la ventana exacta sobre
+        _local_date — no por started_at__date directo (ver RideSession.local_date)."""
         ini = week_start - timedelta(days=7)
         fin = week_start - timedelta(days=1)
         qs = RideSession.objects.filter(
             user=self.user, status='completed',
-            started_at__date__gte=ini, started_at__date__lte=fin,
+            started_at__date__gte=ini - timedelta(days=1),
+            started_at__date__lte=fin + timedelta(days=1),
         )
-        total_s = sum((r.total_duration_s or 0) for r in qs)
+        total_s = sum((r.total_duration_s or 0) for r in qs if ini <= self._local_date(r) <= fin)
         return round(total_s / 3600.0, 1)
 
     def compute_readiness(self, hoy=None) -> dict:
@@ -229,9 +248,21 @@ class CyclingAdaptiveEngineService:
                                       'semana_actual', 'updated_at'])
         return rows
 
+    def _marcar_sesiones_saltadas(self, hoy):
+        """Sesión prescrita para un día que ya pasó, nunca vinculada a una
+        RideSession real ni resuelta por readiness (sigue en 'planificada'/
+        'ajustada') → 'saltada'. Mismo fix que
+        RunningAdaptiveEngineService._marcar_sesiones_saltadas — el choice ya
+        existía en PlannedRide.ESTADO pero nunca se asignaba."""
+        PlannedRide.objects.filter(
+            user=self.user, fecha__lt=hoy, estado__in=['planificada', 'ajustada'],
+            ride_session__isnull=True,
+        ).update(estado='saltada')
+
     def ensure_current_week(self, hoy):
         """Asegura que el microciclo de la semana de `hoy` esté generado; avanza el
         contador de semana si el plan venía de una semana anterior. Devuelve el lunes."""
+        self._marcar_sesiones_saltadas(hoy)
         monday = hoy - timedelta(days=hoy.weekday())
         es_semana_nueva = self.plan.week_start is None or self.plan.week_start < monday
         vacia = not PlannedRide.objects.filter(

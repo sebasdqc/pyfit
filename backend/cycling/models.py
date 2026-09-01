@@ -39,31 +39,54 @@ class RideSession(models.Model):
         ('active', 'Active'),
         ('paused', 'Paused'),
         ('completed', 'Completed'),
+        # Sesión active/paused huérfana (crash de la app, doble inicio) cerrada
+        # automáticamente al arrancar una salida nueva — ver
+        # RideSessionCreateSerializer.create(). Mismo patrón que
+        # runs.RunSession — ver el comentario ahí sobre por qué NO hay un
+        # CheckConstraint de "una sola activa por usuario": no hay forma de
+        # verificar desde acá si producción ya tiene violaciones, y una
+        # migración que falla al aplicar tumba el deploy.
+        ('abandoned', 'Abandoned'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ride_sessions')
 
     started_at = models.DateTimeField()
+    # Fecha LOCAL del dispositivo al crear la sesión (header X-Local-Date) —
+    # mismo patrón y mismo motivo que RunSession.local_date: el server corre
+    # en TIME_ZONE=UTC sin activación de timezone por request, así que
+    # started_at.date() bucketea por el día UTC del servidor, no el del
+    # ciclista. Nullable: filas previas a este campo caen al fallback de
+    # started_at.date() en CyclingAdaptiveEngineService._local_date().
+    local_date = models.DateField(null=True, blank=True, db_index=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     session_type = models.CharField(max_length=20, choices=SESSION_TYPE_CHOICES, default='free')
 
-    # Métricas agregadas (se calculan al completar la sesión).
-    total_distance_m = models.FloatField(default=0)
-    total_duration_s = models.IntegerField(default=0)
+    # Métricas agregadas (se calculan al completar la sesión). MinValueValidator
+    # valida en formularios/serializers (full_clean) — el CheckConstraint de
+    # abajo es lo que realmente blinda contra escrituras que lo saltean
+    # (admin, shell, un management command futuro), igual que runs.RunSession.
+    total_distance_m = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    total_duration_s = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     # Potencia/cadencia: null si no hay potenciómetro — NO son el ancla del
     # producto (ver CyclistProfile), son un enriquecimiento opcional.
-    avg_power_w = models.IntegerField(null=True, blank=True)
-    normalized_power_w = models.IntegerField(null=True, blank=True)   # NP, Coggan
-    avg_cadence_rpm = models.IntegerField(null=True, blank=True)
+    avg_power_w = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    normalized_power_w = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])   # NP, Coggan
+    avg_cadence_rpm = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     avg_heart_rate = models.IntegerField(null=True, blank=True)
-    calories_burned = models.FloatField(default=0)
-    elevation_gain_m = models.FloatField(default=0)
+    calories_burned = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    elevation_gain_m = models.FloatField(default=0, validators=[MinValueValidator(0)])
 
     # ── Feedback post-sesión (mismo patrón que RunSession/SessionFeedback) ──
-    rpe_real = models.IntegerField(null=True, blank=True)
-    rating = models.IntegerField(null=True, blank=True)
-    cumplimiento = models.IntegerField(null=True, blank=True)
+    # Mismos rangos que runs.RunSession/workouts.SessionFeedback (rpe_real
+    # 1-10, cumplimiento 0-100, rating 1-5).
+    rpe_real = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    rating = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    cumplimiento = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
     molestias = models.JSONField(default=list, blank=True)
     feedback_notas = models.TextField(null=True, blank=True)
     feedback_at = models.DateTimeField(null=True, blank=True)
@@ -77,6 +100,10 @@ class RideSession(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['user', 'session_type']),
+            # Patrón de query dominante del módulo (generate_ride_session,
+            # historial, futura integración al Zyfit Score) — mismo fix que
+            # runs.RunSession.
+            models.Index(fields=['user', 'started_at']),
         ]
         constraints = [
             models.CheckConstraint(
@@ -92,6 +119,53 @@ class RideSession(models.Model):
                     | models.Q(ended_at__isnull=False)
                 ),
                 name='ride_completed_has_ended_at',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_distance_m__gte=0), name='ride_distance_non_negative'),
+            models.CheckConstraint(
+                condition=models.Q(total_duration_s__gte=0), name='ride_duration_non_negative'),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(avg_power_w__isnull=True) | models.Q(avg_power_w__gte=0)
+                ),
+                name='ride_avg_power_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(normalized_power_w__isnull=True) | models.Q(normalized_power_w__gte=0)
+                ),
+                name='ride_normalized_power_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(avg_cadence_rpm__isnull=True) | models.Q(avg_cadence_rpm__gte=0)
+                ),
+                name='ride_cadence_non_negative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(calories_burned__gte=0), name='ride_calories_non_negative'),
+            models.CheckConstraint(
+                condition=models.Q(elevation_gain_m__gte=0), name='ride_elevation_non_negative'),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(rpe_real__isnull=True)
+                    | models.Q(rpe_real__gte=1, rpe_real__lte=10)
+                ),
+                name='ride_rpe_real_in_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(rating__isnull=True)
+                    | models.Q(rating__gte=1, rating__lte=5)
+                ),
+                name='ride_rating_in_range',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(cumplimiento__isnull=True)
+                    | models.Q(cumplimiento__gte=0, cumplimiento__lte=100)
+                ),
+                name='ride_cumplimiento_in_range',
             ),
         ]
 
@@ -110,6 +184,7 @@ class CyclistProfile(models.Model):
     con ftp_w=None y fthr_bpm poblado es el caso ESPERADO, no uno degradado."""
     BASELINE_SOURCE = [
         ('test_20min', 'Test de 20-30 min declarado'),
+        ('historial',  'Estimado de salidas registradas'),
         ('manual',     'Editado a mano'),
         ('cold_start', 'Sin datos — provisional'),
     ]
@@ -137,6 +212,7 @@ class CyclistProfile(models.Model):
     # Trazabilidad del baseline.
     fuente_baseline = models.CharField(max_length=20, choices=BASELINE_SOURCE, default='cold_start')
     confianza = models.CharField(max_length=10, choices=CONFIANZA, default='baja')
+    n_rides_baseline = models.IntegerField(default=0)
     fecha_calculo = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -245,10 +321,14 @@ class PlannedRide(models.Model):
     ride_session = models.ForeignKey('cycling.RideSession', on_delete=models.SET_NULL,
                                      null=True, blank=True, related_name='planned_origin')
 
-    # Salud del motor (mismo patrón que workouts.Session / PlannedRunSession).
+    # Salud del motor. `narracion_fallback` = True si Groq falló/no respondió
+    # JSON válido y se usó la narración determinística de respaldo
+    # (`_fallback_narration` en ai_cycling/views.py) — mismo campo que
+    # PlannedRunSession.narracion_fallback.
     generacion_ms = models.IntegerField(null=True, blank=True)
     tokens_in = models.IntegerField(null=True, blank=True)
     tokens_out = models.IntegerField(null=True, blank=True)
+    narracion_fallback = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -267,3 +347,38 @@ class PlannedRide(models.Model):
 
     def __str__(self):
         return f"PlannedRide<{self.user.username}> {self.fecha} {self.tipo_sesion} [{self.estado}]"
+
+
+class CyclistTypeProfile(models.Model):
+    """Progresión por tipo de sesión — espejo de `runs.RunTypeProfile`, en sí
+    mismo equivalente a `workouts.UserExerciseProfile` del motor de fuerza,
+    pero por `tipo_sesion` (vo2max/threshold/sweet_spot/...) en vez de por
+    ejercicio individual. Se actualiza en `ride_feedback` cuando el feedback
+    llega de una RideSession vinculada a un PlannedRide (Free Rides sin
+    vincular no tienen `tipo_sesion` al que atribuir el dato). Se consume en
+    `generate_ride_session` vía
+    `training_science_cycling.power_bias_from_profile()`/`apply_power_bias()`
+    para afinar la potencia/FC objetivo de la PRÓXIMA sesión de ese tipo —
+    sin esto, el motor de ciclismo solo reaccionaba a la readiness del día,
+    nunca al historial de esfuerzo reportado en sesiones pasadas del mismo
+    tipo."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cyclist_type_profiles')
+    tipo_sesion = models.CharField(max_length=12, choices=PlannedRide.TIPO_SESION)
+    veces_realizado = models.IntegerField(default=0)
+    rpe_promedio_real = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    rpe_promedio_target = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    cumplimiento_promedio = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    ultima_vez = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'cyclist_type_profiles'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'tipo_sesion'], name='unique_cyclist_type_profile_per_user'),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'tipo_sesion']),
+        ]
+
+    def __str__(self):
+        return f"CyclistTypeProfile<{self.user.username}> {self.tipo_sesion} x{self.veces_realizado}"

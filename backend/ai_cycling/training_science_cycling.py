@@ -214,17 +214,56 @@ def derive_zones(*, fthr_bpm=None, ftp_w=None, fc_max=None, fc_reposo=None,
 
 FTP_TEST_FACTOR = 0.95
 
+# ─── Nivel "historial" (equivalente al de running, ver
+# training_science_running._confianza_historial) ──────────────────────────────
+#
+# Sin RidePoint no hay forma de aislar "el mejor tramo sostenido de 20 min"
+# dentro de una salida (running sí puede, desde el GPS). El proxy que usamos:
+# potencia NORMALIZADA (Coggan — ya corrige por variabilidad, mejor estimador
+# de intensidad "efectiva" que el promedio crudo) de salidas suficientemente
+# largas Y sentidas como duras (RPE alto), asumiendo que un esfuerzo así
+# probablemente contiene un tramo sostenido representativo del umbral. Es una
+# aproximación deliberadamente conservadora — un test de 20 min declarado
+# sigue siendo mejor evidencia (protocolo controlado) y gana siempre.
+MIN_RIDE_MIN_FOR_BASELINE = 40   # duración mínima para que un NP alto sea creíble como "sostenido"
+MIN_RPE_FOR_BASELINE_RIDE = 7    # debe haberse sentido duro — descarta NP alto por ruido de sensor
 
-def estimate_threshold(*, declared_test: dict = None) -> dict:
+CONFIANZA_ALTA_MIN_RIDES = 8
+CONFIANZA_ALTA_MAX_CV = 0.06   # mismo umbral que running (coef. de variación)
+
+
+def _confianza_historial(valores: list) -> str:
+    n = len(valores)
+    if n < 3:
+        return 'baja'
+    if n < CONFIANZA_ALTA_MIN_RIDES:
+        return 'media'
+    media = sum(valores) / n
+    if media <= 0:
+        return 'media'
+    varianza = sum((v - media) ** 2 for v in valores) / n
+    cv = (varianza ** 0.5) / media
+    return 'alta' if cv <= CONFIANZA_ALTA_MAX_CV else 'media'
+
+
+def estimate_threshold(*, declared_test: dict = None, rides: list = None) -> dict:
     """Estima FTP/FTHR en cascada de confianza.
 
     declared_test = {'avg_power_w': ..., 'avg_hr_20min': ...} de un test de
     20-30 min declarado por el usuario → confianza ALTA (potencia) o MEDIA
     (solo FC, sin potenciómetro — la FC es más variable sesión a sesión que
-    la potencia).
+    la potencia). Gana siempre sobre `rides` (protocolo controlado > estimado).
+
+    rides = lista de dicts de RideSession completadas, con al menos
+    {'duration_min', 'rpe_real', 'normalized_power_w'|'avg_power_w',
+    'avg_heart_rate'} → nivel HISTORIAL (ALTA con ≥8 salidas calificadas y
+    dispersión baja / MEDIA con 3-7 o dispersión alta / BAJA con 1-2) — ver
+    MIN_RIDE_MIN_FOR_BASELINE/MIN_RPE_FOR_BASELINE_RIDE para qué salidas
+    califican.
+
     Sin datos → cold-start: el motor usa Karvonen (si hay FCmáx/reposo) + RPE.
 
-    Devuelve {ftp_w, fthr_bpm, fuente, confianza}."""
+    Devuelve {ftp_w, fthr_bpm, fuente, confianza, n}."""
     if declared_test:
         avg_power = declared_test.get('avg_power_w')
         avg_hr = declared_test.get('avg_hr_20min')
@@ -232,8 +271,72 @@ def estimate_threshold(*, declared_test: dict = None) -> dict:
         fthr = round(float(avg_hr)) if avg_hr else None
         if ftp or fthr:
             return {'ftp_w': ftp, 'fthr_bpm': fthr, 'fuente': 'test_20min',
-                    'confianza': 'alta' if ftp else 'media'}
-    return {'ftp_w': None, 'fthr_bpm': None, 'fuente': 'cold_start', 'confianza': 'baja'}
+                    'confianza': 'alta' if ftp else 'media', 'n': 0}
+
+    quality = [
+        r for r in (rides or [])
+        if (r.get('duration_min') or 0) >= MIN_RIDE_MIN_FOR_BASELINE
+        and (r.get('rpe_real') or 0) >= MIN_RPE_FOR_BASELINE_RIDE
+    ]
+    if quality:
+        potencias = [
+            r['normalized_power_w'] if r.get('normalized_power_w') else r.get('avg_power_w')
+            for r in quality
+        ]
+        potencias = [p for p in potencias if p]
+        ftp = round(max(potencias) * FTP_TEST_FACTOR) if potencias else None
+        hrs = [r['avg_heart_rate'] for r in quality if r.get('avg_heart_rate')]
+        fthr = round(max(hrs)) if hrs else None
+        if ftp or fthr:
+            n = len(potencias) if potencias else len(hrs)
+            return {'ftp_w': ftp, 'fthr_bpm': fthr, 'fuente': 'historial',
+                    'confianza': _confianza_historial(potencias or hrs), 'n': n}
+
+    return {'ftp_w': None, 'fthr_bpm': None, 'fuente': 'cold_start', 'confianza': 'baja', 'n': 0}
+
+
+# ─── Progresión por tipo de sesión (equivalente a pace_bias_from_profile de
+# running / rpe_bias de fuerza) ────────────────────────────────────────────────
+#
+# El dial que se ajusta en ciclismo es potencia/FC objetivo dentro de la zona
+# ya derivada del FTP/FTHR, no el RPE (fijo por zona, RPE_BY_ZONE). Mismo
+# patrón exacto que training_science_running.pace_bias_from_profile/
+# apply_pace_bias — ver esos docstrings para el razonamiento completo.
+
+POWER_BIAS_PCT_PER_RPE = 0.02   # +1 RPE de más duro de lo esperado ≈ 2% menos potencia/FC objetivo
+POWER_BIAS_CAP_PCT = 0.05       # nunca ajusta más de ±5% — afinado, no re-derivación del FTP/FTHR
+
+
+def power_bias_from_profile(rpe_promedio_real, rpe_promedio_target) -> float:
+    """% de ajuste de potencia/FC objetivo según cómo se sintieron REALMENTE
+    las últimas sesiones de este tipo vs su RPE objetivo. Positivo = se
+    sintieron más duras de lo esperado → objetivo más bajo (conservador);
+    negativo = más fáciles → objetivo más exigente. Capado a ±5%."""
+    if rpe_promedio_real is None or rpe_promedio_target is None:
+        return 0.0
+    delta = float(rpe_promedio_real) - float(rpe_promedio_target)
+    return max(-POWER_BIAS_CAP_PCT, min(POWER_BIAS_CAP_PCT, delta * POWER_BIAS_PCT_PER_RPE))
+
+
+def apply_power_bias(zonas: dict, pct: float) -> dict:
+    """Copia de `zonas` con potencia/FC de cada zona ajustadas por `pct`
+    (positivo = más FÁCIL, o sea potencia/FC MENOR — a diferencia del ritmo de
+    running, donde "más lento" es un número MAYOR en s/km). No muta el
+    original — `zonas` viene directo de `CyclistProfile.zonas`."""
+    if not pct:
+        return zonas
+    ajustadas = dict(zonas or {})
+    if (zonas or {}).get('power'):
+        ajustadas['power'] = {
+            z: (round(lo * (1 - pct)), round(hi * (1 - pct)))
+            for z, (lo, hi) in zonas['power'].items()
+        }
+    if (zonas or {}).get('hr'):
+        ajustadas['hr'] = {
+            z: (round(lo * (1 - pct)), round(hi * (1 - pct)))
+            for z, (lo, hi) in zonas['hr'].items()
+        }
+    return ajustadas
 
 
 # ─── Volumen semanal (HORAS, no km) ────────────────────────────────────────────
@@ -386,15 +489,27 @@ def prescribe_ride_session(*, tipo_sesion: str, zonas: dict, nivel: str,
     if tipo_sesion in INTERVAL_TEMPLATES:
         tmpl = INTERVAL_TEMPLATES[tipo_sesion]
         reps = _sc.pick_reps(tmpl['reps'], nivel, fase)
+        if horas_factor != 1.0:
+            # La readiness (ej. ánimo bajo, monotonía alta) puede pedir
+            # "suavizar" una sesión de calidad sin degradarla a easy — para
+            # intervalos eso solo puede significar MENOS repeticiones (la
+            # zona/potencia de trabajo no se suaviza, es lo que define el tipo
+            # de sesión). Mismo fix que training_science_running.py — antes
+            # horas_factor solo escalaba horas_sem, que la rama de intervalos
+            # ni lee. Nunca por debajo del mínimo del template.
+            lo_reps, hi_reps = tmpl['reps']
+            reps = max(lo_reps, min(hi_reps, round(reps * horas_factor)))
         wz = tmpl['work_zona']
         add('calentamiento', 1, {'min': WARMUP_MIN}, None, 'Z2', RPE_BY_ZONE['Z2'])
         add('principal', reps, tmpl['work'], tmpl['rec'], wz, RPE_BY_ZONE[wz])
         add('enfriamiento', 1, {'min': COOLDOWN_MIN}, None, 'Z1', RPE_BY_ZONE['Z1'])
 
     elif tipo_sesion == 'sweet_spot':
+        # Mismo criterio que en INTERVAL_TEMPLATES: el factor de readiness
+        # suaviza acortando el bloque, no bajando la zona/potencia.
+        ss_min = max(10, round(SWEET_SPOT_MIN_BY_NIVEL.get(nivel, 30) * horas_factor))
         add('calentamiento', 1, {'min': WARMUP_MIN}, None, 'Z2', RPE_BY_ZONE['Z2'])
-        add('principal', 1, {'min': SWEET_SPOT_MIN_BY_NIVEL.get(nivel, 30)}, None, 'SS',
-            RPE_BY_ZONE['SS'])
+        add('principal', 1, {'min': ss_min}, None, 'SS', RPE_BY_ZONE['SS'])
         add('enfriamiento', 1, {'min': COOLDOWN_MIN}, None, 'Z1', RPE_BY_ZONE['Z1'])
 
     else:

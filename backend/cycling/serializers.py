@@ -17,8 +17,20 @@ class RideSessionCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
+        request = self.context['request']
+        from checkins.views import _get_write_date
+        hoy = _get_write_date(request)
+        # Cierra cualquier sesión active/paused huérfana del usuario (crash de
+        # la app, doble tap en "empezar") antes de abrir una nueva — mismo
+        # fix que RunSessionCreateSerializer.create().
+        RideSession.objects.filter(
+            user=request.user, status__in=['active', 'paused'],
+        ).update(status='abandoned')
+        validated_data['user'] = request.user
         validated_data['status'] = 'active'
+        # Fecha local del dispositivo al crear la sesión — ver el comentario
+        # de RideSession.local_date.
+        validated_data['local_date'] = hoy
         return super().create(validated_data)
 
 

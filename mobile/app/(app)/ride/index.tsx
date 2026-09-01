@@ -11,6 +11,8 @@ import { formatDuration } from '../../../lib/runMetrics'
 import { createRideSession, completeRideSession } from '../../../lib/ridesApi'
 import { getRideSessionToday, completePlannedRide } from '../../../lib/cyclingApi'
 import { expandirPasos, progresoPaso, pasoCompletado, type Paso } from '../../../lib/runSteps'
+import { TIPO_COLOR_KEY } from '../../../lib/runTimeline'
+import { RideTimelineSheet } from '../../../components/RideTimelineSheet'
 
 // Sin GPS en v1 (decisión de producto 2026-08-22): sin RidePoint todavía en el
 // backend, esta pantalla es SOLO timer + guía por pasos — nada de mapa, ni
@@ -25,11 +27,11 @@ function mmss(s: number): string {
   return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`
 }
 
+// TIPO_COLOR_KEY (lib/runTimeline.ts) es la fuente única, compartida con
+// run/index.tsx y con RideTimelineSheet — un bloque nunca debe tener un
+// color distinto entre la guía compacta y la rutina completa.
 function pasoColor(paso: Paso, colors: Colors): string {
-  if (paso.tipo === 'calentamiento') return colors.orange
-  if (paso.tipo === 'enfriamiento') return colors.green
-  if (paso.tipo === 'recuperacion') return colors.inkMuted
-  return colors.accent
+  return colors[TIPO_COLOR_KEY[paso.tipo]]
 }
 
 function restanteTexto(paso: Paso, tiempoEnPasoS: number): string {
@@ -55,6 +57,11 @@ export default function RideScreen() {
   const [pasoIdx, setPasoIdx] = useState(0)
   const [pasoOffsetS, setPasoOffsetS] = useState(0)
   const [zonaSesion, setZonaSesion] = useState('')
+  // Metadata de la sesión inteligente para el header de la rutina completa —
+  // ciclismo se prescribe en tiempo, sin distancia (a diferencia de running).
+  const [sesionMeta, setSesionMeta] = useState<{ titulo: string; duracionMin: number | null }>(
+    { titulo: '', duracionMin: null })
+  const [timelineVisible, setTimelineVisible] = useState(false)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -66,6 +73,10 @@ export default function RideScreen() {
         if (!expandidos.length) return
         setPasos(expandidos)
         setZonaSesion(d?.respuesta_ia?.zona_principal || d?.zona_principal || '')
+        setSesionMeta({
+          titulo: d?.respuesta_ia?.titulo || '',
+          duracionMin: d?.respuesta_ia?.duracion_total_min ?? null,
+        })
       })
       .catch(() => {})
   }, [planned])
@@ -191,6 +202,44 @@ export default function RideScreen() {
           <Text style={[styles.errorText, { color: colors.red }]}>{error}</Text>
         )}
 
+        {/* Tira de progreso de TODA la salida + acceso a la rutina completa —
+            mismo patrón que run/index.tsx: antes solo se veía el bloque en
+            curso, sin forma de ubicarse dentro de la sesión entera. */}
+        {pasos.length > 0 && (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{
+                flex: 1, fontFamily: 'JetBrainsMono-Regular', fontSize: 9.5,
+                letterSpacing: 1, textTransform: 'uppercase', color: colors.inkMuted,
+              }} numberOfLines={1}>
+                {pasoActual
+                  ? `${pasoActual.etiqueta} · paso ${Math.min(pasoIdx + 1, pasos.length)}/${pasos.length}`
+                  : 'Salida guiada completada'}
+              </Text>
+              <TouchableOpacity onPress={() => setTimelineVisible(true)} activeOpacity={0.7}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-SemiBold', fontSize: 12, color: colors.accent }}>
+                  Rutina completa ▴
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 14 }}>
+              {pasos.map((p, i) => (
+                <View
+                  key={p.id}
+                  style={{
+                    flex: 1, height: 5, borderRadius: 3,
+                    backgroundColor: i < pasoIdx
+                      ? pasoColor(p, colors)
+                      : i === pasoIdx
+                        ? pasoColor(p, colors) + '40'
+                        : colors.borderDefault,
+                  }}
+                />
+              ))}
+            </View>
+          </>
+        )}
+
         {/* Guía paso a paso — igual patrón que run/index.tsx, sin ritmo/mapa. */}
         {pasoActual && (
           <View style={[styles.guideCard, { borderColor: colors.borderDefault, backgroundColor: colors.glassBg }]}>
@@ -304,6 +353,16 @@ export default function RideScreen() {
           <Text style={[styles.completingText, { color: colors.inkMuted }]}>Guardando resultados...</Text>
         )}
       </View>
+
+      <RideTimelineSheet
+        visible={timelineVisible}
+        onClose={() => setTimelineVisible(false)}
+        pasos={pasos}
+        pasoIdx={pasoIdx}
+        tituloSesion={sesionMeta.titulo}
+        duracionTotalMin={sesionMeta.duracionMin}
+        colors={colors}
+      />
     </View>
   )
 }
