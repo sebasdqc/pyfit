@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import DataroomLogin from './DataroomLogin'
 import LogoutButton from './LogoutButton'
+import DataroomContent, { type DataroomDoc } from './DataroomContent'
 import { isDataroomAuthed } from '../lib/dataroom'
 
 export const dynamic = 'force-dynamic'
@@ -10,37 +11,31 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-type DataroomDoc = {
-  title: string
-  description: string
-  href: string
-}
-
 /**
- * Documentos del dataroom. Reemplazar los `href` de ejemplo por los links
- * reales (Google Drive, Notion, PDF alojado donde sea) — no hay backend ni
- * base de datos detrás de esta lista, es un array a mano.
+ * Contenido del dataroom. Todo vive acá adentro (nada de links que saquen a
+ * otra pestaña/página) — reemplazar `body` con el texto real de cada sección.
+ * No hay backend ni base de datos detrás, es un array a mano.
  */
 const DOCS: DataroomDoc[] = [
   {
     title: 'Pitch deck',
     description: 'Visión, producto, mercado y tracción.',
-    href: '#',
+    body: ['Completar con el contenido real del pitch deck.'],
   },
   {
     title: 'Métricas y tracción',
     description: 'Usuarios, retención y métricas clave actualizadas.',
-    href: '#',
+    body: ['Completar con las métricas reales.'],
   },
   {
     title: 'Modelo financiero',
     description: 'Proyecciones y uso de fondos.',
-    href: '#',
+    body: ['Completar con el modelo financiero real.'],
   },
   {
     title: 'Cap table',
     description: 'Estructura societaria actual.',
-    href: '#',
+    body: ['Completar con la estructura societaria real.'],
   },
 ]
 
@@ -74,29 +69,7 @@ export default async function DataroomPage() {
             <LogoutButton />
           </header>
 
-          <div className="flex flex-col gap-3">
-            {DOCS.map((doc) => (
-              <a
-                key={doc.title}
-                href={doc.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-strong rounded-2xl px-5 py-4 flex items-center justify-between gap-4 transition-all hover:border-[color:var(--accent)]"
-              >
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                    {doc.title}
-                  </p>
-                  <p className="text-sm mt-0.5" style={{ color: 'var(--ink-dim)' }}>
-                    {doc.description}
-                  </p>
-                </div>
-                <span className="font-mono-label text-[11px] uppercase whitespace-nowrap" style={{ color: 'var(--accent-light)' }}>
-                  Abrir →
-                </span>
-              </a>
-            ))}
-          </div>
+          <DataroomContent docs={DOCS} />
         </div>
       </main>
     </>
