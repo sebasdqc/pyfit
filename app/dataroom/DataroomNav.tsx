@@ -34,29 +34,31 @@ export default function DataroomNav() {
   }, [])
 
   return (
-    <nav
-      className="sticky top-0 z-40 -mx-6 px-6 py-3 glass"
-      style={{ borderBottom: '1px solid var(--border)' }}
-      aria-label="Secciones del dataroom"
-    >
-      <div ref={railRef} className="flex items-center gap-2 overflow-x-auto max-w-3xl mx-auto" style={{ scrollbarWidth: 'none' }}>
-        {SECTIONS.map((s) => {
-          const isActive = active === s.id
-          return (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className="whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all"
-              style={{
-                color: isActive ? 'var(--button-text-on-accent, #051021)' : 'var(--ink-dim)',
-                background: isActive ? 'var(--grad-accent)' : 'transparent',
-              }}
-            >
-              {s.label}
-            </a>
-          )
-        })}
-      </div>
-    </nav>
+    <div className="sticky top-4 z-40 px-6 flex justify-center pointer-events-none">
+      <nav
+        className="glass-strong rounded-full px-2 py-2 pointer-events-auto"
+        style={{ boxShadow: 'var(--shadow-lift)' }}
+        aria-label="Secciones del dataroom"
+      >
+        <div ref={railRef} className="flex items-center gap-1 overflow-x-auto max-w-[calc(100vw-3rem)]" style={{ scrollbarWidth: 'none' }}>
+          {SECTIONS.map((s) => {
+            const isActive = active === s.id
+            return (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all"
+                style={{
+                  color: isActive ? 'var(--button-text-on-accent, #051021)' : 'var(--ink-dim)',
+                  background: isActive ? 'var(--grad-accent)' : 'transparent',
+                }}
+              >
+                {s.label}
+              </a>
+            )
+          })}
+        </div>
+      </nav>
+    </div>
   )
 }

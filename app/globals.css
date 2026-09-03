@@ -217,6 +217,21 @@ body {
   animation: drift-3 30s ease-in-out infinite;
 }
 
+/** Glow concentrado (no un blob de aurora) para destacar un titular puntual. */
+.spotlight {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 620px;
+  max-width: 85vw;
+  height: 320px;
+  background: radial-gradient(closest-side, rgba(79, 140, 255, 0.4), rgba(139, 123, 255, 0.14) 55%, transparent 75%);
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: -1;
+}
+
 .noise-overlay {
   position: absolute;
   inset: 0;

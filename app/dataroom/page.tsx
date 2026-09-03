@@ -30,19 +30,29 @@ export default async function DataroomPage() {
     <>
       <Backdrop />
       <main className="relative z-10 min-h-screen">
-        <div className="max-w-3xl mx-auto px-6 pt-16 pb-8">
-          <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="relative max-w-3xl mx-auto px-6 pt-20 pb-10">
+          <div className="spotlight" aria-hidden />
+          <header className="relative flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="font-mono-label text-[11px] uppercase" style={{ color: 'var(--accent-light)' }}>
+              <span
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-mono-label uppercase glass"
+                style={{ color: 'var(--accent-light)' }}
+              >
+                <span
+                  className="inline-block rounded-full"
+                  style={{ width: 6, height: 6, background: 'var(--accent-light)' }}
+                />
                 Acceso privado
               </span>
-              <h1 className="display text-4xl mt-1">Dataroom</h1>
-              <p className="text-sm mt-1" style={{ color: 'var(--ink-dim)' }}>
+              <h1 className="display text-5xl mt-3">Dataroom</h1>
+              <p className="text-sm mt-2 max-w-[46ch]" style={{ color: 'var(--ink-dim)' }}>
                 Zyfit — ecosistema de entrenamiento inteligente. Documentación para inversores.
               </p>
             </div>
             <LogoutButton />
           </header>
+
+          <TractionChips />
         </div>
 
         <DataroomNav />
@@ -87,9 +97,10 @@ export default async function DataroomPage() {
             <ProductRow
               name="Zyfit App"
               tag="B2C · app móvil"
-              stat="IA ajusta cada sesión"
               color="var(--accent-light)"
               gradient
+              statValue="117"
+              statLabel="en lista de espera · Beta Tester"
             >
               Fitness con IA adaptativa: genera y ajusta rutinas de fuerza y running en cada sesión según el
               progreso, el feedback y el contexto real del usuario (lesiones, experiencia, estilo de entrenamiento).
@@ -97,14 +108,27 @@ export default async function DataroomPage() {
               vincular a un entrenador, y racha y logros propios.
             </ProductRow>
 
-            <ProductRow name="Zyfit Performance" tag="B2B · panel web" stat="+25 calculadoras y tests" color={PERFORMANCE_COLOR}>
+            <ProductRow
+              name="Zyfit Performance"
+              tag="B2B · panel web"
+              color={PERFORMANCE_COLOR}
+              statValue="FVF"
+              statLabel="en conversaciones · Federación Venezolana de Fútbol"
+            >
               Panel para centros deportivos de alto rendimiento (fútbol/futsal): más de 25 calculadoras y tests
               validados —incluye el cuestionario BRUMS de estado de ánimo—, seguimiento de lesiones, planificación
               de equipo asistida por IA y un módulo psicológico. Pensado para el cuerpo técnico y el departamento
-              médico de un club.
+              médico de un club. Hoy en conversaciones con la FVF (Federación Venezolana de Fútbol) — todavía sin
+              acuerdo cerrado.
             </ProductRow>
 
-            <ProductRow name="Zyfit Academy" tag="E-learning" stat="7 escuelas · CONMEBOL Evolución" color={ACADEMY_COLOR}>
+            <ProductRow
+              name="Zyfit Academy"
+              tag="E-learning"
+              color={ACADEMY_COLOR}
+              statValue="7"
+              statLabel="escuelas · Programa CONMEBOL Evolución"
+            >
               Plataforma de formación online para entrenadores, con contenido adaptado al Programa CONMEBOL
               Evolución: cursos organizados en 7 escuelas temáticas, comunidad, tutor con IA, gamificación propia
               (racha de estudio, insignias) y modelo freemium con suscripción Academy Pro.
@@ -286,24 +310,26 @@ export default async function DataroomPage() {
   )
 }
 
-/** Fila de producto: nombre grande en el color real de marca + copy. Sin card, sin icono. */
+/** Fila de producto: nombre grande en el color real de marca + copy + una tarjeta con el dato real. */
 function ProductRow({
   name,
   tag,
-  stat,
   color,
   gradient,
+  statValue,
+  statLabel,
   children,
 }: {
   name: string
   tag: string
-  stat: string
   color: string
   gradient?: boolean
+  statValue: string
+  statLabel: string
   children: React.ReactNode
 }) {
   return (
-    <div className="grid sm:grid-cols-[1fr_2fr] gap-4 sm:gap-8 items-start">
+    <div className="grid sm:grid-cols-[1.1fr_1.6fr_auto] gap-5 sm:gap-8 items-start">
       <div>
         <p
           className={`display text-3xl leading-none ${gradient ? 'gradient-text' : ''}`}
@@ -314,13 +340,46 @@ function ProductRow({
         <p className="text-xs font-mono-label uppercase mt-2" style={{ color: 'var(--ink-faint)' }}>
           {tag}
         </p>
-        <p className="text-xs font-medium mt-3 rounded-full inline-block px-3 py-1" style={{ color, border: `1px solid ${color}55` }}>
-          {stat}
-        </p>
       </div>
-      <p className="text-sm leading-relaxed max-w-[62ch]" style={{ color: 'var(--ink-dim)' }}>
+      <p className="text-sm leading-relaxed max-w-[58ch]" style={{ color: 'var(--ink-dim)' }}>
         {children}
       </p>
+      <div
+        className="glass-strong rounded-2xl px-5 py-4 flex flex-col gap-1 w-full sm:w-44 shrink-0"
+        style={{ boxShadow: 'var(--shadow-lift)' }}
+      >
+        <p className="display text-3xl leading-none" style={{ color }}>
+          {statValue}
+        </p>
+        <p className="text-xs leading-snug" style={{ color: 'var(--ink-dim)' }}>
+          {statLabel}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+const TRACTION_CHIPS = [
+  '117 en lista de espera · Beta Tester',
+  'En conversaciones con la FVF',
+  'Contenido alineado a CONMEBOL Evolución',
+  '+240 ejercicios con evidencia científica',
+  '2 de 3 productos en producción',
+]
+
+/** Franja de hechos reales verificables — nunca logos ni cifras inventadas. */
+function TractionChips() {
+  return (
+    <div className="relative flex flex-wrap gap-2 mt-8">
+      {TRACTION_CHIPS.map((c) => (
+        <span
+          key={c}
+          className="glass rounded-full px-3.5 py-1.5 text-xs font-medium"
+          style={{ color: 'var(--ink-dim)' }}
+        >
+          {c}
+        </span>
+      ))}
     </div>
   )
 }
@@ -497,7 +556,7 @@ const MOAT_PILLARS = [
 const PENDING = [
   {
     title: 'Métricas y tracción',
-    desc: 'Usuarios activos, retención, conversión y uso por producto — se completa con datos reales antes de compartirse.',
+    desc: 'Lo único con dato real hoy: 117 personas en lista de espera de Beta Tester (App). Falta usuarios activos, retención, conversión y uso por producto.',
   },
   {
     title: 'Modelo financiero',
