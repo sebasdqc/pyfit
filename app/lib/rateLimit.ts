@@ -46,6 +46,9 @@ export const WAITLIST_RULE = { windowS: 60 * 60, maxHits: 5 } as const
 /** `POST /api/admin/login` — solo lo usa el dueño del panel; 5 cada 15 min perdona typos. */
 export const ADMIN_LOGIN_RULE = { windowS: 15 * 60, maxHits: 5 } as const
 
+/** `POST /api/dataroom/login` — misma lógica que `ADMIN_LOGIN_RULE`, bucket propio. */
+export const DATAROOM_LOGIN_RULE = { windowS: 15 * 60, maxHits: 5 } as const
+
 /**
  * IP del cliente. En Vercel estas dos cabeceras las pone la plataforma y
  * sobrescriben lo que manda el cliente, así que no se pueden falsear desde
