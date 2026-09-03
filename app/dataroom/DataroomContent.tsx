@@ -6,6 +6,8 @@ export type DataroomDoc = {
   title: string
   description: string
   body: string[]
+  /** Sección con estructura definida pero sin datos reales todavía. */
+  pending?: boolean
 }
 
 /** Acordeón: cada sección se expande dentro de la misma página, sin navegar afuera. */
@@ -25,8 +27,16 @@ export default function DataroomContent({ docs }: { docs: DataroomDoc[] }) {
               className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left transition-all"
             >
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--ink)' }}>
                   {doc.title}
+                  {doc.pending && (
+                    <span
+                      className="font-mono-label text-[10px] uppercase rounded-full px-2 py-0.5"
+                      style={{ color: 'var(--orange)', border: '1px solid var(--orange)' }}
+                    >
+                      Pendiente
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm mt-0.5" style={{ color: 'var(--ink-dim)' }}>
                   {doc.description}
