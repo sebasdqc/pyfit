@@ -58,6 +58,12 @@ export default function SiteHeader() {
           >
             Roadmap público
           </a>
+          <a
+            href="/dataroom"
+            className="btn-outline hidden sm:inline-flex rounded-full px-5 py-2 text-sm font-semibold"
+          >
+            Dataroom
+          </a>
         </div>
       </div>
     </header>
