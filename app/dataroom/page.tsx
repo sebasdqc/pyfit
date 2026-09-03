@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import DataroomLogin from './DataroomLogin'
 import LogoutButton from './LogoutButton'
-import DataroomContent, { type DataroomDoc } from './DataroomContent'
+import DataroomNav from './DataroomNav'
 import { isDataroomAuthed } from '../lib/dataroom'
 
 export const dynamic = 'force-dynamic'
@@ -11,89 +11,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-/**
- * Contenido del dataroom. Todo vive acá adentro (nada de links que saquen a
- * otra pestaña/página) — no hay backend ni base de datos detrás, es un array
- * a mano. Las secciones marcadas `pending: true` tienen la estructura
- * correcta pero necesitan cifras/datos reales antes de compartirse: no se
- * inventan números de usuarios, proyecciones ni cap table.
- */
-const DOCS: DataroomDoc[] = [
-  {
-    title: 'Problema y solución',
-    description: 'Por qué existe Zyfit.',
-    body: [
-      'El problema: el entrenamiento deportivo —desde el atleta individual hasta el club de alto rendimiento y la formación de entrenadores— sigue apoyado en herramientas genéricas, planillas sueltas y contenido no adaptado a cada perfil. Falta un sistema que conecte el dato individual con la institución y con la formación de quien entrena.',
-      'La solución: Zyfit es un ecosistema de entrenamiento inteligente construido sobre un único backend y una única base de datos, con tres productos que comparten el mismo motor de datos e IA en vez de operar como silos aislados.',
-    ],
-  },
-  {
-    title: 'Producto',
-    description: 'Los tres productos, la tecnología y el estado actual.',
-    body: [
-      'Zyfit App (B2C) — app móvil de fitness con IA adaptativa: genera y ajusta rutinas de fuerza y running en cada sesión según el progreso, el feedback y el contexto real del usuario (lesiones, experiencia, estilo de entrenamiento). Incluye el Zyfit Score —un motor de 5 factores que resume el estado del atleta—, el Portal de Coach para que un entrenador vincule y siga a sus atletas, y un sistema propio de racha y logros.',
-      'Zyfit Performance (B2B) — panel para centros deportivos de alto rendimiento (fútbol/futsal): más de 25 calculadoras y tests validados —incluye el cuestionario BRUMS de estado de ánimo—, seguimiento de lesiones, planificación de equipo asistida por IA y un módulo psicológico. Pensado para el cuerpo técnico y el departamento médico de un club.',
-      'Zyfit Academy (e-learning) — plataforma de formación online para entrenadores, con contenido adaptado al Programa CONMEBOL Evolución: cursos organizados en 7 escuelas temáticas, comunidad, tutor con IA, gamificación propia (racha de estudio, insignias) y modelo freemium con suscripción Academy Pro.',
-      'Tecnología: un backend Django + PostgreSQL sirve a los tres productos, con un motor propio de generación de rutinas sobre un catálogo curado de más de 240 ejercicios con evidencia científica y perfil de riesgo de lesión por ejercicio. Los tres frontends (app móvil en React Native/Expo, ambos paneles web en React) comparten estándares de seguridad, con auditorías ya realizadas y corregidas en cada producto.',
-      'Estado actual: Zyfit Performance y Zyfit Academy están en producción y en uso real —Academy con contenido alineado a un programa de una confederación continental (CONMEBOL), Performance operando con centros deportivos reales. La app de consumo tiene su ecosistema de funciones completo y está en fase de testing cerrado (Expo dev-client / builds internas de EAS), previo a su publicación en Play Store y App Store.',
-      'Por qué importa el ecosistema: el mismo motor de IA que genera rutinas en la app asiste la planificación de equipo en Performance; los datos de rendimiento sirven tanto al atleta individual como al club; la formación en Academy prepara a los mismos entrenadores que después usan el Portal de Coach en la app. Ningún competidor directo cubre las tres capas sobre un mismo dato de fondo.',
-    ],
-  },
-  {
-    title: 'Mercado — TAM / SAM / SOM',
-    description: 'Tamaño de mercado, con fuentes de research externas.',
-    body: [
-      'Metodología: Zyfit participa en tres categorías que hoy se reportan por separado —apps de fitness, software de gestión/rendimiento deportivo y e-learning deportivo/corporativo— porque ningún research mide todavía "un ecosistema que conecta las tres". Las cifras de abajo son de firmas de research externas (no de investigación propia de Zyfit) y sirven como referencia direccional del tamaño de la oportunidad, no como proyección de ingresos.',
-      'TAM (techo global, las tres categorías): mercado global de apps de fitness, ~USD 13.9B en 2026 con crecimiento anual de doble dígito (Grand View Research); software de gestión y rendimiento deportivo, ~USD 8B–14B en 2026 según la firma (Mordor Intelligence, Grand View Research); e-learning corporativo a nivel global mueve decenas de miles de millones de dólares, del cual la educación deportiva es un nicho específico dentro del total. Zyfit no compite por la totalidad de estos mercados, pero definen el techo teórico de la categoría.',
-      'SAM (Latinoamérica, donde Zyfit opera hoy): el mercado de apps de fitness en Latinoamérica se estima en ~USD 0.7B–1.1B en 2025/2026, con el crecimiento anual más alto de cualquier región (15%–28% según la firma) por baja penetración actual y adopción acelerada de smartphones (Grand View Research, MarketDataForecast). El e-learning en Latinoamérica mueve entre ~USD 29B y 38B en 2026, con Brasil y México como los dos mercados de LMS más grandes de la región — la educación de entrenadores es una porción específica de ese total, no el total. No existe un reporte dedicado a software de rendimiento para clubes de fútbol/futsal en Latinoamérica: es la categoría con menos datos públicos y, a la vez, la de menor competencia directa regional identificada.',
-      'SOM (lo capturable con el producto actual, 2–3 años): todavía no hay un número comprometido — depende de decisiones de pricing y go-to-market que no están cerradas (ver Modelo financiero). El punto de apoyo más concreto es Zyfit Academy: CONMEBOL agrupa a las federaciones de fútbol de 10 países sudamericanos, y el contenido de Academy ya está alineado a su Programa Evolución — eso da un canal de distribución identificable (federaciones y clubes afiliados) en vez de depender solo de adquisición fría paga. El SOM real se termina de dimensionar cuando haya métricas de conversión propias (ver Métricas y tracción).',
-    ],
-  },
-  {
-    title: 'Competencia',
-    description: 'Quién compite en cada vertical y por qué Zyfit es distinto.',
-    body: [
-      'Zyfit App vs. Fitbod (progresión de fuerza adaptativa, sin running ni lado B2B), Freeletics (entrenamiento adaptativo enfocado en peso corporal, sin Portal de Coach) y Trainerize (plataforma para que coaches humanos entreguen planes, no genera con IA de punta a punta). Ninguno combina fuerza + running en un solo motor adaptativo con un Portal de Coach nativo que conecta al atleta con un entrenador real.',
-      'Zyfit Performance vs. Kitman Labs (plataforma enterprise de inteligencia de rendimiento, contratos anuales a cotización, pensada para clubes con departamento de ciencia del deporte y datos ya limpios), Catapult (centrado en GPS/sensores wearables, no en tests ni planificación) y TeamBuildr (fuerza y acondicionamiento, sin módulo psicológico ni de lesiones integrado). Zyfit Performance apunta al segmento medio —centros de alto rendimiento de fútbol/futsal sin presupuesto ni datos para un Kitman Labs— con más de 25 calculadoras/tests ya integrados y planificación de equipo asistida por IA.',
-      'Zyfit Academy vs. plataformas de certificación de fútbol en español como Construyendo Fútbol o Soccer Leaders/ISSPF (cursos online dictados por entrenadores reconocidos) y plataformas genéricas (Coursera, Udemy) sin contenido deportivo especializado. Academy es la única con contenido explícitamente adaptado al Programa CONMEBOL Evolución, más un motor de aprendizaje adaptativo (grafo de competencias + mastery), tutor con IA y gamificación propia — no es solo un catálogo de video-cursos.',
-    ],
-  },
-  {
-    title: 'Diferenciador y MOAT',
-    description: 'Por qué el ecosistema es difícil de copiar.',
-    body: [
-      'El diferenciador no es ninguno de los tres productos por separado —cada categoría ya tiene jugadores especializados y más grandes que Zyfit—. Es que los tres comparten el mismo backend y el mismo dato: el motor de generación de rutinas que usa el atleta en la app asiste la planificación de equipo en Performance; el mismo Zyfit Score que ve un atleta lo puede seguir su entrenador desde el Portal de Coach; el entrenador que se forma en Academy es, potencialmente, el mismo que después opera Performance o el Portal de Coach. Un competidor de una sola categoría necesitaría construir las otras dos para igualar el ecosistema.',
-      'MOAT — qué hace esto difícil de copiar: (1) Datos propietarios cruzados: cuantas más sesiones, tests y cursos se acumulan en la misma base, mejor se ajusta el motor de IA para los tres productos a la vez; un competidor de una sola vertical no tiene ese cruce. (2) Relación institucional: el contenido de Academy alineado al Programa CONMEBOL Evolución es una relación de distribución con una confederación, no solo contenido — difícil de replicar sin un acuerdo equivalente. (3) Catálogo curado: el motor de rutinas corre sobre más de 240 ejercicios con evidencia científica y perfil de riesgo de lesión ya tageados a mano, no generados por IA sin curar — es trabajo acumulado, no una feature copiable en un sprint. (4) Costo de cambio para clubes: una vez que un centro carga tests, lesiones y planificación histórica en Performance, migrar esos datos a otra plataforma tiene fricción real.',
-      'Lo que todavía NO es un moat probado (a fortalecer, no a asumir): no hay todavía volumen de usuarios que genere un efecto de red clásico, ni patentes, ni exclusividad contractual con CONMEBOL más allá de la alineación de contenido.',
-    ],
-  },
-  {
-    title: 'Métricas y tracción',
-    description: 'Marco de métricas instrumentado en el producto.',
-    pending: true,
-    body: [
-      'Este dataroom todavía no incluye cifras (usuarios activos, retención, conversión, uso por producto) — se completan con datos reales antes de compartirse con inversionistas. Lo que sigue es el marco de métricas que ya está instrumentado en cada producto.',
-      'Zyfit App: activación (onboarding + primera sesión completa), retención D1/D7/D30, racha de entrenamiento, sesiones con feedback registrado (solo cuenta como "día entrenado" una sesión con feedback), uso del módulo de running.',
-      'Zyfit Performance: centros activos, usuarios por centro, tests y calculadoras utilizados, planes de equipo generados con IA.',
-      'Zyfit Academy: cursos iniciados y completados, racha de estudio, insignias obtenidas, conversión a Academy Pro, uso del tutor con IA.',
-    ],
-  },
-  {
-    title: 'Modelo financiero',
-    description: 'Modelo de ingresos, proyecciones y uso de fondos.',
-    pending: true,
-    body: [
-      'Modelo de ingresos: Zyfit Academy ya opera con un esquema freemium —suscripción Academy Pro que desbloquea cursos y módulos completos— aunque todavía sin un proveedor de pago real integrado (el control de acceso está implementado, falta el cobro efectivo). Zyfit Performance se piensa como licenciamiento B2B por centro deportivo. La monetización de la app de consumo (B2C) aún no está definida y se resuelve antes de su publicación en tiendas.',
-      'Pendiente: proyecciones de ingresos, estructura de costos, monto de la ronda y uso de fondos — se completan con el modelo financiero real.',
-    ],
-  },
-  {
-    title: 'Cap table',
-    description: 'Estructura societaria.',
-    pending: true,
-    body: ['Pendiente: estructura societaria real (accionistas y porcentajes).'],
-  },
-]
+const PERFORMANCE_COLOR = '#14b8a6'
+const ACADEMY_COLOR = '#cc1f36'
 
 export default async function DataroomPage() {
   if (!(await isDataroomAuthed())) {
@@ -110,8 +29,8 @@ export default async function DataroomPage() {
   return (
     <>
       <Backdrop />
-      <main className="relative z-10 min-h-screen px-6 py-16">
-        <div className="max-w-3xl mx-auto flex flex-col gap-8">
+      <main className="relative z-10 min-h-screen">
+        <div className="max-w-3xl mx-auto px-6 pt-16 pb-8">
           <header className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <span className="font-mono-label text-[11px] uppercase" style={{ color: 'var(--accent-light)' }}>
@@ -119,18 +38,476 @@ export default async function DataroomPage() {
               </span>
               <h1 className="display text-4xl mt-1">Dataroom</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--ink-dim)' }}>
-                Documentación del proyecto para inversores.
+                Zyfit — ecosistema de entrenamiento inteligente. Documentación para inversores.
               </p>
             </div>
             <LogoutButton />
           </header>
+        </div>
 
-          <DataroomContent docs={DOCS} />
+        <DataroomNav />
+
+        <div className="max-w-3xl mx-auto px-6 flex flex-col gap-24 py-16">
+          {/* ── Problema y solución ─────────────────────────── */}
+          <section id="problema" className="scroll-mt-20 flex flex-col gap-8">
+            <h2 className="section-title text-3xl">Problema y solución</h2>
+            <div className="grid sm:grid-cols-2 gap-8">
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-mono-label uppercase" style={{ color: 'var(--ink-faint)' }}>
+                  El problema
+                </p>
+                <p className="text-lg leading-snug" style={{ color: 'var(--ink)' }}>
+                  El entrenamiento deportivo sigue apoyado en herramientas genéricas, planillas sueltas y contenido
+                  no adaptado a cada perfil.
+                </p>
+                <p className="text-sm leading-relaxed max-w-[60ch]" style={{ color: 'var(--ink-dim)' }}>
+                  Pasa en las tres capas a la vez: el atleta individual, el club de alto rendimiento y la formación
+                  de quien entrena. Falta un sistema que conecte el dato de una capa con las otras dos.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:border-l sm:pl-8" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-xs font-mono-label uppercase" style={{ color: 'var(--accent-light)' }}>
+                  La solución
+                </p>
+                <p className="text-lg leading-snug gradient-text font-semibold">
+                  Un ecosistema, un solo backend, un solo dato.
+                </p>
+                <p className="text-sm leading-relaxed max-w-[60ch]" style={{ color: 'var(--ink-dim)' }}>
+                  Zyfit conecta tres productos —app de consumo, panel B2B y plataforma de e-learning— sobre un único
+                  backend y una única base de datos, en vez de operar como silos aislados.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Producto ─────────────────────────────────────── */}
+          <section id="producto" className="scroll-mt-20 flex flex-col gap-10">
+            <h2 className="section-title text-3xl">Producto</h2>
+
+            <ProductRow
+              name="Zyfit App"
+              tag="B2C · app móvil"
+              stat="IA ajusta cada sesión"
+              color="var(--accent-light)"
+              gradient
+            >
+              Fitness con IA adaptativa: genera y ajusta rutinas de fuerza y running en cada sesión según el
+              progreso, el feedback y el contexto real del usuario (lesiones, experiencia, estilo de entrenamiento).
+              Incluye el Zyfit Score —motor de 5 factores que resume el estado del atleta—, el Portal de Coach para
+              vincular a un entrenador, y racha y logros propios.
+            </ProductRow>
+
+            <ProductRow name="Zyfit Performance" tag="B2B · panel web" stat="+25 calculadoras y tests" color={PERFORMANCE_COLOR}>
+              Panel para centros deportivos de alto rendimiento (fútbol/futsal): más de 25 calculadoras y tests
+              validados —incluye el cuestionario BRUMS de estado de ánimo—, seguimiento de lesiones, planificación
+              de equipo asistida por IA y un módulo psicológico. Pensado para el cuerpo técnico y el departamento
+              médico de un club.
+            </ProductRow>
+
+            <ProductRow name="Zyfit Academy" tag="E-learning" stat="7 escuelas · CONMEBOL Evolución" color={ACADEMY_COLOR}>
+              Plataforma de formación online para entrenadores, con contenido adaptado al Programa CONMEBOL
+              Evolución: cursos organizados en 7 escuelas temáticas, comunidad, tutor con IA, gamificación propia
+              (racha de estudio, insignias) y modelo freemium con suscripción Academy Pro.
+            </ProductRow>
+
+            <div
+              className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6 pt-2"
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <p className="text-xs font-mono-label uppercase pt-6 sm:pt-6 shrink-0" style={{ color: 'var(--ink-faint)' }}>
+                Stack &amp; estado
+              </p>
+              <p className="text-sm leading-relaxed max-w-[65ch] pt-6 sm:pt-6" style={{ color: 'var(--ink-dim)' }}>
+                Backend Django + PostgreSQL compartido por los tres productos, motor propio de generación de
+                rutinas sobre un catálogo curado de +240 ejercicios con evidencia científica y perfil de riesgo de
+                lesión. Performance y Academy están en producción y en uso real; la app de consumo tiene su
+                ecosistema de funciones completo y está en testing cerrado (Expo dev-client / EAS), previo a su
+                publicación en tiendas.
+              </p>
+            </div>
+          </section>
+
+          {/* ── Mercado ──────────────────────────────────────── */}
+          <section id="mercado" className="scroll-mt-20 flex flex-col gap-8">
+            <div>
+              <h2 className="section-title text-3xl">Mercado</h2>
+              <p className="text-sm mt-2 max-w-[65ch]" style={{ color: 'var(--ink-dim)' }}>
+                Zyfit cruza tres categorías que hoy se reportan por separado. Las cifras son de firmas de research
+                externas —referencia direccional del tamaño de la oportunidad, no proyección de ingresos propia.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center gap-3">
+              <MarketBand
+                label="TAM"
+                width="100%"
+                intensity={0.16}
+                headline="≈ US$25–30B+ combinado (2026)"
+                source="Grand View Research · Mordor Intelligence, 2026"
+              >
+                Mercado global de apps de fitness (~US$13.9B) + software de gestión y rendimiento deportivo
+                (~US$8–14B), más una porción del e-learning corporativo global donde la educación deportiva es un
+                nicho. Zyfit no compite por la totalidad, pero esto define el techo teórico de la categoría.
+              </MarketBand>
+              <FunnelConnector />
+              <MarketBand
+                label="SAM"
+                width="74%"
+                intensity={0.26}
+                headline="≈ US$1B+ cuantificado, LatAm"
+                source="Grand View Research · MarketDataForecast, 2025–2026"
+              >
+                Apps de fitness en Latinoamérica: ~US$0.7–1.1B, con el crecimiento anual más alto de cualquier
+                región (15%–28%). El e-learning en LatAm mueve ~US$29–38B, pero la educación de entrenadores es una
+                porción específica de ese total —sin reporte dedicado— igual que el software de rendimiento para
+                clubes de fútbol/futsal regional.
+              </MarketBand>
+              <FunnelConnector />
+              <MarketBand
+                label="SOM"
+                width="48%"
+                intensity={0}
+                dashed
+                headline="Por definir"
+                source={null}
+              >
+                Depende de decisiones de pricing y go-to-market que no están cerradas. El punto de apoyo más
+                concreto: CONMEBOL agrupa a las federaciones de 10 países sudamericanos, y Academy ya tiene
+                contenido alineado a su Programa Evolución — un canal de distribución identificable en vez de
+                adquisición fría.
+              </MarketBand>
+            </div>
+          </section>
+
+          {/* ── Competencia ──────────────────────────────────── */}
+          <section id="competencia" className="scroll-mt-20 flex flex-col gap-6">
+            <h2 className="section-title text-3xl">Competencia</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse min-w-[560px]">
+                <thead>
+                  <tr>
+                    {['Producto', 'Competidor', 'Qué hace bien', 'Brecha frente a Zyfit'].map((h) => (
+                      <th
+                        key={h}
+                        className="font-mono-label text-[11px] uppercase text-left px-4 py-3"
+                        style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border-strong)' }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPETITORS.map((row, i) => (
+                    <tr key={i}>
+                      {i === 0 || COMPETITORS[i - 1].product !== row.product ? (
+                        <td
+                          className="px-4 py-3 align-top font-semibold"
+                          style={{ color: row.color, borderBottom: '1px solid var(--border)' }}
+                          rowSpan={COMPETITORS.filter((r) => r.product === row.product).length}
+                        >
+                          {row.product}
+                        </td>
+                      ) : null}
+                      <td className="px-4 py-3 align-top" style={{ color: 'var(--ink)', borderBottom: '1px solid var(--border)' }}>
+                        {row.competitor}
+                      </td>
+                      <td className="px-4 py-3 align-top" style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}>
+                        {row.strength}
+                      </td>
+                      <td className="px-4 py-3 align-top" style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}>
+                        {row.gap}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ── Diferenciador y MOAT ─────────────────────────── */}
+          <section id="moat" className="scroll-mt-20 flex flex-col gap-10">
+            <h2 className="section-title text-3xl">Diferenciador y MOAT</h2>
+
+            <EcosystemDiagram />
+
+            <p className="text-sm leading-relaxed max-w-[68ch]" style={{ color: 'var(--ink-dim)' }}>
+              El diferenciador no es ninguno de los tres productos por separado —cada categoría ya tiene jugadores
+              especializados y más grandes que Zyfit—. Es que comparten el mismo backend y el mismo dato: el motor
+              que genera rutinas en la app asiste la planificación de equipo en Performance; el entrenador que se
+              forma en Academy es, potencialmente, el mismo que después opera Performance o el Portal de Coach.
+
+            </p>
+
+            <dl className="flex flex-col gap-5">
+              {MOAT_PILLARS.map((p) => (
+                <div key={p.term} className="flex flex-col sm:flex-row gap-1 sm:gap-6">
+                  <dt className="text-sm font-semibold shrink-0 sm:w-48" style={{ color: 'var(--ink)' }}>
+                    {p.term}
+                  </dt>
+                  <dd className="text-sm leading-relaxed max-w-[58ch]" style={{ color: 'var(--ink-dim)' }}>
+                    {p.desc}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="text-sm leading-relaxed max-w-[68ch]" style={{ color: 'var(--ink-faint)' }}>
+              Lo que todavía NO es un moat probado: no hay volumen de usuarios que genere un efecto de red clásico,
+              ni patentes, ni exclusividad contractual con CONMEBOL más allá de la alineación de contenido.
+            </p>
+          </section>
+
+          {/* ── Pendiente ────────────────────────────────────── */}
+          <section id="pendiente" className="scroll-mt-20 flex flex-col gap-4">
+            <h2 className="text-sm font-mono-label uppercase" style={{ color: 'var(--ink-faint)' }}>
+              Pendiente — sin cifras inventadas
+            </h2>
+            <div className="flex flex-col gap-3">
+              {PENDING.map((p) => (
+                <div
+                  key={p.title}
+                  className="rounded-xl px-5 py-4"
+                  style={{ border: '1px dashed var(--border-strong)' }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ink-dim)' }}>
+                    {p.title}
+                  </p>
+                  <p className="text-sm mt-1 max-w-[65ch]" style={{ color: 'var(--ink-faint)' }}>
+                    {p.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
     </>
   )
 }
+
+/** Fila de producto: nombre grande en el color real de marca + copy. Sin card, sin icono. */
+function ProductRow({
+  name,
+  tag,
+  stat,
+  color,
+  gradient,
+  children,
+}: {
+  name: string
+  tag: string
+  stat: string
+  color: string
+  gradient?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className="grid sm:grid-cols-[1fr_2fr] gap-4 sm:gap-8 items-start">
+      <div>
+        <p
+          className={`display text-3xl leading-none ${gradient ? 'gradient-text' : ''}`}
+          style={gradient ? undefined : { color }}
+        >
+          {name}
+        </p>
+        <p className="text-xs font-mono-label uppercase mt-2" style={{ color: 'var(--ink-faint)' }}>
+          {tag}
+        </p>
+        <p className="text-xs font-medium mt-3 rounded-full inline-block px-3 py-1" style={{ color, border: `1px solid ${color}55` }}>
+          {stat}
+        </p>
+      </div>
+      <p className="text-sm leading-relaxed max-w-[62ch]" style={{ color: 'var(--ink-dim)' }}>
+        {children}
+      </p>
+    </div>
+  )
+}
+
+function FunnelConnector() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: 1,
+        height: 20,
+        background: 'linear-gradient(var(--border-strong), transparent)',
+      }}
+    />
+  )
+}
+
+function MarketBand({
+  label,
+  width,
+  intensity,
+  headline,
+  source,
+  dashed,
+  children,
+}: {
+  label: string
+  width: string
+  intensity: number
+  headline: string
+  source: string | null
+  dashed?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className="rounded-2xl px-6 py-5 flex flex-col gap-2 text-center"
+      style={{
+        width,
+        maxWidth: '100%',
+        background: dashed ? 'transparent' : `rgba(79, 140, 255, ${intensity})`,
+        border: dashed ? '1px dashed var(--border-strong)' : '1px solid var(--border)',
+      }}
+    >
+      <p className="text-xs font-mono-label uppercase" style={{ color: 'var(--accent-light)' }}>
+        {label}
+      </p>
+      <p className="section-title text-xl" style={{ color: dashed ? 'var(--ink-dim)' : 'var(--ink)' }}>
+        {headline}
+      </p>
+      <p className="text-sm leading-relaxed mx-auto max-w-[60ch]" style={{ color: 'var(--ink-dim)' }}>
+        {children}
+      </p>
+      {source && (
+        <p className="text-xs mt-1" style={{ color: 'var(--ink-faint)' }}>
+          Fuente: {source}
+        </p>
+      )}
+    </div>
+  )
+}
+
+const NODE_COLOR_APP = 'var(--accent-light)'
+
+function EcosystemDiagram() {
+  const nodes = [
+    { x: 90, y: 40, label: 'Zyfit App', color: NODE_COLOR_APP },
+    { x: 90, y: 200, label: 'Performance', color: PERFORMANCE_COLOR },
+    { x: 350, y: 120, label: 'Academy', color: ACADEMY_COLOR },
+  ]
+  const center = { x: 220, y: 120 }
+  return (
+    <svg viewBox="0 0 440 240" className="w-full max-w-md" role="img" aria-label="Los tres productos conectados por un backend y un dato compartido">
+      {nodes.map((n) => (
+        <line key={n.label} x1={n.x} y1={n.y} x2={center.x} y2={center.y} stroke="var(--border-strong)" strokeWidth={1.5} />
+      ))}
+      <circle cx={center.x} cy={center.y} r={34} fill="var(--card)" stroke="var(--border-strong)" strokeWidth={1.5} />
+      <text x={center.x} y={center.y - 4} textAnchor="middle" fontSize={10} fill="var(--ink)" fontWeight={600}>
+        Backend
+      </text>
+      <text x={center.x} y={center.y + 10} textAnchor="middle" fontSize={10} fill="var(--ink-dim)">
+        dato compartido
+      </text>
+      {nodes.map((n) => (
+        <g key={n.label}>
+          <circle cx={n.x} cy={n.y} r={26} fill="var(--card)" stroke={n.color} strokeWidth={2} />
+          <text x={n.x} y={n.y + 4} textAnchor="middle" fontSize={10.5} fill="var(--ink)" fontWeight={600}>
+            {n.label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+const COMPETITORS: { product: string; color: string; competitor: string; strength: string; gap: string }[] = [
+  {
+    product: 'Zyfit App',
+    color: 'var(--accent-light)',
+    competitor: 'Fitbod',
+    strength: 'Progresión de fuerza adaptativa muy pulida.',
+    gap: 'Sin running ni lado B2B (Coach/club).',
+  },
+  {
+    product: 'Zyfit App',
+    color: 'var(--accent-light)',
+    competitor: 'Freeletics',
+    strength: 'Entrenamiento adaptativo de peso corporal.',
+    gap: 'Sin Portal de Coach ni conexión a un club.',
+  },
+  {
+    product: 'Zyfit App',
+    color: 'var(--accent-light)',
+    competitor: 'Trainerize',
+    strength: 'Coaches humanos entregan planes a escala.',
+    gap: 'No genera rutinas con IA de punta a punta.',
+  },
+  {
+    product: 'Performance',
+    color: PERFORMANCE_COLOR,
+    competitor: 'Kitman Labs',
+    strength: 'Inteligencia de rendimiento enterprise.',
+    gap: 'Contratos anuales a cotización; pensado para clubes con datos ya limpios.',
+  },
+  {
+    product: 'Performance',
+    color: PERFORMANCE_COLOR,
+    competitor: 'Catapult',
+    strength: 'GPS y sensores wearables en tiempo real.',
+    gap: 'No cubre tests, planificación ni psicología.',
+  },
+  {
+    product: 'Performance',
+    color: PERFORMANCE_COLOR,
+    competitor: 'TeamBuildr',
+    strength: 'Fuerza y acondicionamiento.',
+    gap: 'Sin módulo psicológico ni de lesiones integrado.',
+  },
+  {
+    product: 'Academy',
+    color: ACADEMY_COLOR,
+    competitor: 'Construyendo Fútbol / Soccer Leaders',
+    strength: 'Cursos de fútbol en español, dictados por entrenadores reconocidos.',
+    gap: 'Sin alineación a un programa de confederación ni motor de aprendizaje adaptativo.',
+  },
+  {
+    product: 'Academy',
+    color: ACADEMY_COLOR,
+    competitor: 'Coursera / Udemy',
+    strength: 'Catálogo genérico masivo.',
+    gap: 'Sin contenido deportivo especializado.',
+  },
+]
+
+const MOAT_PILLARS = [
+  {
+    term: 'Datos cruzados',
+    desc: 'Cuantas más sesiones, tests y cursos se acumulan en la misma base, mejor se ajusta el motor de IA para los tres productos a la vez — un competidor de una sola vertical no tiene ese cruce.',
+  },
+  {
+    term: 'Relación institucional',
+    desc: 'El contenido de Academy alineado al Programa CONMEBOL Evolución es una relación de distribución con una confederación, no solo contenido — difícil de replicar sin un acuerdo equivalente.',
+  },
+  {
+    term: 'Catálogo curado',
+    desc: 'El motor de rutinas corre sobre +240 ejercicios con evidencia científica y riesgo de lesión tageados a mano, no generados por IA sin curar — trabajo acumulado, no una feature copiable en un sprint.',
+  },
+  {
+    term: 'Costo de cambio',
+    desc: 'Una vez que un centro carga tests, lesiones y planificación histórica en Performance, migrar esos datos a otra plataforma tiene fricción real.',
+  },
+]
+
+const PENDING = [
+  {
+    title: 'Métricas y tracción',
+    desc: 'Usuarios activos, retención, conversión y uso por producto — se completa con datos reales antes de compartirse.',
+  },
+  {
+    title: 'Modelo financiero',
+    desc: 'Proyecciones de ingresos, estructura de costos, monto de la ronda y uso de fondos.',
+  },
+  {
+    title: 'Cap table',
+    desc: 'Estructura societaria real (accionistas y porcentajes).',
+  },
+]
 
 /**
  * Capa decorativa de fondo. `bg-canvas` es `position: fixed` + `pointer-events:
