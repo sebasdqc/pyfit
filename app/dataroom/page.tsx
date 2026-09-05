@@ -119,7 +119,9 @@ export default async function DataroomPage() {
               validados —incluye el cuestionario BRUMS de estado de ánimo—, seguimiento de lesiones, planificación
               de equipo asistida por IA y un módulo psicológico. Pensado para el cuerpo técnico y el departamento
               médico de un club. Hoy en conversaciones con la FVF (Federación Venezolana de Fútbol) — todavía sin
-              acuerdo cerrado.
+              acuerdo cerrado. También hay contacto abierto con proveedores de hardware para desarrollar una banda
+              inteligente propia, en la línea de Whoop y Coros — etapa de conversación, sin proveedor ni diseño
+              cerrado todavía.
             </ProductRow>
 
             <ProductRow
