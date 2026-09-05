@@ -44,7 +44,7 @@ export default async function DataroomPage() {
                 />
                 Acceso privado
               </span>
-              <h1 className="display text-5xl mt-3">Dataroom</h1>
+              <h1 className="display mt-3">Dataroom</h1>
               <p className="text-sm mt-2 max-w-[46ch]" style={{ color: 'var(--ink-dim)' }}>
                 Zyfit — ecosistema de entrenamiento inteligente. Documentación para inversores.
               </p>
@@ -59,8 +59,8 @@ export default async function DataroomPage() {
 
         <div className="max-w-3xl mx-auto px-6 flex flex-col gap-24 py-16">
           {/* ── Problema y solución ─────────────────────────── */}
-          <section id="problema" className="scroll-mt-20 flex flex-col gap-8">
-            <h2 className="section-title text-3xl">Problema y solución</h2>
+          <section id="problema" className="scroll-mt-28 flex flex-col gap-8">
+            <h2 className="section-title">Problema y solución</h2>
             <div className="grid sm:grid-cols-2 gap-8">
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-mono-label uppercase" style={{ color: 'var(--ink-faint)' }}>
@@ -91,8 +91,8 @@ export default async function DataroomPage() {
           </section>
 
           {/* ── Producto ─────────────────────────────────────── */}
-          <section id="producto" className="scroll-mt-20 flex flex-col gap-10">
-            <h2 className="section-title text-3xl">Producto</h2>
+          <section id="producto" className="scroll-mt-28 flex flex-col gap-10">
+            <h2 className="section-title">Producto</h2>
 
             <ProductRow
               name="Zyfit App"
@@ -154,9 +154,9 @@ export default async function DataroomPage() {
           </section>
 
           {/* ── Mercado ──────────────────────────────────────── */}
-          <section id="mercado" className="scroll-mt-20 flex flex-col gap-8">
+          <section id="mercado" className="scroll-mt-28 flex flex-col gap-8">
             <div>
-              <h2 className="section-title text-3xl">Mercado</h2>
+              <h2 className="section-title">Mercado</h2>
               <p className="text-sm mt-2 max-w-[65ch]" style={{ color: 'var(--ink-dim)' }}>
                 Zyfit cruza tres categorías que hoy se reportan por separado. Las cifras son de firmas de research
                 externas —referencia direccional del tamaño de la oportunidad, no proyección de ingresos propia.
@@ -206,8 +206,8 @@ export default async function DataroomPage() {
           </section>
 
           {/* ── Competencia ──────────────────────────────────── */}
-          <section id="competencia" className="scroll-mt-20 flex flex-col gap-6">
-            <h2 className="section-title text-3xl">Competencia</h2>
+          <section id="competencia" className="scroll-mt-28 flex flex-col gap-6">
+            <h2 className="section-title">Competencia</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse min-w-[560px]">
                 <thead>
@@ -241,7 +241,7 @@ export default async function DataroomPage() {
                       <td className="px-4 py-3 align-top" style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}>
                         {row.strength}
                       </td>
-                      <td className="px-4 py-3 align-top" style={{ color: 'var(--ink-dim)', borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3 align-top italic" style={{ color: 'var(--ink-faint)', borderBottom: '1px solid var(--border)' }}>
                         {row.gap}
                       </td>
                     </tr>
@@ -252,8 +252,8 @@ export default async function DataroomPage() {
           </section>
 
           {/* ── Diferenciador y MOAT ─────────────────────────── */}
-          <section id="moat" className="scroll-mt-20 flex flex-col gap-10">
-            <h2 className="section-title text-3xl">Diferenciador y MOAT</h2>
+          <section id="moat" className="scroll-mt-28 flex flex-col gap-10">
+            <h2 className="section-title">Diferenciador y MOAT</h2>
 
             <EcosystemDiagram />
 
@@ -285,7 +285,7 @@ export default async function DataroomPage() {
           </section>
 
           {/* ── Pendiente ────────────────────────────────────── */}
-          <section id="pendiente" className="scroll-mt-20 flex flex-col gap-4">
+          <section id="pendiente" className="scroll-mt-28 flex flex-col gap-4">
             <h2 className="text-sm font-mono-label uppercase" style={{ color: 'var(--ink-faint)' }}>
               Pendiente — sin cifras inventadas
             </h2>
@@ -331,10 +331,10 @@ function ProductRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid sm:grid-cols-[1.1fr_1.6fr_auto] gap-5 sm:gap-8 items-start">
+    <div className="glass rounded-2xl p-5 sm:p-6 grid sm:grid-cols-[1.1fr_1.6fr_auto] gap-5 sm:gap-8 items-center">
       <div>
         <p
-          className={`display text-3xl leading-none ${gradient ? 'gradient-text' : ''}`}
+          className={`display-sm leading-none ${gradient ? 'gradient-text' : ''}`}
           style={gradient ? undefined : { color }}
         >
           {name}
@@ -350,7 +350,7 @@ function ProductRow({
         className="glass-strong rounded-2xl px-5 py-4 flex flex-col gap-1 w-full sm:w-44 shrink-0"
         style={{ boxShadow: 'var(--shadow-lift)' }}
       >
-        <p className="display text-3xl leading-none" style={{ color }}>
+        <p className="display-sm leading-none" style={{ color }}>
           {statValue}
         </p>
         <p className="text-xs leading-snug" style={{ color: 'var(--ink-dim)' }}>
@@ -429,7 +429,7 @@ function MarketBand({
       <p className="text-xs font-mono-label uppercase" style={{ color: 'var(--accent-light)' }}>
         {label}
       </p>
-      <p className="section-title text-xl" style={{ color: dashed ? 'var(--ink-dim)' : 'var(--ink)' }}>
+      <p className="display-sm" style={{ color: dashed ? 'var(--ink-dim)' : 'var(--ink)' }}>
         {headline}
       </p>
       <p className="text-sm leading-relaxed mx-auto max-w-[60ch]" style={{ color: 'var(--ink-dim)' }}>

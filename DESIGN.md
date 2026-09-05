@@ -33,6 +33,12 @@ typography:
     fontSize: "clamp(2.1rem, 3.8vw, 3.1rem)"
     fontWeight: 700
     lineHeight: 1
+  display-sm:
+    fontFamily: "Big Shoulders Display, system-ui, sans-serif"
+    fontSize: "clamp(1.5rem, 3vw, 2rem)"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "-0.005em"
   body:
     fontFamily: "Public Sans, system-ui, -apple-system, sans-serif"
     fontSize: "1rem"
@@ -152,10 +158,24 @@ sobre una sans de trabajo neutra para el cuerpo — la parte de la identidad
 ### Hierarchy
 - **Display** (700, `clamp(2.8rem, 6.6vw, 5.2rem)`, line-height 0.98): titular del Hero.
 - **Section title** (700, `clamp(2.1rem, 3.8vw, 3.1rem)`, line-height 1): título de cada sección y número del contador de lista de espera (`.counter-value`, con `tabular-nums`).
+- **Display sm** (700, `clamp(1.5rem, 3vw, 2rem)`, line-height 1): Big Shoulders a tamaño de subtítulo/nombre de producto.
 - **Accent** (700 itálica + `gradient-text`): la palabra de énfasis dentro de un titular (`.font-accent.gradient-text`).
 - **Body** (400, 1rem, line-height 1.6): párrafos descriptivos.
 - **Label** (500, 0.75rem, uppercase, tracking 0.14em, JetBrains Mono): eyebrows, unidades de stats.
 - **Micro-label** (500, 9–11px, uppercase, tracking 0.14em, JetBrains Mono): datos de máxima densidad (mockup del teléfono, badge del Hero).
+
+**Named Rule — unlayered CSS le gana a Tailwind.** `.display`, `.section-title`,
+`.display-sm` y el resto de las clases custom de `globals.css` NO están
+dentro de un `@layer`, mientras que `@import "tailwindcss"` mete sus
+utilidades en `@layer utilities`. Por spec, CSS sin capa le gana a CSS con
+capa sin importar especificidad ni orden — así que combinar `.display` con
+una utilidad de tamaño (`text-3xl`, `text-5xl`, etc.) **no reduce el
+tamaño**, el texto sale al tamaño completo de `.display` igual. Ya causó un
+bug real en `/dataroom` (2026-09-05): los nombres de producto salían al
+tamaño de Hero en vez del tamaño chico esperado. Regla: nunca combinar una
+clase de esta rampa tipográfica con una utilidad de tamaño de Tailwind —
+usar el escalón correcto de la rampa (`display`/`section-title`/
+`display-sm`) solo, o un tamaño inline.
 
 ## Layout
 

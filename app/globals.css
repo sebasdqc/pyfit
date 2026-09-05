@@ -83,6 +83,25 @@ body {
   font-weight: 700;
 }
 
+/**
+ * Escalón más chico de la rampa `display`, para títulos que necesitan la
+ * tipografía Big Shoulders pero NO el tamaño de Hero.
+ *
+ * Por qué existe: `.display`/`.section-title` no están en un `@layer` (ver
+ * el gotcha ya documentado — CSS sin capa le gana a las utilidades de
+ * Tailwind v4 sin importar el orden). Combinar `.display` con una utilidad
+ * de tamaño de Tailwind (ej. `text-3xl`) NO reduce el tamaño: `.display`
+ * gana igual y el texto sale al tamaño de Hero completo. Usar esta clase
+ * en vez de esa combinación cuando se necesite Big Shoulders más chico.
+ */
+.display-sm {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1;
+  letter-spacing: -0.005em;
+  font-weight: 700;
+}
+
 /* Número del contador de lista de espera: escalón "section title" de la rampa
    tipográfica, con cifras de ancho fijo para que no salte al animar. */
 .counter-value {
