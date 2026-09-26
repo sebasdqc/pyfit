@@ -275,6 +275,8 @@ Los módulos anteriores diseñaron el plan: dónde empezar (MEV), hacia dónde i
 
 En resumen: la carga se ajusta leyendo señales reales —técnica, RPE relativo, recuperación entre sesiones y tendencia de HRV (Curso 1)— y no solo mirando el calendario. Estas señales le dan al marco MEV/MAV/MRV su carácter adaptativo: sin ellas, sería solo un plan estático; con ellas, se convierte en una gestión de carga que responde al atleta real.
 
+Para que la decisión sea repetible, el entrenador puede registrar esas señales en cada sesión con el mismo criterio: qué carga estaba prevista, cómo se ejecutó, qué RPE se reportó y cómo llegó el atleta desde la sesión anterior. No se trata de crear una puntuación mágica ni de diagnosticar con un único dato. Se trata de comparar la respuesta actual con la trayectoria que el propio atleta venía mostrando. Cuando varias señales se desvían a la vez, ajustar el plan es una decisión informada; cuando no lo hacen, mantener la progresión también puede estar justificado.
+
 ### Lección 2 — Reconociendo las señales en la práctica (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]

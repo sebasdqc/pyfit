@@ -48,7 +48,10 @@ class _Base(TestCase):
         Question.objects.create(
             quiz=quiz, orden=1, tipo='opcion_unica', enunciado='¿?',
             opciones=[{'id': 'a', 'texto': 'A'}, {'id': 'b', 'texto': 'B'}],
-            respuestas_correctas=['b'], puntos=1,
+            respuestas_correctas=['b'],
+            feedback_correcta='Correcto: B aplica el criterio evaluado.',
+            feedback_incorrecta='A no aplica el criterio evaluado; revisa la lección.',
+            puntos=1,
         )
         return course, quiz
 
@@ -217,12 +220,18 @@ class QuizSecurityTests(_Base):
         self.assertEqual(res.status_code, 200)
         pregunta = res.json()['preguntas'][0]
         self.assertNotIn('respuestas_correctas', pregunta)
+        self.assertNotIn('feedback_correcta', pregunta)
+        self.assertNotIn('feedback_incorrecta', pregunta)
 
     def test_autor_si_ve_clave(self):
         course, quiz = self._course_con_quiz()
         self.client.force_authenticate(self.instructor)
         res = self.client.get(f'/api/academy/lessons/{quiz.lesson_id}/quiz/')
         self.assertIn('respuestas_correctas', res.json()['preguntas'][0])
+        self.assertEqual(
+            res.json()['preguntas'][0]['feedback_incorrecta'],
+            'A no aplica el criterio evaluado; revisa la lección.',
+        )
 
     def test_curso_detail_no_filtra_clave_a_estudiante(self):
         course, quiz = self._course_con_quiz()
@@ -274,6 +283,10 @@ class LearningFlowTests(_Base):
         self.assertEqual(res.status_code, 201)
         self.assertFalse(res.json()['aprobado'])
         self.assertEqual(res.json()['puntaje'], 0)
+        self.assertEqual(
+            res.json()['detalle'][0]['feedback'],
+            'A no aplica el criterio evaluado; revisa la lección.',
+        )
 
         # Responder bien → aprueba, completa la lección del quiz → 100% + certificado.
         res = self.client.post(
@@ -281,6 +294,10 @@ class LearningFlowTests(_Base):
             {'respuestas': {str(quiz.preguntas.first().id): ['b']}}, format='json')
         self.assertTrue(res.json()['aprobado'])
         self.assertEqual(res.json()['puntaje'], 100)
+        self.assertEqual(
+            res.json()['detalle'][0]['feedback'],
+            'Correcto: B aplica el criterio evaluado.',
+        )
         self.assertEqual(res.json()['progreso'], 100)
         self.assertEqual(res.json()['estado'], 'completada')
 
@@ -310,6 +327,46 @@ class LearningFlowTests(_Base):
 
 
 # ─── Programa Evolución 360°: entregables, revisión e insignias ────────────────
+
+class InstructorAnalyticsTests(_Base):
+    def test_owner_receives_only_aggregated_course_analytics(self):
+        course, quiz = self._course_con_quiz()
+        lesson = quiz.lesson
+        question = quiz.preguntas.get()
+        enrollment = Enrollment.objects.create(student=self.student, course=course, progreso=50)
+        LessonProgress.objects.create(enrollment=enrollment, lesson=lesson)
+        QuizAttempt.objects.create(
+            enrollment=enrollment, quiz=quiz, puntaje=0, aprobado=False,
+            detalle=[{'question_id': question.id, 'correcta': False, 'puntos': 0}],
+        )
+
+        self.client.force_authenticate(self.instructor)
+        res = self.client.get(f'/api/academy/instructor/analytics/?course_id={course.id}')
+
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data['summary']['matriculas'], 1)
+        self.assertEqual(data['summary']['intentos_quiz'], 1)
+        self.assertEqual(data['difficult_questions'][0]['question_id'], question.id)
+        self.assertEqual(data['difficult_questions'][0]['tasa_acierto'], 0)
+        self.assertNotIn('student', str(data).lower())
+
+    def test_other_instructor_cannot_read_course_analytics(self):
+        course, _quiz = self._course_con_quiz()
+        self.client.force_authenticate(self.otro_instructor)
+
+        res = self.client.get(f'/api/academy/instructor/analytics/?course_id={course.id}')
+
+        self.assertEqual(res.status_code, 404)
+
+    def test_student_cannot_read_course_analytics(self):
+        course, _quiz = self._course_con_quiz()
+        self.client.force_authenticate(self.student)
+
+        res = self.client.get(f'/api/academy/instructor/analytics/?course_id={course.id}')
+
+        self.assertEqual(res.status_code, 403)
+
 
 class Evolucion360Tests(_Base):
     """Flujo del Programa 360°: el entregable lo aprueba el instructor (no es

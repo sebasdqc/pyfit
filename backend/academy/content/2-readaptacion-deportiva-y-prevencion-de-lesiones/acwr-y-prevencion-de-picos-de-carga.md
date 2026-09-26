@@ -26,6 +26,14 @@ La idea del ACWR se volvió popular muy rápido, y no es difícil entender por q
 
 Este primer módulo presenta el concepto tal como se popularizó. El módulo 2 es donde el curso examina si esa popularización estuvo bien fundamentada desde el punto de vista estadístico.
 
+La operación matemática tampoco convierte por sí sola el ratio en un diagnóstico. Si la carga reciente y la habitual son parecidas, el número se acerca a uno; si la reciente sube mucho respecto de la habitual, el número aumenta. Esa descripción ayuda a entender por qué el indicador parece razonable, pero no prueba que cada valor alto represente el mismo riesgo en dos atletas distintos. El significado de una semana intensa depende de qué trabajo hizo el atleta, de cómo venía tolerando su preparación y de los demás datos disponibles.
+
+También importa distinguir la función de una métrica. Un ratio puede servir como una forma resumida de abrir una pregunta sobre un cambio reciente de carga, sin que por eso sea un instrumento capaz de predecir lesiones con un umbral universal. Confundir esas dos funciones fue parte del problema de comunicación alrededor de la zona óptima. El uso responsable del número empieza por decir qué resume y termina antes de afirmar que una cifra, aislada, conoce el futuro de un atleta.
+
+Por eso, cuando un panel colorea un valor de rojo, el color debe leerse como una invitación a revisar el contexto y no como una orden automática. El preparador puede preguntarse si hubo un cambio real de volumen, si ese cambio era esperado dentro del plan, si la carga se calculó de manera consistente y qué otras señales acompañan al dato. El curso no pide ignorar esa pantalla; pide reemplazar la reacción automática por una lectura más completa y proporcional.
+
+Esta diferencia es especialmente importante cuando el atleta viene de una semana con un objetivo excepcional, como un retorno progresivo, una concentración o una secuencia de partidos. Un aumento registrado puede estar previsto y ser coherente con el plan, pero aun así merece documentarse y contrastarse con la respuesta individual. El ratio no aporta por sí mismo esa explicación: solo resume dos ventanas de carga elegidas de antemano.
+
 ### Lección 2 — Cómo se calcula el ACWR (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — explicación visual del cálculo del ACWR a partir de datos de sRPE o GPS]
@@ -80,6 +88,12 @@ La crítica metodológica en sí es sólida y viene de investigadores especializ
 
 No toda la comunidad científica pide descartar el ACWR por completo. Algunos autores, incluido el propio Gabbett, sostienen que, aunque el ratio específico tenga problemas estadísticos, el principio general de monitorear cambios bruscos de carga sigue teniendo valor práctico como parte de un panel más amplio de indicadores, no como predictor aislado y preciso. Esta distinción es importante para no caer en el extremo opuesto de descartar cualquier monitoreo de carga como inútil.
 
+La lección metodológica es más amplia que el ACWR. Una figura repetida muchas veces puede adquirir apariencia de certeza aunque haya nacido como una ilustración, y un resultado que aparece al agrupar datos puede desaparecer al analizarlos de otra manera. Ninguna de esas observaciones invalida la necesidad de cuidar la carga de entrenamiento. Sí obliga a revisar si la herramienta concreta responde realmente la pregunta que se le está haciendo y si su aparente precisión viene de los datos o de una forma conveniente de dibujarlos.
+
+En la práctica, esa cautela protege tanto al atleta como al profesional. Si un cuerpo técnico cree que un valor por encima de un umbral es una predicción exacta, puede reducir carga sin una razón proporcional o comunicar un riesgo que la evidencia no permite asegurar. Si, en cambio, se reconoce la incertidumbre, el número puede conservarse como un dato descriptivo dentro de una conversación más amplia. La corrección no es reemplazar certeza excesiva por ausencia de criterio; es ajustar la confianza al respaldo real.
+
+El siguiente paso del curso es convertir esa crítica en una alternativa útil. Cuestionar un ratio no resuelve por sí mismo cómo organizar un panel ni cómo comunicar una decisión. Para eso se necesitan tendencias, otros indicadores y un razonamiento que pueda explicarse al atleta y al cuerpo técnico sin esconder las limitaciones de cada medida.
+
 ### Lección 2 — El problema matemático de un ratio con denominador bajo (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — explicación del problema matemático del ratio cuando la carga crónica es baja]
@@ -132,6 +146,16 @@ La conclusión razonable de todo este debate no es que monitorear la carga no si
 
 Este es un consejo de criterio profesional razonable dado el estado del debate, con un nivel de evidencia medio, no una recomendación con el mismo nivel de respaldo empírico directo que otras partes del catálogo de esta Academia. La diferencia entre dejar de monitorear la carga y dejar de confiar ciegamente en un ratio específico es exactamente el aprendizaje central de este módulo, y de todo el curso.
 
+Un panel útil no busca fabricar una respuesta automática con muchos números. Busca mostrar si varias señales apuntan en una misma dirección o si cuentan historias distintas. La tendencia de carga describe qué cambió en el trabajo reciente; el HRV aporta una señal relacionada con la respuesta fisiológica; el wellness aporta el reporte del atleta sobre cómo se siente. Ninguno de esos elementos decide por sí solo, pero su combinación puede justificar una conversación, una revisión de la sesión prevista o la decisión de observar antes de intervenir.
+
+El orden de la conversación importa. Primero se puede describir el cambio sin asignarle una etiqueta de peligro: la carga reciente subió, bajó o se mantuvo respecto de la trayectoria habitual. Después se contrasta con la respuesta del atleta y con síntomas o molestias que no conviene ignorar. Solo entonces se decide si el plan requiere ajuste. Este flujo evita dos errores frecuentes: tratar un valor alto como una emergencia sin evidencia adicional, o descartar una preocupación real solo porque el ratio elegido sea discutible.
+
+La decisión final también debe ser proporcional. Si la carga aumentó pero el atleta se siente bien, muestra indicadores estables y el cambio era parte de un bloque planificado, la respuesta puede ser seguir observando y documentando. Si un aumento coincide con señales de recuperación pobre, molestias o deterioro sostenido en otras medidas, existe una razón más sólida para revisar la carga. El curso no transforma esa combinación en una regla de predicción; la presenta como un criterio de seguimiento más defendible que una alarma aislada.
+
+Comunicar esta lógica al cuerpo técnico protege la calidad de las decisiones. En lugar de decir “el ACWR está en rojo”, el profesional puede decir qué cambió, qué se observó en los demás indicadores y qué incertidumbres siguen abiertas. Esa forma de reportar mantiene el foco en la persona y el plan de entrenamiento, no en la apariencia de precisión de un solo indicador.
+
+Registrar esa explicación crea además una base para aprender del propio contexto. Con el paso de varias semanas, el equipo puede revisar qué cambios de carga fueron tolerados, qué señales aparecieron antes de tener que ajustar y qué decisiones funcionaron. Ese aprendizaje no convierte al ACWR en un predictor validado, pero sí transforma el monitoreo en un proceso acumulativo y revisable, en lugar de una sucesión de alarmas que se obedecen o se ignoran.
+
 ### Lección 2 — Un panel que combina tendencia, HRV y wellness (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — ejemplo de panel de monitoreo combinando tendencia de carga, HRV y wellness subjetivo]
@@ -171,6 +195,18 @@ Un jugador de fútbol muestra un ACWR de 1.6, fuera de la zona óptima 0.8-1.3, 
 La respuesta debe integrar todo lo visto en el curso. El profesional que entiende el origen del ACWR, visto en el módulo 1, la seriedad de su cuestionamiento científico, visto en el módulo 2, y el criterio práctico razonable dado ese debate, visto en el módulo 3, puede sostener una conversación informada con el cuerpo técnico en vez de simplemente obedecer la cifra o simplemente ignorarla.
 
 La respuesta más consistente con todo lo visto en el curso es explicar que el umbral específico del ACWR tiene problemas estadísticos serios y documentados, y que la decisión debe considerar el panorama completo: la tendencia de carga, el HRV, el wellness subjetivo, y la ausencia de síntomas físicos, no un solo número con un umbral cuestionado. Reducir la carga automáticamente solo porque el ACWR superó 1.6, sin considerar ningún otro dato, sería exactamente el error que este curso busca prevenir.
+
+Eso no equivale a declarar que el valor de 1.6 no importa. Puede indicar que la semana merece una conversación porque hubo una diferencia entre el trabajo reciente y el historial usado como referencia. La respuesta profesional empieza por verificar cómo se construyó ese dato y si la subida refleja una carga real, esperada y registrada de manera comparable. Después se revisan las señales que el caso ya ofrece: el atleta comunica buen wellness, presenta buen HRV y no reporta molestias. Con esa información, el número por sí solo no justifica una intervención automática.
+
+Una comunicación sólida con el cuerpo técnico podría tener tres partes. Primero, reconocer el cambio de carga sin negarlo. Segundo, aclarar que el límite 0.8-1.3 no está validado como semáforo individual de lesión y que el ratio tiene limitaciones documentadas. Tercero, proponer una acción concreta y proporcionada: continuar el seguimiento de la tendencia y de la respuesta del jugador, y reevaluar si aparecen síntomas, cambios sostenidos en otros indicadores o información nueva de la carga. Esta respuesta muestra criterio sin prometer certeza que los datos no contienen.
+
+El caso también obliga a pensar en las consecuencias de cada alternativa. Bajar carga sin más podría modificar la preparación previa al partido sin que exista una evidencia suficiente de que esa reducción evita una lesión. Ignorar cualquier cambio, en cambio, desperdiciaría una oportunidad de revisar el contexto. El punto medio no es indecisión: es una decisión explícita de mantener el plan bajo observación porque, con la información disponible, el conjunto de indicadores no apoya una reacción drástica basada en un solo ratio.
+
+Al cerrar el capstone, el estudiante debería poder explicar esa conclusión sin usar el ACWR como enemigo ni como oráculo. El número puede formar parte del reporte, pero debe ocupar el lugar que su evidencia permite: una señal descriptiva y discutible dentro de un proceso de monitoreo, no una sentencia sobre el riesgo futuro del jugador.
+
+La recomendación queda condicionada a la información disponible en el caso. Si aparecieran dolor, una recuperación claramente deteriorada o una tendencia desfavorable que no estaba presente, la conversación y el plan podrían cambiar. El criterio no es mantener siempre la carga ni reducirla siempre; es evitar que un límite estadísticamente cuestionado tome la decisión antes de que el profesional haya interpretado al atleta completo.
+
+De esa forma, la próxima revisión parte de hechos observados y no de una etiqueta automática del panel.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

@@ -26,6 +26,12 @@ El tercer pilar es la progresión, es decir, el principio de sobrecarga progresi
 
 Aunque los tres pilares tienen buen respaldo, no todos tienen el mismo nivel de certeza. La sobrecarga progresiva es el más consolidado de los tres, la adaptabilidad le sigue de cerca, y la consistencia, aunque fisiológicamente sólida, cuenta con investigación específica más limitada sobre su magnitud exacta de aporte. Este módulo trata los tres pilares por separado a propósito: el módulo siguiente explica por qué combinarlos en una sola puntuación con pesos específicos es una decisión distinta de la evidencia individual de cada uno.
 
+Los pilares además responden preguntas diferentes. La consistencia pregunta si el atleta logra sostener el proceso; la adaptabilidad pregunta si el plan responde a la variación real de su estado; la progresión pregunta si existe un estímulo que sigue promoviendo adaptación. Mejorar una de esas dimensiones no garantiza que las otras estén resueltas. Un atleta puede progresar durante unas semanas y, al mismo tiempo, acumular ausencias que vuelven frágil el proceso. Otro puede ser muy consistente, pero mantener una carga que ya no se adapta ni progresa.
+
+La utilidad de separarlos aparece antes de calcular cualquier puntuación. Un entrenador puede observar que el atleta cumplió sus sesiones, ajustó correctamente una jornada de fatiga y mantuvo una progresión adecuada, sin necesidad de afirmar que esos elementos pesan igual o se suman de una manera demostrada por la ciencia. Esta separación evita atribuir a un número compuesto una certeza mayor que la que tienen sus componentes.
+
+También evita convertir la progresión en una obligación de subir carga en cada sesión. La sobrecarga progresiva es un principio de cambio gradual a lo largo del tiempo, no una instrucción para ignorar recuperación, técnica o contexto. De la misma manera, la adaptabilidad no equivale a cambiar el plan por cada fluctuación cotidiana, y la consistencia no equivale a cumplir a cualquier costo. El valor de los tres pilares está en equilibrar esas preguntas, antes de traducirlas a una herramienta de producto.
+
 ### Lección 2 — Tres pilares, tres ejemplos numéricos (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — explicación visual de los tres pilares por separado con un ejemplo numérico de cada uno]
@@ -82,6 +88,14 @@ Aquí no aplica una etiqueta de nivel de evidencia a la ponderación en sí, por
 
 Esto no significa que la ponderación sea arbitraria o esté mal pensada. Tiene una lógica de producto razonable, priorizar lo más controlable por el atleta. La distinción correcta no es razonable frente a arbitrario, es diseño razonado frente a hallazgo científico validado. Ambas categorías son legítimas, pero no deben presentarse como si fueran la misma cosa. Ser transparente sobre esto fortalece la credibilidad de Zyfit en vez de debilitarla: un profesional que entiende la diferencia confía más en la marca que uno al que se le vendió la ponderación como ciencia validada y luego lo descubre por su cuenta.
 
+Una decisión de diseño cumple otra función además de resumir evidencia: define qué comportamiento quiere hacer visible la herramienta. Dar mayor peso a la consistencia comunica que el sistema valora construir una práctica sostenible, no solo registrar picos de rendimiento. Esa prioridad puede discutirse y revisarse con el tiempo, precisamente porque no se presenta como una ley descubierta en un experimento. La posibilidad de revisión es una fortaleza del diseño honesto, no un defecto que deba ocultarse.
+
+Para conservar esa transparencia, cualquier cambio futuro de pesos debería explicarse como una actualización del producto y no como una supuesta corrección científica salvo que exista una validación específica. Del mismo modo, el usuario debe poder ver los pilares que componen el resultado, no solo el total. Así puede entender qué comportamiento está impulsando su score y cuestionar una lectura que no encaje con su experiencia. Una fórmula clara permite usar el indicador como apoyo para conversar, no como una caja negra que dicta conclusiones.
+
+El criterio de calidad no es que 40/35/25 parezca inevitable. Es que el producto no esconda el salto entre evidencia de cada pilar y decisión sobre cómo combinarlos. El módulo siguiente muestra por qué esa visibilidad es esencial cuando el score cambia y alguien necesita decidir qué hacer.
+
+Una presentación clara puede incluir una breve explicación de la finalidad de cada peso y de las condiciones que determinan cada pilar. De ese modo, el usuario no interpreta un cambio de score como una calificación moral ni como una medición clínica. Lo interpreta como el resultado de reglas visibles que pueden orientar una revisión del proceso y que permanecen abiertas a evaluación responsable del producto.
+
 ### Lección 2 — Así se construyó la fórmula (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — explicación transparente de cómo se combinan los tres pilares en la fórmula]
@@ -134,6 +148,18 @@ El valor práctico del Zyfit Score está en descomponerlo por pilar para decidir
 
 Este es un marco de decisión razonable basado en la lógica de cada pilar individual, con un nivel de evidencia medio: no es un protocolo validado como conjunto único, sino una forma sensata de traducir una caída de puntuación en una pregunta concreta antes de actuar. Reaccionar solo al número compuesto sin descomponerlo es cometer el mismo error que ya se señala en el curso de ACWR de esta Academia: tratar un solo número como si dijera más de lo que realmente dice, sin mirar el detalle que hay detrás.
 
+Una lectura práctica puede comenzar con una pregunta sencilla: ¿qué componente cambió y qué comportamiento o dato explica ese cambio? Si la consistencia baja porque hubo sesiones omitidas, el siguiente paso puede ser entender la barrera concreta, como horario, recuperación o expectativas del plan. Si la adaptabilidad baja, el entrenador puede revisar si se están registrando y usando señales relevantes antes de ajustar. Si la progresión baja, la conversación puede ir a la trayectoria de carga y no a una conclusión general de que el atleta “va mal”.
+
+Los tres casos pueden requerir respuestas muy distintas aunque el número total descienda igual. Un atleta con menor consistencia quizá necesita simplificar el programa para volver a sostenerlo; otro con progreso detenido quizá necesita revisar si el estímulo sigue siendo adecuado. Son ejemplos ilustrativos de la lógica del score, no reglas clínicas ni recetas automáticas. La herramienta señala dónde investigar; la decisión sigue requiriendo contexto, diálogo y juicio profesional.
+
+También importa buscar patrones antes de hacer una modificación grande. Un cambio aislado de una semana puede describir una circunstancia puntual, mientras que varias semanas con el mismo pilar en descenso justifican revisar si el programa está produciendo el efecto deseado. Esta cautela es coherente con el resto de la Academia: una métrica compuesta puede resumir información valiosa, pero no reemplaza la trayectoria ni la explicación que hay detrás de ella.
+
+Usado así, el Zyfit Score no pretende diagnosticar al atleta ni ordenar una intervención. Funciona como una interfaz para hacer mejores preguntas: qué parte del proceso se debilitó, qué evidencia o registro permite entenderlo y cuál es el ajuste más pequeño y verificable que conviene probar. Esa es una promesa más limitada que la de un oráculo, pero también más útil y defendible.
+
+Después de probar un ajuste, el atleta y el entrenador pueden revisar el pilar relevante en vez de perseguir una mejora inmediata del total. Si se simplificó un plan para recuperar consistencia, la pregunta es si se volvió sostenible; si se modificó la prescripción para mejorar adaptabilidad, la pregunta es si las sesiones reflejan mejor el estado real. Esta forma de seguimiento convierte la puntuación en parte de un ciclo de aprendizaje, no en un objetivo que se intenta subir a cualquier precio.
+
+También previene intervenciones contradictorias. Forzar más progresión para elevar un total cuando el problema era recuperación o adherencia podría empeorar exactamente el componente que necesitaba atención. Al conservar el desglose visible, el sistema invita a actuar sobre la causa más plausible y a comprobar después si el cambio produjo el efecto esperado.
+
 ### Lección 2 — Misma caída de score, tres causas distintas (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — tres casos con la misma caída de score total por pilares diferentes]
@@ -173,6 +199,18 @@ Un cliente con formación técnica, un fisioterapeuta, pregunta directamente si 
 La respuesta debe integrar todo lo visto en el curso, sin sobrevender el score como ciencia pura ni subvenderlo como algo arbitrario y sin lógica. Cada pilar, consistencia, adaptabilidad y progresión, tiene respaldo de evidencia individual verificable, con distintos niveles de certeza como se vio en el módulo 1. La ponderación específica que los combina, en cambio, es una decisión de diseño de producto razonada, no un hallazgo experimental, como se explicó en el módulo 2. Y el valor práctico de la puntuación está en descomponerla por pilar para decidir qué ajustar, no en tratarla como un oráculo infalible, como se vio en el módulo 3.
 
 La respuesta más honesta y a la vez más sólida ante la pregunta del fisioterapeuta es explicar exactamente esa distinción: qué parte del score es evidencia verificable y qué parte es diseño razonado, sin mezclar ambas categorías como si fueran lo mismo. Esa transparencia, sostenida sin rodeos, es lo que hace del Zyfit Score una herramienta creíble frente a un profesional exigente. Ocultar la distinción sería más frágil a largo plazo que declararla abiertamente.
+
+Ante una pregunta técnica, conviene responder con el mismo nivel de precisión que exige el cliente. Se puede mostrar qué respaldos corresponden a la autorregulación y a la sobrecarga progresiva, y reconocer que la evidencia de consistencia tiene un alcance distinto. Luego se explica que esos componentes fueron combinados para crear una herramienta legible y orientada al comportamiento, no para afirmar que el producto descubrió una fórmula científica cerrada. Esta respuesta no reduce el valor de la plataforma; delimita con honestidad qué valor ofrece.
+
+El fisioterapeuta también puede preguntar cómo usar el resultado en una decisión concreta. La respuesta coherente es que debe abrir el desglose, revisar el pilar que cambió y contrastarlo con el registro de entrenamiento y el contexto del atleta. Si el score señala una caída de progresión, no se deduce una lesión ni se prescribe una carga automática. Si señala una caída de consistencia, tampoco se puede asumir falta de motivación sin conocer el contexto. El indicador organiza una conversación y facilita seguimiento; no sustituye una evaluación profesional.
+
+La transparencia debe mantenerse incluso cuando un usuario no está de acuerdo con su puntuación. Puede haber razones legítimas para revisar cómo se registró una sesión o cómo se interpretó un comportamiento. Poder discutir el componente y la regla aplicada es preferible a pedir que se acepte un total inexplicable. Un producto que permite ese examen conserva mejor la confianza que uno que pide fe en su algoritmo.
+
+La conclusión del caso es sencilla: la credibilidad no nace de llamar “científico” a todo lo que aparece en pantalla. Nace de poder separar fuentes, inferencias y decisiones de diseño, y de usar cada una con el alcance que realmente tiene. Ese es el estándar que el Zyfit Score debe mantener al presentarse ante profesionales exigentes.
+
+Una buena respuesta también deja claro qué no puede afirmar la herramienta. No certifica que un atleta esté preparado para competir, no reemplaza la evaluación de un fisioterapeuta ni identifica por sí sola la causa de una mala semana. Su aportación es ordenar información de entrenamiento en dimensiones transparentes para que el profesional pueda revisarlas con más criterio. Mantener esos límites visibles protege la utilidad del score y evita que una explicación comercial invada un terreno que requiere evaluación individual.
+
+Si el cliente acepta esa delimitación, la conversación puede volver a lo útil: qué pilar quiere observar, qué registros respaldan su lectura y cómo se comprobará que un ajuste fue adecuado. Esta forma de usar el producto no pide confianza ciega; ofrece un método trazable para ganarla.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

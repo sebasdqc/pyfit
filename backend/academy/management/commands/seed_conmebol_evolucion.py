@@ -33,6 +33,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from academy.models import Course, Module, Lesson, Quiz, Question
+from academy.quiz_feedback import build_default_question_feedback
 
 User = get_user_model()
 
@@ -821,9 +822,15 @@ class Command(BaseCommand):
             puntaje_aprobacion=qdata.get('puntaje_aprobacion', 70),
         )
         for q_idx, q in enumerate(qdata['preguntas'], start=1):
+            feedback_correcta, feedback_incorrecta = build_default_question_feedback(
+                opciones=q['opciones'],
+                respuestas_correctas=q['correctas'],
+                contexto_titulo=lesson.module.titulo,
+            )
             Question.objects.create(
                 quiz=quiz, orden=q_idx, tipo=q['tipo'], enunciado=q['enunciado'],
                 opciones=q['opciones'], respuestas_correctas=q['correctas'],
+                feedback_correcta=feedback_correcta, feedback_incorrecta=feedback_incorrecta,
                 puntos=q.get('puntos', 1),
             )
 

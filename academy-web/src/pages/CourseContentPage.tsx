@@ -4,15 +4,14 @@
 // en lección de video. Consume GET /courses/:id/ (el autor ve el árbol
 // completo) + los endpoints de autoría anidados de módulos/lecciones.
 //
-// Fuera de alcance a propósito (queda para una iteración aparte): el editor
-// de quiz/preguntas — el backend ya lo soporta (`lessons/<id>/quiz/`,
-// `quizzes/<id>/questions/`) pero el banco de preguntas con clave oculta es
-// una pieza de UI bastante más grande que módulos/lecciones.
+// El banco de preguntas conserva la clave y el feedback pedagógico en autoría;
+// el estudiante recibe únicamente el resultado que corresponda tras responder.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  createLesson, createModule, deleteLesson, deleteModule, getCourse, updateLesson, updateModule,
+  createLesson, createModule, createQuizQuestion, deleteLesson, deleteModule, deleteQuizQuestion,
+  getCourse, updateLesson, updateModule, updateQuizQuestion, upsertLessonQuiz,
 } from '@/api/academy'
 import { Badge } from '@/components/ui/Badge'
 import { Dialog } from '@/components/ui/Dialog'
@@ -21,7 +20,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Icon, type IconName } from '@/components/Icon'
 import { useAuth } from '@/auth/useAuth'
 import { toEmbedUrl } from '@/lib/videoEmbed'
-import type { CourseDetail, Lesson, LessonTipo, Module } from '@/types'
+import type { CourseDetail, Lesson, LessonTipo, Module, QuestionTipo, Quiz, QuizQuestion } from '@/types'
 
 const TYPE_LABEL: Record<LessonTipo, string> = {
   video: 'Video',
@@ -62,6 +61,10 @@ interface VideoEditing {
   mode: VideoEditMode
 }
 
+interface QuizEditing {
+  lesson: Lesson
+}
+
 export function CourseContentPage() {
   const { courseId } = useParams()
   const { user } = useAuth()
@@ -74,6 +77,7 @@ export function CourseContentPage() {
   const [savedMsg, setSavedMsg] = useState('')
 
   const [videoEditing, setVideoEditing] = useState<VideoEditing | null>(null)
+  const [quizEditing, setQuizEditing] = useState<QuizEditing | null>(null)
   const [showCreateModule, setShowCreateModule] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [creatingLessonIn, setCreatingLessonIn] = useState<Module | null>(null)
@@ -253,6 +257,10 @@ export function CourseContentPage() {
                     setSavedMsg('')
                     setVideoEditing({ moduleId: m.id, lesson: l, mode })
                   }}
+                  onEditQuiz={() => {
+                    setSavedMsg('')
+                    setQuizEditing({ lesson: l })
+                  }}
                 />
               ))}
               {m.lecciones.length === 0 && (
@@ -335,6 +343,16 @@ export function CourseContentPage() {
           }}
         />
       )}
+      {quizEditing && (
+        <QuizEditorDialog
+          lesson={quizEditing.lesson}
+          onClose={() => {
+            setQuizEditing(null)
+            void reload()
+          }}
+          onSaved={setSavedMsg}
+        />
+      )}
     </div>
   )
 }
@@ -387,7 +405,7 @@ function IconButton({ icon, label, onClick }: { icon: IconName; label: string; o
 // ── Fila de lección ────────────────────────────────────────────────────────────
 
 function LessonRow({
-  lesson, busy, canUp, canDown, onMoveUp, onMoveDown, onEditInfo, onEditVideo,
+  lesson, busy, canUp, canDown, onMoveUp, onMoveDown, onEditInfo, onEditVideo, onEditQuiz,
 }: {
   lesson: Lesson
   busy: boolean
@@ -397,6 +415,7 @@ function LessonRow({
   onMoveDown: () => void
   onEditInfo: () => void
   onEditVideo: (mode: VideoEditMode) => void
+  onEditQuiz: () => void
 }) {
   const videoEditable = lesson.tipo === 'video' || lesson.tipo === 'en_vivo' || lesson.tipo === 'texto'
   const mode: VideoEditMode = lesson.tipo === 'video' ? 'video' : lesson.tipo === 'en_vivo' ? 'en_vivo' : 'convertir'
@@ -413,6 +432,15 @@ function LessonRow({
         (lesson.video_url ? <Badge tone="ok">Enlace listo</Badge> : <Badge tone="warn">Sin enlace</Badge>)}
 
       <IconButton icon="edit" label={`Editar "${lesson.titulo}"`} onClick={onEditInfo} />
+
+      {lesson.tipo === 'quiz' && (
+        <button
+          onClick={onEditQuiz}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-surface-border px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+        >
+          <Icon name="quiz" size={14} /> Editar preguntas
+        </button>
+      )}
 
       {videoEditable && (
         <button
@@ -437,6 +465,477 @@ function LessonRow({
         </button>
       )}
     </div>
+  )
+}
+
+// ── Banco de preguntas y feedback pedagógico ──────────────────────────────────
+
+const QUESTION_TYPE_LABEL: Record<QuestionTipo, string> = {
+  opcion_unica: 'Una respuesta',
+  opcion_multiple: 'Varias respuestas',
+  verdadero_falso: 'Verdadero o falso',
+}
+
+type EditingQuestion = QuizQuestion | 'new' | null
+
+function nextOptionId(options: { id: string }[]): string {
+  const used = new Set(options.map((option) => option.id))
+  for (let code = 97; code <= 122; code += 1) {
+    const candidate = String.fromCharCode(code)
+    if (!used.has(candidate)) return candidate
+  }
+  return `opcion-${options.length + 1}`
+}
+
+function newQuestion(orden: number): QuizQuestion {
+  return {
+    id: 0,
+    quiz: 0,
+    orden,
+    enunciado: '',
+    video_url: '',
+    tipo: 'opcion_unica',
+    opciones: [
+      { id: 'a', texto: '' },
+      { id: 'b', texto: '' },
+    ],
+    respuestas_correctas: [],
+    feedback_correcta: '',
+    feedback_incorrecta: '',
+    puntos: 1,
+  }
+}
+
+function QuizEditorDialog({
+  lesson, onClose, onSaved,
+}: {
+  lesson: Lesson
+  onClose: () => void
+  onSaved: (msg: string) => void
+}) {
+  const [quiz, setQuiz] = useState<Quiz | null>(lesson.quiz)
+  const [titulo, setTitulo] = useState(lesson.quiz?.titulo ?? lesson.titulo)
+  const [puntajeAprobacion, setPuntajeAprobacion] = useState(lesson.quiz?.puntaje_aprobacion ?? 70)
+  const [questions, setQuestions] = useState<QuizQuestion[]>(lesson.quiz?.preguntas ?? [])
+  const [editingQuestion, setEditingQuestion] = useState<EditingQuestion>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [savingQuiz, setSavingQuiz] = useState(false)
+  const [savingQuestion, setSavingQuestion] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const sortedQuestions = [...questions].sort((a, b) => a.orden - b.orden)
+
+  async function saveQuiz(e: FormEvent) {
+    e.preventDefault()
+    if (!titulo.trim()) {
+      setError('El título de la evaluación es obligatorio.')
+      return
+    }
+    if (!Number.isInteger(puntajeAprobacion) || puntajeAprobacion < 0 || puntajeAprobacion > 100) {
+      setError('El puntaje mínimo debe estar entre 0 y 100.')
+      return
+    }
+    setSavingQuiz(true)
+    setError(null)
+    try {
+      const saved = await upsertLessonQuiz(lesson.id, {
+        titulo: titulo.trim(),
+        puntaje_aprobacion: puntajeAprobacion,
+      })
+      setQuiz(saved)
+      onSaved(quiz ? 'Configuración de la evaluación actualizada.' : 'Evaluación creada. Ahora puedes agregar preguntas.')
+    } catch {
+      setError('No se pudo guardar la evaluación. Revisa los datos e inténtalo de nuevo.')
+    } finally {
+      setSavingQuiz(false)
+    }
+  }
+
+  async function saveQuestion(question: QuizQuestion) {
+    if (!quiz) return
+    setSavingQuestion(true)
+    setError(null)
+    const payload = {
+      orden: question.orden,
+      enunciado: question.enunciado.trim(),
+      video_url: question.video_url.trim(),
+      tipo: question.tipo,
+      opciones: question.opciones.map((option) => ({ id: option.id, texto: option.texto.trim() })),
+      respuestas_correctas: question.respuestas_correctas ?? [],
+      feedback_correcta: question.feedback_correcta?.trim() ?? '',
+      feedback_incorrecta: question.feedback_incorrecta?.trim() ?? '',
+      puntos: question.puntos,
+    }
+    try {
+      const saved = question.id
+        ? await updateQuizQuestion(quiz.id, question.id, payload)
+        : await createQuizQuestion(quiz.id, payload)
+      setQuestions((current) =>
+        question.id
+          ? current.map((item) => (item.id === saved.id ? saved : item))
+          : [...current, saved],
+      )
+      setEditingQuestion(null)
+      onSaved(question.id ? 'Pregunta actualizada.' : 'Pregunta agregada.')
+    } catch {
+      setError('No se pudo guardar la pregunta. Verifica que las opciones y respuestas sean válidas.')
+    } finally {
+      setSavingQuestion(false)
+    }
+  }
+
+  async function deleteQuestion(questionId: number) {
+    if (!quiz) return
+    setError(null)
+    try {
+      await deleteQuizQuestion(quiz.id, questionId)
+      setQuestions((current) => current.filter((question) => question.id !== questionId))
+      setDeletingId(null)
+      onSaved('Pregunta eliminada.')
+    } catch {
+      setError('No se pudo eliminar la pregunta. Inténtalo de nuevo.')
+    }
+  }
+
+  return (
+    <Dialog
+      onClose={onClose}
+      labelledBy="quiz-editor-title"
+      className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-cardHover"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="za-eyebrow">Evaluación</p>
+          <h2 id="quiz-editor-title" className="mt-1 text-lg font-semibold text-ink">Banco de preguntas</h2>
+          <p className="mt-1 text-sm text-ink-soft">{lesson.titulo}</p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 text-ink-muted hover:text-ink" aria-label="Cerrar">
+          <Icon name="close" size={20} />
+        </button>
+      </div>
+
+      <form onSubmit={saveQuiz} className="mt-6 grid gap-4 rounded-xl border border-surface-border bg-surface-soft p-4 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Título</span>
+          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} className="input" required />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Mínimo para aprobar</span>
+          <div className="relative">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={puntajeAprobacion}
+              onChange={(e) => setPuntajeAprobacion(Number(e.target.value))}
+              className="input pr-8"
+            />
+            <span className="pointer-events-none absolute right-3 top-3 text-sm text-ink-muted">%</span>
+          </div>
+        </label>
+        <button
+          type="submit"
+          disabled={savingQuiz}
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-60"
+        >
+          {savingQuiz ? 'Guardando…' : quiz ? 'Guardar' : 'Crear evaluación'}
+        </button>
+      </form>
+
+      {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
+
+      {!quiz ? (
+        <div className="mt-6 rounded-xl border border-dashed border-surface-border p-6 text-center">
+          <Icon name="quiz" size={24} className="mx-auto text-ink-muted" />
+          <p className="mt-3 text-sm font-medium text-ink">Primero crea la evaluación</p>
+          <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-ink-muted">
+            Define el título y el puntaje mínimo; después podrás agregar preguntas y su feedback pedagógico.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-ink">Preguntas</h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                {questions.length === 0
+                  ? 'Aún no hay preguntas.'
+                  : `${questions.length} pregunta${questions.length === 1 ? '' : 's'} · cada una debe orientar tras responder.`}
+              </p>
+            </div>
+            {!editingQuestion && (
+              <button
+                type="button"
+                onClick={() => setEditingQuestion('new')}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
+              >
+                <Icon name="plus" size={16} /> Agregar pregunta
+              </button>
+            )}
+          </div>
+
+          {editingQuestion && (
+            <QuestionForm
+              key={editingQuestion === 'new' ? 'new' : editingQuestion.id}
+              question={editingQuestion === 'new' ? newQuestion(nextOrden(questions)) : editingQuestion}
+              saving={savingQuestion}
+              onCancel={() => setEditingQuestion(null)}
+              onSave={saveQuestion}
+            />
+          )}
+
+          <div className="mt-4 flex flex-col gap-3">
+            {sortedQuestions.map((question, index) => (
+              <article key={question.id} className="rounded-xl border border-surface-border bg-surface p-4">
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-white">
+                    {index + 1}
+                  </span>
+                  <p className="min-w-0 flex-1 text-sm font-medium text-ink">{question.enunciado}</p>
+                  <Badge tone="neutral">{QUESTION_TYPE_LABEL[question.tipo]}</Badge>
+                  <Badge tone="accent">{question.puntos} pt{question.puntos === 1 ? '' : 's'}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 pl-10">
+                  <Badge tone={question.feedback_correcta ? 'ok' : 'warn'}>
+                    {question.feedback_correcta ? 'Feedback correcto listo' : 'Falta feedback correcto'}
+                  </Badge>
+                  <Badge tone={question.feedback_incorrecta ? 'ok' : 'warn'}>
+                    {question.feedback_incorrecta ? 'Feedback incorrecto listo' : 'Falta feedback incorrecto'}
+                  </Badge>
+                </div>
+                {deletingId === question.id ? (
+                  <div className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3">
+                    <p className="text-sm text-ink">¿Eliminar esta pregunta? Esta acción no se puede deshacer.</p>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <button type="button" onClick={() => deleteQuestion(question.id)} className="h-9 rounded-lg bg-danger px-3 text-sm font-semibold text-white hover:opacity-90">
+                        Sí, eliminar
+                      </button>
+                      <button type="button" onClick={() => setDeletingId(null)} className="h-9 rounded-lg px-3 text-sm text-ink-soft hover:bg-surface-soft">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingQuestion(question)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink"
+                    >
+                      <Icon name="edit" size={14} /> Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingId(question.id)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-danger hover:bg-danger/5"
+                    >
+                      <Icon name="trash" size={14} /> Eliminar
+                    </button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+    </Dialog>
+  )
+}
+
+function QuestionForm({
+  question, saving, onCancel, onSave,
+}: {
+  question: QuizQuestion
+  saving: boolean
+  onCancel: () => void
+  onSave: (question: QuizQuestion) => Promise<void>
+}) {
+  const [enunciado, setEnunciado] = useState(question.enunciado)
+  const [tipo, setTipo] = useState<QuestionTipo>(question.tipo)
+  const [opciones, setOpciones] = useState(question.opciones)
+  const [correctas, setCorrectas] = useState<string[]>(question.respuestas_correctas ?? [])
+  const [videoUrl, setVideoUrl] = useState(question.video_url)
+  const [feedbackCorrecta, setFeedbackCorrecta] = useState(question.feedback_correcta ?? '')
+  const [feedbackIncorrecta, setFeedbackIncorrecta] = useState(question.feedback_incorrecta ?? '')
+  const [puntos, setPuntos] = useState(question.puntos)
+  const [error, setError] = useState<string | null>(null)
+  const multiple = tipo === 'opcion_multiple'
+
+  function changeOption(id: string, texto: string) {
+    setOpciones((current) => current.map((option) => (option.id === id ? { ...option, texto } : option)))
+  }
+
+  function removeOption(id: string) {
+    setOpciones((current) => current.filter((option) => option.id !== id))
+    setCorrectas((current) => current.filter((correcta) => correcta !== id))
+  }
+
+  function toggleCorrect(id: string) {
+    setCorrectas((current) => {
+      if (!multiple) return [id]
+      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    })
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const validOptions = opciones.filter((option) => option.texto.trim())
+    const validOptionIds = new Set(validOptions.map((option) => option.id))
+    const validCorrectas = correctas.filter((id) => validOptionIds.has(id))
+    if (!enunciado.trim()) {
+      setError('Escribe el enunciado de la pregunta.')
+      return
+    }
+    if (validOptions.length < 2) {
+      setError('Agrega al menos dos opciones con texto.')
+      return
+    }
+    if (validCorrectas.length === 0) {
+      setError('Marca al menos una respuesta correcta.')
+      return
+    }
+    if (!multiple && validCorrectas.length !== 1) {
+      setError('Este tipo de pregunta admite una sola respuesta correcta.')
+      return
+    }
+    if (!Number.isInteger(puntos) || puntos < 1) {
+      setError('Los puntos deben ser un número entero igual o mayor que 1.')
+      return
+    }
+    setError(null)
+    await onSave({
+      ...question,
+      enunciado,
+      tipo,
+      video_url: videoUrl,
+      opciones: validOptions,
+      respuestas_correctas: validCorrectas,
+      feedback_correcta: feedbackCorrecta,
+      feedback_incorrecta: feedbackIncorrecta,
+      puntos,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-5 rounded-xl border border-accent/30 bg-accent/5 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold text-ink">{question.id ? 'Editar pregunta' : 'Nueva pregunta'}</h4>
+        <button type="button" onClick={onCancel} className="text-ink-muted hover:text-ink" aria-label="Cerrar editor de pregunta">
+          <Icon name="close" size={18} />
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_7rem]">
+        <label className="block sm:col-span-3">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Enunciado</span>
+          <textarea value={enunciado} onChange={(e) => setEnunciado(e.target.value)} rows={3} className="input resize-y" />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Tipo</span>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as QuestionTipo)} className="input">
+            {(Object.keys(QUESTION_TYPE_LABEL) as QuestionTipo[]).map((value) => (
+              <option key={value} value={value}>{QUESTION_TYPE_LABEL[value]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Puntos</span>
+          <input type="number" min={1} value={puntos} onChange={(e) => setPuntos(Number(e.target.value))} className="input" />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">Clip (opcional)</span>
+          <input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            className="input"
+            inputMode="url"
+            placeholder="https://…"
+          />
+        </label>
+      </div>
+
+      <fieldset className="mt-5">
+        <legend className="text-xs font-medium uppercase tracking-wide text-ink-muted">Opciones y clave</legend>
+        <p className="mt-1 text-xs text-ink-muted">
+          {multiple ? 'Marca todas las respuestas correctas.' : 'Marca la única respuesta correcta.'}
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          {opciones.map((option) => {
+            const selected = correctas.includes(option.id)
+            return (
+              <div key={option.id} className="flex items-center gap-2">
+                <input
+                  type={multiple ? 'checkbox' : 'radio'}
+                  name={`correct-${question.id || 'new'}`}
+                  checked={selected}
+                  onChange={() => toggleCorrect(option.id)}
+                  className="h-4 w-4 shrink-0 accent-accent"
+                  aria-label={`Marcar “${option.texto || 'esta opción'}” como correcta`}
+                />
+                <input
+                  value={option.texto}
+                  onChange={(e) => changeOption(option.id, e.target.value)}
+                  className="input h-10 flex-1"
+                  placeholder={`Opción ${option.id.toUpperCase()}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeOption(option.id)}
+                  disabled={opciones.length <= 2}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-danger/5 hover:text-danger disabled:opacity-30"
+                  aria-label={`Eliminar opción ${option.id.toUpperCase()}`}
+                >
+                  <Icon name="trash" size={15} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpciones((current) => [...current, { id: nextOptionId(current), texto: '' }])}
+          className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-accent hover:bg-accent/10"
+        >
+          <Icon name="plus" size={15} /> Agregar opción
+        </button>
+      </fieldset>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ok">Feedback si acierta</span>
+          <textarea
+            value={feedbackCorrecta}
+            onChange={(e) => setFeedbackCorrecta(e.target.value)}
+            rows={4}
+            className="input resize-y"
+            placeholder="Explica qué criterio aplicó correctamente y por qué importa."
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-danger">Feedback si falla</span>
+          <textarea
+            value={feedbackIncorrecta}
+            onChange={(e) => setFeedbackIncorrecta(e.target.value)}
+            rows={4}
+            className="input resize-y"
+            placeholder="Aclara el error de razonamiento y a qué parte de la lección volver."
+          />
+        </label>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        El estudiante ve sólo el feedback que corresponda después de enviar su respuesta; nunca antes de responder.
+      </p>
+
+      {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
+      <div className="mt-5 flex flex-wrap justify-end gap-3">
+        <button type="button" onClick={onCancel} className="h-10 rounded-xl px-4 text-sm font-medium text-ink-soft hover:bg-surface-soft">
+          Cancelar
+        </button>
+        <button type="submit" disabled={saving} className="h-10 rounded-xl bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-60">
+          {saving ? 'Guardando…' : 'Guardar pregunta'}
+        </button>
+      </div>
+    </form>
   )
 }
 

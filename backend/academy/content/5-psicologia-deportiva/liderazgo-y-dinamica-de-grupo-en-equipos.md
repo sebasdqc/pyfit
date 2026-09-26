@@ -24,6 +24,16 @@ La inversión del club en cenas y viajes de integración tuvo poco impacto en el
 
 En entornos donde la retención de talento a largo plazo es la prioridad, como equipos juveniles o ligas amateur, la cohesión social sí puede tener un rol más central que en el alto rendimiento puro. El objetivo del equipo determina cuál tipo de cohesión priorizar, no hay una receta única para cualquier contexto.
 
+Traducido a una intervención, la cohesión de tarea no se construye solo con mensajes inspiradores. Se expresa cuando los miembros comprenden qué se espera de cada rol, cómo se conecta su aporte con el objetivo común y qué comportamientos se revisarán después. Una actividad de equipo puede contribuir al rendimiento si obliga a coordinar decisiones, aclarar responsabilidades o resolver un problema que se parezca a la competencia. Una actividad agradable sin conexión con la tarea puede seguir teniendo valor social, pero no debe venderse como la principal palanca de rendimiento.
+
+El equipo necesita además distinguir cercanía de acuerdo. Es posible que los jugadores se lleven bien y, sin embargo, no compartan prioridades durante los momentos decisivos. También es posible que existan desacuerdos personales y que la tarea siga funcionando si los roles, normas y objetivos son claros. Esta distinción permite diagnosticar con más precisión antes de asignar presupuesto o tiempo a una intervención de cohesión.
+
+El seguimiento puede centrarse en conductas observables: calidad de comunicación sobre la tarea, claridad de responsabilidades, respuesta después de un error y grado de coordinación en situaciones clave. Estos indicadores no convierten la cohesión en una cifra perfecta, pero evitan evaluar la intervención solo por si el ambiente parece más agradable. El objetivo es saber si la relación entre los miembros facilita el trabajo deportivo que el equipo necesita realizar.
+
+La conclusión del módulo no desprecia lo social. Propone usar cada recurso para el propósito que mejor puede cumplir: bienestar y pertenencia cuando corresponde, y objetivos compartidos y roles claros cuando el problema es rendimiento colectivo.
+
+Un club puede combinar ambas dimensiones si las presenta con honestidad. Una actividad social puede apoyar pertenencia y retención; una reunión de tarea puede mejorar coordinación y compromiso. El error no es hacer las dos, sino medir el éxito de una con el objetivo de la otra. Esa claridad permite que los jugadores entiendan por qué se invierte tiempo en cada iniciativa y qué cambio se espera observar después.
+
 ### Lección 2 — Team-building orientado a tarea frente a solo social (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — actividad de team-building orientada a tarea vs. orientada solo a lo social]
@@ -71,6 +81,20 @@ Un hallazgo relevante es que la participación previa en deportes de equipo pued
 
 Igual que en el módulo anterior, la solución no es más cohesión social sino una intervención específica sobre la estructura del trabajo en equipo, en este caso la identificabilidad, reforzando el patrón de que las intervenciones efectivas son específicas, no genéricas.
 
+La identificabilidad no exige convertir cada sesión en vigilancia punitiva. Significa que el miembro del equipo puede reconocer qué parte del trabajo le corresponde y que esa contribución puede revisarse con criterios claros. En un relevo, por ejemplo, el aporte individual es visible en una fase específica; en un deporte de equipo, puede hacerse visible mediante responsabilidades tácticas, comunicación acordada o revisión de acciones que dependían de un jugador. El principio no es culpar: es reducir la ambigüedad que permite que el esfuerzo se diluya dentro del grupo.
+
+La intervención también debe distinguir pereza social de un problema de coordinación. Un grupo puede rendir menos que la suma de sus partes porque sus miembros no sincronizan bien las acciones, aunque todos estén esforzándose. Si se asume que todo descenso es falta de motivación, la solución puede ser injusta e ineficaz. El curso presenta la identificabilidad como respuesta cuando el patrón es compatible con reducción de esfuerzo individual, no como una explicación automática de cualquier mal rendimiento colectivo.
+
+El entrenador puede acordar expectativas concretas y revisar después qué ocurrió, preguntando qué permitió o impidió que cada responsabilidad se cumpliera. Ese ciclo conecta visibilidad con aprendizaje en vez de usarla solo para sancionar. Cuando el jugador entiende cómo su contribución afecta al grupo y recibe feedback sobre ella, la tarea común deja de ser un espacio donde nadie sabe con precisión qué se esperaba de él.
+
+Esta perspectiva complementa la cohesión de tarea del módulo anterior. Un objetivo compartido orienta al equipo; la identificabilidad hace visible cómo cada persona participa en alcanzarlo. Ninguna de las dos herramientas se reemplaza con una petición genérica de “esforzarse más”.
+
+El resultado debe revisarse con cuidado. Si un jugador no cumple una responsabilidad visible, el equipo todavía debe averiguar si el problema fue falta de claridad, una coordinación fallida, una limitación técnica o una reducción real del esfuerzo. La identificabilidad mejora la calidad de esa conversación porque aporta información concreta; no autoriza a convertir una observación incompleta en un juicio sobre la intención de una persona.
+
+Esta cautela mantiene la responsabilidad individual conectada con aprendizaje, contexto y respeto dentro del equipo.
+
+Es una práctica sostenible.
+
 ### Lección 2 — El experimento clásico de la cuerda (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — demostración del experimento clásico de tracción de cuerda]
@@ -110,6 +134,16 @@ El Modelo Multidimensional de Liderazgo de Chelladurai es el marco más usado en
 La evidencia aquí es media, y esto es importante: la gran mayoría de estos estudios son correlacionales, miden liderazgo y resultados al mismo tiempo, por lo que no permiten afirmar con certeza que el liderazgo transformacional cause mejor cohesión o rendimiento, solo que ambos aparecen asociados. El curso insiste en que la evidencia sobre liderazgo transformacional es media y no alta precisamente porque la mayoría de los estudios son correlacionales, y una asociación consistente no equivale a prueba de causalidad. Esta distinción entre correlación y causalidad es un principio metodológico central, aplicable no solo aquí sino como criterio general al leer cualquier estudio de liderazgo o clima de equipo.
 
 En contextos de alta presión y decisiones rápidas, deportes de contacto o situaciones de seguridad, un estilo más directivo o autocrático puede ser más efectivo que uno puramente transformacional. El propio modelo de Chelladurai predice exactamente esto: que la situación modera qué estilo funciona mejor, no que exista un estilo ganador de forma universal.
+
+Esta lectura cambia la pregunta de liderazgo. En vez de preguntar si un entrenador es “bueno” por ser transformacional o directivo, el equipo puede preguntar qué conducta necesita la situación, qué características tienen los atletas y qué tipo de comunicación permite ejecutar con claridad. Un momento de emergencia puede requerir una instrucción breve y directa; un proceso de desarrollo a largo plazo puede beneficiarse de más consideración individualizada y participación. El modelo no elimina la responsabilidad del líder, pero evita evaluarla con una etiqueta única.
+
+La cautela causal sigue siendo esencial. Que el liderazgo transformacional aparezca asociado con satisfacción, compromiso y cohesión no demuestra que adoptar ciertas frases produzca automáticamente esos resultados. Puede haber otras condiciones del equipo que influyan en ambas cosas. Por eso, una intervención de liderazgo debe definirse, observarse y revisarse en su propio contexto, sin prometer una mejora garantizada del rendimiento por imitar un estilo de moda.
+
+Un entrenador puede combinar estilos sin contradicción si explica el propósito de cada conducta. Dar dirección en una situación de seguridad no impide escuchar al atleta en otro momento; pedir una ejecución concreta no excluye ofrecer feedback individualizado después. La coherencia no significa usar siempre el mismo tono, sino que los cambios de estilo respondan a la tarea y sean comprensibles para quienes reciben el liderazgo.
+
+El módulo invita a sustituir el consejo genérico por una decisión situacional y trazable. Esa decisión será más útil si el equipo puede describir qué contexto enfrentaba, qué conducta eligió el líder y qué respuesta observó, en lugar de atribuir cualquier resultado a una personalidad fija.
+
+Ese registro permite aprender de los contrastes. Un mismo entrenador puede descubrir que una instrucción directa funcionó en una emergencia táctica, mientras que una conversación individual fue más útil para reconstruir compromiso después de un error. La lección no prescribe alternar estilos por intuición; propone relacionar la conducta del líder con la situación y revisar qué respuesta produjo antes de convertirla en una regla para el futuro.
 
 ### Lección 2 — Directivo vs. transformacional en la misma situación táctica (tipo: video)
 
@@ -155,6 +189,16 @@ Un equipo de balonmano tiene buen ambiente social pero bajo rendimiento colectiv
 El diagnóstico debe integrar los tres módulos. Primero, si el problema de cohesión es de tarea o social: dado que ya existe buen ambiente social pero bajo rendimiento colectivo, el patrón es compatible con buena cohesión social pero débil cohesión de tarea, según el módulo 1. Segundo, si hay un patrón de pereza social en los momentos decisivos: jugadores que desaparecen específicamente en momentos clave es compatible con pereza social bajo baja identificabilidad individual, según el módulo 2. Tercero, si un ajuste del estilo de liderazgo según el Modelo Multidimensional tiene sentido para este grupo específico, sin asumir causalidad no probada, según el módulo 3.
 
 El diagnóstico más consistente con la evidencia de los tres módulos es que el equipo probablemente tiene buena cohesión social pero débil cohesión de tarea, y el patrón de desaparecer en momentos decisivos es compatible con pereza social bajo baja identificabilidad individual. Un ajuste de liderazgo según el contexto del equipo puede ayudar, sin garantía causal, dado que la evidencia de liderazgo transformacional es asociativa, no causal certera. Decir que el problema es solo falta de cohesión social, o que el entrenador debe volverse completamente transformacional de inmediato y eso resolverá todo, ignora la naturaleza correlacional de esa evidencia.
+
+El primer paso práctico sería convertir el diagnóstico en hipótesis comprobables. El equipo puede aclarar qué objetivos de tarea no están siendo compartidos, qué responsabilidades se vuelven difusas en los momentos decisivos y qué aportes individuales dejan de ser visibles. Después puede diseñar una intervención breve, como una revisión de roles para esa situación específica y un modo de registrar si cada responsabilidad se ejecutó. Esto ataca la posible pereza social sin asumir que los jugadores carecen de compromiso por una falla aislada.
+
+El liderazgo se ajusta con la misma lógica. Si el grupo joven interpreta un estilo directivo como distante, el entrenador puede crear espacios de feedback y explicación sin abandonar la claridad que requieren los momentos rápidos de juego. Ese cambio no se presenta como una cura causal del rendimiento: se presenta como una respuesta razonada al contexto, coherente con el Modelo Multidimensional. La respuesta de los atletas y la calidad de la ejecución posterior indicarán si conviene sostenerlo o revisarlo.
+
+La intervención debe evitar confundir buena convivencia con solución completa. Una cena adicional puede mejorar el ambiente, pero no sustituye un acuerdo operativo sobre cómo defender una fase decisiva o quién comunica qué. Del mismo modo, hacer visibles las responsabilidades no debe convertirse en exponer públicamente a un jugador sin apoyo. El objetivo es mejorar coordinación, compromiso y aprendizaje dentro de la tarea común.
+
+Al finalizar el caso, el estudiante debe poder explicar tanto lo que los datos sugieren como lo que todavía no prueban. Cohesión de tarea e identificabilidad ofrecen objetivos de intervención concretos; el liderazgo ofrece un marco para adaptar la comunicación; ninguna de estas piezas garantiza por sí sola que el resultado del próximo partido cambie. Esa distinción mantiene la propuesta útil y fiel al nivel de evidencia disponible.
+
+El plan también necesita una revisión temporal clara. Después de aplicar las medidas, el equipo puede comparar si los roles se entienden mejor, si las contribuciones se vuelven visibles y si la comunicación del entrenador encaja con la situación identificada. Si no aparece el cambio esperado, se revisan las hipótesis iniciales antes de añadir más actividades sociales o adoptar una etiqueta de liderazgo distinta. Así se conserva un proceso de mejora, no una intervención basada en promesas.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

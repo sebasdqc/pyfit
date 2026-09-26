@@ -20,6 +20,8 @@ Formato del .md (ver los archivos en academy/content/):
         Enunciado…
         - [a] Opción incorrecta
         - [b] Opción correcta ✓
+        > Feedback correcta: Explicación que se muestra tras acertar.
+        > Feedback incorrecta: Explicación que se muestra tras fallar.
     ## Fuentes de evidencia de este curso    ← se ignora (no es módulo)
 
 Uso:
@@ -39,6 +41,7 @@ from academy.models import (
     LESSON_TEXTO, LESSON_VIDEO, LESSON_AUDIO, LESSON_QUIZ,
     Q_OPCION_UNICA, Q_OPCION_MULTIPLE, Q_VERDADERO_FALSO,
 )
+from academy.quiz_feedback import build_default_question_feedback
 
 CONTENT_DIR = Path(__file__).resolve().parents[2] / 'content'
 
@@ -69,6 +72,9 @@ RE_PREGUNTA = re.compile(
 )
 RE_OPCION = re.compile(r'^\s*-\s*\[([^\]]+)\]\s*(.+?)\s*$')
 RE_MEDIA_URL = re.compile(r'^(video_url|audio_url)\s*:\s*(.*)$', re.IGNORECASE)
+RE_FEEDBACK = re.compile(
+    r'^\s*>\s*Feedback\s+(correcta|incorrecta)\s*:\s*(.+?)\s*$', re.IGNORECASE
+)
 
 
 def _clean_media_url(raw):
@@ -177,6 +183,8 @@ def parse_course_markdown(text):
                 'enunciado': '',
                 'opciones': [],
                 'respuestas_correctas': [],
+                'feedback_correcta': '',
+                'feedback_incorrecta': '',
             }
             cur_les['preguntas'].append(cur_q)
             continue
@@ -192,6 +200,10 @@ def parse_course_markdown(text):
                 cur_q['opciones'].append({'id': opt_id, 'texto': texto})
                 if correcta:
                     cur_q['respuestas_correctas'].append(opt_id)
+                continue
+            mf = RE_FEEDBACK.match(line)
+            if mf:
+                cur_q[f'feedback_{mf.group(1).lower()}'] = mf.group(2).strip()
                 continue
             # Línea de enunciado (antes de la primera opción).
             if not cur_q['opciones'] and line.strip():
@@ -317,7 +329,7 @@ class Command(BaseCommand):
         )
         parsed_q_ordenes = set()
         for q_data in les_data['preguntas']:
-            Question.objects.update_or_create(
+            question, _ = Question.objects.update_or_create(
                 quiz=quiz, orden=q_data['orden'],
                 defaults={
                     'enunciado': q_data['enunciado'],
@@ -327,6 +339,28 @@ class Command(BaseCommand):
                     'puntos': q_data['puntos'],
                 },
             )
+            # El texto explícito del Markdown es fuente de verdad. Si no existe,
+            # solo se rellena una vez el feedback de recuperación para no pisar
+            # una mejora escrita por un instructor en la interfaz.
+            default_correcta, default_incorrecta = build_default_question_feedback(
+                opciones=q_data['opciones'],
+                respuestas_correctas=q_data['respuestas_correctas'],
+                contexto_titulo=lesson.module.titulo,
+            )
+            cambios = []
+            for campo, default in (
+                ('feedback_correcta', default_correcta),
+                ('feedback_incorrecta', default_incorrecta),
+            ):
+                valor_fuente = q_data[campo]
+                if valor_fuente and getattr(question, campo) != valor_fuente:
+                    setattr(question, campo, valor_fuente)
+                    cambios.append(campo)
+                elif not getattr(question, campo):
+                    setattr(question, campo, default)
+                    cambios.append(campo)
+            if cambios:
+                question.save(update_fields=cambios)
             parsed_q_ordenes.add(q_data['orden'])
 
         quiz.preguntas.exclude(orden__in=parsed_q_ordenes).delete()

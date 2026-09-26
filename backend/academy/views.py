@@ -59,12 +59,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from pyfit.throttles import LoginRateThrottle, SimuladorComputeRateThrottle
 from pyfit.text_validators import validate_human_name, contains_unsafe_chars
-from . import access_service, badges_service, dashboard_service, grading, mastery_service, streak_service
+from . import (
+    access_service, badges_service, dashboard_service, grading, instructor_analytics_service,
+    mastery_service, streak_service,
+)
 from .models import (
     Course, Module, Lesson, Quiz, Question,
     Enrollment, LessonProgress, QuizAttempt, Certificate, Submission, Tenant, School,
 )
-from .permissions import IsAcademyUser, can_edit_course, is_author, tenant_mismatch
+from .permissions import IsAcademyUser, IsInstructorOrAdmin, can_edit_course, is_author, tenant_mismatch
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, ModuleSerializer, LessonSerializer,
     QuizSerializer, QuestionSerializer, EnrollmentSerializer, EnrollmentDetailSerializer,
@@ -735,6 +738,24 @@ def course_enrollments(request, pk):
     qs = course.enrollments.select_related('student').all()
     context = {'locale': getattr(request, 'locale', 'es')}
     return Response(EnrollmentSerializer(qs, many=True, context=context).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsInstructorOrAdmin])
+def instructor_analytics(request):
+    """Panel académico agregado del curso elegido por su autor/admin.
+
+    Requiere ``course_id`` en lugar de aceptar un resumen global ambiguo: cada
+    consulta queda protegida por el mismo control de autoría y tenant que la
+    edición de contenido.
+    """
+    raw_course_id = request.query_params.get('course_id', '').strip()
+    try:
+        course_id = int(raw_course_id)
+    except (TypeError, ValueError):
+        return Response({'detail': 'course_id debe ser un entero válido.'}, status=status.HTTP_400_BAD_REQUEST)
+    course = _course_for_edit(request.user, course_id, getattr(request, 'tenant', None))
+    return Response(instructor_analytics_service.build_course_analytics(course))
 
 
 # ─── Aprendizaje (matrículas del estudiante) ──────────────────────────────────

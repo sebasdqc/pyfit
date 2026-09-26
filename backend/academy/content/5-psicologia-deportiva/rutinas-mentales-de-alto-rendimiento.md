@@ -26,6 +26,14 @@ Llamar superstición a una rutina pre-competitiva bien diseñada es un error de 
 
 En habilidades de ritmo externo, como recibir un saque o defender un remate, no hay evidencia sólida de que una rutina extensa funcione igual. Ahí, herramientas como el foco atencional rápido, que se ve en el módulo 3, tienen más soporte que una rutina larga y fija.
 
+La diferencia entre una rutina funcional y una superstición no está en que la acción parezca extraña desde fuera. Está en que la primera tiene una secuencia identificable, se relaciona con la demanda de la tarea y puede practicarse de forma consistente. Los tres botes, la respiración y el foco visual del tirador no garantizan el enceste; crean una transición repetible entre el contexto de presión y la ejecución del gesto. Esa transición es especialmente valiosa cuando el atleta controla el inicio de la acción.
+
+El diseño debe ser breve y apropiado para el momento. Una rutina demasiado larga puede no caber en las reglas o el ritmo de una competencia; una demasiado vaga no da al atleta una señal concreta a la que volver cuando se distrae. El preparador puede ayudar a identificar qué componentes ya usa el deportista, qué parte regula activación y atención, y si la secuencia se sostiene cuando aumenta la presión. Construir sobre una rutina existente suele ser más defendible que sustituirla por un ritual ajeno solo porque funcionó en otro deporte.
+
+La práctica también debe ocurrir en situaciones que se parezcan progresivamente a la competencia. Repetir la secuencia solo en un entorno tranquilo no demuestra que vaya a ayudar durante un lanzamiento decisivo. Al introducir distracciones, fatiga o consecuencias simuladas, el atleta puede comprobar si la rutina conserva su función de volver a la tarea. El objetivo no es eliminar toda emoción antes de competir; es contar con un procedimiento concreto cuando la emoción aparece.
+
+La evidencia del módulo se limita a tareas autopaced y no permite extender automáticamente una rutina larga a cualquier instante de juego. Reconocer ese límite evita que una herramienta respaldada se convierta en una recomendación universal. Para una tarea de ritmo externo, el atleta necesita recursos más rápidos y adaptables, porque no controla cuándo empieza la acción ni dispone del mismo tiempo para recorrer una secuencia.
+
 ### Lección 2 — Anatomía de una rutina pre-tiro libre (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — estructura de rutina pre-tiro libre con sus componentes]
@@ -72,6 +80,18 @@ La instrucción genérica de visualizar el éxito ha sido criticada por ser dema
 Hay alta certeza en que la imaginería estructurada y multisensorial de este modelo activa sustratos neuronales más equivalentes a la ejecución real que la visualización genérica solamente visual. Hay evidencia media en qué perspectiva específica, interna o externa, es superior, porque la evidencia reciente sugiere que ambas pueden funcionar y que alternar entre ellas puede ser lo más efectivo para atletas experimentados.
 
 Lo que hace que un protocolo de visualización tenga más respaldo de evidencia que la instrucción genérica de imaginar el éxito es que reproduzca con fidelidad los elementos físicos, de entorno, de tiempo real y emocionales de la ejecución real, no solo una imagen visual del resultado final. Igual que la rutina pre-competitiva funciona porque tiene estructura y componentes específicos, no es solo pensar positivo, la visualización efectiva depende de reproducir fielmente la tarea real, no de una imagen vaga de éxito.
+
+Cada elemento del modelo obliga a pasar de una afirmación abstracta a una situación practicable. El componente físico recuerda que la posición corporal y las sensaciones asociadas a la acción importan; el entorno sitúa la escena en el espacio donde se ejecutará; la tarea lleva la atención al gesto y no solo al marcador. El tiempo evita imaginar una versión irrealmente lenta o rápida, mientras que aprendizaje reconoce que la imagen debe corresponder al nivel actual del atleta, no a una técnica que todavía no domina.
+
+La emoción tampoco se agrega para dramatizar el ejercicio. Si la competencia relevante incluye presión, ruido o incertidumbre, una imaginería que solo representa una ejecución tranquila deja fuera una parte importante de la demanda. Reproducir esa emoción de manera manejable permite que el atleta practique volver a las señales de la tarea. Es un ejemplo de aplicación del modelo, no una garantía de que imaginar una situación difícil sustituya la práctica técnica o la experiencia competitiva real.
+
+La perspectiva merece la misma cautela. La evidencia presentada no establece que mirar la acción desde dentro sea siempre superior a verla desde fuera. Por eso un atleta experimentado puede alternar perspectivas y observar cuál representa mejor la habilidad que quiere trabajar. La decisión se apoya en la fidelidad de la representación y en la respuesta del atleta, no en una regla estética sobre cómo “debería” visualizar.
+
+Un protocolo útil termina con una forma de comprobarlo: el atleta describe qué elementos pudo reproducir, practica el gesto real y revisa si la imagen se mantiene conectada con la ejecución. Si la visualización se reduce a un resultado deseado sin tarea, entorno, tiempo ni emoción concreta, el entrenador no debe asumir que está usando el enfoque PETTLEP solo porque cerró los ojos antes de entrenar.
+
+La progresión puede empezar con un escenario controlado y añadir gradualmente los elementos que hacen la situación más parecida a competir. El atleta no necesita imaginar una película perfecta; necesita ensayar una representación funcional de la acción que después pueda reconocer al ejecutar. Si un elemento resulta artificial o no se conecta con la tarea real, se revisa el guion en vez de asumir que más repetición resolverá la falta de especificidad.
+
+La calidad importa más que la mera frecuencia de repetición.
 
 ### Lección 2 — Un guion de visualización para un penalti de fútbol (tipo: video)
 
@@ -120,6 +140,16 @@ Hay alta certeza en el efecto general de esta técnica en tareas de precisión, 
 
 Decir concéntrate como instrucción genérica no es lo mismo que entrenar un patrón específico de fijación visual medible. Lo que tienen en común las rutinas pre-competitivas, la visualización PETTLEP y el entrenamiento de quiet eye como técnicas con buen respaldo de evidencia es que las tres son técnicas estructuradas y específicas, no instrucciones genéricas vagas, y su efectividad depende de esa especificidad. Este es el hilo conductor de todo el curso: la especificidad y estructura, no la vaguedad motivacional, es lo que distingue a las herramientas de psicología deportiva con evidencia real.
 
+Entrenar quiet eye no significa pedir que el atleta mire un punto durante más tiempo en cualquier circunstancia. El punto crítico, el momento de fijación y la relación con la acción deben definirse para la tarea de precisión concreta. En un lanzamiento, la mirada puede organizar la información relevante antes de ejecutar; en otra habilidad la misma instrucción podría no trasladarse de la misma manera. La técnica funciona como un patrón entrenable, no como una frase motivacional que se añade al final de una sesión.
+
+La medición práctica puede ser sencilla sin fingir una precisión que el equipo no tiene. El atleta y el entrenador pueden identificar si la mirada llega al punto acordado antes de ejecutar, si se mantiene el foco pese a la distracción y si el patrón cambia cuando sube la presión. El vídeo puede ayudar a observarlo. Estas revisiones no sustituyen investigaciones de laboratorio ni convierten cada entrenamiento en un experimento, pero hacen visible la conducta que se quiere practicar.
+
+La evidencia de alta certeza del módulo corresponde al efecto general en tareas de precisión. En deportes de decisión rápida, movimiento y contacto, el entrenador debe evitar vender la técnica como una solución ya demostrada con el mismo alcance. Puede explorar cómo adaptar el foco atencional, pero debe comunicar que la transferencia directa tiene más incertidumbre. Esa honestidad protege al atleta de una expectativa exagerada y mantiene la herramienta dentro del territorio que la evidencia respalda.
+
+El hilo común de las tres técnicas no es que garanticen control total sobre el resultado. Es que dan al atleta acciones específicas cuando aparece la presión: una secuencia antes de una tarea autopaced, una imagen funcional de la ejecución o un foco visual definido. Practicadas con contexto y revisadas con humildad, esas acciones son mucho más útiles que pedir concentración sin indicar dónde ponerla.
+
+El entrenador debe conservar el mismo criterio al evaluar el resultado. Un error posterior no prueba que el patrón atencional no sirva, del mismo modo que un acierto no prueba que cualquier fijación funcionará. La revisión busca observar si el atleta pudo aplicar el foco definido y si esa conducta se sostiene en varias oportunidades comparables. Esa información permite ajustar la práctica sin hacer afirmaciones mayores que la evidencia disponible.
+
 ### Lección 2 — Entrenar la fijación visual antes de un lanzamiento de precisión (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — demostración de entrenamiento de fijación visual quiet eye]
@@ -157,6 +187,18 @@ Una jugadora de voleibol debe sacar bajo presión de partido decisivo, reporta a
 El diseño debe integrar los tres módulos. Primero, una rutina pre-saque con componentes específicos: el saque es una tarea autopaced, la jugadora decide cuándo ejecutar, no es de ritmo externo, exactamente donde la evidencia de rutinas del módulo 1 es más sólida. Segundo, un protocolo de visualización PETTLEP adaptado a su situación específica de partido decisivo, según el módulo 2. Tercero, un punto de fijación de quiet eye antes del golpe al balón, según el módulo 3.
 
 El saque de voleibol es un buen candidato para una rutina pre-competitiva extensa, a diferencia de recibir un ataque rápido del rival, precisamente porque el saque es una tarea autopaced, la jugadora decide cuándo ejecutar, que es exactamente donde la evidencia de rutinas es más sólida, a diferencia de una tarea de ritmo externo como reaccionar a un ataque. La razón por la que esta rutina completa tiene buen respaldo es esa distinción autopaced frente a ritmo externo del módulo 1; el diseño específico de visualización del módulo 2 y el punto de fijación del módulo 3 son los componentes que la hacen efectiva, no una fórmula genérica copiada de otro atleta.
+
+El diseño puede empezar por definir una secuencia breve que la jugadora pueda repetir sin retrasar el saque: regular la respiración, orientar la atención al objetivo, fijar la mirada en el punto relevante y ejecutar. La visualización PETTLEP se practica fuera del instante de saque, incorporando el entorno de un partido decisivo, el tiempo real del gesto y la emoción que ella suele experimentar. Así, la imagen mental no compite con la rutina; prepara los elementos que la rutina utilizará cuando llegue el momento de actuar.
+
+La jugadora y el entrenador deben observar si la pérdida de foco aparece antes de la fijación visual, durante la preparación o al iniciar el golpe. Esa información permite ajustar un componente concreto en lugar de añadir pasos sin propósito. Si la atención se desplaza al marcador o a la consecuencia del saque, la respuesta no es repetir “concéntrate” con más intensidad; es volver a una señal previamente entrenada que la conecte con la tarea presente.
+
+El caso no demuestra que toda dificultad en el saque se resuelva con una rutina mental. Técnica, carga, contexto táctico y experiencia también pueden influir en la ejecución. Lo que el curso sostiene es que, dada una tarea autopaced y un patrón de pérdida de foco bajo presión, esta combinación de herramientas tiene una base más específica que una instrucción genérica. La intervención se revisa por su efecto en situaciones comparables, no por lo convincente que parezca en una explicación teórica.
+
+Al cerrar el capstone, el estudiante debe poder justificar cada elemento y su límite. La rutina extensa se reserva para el saque, no se traslada sin más a una recepción rápida; PETTLEP aporta fidelidad a la práctica mental y quiet eye define una conducta atencional. Ese razonamiento permite adaptar la intervención a la deportista sin prometer que una secuencia idéntica funcionará para todas.
+
+La jugadora participa en esa revisión porque es quien puede describir qué señales resultan utilizables bajo presión. Si una parte de la secuencia añade carga cognitiva o no se puede sostener dentro del tiempo del saque, conviene simplificarla y volver a practicar. La estructura debe servir a la ejecución real, no convertirse en otra exigencia que la deportista intenta recordar mientras compite.
+
+Esa simplificación preserva la función central: regresar al gesto y al objetivo inmediato cuando el contexto aumenta la presión.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

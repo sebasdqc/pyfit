@@ -44,6 +44,7 @@ urlpatterns = [
     # Inscripción
     path('courses/<int:pk>/enroll/', views.course_enroll),
     path('courses/<int:pk>/enrollments/', views.course_enrollments),
+    path('instructor/analytics/', views.instructor_analytics),
 
     # Racha de estudio (gamificación de retención)
     path('streak/', views.streak_view),

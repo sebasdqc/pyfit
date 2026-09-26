@@ -8,8 +8,10 @@ import type {
   BlogPost, BlogPostDetail,
   Course, CourseDetail,
   DashboardData, Enrollment, EnrollmentDetail, Certificate, Lesson, LessonTipo,
+  InstructorAnalyticsData,
   LibraryResource, LibraryTipo, Module,
   NuevaInsigniaOtorgada, QuizAttempt, Submission, SubmissionEstado, School, StreakState,
+  QuestionTipo, Quiz, QuizQuestion,
   SimuladorCargaResponse, SimuladorSesionCaso, SimuladorSesionResultado,
   SimuladorPrevencionCaso, SimuladorPrevencionResultado,
   SupportFAQItem, SupportMessageItem, SupportThreadSummary,
@@ -26,6 +28,15 @@ export async function getStreak(): Promise<StreakState> {
 
 export async function getDashboard(): Promise<DashboardData> {
   const res = await api.get<DashboardData>('/academy/dashboard/')
+  return res.data
+}
+
+// ── Analítica académica (autor/admin del curso) ─────────────────────────────
+
+export async function getInstructorAnalytics(courseId: number): Promise<InstructorAnalyticsData> {
+  const res = await api.get<InstructorAnalyticsData>('/academy/instructor/analytics/', {
+    params: { course_id: courseId },
+  })
   return res.data
 }
 
@@ -176,6 +187,46 @@ export async function updateLesson(
     payload,
   )
   return res.data
+}
+
+// ── Quizzes y banco de preguntas (autor/admin) ─────────────────────────────
+
+export interface QuizPayload {
+  titulo?: string
+  puntaje_aprobacion?: number
+}
+
+export interface QuestionPayload {
+  orden?: number
+  enunciado?: string
+  video_url?: string
+  tipo?: QuestionTipo
+  opciones?: { id: string; texto: string }[]
+  respuestas_correctas?: string[]
+  feedback_correcta?: string
+  feedback_incorrecta?: string
+  puntos?: number
+}
+
+export async function upsertLessonQuiz(lessonId: number, payload: QuizPayload): Promise<Quiz> {
+  const res = await api.put<Quiz>(`/academy/lessons/${lessonId}/quiz/`, payload)
+  return res.data
+}
+
+export async function createQuizQuestion(quizId: number, payload: QuestionPayload): Promise<QuizQuestion> {
+  const res = await api.post<QuizQuestion>(`/academy/quizzes/${quizId}/questions/`, payload)
+  return res.data
+}
+
+export async function updateQuizQuestion(
+  quizId: number, questionId: number, payload: QuestionPayload,
+): Promise<QuizQuestion> {
+  const res = await api.patch<QuizQuestion>(`/academy/quizzes/${quizId}/questions/${questionId}/`, payload)
+  return res.data
+}
+
+export async function deleteQuizQuestion(quizId: number, questionId: number): Promise<void> {
+  await api.delete(`/academy/quizzes/${quizId}/questions/${questionId}/`)
 }
 
 // ── Inscripción / aprendizaje ───────────────────────────────────────────────

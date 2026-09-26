@@ -23,6 +23,7 @@ import { MyLearningPage } from '@/pages/MyLearningPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { InstructorPage } from '@/pages/InstructorPage'
+import { InstructorAnalyticsPage } from '@/pages/InstructorAnalyticsPage'
 import { BlogInstructorPage } from '@/pages/BlogInstructorPage'
 import { CourseContentPage } from '@/pages/CourseContentPage'
 import { CourseSettingsPage } from '@/pages/CourseSettingsPage'
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
           { path: 'comunidad', element: <CommunityPage /> },
           { path: 'comunidad/:postId', element: <QuestionDetailPage /> },
           { path: 'instructor', element: <InstructorPage /> },
+          { path: 'instructor/analitica', element: <InstructorAnalyticsPage /> },
           { path: 'instructor/blog', element: <BlogInstructorPage /> },
           { path: 'admin/usuarios', element: <AdminUsersPage /> },
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },

@@ -139,6 +139,8 @@ Este resultado hay que leerlo con cuidado para no sacar la conclusión equivocad
 
 **Consecuencia práctica.** Si la LP no es demostrablemente inferior ni superior a la ondulada para fuerza general (Harries et al., 2015), entonces la decisión de usarla puede apoyarse en otros criterios: su claridad conceptual, la facilidad para planificar hacia una fecha de competencia, la preferencia del atleta y su adherencia al esquema. Para un principiante, en particular, la simplicidad de un bloque lineal bien estructurado es una ventaja práctica real, aunque no sea una superioridad fisiológica demostrada. En el Módulo 3 se verá cómo ese panorama se matiza cuando entra en juego el nivel de entrenamiento del atleta.
 
+Antes de elegirla, conviene hacer una comprobación simple: ¿hay una fecha objetivo, una capacidad que se quiere priorizar y margen suficiente para recorrer fases distintas? Si la respuesta es sí, la LP ofrece un lenguaje claro para conectar cada semana con ese objetivo. Si la respuesta es no, no hace falta forzar una curva perfecta solo porque el nombre del modelo suene formal. La utilidad práctica del modelo está en ordenar decisiones, no en cumplir una forma de gráfico. El atleta sigue necesitando técnica, recuperación y ajustes cuando su respuesta real no coincide con el plan.
+
 ### Lección 2 — Qué dice la evidencia sobre LP (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — grabar video con gráfico del diseño del meta-análisis (17 estudios, 510 participantes, 3 bases de datos) y visualización de "diferencia no significativa"; guion base a continuación]
@@ -224,6 +226,8 @@ Se reitera: estos números ilustran la variación diaria del modelo, no proviene
 El detalle metodológico importa: Moesgaard et al. (2022) trabajó con programas de **volumen equiparado**, es decir, comparó modelos igualando la cantidad total de trabajo, de modo que las diferencias observadas no se explican simplemente porque un grupo hiciera más volumen que otro. La conclusión práctica es que la superioridad de UP sobre LP **no es universal** — depende del nivel de entrenamiento del atleta. Para fuerza máxima, la UP parece aportar más a quien ya está entrenado que a quien recién empieza.
 
 **Un contrapunto sobre hipertrofia.** Por otro lado, Grgic et al. (2017, PeerJ) comparó específicamente LP vs. DUP en hipertrofia muscular y no encontró diferencias significativas entre ambos modelos. Conviene no mezclar los dos hallazgos: Moesgaard et al. (2022) habla del efecto moderador del nivel de entrenamiento sobre la **fuerza máxima**, mientras que Grgic et al. (2017, PeerJ) apunta específicamente a que, para **hipertrofia**, LP y DUP no se diferencian de forma significativa. Puestos juntos, dibujan un cuadro coherente: para ganar músculo, la elección entre lineal y ondulada parece poco determinante; para maximizar fuerza en un atleta ya entrenado, la ondulación tiene respaldo.
+
+Esto cambia la conversación con el atleta. En vez de preguntar qué modelo es “el mejor” en abstracto, el entrenador puede preguntar qué adaptación busca, cuánta experiencia de entrenamiento tiene la persona y qué tan bien tolera cambios frecuentes de estímulo. Una variación diaria puede ser útil para un atleta entrenado que persigue fuerza máxima, pero también puede añadir complejidad innecesaria a alguien que todavía está aprendiendo patrones básicos. La evidencia orienta esa decisión; no sustituye la observación de adherencia, técnica y recuperación durante el bloque.
 
 ### Lección 2 — Qué dice la evidencia sobre UP (tipo: video)
 
@@ -317,6 +321,8 @@ Es útil retener que la mayor parte del volumen (75-80%) transcurre en baja inte
 - Para otras medidas de rendimiento (time-trial, tiempo hasta el agotamiento, velocidad/potencia en el segundo umbral), POL **no mostró superioridad clara** sobre otros modelos de distribución de intensidad.
 
 **Cómo leer estas cifras.** Una diferencia de medias estandarizada de 0.24 es un tamaño de efecto pequeño, y la significación (p = 0.040) queda justo por debajo del umbral convencional de 0.05. Sumado a que el beneficio se limita a un desenlace concreto (VO2peak), en una duración concreta (menos de 12 semanas) y en un perfil concreto (atletas altamente entrenados), la conclusión honesta es que POL tiene una ventaja **real pero acotada**, no una superioridad general. Es un contraste deliberado con la tentación de vender el modelo polarizado como "el mejor para resistencia": la evidencia de alta certeza lo respalda solo dentro de límites bien definidos. Fuera de esos límites — intervenciones largas, atletas menos entrenados, otras medidas de rendimiento — no hay respaldo de superioridad.
+
+En programación, esa limitación obliga a no copiar porcentajes de otra persona sin revisar el contexto. Un corredor recreativo, una temporada larga o una fase cuyo objetivo principal no sea el VO2peak no son la misma situación que la analizada en el meta-análisis. La distribución polarizada puede seguir ser una alternativa posible, pero el curso no afirma que sea superior en esos casos. La decisión responsable es conservar la especificidad del deporte, la carga total tolerable y el objetivo de la fase, en lugar de convertir una condición de investigación en una regla universal.
 
 ### Lección 2 — Qué dice la evidencia sobre POL (tipo: video)
 

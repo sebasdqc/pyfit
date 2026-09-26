@@ -24,6 +24,14 @@ Comparar directamente un resultado de bioimpedancia con uno de DEXA de una sesi�
 
 Esto no significa que el método más preciso en el papel sea siempre la mejor opción práctica. En contextos de bajo recurso donde el DEXA no es accesible, un protocolo de skinfolds bien estandarizado con el mismo evaluador es más útil en la práctica que un DEXA ocasional sin continuidad. La medición más útil no es siempre la más precisa en teoría, sino la más consistente en el tiempo real del atleta.
 
+La comparación válida empieza antes de tomar el primer dato. El equipo debe decidir qué método tendrá disponible, quién lo aplicará y bajo qué condiciones se repetirá. Si se cambia de método a mitad de un seguimiento, conviene tratar ese punto como el comienzo de una nueva serie y no como una continuación directa de la anterior. Un cambio aparente entre dos resultados puede reflejar la diferencia entre instrumentos en vez de una modificación del tejido corporal del atleta.
+
+Esta idea no degrada al BIA ni convierte los skinfolds en una alternativa de segunda clase sin valor. Cada herramienta responde a restricciones distintas de acceso, coste y logística. El problema aparece cuando se pide a una herramienta que entregue la misma respuesta que otra sin reconocer su nivel de acuerdo. Una báscula BIA puede ser útil para observar una trayectoria bajo condiciones repetidas; un DEXA puede aportar una referencia más precisa cuando está disponible; los pliegues pueden ser especialmente útiles si el protocolo y el evaluador son estables.
+
+En un informe, el método debe acompañar al resultado. Decir “el porcentaje de grasa cambió” es menos informativo que decir qué se midió, con qué instrumento y si la comparación se hizo bajo condiciones equivalentes. Esa trazabilidad permite que otro profesional interprete el dato con el nivel de confianza adecuado. También evita que el atleta crea que una diferencia pequeña entre dos métodos representa necesariamente un avance o retroceso real.
+
+La decisión práctica del módulo es sencilla: elegir el método viable, repetirlo con la mayor consistencia posible y leer los cambios como una tendencia dentro de ese mismo sistema. La precisión absoluta sigue siendo valiosa, pero la continuidad es la que permite detectar una trayectoria útil para acompañar el proceso de entrenamiento y nutrición.
+
 ### Lección 2 — Cómo tomar un pliegue cutáneo con protocolo estandarizado (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — demostración de toma de skinfolds con protocolo estandarizado]
@@ -78,6 +86,18 @@ Hay alta certeza en que la recomposición es posible en atletas entrenados, no e
 
 El mito de que no se puede ganar músculo en déficit calórico proviene en gran parte de estudios en poblaciones o protocolos distintos a los de un atleta entrenado con proteína e entrenamiento bien planificados. La combinación que más respaldo tiene para lograr recomposición corporal en un atleta ya entrenado es entrenamiento de fuerza progresivo, ingesta proteica alta y bien distribuida, y un manejo cuidadoso del balance energético, no un ayuno prolongado ni cardio de baja intensidad de forma aislada.
 
+La posibilidad de recomposición no convierte el resultado en una promesa idéntica para todos. Dos atletas con el mismo programa pueden responder a ritmos distintos por su historial de entrenamiento, su punto de partida y la manera en que toleran el plan. Por eso, “es posible” no significa que el cambio vaya a ser visible cada semana ni que una ausencia de cambio inmediato pruebe que el proceso falló. La evidencia permite descartar la falsa incompatibilidad absoluta entre perder grasa y ganar músculo; no permite fijar una velocidad universal de recomposición.
+
+El objetivo de la fase también debe ser coherente con esa incertidumbre. Un atleta que busca recomposición necesita un estímulo de fuerza que conserve o desarrolle la masa muscular mientras se gestiona el balance energético. Si el entrenamiento pierde progresión o la recuperación se deteriora de forma sostenida, el plan puede dejar de apoyar ese objetivo, aunque la etiqueta “recomposición” siga apareciendo en la hoja de trabajo. La intervención se evalúa por la trayectoria completa, no por adherirse a una idea popular de bulk o cut.
+
+Conviene separar los ejemplos de la evidencia. Un entrenador puede construir un caso ilustrativo de un déficit moderado y una distribución de proteína que el atleta tolere, pero no debe presentarlo como una receta que funcione igual para cualquier persona. El curso ofrece los principios que cuentan con respaldo: fuerza progresiva, proteína alta y manejo cuidadoso del balance energético. La dosis concreta, los cambios de rutina y las expectativas requieren individualización y seguimiento profesional.
+
+Esta lectura también protege frente a decisiones extremas. Si el peso no cambia de inmediato, no se deduce que se deba recortar más comida o añadir trabajo cardiovascular sin revisar mediciones, rendimiento, recuperación y tendencia. El módulo siguiente profundiza precisamente en cómo evitar que un dato aislado de la báscula desplace una evaluación más completa del progreso.
+
+En el seguimiento, el atleta puede orientar su atención a comportamientos que sí controla: cumplir el entrenamiento de fuerza, sostener una ingesta coherente con el plan y registrar las mediciones de forma comparable. Esos comportamientos no garantizan una velocidad determinada de recomposición, pero crean las condiciones para evaluarla sin confundir el proceso con una fluctuación diaria. Si los resultados necesitan revisarse, se revisa la estrategia completa y no solo la última cifra que mostró la báscula.
+
+La lección no sugiere que toda modificación corporal deba perseguirse en déficit ni que recomposición sea siempre el objetivo apropiado. Su aporte es más limitado: mostrar que la elección binaria entre ganar músculo o perder grasa no describe toda la evidencia disponible, y que los principios del plan deben interpretarse según el atleta y su respuesta a lo largo del tiempo.
+
 ### Lección 2 — Progresión de composición corporal bajo déficit leve (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — ejemplo de progresión de composición corporal en un atleta entrenado bajo déficit leve]
@@ -125,6 +145,18 @@ Hay alta certeza en el principio general de que la tendencia importa más que el
 
 Un caso ilustrativo: un atleta ve que su peso subió 800 gramos de un día para otro tras una comida alta en sodio. Lo más probable, con amplio margen, es que se trate de retención de líquidos y no de un cambio real de composición corporal, porque fluctuaciones de esa magnitud en 24 horas son fisiológicamente incompatibles con un cambio real de tejido graso o muscular en ese lapso de tiempo. Ahí es exactamente donde el seguimiento de tendencia protege de decisiones erróneas basadas en ruido.
 
+La solución no es prohibir que el atleta vea su peso diario, sino cambiar el significado que se le atribuye. Un punto individual puede ser un registro útil del contexto de ese día, pero no una sentencia sobre el plan. Cuando se acumulan varios registros bajo condiciones parecidas, el promedio y la dirección general describen mejor si el cuerpo está siguiendo una trayectoria compatible con el objetivo. La medición de composición corporal, tomada de forma consistente, añade otra capa que ayuda a no reducir todo el progreso a la báscula.
+
+Para interpretar una tendencia hay que evitar dos reacciones simétricas: celebrar un descenso aislado como una garantía de progreso o corregir el plan ante un aumento aislado como si fuera fracaso. Ambas decisiones conceden al ruido una importancia que no merece. El entrenador puede revisar con el atleta qué cambió alrededor de ese dato, como una comida, el horario de medición o una sesión exigente, y después volver a mirar la serie completa. Esa conversación reduce ansiedad y mejora la calidad de los ajustes.
+
+La frecuencia óptima no se presenta aquí como una cifra universal porque depende de tolerancia, rutina y objetivos del atleta. Lo importante es que el sistema elegido genere datos comparables y que las decisiones se tomen sobre varios puntos, no sobre una excepción. Si medir todos los días aumenta la preocupación y deteriora la adherencia, un protocolo menos frecuente pero consistente puede ser más útil. Si el atleta tolera el registro diario, el promedio puede ayudar a suavizar las oscilaciones normales.
+
+El peso sigue siendo un dato relevante, pero es una parte del panel, no el panel entero. Rendimiento en fuerza, medidas repetidas con el mismo método y observaciones de la tendencia permiten revisar el proceso con más contexto. Así, el atleta aprende a leer una fluctuación como información que necesita interpretación y no como una orden para cambiar de plan de un día para otro.
+
+Una forma útil de cerrar cada revisión es distinguir entre lo que el dato muestra y lo que todavía no permite afirmar. Una subida puntual muestra que el peso cambió esa mañana; no permite afirmar por sí sola que el atleta ganó grasa o perdió músculo. Esa disciplina de lenguaje mantiene la conversación anclada en observaciones y reduce el riesgo de que una interpretación apresurada se convierta en un ajuste innecesario.
+
+Con el tiempo, el registro también permite identificar qué oscilaciones son habituales para ese atleta. Reconocer esa variabilidad personal hace que los cambios sostenidos destaquen con más claridad y que los días atípicos se lean con menos dramatismo.
+
 ### Lección 2 — Cómo leer una gráfica de tendencia de composición corporal (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — cómo interpretar una gráfica de tendencia en el dashboard de Zyfit]
@@ -162,6 +194,18 @@ Un atleta entrenado en fase de recomposición corporal tiene acceso solo a bioim
 La respuesta debe integrar los tres módulos de este curso. Primero, elegir un protocolo de medición consistente: dado que solo tiene acceso a bioimpedancia, la recomendación no es esperar a tener DEXA, sino usar el mismo dispositivo BIA y, si es posible, el mismo evaluador y las mismas condiciones, en cada control. Segundo, fijar expectativas realistas de velocidad de cambio: la recomposición corporal es posible en un atleta entrenado, pero su ritmo depende del historial de entrenamiento y la variabilidad individual, no es instantánea. Tercero, diseñar la frecuencia y la lectura de los datos de tendencia para evitar decisiones basadas en ruido: revisar el promedio de varias semanas, no reaccionar al dato de un solo día.
 
 El error más probable si este atleta decide cambiar todo su plan basado en el peso de un solo día es reaccionar a ruido fisiológico normal, como agua o glucógeno, como si fuera una señal real de estancamiento, cuando la tendencia de varias semanas podría mostrar progreso real que el dato puntual no refleja.
+
+El protocolo puede empezar por reducir la variación evitable en cada medición de BIA. El atleta usa el mismo dispositivo, intenta repetir condiciones comparables y anota las circunstancias que podrían cambiar la lectura. No se pretende eliminar toda fluctuación ni convertir la bioimpedancia en DEXA. Se pretende que una serie de mediciones responda a la misma pregunta a lo largo del tiempo. Esa consistencia hace que las diferencias grandes o sostenidas sean más interpretables que una lectura aislada.
+
+Después, el atleta y el entrenador revisan el conjunto de datos en intervalos acordados. El peso diario se mira como una serie y no como un examen; la BIA se compara contra lecturas del mismo sistema; el rendimiento del entrenamiento ayuda a saber si el estímulo de fuerza se conserva. Si la trayectoria no parece coherente con el objetivo, la conversación puede abordar adherencia, recuperación, entrenamiento y balance energético sin asumir que la culpa está en un único dato. Este es un ejemplo de seguimiento, no un protocolo clínico ni una prescripción nutricional individual.
+
+Las expectativas también deben formar parte del acuerdo desde el inicio. La recomposición puede ser posible en atletas entrenados, pero el curso ya explicó que la velocidad exacta cambia según el individuo y el contexto. Explicar esa incertidumbre antes de que aparezcan las primeras oscilaciones reduce la probabilidad de que el atleta cambie de estrategia por frustración. El objetivo es sostener un proceso que permita observar una señal real, no perseguir una variación inmediata de la báscula.
+
+Si el dato puntual contradice el resto del panel, el paso siguiente es investigar, no intervenir de forma impulsiva. Si varias semanas muestran una misma dirección y el registro fue consistente, existe una base más sólida para conversar sobre un ajuste. Si solo cambió un día mientras las demás señales se mantienen, el plan puede seguir bajo observación. Esta distinción traduce los tres módulos en una regla de trabajo: método constante, expectativas realistas y decisiones guiadas por tendencia.
+
+La respuesta del capstone no recomienda esperar a una medición perfecta. Recomienda construir la mejor serie posible con los recursos disponibles y usarla con humildad metodológica. Esa es la alternativa práctica tanto al uso excesivo de una cifra de BIA como a la reacción emocional ante una fluctuación normal de peso.
+
+El éxito del protocolo no se mide por eliminar toda variación, algo que no es posible, sino por hacer que las decisiones posteriores sean más consistentes que la reacción ante un único día. Cuando el atleta entiende ese propósito, puede usar el seguimiento como apoyo al proceso en lugar de vivir cada lectura como un juicio sobre su avance.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

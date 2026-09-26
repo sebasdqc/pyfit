@@ -24,6 +24,12 @@ La evidencia detrás de esta base mecanística es media-alta: existe respaldo ra
 
 Entender primero el mecanismo, antes de discutir su magnitud real, evita dos errores opuestos: descartar el fenómeno como un mito sin base, o tratarlo como una ley biológica que se cumple igual en cualquier atleta y cualquier contexto. El resto del curso construye sobre esta base para llegar a una recomendación práctica y matizada.
 
+También ayuda separar el mecanismo de otras causas más visibles de una sesión mal organizada. Un atleta puede rendir peor en fuerza después de una carrera exigente simplemente porque llega con fatiga periférica, menos energía disponible o menos atención para ejecutar bien, aunque la explicación molecular no sea el único factor. Esas consecuencias inmediatas importan para la calidad de la sesión, pero no son equivalentes a demostrar que se anuló una adaptación a largo plazo. Distinguir entre rendimiento de hoy y adaptación de varias semanas permite programar sin dramatizar una mala sesión aislada.
+
+El caso práctico es el de una persona que necesita ambas capacidades: un jugador que corre, acelera y cambia de dirección, o un deportista recreativo que quiere mantener fuerza mientras prepara una carrera. Para ellos la pregunta útil no es si deben elegir una capacidad y abandonar la otra. La pregunta útil es qué estímulo necesita más protección en esta fase y cómo distribuir el resto para que ambos sigan avanzando. Esa pregunta mantiene el foco en el objetivo deportivo, no en una explicación celular tomada fuera de contexto.
+
+Por eso, este módulo no propone medir AMPK o mTORC1 para tomar decisiones cotidianas. Esas vías ayudan a entender por qué la organización importa, pero no son una herramienta de monitoreo de campo. El entrenador observa el rendimiento, la técnica, la fatiga y la respuesta al bloque; la explicación fisiológica solo evita que esas observaciones se interpreten con simplificaciones como “todo cardio perjudica” o “la interferencia no existe”.
+
 ### Lección 2 — Cómo compiten AMPK y mTORC1 (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — animación de las vías de señalización AMPK vs. mTORC1 dentro de la célula muscular]
@@ -86,6 +92,12 @@ Un hallazgo específico se mantiene consistente entre ambas eras de literatura: 
 
 Lo más honesto que puede decirse hoy es que la evidencia ha evolucionado, no que siempre se supo lo mismo. Reconocer ese cambio no es una debilidad de la ciencia del entrenamiento, es su funcionamiento normal: los estudios más nuevos, con mejor diseño y muestras más representativas, matizan lo que hallazgos más antiguos habían establecido con menos margen de error.
 
+Para interpretar esta evolución correctamente, hay que evitar tratar cada meta-análisis como un veredicto aislado. La pregunta, los participantes, el volumen total, la modalidad de resistencia y el modo de organizar las sesiones condicionan lo que cada síntesis puede responder. Por eso dos revisiones pueden parecer contradictorias y, al mismo tiempo, aportar piezas compatibles: una puede detectar una señal de interferencia en protocolos concretos y otra mostrar que esa señal no se traduce en una pérdida significativa de fuerza máxima o hipertrofia en el conjunto de estudios más recientes.
+
+La consecuencia para un profesional no es ignorar la literatura anterior ni cambiar de protocolo cada vez que aparece un titular. Es actualizar el grado de confianza. La frase “el cardio mata las ganancias” excede ese grado de confianza actual; una formulación más precisa es que algunas configuraciones pueden dificultar ciertos objetivos de fuerza e hipertrofia, sobre todo cuando se acumula mucha carrera o poco margen de recuperación. Esa formulación deja espacio para diseñar, medir la respuesta y corregir.
+
+Otra precaución útil es no confundir ausencia de un compromiso significativo en una revisión con garantía de que todas las semanas serán fáciles. El calendario, el sueño, la nutrición, el historial de entrenamiento y la cercanía de una competencia cambian la carga que un atleta puede absorber. La evidencia revisada reduce el alarmismo, pero no reemplaza el seguimiento individual. Un plan concurrente bien diseñado se evalúa por la evolución de las capacidades que busca, no por una promesa universal de que nunca habrá fatiga ni ajustes.
+
 ### Lección 2 — Línea de tiempo: de 1980 a 2022 (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — línea de tiempo animada 1980, 2012, 2022]
@@ -146,6 +158,12 @@ La tercera variable es el tiempo entre sesiones. Dejar suficiente separación te
 
 Es importante ser honesto sobre el nivel de certeza de estas tres recomendaciones: son razonables porque se derivan de un mecanismo plausible y de hallazgos consistentes entre meta-análisis, pero no constituyen un protocolo único validado como paquete completo. Decir esto con esa honestidad es preferible a inventar una regla con más precisión de la que la evidencia realmente sostiene.
 
+Una manera concreta de aplicar el principio es ordenar primero la semana alrededor de la sesión que más importa para el objetivo actual. Si el bloque busca desarrollar fuerza de tren inferior, esa sesión merece llegar con la menor fatiga posible; el trabajo de resistencia puede ubicarse después o en otro día según el calendario. Si se aproxima una carrera o un partido donde la cualidad específica es la prioridad, la lógica puede invertirse. No es una jerarquía permanente entre fuerza y resistencia: es una elección explícita de prioridad para una fase determinada.
+
+Cuando no hay espacio para separar sesiones, la respuesta no tiene por qué ser abandonar una de ellas. Puede ser reducir la ambición de una sesión secundaria, elegir una modalidad menos agresiva para el objetivo de fuerza o aceptar que una semana de alta demanda deportiva no es el momento para buscar el máximo progreso simultáneo en todo. Son ajustes de carga y expectativa, no concesiones al fracaso. El siguiente módulo obliga a aplicar esa lógica con restricciones reales de tiempo.
+
+Esta jerarquía se revisa semana a semana. Una fase con volumen de carrera alto puede pedir que la fuerza se mantenga con menos volumen, mientras que una fase sin competición cercana puede abrir más espacio para progresar en fuerza. El principio no cambia: decidir de antemano qué capacidad recibe el estímulo de mayor calidad, comunicar el coste de priorizarla y vigilar si la respuesta real confirma esa decisión. Así, la programación concurrente deja de ser una pelea entre modalidades y se convierte en una secuencia de prioridades explícitas.
+
 ### Lección 2 — Programar una semana con fuerza y resistencia (tipo: video)
 
 video_url: [PLACEHOLDER: producción pendiente — ejemplo de programación semanal]
@@ -201,6 +219,14 @@ Un futbolista amateur que también entrena para una carrera de 10K necesita mant
 Antes de programar nada, conviene ordenar lo que este curso ya estableció. Primero, qué tan preocupante es realmente la interferencia dado el estado actual de la evidencia: ni el alarmismo de hace una década tiene el respaldo que se le atribuyó, ni el fenómeno debe descartarse por completo, porque existe un mecanismo plausible detrás. Segundo, si el ciclismo o algún sustituto de bajo impacto puede complementar parte del volumen de carrera sin sacrificar el objetivo específico de la carrera de 10K, teniendo en cuenta que ese objetivo exige volumen específico de carrera y no puede reemplazarse por completo con otra modalidad. Tercero, cómo programar la semana con la separación de sesiones que sea prácticamente viable, dado que el atleta solo dispone de cuatro sesiones semanales.
 
 La decisión más consistente con la evidencia del curso es mantener ambos objetivos, priorizando que el volumen específico de carrera necesario para la meta de 10K se conserve, separando las sesiones de fuerza y de carrera lo más posible dentro de la semana real disponible, y sin alarmarse de más dado que la evidencia actualizada no muestra el compromiso severo que sugería la literatura de hace una década. Eliminar el entrenamiento de fuerza por miedo a la interferencia, o ignorar el objetivo de la carrera para proteger la fuerza a toda costa, serían ambas reacciones desproporcionadas frente a lo que la evidencia real sostiene hoy.
+
+Para resolver el caso, el alumno debería poder justificar cada decisión, no solo proponer una distribución de días. El volumen de carrera conserva un lugar central porque la prueba es correr 10K; el trabajo de fuerza conserva su lugar porque ayuda a mantener la capacidad que el atleta quiere proteger. Si dos sesiones caen el mismo día, el orden debe reflejar qué estímulo se quiere realizar con más calidad, y no una regla memorizada. La separación temporal es deseable cuando el horario lo permite, pero la semana real de cuatro sesiones es la restricción que manda.
+
+El seguimiento también forma parte de la solución. Durante las ocho semanas, el entrenador observaría si las sesiones de fuerza empiezan a deteriorarse de manera sostenida, si la fatiga de carrera impide completar el trabajo previsto o si la recuperación entre días deja de ser suficiente. Cualquiera de esos patrones justificaría ajustar volumen, modalidad complementaria o distribución, sin concluir automáticamente que todo entrenamiento concurrente es un error. El capstone mide precisamente esa capacidad de decidir y reajustar, no la habilidad de repetir un esquema fijo.
+
+Un ejemplo de ajuste ilustrativo sería mantener las sesiones de carrera clave y recortar primero el trabajo accesorio de fuerza si aparece fatiga acumulada, antes de eliminar los levantamientos principales. En otra semana, si la carrera de calidad se completa bien pero la fuerza cae de forma persistente, puede ser más razonable redistribuir los días o bajar temporalmente el volumen de carrera no específico. Ninguna de esas decisiones se desprende de un número mágico: se desprenden del objetivo del atleta y de cómo está tolerando la combinación de estímulos.
+
+La respuesta final debe incluir una explicación de los límites. El plan de cuatro sesiones no busca maximizar simultáneamente todas las adaptaciones posibles; busca producir una preparación suficiente y sostenible para una carrera de 10K sin abandonar la fuerza de tren inferior. Reconocer esa prioridad evita prometer una solución perfecta y permite evaluar el bloque con un criterio claro al terminar las ocho semanas.
 
 ### Lección 2 — Evaluación integrada del capstone (tipo: quiz)
 

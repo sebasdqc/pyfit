@@ -66,6 +66,12 @@ export function InstructorPage() {
           >
             <Icon name="blog" size={16} /> Gestionar blog
           </Link>
+          <Link
+            to="/instructor/analitica"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-surface-border px-4 text-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink"
+          >
+            <Icon name="activity" size={16} /> Analítica académica
+          </Link>
           <button
             onClick={() => setShowCreate(true)}
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark"
@@ -112,7 +118,7 @@ export function InstructorPage() {
           {courses.map((c) => (
             <div key={c.id} className="flex flex-col gap-2">
               <CourseCard course={c} to={`/cursos/${c.id}`} />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Link
                   to={`/instructor/cursos/${c.id}/contenido`}
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
@@ -130,6 +136,12 @@ export function InstructorPage() {
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
                 >
                   <Icon name="tool" size={15} /> Ajustes
+                </Link>
+                <Link
+                  to={`/instructor/analitica?curso=${c.id}`}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-surface-border text-sm font-medium text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
+                >
+                  <Icon name="activity" size={15} /> Analítica
                 </Link>
               </div>
             </div>

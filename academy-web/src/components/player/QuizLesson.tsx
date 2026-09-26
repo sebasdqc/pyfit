@@ -34,7 +34,7 @@ export function QuizLesson({
 
   const preguntas = [...quiz.preguntas].sort((a, b) => a.orden - b.orden)
   const allAnswered = preguntas.every((q) => (answers[q.id]?.length ?? 0) > 0)
-  const detalle = result ? Object.fromEntries(result.detalle.map((d) => [d.question_id, d.correcta])) : null
+  const detalle = result ? Object.fromEntries(result.detalle.map((d) => [d.question_id, d])) : null
 
   function toggle(questionId: number, optionId: string, multiple: boolean) {
     if (result) return // no editar tras enviar (hasta reintentar)
@@ -100,7 +100,8 @@ export function QuizLesson({
       {preguntas.map((q, i) => {
         const multiple = q.tipo === 'opcion_multiple'
         const sel = answers[q.id] ?? []
-        const graded = detalle ? detalle[q.id] : null
+        const questionResult = detalle?.[q.id]
+        const graded = questionResult?.correcta
         const cardBorder =
           graded === true ? 'border-ok/40 bg-ok/5' : graded === false ? 'border-danger/40 bg-danger/5' : 'border-surface-border'
         return (
@@ -156,6 +157,26 @@ export function QuizLesson({
                 )
               })}
             </div>
+            {questionResult && (
+              <div
+                className={`ml-5 mt-4 rounded-lg border px-3.5 py-3 text-sm ${
+                  questionResult.correcta
+                    ? 'border-ok/25 bg-ok/10 text-ink-soft'
+                    : 'border-danger/25 bg-danger/10 text-ink-soft'
+                }`}
+                aria-live="polite"
+              >
+                <p className={`font-semibold ${questionResult.correcta ? 'text-ok' : 'text-danger'}`}>
+                  {questionResult.correcta ? 'Correcto' : 'Aún no'}
+                </p>
+                <p className="mt-1 leading-relaxed">
+                  {questionResult.feedback ||
+                    (questionResult.correcta
+                      ? 'Aplicaste correctamente el criterio evaluado en esta pregunta.'
+                      : 'Revisa el criterio central de la lección y compáralo con cada opción antes de reintentar.')}
+                </p>
+              </div>
+            )}
           </div>
         )
       })}

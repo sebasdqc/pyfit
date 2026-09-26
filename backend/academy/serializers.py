@@ -74,7 +74,8 @@ class QuestionSerializer(serializers.ModelSerializer):
         model = Question
         fields = [
             'id', 'quiz', 'orden', 'enunciado', 'video_url', 'tipo',
-            'opciones', 'respuestas_correctas', 'puntos',
+            'opciones', 'respuestas_correctas', 'feedback_correcta',
+            'feedback_incorrecta', 'puntos',
         ]
         read_only_fields = ['id', 'quiz']
 
@@ -82,6 +83,11 @@ class QuestionSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if not self.context.get('include_answers'):
             data.pop('respuestas_correctas', None)
+            # Las explicaciones pueden revelar el criterio de corrección. Solo
+            # se mandan al estudiante dentro del resultado de SU intento, no al
+            # cargar el quiz antes de responder.
+            data.pop('feedback_correcta', None)
+            data.pop('feedback_incorrecta', None)
         return data
 
     def validate(self, attrs):

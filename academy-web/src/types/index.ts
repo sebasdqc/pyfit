@@ -129,6 +129,10 @@ export interface QuizQuestion {
   puntos: number
   // `respuestas_correctas` NO se expone al estudiante (solo al autor).
   respuestas_correctas?: string[]
+  // El banco de preguntas los expone solo al autor. El estudiante recibe una
+  // única explicación, ya elegida por el servidor, al terminar su intento.
+  feedback_correcta?: string
+  feedback_incorrecta?: string
 }
 
 export interface Quiz {
@@ -225,7 +229,7 @@ export interface QuizAttempt {
   enrollment: number
   quiz: number
   respuestas: Record<string, string[]>
-  detalle: { question_id: number; correcta: boolean; puntos: number }[]
+  detalle: { question_id: number; correcta: boolean; puntos: number; feedback: string }[]
   puntaje: number
   aprobado: boolean
   created_at: string
@@ -443,6 +447,70 @@ export interface DashboardData {
   siguiente_paso: DashboardNextStep | null
   recomendacion_ia: AIRecommendation | null
   stats: DashboardStats
+}
+
+// ── Analítica académica (instructor) ───────────────────────────────────────
+
+export type InstructorAnalyticsAlertSeverity = 'warn' | 'danger'
+
+export interface InstructorAnalyticsAlert {
+  id: string
+  severity: InstructorAnalyticsAlertSeverity
+  title: string
+  detail: string
+  count: number
+}
+
+export interface InstructorAnalyticsLessonProgress {
+  lesson_id: number
+  titulo: string
+  modulo_titulo: string
+  tipo: LessonTipo
+  completadas: number
+  tasa_completado: number
+}
+
+export interface InstructorAnalyticsQuestion {
+  question_id: number
+  enunciado: string
+  leccion_id: number
+  leccion_titulo: string
+  modulo_titulo: string
+  respuestas: number
+  aciertos: number
+  tasa_acierto: number
+  muestra_suficiente: boolean
+}
+
+export interface InstructorAnalyticsConcept {
+  competencia: string
+  respuestas: number
+  tasa_acierto: number
+}
+
+export interface InstructorAnalyticsData {
+  course: { id: number; titulo: string }
+  generated_at: string
+  summary: {
+    matriculas: number
+    completadas: number
+    en_progreso: number
+    sin_iniciar: number
+    sin_actividad: number
+    dias_inactividad: number
+    progreso_promedio: number
+    tasa_finalizacion: number
+    intentos_quiz: number
+    promedio_quiz: number
+    tasa_aprobacion_quiz: number
+  }
+  lesson_progress: InstructorAnalyticsLessonProgress[]
+  difficult_questions: InstructorAnalyticsQuestion[]
+  questions_with_responses: number
+  minimum_question_sample: number
+  concepts: InstructorAnalyticsConcept[]
+  competency_mapping_active: boolean
+  alerts: InstructorAnalyticsAlert[]
 }
 
 // ── Insignias de identidad (transversales, por usuario) ───────────────────────

@@ -412,7 +412,9 @@ class Question(models.Model):
 
     `opciones` es la lista que ve el estudiante: `[{"id": "a", "texto": "..."}]`.
     `respuestas_correctas` es la CLAVE (lista de ids de opción correctos) y NUNCA
-    se expone al estudiante: solo la usa el servidor para calificar.
+    se expone al estudiante: solo la usa el servidor para calificar. Los dos
+    campos de feedback tampoco se entregan con el quiz: el servidor devuelve
+    únicamente el que corresponde después de calificar un intento.
     """
 
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='preguntas')
@@ -424,6 +426,16 @@ class Question(models.Model):
     tipo = models.CharField(max_length=20, choices=QUESTION_TIPO_CHOICES, default=Q_OPCION_UNICA)
     opciones = models.JSONField(default=list, blank=True)
     respuestas_correctas = models.JSONField(default=list, blank=True)
+    feedback_correcta = models.TextField(
+        blank=True,
+        default='',
+        help_text='Explicación que verá el estudiante cuando responda correctamente.',
+    )
+    feedback_incorrecta = models.TextField(
+        blank=True,
+        default='',
+        help_text='Explicación que verá el estudiante cuando responda incorrectamente.',
+    )
     puntos = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1)])
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -33,7 +33,8 @@ def grade_attempt(quiz, respuestas: dict) -> dict:
     Devuelve `{puntaje, aprobado, detalle}`:
       • puntaje  — % de puntos obtenidos sobre el total (0–100, redondeado).
       • aprobado — puntaje >= quiz.puntaje_aprobacion.
-      • detalle  — acierto por pregunta (sin revelar la clave).
+      • detalle  — acierto y feedback por pregunta. El feedback se elige
+        después de calificar, por lo que no revela la clave al cargar el quiz.
     Una pregunta es correcta si el conjunto de opciones enviadas coincide
     EXACTAMENTE con el conjunto de opciones correctas (vale para única, múltiple
     y verdadero/falso).
@@ -49,7 +50,13 @@ def grade_attempt(quiz, respuestas: dict) -> dict:
         ok = bool(correctas) and enviadas == correctas
         if ok:
             obtenidos += p.puntos
-        detalle.append({'question_id': p.id, 'correcta': ok, 'puntos': p.puntos})
+        feedback = p.feedback_correcta if ok else p.feedback_incorrecta
+        detalle.append({
+            'question_id': p.id,
+            'correcta': ok,
+            'puntos': p.puntos,
+            'feedback': (feedback or '').strip(),
+        })
     puntaje = round(100 * obtenidos / total_puntos) if total_puntos else 0
     return {
         'puntaje': puntaje,
