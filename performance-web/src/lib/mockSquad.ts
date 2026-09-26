@@ -27,6 +27,9 @@ export interface Athlete {
   // id de USUARIO real del atleta (FK athlete). Solo presente en roster real;
   // necesario para los endpoints que referencian al usuario (p. ej. wellness).
   userId?: number
+  // false en roster real cuando estas métricas todavía no tienen fuente
+  // persistida. Las vistas deben mostrar un estado vacío, nunca los centinelas.
+  metricsAvailable?: boolean
   nombre: string
   dorsal: number
   posicion: string

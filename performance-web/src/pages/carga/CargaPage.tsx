@@ -12,7 +12,6 @@ import {
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { SEM, type Tone } from '@/lib/tone'
 import { useSquad } from '@/centers/useSquad'
@@ -49,7 +48,6 @@ export function CargaPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white">Carga interna</h1>
-            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           </div>
           <p className="text-xs text-white/45">
             sRPE · ACWR (aguda 7d : crónica 28d) · monotonía y strain · cálculo en el servidor

@@ -4,11 +4,9 @@
 // antes estaba roto, con dos fuentes de verdad: el mock de squadStore y la API).
 //
 // Comportamiento:
-//   • Centro con atletas → roster REAL (API) + métricas sintetizadas (squadSynth)
-//     + overrides locales. isRealRoster = true.
+//   • Centro con atletas → roster REAL (API), sin métricas inventadas.
 //   • Centro sin atletas → lista vacía real (las pantallas invitan a /equipo).
-//   • Sin centro (demo / cuenta sin centro) → squad MOCK poblado (isRealRoster
-//     = false) para que el producto no se vea vacío. La <DemoBadge> lo etiqueta.
+//   • Sin centro → lista vacía. Un fallo o un hueco nunca cae a datos demo.
 
 import {
   createContext, useCallback, useEffect, useMemo, useState, type ReactNode,
@@ -17,9 +15,7 @@ import { useActiveCenter } from './useActiveCenter'
 import { listCenterAthletes } from '@/api/performance'
 import { saveAthleteEdit } from '@/lib/athletesApi'
 import { athleteFromCenter } from '@/lib/squadSynth'
-import { applyOverrides, pickLocalFields, saveOverride } from '@/lib/squadOverrides'
 import { updateAthlete, type AthletePatch } from '@/lib/squadEdit'
-import { loadSquad, saveSquad } from '@/lib/squadStore'
 import type { Athlete } from '@/lib/mockSquad'
 
 export interface SquadValue {
@@ -42,16 +38,18 @@ export function SquadProvider({ children }: { children: ReactNode }) {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
-  const [isRealRoster, setIsRealRoster] = useState(false)
+  // El panel autenticado falla hacia "real/vacío" desde el primer render para
+  // impedir incluso un frame de stores demo antes de resolver el centro.
+  const [isRealRoster, setIsRealRoster] = useState(true)
   const [tick, setTick] = useState(0)
 
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
-    // Sin centro → demo mock (poblado).
+    // Sin centro → vacío explícito. No hay fallback demo en cuentas reales.
     if (activeCenterId == null) {
-      setAthletes(loadSquad())
-      setIsRealRoster(false)
+      setAthletes([])
+      setIsRealRoster(true)
       setLoading(false)
       setError(false)
       return
@@ -63,7 +61,7 @@ export function SquadProvider({ children }: { children: ReactNode }) {
     listCenterAthletes(activeCenterId)
       .then((dtos) => {
         if (!alive) return
-        const real = applyOverrides(activeCenterId, dtos.map(athleteFromCenter))
+        const real = dtos.map(athleteFromCenter)
         setAthletes(real)
         setIsRealRoster(true)
       })
@@ -86,11 +84,8 @@ export function SquadProvider({ children }: { children: ReactNode }) {
       setAthletes((prev) => {
         const next = updateAthlete(prev, id, { ...patch, ...meta })
         if (isRealRoster && activeCenterId != null) {
-          // Campos reales → API (cross-device). Sintéticos → override local.
+          // Solo los campos modelados se persisten; no hay overrides sintéticos.
           saveAthleteEdit(activeCenterId, Number(id), patch).catch(() => {})
-          saveOverride(activeCenterId, id, pickLocalFields({ ...patch, ...meta }))
-        } else {
-          saveSquad(next) // demo mock
         }
         return next
       })

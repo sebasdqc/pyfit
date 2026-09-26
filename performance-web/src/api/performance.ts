@@ -12,6 +12,7 @@ import type {
   InjuryReport, PhysicalTestRecord, PsychRecord,
   CargaTeamRow, CargaAthleteResponse, CargaRecord,
   FormaTeamResponse, FormaAthleteResponse,
+  DailyBrief,
 } from '@/types'
 
 // ── Centros ──────────────────────────────────────────────────────────────────
@@ -39,12 +40,19 @@ export async function getCenter(centerId: number): Promise<SportsCenter> {
   return res.data
 }
 
+export async function getDailyBrief(centerId: number, date?: string): Promise<DailyBrief> {
+  const res = await api.get<DailyBrief>(`/performance/centers/${centerId}/today/`, {
+    params: date ? { date } : undefined,
+  })
+  return res.data
+}
+
 // Edición del centro desde Ajustes. El backend solo acepta nombre, tipo,
 // ciudad, país y disciplina — el slug es el identificador estable y no se toca.
 export async function updateCenter(
   centerId: number,
   payload: Partial<Pick<
-    SportsCenter, 'nombre' | 'tipo' | 'ciudad' | 'pais' | 'disciplina' | 'proteccion_menores'
+    SportsCenter, 'nombre' | 'tipo' | 'ciudad' | 'pais' | 'disciplina' | 'proteccion_menores' | 'timezone'
   >>,
 ): Promise<SportsCenter> {
   const res = await api.patch<SportsCenter>(`/performance/centers/${centerId}/`, payload)

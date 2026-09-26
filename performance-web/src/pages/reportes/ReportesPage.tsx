@@ -7,16 +7,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { Spinner } from '@/components/ui/Spinner'
 import { useSquad } from '@/centers/useSquad'
 import { useActiveCenter } from '@/centers/useActiveCenter'
 import { ESTADO_LABEL, type Athlete } from '@/lib/mockSquad'
 import { ESTADO_LESION, SEV_LABEL, TIPO_LABEL } from '@/lib/mockInjuries'
-import {
-  demoReportData, fetchReportData, latestWellnessByAthlete, type ReportData,
-} from '@/lib/reportData'
+import { fetchReportData, latestWellnessByAthlete, type ReportData } from '@/lib/reportData'
 import {
   downloadAthleteCsv, downloadAthletePdf, downloadTeamCsv, downloadTeamPdf,
   type ReportContext,
@@ -32,21 +29,27 @@ export function ReportesPage() {
 
   const [data, setData] = useState<ReportData | null>(null)
   const [loadingData, setLoadingData] = useState(true)
+  const [dataError, setDataError] = useState(false)
   const [tab, setTab] = useState<'equipo' | 'atleta'>('equipo')
   const [sel, setSel] = useState('')
   const [pdfBusy, setPdfBusy] = useState(false)
 
-  // Carga los datos del informe (real → servidor; demo → stores locales).
+  // Carga real. Un fallo permanece visible: nunca se sustituye por un informe demo.
   useEffect(() => {
     if (noContent) return
     let alive = true
     setLoadingData(true)
-    const load = isRealRoster && centerId != null
-      ? fetchReportData(centerId, squad)
-      : Promise.resolve(demoReportData())
-    load
-      .then((d) => { if (alive) { setData(d); setLoadingData(false) } })
-      .catch(() => { if (alive) { setData(demoReportData()); setLoadingData(false) } })
+    setDataError(false)
+    setData(null)
+    if (centerId == null) {
+      setLoadingData(false)
+      setDataError(true)
+      return
+    }
+    fetchReportData(centerId, squad)
+      .then((d) => { if (alive) setData(d) })
+      .catch(() => { if (alive) setDataError(true) })
+      .finally(() => { if (alive) setLoadingData(false) })
     return () => { alive = false }
   }, [isRealRoster, centerId, squad, noContent])
 
@@ -79,7 +82,6 @@ export function ReportesPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white">Reportes</h1>
-            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           </div>
           <p className="text-xs text-white/45">Informes exportables del centro · PDF y CSV (Excel)</p>
         </div>
@@ -142,6 +144,12 @@ export function ReportesPage() {
                 <Spinner size={18} />
                 Cargando datos del centro…
               </div>
+            </Panel>
+          ) : dataError ? (
+            <Panel title="No se pudo preparar el informe">
+              <p className="text-sm text-white/50">
+                No se mostrarán datos de muestra. Recarga la página cuando la conexión esté disponible.
+              </p>
             </Panel>
           ) : !data ? null : tab === 'equipo' ? (
             <TeamPreview data={data} squad={squad} />

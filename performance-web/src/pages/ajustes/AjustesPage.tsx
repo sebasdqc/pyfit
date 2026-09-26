@@ -42,6 +42,19 @@ const TIPOS: Opcion<TipoCentro>[] = [
 const INPUT =
   'mt-1.5 w-full rounded-lg border border-perf-border bg-perf-bg px-3.5 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-accent'
 
+const TIMEZONES = [
+  'UTC',
+  'America/Caracas',
+  'America/Bogota',
+  'America/Lima',
+  'America/Santiago',
+  'America/Argentina/Buenos_Aires',
+  'America/Montevideo',
+  'America/Mexico_City',
+  'America/New_York',
+  'Europe/Madrid',
+]
+
 function mensajeDeError(e: unknown): string {
   const data = (e as { response?: { data?: Record<string, unknown> } })?.response?.data
   if (data && typeof data === 'object') {
@@ -70,6 +83,7 @@ export function AjustesPage() {
   const [tipo, setTipo] = useState<TipoCentro>('equipos')
   const [ciudad, setCiudad] = useState('')
   const [disciplina, setDisciplina] = useState('')
+  const [zonaHoraria, setZonaHoraria] = useState('UTC')
   const [proteccionMenores, setProteccionMenores] = useState(false)
 
   const puedeEditar = !!user && (user.is_admin || user.is_director)
@@ -90,6 +104,7 @@ export function AjustesPage() {
         setTipo(c.tipo)
         setCiudad(c.ciudad ?? '')
         setDisciplina(c.disciplina ?? '')
+        setZonaHoraria(c.timezone)
         setProteccionMenores(c.proteccion_menores)
       })
       .catch(() => {
@@ -109,6 +124,7 @@ export function AjustesPage() {
       tipo !== centro.tipo ||
       ciudad.trim() !== (centro.ciudad ?? '') ||
       disciplina.trim() !== (centro.disciplina ?? '') ||
+      zonaHoraria.trim() !== centro.timezone ||
       proteccionMenores !== centro.proteccion_menores)
 
   async function guardar() {
@@ -122,6 +138,7 @@ export function AjustesPage() {
         tipo,
         ciudad: ciudad.trim(),
         disciplina: disciplina.trim(),
+        timezone: zonaHoraria.trim(),
         proteccion_menores: proteccionMenores,
       })
       setCentro(actualizado)
@@ -259,6 +276,25 @@ export function AjustesPage() {
               />
             </label>
           </div>
+
+          <label className="block max-w-md">
+            <span className="text-xs font-medium text-white/60">Zona horaria</span>
+            <input
+              value={zonaHoraria}
+              list="performance-timezones"
+              maxLength={64}
+              disabled={!puedeEditar}
+              onChange={(e) => setZonaHoraria(e.target.value)}
+              placeholder="America/Caracas"
+              className={INPUT}
+            />
+            <datalist id="performance-timezones">
+              {TIMEZONES.map((tz) => <option key={tz} value={tz} />)}
+            </datalist>
+            <p className="mt-1 text-[11px] text-white/35">
+              Define cuándo comienza “hoy” para el briefing, los check-ins y las sesiones.
+            </p>
+          </label>
 
           <div>
             <span className="text-xs font-medium text-white/60">Identificador</span>

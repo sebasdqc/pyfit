@@ -23,6 +23,7 @@ urlpatterns = [
     # Centros
     path('centers/', views.centers_view),
     path('centers/<int:pk>/', views.center_detail),
+    path('centers/<int:pk>/today/', views.center_today),
     path('centers/<int:pk>/staff/', views.center_staff),
     path('centers/<int:pk>/staff/<int:membership_pk>/', views.center_staff_detail),
     # Categorías / cohortes (unidad de trabajo de las instituciones educativas)

@@ -67,6 +67,27 @@ class CenterAjustesTests(TestCase):
         self.assertEqual(res.data['ciudad'], 'Montevideo')
         self.assertEqual(res.data['disciplina'], 'Futsal')
 
+    def test_edita_timezone_iana(self):
+        res = self.client.patch(self.url, {'timezone': 'America/Caracas'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['timezone'], 'America/Caracas')
+
+    def test_rechaza_timezone_invalida(self):
+        res = self.client.patch(self.url, {'timezone': 'Caracas'}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.center.refresh_from_db()
+        self.assertEqual(self.center.timezone, 'UTC')
+
+    def test_flag_daily_loop_no_es_editable_desde_el_panel(self):
+        res = self.client.patch(
+            self.url,
+            {'daily_loop_enabled': True, 'ciudad': 'Caracas'},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 200)
+        self.center.refresh_from_db()
+        self.assertFalse(self.center.daily_loop_enabled)
+
     def test_patch_parcial_no_pisa_lo_demas(self):
         self.client.patch(self.url, {'ciudad': 'Lima'}, format='json')
         res = self.client.patch(self.url, {'disciplina': 'Rugby'}, format='json')

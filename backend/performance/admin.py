@@ -14,8 +14,8 @@ from .models import (
 
 @admin.register(SportsCenter)
 class SportsCenterAdmin(ModelAdmin):
-    list_display = ('nombre', 'slug', 'tipo', 'proteccion_menores', 'ciudad', 'disciplina', 'activo', 'created_at')
-    list_filter = ('tipo', 'proteccion_menores', 'activo', 'pais')
+    list_display = ('nombre', 'slug', 'tipo', 'timezone', 'daily_loop_enabled', 'proteccion_menores', 'ciudad', 'disciplina', 'activo', 'created_at')
+    list_filter = ('tipo', 'daily_loop_enabled', 'proteccion_menores', 'activo', 'pais')
     search_fields = ('nombre', 'slug', 'ciudad')
     prepopulated_fields = {'slug': ('nombre',)}
 

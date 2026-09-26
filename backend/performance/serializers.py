@@ -1,6 +1,7 @@
 """Serializers del panel Zyfit Performance."""
 
 from rest_framework import serializers
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pyfit.text_validators import contains_unsafe_chars
 from .models import (
@@ -21,10 +22,21 @@ class SportsCenterSerializer(serializers.ModelSerializer):
         model = SportsCenter
         fields = [
             'id', 'nombre', 'slug', 'tipo', 'ciudad', 'pais', 'disciplina',
-            'proteccion_menores', 'director_principal', 'activo', 'created_at',
+            'proteccion_menores', 'timezone', 'daily_loop_enabled',
+            'director_principal', 'activo', 'created_at',
             'total_atletas', 'total_staff',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'daily_loop_enabled']
+
+    def validate_timezone(self, value):
+        value = (value or '').strip()
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise serializers.ValidationError(
+                'Usa una zona horaria IANA válida, por ejemplo America/Caracas.'
+            )
+        return value
 
     def get_total_atletas(self, obj):
         return obj.atletas.count()

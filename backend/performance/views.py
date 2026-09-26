@@ -21,6 +21,8 @@ filtrado avanzado, paginación y la UI quedan fuera de alcance de este andamiaje
 """
 
 import logging
+from datetime import date
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -37,6 +39,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from pyfit.throttles import GenerateTeamSessionRateThrottle, LoginRateThrottle
 from pyfit.text_validators import HUMAN_NAME_RE
 from .calculators import CalculatorError, catalog, get_calculator
+from .daily_brief import build_daily_brief
 from .models import (
     SportsCenter, CenterMembership, CenterAthlete,
     PerformanceMetric, InjuryReport, PhysicalTest, TrainingPlan, PsychAssessment,
@@ -333,7 +336,9 @@ def centers_view(request):
 # propósito: es el identificador estable del centro y cambiarlo desde la UI
 # invita a romper enlaces guardados sin ganar nada. Si alguna vez hace falta,
 # es una operación de admin.
-_CENTER_EDITABLE = ['nombre', 'tipo', 'ciudad', 'pais', 'disciplina', 'proteccion_menores']
+_CENTER_EDITABLE = [
+    'nombre', 'tipo', 'ciudad', 'pais', 'disciplina', 'proteccion_menores', 'timezone',
+]
 
 
 @api_view(['GET', 'PATCH'])
@@ -363,6 +368,40 @@ def center_detail(request, pk):
         return Response(serializer.data)
 
     return Response(SportsCenterSerializer(center).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsPerformanceUser])
+def center_today(request, pk):
+    """Briefing operativo del día, compuesto solo con datos persistidos.
+
+    La ausencia de una fuente se expresa como cobertura parcial/desconocida;
+    nunca se rellena con una estimación ni con datos demo.
+    """
+    center = _get_center_or_404(request.user, pk)
+    requested_date = request.query_params.get('date')
+    if requested_date:
+        try:
+            day = date.fromisoformat(requested_date)
+        except ValueError:
+            return Response(
+                {'date': 'Usa una fecha válida en formato YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    else:
+        day = timezone.localdate(timezone=ZoneInfo(center.timezone))
+
+    group = (request.query_params.get('group') or '').strip()
+    brief = build_daily_brief(center, request.user, day, group=group)
+    logger.info(
+        'performance_daily_brief center_id=%s user_id=%s date=%s roster=%s coverage=%s',
+        center.id,
+        request.user.id,
+        day.isoformat(),
+        brief['coverage']['roster_total'],
+        brief['coverage']['status'],
+    )
+    return Response(brief)
 
 
 # ─── Categorías del centro (instituciones educativas) ─────────────────────────

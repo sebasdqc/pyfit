@@ -44,10 +44,12 @@ function toPatch(f: FormState): AthletePatch {
 
 export function AthleteEditModal({
   athlete,
+  realOnly = false,
   onClose,
   onSave,
 }: {
   athlete: Athlete
+  realOnly?: boolean
   onClose: () => void
   onSave: (patch: AthletePatch) => void
 }) {
@@ -73,7 +75,15 @@ export function AthleteEditModal({
 
   // Validación en vivo: resalta los campos fuera de rango y bloquea el guardado.
   const patch = useMemo(() => toPatch(form), [form])
-  const errors = useMemo(() => validateAthlete(patch), [patch])
+  const errors = useMemo(() => {
+    if (!realOnly) return validateAthlete(patch)
+    return validateAthlete({
+      nombre: athlete.nombre,
+      dorsal: patch.dorsal,
+      posicion: patch.posicion,
+      grupo: patch.grupo,
+    })
+  }, [athlete.nombre, patch, realOnly])
   const hasErrors = Object.keys(errors).length > 0
 
   return (
@@ -131,32 +141,32 @@ export function AthleteEditModal({
           </div>
 
           <Section title="Datos">
-            <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" autoFocus />
+            {!realOnly && <Text label="Nombre completo" value={form.nombre} onChange={(v) => set('nombre', v)} error={errors.nombre} className="col-span-2" autoFocus />}
             <Num label="Dorsal" value={form.dorsal} onChange={(v) => set('dorsal', v)} error={errors.dorsal} />
             <Text label="Posición" value={form.posicion} onChange={(v) => set('posicion', v)} error={errors.posicion} />
             <Select label="Estado" value={form.estado} onChange={(v) => set('estado', v)} options={[['ok', 'Disponible'], ['duda', 'En duda'], ['baja', 'No disponible']]} />
-            <Text label="Nacionalidad" value={form.nacionalidad} onChange={(v) => set('nacionalidad', v)} />
-            <Num label="Edad" value={form.edad} onChange={(v) => set('edad', v)} error={errors.edad} />
-            <Num label="Altura (cm)" value={form.altura} onChange={(v) => set('altura', v)} error={errors.altura} />
-            <Num label="Peso (kg)" value={form.peso} onChange={(v) => set('peso', v)} error={errors.peso} />
-            <Select label="Pie hábil" value={form.pie} onChange={(v) => set('pie', v)} options={[['Derecho', 'Derecho'], ['Izquierdo', 'Izquierdo']]} />
+            {!realOnly && <Text label="Nacionalidad" value={form.nacionalidad} onChange={(v) => set('nacionalidad', v)} />}
+            {!realOnly && <Num label="Edad" value={form.edad} onChange={(v) => set('edad', v)} error={errors.edad} />}
+            {!realOnly && <Num label="Altura (cm)" value={form.altura} onChange={(v) => set('altura', v)} error={errors.altura} />}
+            {!realOnly && <Num label="Peso (kg)" value={form.peso} onChange={(v) => set('peso', v)} error={errors.peso} />}
+            {!realOnly && <Select label="Pie hábil" value={form.pie} onChange={(v) => set('pie', v)} options={[['Derecho', 'Derecho'], ['Izquierdo', 'Izquierdo']]} />}
             <Text label="Grupo" value={form.grupo} onChange={(v) => set('grupo', v)} error={errors.grupo} />
           </Section>
 
-          <Section title="Rendimiento (0–100)">
+          {!realOnly && <Section title="Rendimiento (0–100)">
             {RADAR_AXES.map((ax) => (
               <Num key={ax.key} label={ax.label} value={form[ax.key]} onChange={(v) => set(ax.key, v)} error={errors[ax.key]} min={0} max={100} />
             ))}
-          </Section>
+          </Section>}
 
-          <Section title="Carga y estado">
+          {!realOnly && <Section title="Carga y estado">
             <Num label="ACWR" value={form.acwr} onChange={(v) => set('acwr', v)} error={errors.acwr} step={0.01} />
             <Num label="Bienestar (0–10)" value={form.bienestar} onChange={(v) => set('bienestar', v)} error={errors.bienestar} step={0.1} min={0} max={10} />
             <Num label="Carga semanal (UA)" value={form.cargaSemanal} onChange={(v) => set('cargaSemanal', v)} error={errors.cargaSemanal} />
             <Num label="Disponibilidad (%)" value={form.disponibilidad} onChange={(v) => set('disponibilidad', v)} error={errors.disponibilidad} min={0} max={100} />
             <Num label="Minutos" value={form.minutos} onChange={(v) => set('minutos', v)} error={errors.minutos} />
             <Num label="Sesiones" value={form.sesiones} onChange={(v) => set('sesiones', v)} error={errors.sesiones} />
-          </Section>
+          </Section>}
         </div>
 
         {/* Pie */}

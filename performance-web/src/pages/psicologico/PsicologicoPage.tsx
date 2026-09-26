@@ -15,7 +15,6 @@ import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { SEM, type Tone } from '@/lib/tone'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { useSquad } from '@/centers/useSquad'
 import type { Athlete } from '@/lib/mockSquad'
@@ -111,7 +110,6 @@ export function PsicologicoPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white">Psicológico</h1>
-            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           </div>
           <p className="text-xs text-white/45">
             {section === 'bienestar'

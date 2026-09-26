@@ -63,6 +63,8 @@ export interface SportsCenter {
   // Exige consentimiento de la tutoría para datos de salud, psicométricos y
   // antropométricos de los menores del centro.
   proteccion_menores: boolean
+  timezone: string
+  daily_loop_enabled: boolean
   ciudad: string
   pais: string
   disciplina: string
@@ -71,6 +73,94 @@ export interface SportsCenter {
   created_at: string
   total_atletas: number
   total_staff: number
+}
+
+export type DailyAvailabilityStatus =
+  | 'ready'
+  | 'modified'
+  | 'review'
+  | 'unavailable'
+  | 'unknown'
+
+export interface DailyBriefReason {
+  code: string
+  label: string
+  severity: 'warning' | 'critical'
+  source: 'roster' | 'injuries' | 'wellness' | 'load'
+  updated_at: string | null
+}
+
+export interface DailyBriefAthlete {
+  center_athlete_id: number
+  athlete_id: number
+  name: string
+  photo: string
+  position: string
+  group: string
+  status: DailyAvailabilityStatus
+  reasons: DailyBriefReason[]
+  wellness: {
+    index: number
+    state: 'ok' | 'duda' | 'alerta'
+    updated_at: string
+  } | null
+  load: {
+    days_with_data: number
+    sufficient: boolean
+    weekly_load_ua: number
+    acwr_ewma: number | null
+    zone: string
+    risk_alert: boolean
+  } | null
+}
+
+export interface DailyBrief {
+  date: string
+  timezone: string
+  generated_at: string
+  daily_loop_enabled: boolean
+  center: { id: number; name: string }
+  permissions: {
+    wellness_detail: boolean
+    load_detail: boolean
+    injury_detail: boolean
+    planning_detail: boolean
+  }
+  coverage: {
+    roster_total: number
+    wellness_today: number
+    wellness_pct: number
+    load_7d: number
+    load_pct: number
+    complete_today: number
+    missing_wellness_ids: number[]
+    status: 'complete' | 'partial' | 'empty'
+  }
+  freshness: {
+    wellness: string | null
+    load: string | null
+    injuries: string | null
+  }
+  availability: Record<DailyAvailabilityStatus, number>
+  athletes: DailyBriefAthlete[]
+  sessions: Array<{
+    id: number
+    name: string
+    type: string
+    duration_min: number | null
+    target_load_ua: number | null
+    status: string
+    event_title: string | null
+  }>
+  next_event: {
+    id: number
+    title: string
+    type: string
+    start_date: string
+    start_time: string | null
+    all_day: boolean
+    group: string
+  } | null
 }
 
 export interface CenterAthlete {

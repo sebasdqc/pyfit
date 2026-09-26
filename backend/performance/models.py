@@ -118,6 +118,13 @@ class SportsCenter(models.Model):
     # `instituciones` nacen con esto en True (ver centers_view), y cualquier otro
     # centro puede activarlo desde Ajustes cuando tenga las fechas cargadas.
     proteccion_menores = models.BooleanField(default=False)
+    # Zona horaria IANA del centro. Es una decisión de negocio, no de
+    # presentación: define qué significa "hoy" para check-ins, sesiones y
+    # eventos del briefing diario aunque el servidor opere en UTC.
+    timezone = models.CharField(max_length=64, default='UTC')
+    # Rollout kill-switch del nuevo bucle operativo. Se administra por centro
+    # para poder activar cohortes sin mezclarlo con permisos de módulos.
+    daily_loop_enabled = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

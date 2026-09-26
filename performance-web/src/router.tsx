@@ -13,7 +13,6 @@ import { AudiencePage } from '@/pages/AudiencePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ProfilePage } from '@/pages/perfil/ProfilePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { RendimientoPage } from '@/pages/rendimiento/RendimientoPage'
 import { LesionesPage } from '@/pages/lesiones/LesionesPage'
 import { TestPage } from '@/pages/test/TestPage'
 import { PlanificacionPage } from '@/pages/planificacion/PlanificacionPage'
@@ -22,11 +21,7 @@ import { SimuladorPage } from '@/pages/simulador/SimuladorPage'
 import { EquipoPage } from '@/pages/equipo/EquipoPage'
 import { CalendarioPage } from '@/pages/calendario/CalendarioPage'
 import { ReportesPage } from '@/pages/reportes/ReportesPage'
-import { GpsPage } from '@/pages/gps/GpsPage'
-import { MatchDayPage } from '@/pages/gps/MatchDayPage'
-import { PostSessionPage } from '@/pages/gps/PostSessionPage'
-import { WeeklyLoadPage } from '@/pages/gps/WeeklyLoadPage'
-import { PlayerProfilePage } from '@/pages/gps/PlayerProfilePage'
+import { DataUnavailablePage } from '@/components/ui/DataUnavailablePage'
 import { CargaPage } from '@/pages/carga/CargaPage'
 import { FormaPage } from '@/pages/forma/FormaPage'
 import { AsesorPage } from '@/pages/asesor/AsesorPage'
@@ -69,18 +64,21 @@ export const router = createBrowserRouter([
               { path: 'plantilla', element: <Navigate to="/equipo" replace /> },
               { path: 'equipo', element: <EquipoPage /> },
               { path: 'calendario', element: <CalendarioPage /> },
-              { path: 'rendimiento', element: <RendimientoPage /> },
+              {
+                path: 'rendimiento',
+                element: <DataUnavailablePage title="Rendimiento" description="La carga interna ya está disponible; las métricas neuromusculares, autonómicas y externas aparecerán aquí cuando tengan captura persistida." action={{ label: 'Abrir Carga interna', to: '/carga', icon: 'carga' }} />,
+              },
               { path: 'lesiones', element: <LesionesPage /> },
               { path: 'tests', element: <TestPage /> },
               { path: 'tests/:familia', element: <TestPage /> },
               { path: 'carga', element: <CargaPage /> },
               { path: 'forma', element: <FormaPage /> },
               { path: 'asesor', element: <AsesorPage /> },
-              { path: 'gps', element: <GpsPage /> },
-              { path: 'gps/match-day', element: <MatchDayPage /> },
-              { path: 'gps/post-sesion', element: <PostSessionPage /> },
-              { path: 'gps/carga-semanal', element: <WeeklyLoadPage /> },
-              { path: 'gps/jugador', element: <PlayerProfilePage /> },
+              { path: 'gps', element: <DataUnavailablePage title="GPS y Tecnología" description="Conecta una fuente GPS para analizar sesiones, distancias, zonas de velocidad y carga externa." /> },
+              { path: 'gps/match-day', element: <DataUnavailablePage title="Match Day" description="El monitoreo en vivo se habilitará cuando exista una transmisión GPS autenticada para el centro." /> },
+              { path: 'gps/post-sesion', element: <DataUnavailablePage title="Post-sesión" description="Los informes post-sesión aparecerán después de importar o sincronizar una sesión GPS real." /> },
+              { path: 'gps/carga-semanal', element: <DataUnavailablePage title="Carga semanal GPS" description="Esta vista requiere historial de carga externa. La carga interna real continúa disponible en su módulo." action={{ label: 'Abrir Carga interna', to: '/carga', icon: 'carga' }} /> },
+              { path: 'gps/jugador', element: <DataUnavailablePage title="Perfil GPS" description="El perfil longitudinal se habilitará cuando el atleta tenga sesiones GPS persistidas." /> },
               { path: 'planificacion', element: <PlanificacionPage /> },
               { path: 'psicologico', element: <PsicologicoPage /> },
               { path: 'simulador', element: <SimuladorPage /> },
@@ -92,10 +90,10 @@ export const router = createBrowserRouter([
               {
                 path: 'centers/:centerId',
                 children: [
-                  { path: 'rendimiento', element: <RendimientoPage /> },
+                  { path: 'rendimiento', element: <DataUnavailablePage title="Rendimiento" description="Aún no hay una fuente persistida para estas métricas." action={{ label: 'Abrir Carga interna', to: '/carga', icon: 'carga' }} /> },
                   { path: 'lesiones', element: <LesionesPage /> },
                   { path: 'test', element: <TestPage /> },
-                  { path: 'gps', element: <GpsPage /> },
+                  { path: 'gps', element: <DataUnavailablePage title="GPS y Tecnología" description="Conecta una fuente GPS para mostrar datos reales del centro." /> },
                   { path: 'planificacion', element: <PlanificacionPage /> },
                   { path: 'psicologico', element: <PsicologicoPage /> },
                   { path: 'simulador', element: <SimuladorPage /> },

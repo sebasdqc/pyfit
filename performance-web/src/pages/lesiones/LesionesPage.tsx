@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { BodyMap } from '@/components/BodyMap'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { SEM, type Tone } from '@/lib/tone'
 import { useSquad } from '@/centers/useSquad'
@@ -173,7 +172,6 @@ export function LesionesPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white">Lesiones</h1>
-            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           </div>
           <p className="text-xs text-white/45">{activas.length} partes activos · seguimiento y vuelta a competición</p>
         </div>

@@ -11,7 +11,6 @@ import type { AxiosError } from 'axios'
 import { Panel } from '@/components/ui/Panel'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SEM } from '@/lib/tone'
 import { ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
 import { useSquad } from '@/centers/useSquad'
@@ -248,7 +247,6 @@ export function TestPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-semibold tracking-tight text-white">Tests</h1>
-            <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           </div>
           <p className="text-xs text-white/45">
             Evaluación física, técnica y táctica · el cálculo se realiza en el servidor

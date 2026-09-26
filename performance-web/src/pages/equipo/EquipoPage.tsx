@@ -3,19 +3,10 @@
 // Reemplaza tanto /equipo (gestión) como /plantilla (ficha + radar + métricas).
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import {
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-  ResponsiveContainer,
-} from 'recharts'
 import { Panel } from '@/components/ui/Panel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/Icon'
-import { DemoBadge } from '@/components/ui/DemoBadge'
 import { SquadState } from '@/components/ui/SquadState'
 import { Dialog } from '@/components/ui/Dialog'
 import { AthleteEditModal } from '@/components/AthleteEditModal'
@@ -23,8 +14,8 @@ import { useActiveCenter } from '@/centers/useActiveCenter'
 import { useSquad } from '@/centers/useSquad'
 import { useAuth } from '@/auth/useAuth'
 import { canEditRole } from '@/lib/squadEdit'
-import { SEM, acwrTone, type Tone } from '@/lib/tone'
-import { ESTADO_LABEL, ESTADO_TONE, RADAR_AXES, type Athlete } from '@/lib/mockSquad'
+import { SEM } from '@/lib/tone'
+import { ESTADO_LABEL, ESTADO_TONE, type Athlete } from '@/lib/mockSquad'
 import { CreateCenterButton } from '@/components/CreateCenterModal'
 import { MODULES } from '@/lib/constants'
 import { isValidHumanName } from '@/lib/validation'
@@ -186,7 +177,6 @@ function AtletasTab({ centerId }: { centerId: number }) {
       subtitle={noContent ? (loading ? 'Cargando…' : '') : `${squad.length} registrados`}
       action={
         <div className="flex items-center gap-2">
-          <DemoBadge variant={isRealRoster ? 'sim' : 'demo'} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -317,6 +307,7 @@ function AtletasTab({ centerId }: { centerId: number }) {
       {editingAthlete && (
         <AthleteEditModal
           athlete={editingAthlete}
+          realOnly
           onClose={() => setEditingId(null)}
           onSave={(patch) => {
             const meta = {
@@ -344,13 +335,10 @@ function AthleteDetail({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      {/* Datos + radar */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Datos del atleta */}
-        <div className="rounded-xl border border-perf-border bg-perf-bg p-4 lg:col-span-1">
+      <div className="rounded-xl border border-perf-border bg-perf-bg p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/35">
-              Datos del atleta
+              Datos registrados
             </p>
             {canEdit && (
               <button
@@ -363,13 +351,11 @@ function AthleteDetail({
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <DemoField label="Edad" value={`${a.edad} años`} />
-            <DemoField label="Nacionalidad" value={a.nacionalidad} />
-            <DemoField label="Altura" value={`${a.altura} cm`} />
-            <DemoField label="Peso" value={`${a.peso} kg`} />
-            <DemoField label="Pie hábil" value={a.pie} />
-            <DemoField label="Grupo" value={a.grupo} />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+            <DataField label="Dorsal" value={a.dorsal ? `#${a.dorsal}` : 'Sin dorsal'} />
+            <DataField label="Posición" value={a.posicion || 'Sin posición'} />
+            <DataField label="Grupo" value={a.grupo} />
+            <DataField label="Estado" value={ESTADO_LABEL[a.estado]} />
           </div>
           {a.editadoEn && (
             <p className="mt-3 flex items-center gap-1.5 border-t border-perf-border pt-3 text-[11px] text-white/35">
@@ -378,49 +364,10 @@ function AthleteDetail({
               {a.editadoPor ? ` · por ${a.editadoPor}` : ''}
             </p>
           )}
-        </div>
-
-        {/* Radar de rendimiento */}
-        <div className="rounded-xl border border-perf-border bg-perf-bg p-4 lg:col-span-2">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-white/35">
-            Perfil de rendimiento{' '}
-            <span className="font-normal normal-case text-white/25">· escala 0–100</span>
-          </p>
-          <div className="h-[260px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart
-                data={RADAR_AXES.map((ax) => ({ axis: ax.label, v: a.radar[ax.key] }))}
-                outerRadius="72%"
-              >
-                <PolarGrid stroke="#1c2740" />
-                <PolarAngleAxis
-                  dataKey="axis"
-                  tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 11 }}
-                />
-                <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar
-                  name={a.nombre}
-                  dataKey="v"
-                  stroke="#14b8a6"
-                  fill="#14b8a6"
-                  fillOpacity={0.22}
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
-
-      {/* Métricas */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="ACWR" value={a.acwr.toFixed(2)} tone={acwrTone(a.acwr)} />
-        <StatCard label="Bienestar" value={`${a.bienestar}`} unit="/10" tone="ok" />
-        <StatCard label="Carga sem." value={`${a.cargaSemanal}`} unit=" UA" tone="warn" />
-        <StatCard label="Disponib." value={`${a.disponibilidad}`} unit="%" tone="accent" />
-        <StatCard label="Minutos" value={`${a.minutos}`} tone="accent" />
-        <StatCard label="Sesiones" value={`${a.sesiones}`} tone="accent" />
-      </div>
+      <p className="text-xs leading-relaxed text-white/40">
+        Las métricas de carga, bienestar y tests se consultan en sus módulos de origen. Si falta una medición, Performance la muestra como ausente.
+      </p>
     </div>
   )
 }
@@ -722,19 +669,7 @@ function EstadoBadge({ estado }: { estado: Athlete['estado'] }) {
   )
 }
 
-function StatCard({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone: Tone }) {
-  return (
-    <div className="rounded-2xl border border-perf-border bg-perf-surface p-4">
-      <p className="text-xs text-white/45">{label}</p>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className={`text-xl font-bold ${SEM[tone].text}`}>{value}</span>
-        {unit && <span className="text-xs text-white/40">{unit}</span>}
-      </div>
-    </div>
-  )
-}
-
-function DemoField({ label, value }: { label: string; value: string }) {
+function DataField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[11px] uppercase tracking-wide text-white/35">{label}</p>
