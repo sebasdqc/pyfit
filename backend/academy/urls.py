@@ -3,7 +3,7 @@
 from django.urls import path
 
 from . import (
-    admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views,
+    admin_billing_views, admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views,
     support_views, views,
 )
 
@@ -55,6 +55,14 @@ urlpatterns = [
 
     # Panel de administración de usuarios (crear/listar admin/profesor/estudiante) — SOLO admin
     path('admin/usuarios/', admin_users_views.admin_users_view),
+
+    # Gestión para admins: métricas del negocio y cobros de Academy Pro — SOLO admin
+    path('admin/metricas/', admin_billing_views.admin_metrics),
+    path('admin/suscripciones/', admin_billing_views.admin_subscriptions),
+    path('admin/suscripciones/<int:user_id>/cancelar/', admin_billing_views.admin_subscription_cancel),
+    path('admin/pagos/', admin_billing_views.admin_payments),
+    path('admin/pagos/<int:pk>/anular/', admin_billing_views.admin_payment_void),
+    path('admin/solicitudes/<int:pk>/rechazar/', admin_billing_views.admin_request_reject),
 
     # Home del estudiante (progreso por escuela/curso, racha, insignias, continuar)
     path('dashboard/', views.dashboard_view),

@@ -38,7 +38,7 @@ Principios (heredados del resto del backend y de Zyfit Performance):
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -852,12 +852,102 @@ class AcademySubscription(models.Model):
     def __str__(self):
         return f'{self.user_id} · Academy Pro [{self.estado}]'
 
+    # Días de cortesía tras `fecha_renovacion` antes de cortar el acceso a una
+    # suscripción "activa": con pagos administrados a mano, el cobro de
+    # renovación casi nunca se registra el mismo día del vencimiento.
+    GRACIA_DIAS = 3
+
     def da_acceso_pro(self) -> bool:
         if self.estado == self.ESTADO_ACTIVA:
+            # Sin fecha (otorgada a mano, sin vencimiento) no expira. Con fecha,
+            # una suscripción "activa" cuyo período pagado ya terminó (más la
+            # cortesía) deja de dar acceso aunque nadie la haya marcado vencida.
+            if self.fecha_renovacion:
+                return date.today() <= self.fecha_renovacion + timedelta(days=self.GRACIA_DIAS)
             return True
         if self.estado == self.ESTADO_CANCELADA and self.fecha_renovacion:
             return date.today() <= self.fecha_renovacion
         return False
+
+
+class AcademyPayment(models.Model):
+    """Libro de pagos de Academy Pro: UNA fila por cobro registrado por un admin.
+
+    `AcademySubscription` solo guarda el estado ACTUAL (una fila por usuario),
+    así que sin este libro no hay forma de calcular ingresos, MRR, cobertura
+    de cada período ni auditar quién registró qué. Es la fuente de verdad
+    financiera: los paneles de finanzas leen de aquí, nunca del estado de la
+    suscripción. No se borra: un pago equivocado se ANULA (queda el rastro).
+
+    Sin proveedor de pago real conectado (ver academy.payments): el admin cobra
+    por fuera (transferencia, pago móvil, efectivo...) y lo registra aquí; el
+    servicio `billing_service.registrar_pago` extiende la suscripción.
+    """
+
+    METODO_TRANSFERENCIA = 'transferencia'
+    METODO_PAGO_MOVIL = 'pago_movil'
+    METODO_ZELLE = 'zelle'
+    METODO_EFECTIVO = 'efectivo'
+    METODO_TARJETA = 'tarjeta'
+    METODO_OTRO = 'otro'
+    METODO_CHOICES = [
+        (METODO_TRANSFERENCIA, 'Transferencia'),
+        (METODO_PAGO_MOVIL, 'Pago móvil'),
+        (METODO_ZELLE, 'Zelle'),
+        (METODO_EFECTIVO, 'Efectivo'),
+        (METODO_TARJETA, 'Tarjeta'),
+        (METODO_OTRO, 'Otro'),
+    ]
+
+    ESTADO_CONFIRMADO = 'confirmado'
+    ESTADO_ANULADO = 'anulado'
+    ESTADO_CHOICES = [(ESTADO_CONFIRMADO, 'Confirmado'), (ESTADO_ANULADO, 'Anulado')]
+
+    tenant = models.ForeignKey(
+        'academy.Tenant', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='payments',
+    )
+    # SET_NULL + snapshot del email: borrar la cuenta (derecho al olvido) no
+    # debe borrar el registro contable.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='academy_payments',
+    )
+    usuario_email = models.CharField(max_length=254, blank=True, default='')
+    plan_tipo = models.CharField(max_length=20, choices=AcademySubscription.PLAN_TIPO_CHOICES)
+    monto = models.DecimalField(max_digits=8, decimal_places=2)
+    moneda = models.CharField(max_length=3, default='USD')
+    metodo = models.CharField(max_length=20, choices=METODO_CHOICES, default=METODO_OTRO)
+    referencia = models.CharField(max_length=120, blank=True, default='')
+    fecha_pago = models.DateField()
+    # Período de acceso que este pago cubre.
+    periodo_desde = models.DateField()
+    periodo_hasta = models.DateField()
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default=ESTADO_CONFIRMADO)
+    nota = models.TextField(blank=True, default='')
+    # Id de la `promos.SolicitudSuscripcion` que originó el cobro (sin FK: no
+    # acoplamos el esquema de Academy al de promos).
+    solicitud_id = models.PositiveIntegerField(null=True, blank=True)
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    anulado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    anulado_en = models.DateTimeField(null=True, blank=True)
+    motivo_anulacion = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_payments'
+        ordering = ['-fecha_pago', '-id']
+        indexes = [
+            models.Index(fields=['fecha_pago']),
+            models.Index(fields=['user', '-fecha_pago']),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario_email or self.user_id} · {self.monto} {self.moneda} [{self.estado}]'
 
 
 # ─── Onboarding sin registro (probar antes de registrarse) ────────────────────

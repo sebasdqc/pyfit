@@ -48,13 +48,16 @@ class AdministeredGateway(PaymentGateway):
     `CoachSubscription`. La usan Django Admin y el webhook de pagos (una vez
     haya un proveedor real) — nunca un endpoint público self-service."""
 
-    def activar(self, user, plan_tipo='mensual', proveedor_pago='', referencia_externa='') -> AcademySubscription:
+    def activar(self, user, plan_tipo='mensual', proveedor_pago='', referencia_externa='',
+                desde: date | None = None) -> AcademySubscription:
+        """`desde` permite que una renovación anticipada EXTIENDA el período
+        vigente en vez de reiniciarlo desde hoy (sin él, cuenta desde hoy)."""
         sub, _ = AcademySubscription.objects.update_or_create(
             user=user,
             defaults={
                 'estado': AcademySubscription.ESTADO_ACTIVA,
                 'plan_tipo': plan_tipo,
-                'fecha_renovacion': _calcular_renovacion(plan_tipo),
+                'fecha_renovacion': _calcular_renovacion(plan_tipo, desde),
                 'proveedor_pago': proveedor_pago,
                 'referencia_externa': referencia_externa,
             },
