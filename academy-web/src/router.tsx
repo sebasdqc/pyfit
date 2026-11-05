@@ -21,6 +21,8 @@ import { CourseDetailPage } from '@/pages/CourseDetailPage'
 import { LessonPlayerPage } from '@/pages/LessonPlayerPage'
 import { MyLearningPage } from '@/pages/MyLearningPage'
 import { LibraryPage } from '@/pages/LibraryPage'
+import { AdminBillingPage } from '@/pages/AdminBillingPage'
+import { AdminMetricsPage } from '@/pages/AdminMetricsPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { InstructorPage } from '@/pages/InstructorPage'
 import { InstructorAnalyticsPage } from '@/pages/InstructorAnalyticsPage'
@@ -86,6 +88,8 @@ export const router = createBrowserRouter([
           { path: 'instructor/analitica', element: <InstructorAnalyticsPage /> },
           { path: 'instructor/blog', element: <BlogInstructorPage /> },
           { path: 'admin/usuarios', element: <AdminUsersPage /> },
+          { path: 'admin/metricas', element: <AdminMetricsPage /> },
+          { path: 'admin/cobros', element: <AdminBillingPage /> },
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },
           { path: 'instructor/cursos/:courseId/entregas', element: <SubmissionsPage /> },
           { path: 'instructor/cursos/:courseId/ajustes', element: <CourseSettingsPage /> },

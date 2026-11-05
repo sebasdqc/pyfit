@@ -51,6 +51,8 @@ const es = {
     navComunidad: 'Comunidad',
     navBlog: 'Blog',
     navInstructor: 'Mis cursos',
+    navMetricas: 'Métricas',
+    navCobros: 'Cobros',
     navUsuarios: 'Usuarios',
     navSoporte: 'Soporte',
     navSoporteAdmin: 'Soporte (admin)',

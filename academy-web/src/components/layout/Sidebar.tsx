@@ -29,6 +29,8 @@ const NAV: NavItem[] = [
   { id: 'blog', labelKey: 'sidebar.navBlog', icon: 'blog', to: '/blog' },
   { id: 'soporte', labelKey: 'sidebar.navSoporte', icon: 'mail', to: '/soporte' },
   { id: 'instructor', labelKey: 'sidebar.navInstructor', icon: 'instructor', to: '/instructor', instructorOnly: true },
+  { id: 'metricas', labelKey: 'sidebar.navMetricas', icon: 'activity', to: '/admin/metricas', adminOnly: true },
+  { id: 'cobros', labelKey: 'sidebar.navCobros', icon: 'star', to: '/admin/cobros', adminOnly: true },
   { id: 'usuarios', labelKey: 'sidebar.navUsuarios', icon: 'shield', to: '/admin/usuarios', adminOnly: true },
   { id: 'soporteAdmin', labelKey: 'sidebar.navSoporteAdmin', icon: 'shield', to: '/admin/soporte', adminOnly: true },
 ]

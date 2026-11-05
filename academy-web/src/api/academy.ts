@@ -3,6 +3,7 @@
 
 import { api } from './client'
 import type {
+  AdminMetricas, AdminPago, AdminPeriodo, AdminSuscripciones, RegistrarPagoPayload,
   AcademyBadgeCatalog, AcademyPlanTipo, AcademyPromoValidation, AcademySolicitudSuscripcion,
   AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
   BlogPost, BlogPostDetail,
@@ -537,6 +538,41 @@ export interface CreateAcademyUserPayload {
 export async function createAcademyUser(payload: CreateAcademyUserPayload): Promise<AcademyUserAccount> {
   const res = await api.post<AcademyUserAccount>('/academy/admin/usuarios/', payload)
   return res.data
+}
+
+// ── Gestión del negocio: métricas y cobros (SOLO admin) ───────────────────────
+
+export async function getAdminMetricas(dias: AdminPeriodo): Promise<AdminMetricas> {
+  const res = await api.get<AdminMetricas>('/academy/admin/metricas/', { params: { dias } })
+  return res.data
+}
+
+export async function getAdminSuscripciones(params: { estado?: string; q?: string } = {}): Promise<AdminSuscripciones> {
+  const res = await api.get<AdminSuscripciones>('/academy/admin/suscripciones/', { params })
+  return res.data
+}
+
+export async function getAdminPagos(params: { estado?: string; q?: string } = {}): Promise<AdminPago[]> {
+  const res = await api.get<AdminPago[]>('/academy/admin/pagos/', { params })
+  return res.data
+}
+
+export async function registrarPago(payload: RegistrarPagoPayload): Promise<{ pago: AdminPago; fecha_renovacion: string }> {
+  const res = await api.post<{ pago: AdminPago; fecha_renovacion: string }>('/academy/admin/pagos/', payload)
+  return res.data
+}
+
+export async function anularPago(id: number, motivo: string): Promise<AdminPago> {
+  const res = await api.post<AdminPago>(`/academy/admin/pagos/${id}/anular/`, { motivo })
+  return res.data
+}
+
+export async function cancelarSuscripcionAdmin(userId: number): Promise<void> {
+  await api.post(`/academy/admin/suscripciones/${userId}/cancelar/`)
+}
+
+export async function rechazarSolicitud(id: number): Promise<void> {
+  await api.post(`/academy/admin/solicitudes/${id}/rechazar/`)
 }
 
 // ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────

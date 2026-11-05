@@ -55,6 +55,8 @@ const en: DeepPartial<Dictionary> = {
     navComunidad: 'Community',
     navBlog: 'Blog',
     navInstructor: 'My courses',
+    navMetricas: 'Metrics',
+    navCobros: 'Billing',
     navUsuarios: 'Users',
     navSoporte: 'Support',
     navSoporteAdmin: 'Support (admin)',

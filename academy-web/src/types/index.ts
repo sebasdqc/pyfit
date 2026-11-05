@@ -729,6 +729,158 @@ export interface AcademyUserAccount {
   date_joined: string
 }
 
+// ── Gestión del negocio (SOLO admin) ─────────────────────────────────────────
+// Espeja academy/admin_analytics_service.py y academy/admin_billing_views.py.
+
+export type AdminPeriodo = 7 | 30 | 90
+
+export interface AdminMetricas {
+  periodo: { dias: number; desde: string; hasta: string }
+  resumen: {
+    estudiantes: number
+    cursos_publicados: number
+    matriculas: number
+    matriculas_periodo: number
+    completadas: number
+    tasa_finalizacion: number
+    progreso_promedio: number
+    certificados_periodo: number
+    visitantes_anonimos: { sesiones: number; convertidas: number; conversion: number } | null
+  }
+  estudiantes: {
+    total: number
+    nuevos: number
+    nuevos_variacion: number | null
+    activos_hoy: number
+    activos_7d: number
+    activos_30d: number
+    dau_promedio_30d: number
+    stickiness: number
+    en_riesgo: number
+    dias_en_riesgo: number
+    lecciones_completadas: number
+    quiz_intentos: number
+    quiz_aprobacion: number
+    serie_nuevos: { fecha: string; nuevos: number }[]
+  }
+  cursos: {
+    filas: {
+      id: number
+      titulo: string
+      matriculas: number
+      completadas: number
+      tasa_finalizacion: number
+      progreso_promedio: number
+      quiz_intentos: number
+      quiz_aprobacion: number
+    }[]
+    total_publicados: number
+    sin_matriculas: number
+  }
+  retencion: {
+    cohortes: { semana: string; tamano: number; retencion: (number | null)[] }[]
+    semanas: number
+    retencion_semana_1: number | null
+  }
+  finanzas: {
+    moneda: string
+    ingresos_periodo: number
+    ingresos_variacion: number | null
+    ingresos_mes_actual: number
+    ingresos_mes_anterior: number
+    ingresos_historico: number
+    pagos_periodo: number
+    mrr: number
+    arr: number
+    arpu: number
+    suscriptores_activos: number
+    suscriptores_sin_pago_registrado: number
+    cancelados_con_acceso: number
+    vencidos_sin_marcar: number
+    altas_periodo: number
+    renovaciones_periodo: number
+    bajas_periodo: number
+    churn_aprox: number | null
+    conversion_a_pago: number
+    por_vencer_7d: number
+    por_vencer_30d: number
+    serie_mensual: { mes: string; ingresos: number; pagos: number }[]
+    por_metodo: { metodo: string; pagos: number; ingresos: number }[]
+    por_plan: { plan: string; pagos: number; ingresos: number }[]
+    solicitudes_pendientes: number
+    comisiones_pendientes: number
+  }
+}
+
+export type AdminPlanTipo = 'mensual' | 'trimestral' | 'anual'
+export type AdminMetodoPago = 'transferencia' | 'pago_movil' | 'zelle' | 'efectivo' | 'tarjeta' | 'otro'
+export type AdminEstadoEfectivo =
+  | 'vigente' | 'por_vencer' | 'vencida' | 'cancelada_con_acceso' | 'cancelada' | 'pago_fallido'
+
+export interface AdminSuscripcion {
+  user_id: number
+  email: string
+  nombre: string
+  estado: string
+  estado_efectivo: AdminEstadoEfectivo
+  plan_tipo: AdminPlanTipo
+  fecha_inicio: string
+  fecha_renovacion: string | null
+  dias_restantes: number | null
+  proveedor_pago: string
+  pagos: number
+  total_pagado: number
+  ultimo_pago: { monto: number; fecha: string } | null
+}
+
+export interface AdminSolicitud {
+  id: number
+  user_id: number
+  email: string
+  plan_tipo: AdminPlanTipo
+  precio_lista: number
+  descuento: number
+  precio_final: number
+  codigo: string
+  created_at: string
+}
+
+export interface AdminSuscripciones {
+  conteo: Partial<Record<AdminEstadoEfectivo, number>>
+  suscripciones: AdminSuscripcion[]
+  solicitudes: AdminSolicitud[]
+}
+
+export interface AdminPago {
+  id: number
+  user_id: number | null
+  email: string
+  plan_tipo: AdminPlanTipo
+  monto: number
+  moneda: string
+  metodo: AdminMetodoPago
+  referencia: string
+  fecha_pago: string
+  periodo_desde: string
+  periodo_hasta: string
+  estado: 'confirmado' | 'anulado'
+  nota: string
+  motivo_anulacion: string
+  registrado_por: string
+  created_at: string
+}
+
+export interface RegistrarPagoPayload {
+  user_id: number
+  plan_tipo: AdminPlanTipo
+  monto: string
+  metodo: AdminMetodoPago
+  referencia?: string
+  fecha_pago?: string
+  nota?: string
+  solicitud_id?: number
+}
+
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────
 // Espeja academy/community_models.py + serializers. Capa de engagement OPCIONAL:
 // ningún campo de aquí participa en progreso/certificación/racha/badges core.
