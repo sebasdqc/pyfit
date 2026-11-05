@@ -108,7 +108,7 @@ curl -s -i -X OPTIONS https://sea-lion-app-a2j4f.ondigitalocean.app/api/<product
 | `cycling` | APP (modelos + CRUD de ciclismo) | CyclistProfile/RidePlan/PlannedRide/RideSession + CRUD `/api/rides/` (espejo de `runs`). SIN RidePoint (tracking GPS) — métricas agregadas las reporta el cliente al completar, no se derivan de una traza |
 | `devices` | APP | Integraciones Garmin/Apple Health |
 | `performance` | Zyfit Performance | SportsCenter/CenterMembership/CenterAthlete, 5 módulos, calculators/, Simulador, Calendario, Planificación+IA equipo |
-| `academy` | Zyfit Academy | School/Course/Module/Lesson/Quiz, Enrollment/Certificate, streak, badges, comunidad, onboarding anónimo, submissions |
+| `academy` | Zyfit Academy | School/Course/Module/Lesson/Quiz, Enrollment/Certificate, streak, badges, comunidad, onboarding anónimo, submissions, libro de pagos `AcademyPayment` + `billing_service` (cobros gestionados por admin), métricas de gestión (`admin_analytics_service`) |
 | `ai_tutor` | Zyfit Academy | Tutor IA RAG (embeddings locales + DeepSeek vía `pyfit/llm.py`) |
 | `promos` | **Compartida: APP + Academy** | Códigos de descuento de influencers, campo `producto` (`zyfit_pro`/`academy_pro`) |
 

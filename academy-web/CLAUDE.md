@@ -118,6 +118,29 @@ soporta imágenes, bloques de código ni anidación. Los enlaces solo aceptan
 `http(s)`, `mailto` y rutas internas (el contenido lo escriben instructores).
 Los cursos viejos con `**` ya se ven bien sin re-sembrar.
 
+## Estado real del contenido (medido el 2026-11-05 con el parser del seed)
+
+Los 28 cursos de las 7 escuelas están completos en TEXTO y estructura (119
+módulos, 432 lecciones, 385 preguntas, ~77.500 palabras en lecciones de texto,
+~650 por lección; 0 lecciones de texto cortas). La estructura en producción
+coincide 1:1 con los `.md` (verificado contra el catálogo anónimo público).
+Lo que NO está:
+
+- **Medios:** las 194 lecciones de video y audio (97 + 97) NO tienen URL en
+  ningún `.md`, y las que se pudieron consultar en producción (6 de módulos
+  gratuitos) tampoco. Hoy esas lecciones solo muestran su guion de apoyo.
+- **Feedback por pregunta:** ninguna de las 385 preguntas trae feedback
+  escrito a mano en el `.md`; el que ven los alumnos es el genérico que arma
+  `quiz_feedback.py` ("el criterio esperado es X, tal como se trabaja en «módulo»").
+- **Placeholders:** 247 marcadores `[PLACEHOLDER: …]` en los `.md` (cifras o
+  fuentes por verificar contra la fuente primaria); el seed los quita del texto.
+- **Profundidad de los quizzes:** 2–3 preguntas por quiz en los cursos de 4
+  módulos (9–12 por curso); solo 8 cursos llegan a 25 preguntas.
+- **Cursos fuera del catálogo de 28 que están publicados:** Programa Evolución
+  360° (14 lecciones, entregables), CONMEBOL Licencia C fútbol (19) y futsal
+  (solo 5 lecciones / 2 módulos — delgado) y `fundamentos-de-fuerza` (demo de
+  3 lecciones; debería despublicarse o completarse).
+
 ## Programas especiales sobre la misma jerarquía (aditivos)
 
 - **CONMEBOL Evolución** (`seed_conmebol_evolucion`): licencias C/B/A/PRO,
@@ -147,11 +170,18 @@ Los cursos viejos con `**` ya se ven bien sin re-sembrar.
 **Paquete separado** de `Profile.plan` (que es Zyfit Pro, del entrenador en
 la app móvil) — no confundir. `access_service.py` gatea
 `Module.es_gratuito`/`Lesson.bloqueado`. Sin proveedor de pago real
-(`AdministeredGateway` en `payments.py`, administrado a mano: hoy solo desde
-Django Admin; no hay endpoint público para activarse Pro). **Dirección
-indicada por Sebastian (2026-11-05):** los pagos se gestionan desde el panel
-de admin de Academy (`AdminUsersPage`, hoy solo crea cuentas), no con un
-proveedor externo — **aún sin construir**. ⚠️ Gotcha ya vivido: activar el
+(`AdministeredGateway` en `payments.py`): **los cobros los registra un admin desde
+`/admin/cobros`** (decisión de Sebastian, 2026-11-05: se gestionan en el panel
+de Academy, no con una pasarela externa). Flujo: el admin cobra por fuera
+(transferencia, pago móvil, Zelle, efectivo...) y lo registra →
+`billing_service.registrar_pago` crea una fila en el libro `AcademyPayment` y
+EXTIENDE la `AcademySubscription` (si ya tiene Pro vigente, suma al final del
+período; si venció, cuenta desde hoy). Un pago equivocado se ANULA, no se
+borra, y el acceso se recalcula con los pagos que quedan. No hay endpoint
+público para activarse Pro. ⚠️ **Regla nueva:** una suscripción `activa` con
+`fecha_renovacion` vencida deja de dar acceso tras 3 días de cortesía
+(`AcademySubscription.GRACIA_DIAS`); antes una `activa` daba Pro para siempre.
+Sin fecha de renovación (otorgada a mano) no expira. ⚠️ Gotcha ya vivido: activar el
 paywall afecta de inmediato a estudiantes YA inscritos — pensar la migración
 antes de tocar tiers.
 
@@ -219,6 +249,28 @@ racha ni badges core** — es una feature social aparte.
   migraciones `0025`/`0026`): en el `.md` va como `> Feedback correcta:` /
   `> Feedback incorrecta:` bajo la pregunta; si falta, `quiz_feedback.py` y el
   backfill de `0026` generan uno genérico.
+- **Panel de gestión para admins** (solo `IsAcademyAdmin`, acotado al tenant
+  efectivo del admin, nunca por header; un instructor NO entra):
+  - `/admin/metricas` (`AdminMetricsPage`, `GET /api/academy/admin/metricas/
+    ?dias=7|30|90`, `admin_analytics_service.py`): 4 pestañas — Resumen (+tabla
+    de cursos), Estudiantes (nuevos, activos hoy/7d/30d, "en riesgo" =
+    matrícula activa y 14+ días sin estudiar, quizzes), Retención (cohortes
+    semanales por primera matrícula, mapa de calor) y Finanzas (ingresos, MRR/
+    ARR/ARPU, altas/renovaciones/bajas, churn aproximado, por método y plan).
+    Definiciones: "estudiante" = cuenta con ≥1 matrícula en el tenant (no toda
+    cuenta activa: en el tenant raíz comparten tabla las cuentas de la app móvil);
+    "activo" = tiene `AcademyActivityDay`; los ingresos salen SOLO del libro
+    `AcademyPayment` confirmado, nunca del estado de la suscripción. El churn es
+    `None` ("—") si no había suscriptores al inicio del período.
+  - `/admin/cobros` (`AdminBillingPage`, `admin_billing_views.py`): solicitudes
+    de Pro pendientes (de `promos`), suscriptores con estado efectivo (vigente /
+    por vencer / vencida / cancelada con acceso), libro de pagos, y diálogos para
+    registrar pago, anular y cancelar renovación. Pagar una solicitud la marca
+    `confirmada` en la misma transacción. Referencia repetida del mismo usuario
+    y método = rechazada (evita doble clic).
+  - Estas dos páginas están en español fijo (sin `useT`), igual que las del instructor.
+  - Los tests de esta zona crean usuarios SIN contraseña: hashear una (PBKDF2)
+    cuesta ~2 s por usuario y volvió eterna una suite de 30 tests (399 s → 2 s).
 - **Blog**: 6 posts editoriales sembrados con `seed_blog_posts` (idempotente,
   MANUAL en prod). Se renderizan con `MarkdownLite`.
 - **Banner de Zyfit APP** (`PromoZyfitApp`): ya no es un "Muy pronto" muerto;
