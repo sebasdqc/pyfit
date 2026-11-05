@@ -7,6 +7,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { submitDeliverable } from '@/api/academy'
 import { Icon } from '@/components/Icon'
+import { MarkdownLite } from '@/components/ui/MarkdownLite'
 import type { Lesson, Submission } from '@/types'
 
 const ESTADO_UI = {
@@ -188,16 +189,9 @@ export function DeliverableLesson({
 }
 
 function TextBlock({ text }: { text: string }) {
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
   return (
     <div className="rounded-xl border border-surface-border bg-surface p-6">
-      <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
-        {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
-          <p key={i} className="whitespace-pre-line">
-            {p}
-          </p>
-        ))}
-      </div>
+      <MarkdownLite text={text} />
     </div>
   )
 }

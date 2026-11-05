@@ -706,8 +706,8 @@ export interface BlogPost {
   updated_at: string
 }
 
-// Detalle público/autoría: mismo shape + `contenido` (texto plano, ver
-// convención de Lesson.contenido — no renderiza markdown).
+// Detalle público/autoría: mismo shape + `contenido` (texto con markdown
+// mínimo, igual que Lesson.contenido — se muestra con MarkdownLite).
 export interface BlogPostDetail extends BlogPost {
   contenido: string
 }

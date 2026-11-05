@@ -19,6 +19,7 @@ import { TutorChat } from '@/components/tutor/TutorChat'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
 import { toEmbedUrl } from '@/lib/videoEmbed'
+import { MarkdownLite } from '@/components/ui/MarkdownLite'
 import { useStreak } from '@/lib/useStreak'
 import { useTheme } from '@/theme/useTheme'
 import type { EnrollmentDetail, Lesson, LessonTipo, NuevaInsigniaOtorgada, Submission } from '@/types'
@@ -713,19 +714,11 @@ function LockedLessonBody() {
 }
 
 function TextBody({ text }: { text: string }) {
-  // El contenido es texto plano: lo dividimos en párrafos reales por dobles
-  // saltos de línea para dar estructura (en lugar de un único <p>), conservando
-  // los saltos simples dentro de cada párrafo. Ancho de lectura cómodo.
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+  // Párrafos por dobles saltos de línea + markdown mínimo (negrita, cursiva,
+  // listas, tablas): los cursos publicados lo traen escrito en el texto.
   return (
     <div className="rounded-xl border border-surface-border bg-surface p-6">
-      <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
-        {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
-          <p key={i} className="whitespace-pre-line">
-            {p}
-          </p>
-        ))}
-      </div>
+      <MarkdownLite text={text} />
     </div>
   )
 }

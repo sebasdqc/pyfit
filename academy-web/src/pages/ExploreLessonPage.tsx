@@ -15,6 +15,7 @@ import { ExploreHeader } from '@/components/layout/ExploreHeader'
 import { Icon } from '@/components/Icon'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { Spinner } from '@/components/ui/Spinner'
+import { MarkdownLite } from '@/components/ui/MarkdownLite'
 import { toEmbedUrl } from '@/lib/videoEmbed'
 import { useT } from '@/locale/useT'
 import type { Lesson } from '@/types'
@@ -162,16 +163,9 @@ function VideoBody({ url, titulo }: { url: string; titulo: string }) {
 }
 
 function TextBody({ text }: { text: string }) {
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
   return (
     <div className="rounded-xl border border-surface-border bg-white p-6">
-      <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
-        {(paragraphs.length > 0 ? paragraphs : [text]).map((p, i) => (
-          <p key={i} className="whitespace-pre-line">
-            {p}
-          </p>
-        ))}
-      </div>
+      <MarkdownLite text={text} />
     </div>
   )
 }

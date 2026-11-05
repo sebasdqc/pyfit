@@ -2,13 +2,15 @@
 // entrenamiento con IA) dentro de Zyfit Academy. Es puramente informativo:
 // no gatea nada, no depende del backend y se puede cerrar para siempre.
 // Zyfit APP todavía no tiene listing público en las tiendas, así que el CTA
-// es un badge "Muy pronto" en vez de un link — evita prometer una descarga
-// que hoy no existe. Cuando haya URL real, reemplazar el badge por un <a>.
+// lleva a la lista de espera de la landing (no promete una descarga que hoy no
+// existe). Cuando haya URL de tienda, cambiar WAITLIST_URL y el texto.
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/auth/useAuth'
 import { Icon } from '@/components/Icon'
 import { useT } from '@/locale/useT'
+
+const WAITLIST_URL = 'https://zyfit-landing.vercel.app'
 
 function storageKey(userId: number | undefined): string {
   return `za-promo-app-dismissed-${userId ?? 'anon'}`
@@ -53,9 +55,14 @@ export function PromoZyfitApp({ variant = 'card' }: { variant?: 'card' | 'inline
         <p className="min-w-0 flex-1 text-sm text-ink-soft">
           <span className="font-semibold text-ink">Zyfit APP</span> {t('promoZyfitApp.inlineBody')}
         </p>
-        <span className="shrink-0 rounded-full bg-ink/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-          {t('promoZyfitApp.comingSoon')}
-        </span>
+        <a
+          href={WAITLIST_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent hover:bg-accent/20"
+        >
+          {t('promoZyfitApp.waitlist')}
+        </a>
         <button onClick={dismiss} aria-label={t('promoZyfitApp.closeAria')} className="shrink-0 text-ink-muted hover:text-ink">
           <Icon name="close" size={16} />
         </button>
@@ -79,9 +86,14 @@ export function PromoZyfitApp({ variant = 'card' }: { variant?: 'card' | 'inline
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="za-eyebrow">{t('promoZyfitApp.eyebrow')}</p>
-            <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
-              {t('promoZyfitApp.comingSoon')}
-            </span>
+            <a
+              href={WAITLIST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent hover:bg-accent/20"
+            >
+              {t('promoZyfitApp.waitlist')}
+            </a>
           </div>
           <h3 className="mt-1 text-base font-semibold text-ink">
             {t('promoZyfitApp.title')}

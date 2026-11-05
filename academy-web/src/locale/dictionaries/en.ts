@@ -611,7 +611,7 @@ const en: DeepPartial<Dictionary> = {
   },
   promoZyfitApp: {
     closeAria: 'Dismiss Zyfit APP announcement',
-    comingSoon: 'Coming soon',
+    waitlist: 'Join the waitlist',
     inlineBody: 'generates your next workout with AI every day.',
     eyebrow: 'Meet Zyfit APP',
     title: 'Train every day with an AI-generated workout',

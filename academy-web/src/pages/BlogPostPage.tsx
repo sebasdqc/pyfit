@@ -12,6 +12,7 @@ import { getBlogPost } from '@/api/academy'
 import { BlogFooter } from '@/components/blog/BlogFooter'
 import { BlogHeader } from '@/components/blog/BlogHeader'
 import { Badge } from '@/components/ui/Badge'
+import { MarkdownLite } from '@/components/ui/MarkdownLite'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import { Icon } from '@/components/Icon'
@@ -19,98 +20,6 @@ import { schoolGradient, schoolTheme } from '@/lib/schoolTheme'
 import { useLocale } from '@/locale/useLocale'
 import { useT } from '@/locale/useT'
 import type { BlogPostDetail } from '@/types'
-
-// Subset de markdown deliberadamente chico — NO es un parser genérico (ver
-// project_academy_web_no_markdown: Lesson.contenido sigue siendo texto plano
-// puro, esto es SOLO para el blog). Soporta lo mínimo que pide un post
-// editorial con SEO real: "## " H2, "### " H3, tablas con "|" y enlaces
-// [texto](url)/**negrita** inline. Cualquier otra línea sigue siendo un
-// párrafo de texto plano, igual que antes — compatible con posts viejos.
-function renderInline(text: string, keyPrefix: string) {
-  const parts: React.ReactNode[] = []
-  const re = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*/g
-  let last = 0
-  let match: RegExpExecArray | null
-  let i = 0
-  while ((match = re.exec(text))) {
-    if (match.index > last) parts.push(text.slice(last, match.index))
-    if (match[1] !== undefined) {
-      parts.push(
-        <a
-          key={`${keyPrefix}-${i++}`}
-          href={match[2]}
-          className="font-medium text-accent underline underline-offset-2 hover:text-accent-dark"
-        >
-          {match[1]}
-        </a>,
-      )
-    } else {
-      parts.push(<strong key={`${keyPrefix}-${i++}`} className="font-semibold text-ink">{match[3]}</strong>)
-    }
-    last = re.lastIndex
-  }
-  if (last < text.length) parts.push(text.slice(last))
-  return parts
-}
-
-function isTableSeparatorRow(cells: string[]) {
-  return cells.length > 0 && cells.every((c) => /^:?-{2,}:?$/.test(c.trim()))
-}
-
-function parseTableRows(block: string) {
-  return block.split('\n').map((l) => l.trim()).filter(Boolean)
-    .map((line) => line.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
-}
-
-function ArticleBlock({ block, index }: { block: string; index: number }) {
-  if (block.startsWith('### ')) {
-    return <h3 className="mt-6 text-lg font-semibold text-ink">{renderInline(block.slice(4), `h3-${index}`)}</h3>
-  }
-  if (block.startsWith('## ')) {
-    return <h2 className="mt-8 text-xl font-bold tracking-tight text-ink">{renderInline(block.slice(3), `h2-${index}`)}</h2>
-  }
-
-  const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
-  if (lines.length >= 2 && lines.every((l) => l.includes('|'))) {
-    const [header, ...rest] = parseTableRows(block)
-    const rows = rest.filter((r) => !isTableSeparatorRow(r))
-    return (
-      <div className="my-2 overflow-x-auto rounded-xl border border-surface-border">
-        <table className="w-full min-w-[480px] border-collapse text-sm">
-          <thead>
-            <tr className="bg-surface-soft">
-              {header.map((cell, i) => (
-                <th key={i} className="border-b border-surface-border px-4 py-2.5 text-left font-semibold text-ink">
-                  {renderInline(cell, `th-${index}-${i}`)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, r) => (
-              <tr key={r} className="border-b border-surface-border last:border-0">
-                {row.map((cell, c) => (
-                  <td key={c} className="px-4 py-2.5 align-top text-ink-soft">{renderInline(cell, `td-${index}-${r}-${c}`)}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  return <p className="whitespace-pre-line">{renderInline(block, `p-${index}`)}</p>
-}
-
-function ArticleBody({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean)
-  return (
-    <div className="flex max-w-prose flex-col gap-4 text-[15px] leading-relaxed text-ink-soft">
-      {(blocks.length > 0 ? blocks : [text]).map((b, i) => <ArticleBlock key={i} block={b} index={i} />)}
-    </div>
-  )
-}
 
 export function BlogPostPage() {
   const t = useT()
@@ -250,7 +159,7 @@ export function BlogPostPage() {
             </div>
 
             <div className="mt-8">
-              <ArticleBody text={post.contenido} />
+              <MarkdownLite text={post.contenido} />
             </div>
           </article>
         )}
