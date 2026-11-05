@@ -44,8 +44,10 @@ class BlogPost(models.Model):
     # `titulo`/`resumen` (ver frontend).
     meta_titulo = models.CharField(max_length=70, blank=True, help_text='<title> SEO (~55-60 caracteres). Vacío → usa `titulo`.')
     meta_descripcion = models.CharField(max_length=170, blank=True, help_text='Meta description SEO (~150-155 caracteres). Vacío → usa `resumen`.')
-    # Texto plano, mismo criterio que Lesson.contenido — no renderiza markdown,
-    # se muestra dividido en párrafos por líneas en blanco (ver BlogPostPage.tsx).
+    # Texto con markdown mínimo (## / ###, negrita, cursiva, listas, tablas,
+    # enlaces), igual que Lesson.contenido: se guarda como texto y el front lo
+    # renderiza con components/ui/MarkdownLite.tsx, dividido en bloques por
+    # líneas en blanco.
     contenido = models.TextField(blank=True)
     # Data URL de imagen o URL externa — mismo criterio que Course.portada
     # (validate_portada en el serializer).

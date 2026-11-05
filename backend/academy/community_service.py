@@ -229,7 +229,7 @@ def votar_respuesta(user, reply_id) -> dict:
     con voto puesto tras la operación."""
     reply = get_object_or_404(CommunityReply, pk=reply_id, estado=ESTADO_VISIBLE)
     if reply.autor_id == user.id:
-        raise ValidationError({'detail': 'No podés votar tu propia respuesta.'})
+        raise ValidationError({'detail': 'No puedes votar tu propia respuesta.'})
 
     with transaction.atomic():
         voto = CommunityVote.objects.filter(reply=reply, usuario=user).first()
@@ -295,7 +295,7 @@ def reportar_contenido(user, *, post_id=None, reply_id=None, motivo, detalle='')
     target_cls = CommunityPost if post_id is not None else CommunityReply
     target = get_object_or_404(target_cls, pk=post_id if post_id is not None else reply_id)
     if target.autor_id == user.id:
-        raise ValidationError({'detail': 'No podés reportar tu propio contenido.'})
+        raise ValidationError({'detail': 'No puedes reportar tu propio contenido.'})
 
     with transaction.atomic():
         reporte, creado = CommunityReport.objects.get_or_create(

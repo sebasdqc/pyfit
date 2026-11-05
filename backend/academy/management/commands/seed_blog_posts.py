@@ -1,7 +1,8 @@
-"""Seed de los primeros 3 posts editoriales del Blog de Zyfit Academy.
+"""Seed de los posts editoriales del Blog de Zyfit Academy.
 
 Contenido de marca/SEO real (no de prueba): recuperación activa, adaptación
-individual al entrenamiento y expectativas realistas de resultados — cada uno
+individual al entrenamiento, expectativas realistas de resultados, sRPE, sueño
+y deload — cada uno
 con meta_titulo/meta_descripcion, subtítulos (##/###), una tabla mito vs.
 evidencia y un CTA a un curso real + la landing, siguiendo el mismo criterio
 editorial que el resto de Zyfit Academy: etiqueta de nivel de evidencia en
@@ -107,9 +108,9 @@ Ninguno de estos mitos significa que la recuperación activa sea inútil — sig
 
 La recuperación no es un producto que se compra ni un ritual que se improvisa mirando redes: es una variable que se planifica, como cualquier otra parte del entrenamiento.
 
-## Seguí aprendiendo
+## Sigue aprendiendo
 
-Si te interesa entender cómo diseñar la recuperación de un deportista con datos reales —HRV, carga interna, indicadores de fatiga— en vez de intuición, el curso [Fundamentos de Recuperación y Monitoreo de HRV](/explorar/cursos/__CURSO_ID__) de Zyfit Academy es el siguiente paso lógico. Y si estás empezando a explorar la plataforma, podés conocer todo lo que ofrece Zyfit Academy en la [página principal](/).
+Si te interesa entender cómo diseñar la recuperación de un deportista con datos reales —HRV, carga interna, indicadores de fatiga— en vez de intuición, el curso [Fundamentos de Recuperación y Monitoreo de HRV](/explorar/cursos/__CURSO_ID__) de Zyfit Academy es el siguiente paso lógico. Y si estás empezando a explorar la plataforma, puedes conocer todo lo que ofrece Zyfit Academy en la [página principal](/).
 
 ## Fuentes y referencias
 
@@ -175,9 +176,9 @@ Entrenamiento adaptativo, en el sentido en que lo usa la ciencia del ejercicio, 
 
 Lo que cambia con la tecnología es la posibilidad de sistematizar ese ajuste con datos: registrar cómo respondió cada sesión —esfuerzo percibido, feedback, progreso real— y usar esa información para modificar la siguiente. Esa es, en términos generales, la lógica detrás de una app de entrenamiento adaptativo como Zyfit: generar una rutina que parte de datos individuales y se ajusta con el feedback real de cada sesión, en vez de aplicar el mismo plan a todo el mundo. Vale aclarar que el "cómo" exacto de ese ajuste —el algoritmo específico de Zyfit— es una decisión de producto propia, no un hallazgo de la literatura científica; lo que sí respalda la evidencia es el principio general de que individualizar el estímulo según la respuesta de cada persona produce mejores resultados que aplicar un plan fijo para todos.
 
-## Seguí aprendiendo
+## Sigue aprendiendo
 
-Si te interesa entender en profundidad cómo se gestiona la carga de entrenamiento para que se ajuste a cada persona —volumen, intensidad, progresión, fatiga acumulada— en vez de aplicar la misma tabla a todo el mundo, el curso [Gestión de la Carga de Entrenamiento](/explorar/cursos/__CURSO_ID__) de Zyfit Academy desarrolla el principio en detalle. Y si querés ver cómo se aplica en una app real, podés conocer Zyfit desde la [página principal](/).
+Si te interesa entender en profundidad cómo se gestiona la carga de entrenamiento para que se ajuste a cada persona —volumen, intensidad, progresión, fatiga acumulada— en vez de aplicar la misma tabla a todo el mundo, el curso [Gestión de la Carga de Entrenamiento](/explorar/cursos/__CURSO_ID__) de Zyfit Academy desarrolla el principio en detalle. Y si quieres ver cómo se aplica en una app real, puedes conocer Zyfit desde la [página principal](/).
 
 ## Fuentes y referencias
 
@@ -252,19 +253,236 @@ Nivel de evidencia: **alta**, como principio general — la adherencia es uno de
 
 Nada de esto es una promesa de que "todo el mundo" va a ver determinado cambio en determinada semana — es, al revés, un llamado a desconfiar de cualquiera que prometa eso. Lo que sí sostiene la evidencia es que hay un orden esperable (primero rendimiento, después composición corporal visible) y que la variable que más se puede controlar —la constancia sostenida— es más determinante que encontrar la rutina "ideal". Las primeras semanas sin cambios visibles no son una señal de que algo salió mal: son, casi siempre, la fisiología funcionando exactamente como se espera.
 
-## Seguí aprendiendo
+## Sigue aprendiendo
 
-Si te interesa entender cómo se mide de verdad un cambio de composición corporal —más allá de la balanza y las fotos de "antes y después"—, el curso [Composición Corporal: Medición y Manipulación Basada en Datos](/explorar/cursos/__CURSO_ID__) de Zyfit Academy profundiza en las herramientas y la evidencia detrás de esas mediciones. Y si querés conocer el resto de lo que ofrece Zyfit Academy, podés hacerlo desde la [página principal](/).
+Si te interesa entender cómo se mide de verdad un cambio de composición corporal —más allá de la balanza y las fotos de "antes y después"—, el curso [Composición Corporal: Medición y Manipulación Basada en Datos](/explorar/cursos/__CURSO_ID__) de Zyfit Academy profundiza en las herramientas y la evidencia detrás de esas mediciones. Y si quieres conocer el resto de lo que ofrece Zyfit Academy, puedes hacerlo desde la [página principal](/).
 
 ## Fuentes y referencias
 
 Este artículo se apoya en el consenso general de la fisiología del ejercicio sobre adaptación neuromuscular temprana, hipertrofia y cambios de composición corporal a mediano/largo plazo, sin citar estudios puntuales para evitar cifras que no podamos verificar con la fuente exacta. Para profundizar con literatura primaria, recomendamos revisiones sistemáticas sobre cronología de la adaptación al entrenamiento de fuerza y los position stands de ACSM sobre progresión de programas de entrenamiento de resistencia.""",
     },
+    {
+        'titulo': 'sRPE: cómo medir la carga interna de tu entrenamiento sin laboratorio',
+        'meta_titulo': 'sRPE: mide la carga interna de tu entrenamiento | Zyfit',
+        'meta_descripcion': (
+            'Qué es el sRPE, cómo se calcula (esfuerzo percibido × minutos) y '
+            'cómo usarlo para entender tu carga de entrenamiento sin '
+            'tecnología cara, con sus límites.'
+        ),
+        'resumen': (
+            'Una pregunta y una multiplicación bastan para cuantificar cuánto '
+            'te costó una sesión. Qué mide el sRPE, cómo se calcula, dónde '
+            'funciona bien y dónde engaña.'
+        ),
+        'etiquetas': ['sRPE', 'carga interna de entrenamiento', 'esfuerzo percibido', 'cómo medir la carga de entrenamiento'],
+        'school_slug': 'analitica-y-rendimiento-deportivo',
+        'curso_slug': 'carga-interna-101-srpe-y-trimp',
+        'contenido': """Dos personas hacen la misma sesión: sesenta minutos, mismos ejercicios, mismo peso en la barra. Para una fue un día normal; para la otra, el día que más le ha costado en el mes. Medir solo lo que se hizo (series, kilómetros, kilos) deja fuera lo más importante: cuánto le costó a cada cuerpo. A eso se le llama carga interna, y existe una herramienta casi gratuita para estimarla.
+
+## Qué es el sRPE
+
+El sRPE (session RPE, o esfuerzo percibido de la sesión) es un método propuesto por Foster y colaboradores a comienzos de los años 2000. Se basa en una pregunta que se hace al terminar: "del 0 al 10, ¿qué tan dura fue la sesión completa?". Esa respuesta se multiplica por la duración en minutos y el resultado es la carga de la sesión, en unidades arbitrarias (UA).
+
+Nivel de evidencia: **alta** para el método como estimador de la carga interna; ha sido estudiado en entrenamiento de fuerza, de resistencia y en deportes de equipo.
+
+## Cómo se calcula, con un ejemplo
+
+La cuenta es una multiplicación: **RPE de la sesión × minutos**. Lo interesante es ver que dos sesiones muy distintas pueden pesar lo mismo para el cuerpo.
+
+| Sesión | Duración | RPE de la sesión | Carga (UA) |
+| --- | --- | --- | --- |
+| Rodaje suave y largo | 60 min | 6 | 360 |
+| Intervalos cortos e intensos | 45 min | 8 | 360 |
+| Día de técnica y movilidad | 30 min | 3 | 90 |
+
+Las dos primeras sesiones parecen opuestas, pero la carga interna que representan es la misma. Esa es justamente la información que no te da el reloj ni el cuaderno de series.
+
+## Cuándo preguntar y cómo responder
+
+### El momento importa
+
+La práctica habitual es preguntar unos 20 a 30 minutos después de terminar, y no en el último minuto de la sesión. Si respondes con la fatiga del último ejercicio, tiendes a valorar toda la sesión por el final y no por el conjunto. Debe ser una sola respuesta por sesión, no una por ejercicio.
+
+Nivel de evidencia: **media-alta**. Es una recomendación del método original y de su uso práctico; los detalles de tiempo cambian entre estudios.
+
+### Una escala que se aprende
+
+El RPE es subjetivo. Quien empieza suele ser inconsistente durante las primeras semanas y se calibra con el uso. Lo que importa es la coherencia contigo mismo: tus números se comparan con tus números, no con los de otra persona.
+
+## Para qué sirve tener esos números
+
+### Ver la semana completa, no solo la sesión
+
+Sumar las cargas de cada sesión da la carga semanal. Mirada semana a semana, muestra cuándo estás subiendo de golpe, cuándo llevas varias semanas planas y cuándo una semana "tranquila" en realidad no lo fue. Es útil como registro de tendencias y como apoyo para decidir cuándo apretar y cuándo descargar.
+
+Nivel de evidencia: **media**. Como herramienta de seguimiento, el consenso es sólido; como predictor exacto de lesiones o rendimiento, la evidencia es más discutida y conviene tratar los números como una guía y no como un semáforo con umbrales mágicos.
+
+## Dónde engaña el sRPE
+
+- **Mide lo percibido.** El sueño, el estrés, el calor o una mala noche suben el RPE aunque la sesión sea idéntica. Eso es información útil, pero no siempre se debe a la sesión.
+- **Promedia la sesión.** Un bloque corto de esfuerzo máximo dentro de una sesión larga y suave se diluye en un único número.
+- **Depende de que seas honesto.** Si respondes lo que "debería haber sido", el registro pierde valor.
+
+## Cómo empezar esta semana
+
+Registra tres datos al terminar cada sesión: duración, RPE del 0 al 10 y una nota corta de cómo dormiste y cómo te sentías. Con dos o tres semanas ya tendrás un patrón propio sobre el que decidir, y esa referencia personal vale más que cualquier tabla genérica.
+
+## Sigue aprendiendo
+
+Si quieres ir más allá del sRPE y entender cómo se combina con otros indicadores de carga interna, como el TRIMP, el curso [Carga Interna 101: sRPE y TRIMP](/explorar/cursos/__CURSO_ID__) de Zyfit Academy desarrolla el tema paso a paso. Y si quieres conocer el resto de lo que ofrece Zyfit Academy, puedes hacerlo desde la [página principal](/).
+
+## Fuentes y referencias
+
+Este artículo se apoya en el método de sRPE descrito por Foster y colaboradores y en la literatura general sobre cuantificación de la carga interna en entrenamiento de fuerza, resistencia y deportes de equipo, sin citar cifras de estudios puntuales para evitar datos que no podamos verificar con la fuente exacta. Para profundizar con literatura primaria, recomendamos las revisiones sobre monitoreo de la carga de entrenamiento publicadas en revistas de ciencias del deporte.""",
+    },
+    {
+        'titulo': 'Sueño y rendimiento: qué tan sólida es la evidencia de dormir más',
+        'meta_titulo': 'Sueño y rendimiento deportivo: qué dice la evidencia | Zyfit',
+        'meta_descripcion': (
+            'Dormir más mejora el rendimiento, pero no todo lo que se dice '
+            'tiene la misma evidencia. Separamos lo sólido de lo exagerado '
+            'sobre sueño, entrenamiento y recuperación.'
+        ),
+        'resumen': (
+            '"Duerme más y rendirás más" es cierto a medias. Revisamos qué '
+            'afirmaciones sobre el sueño tienen respaldo sólido, cuáles son '
+            'prometedoras y cuáles se exageran.'
+        ),
+        'etiquetas': ['sueño y rendimiento deportivo', 'dormir y recuperación', 'higiene del sueño', 'sueño y entrenamiento'],
+        'school_slug': 'recuperacion-prevencion-y-wellness',
+        'curso_slug': 'sueno-y-rendimiento-deportivo',
+        'contenido': """"Duerme más" es probablemente el consejo de recuperación más repetido, y también uno de los más simplificados. Casi nadie discute que dormir mal te perjudica, pero entre "dormir mal te perjudica" y "dormir una hora más mejorará tu marca" hay una distancia grande. Esa distancia es donde conviene mirar la evidencia con calma.
+
+## Lo que está bien establecido
+
+### Dormir poco empeora cómo te sientes y cómo decides
+
+La falta de sueño afecta la atención, el estado de ánimo, el tiempo de reacción y la percepción del esfuerzo: la misma sesión se siente más dura. Esto está bien documentado en la población general y también en deportistas.
+
+Nivel de evidencia: **alta**.
+
+### Los efectos sobre el rendimiento no son iguales para todo
+
+El rendimiento en esfuerzos prolongados y en tareas que exigen habilidad y toma de decisiones se resiente con más consistencia tras dormir poco. En cambio, el efecto sobre la fuerza máxima en una sola repetición es menos claro y varía entre estudios.
+
+Nivel de evidencia: **media**. El patrón general se repite, pero los estudios usan protocolos y muestras muy distintos.
+
+## Lo prometedor, pero con menos respaldo
+
+### Dormir más de lo habitual
+
+Algunos estudios en deportistas que prolongaron deliberadamente sus horas de sueño reportan mejoras en rendimiento y estado de ánimo. Son trabajos pequeños, con grupos específicos, y no permiten prometer el mismo resultado a cualquier persona.
+
+Nivel de evidencia: **baja-media**.
+
+### Siestas cortas
+
+Una siesta breve puede ayudar a compensar una mala noche y a mejorar el estado de alerta a corto plazo. Una siesta larga o tardía, en cambio, puede quitarte sueño esa noche.
+
+Nivel de evidencia: **media**.
+
+## Lo que se exagera
+
+- **"Hay que dormir exactamente X horas."** Las guías de consenso para adultos señalan un mínimo de alrededor de siete horas, pero la necesidad real varía entre personas. Algunas guías sugieren que los deportistas con mucha carga podrían necesitar más; la evidencia para fijar una cifra exacta es limitada.
+- **"Mi reloj me dice que tuve poco sueño profundo."** Los dispositivos de consumo son razonables para estimar cuánto duermes y a qué hora, y mucho menos fiables para separar las fases del sueño. Úsalos para ver tendencias, no para diagnosticar.
+- **"Un suplemento arregla el sueño."** Antes que cualquier suplemento está la rutina.
+
+## Resumen, de un vistazo
+
+| Afirmación | Nivel de evidencia | Qué conviene hacer con ella |
+| --- | --- | --- |
+| Dormir poco empeora el ánimo, la atención y la percepción del esfuerzo | Alta | Tomarla en serio al planificar la semana |
+| Dormir poco reduce el rendimiento prolongado y de habilidad | Media | Proteger el sueño antes de sesiones o competencias importantes |
+| Prolongar el sueño mejora el rendimiento | Baja-media | Probarlo si es viable, sin esperar resultados garantizados |
+| Los relojes miden bien las fases del sueño | Baja | Usarlos para duración y regularidad, no para fases |
+
+## Qué sí puedes hacer esta semana
+
+- Mantén un horario de acostarte y levantarte lo más regular posible, también el fin de semana.
+- Reduce la cafeína en la tarde y evita las pantallas brillantes justo antes de dormir.
+- Cuida el dormitorio: oscuro, silencioso y fresco.
+- Si una noche sale mal, no lo compenses con una siesta larga a las seis de la tarde: una siesta corta a media tarde es mejor idea.
+
+Nivel de evidencia: **media**. Son recomendaciones de higiene del sueño basadas en consenso y en estudios de buena calidad, aunque el efecto exacto en el rendimiento deportivo varía de una persona a otra.
+
+## Sigue aprendiendo
+
+Si quieres profundizar en cómo se evalúa la evidencia sobre el sueño y cómo aplicarla al entrenamiento, el curso [Sueño y Rendimiento Deportivo](/explorar/cursos/__CURSO_ID__) de Zyfit Academy revisa qué tan sólida es cada afirmación. Y si quieres conocer el resto de lo que ofrece Zyfit Academy, puedes hacerlo desde la [página principal](/).
+
+## Fuentes y referencias
+
+Este artículo se apoya en el consenso general de las ciencias del sueño y del deporte sobre privación de sueño, extensión del sueño y higiene del sueño, sin citar estudios puntuales para evitar cifras que no podamos verificar con la fuente exacta. Para profundizar con literatura primaria, recomendamos las revisiones sistemáticas sobre sueño y rendimiento deportivo y las declaraciones de consenso de las sociedades de medicina del sueño sobre duración recomendada.""",
+    },
+    {
+        'titulo': 'Deload: cuándo descargar de verdad (y cuándo es solo una excusa)',
+        'meta_titulo': 'Deload: cuándo descargar y cómo hacerlo bien | Zyfit Academy',
+        'meta_descripcion': (
+            'Qué es un deload, cuándo conviene hacerlo, qué señales lo '
+            'justifican y cuánta evidencia hay detrás. Una guía honesta para '
+            'descargar sin perder lo ganado.'
+        ),
+        'resumen': (
+            'Un deload bien usado te ayuda a seguir progresando; mal usado, '
+            'solo frena. Qué es, cuándo tiene sentido y qué tan sólida es la '
+            'evidencia que lo respalda.'
+        ),
+        'etiquetas': ['deload', 'semana de descarga', 'fatiga acumulada', 'cuándo descansar del entrenamiento'],
+        'school_slug': 'ciencia-del-entrenamiento',
+        'curso_slug': 'deload-y-gestion-de-la-fatiga',
+        'contenido': """Hay semanas en que subir el peso de la barra deja de funcionar: llevas varias semanas entrenando fuerte, el cansancio se acumula, las repeticiones que antes salían con facilidad ahora cuestan, y la motivación baja. Una respuesta habitual es "me tocan unos días de descarga". Pero no siempre es lo que hace falta, y no siempre se hace bien.
+
+## Qué es un deload
+
+Un deload es una reducción planificada y temporal de la carga de entrenamiento, ya sea en volumen, en intensidad o en ambos, con el objetivo de disipar fatiga acumulada sin perder lo que ya se ha ganado. No es dejar de entrenar: es entrenar menos y más fácil durante un tiempo corto.
+
+Nivel de evidencia: **alta** para el principio de fondo, que el rendimiento es el resultado de la fatiga y la forma física y que reducir la carga permite que la fatiga baje. **Baja** para recetas concretas de deload: la investigación directa sobre cuánto, cuándo y cómo descargar en entrenamiento de fuerza es limitada, y gran parte de lo que se hace viene de la práctica de entrenadores.
+
+## Señales de que puede hacer falta
+
+- El rendimiento se estanca o baja durante varias sesiones seguidas, no solo en un día malo.
+- Las mismas cargas se perciben más duras que hace unas semanas.
+- Duermes peor, o te sientes con más irritabilidad y menos motivación para entrenar.
+- Tienes molestias persistentes que empeoran con la carga.
+
+Nivel de evidencia: **baja-media**. Son indicadores prácticos, coherentes con lo que se sabe sobre fatiga, pero ninguno funciona solo: un mal día no es una señal y varias señales juntas, sostenidas en el tiempo, sí lo son. Si tienes dolor que no cede, consulta a un profesional de la salud antes de ajustar el plan por tu cuenta.
+
+## Cómo hacerlo
+
+No existe un único formato correcto. Estas son las formas más comunes:
+
+| Estrategia | Qué cambia | Cuándo tiene sentido | Evidencia |
+| --- | --- | --- | --- |
+| Menos volumen, misma intensidad | Menos series, mismos pesos | Cuando quieres mantener la sensación de la carga y bajar el cansancio | Baja-media |
+| Menos intensidad y menos volumen | Pesos más ligeros y menos series | Cuando hay fatiga alta o molestias | Baja |
+| Descanso total de pocos días | Sin sesiones de fuerza | Tras un periodo muy exigente o ante cansancio marcado | Baja |
+
+Una descarga suele durar entre cinco y siete días. Muchos programas la sitúan cada cuatro a ocho semanas, pero esa frecuencia es una convención, no una ley: depende de tu nivel, de cuánto estés entrenando y de cómo te estés recuperando.
+
+## Deload programado o por señales
+
+- **Programado:** lo pones en el calendario por adelantado. Es simple y evita que "se te pase", pero puede caer en una semana en la que no lo necesitas.
+- **Por señales:** lo decides cuando aparecen indicadores de fatiga. Ajusta mejor a tu realidad, pero exige que te registres con honestidad (por ejemplo, con el esfuerzo percibido de cada sesión) y es fácil engañarse.
+
+Muchas personas combinan los dos: una semana prevista, que se adelanta o se retrasa según cómo vaya el cuerpo.
+
+## Dos confusiones frecuentes
+
+- **Deload y taper no son lo mismo.** El taper es la reducción de carga antes de una competencia para llegar en forma; el deload es una pausa dentro de un ciclo de progreso. Comparten la idea de bajar la carga, pero tienen objetivos distintos.
+- **Descargar no es "premiarte".** Si entrenas poco de forma constante, el problema no es la fatiga, y una semana ligera no lo resuelve. En ese caso lo que falta es consistencia, y se corrige con otras decisiones.
+
+## Sigue aprendiendo
+
+Si quieres entender cómo se decide cuándo y cuánto descargar usando datos de fatiga y no solo la intuición, el curso [Deload y Gestión de la Fatiga](/explorar/cursos/__CURSO_ID__) de Zyfit Academy desarrolla el tema en detalle. Y si quieres conocer el resto de lo que ofrece Zyfit Academy, puedes hacerlo desde la [página principal](/).
+
+## Fuentes y referencias
+
+Este artículo se apoya en los modelos generales de fatiga y adaptación al entrenamiento y en la práctica habitual de la planificación del entrenamiento de fuerza, sin citar estudios puntuales para evitar cifras que no podamos verificar con la fuente exacta. Para profundizar con literatura primaria, recomendamos las revisiones sobre periodización, gestión de la fatiga y reducción gradual de la carga (tapering) en revistas de ciencias del deporte.""",
+    },
 ]
 
 
 class Command(BaseCommand):
-    help = 'Crea (o sincroniza) los 3 primeros posts editoriales del Blog de Zyfit Academy.'
+    help = 'Crea (o sincroniza) los posts editoriales del Blog de Zyfit Academy.'
 
     def handle(self, *args, **options):
         User = get_user_model()

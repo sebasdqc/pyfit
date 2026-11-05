@@ -33,7 +33,7 @@ def build_tagging_system_prompt(competencias: list) -> str:
         'siguiente mensaje del usuario.\n\n'
         f'Lista cerrada de competencias válidas:\n{catalogo}\n\n'
         'Reglas:\n'
-        '- Solo podés usar los "slug" que aparecen en la lista de arriba. '
+        '- Solo puedes usar los "slug" que aparecen en la lista de arriba. '
         'NUNCA inventes un slug nuevo ni modifiques uno existente.\n'
         '- Si ninguna competencia de la lista aplica con claridad, devolvé '
         'una lista vacía — es preferible no etiquetar que etiquetar de '
