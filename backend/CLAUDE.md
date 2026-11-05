@@ -109,7 +109,7 @@ curl -s -i -X OPTIONS https://sea-lion-app-a2j4f.ondigitalocean.app/api/<product
 | `devices` | APP | Integraciones Garmin/Apple Health |
 | `performance` | Zyfit Performance | SportsCenter/CenterMembership/CenterAthlete, 5 módulos, calculators/, Simulador, Calendario, Planificación+IA equipo |
 | `academy` | Zyfit Academy | School/Course/Module/Lesson/Quiz, Enrollment/Certificate, streak, badges, comunidad, onboarding anónimo, submissions |
-| `ai_tutor` | Zyfit Academy | Tutor IA RAG (embeddings locales + Groq) |
+| `ai_tutor` | Zyfit Academy | Tutor IA RAG (embeddings locales + DeepSeek vía `pyfit/llm.py`) |
 | `promos` | **Compartida: APP + Academy** | Códigos de descuento de influencers, campo `producto` (`zyfit_pro`/`academy_pro`) |
 
 **`pyfit/urls.py`** es la fuente exacta de todos los prefijos de ruta —
@@ -129,9 +129,16 @@ repo). Ya configurados: `https://zyfit-performance-svp4v.ondigitalocean.app`,
 cd backend && python3 manage.py runserver
 ```
 
-SQLite para dev, Postgres para prod. `GROQ_API_KEY` debe estar en
+SQLite para dev, Postgres para prod. `DEEPSEEK_API_KEY` debe estar en
 `backend/.env` para que funcione cualquier generación con IA (fuerza,
-running, equipo de Performance).
+running, ciclismo, equipo de Performance, tutor de Academy). El cliente es
+`pyfit/llm.py`; `GROQ_API_KEY` ya no hace falta para correr nada (el paquete
+`groq` sigue en `requirements.txt` solo porque algunos tests lo referencian).
+
+**Observabilidad:** `settings.py` inicia Sentry solo si existe `SENTRY_DSN`.
+A 2026-11-05 esa variable **no está** en el spec vivo de `sea-lion-app`, así
+que Sentry del backend está apagado en producción (igual que el del front de
+Academy, que necesita `VITE_SENTRY_DSN` en el build).
 
 ## Notas críticas
 

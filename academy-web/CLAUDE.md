@@ -85,22 +85,38 @@ estudiante (a diferencia de Performance, no hay rol global nuevo).
 Reestructurado de 9 a 7 escuelas (migración `0016`): Ciencia del
 Entrenamiento, Analítica y Rendimiento Deportivo, Recuperación Prevención y
 Wellness (nombres revertidos a los originales), más 4 renombradas. 28 cursos,
-4 por escuela. `schoolTheme.ts` tiene los 7 temas visuales. Antes de agregar
-o renombrar una escuela, leer `project_academy_escuelas` en memoria — ya hubo
-una reorganización completa y revertir nombres por error es fácil.
+4 por escuela (`seed_zyfit_escuelas`). `schoolTheme.ts` tiene los 7 temas
+visuales. Antes de agregar o renombrar una escuela, leer
+`project_academy_escuelas` en memoria — ya hubo una reorganización completa y
+revertir nombres por error es fácil.
 
-**Pipeline de contenido:** `.md` en `academy/content/<escuela-slug>/
-<curso-slug>.md` → `seed_course_content` (management command, idempotente,
-MANUAL) parsea a Módulo→Lección→Quiz→Pregunta. El `.md` es la fuente de
-verdad — editar contenido = editar el `.md` + re-correr el comando. Formato
-estricto documentado en `project_academy_content_standard` /
-`Zyfit_Academy_Estandar_Curso.md` — **checklist obligatorio** antes de crear
-o editar cualquier curso.
+**El catálogo real tiene más de 28:** a los 28 se suman los 3 de los
+programas especiales (CONMEBOL Evolución Licencia C fútbol y futsal,
+Programa Evolución 360°) y el curso demo `fundamentos-de-fuerza`. En
+producción el catálogo público (`/api/academy/anon/catalogo/`) muestra **32**
+cursos con contenido gratis (verificado 2026-11-05).
 
-⚠️ **`Lesson.contenido` es texto plano puro** (split por líneas en blanco) —
-**no renderiza markdown**. Los cursos publicados antes del 2026-07-05 usan
-`**` y muestran asteriscos literales, sin corregir. Ver
-`project_academy_web_no_markdown`.
+**Pipeline de contenido:** `.md` bajo `backend/academy/content/` →
+`seed_course_content` (management command, idempotente, MANUAL) parsea a
+Módulo→Lección→Quiz→Pregunta. El comando busca recursivamente (`rglob`) y
+casa cada archivo por **nombre = `slug` del curso**; las carpetas conservan los
+nombres numerados de la estructura vieja de 9 escuelas (`1-entrenamiento-…`,
+`2-readaptacion-…`) y NO coinciden con las 7 escuelas actuales — no las
+renombres pensando que importan. El `.md` es la fuente de verdad — editar
+contenido = editar el `.md` + re-correr el comando (`--dry-run` para
+ensayar, `--course <slug>` para uno solo). Formato estricto documentado en
+`project_academy_content_standard` / `Zyfit_Academy_Estandar_Curso.md` —
+**checklist obligatorio** antes de crear o editar cualquier curso.
+
+**Markdown en las lecciones (desde 2026-11-05):** `Lesson.contenido` sigue
+siendo texto plano en la BD (split por líneas en blanco), pero el frontend lo
+muestra con `components/ui/MarkdownLite.tsx`, que entiende **negrita, cursiva,
+`código`, listas (con guion, `*` o numeradas), tablas y enlaces**. Es el mismo
+renderizador del blog y lo usan `LessonPlayerPage`, `ExploreLessonPage` y
+`DeliverableLesson`. Es un subset a propósito, NO un parser genérico: no
+soporta imágenes, bloques de código ni anidación. Los enlaces solo aceptan
+`http(s)`, `mailto` y rutas internas (el contenido lo escriben instructores).
+Los cursos viejos con `**` ya se ven bien sin re-sembrar.
 
 ## Programas especiales sobre la misma jerarquía (aditivos)
 
@@ -131,7 +147,11 @@ o editar cualquier curso.
 **Paquete separado** de `Profile.plan` (que es Zyfit Pro, del entrenador en
 la app móvil) — no confundir. `access_service.py` gatea
 `Module.es_gratuito`/`Lesson.bloqueado`. Sin proveedor de pago real
-(`AdministeredGateway`, administrado a mano). ⚠️ Gotcha ya vivido: activar el
+(`AdministeredGateway` en `payments.py`, administrado a mano: hoy solo desde
+Django Admin; no hay endpoint público para activarse Pro). **Dirección
+indicada por Sebastian (2026-11-05):** los pagos se gestionan desde el panel
+de admin de Academy (`AdminUsersPage`, hoy solo crea cuentas), no con un
+proveedor externo — **aún sin construir**. ⚠️ Gotcha ya vivido: activar el
 paywall afecta de inmediato a estudiantes YA inscritos — pensar la migración
 antes de tocar tiers.
 
@@ -140,7 +160,9 @@ GENERALIZADA multi-producto vía campo `producto` (`zyfit_pro` +
 `academy_pro`), un solo `Influencer`/cola de solicitudes para ambos
 (compartida con la app móvil). Reemplaza los placeholders "Próximamente" en
 `mobile/app/.../suscripcion.tsx` y `academy-web/.../SubscriptionPage.tsx`.
-**No desplegado todavía.**
+**Desplegado** (verificado 2026-11-05: `/api/promos/` está montado en
+`pyfit/urls.py` y `/api/promos/validar/` responde 401 sin sesión). Las
+solicitudes (`/api/promos/solicitudes/`) las revisa un humano; nada cobra solo.
 
 ## Onboarding sin registro (visitante anónimo)
 
@@ -155,8 +177,9 @@ que `academy_streak_sweep`) borra sesiones vencidas.
 ## Tutor IA (`backend/ai_tutor/`)
 
 Conversacional, RAG sobre el contenido de los cursos: embeddings **LOCALES**
-con `sentence-transformers` + coseno en JSON (**sin pgvector**), Groq (no
-Claude) para generar respuestas, guardrails médico/de programa, límite por
+con `sentence-transformers` + coseno en JSON (**sin pgvector**), **DeepSeek**
+(`deepseek-chat`, vía el cliente central `pyfit/llm.py`; no Claude ni Groq)
+para generar respuestas, guardrails médico/de programa, límite por
 tier (free 3/pro 30 mensajes). Endpoints `/api/academy/tutor/`. Widget
 **global** en el Sidebar + contextual en `LessonPlayer`. Comando manual
 `index_tutor_content`.
@@ -168,8 +191,8 @@ modelo compitiendo con gunicorn). Ver gotcha completo en `backend/CLAUDE.md`.
 
 ## Comunidad (foro Q&A)
 
-Posts/respuestas entre alumnos, moderación automática vía Groq (guardrails+IA,
-fail-open — si Groq falla, no bloquea), reportes con umbral de
+Posts/respuestas entre alumnos, moderación automática vía el LLM central
+(DeepSeek; guardrails+IA, fail-open — si el LLM falla, no bloquea), reportes con umbral de
 auto-ocultamiento, badge opcional "Colaborador". **Nunca gatea progreso,
 racha ni badges core** — es una feature social aparte.
 
@@ -177,12 +200,31 @@ racha ni badges core** — es una feature social aparte.
 
 - **Home/dashboard del estudiante** (`dashboard_service.py`, sigue el patrón
   de `streak_service.py`, ~15 queries fijo, sin N+1): progreso agregado en
-  UNA llamada. Campo `progreso_general` — **nunca "score"** (ese término es
-  del Zyfit Score de Coach, otro producto).
+  UNA llamada. El indicador es `puntos_aprendizaje` (reemplazó a
+  `progreso_general`, retirado 2026-07-10) — **nunca "score"** (ese término
+  es del Zyfit Score de Coach, otro producto).
 - **i18n es/en**: `LocaleMiddleware` + campos `_en` (Course/Module/School),
-  comando `translate_academy_info` (Groq). Idioma **global** (a diferencia
-  del dark mode, que es shell-only). Falta correr la traducción en prod para
-  varios campos y falta el resto de la UI autenticada.
+  comando `translate_academy_info` (vía el LLM central, DeepSeek). Idioma
+  **global** (a diferencia del dark mode, que es shell-only). Los títulos de
+  curso ya salen traducidos en prod (verificado 2026-11-05). Falta traducir
+  la UI de varias pantallas que no usan `useT`: `LessonPlayerPage`,
+  `SubscriptionPage`, `CommunityPage`/`QuestionDetailPage`, las del
+  instructor, los 3 simuladores, términos y privacidad, y `NotFoundPage`.
+- **Analítica del instructor** (`/instructor/analitica`,
+  `instructor_analytics_service.py`, `GET /api/academy/instructor/analytics/
+  ?course_id=`): métricas agregadas por curso, **nunca datos de estudiantes**.
+  Pasa por `_course_for_edit`, así que un instructor ajeno recibe **403** (no
+  404, igual que editar un curso ajeno).
+- **Feedback por pregunta** (`Question.feedback_correcta/feedback_incorrecta`,
+  migraciones `0025`/`0026`): en el `.md` va como `> Feedback correcta:` /
+  `> Feedback incorrecta:` bajo la pregunta; si falta, `quiz_feedback.py` y el
+  backfill de `0026` generan uno genérico.
+- **Blog**: 6 posts editoriales sembrados con `seed_blog_posts` (idempotente,
+  MANUAL en prod). Se renderizan con `MarkdownLite`.
+- **Banner de Zyfit APP** (`PromoZyfitApp`): ya no es un "Muy pronto" muerto;
+  el badge enlaza a la lista de espera de la landing
+  (`https://zyfit-landing.vercel.app`). Cuando haya URL de tienda, cambiar
+  `WAITLIST_URL` en el componente.
 - **Dark mode**: toggle sol/luna en Topbar, `data-theme` se estampa en la
   raíz de `AppLayout`/`LessonPlayerPage` — **NUNCA en `<html>`** — para no
   filtrarse a landing/login/explorar (comparten `.za-card`).
@@ -241,6 +283,15 @@ curl -s -i -X OPTIONS https://sea-lion-app-a2j4f.ondigitalocean.app/api/academy/
 5. Auditoría de seguridad/UX ya corrida (0 crítico seguridad, 1 crítico UX,
    4 alto, 7 medio, 6 bajo) — hallazgos Alto+Medio corregidos donde aplicaba,
    ver `project_academy_security_audit` antes de retomar los pendientes Bajo.
+6. **Sentry está en el código pero APAGADO en producción** (verificado el
+   2026-11-05 contra el spec vivo de DO): ni el build de `zyfit-academy` tiene
+   `VITE_SENTRY_DSN` ni `sea-lion-app` tiene `SENTRY_DSN`; sin ellos
+   `initSentry()` es un no-op. `VITE_*` se fija al compilar, así que además de
+   poner la variable hay que reconstruir el front. Mientras tanto, los errores
+   de producción no llegan a ningún lado.
+7. **Voz del copy: "tú", nunca voseo** (regla del `CLAUDE.md` raíz). Incluye
+   los seeds del backend (blog, cursos) y los mensajes de error de la API, no
+   solo los diccionarios `es.ts`. `test_blog_seed.py` falla si el blog trae voseo.
 
 ## Referencias
 

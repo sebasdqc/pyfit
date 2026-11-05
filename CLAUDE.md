@@ -150,10 +150,15 @@ actual.
    `backend/CLAUDE.md`).
 4. **No uses Supabase en ningún producto nuevo.** Todo el auth y base de
    datos vive en Django + PostgreSQL nativo.
-5. **Groq SDK para Python:** `pip install groq`, modelo
-   `llama-3.3-70b-versatile` — usado por la generación de rutinas de fuerza,
-   running, sesiones de equipo de Performance y el tutor IA de Academy.
-   `GROQ_API_KEY` en `backend/.env`.
+5. **IA = DeepSeek, vía un único cliente central.** Toda llamada a un LLM
+   (rutinas de fuerza, running, ciclismo, sesiones de equipo de Performance,
+   tutor IA/moderación/traducción de Academy) pasa por `pyfit/llm.py`
+   (`get_llm_client()`), que usa el SDK `openai` contra la API compatible de
+   DeepSeek, modelo `deepseek-chat`. Clave: `DEEPSEEK_API_KEY` (en
+   `backend/.env` y en el env de `sea-lion-app`); `LLM_BASE_URL`/`LLM_MODEL`
+   la sobreescriben. **Ya no se usa Groq** en runtime: nombres como
+   `_call_groq` o `GROQ_TIMEOUT_SECONDS` son restos históricos, no un
+   proveedor. Para cambiar de proveedor se toca solo `settings.LLM_*`.
 6. Al agregar un header HTTP custom en cualquier frontend, sumarlo en el
    mismo commit a `CORS_ALLOW_HEADERS` en `backend/pyfit/settings.py` — ya
    causó fallas de conexión "fantasma" dos veces (ver `backend/CLAUDE.md`).

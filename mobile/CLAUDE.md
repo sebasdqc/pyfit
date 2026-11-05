@@ -196,8 +196,8 @@ entrenador: máximo 2 oraciones.
 
 **Flujo completo:** perfil → check-in de hoy → sesiones recientes (2 semanas)
 → competición próxima (14 días) → `_get_coach_config`/`_get_coach_directiva`
-(no-op sin coach) → calcular fatiga y RPE target → contexto → prompt → Groq
-(`llama-3.3-70b-versatile`, max_tokens=2048) → parsear JSON → guardar Session
+(no-op sin coach) → calcular fatiga y RPE target → contexto → prompt → LLM
+(DeepSeek `deepseek-chat` vía `pyfit/llm.py`, max_tokens=2048) → parsear JSON → guardar Session
 con `respuesta_ia` → devolver sesión + session_id.
 
 `respuesta_ia` (JSONField): `{titulo, objetivo_sesion, rpe_target,
@@ -432,8 +432,9 @@ npx expo start --dev-client --clear              # tras cambiar .env
    diferenciación del producto — no la reinventes por pantalla.
 3. `respuesta_ia` es un JSONField con la estructura exacta de arriba — no la
    cambies sin migrar los datos existentes.
-4. Groq SDK para Python: `pip install groq`, modelo
-   `llama-3.3-70b-versatile`. `GROQ_API_KEY` en `backend/.env`.
+4. La IA corre sobre DeepSeek (`deepseek-chat`) vía el cliente central
+   `backend/pyfit/llm.py`; `DEEPSEEK_API_KEY` en `backend/.env`. Ya no se usa
+   Groq ni `llama-3.3-70b-versatile` (ver `CLAUDE.md` raíz, nota 5).
 5. El calendario semanal/mensual usa lógica JS pura, sin librerías — no
    agregar una librería de calendario.
 6. Los círculos de progreso son SVG custom (`react-native-svg`), no una

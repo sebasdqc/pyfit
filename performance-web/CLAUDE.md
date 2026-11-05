@@ -103,7 +103,8 @@ de carga, **no** predictor causal de lesión.
   individual).
 - **`team_session_generator.py`** — genera **una sesión de EQUIPO por día**
   (no una por atleta — decisión de producto: fútbol/futsal entrena junto).
-  Reusa `ai_workout._call_groq`. Patrón "el motor fija los números, el LLM
+  Reusa `ai_workout._call_groq` (nombre histórico: hoy llama a DeepSeek vía
+  `pyfit/llm.py`). Patrón "el motor fija los números, el LLM
   solo redacta" — mismo split que `ai_running`. Contexto de riesgo: ACWR/
   monotonía agregados + return-to-play consultando `InjuryReport` DIRECTO
   (nunca `CenterAthlete.estado`, que puede desincronizarse).
