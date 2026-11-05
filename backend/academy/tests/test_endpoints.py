@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from academy import grading
 from academy.models import (
     Course, Module, Lesson, Quiz, Question, Enrollment, Certificate,
-    Submission, CourseBadge, EarnedBadge, LessonProgress,
+    Submission, CourseBadge, EarnedBadge, LessonProgress, QuizAttempt,
 )
 
 User = get_user_model()
@@ -357,7 +357,8 @@ class InstructorAnalyticsTests(_Base):
 
         res = self.client.get(f'/api/academy/instructor/analytics/?course_id={course.id}')
 
-        self.assertEqual(res.status_code, 404)
+        # Mismo criterio que editar un curso ajeno (`_course_for_edit` → 403).
+        self.assertEqual(res.status_code, 403)
 
     def test_student_cannot_read_course_analytics(self):
         course, _quiz = self._course_con_quiz()
