@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { VerifyEmailBanner } from '@/components/auth/VerifyEmailBanner'
 import { TutorChat } from '@/components/tutor/TutorChat'
 import { useTheme } from '@/theme/useTheme'
 
@@ -36,6 +37,7 @@ export function AppLayout() {
       <div className="min-h-[100dvh] md:pl-[104px] lg:pl-[272px]">
         <Topbar onMenu={() => setMobileOpen(true)} />
         <main className="mx-auto max-w-6xl px-6 pb-16 pt-6 sm:px-8 lg:px-10">
+          <VerifyEmailBanner />
           <Outlet />
         </main>
       </div>

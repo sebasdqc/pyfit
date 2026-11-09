@@ -45,6 +45,7 @@ export type AcademyNivel = 'starter' | 'pro'
 export interface AuthUser {
   id: number
   email: string
+  email_verificado: boolean
   nombre: string
   role: GlobalRole
   is_admin: boolean
@@ -152,6 +153,7 @@ export interface Lesson {
   tipo: LessonTipo
   contenido: string
   video_url: string // video de la lección o enlace de la reunión (en_vivo)
+  subtitulos_url: string // pista WebVTT (.vtt) del video; solo con archivos de medio directos
   duracion_min: number
   // Puntos de aprendizaje que otorga completarla (academy.dashboard_service) —
   // DISTINTO de racha.puntos_totales y de Quiz.puntaje_aprobacion/total_puntos.
@@ -726,6 +728,7 @@ export interface AcademyUserAccount {
   nombre: string
   rol: AcademyUserRol
   is_active: boolean
+  email_verificado: boolean
   date_joined: string
 }
 
@@ -757,16 +760,34 @@ export interface AdminMetricas {
     dau_promedio_30d: number
     stickiness: number
     en_riesgo: number
+    sin_verificar: number
     dias_en_riesgo: number
     lecciones_completadas: number
     quiz_intentos: number
     quiz_aprobacion: number
     serie_nuevos: { fecha: string; nuevos: number }[]
   }
+  aprendizaje: {
+    diagnosticos: number
+    finales: number
+    con_ambas: number
+    puntaje_diagnostico: number | null
+    puntaje_final: number | null
+    ganancia_promedio: number | null
+    ganancia_normalizada: number | null
+    repaso: {
+      estudiantes_con_mazo: number
+      preguntas_en_mazo: number
+      dominadas: number
+      estudiantes_repasando: number
+    }
+  }
   cursos: {
     filas: {
       id: number
       titulo: string
+      ganancia: number | null
+      evaluados: number
       matriculas: number
       completadas: number
       tasa_finalizacion: number
@@ -879,6 +900,109 @@ export interface RegistrarPagoPayload {
   fecha_pago?: string
   nota?: string
   solicitud_id?: number
+}
+
+// ── Repaso espaciado (estudiante) ─────────────────────────────────────────────
+// Espeja academy/review_service.py. Las preguntas NO traen la clave: el
+// servidor la devuelve junto al resultado, después de responder.
+
+export interface ReviewSummary {
+  pendientes: number
+  total: number
+  dominadas: number
+  proxima_fecha: string | null
+}
+
+export interface ReviewQuestion {
+  question_id: number
+  enunciado: string
+  tipo: QuestionTipo
+  opciones: { id: string; texto: string }[]
+  video_url: string
+  curso: string
+  leccion: string
+  caja: number
+}
+
+export interface ReviewQueue {
+  resumen: ReviewSummary
+  preguntas: ReviewQuestion[]
+}
+
+export interface RepasoResultado {
+  correcta: boolean
+  correctas: string[]
+  feedback: string
+  caja: number
+  dominada: boolean
+  proxima_revision: string
+  dias: number
+  racha_estudio: number | null
+  resumen: ReviewSummary
+}
+
+// ── Diagnóstico inicial y evaluación final (estudiante) ───────────────────────
+// Espeja academy/assessment_service.py. Nunca traen clave ni feedback.
+
+export type AssessmentKind = 'diagnostico' | 'final'
+
+export interface AssessmentGain {
+  diagnostico: number
+  final: number
+  puntos: number
+  normalizada: number | null
+}
+
+export interface AssessmentStatus {
+  disponible: boolean
+  diagnostico: { hecho: boolean; puntaje: number | null }
+  final: { hecho: boolean; puntaje: number | null }
+  puede_diagnostico: boolean
+  puede_final: boolean
+  ganancia: AssessmentGain | null
+  total_preguntas: number
+}
+
+export interface AssessmentQuestion {
+  id: number
+  enunciado: string
+  tipo: QuestionTipo
+  opciones: { id: string; texto: string }[]
+  video_url: string
+}
+
+export interface AssessmentResult {
+  kind: AssessmentKind
+  puntaje: number
+  correctas: number
+  total: number
+  ganancia: AssessmentGain | null
+}
+
+// ── Producción de medios (SOLO admin) ─────────────────────────────────────────
+
+export interface AdminMedios {
+  total: number
+  con_medio: number
+  pendientes: number
+  con_subtitulos: number
+  minutos_por_grabar: number
+  avance: number
+  cursos: {
+    course_id: number
+    curso: string
+    total: number
+    con_medio: number
+    con_subtitulos: number
+    pendientes: {
+      lesson_id: number
+      modulo: string
+      titulo: string
+      tipo: 'video' | 'audio'
+      guion_palabras: number
+      minutos_estimados: number
+    }[]
+  }[]
 }
 
 // ── Comunidad (foro Q&A asíncrono entre alumnos) ──────────────────────────────

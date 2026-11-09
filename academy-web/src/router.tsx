@@ -21,7 +21,9 @@ import { CourseDetailPage } from '@/pages/CourseDetailPage'
 import { LessonPlayerPage } from '@/pages/LessonPlayerPage'
 import { MyLearningPage } from '@/pages/MyLearningPage'
 import { LibraryPage } from '@/pages/LibraryPage'
+import { ReviewPage } from '@/pages/ReviewPage'
 import { AdminBillingPage } from '@/pages/AdminBillingPage'
+import { AdminMediaPage } from '@/pages/AdminMediaPage'
 import { AdminMetricsPage } from '@/pages/AdminMetricsPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { InstructorPage } from '@/pages/InstructorPage'
@@ -76,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'catalogo', element: <CatalogPage /> },
           { path: 'cursos/:courseId', element: <CourseDetailPage /> },
           { path: 'aprendizaje', element: <MyLearningPage /> },
+          { path: 'repaso', element: <ReviewPage /> },
           { path: 'biblioteca', element: <LibraryPage /> },
           { path: 'certificados', element: <CertificatesPage /> },
           { path: 'simulador', element: <SimuladorIndexPage /> },
@@ -90,6 +93,7 @@ export const router = createBrowserRouter([
           { path: 'admin/usuarios', element: <AdminUsersPage /> },
           { path: 'admin/metricas', element: <AdminMetricsPage /> },
           { path: 'admin/cobros', element: <AdminBillingPage /> },
+          { path: 'admin/medios', element: <AdminMediaPage /> },
           { path: 'instructor/cursos/:courseId/contenido', element: <CourseContentPage /> },
           { path: 'instructor/cursos/:courseId/entregas', element: <SubmissionsPage /> },
           { path: 'instructor/cursos/:courseId/ajustes', element: <CourseSettingsPage /> },

@@ -1425,20 +1425,30 @@ function AttachVideoDialog({
 }) {
   const { lesson, moduleId, mode } = editing
   const [url, setUrl] = useState(lesson.video_url)
+  const [subs, setSubs] = useState(lesson.subtitulos_url ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const trimmed = url.trim()
+  const subsTrim = subs.trim()
+  const subsValidos = !subsTrim || subsTrim.startsWith('http://') || subsTrim.startsWith('https://')
+  // Los subtítulos solo aplican a archivos de medio directos (no a YouTube/Vimeo
+  // ni a enlaces de reuniones en vivo).
+  const admiteSubtitulos = mode !== 'en_vivo'
   const embed = useMemo(() => toEmbedUrl(trimmed), [trimmed])
   const urlValida = !trimmed || trimmed.startsWith('http://') || trimmed.startsWith('https://')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!urlValida) {
+    if (!urlValida || !subsValidos) {
       setError('La URL debe empezar con http:// o https://')
       return
     }
-    await save({ video_url: trimmed, ...(mode === 'convertir' ? { tipo: 'video' as const } : {}) },
+    await save({
+      video_url: trimmed,
+      ...(admiteSubtitulos ? { subtitulos_url: subsTrim } : {}),
+      ...(mode === 'convertir' ? { tipo: 'video' as const } : {}),
+    },
       mode === 'convertir'
         ? `"${lesson.titulo}" ahora es una lección de video.`
         : trimmed
@@ -1451,7 +1461,7 @@ function AttachVideoDialog({
     await save({ tipo: 'texto', video_url: '' }, `"${lesson.titulo}" volvió a ser una lectura.`)
   }
 
-  async function save(payload: { tipo?: LessonTipo; video_url?: string }, msg: string) {
+  async function save(payload: { tipo?: LessonTipo; video_url?: string; subtitulos_url?: string }, msg: string) {
     setSaving(true)
     setError(null)
     try {
@@ -1496,6 +1506,25 @@ function AttachVideoDialog({
           />
         </label>
         <p className="text-xs text-ink-muted">{copy.help}</p>
+
+        {admiteSubtitulos && (
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Subtítulos (.vtt) — opcional
+            </span>
+            <input
+              value={subs}
+              onChange={(e) => setSubs(e.target.value)}
+              placeholder="https://…/leccion.vtt"
+              className="input"
+              inputMode="url"
+            />
+            <span className="mt-1.5 block text-xs text-ink-muted">
+              Solo para archivos de video directos (.mp4, .webm). YouTube y Vimeo traen los suyos. El servidor
+              donde esté el .vtt debe permitir CORS, o el navegador no mostrará los subtítulos.
+            </span>
+          </label>
+        )}
 
         {/* Vista previa del embed para confirmar que la URL es la correcta */}
         {embed ? (

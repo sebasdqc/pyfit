@@ -71,6 +71,12 @@ export function AdminMetricsPage() {
           >
             Gestionar cobros
           </Link>
+          <Link
+            to="/admin/medios"
+            className="inline-flex h-10 items-center rounded-xl border border-surface-border px-4 text-sm font-semibold text-ink hover:border-accent hover:text-accent"
+          >
+            Producción de medios
+          </Link>
           <div role="group" aria-label="Período" className="inline-flex rounded-xl border border-surface-border p-1">
             {PERIODOS.map((p) => (
               <button
@@ -150,6 +156,8 @@ function Resumen({ d }: { d: AdminMetricas }) {
         </p>
       )}
 
+      <Aprendizaje d={d} />
+
       <Panel id="cursos-title" title="Cursos" subtitle="Ordenados por matrículas. Una finalización baja con muchas matrículas suele indicar contenido que cuesta terminar." aside={`${c.total_publicados} publicados`}>
         {c.filas.length === 0 ? <PanelEmpty message="Aún no hay cursos publicados." /> : (
           <div className="overflow-x-auto">
@@ -160,7 +168,8 @@ function Resumen({ d }: { d: AdminMetricas }) {
                   <th className="px-3 py-3 text-right font-semibold">Matrículas</th>
                   <th className="px-3 py-3 text-right font-semibold">Finalización</th>
                   <th className="px-3 py-3 text-right font-semibold">Progreso prom.</th>
-                  <th className="px-5 py-3 text-right font-semibold">Aprobación quiz</th>
+                  <th className="px-3 py-3 text-right font-semibold">Aprobación quiz</th>
+                  <th className="px-5 py-3 text-right font-semibold" title="Diferencia entre la evaluación final y el diagnóstico inicial">Ganancia</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-border">
@@ -170,7 +179,8 @@ function Resumen({ d }: { d: AdminMetricas }) {
                     <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{num(fila.matriculas)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{fila.matriculas ? `${fila.tasa_finalizacion}%` : '—'}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{fila.matriculas ? `${fila.progreso_promedio}%` : '—'}</td>
-                    <td className="px-5 py-3 text-right tabular-nums text-ink-soft">{fila.quiz_intentos ? `${fila.quiz_aprobacion}%` : '—'}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{fila.quiz_intentos ? `${fila.quiz_aprobacion}%` : '—'}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-ink-soft">{fila.ganancia === null ? '—' : `${fila.ganancia > 0 ? '+' : ''}${fila.ganancia} pts`}{fila.ganancia !== null && <span className="block text-[11px] text-ink-muted">{fila.evaluados} alumno(s)</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -198,6 +208,11 @@ function Estudiantes({ d }: { d: AdminMetricas }) {
         <StatCard label="Lecciones completadas" value={num(e.lecciones_completadas)} detail={`en ${d.periodo.dias} días`} icon="doc" />
         <StatCard label="Quizzes" value={num(e.quiz_intentos)} detail={`${e.quiz_aprobacion}% de intentos aprobados`} icon="quiz" />
       </StatRow>
+      {e.sin_verificar > 0 && (
+        <Callout title={`${num(e.sin_verificar)} estudiante(s) con el correo sin verificar`}>
+          Pueden usar la academia, pero no pueden recuperar su cuenta ni recibir avisos hasta confirmar su correo.
+        </Callout>
+      )}
       <Panel id="nuevos-title" title="Nuevos estudiantes por día" subtitle="Cuenta la primera matrícula de cada persona." aside={`${d.periodo.dias} días`}>
         <ColumnChart items={serie} labelEvery={d.periodo.dias <= 7 ? 1 : d.periodo.dias <= 30 ? 5 : 15} label="Nuevos estudiantes por día" />
       </Panel>
@@ -340,5 +355,34 @@ function Finanzas({ d }: { d: AdminMetricas }) {
         suscriptores que había al inicio.
       </p>
     </>
+  )
+}
+
+function Aprendizaje({ d }: { d: AdminMetricas }) {
+  const a = d.aprendizaje
+  const sinDatos = a.diagnosticos === 0 && a.finales === 0
+  return (
+    <Panel
+      id="aprendizaje-title"
+      title="Evidencia de aprendizaje"
+      subtitle="¿Los cursos enseñan? Diagnóstico al empezar y evaluación final con las mismas preguntas; la diferencia es lo aprendido."
+      aside={`${num(a.con_ambas)} alumno(s) con ambas`}
+    >
+      {sinDatos ? (
+        <PanelEmpty message="Aún nadie ha hecho el diagnóstico inicial. Aparecerá una invitación al abrir un curso nuevo." />
+      ) : (
+        <div className="grid divide-y divide-surface-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+          <StatCard label="Puntaje al empezar" value={a.puntaje_diagnostico === null ? '—' : `${a.puntaje_diagnostico}%`} detail={`${num(a.diagnosticos)} diagnósticos`} icon="flag" />
+          <StatCard label="Puntaje al terminar" value={a.puntaje_final === null ? '—' : `${a.puntaje_final}%`} detail={`${num(a.finales)} evaluaciones finales`} icon="check" />
+          <StatCard label="Ganancia promedio" value={a.ganancia_promedio === null ? '—' : `${a.ganancia_promedio > 0 ? '+' : ''}${a.ganancia_promedio} pts`} detail="solo alumnos con ambas medidas" icon="activity" tone={a.ganancia_promedio !== null && a.ganancia_promedio <= 0 ? 'warn' : 'ok'} />
+          <StatCard label="Ganancia normalizada" value={a.ganancia_normalizada === null ? '—' : `${a.ganancia_normalizada}%`} detail="de lo que faltaba por aprender" icon="star" />
+        </div>
+      )}
+      <p className="border-t border-surface-border px-5 py-3 text-sm text-ink-soft">
+        Repaso espaciado: <strong className="text-ink">{num(a.repaso.estudiantes_repasando)}</strong> estudiante(s) repasaron en el período ·{' '}
+        <strong className="text-ink">{num(a.repaso.preguntas_en_mazo)}</strong> preguntas en mazos ·{' '}
+        <strong className="text-ink">{num(a.repaso.dominadas)}</strong> dominadas.
+      </p>
+    </Panel>
   )
 }

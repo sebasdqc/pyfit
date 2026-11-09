@@ -3,7 +3,9 @@
 
 import { api } from './client'
 import type {
-  AdminMetricas, AdminPago, AdminPeriodo, AdminSuscripciones, RegistrarPagoPayload,
+  AdminMedios, AdminMetricas, AdminPago, AdminPeriodo, AdminSuscripciones, RegistrarPagoPayload,
+  AssessmentKind, AssessmentQuestion, AssessmentResult, AssessmentStatus,
+  RepasoResultado, ReviewQueue, ReviewSummary,
   AcademyBadgeCatalog, AcademyPlanTipo, AcademyPromoValidation, AcademySolicitudSuscripcion,
   AcademySubscriptionStatus, AcademyUserAccount, AcademyUserRol,
   BlogPost, BlogPostDetail,
@@ -170,6 +172,7 @@ export async function deleteLesson(courseId: number, moduleId: number, lessonId:
 export interface UpdateLessonPayload {
   tipo?: LessonTipo
   video_url?: string
+  subtitulos_url?: string
   titulo?: string
   contenido?: string
   duracion_min?: number
@@ -573,6 +576,55 @@ export async function cancelarSuscripcionAdmin(userId: number): Promise<void> {
 
 export async function rechazarSolicitud(id: number): Promise<void> {
   await api.post(`/academy/admin/solicitudes/${id}/rechazar/`)
+}
+
+// ── Repaso espaciado ─────────────────────────────────────────────────────────
+
+export async function getRepaso(): Promise<ReviewQueue> {
+  const res = await api.get<ReviewQueue>('/academy/repaso/')
+  return res.data
+}
+
+export async function getRepasoResumen(): Promise<ReviewSummary> {
+  const res = await api.get<ReviewSummary>('/academy/repaso/resumen/')
+  return res.data
+}
+
+export async function responderRepaso(questionId: number, respuestas: string[]): Promise<RepasoResultado> {
+  const res = await api.post<RepasoResultado>('/academy/repaso/responder/', { question_id: questionId, respuestas })
+  return res.data
+}
+
+// ── Diagnóstico inicial y evaluación final ───────────────────────────────────
+
+export async function getAssessmentStatus(enrollmentId: number): Promise<AssessmentStatus> {
+  const res = await api.get<AssessmentStatus>(`/academy/enrollments/${enrollmentId}/evaluaciones/`)
+  return res.data
+}
+
+export async function getAssessmentQuestions(
+  enrollmentId: number, kind: AssessmentKind,
+): Promise<AssessmentQuestion[]> {
+  const res = await api.get<{ preguntas: AssessmentQuestion[] }>(
+    `/academy/enrollments/${enrollmentId}/evaluaciones/${kind}/`,
+  )
+  return res.data.preguntas
+}
+
+export async function submitAssessment(
+  enrollmentId: number, kind: AssessmentKind, respuestas: Record<string, string[]>,
+): Promise<AssessmentResult> {
+  const res = await api.post<AssessmentResult>(
+    `/academy/enrollments/${enrollmentId}/evaluaciones/${kind}/`, { respuestas },
+  )
+  return res.data
+}
+
+// ── Producción de medios (SOLO admin) ────────────────────────────────────────
+
+export async function getAdminMedios(): Promise<AdminMedios> {
+  const res = await api.get<AdminMedios>('/academy/admin/medios/')
+  return res.data
 }
 
 // ── Simulador de carga interna (escuela Analítica y Rendimiento Deportivo) ────

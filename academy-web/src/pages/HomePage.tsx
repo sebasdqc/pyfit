@@ -16,6 +16,7 @@ import { StreakCard } from '@/components/StreakCard'
 import { SchoolPointsBadge } from '@/components/dashboard/SchoolPointsBadge'
 import { BadgeGallery } from '@/components/badges/BadgeGallery'
 import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
+import { ReviewHomeCard } from '@/components/review/ReviewHomeCard'
 import { schoolTheme } from '@/lib/schoolTheme'
 import { useT } from '@/locale/useT'
 import type {
@@ -127,6 +128,8 @@ export function HomePage() {
           {objetivo && <ContinueHero target={objetivo} isResume={!!data.continuar} />}
 
           {data.recomendacion_ia && <AIRecommendationCard recomendacion={data.recomendacion_ia} />}
+
+          <ReviewHomeCard />
 
           <PromoZyfitApp />
 

@@ -18,7 +18,8 @@ import { DeliverableLesson } from '@/components/player/DeliverableLesson'
 import { TutorChat } from '@/components/tutor/TutorChat'
 import { PaywallDialog } from '@/components/academy/PaywallDialog'
 import { PromoZyfitApp } from '@/components/promo/PromoZyfitApp'
-import { toEmbedUrl } from '@/lib/videoEmbed'
+import { AssessmentCard } from '@/components/assessment/AssessmentCard'
+import { LessonMedia } from '@/components/player/LessonMedia'
 import { MarkdownLite } from '@/components/ui/MarkdownLite'
 import { useStreak } from '@/lib/useStreak'
 import { useTheme } from '@/theme/useTheme'
@@ -358,6 +359,9 @@ export function LessonPlayerPage() {
         {/* Contenido de la lección */}
         <main ref={mainRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8">
+            {/* Diagnóstico inicial / evaluación final (opcionales; aparecen solo cuando corresponden) */}
+            <AssessmentCard enrollmentId={id} estado={estado} leccionesHechas={completed.size} />
+
             {/* Banner de curso completado */}
             {estado === 'completada' && (
               <>
@@ -539,80 +543,8 @@ function LessonBody({
     )
   }
 
-  if (lesson.tipo === 'video') {
-    const embed = toEmbedUrl(lesson.video_url)
-    return (
-      <div className="flex flex-col gap-5">
-        {embed ? (
-          <div className="aspect-video w-full overflow-hidden rounded-xl border border-surface-border bg-black">
-            <iframe
-              src={embed}
-              title={lesson.titulo}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        ) : lesson.video_url ? (
-          <a
-            href={lesson.video_url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl border border-surface-border bg-surface p-4 text-sm text-accent hover:bg-surface-soft"
-          >
-            <Icon name="play" size={18} /> Abrir el video en una pestaña nueva
-          </a>
-        ) : (
-          /* Placeholder: la lección es de video pero el instructor aún no anexó
-             la URL. El alumno puede seguir con el material de apoyo y marcarla
-             como completada con normalidad. */
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-brand-deep p-6 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white">
-              <Icon name="play" size={24} />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-white">Video en producción</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-white/60">
-                {lesson.contenido
-                  ? 'Tu instructor lo publicará pronto. Mientras tanto, repasa el material de apoyo de la lección.'
-                  : 'Tu instructor lo publicará pronto. Vuelve a esta lección más tarde.'}
-              </p>
-            </div>
-          </div>
-        )}
-        {lesson.contenido && <TextBody text={lesson.contenido} />}
-      </div>
-    )
-  }
-
-  if (lesson.tipo === 'audio') {
-    return (
-      <div className="flex flex-col gap-5">
-        {lesson.video_url ? (
-          /* El campo video_url reutiliza la URL de media también para audio. */
-          <audio controls preload="none" src={lesson.video_url} className="w-full">
-            Tu navegador no soporta el reproductor de audio.
-          </audio>
-        ) : (
-          /* Placeholder: la lección es de audio pero aún no se produjo el archivo.
-             El alumno sigue con el guion de apoyo y la marca como completada. */
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-brand-deep p-8 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white">
-              <Icon name="audio" size={24} />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-white">Audio en producción</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-white/60">
-                {lesson.contenido
-                  ? 'Publicaremos el audio pronto. Mientras tanto, sigue el guion de apoyo de la lección.'
-                  : 'Publicaremos el audio pronto. Vuelve a esta lección más tarde.'}
-              </p>
-            </div>
-          </div>
-        )}
-        {lesson.contenido && <TextBody text={lesson.contenido} />}
-      </div>
-    )
+  if (lesson.tipo === 'video' || lesson.tipo === 'audio') {
+    return <LessonMedia lesson={lesson} />
   }
 
   if (lesson.tipo === 'quiz') {

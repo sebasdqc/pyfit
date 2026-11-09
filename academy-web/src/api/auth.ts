@@ -45,6 +45,16 @@ export async function confirmPasswordReset(
   await api.post('/auth/confirm-reset/', { email, code, new_password: newPassword })
 }
 
+// Verificación de correo — mismos endpoints autenticados que usa la app móvil
+// (/api/auth/verify-email/ y /resend-verification/, no son de /academy/).
+export async function verifyEmailCode(code: string): Promise<void> {
+  await api.post('/auth/verify-email/', { code })
+}
+
+export async function resendVerificationCode(): Promise<void> {
+  await api.post('/auth/resend-verification/')
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   const res = await api.get<AuthUser>('/academy/me/')
   return res.data

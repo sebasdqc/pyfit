@@ -143,7 +143,10 @@ function AdminUsersPanel() {
                   {items.map((u) => (
                     <tr key={u.id} className="border-b border-surface-border last:border-0">
                       <td className="py-2.5 pr-3 text-ink">{u.nombre}</td>
-                      <td className="py-2.5 pr-3 text-ink-soft">{u.email}</td>
+                      <td className="py-2.5 pr-3 text-ink-soft">
+                        {u.email}
+                        {!u.email_verificado && <span className="ml-2"><Badge tone="warn">{t('verifyEmail.unverifiedBadge')}</Badge></span>}
+                      </td>
                       <td className="py-2.5 pr-3">
                         <Badge tone={ROL_TONE[u.rol]}>{t(`adminUsers.rol.${u.rol}`)}</Badge>
                       </td>
