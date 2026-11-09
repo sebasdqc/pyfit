@@ -96,6 +96,14 @@ Programa Evolución 360°) y el curso demo `fundamentos-de-fuerza`. En
 producción el catálogo público (`/api/academy/anon/catalogo/`) muestra **32**
 cursos con contenido gratis (verificado 2026-11-05).
 
+**El seed ya no destruye datos (2026-11-09):** nunca vacía `video_url` ni
+`subtitulos_url` (un `.md` sin URL conserva la que la lección ya tenga en la BD,
+p. ej. cargada a mano) y por defecto NO borra módulos/lecciones/preguntas que
+estén en la BD pero no en el `.md`: solo los reporta; `--prune` los elimina
+(borrar una lección arrastra el progreso de los alumnos). Sí sigue pisando
+título, texto, enunciados, opciones y respuestas con lo del `.md` — es la
+fuente de verdad. `test_seed_safety.py` lo cubre.
+
 **Pipeline de contenido:** `.md` bajo `backend/academy/content/` →
 `seed_course_content` (management command, idempotente, MANUAL) parsea a
 Módulo→Lección→Quiz→Pregunta. El comando busca recursivamente (`rglob`) y
@@ -104,7 +112,7 @@ nombres numerados de la estructura vieja de 9 escuelas (`1-entrenamiento-…`,
 `2-readaptacion-…`) y NO coinciden con las 7 escuelas actuales — no las
 renombres pensando que importan. El `.md` es la fuente de verdad — editar
 contenido = editar el `.md` + re-correr el comando (`--dry-run` para
-ensayar, `--course <slug>` para uno solo). Formato estricto documentado en
+ensayar, `--course <slug>` para uno solo, `--prune` para ELIMINAR lo que ya no esté en el `.md`). Formato estricto documentado en
 `project_academy_content_standard` / `Zyfit_Academy_Estandar_Curso.md` —
 **checklist obligatorio** antes de crear o editar cualquier curso.
 
@@ -249,6 +257,48 @@ racha ni badges core** — es una feature social aparte.
   migraciones `0025`/`0026`): en el `.md` va como `> Feedback correcta:` /
   `> Feedback incorrecta:` bajo la pregunta; si falta, `quiz_feedback.py` y el
   backfill de `0026` generan uno genérico.
+- **Repaso espaciado** (`/repaso`, `review_service.py`, `review_views.py`,
+  modelo `QuestionReview`): cada pregunta que el alumno respondió en un quiz entra
+  a su mazo y vuelve a salir a intervalos crecientes (cajas 0–5 → 1, 3, 7, 14, 30,
+  60 días); acertar sube de caja, fallar vuelve a la 0. Reglas de seguridad: el
+  servidor califica y la clave NUNCA viaja con la pregunta (se revela solo después
+  de responder); solo se puede responder una pregunta que YA toca (si no, se podría
+  leer la clave de cualquiera); solo cursos matriculados y lecciones que el plan
+  puede ver (freemium). Responder cuenta como actividad de estudio para la racha
+  (`origen='repaso'`). El quiz alimenta el mazo con un hook failure-safe en
+  `views.quiz_attempt`. Tarjeta "Repaso de hoy" en el Home. NO alimenta aún el
+  mastery de competencias.
+- **Diagnóstico inicial y evaluación final** (`assessment_service.py`,
+  `assessment_views.py`, `CourseAssessment`, `AssessmentCard` en el reproductor):
+  8 preguntas repartidas del curso, antes de empezar y al completarlo, con las
+  MISMAS preguntas; la diferencia es la ganancia de aprendizaje (puntos y
+  normalizada de Hake). Ninguna devuelve clave ni feedback (si el alumno viera las
+  respuestas del diagnóstico, la final mediría memoria de la clave). El diagnóstico
+  solo antes de empezar (sin lecciones ni quizzes hechos), la final solo al
+  completar; una sola vez cada una; opcionales, nunca bloquean certificado. Un
+  starter solo se mide con módulos gratuitos.
+- **Medios con subtítulos** (`Lesson.subtitulos_url`, `LessonMedia.tsx`): YouTube/
+  Vimeo por iframe; `.mp4/.webm` con `<video>` nativo y pista `.vtt`; audio con
+  `<audio>`. El guion siempre queda como transcripción (desplegable si hay medio,
+  abierto si no). ⚠️ El `.vtt` en otro dominio exige CORS en ese host y el `<video>`
+  pasa a `crossOrigin="anonymous"` (que exige CORS también en el archivo de video):
+  por eso solo se activa cuando hay subtítulos. HLS (.m3u8) NO se reproduce inline
+  (cae a enlace). El `.md` admite `subtitulos_url:` junto a `video_url:`.
+- **Cola de producción de medios** (`/admin/medios`, `media_ops_service.py`): por
+  curso, cuántas lecciones de video/audio faltan y minutos a grabar (≈ palabras del
+  guion ÷ 150).
+- **Generador de feedback** (`manage.py generate_question_feedback`): propone una
+  explicación por pregunta con el LLM central, restringida al texto de las
+  lecciones del módulo. NO escribe sin `--apply`, no pisa feedback escrito a mano,
+  descarta salidas malformadas o con voseo. Es contenido para alumnos: REVISAR las
+  propuestas (`--export`) antes de aplicar, sobre todo en cursos de salud. Aún no se
+  ha corrido contra el modelo real.
+- **Verificación de correo**: `VerifyEmailBanner` (código de 6 dígitos con los
+  endpoints compartidos `/auth/verify-email/` y `/resend-verification/`). Es un
+  AVISO, no un muro: nadie pierde acceso por no verificar. El panel de usuarios y las
+  métricas muestran quién no ha verificado. `EMAIL_TIMEOUT=10` evita que un SMTP caído
+  cuelgue el registro. Decisión pendiente: exigir verificación para algo (certificado,
+  comunidad); no se hizo para no afectar a las cuentas existentes.
 - **Panel de gestión para admins** (solo `IsAcademyAdmin`, acotado al tenant
   efectivo del admin, nunca por header; un instructor NO entra):
   - `/admin/metricas` (`AdminMetricsPage`, `GET /api/academy/admin/metricas/
