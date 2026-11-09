@@ -3,7 +3,7 @@
 from django.urls import path
 
 from . import (
-    admin_billing_views, admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views,
+    admin_billing_views, assessment_views, review_views, admin_users_views, anon_views, blog_views, community_views, library_views, subscription_views,
     support_views, views,
 )
 
@@ -56,8 +56,18 @@ urlpatterns = [
     # Panel de administración de usuarios (crear/listar admin/profesor/estudiante) — SOLO admin
     path('admin/usuarios/', admin_users_views.admin_users_view),
 
+    # Repaso espaciado (estudiante)
+    path('repaso/', review_views.review_queue),
+    path('repaso/resumen/', review_views.review_summary),
+    path('repaso/responder/', review_views.review_answer),
+
+    # Diagnóstico inicial y evaluación final de un curso (estudiante)
+    path('enrollments/<int:enrollment_id>/evaluaciones/', assessment_views.assessment_status),
+    path('enrollments/<int:enrollment_id>/evaluaciones/<str:kind>/', assessment_views.assessment_run),
+
     # Gestión para admins: métricas del negocio y cobros de Academy Pro — SOLO admin
     path('admin/metricas/', admin_billing_views.admin_metrics),
+    path('admin/medios/', admin_billing_views.admin_media),
     path('admin/suscripciones/', admin_billing_views.admin_subscriptions),
     path('admin/suscripciones/<int:user_id>/cancelar/', admin_billing_views.admin_subscription_cancel),
     path('admin/pagos/', admin_billing_views.admin_payments),

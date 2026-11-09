@@ -25,6 +25,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Min, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
@@ -32,8 +33,11 @@ from django.utils import timezone
 from .billing_service import MESES_POR_PLAN
 from .models import (
     AcademyActivityDay, AcademyPayment, AcademySubscription, AnonymousSession,
-    Certificate, Course, Enrollment, LessonProgress, QuizAttempt,
+    Certificate, Course, CourseAssessment, Enrollment, LessonProgress, QuestionReview, QuizAttempt,
 )
+from .review_service import DOMINADA_DESDE
+
+User = get_user_model()
 
 COHORT_WEEKS = 8
 RISK_DAYS = 14
@@ -118,6 +122,8 @@ def _students_block(tenant, hoy, desde, dias):
         .values('student_id').distinct().count()
     )
 
+    sin_verificar = User.objects.filter(id__in=primeras.keys(), email_verificado=False).count()
+
     lecciones = LessonProgress.objects.filter(
         enrollment__course__tenant=tenant, completado_at__date__gte=desde,
     ).count()
@@ -135,6 +141,7 @@ def _students_block(tenant, hoy, desde, dias):
         'dau_promedio_30d': round(dau_prom, 1),
         'stickiness': _pct(dau_prom, mau) if mau else 0,
         'en_riesgo': en_riesgo,
+        'sin_verificar': sin_verificar,
         'dias_en_riesgo': RISK_DAYS,
         'lecciones_completadas': lecciones,
         'quiz_intentos': intentos_total,
@@ -172,7 +179,47 @@ def _overview_block(tenant, desde, students_total):
     }
 
 
-def _courses_block(tenant):
+def _learning_block(tenant, desde):
+    """¿Los cursos enseñan? Ganancia entre el diagnóstico y la evaluación final
+    (mismas preguntas), y cuánto se usa el repaso espaciado. Solo agregados."""
+    filas = CourseAssessment.objects.filter(enrollment__course__tenant=tenant).values_list(
+        'enrollment_id', 'enrollment__course_id', 'kind', 'puntaje',
+    )
+    por_matricula = defaultdict(dict)
+    curso_de = {}
+    for enrollment_id, course_id, kind, puntaje in filas:
+        por_matricula[enrollment_id][kind] = puntaje
+        curso_de[enrollment_id] = course_id
+    diag = [m['diagnostico'] for m in por_matricula.values() if 'diagnostico' in m]
+    final = [m['final'] for m in por_matricula.values() if 'final' in m]
+    pares = [(m['diagnostico'], m['final'], curso_de[e]) for e, m in por_matricula.items()
+             if 'diagnostico' in m and 'final' in m]
+    ganancias = [post - pre for pre, post, _ in pares]
+    normalizadas = [100 * (post - pre) / (100 - pre) for pre, post, _ in pares if pre < 100]
+    por_curso = defaultdict(list)
+    for pre, post, course_id in pares:
+        por_curso[course_id].append(post - pre)
+
+    mazo = QuestionReview.objects.filter(user_id__in=_student_ids(tenant))
+    return {
+        'diagnosticos': len(diag),
+        'finales': len(final),
+        'con_ambas': len(pares),
+        'puntaje_diagnostico': round(sum(diag) / len(diag)) if diag else None,
+        'puntaje_final': round(sum(final) / len(final)) if final else None,
+        'ganancia_promedio': round(sum(ganancias) / len(ganancias)) if ganancias else None,
+        'ganancia_normalizada': round(sum(normalizadas) / len(normalizadas)) if normalizadas else None,
+        'por_curso': {cid: {'n': len(v), 'ganancia': round(sum(v) / len(v))} for cid, v in por_curso.items()},
+        'repaso': {
+            'estudiantes_con_mazo': mazo.values('user_id').distinct().count(),
+            'preguntas_en_mazo': mazo.count(),
+            'dominadas': mazo.filter(caja__gte=DOMINADA_DESDE).count(),
+            'estudiantes_repasando': mazo.filter(ultima_revision__gte=desde).values('user_id').distinct().count(),
+        },
+    }
+
+
+def _courses_block(tenant, por_curso=None):
     cursos = list(
         Course.objects.filter(tenant=tenant, publicado=True)
         .annotate(
@@ -191,9 +238,12 @@ def _courses_block(tenant):
     filas = []
     for c in cursos:
         q = intentos.get(c['id'], {'total': 0, 'aprobados': 0})
+        g = (por_curso or {}).get(c['id'])
         filas.append({
             'id': c['id'],
             'titulo': c['titulo'],
+            'ganancia': g['ganancia'] if g else None,
+            'evaluados': g['n'] if g else 0,
             'matriculas': c['matriculas'],
             'completadas': c['completadas'],
             'tasa_finalizacion': _pct(c['completadas'], c['matriculas']),
@@ -367,11 +417,13 @@ def build_admin_metrics(tenant, dias=30):
     hoy = timezone.localdate()
     desde = hoy - timedelta(days=dias - 1)
     primeras, estudiantes = _students_block(tenant, hoy, desde, dias)
+    aprendizaje = _learning_block(tenant, desde)
     return {
         'periodo': {'dias': dias, 'desde': desde.isoformat(), 'hasta': hoy.isoformat()},
         'resumen': _overview_block(tenant, desde, estudiantes['total']),
         'estudiantes': estudiantes,
-        'cursos': _courses_block(tenant),
+        'aprendizaje': aprendizaje,
+        'cursos': _courses_block(tenant, aprendizaje['por_curso']),
         'retencion': _retention_block(tenant, primeras, hoy),
         'finanzas': _finance_block(tenant, hoy, desde, dias),
     }

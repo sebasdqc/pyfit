@@ -133,7 +133,7 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = [
             'id', 'module', 'orden', 'titulo', 'tipo',
-            'contenido', 'video_url', 'duracion_min', 'puntos',
+            'contenido', 'video_url', 'subtitulos_url', 'duracion_min', 'puntos',
             'fecha_en_vivo', 'entregable_tipo', 'quiz', 'bloqueado', 'created_at',
         ]
         read_only_fields = ['id', 'module', 'created_at']
@@ -158,6 +158,7 @@ class LessonSerializer(serializers.ModelSerializer):
         if data.get('bloqueado'):
             data['contenido'] = ''
             data['video_url'] = ''
+            data['subtitulos_url'] = ''
         return data
 
 
@@ -678,6 +679,7 @@ class AcademyUserSerializer(serializers.Serializer):
     nombre = serializers.SerializerMethodField()
     rol = serializers.SerializerMethodField()
     is_active = serializers.BooleanField()
+    email_verificado = serializers.BooleanField()
     date_joined = serializers.DateTimeField()
 
     def get_nombre(self, obj):

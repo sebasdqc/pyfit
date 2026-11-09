@@ -24,10 +24,19 @@ Formato del .md (ver los archivos en academy/content/):
         > Feedback incorrecta: Explicación que se muestra tras fallar.
     ## Fuentes de evidencia de este curso    ← se ignora (no es módulo)
 
+Seguridad de los datos que ya existen en la BD:
+  - NUNCA vacía `video_url` ni `subtitulos_url`: si el .md no trae una URL de
+    medio, se conserva la que ya tenga la lección (p. ej. cargada a mano desde
+    la pantalla de edición del curso). El .md solo la pisa si trae una real.
+  - NO borra por defecto. Los módulos, lecciones, quizzes y preguntas que están
+    en la BD pero ya no en el .md se REPORTAN; solo se eliminan con `--prune`
+    (borrar una lección arrastra el progreso de los alumnos en esa lección).
+
 Uso:
     python manage.py seed_course_content
     python manage.py seed_course_content --course fundamentos-de-periodizacion
-    python manage.py seed_course_content --dry-run
+    python manage.py seed_course_content --dry-run      # reporta, no escribe
+    python manage.py seed_course_content --prune        # además elimina lo sobrante
 """
 
 import re
@@ -72,6 +81,7 @@ RE_PREGUNTA = re.compile(
 )
 RE_OPCION = re.compile(r'^\s*-\s*\[([^\]]+)\]\s*(.+?)\s*$')
 RE_MEDIA_URL = re.compile(r'^(video_url|audio_url)\s*:\s*(.*)$', re.IGNORECASE)
+RE_SUBTITULOS = re.compile(r'^(subtitulos_url|subtitles_url)\s*:\s*(.*)$', re.IGNORECASE)
 RE_FEEDBACK = re.compile(
     r'^\s*>\s*Feedback\s+(correcta|incorrecta)\s*:\s*(.+?)\s*$', re.IGNORECASE
 )
@@ -167,6 +177,7 @@ def parse_course_markdown(text):
                 'tipo': tipo,
                 'contenido': '',
                 'video_url': '',
+                'subtitulos_url': '',
                 'preguntas': [],
             }
             cur_mod['lecciones'].append(cur_les)
@@ -216,6 +227,10 @@ def parse_course_markdown(text):
             if mm:
                 cur_les['video_url'] = _clean_media_url(mm.group(2))
                 continue
+            ms = RE_SUBTITULOS.match(line.strip())
+            if ms:
+                cur_les['subtitulos_url'] = _clean_media_url(ms.group(2))
+                continue
             body_buf.append(line)
 
     flush_enunciado()
@@ -231,10 +246,15 @@ class Command(BaseCommand):
         parser.add_argument('--course', help='Slug de un solo curso a integrar.')
         parser.add_argument('--dry-run', action='store_true',
                             help='Parsea y reporta sin escribir en la base de datos.')
+        parser.add_argument('--prune', action='store_true',
+                            help='Elimina también módulos/lecciones/preguntas que están en la BD '
+                                 'pero ya no en el .md (por defecto solo se reportan).')
 
     def handle(self, *args, **options):
         only = options.get('course')
         dry = options['dry_run']
+        self.prune = options['prune']
+        self.sobrantes = 0
 
         md_files = sorted(CONTENT_DIR.rglob('*.md'))
         if not md_files:
@@ -269,6 +289,7 @@ class Command(BaseCommand):
                 f'    {n_mods} módulos · {n_lecs} lecciones · {n_quiz} quizzes · {n_preg} preguntas'
             )
 
+            self._reportar_sobrantes(course, data)
             if not dry:
                 with transaction.atomic():
                     self._sync_course(course, data)
@@ -284,6 +305,13 @@ class Command(BaseCommand):
             f'\n✓ {verbo}: {total_cursos} cursos, {total_mods} módulos, '
             f'{total_lecs} lecciones, {total_quizzes} quizzes, {total_preguntas} preguntas.'
         ))
+        if self.sobrantes:
+            accion = 'se ELIMINARON' if (self.prune and not dry) else (
+                'se eliminarían con --prune' if dry or not self.prune else '')
+            self.stdout.write(self.style.WARNING(
+                f'⚠ {self.sobrantes} elemento(s) están en la BD pero no en el .md: '
+                + (accion if self.prune else 'NO se tocaron; usa --prune para eliminarlos.')
+            ))
 
     # ── Upsert idempotente (preserva progreso) ────────────────────────────────
 
@@ -297,30 +325,37 @@ class Command(BaseCommand):
             parsed_mod_ordenes.add(mod_data['orden'])
             self._sync_module(module, mod_data)
 
-        # Elimina módulos que ya no están en el .md.
-        course.modulos.exclude(orden__in=parsed_mod_ordenes).delete()
+        # Módulos que ya no están en el .md: solo se eliminan con --prune.
+        if self.prune:
+            course.modulos.exclude(orden__in=parsed_mod_ordenes).delete()
 
     def _sync_module(self, module, mod_data):
         parsed_les_ordenes = set()
         for les_data in mod_data['lecciones']:
+            defaults = {
+                'titulo': les_data['titulo'],
+                'tipo': les_data['tipo'],
+                'contenido': les_data['contenido'],
+            }
+            # Los medios solo se escriben si el .md trae una URL real: un .md
+            # sin URL NO debe borrar la que ya tenga la lección en la BD.
+            if les_data['video_url']:
+                defaults['video_url'] = les_data['video_url']
+            if les_data.get('subtitulos_url'):
+                defaults['subtitulos_url'] = les_data['subtitulos_url']
             lesson, _ = Lesson.objects.update_or_create(
-                module=module, orden=les_data['orden'],
-                defaults={
-                    'titulo': les_data['titulo'],
-                    'tipo': les_data['tipo'],
-                    'contenido': les_data['contenido'],
-                    'video_url': les_data['video_url'],
-                },
+                module=module, orden=les_data['orden'], defaults=defaults,
             )
             parsed_les_ordenes.add(les_data['orden'])
 
             if les_data['tipo'] == LESSON_QUIZ:
                 self._sync_quiz(lesson, les_data)
-            else:
+            elif self.prune:
                 # Si la lección dejó de ser quiz, elimina un quiz previo.
                 Quiz.objects.filter(lesson=lesson).delete()
 
-        module.lecciones.exclude(orden__in=parsed_les_ordenes).delete()
+        if self.prune:
+            module.lecciones.exclude(orden__in=parsed_les_ordenes).delete()
 
     def _sync_quiz(self, lesson, les_data):
         quiz, _ = Quiz.objects.update_or_create(
@@ -363,4 +398,28 @@ class Command(BaseCommand):
                 question.save(update_fields=cambios)
             parsed_q_ordenes.add(q_data['orden'])
 
-        quiz.preguntas.exclude(orden__in=parsed_q_ordenes).delete()
+        if self.prune:
+            quiz.preguntas.exclude(orden__in=parsed_q_ordenes).delete()
+
+    def _reportar_sobrantes(self, course, data):
+        """Cuenta (solo lectura) lo que existe en la BD y ya no está en el .md."""
+        mods = {m['orden']: m for m in data['modulos']}
+        extra = []
+        for module in course.modulos.all():
+            m = mods.get(module.orden)
+            if m is None:
+                extra.append(f'módulo {module.orden} «{module.titulo}» ({module.lecciones.count()} lecciones)')
+                continue
+            les = {l['orden']: l for l in m['lecciones']}
+            for lesson in module.lecciones.all():
+                l = les.get(lesson.orden)
+                if l is None:
+                    extra.append(f'lección {module.orden}.{lesson.orden} «{lesson.titulo}»')
+                elif lesson.tipo == LESSON_QUIZ and l['tipo'] == LESSON_QUIZ:
+                    ords = {q['orden'] for q in l['preguntas']}
+                    n = lesson.quiz.preguntas.exclude(orden__in=ords).count() if hasattr(lesson, 'quiz') else 0
+                    if n:
+                        extra.append(f'{n} pregunta(s) de «{lesson.titulo}»')
+        for e in extra:
+            self.stdout.write(self.style.WARNING(f'    ⚠ solo en la BD: {e}'))
+        self.sobrantes += len(extra)

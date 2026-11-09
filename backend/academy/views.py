@@ -61,7 +61,7 @@ from pyfit.throttles import LoginRateThrottle, SimuladorComputeRateThrottle
 from pyfit.text_validators import validate_human_name, contains_unsafe_chars
 from . import (
     access_service, badges_service, dashboard_service, grading, instructor_analytics_service,
-    mastery_service, streak_service,
+    mastery_service, review_service, streak_service,
 )
 from .models import (
     Course, Module, Lesson, Quiz, Question,
@@ -414,6 +414,7 @@ def _user_payload(user):
     return {
         'id': user.id,
         'email': user.email,
+        'email_verificado': user.email_verificado,
         'nombre': (user.get_full_name() or user.first_name or user.email.split('@')[0]),
         'role': user.role,
         'is_admin': es_admin,
@@ -852,6 +853,14 @@ def quiz_attempt(request, enrollment_id, quiz_id):
     nuevas_insignias = _otorgar_insignias(request.user)
     # Mastery adaptativo: efecto colateral aparte, no afecta la respuesta.
     _registrar_evidencia_mastery_quiz(attempt)
+    # Repaso espaciado: las preguntas respondidas entran al mazo del alumno.
+    # Failure-safe: nunca debe tumbar el flujo del quiz.
+    try:
+        review_service.registrar_resultados_quiz(
+            request.user, resultado['detalle'], hoy=_get_local_date(request),
+        )
+    except Exception:
+        pass
     data = QuizAttemptSerializer(attempt).data
     data['progreso'] = pct
     data['estado'] = enrollment.estado

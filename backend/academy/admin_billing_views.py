@@ -1,6 +1,7 @@
 """Panel de gestión de Academy para administradores — cobros y métricas.
 
     GET  /api/academy/admin/metricas/?dias=7|30|90    rendimiento, estudiantes, retención, finanzas
+    GET  /api/academy/admin/medios/                   producción de video/audio pendiente
     GET  /api/academy/admin/suscripciones/            suscriptores + solicitudes pendientes
     GET  /api/academy/admin/pagos/                    libro de pagos
     POST /api/academy/admin/pagos/                    registra un cobro (extiende la suscripción)
@@ -24,7 +25,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from . import admin_analytics_service, billing_service
+from . import admin_analytics_service, billing_service, media_ops_service
 from .admin_users_views import _resolve_effective_tenant
 from .models import AcademyPayment, AcademySubscription
 from .permissions import IsAcademyAdmin
@@ -93,6 +94,14 @@ def admin_metrics(request):
         return _bad_request('dias debe ser 7, 30 o 90.')
     tenant = _resolve_effective_tenant(request)
     return Response(admin_analytics_service.build_admin_metrics(tenant, dias))
+
+
+@api_view(['GET'])
+@permission_classes([IsAcademyAdmin])
+def admin_media(request):
+    """Cola de producción: lecciones de video/audio sin archivo, por curso."""
+    tenant = _resolve_effective_tenant(request)
+    return Response(media_ops_service.build_media_report(tenant))
 
 
 @api_view(['GET'])

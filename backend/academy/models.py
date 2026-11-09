@@ -358,6 +358,12 @@ class Lesson(models.Model):
     tipo = models.CharField(max_length=10, choices=LESSON_TIPO_CHOICES, default=LESSON_TEXTO)
     contenido = models.TextField(blank=True)
     video_url = models.URLField(blank=True)
+    # Pista de subtítulos WebVTT (.vtt) del video/audio — accesibilidad y
+    # alumnos que ven sin sonido. Solo se usa con archivos de medio directos
+    # (mp4/webm/mp3...); YouTube/Vimeo traen sus propios subtítulos. El host
+    # del .vtt debe enviar CORS (Access-Control-Allow-Origin) para que el
+    # navegador acepte la pista.
+    subtitulos_url = models.URLField(blank=True)
     duracion_min = models.PositiveIntegerField(default=0)
     # ── Programa Evolución 360° ──
     # Lecciones "en_vivo": fecha/hora de la sesión sincrónica (el enlace de la
@@ -948,6 +954,78 @@ class AcademyPayment(models.Model):
 
     def __str__(self):
         return f'{self.usuario_email or self.user_id} · {self.monto} {self.moneda} [{self.estado}]'
+
+
+# ─── Repaso espaciado ─────────────────────────────────────────────────────────
+#
+# Recordar algo al día siguiente de verlo no es aprender: lo que se consolida es
+# lo que se vuelve a recuperar de la memoria a intervalos crecientes. Cada
+# pregunta que el alumno respondió en un quiz entra a su "mazo" personal y se
+# le vuelve a preguntar cuando toca (sistema de cajas tipo Leitner). La lógica
+# vive en academy.review_service; los modelos solo guardan estado.
+
+
+class QuestionReview(models.Model):
+    """Estado de repaso de UNA pregunta para UN estudiante.
+
+    `caja` (0–5) indica cuánto domina la pregunta; cada acierto sube una caja
+    y el intervalo hasta la próxima revisión crece (ver
+    review_service.INTERVALOS_DIAS); un fallo la devuelve a la caja 0.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='academy_reviews',
+    )
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='repasos')
+    caja = models.PositiveSmallIntegerField(default=0)
+    proxima_revision = models.DateField()
+    ultima_revision = models.DateField(null=True, blank=True)
+    aciertos = models.PositiveIntegerField(default=0)
+    fallos = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'academy_question_reviews'
+        unique_together = [['user', 'question']]
+        indexes = [models.Index(fields=['user', 'proxima_revision'])]
+
+    def __str__(self):
+        return f'{self.user_id} · q{self.question_id} caja {self.caja}'
+
+
+# ─── Diagnóstico inicial y evaluación final ───────────────────────────────────
+#
+# Para saber si un curso ENSEÑA hay que medir antes y después con las mismas
+# preguntas. El diagnóstico se hace antes de empezar; la evaluación final, al
+# completar el curso. La diferencia es la "ganancia de aprendizaje". Ninguna de
+# las dos revela la clave: si el alumno viera las respuestas en el diagnóstico,
+# la final solo mediría memoria de la clave.
+
+
+class CourseAssessment(models.Model):
+    KIND_DIAGNOSTICO = 'diagnostico'
+    KIND_FINAL = 'final'
+    KIND_CHOICES = [(KIND_DIAGNOSTICO, 'Diagnóstico inicial'), (KIND_FINAL, 'Evaluación final')]
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='evaluaciones')
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES)
+    # Ids de las preguntas medidas. El diagnóstico las fija y la final las reutiliza.
+    preguntas = models.JSONField(default=list)
+    respuestas = models.JSONField(default=dict, blank=True)
+    # Acierto por pregunta ({question_id: bool}); sin feedback ni clave.
+    detalle = models.JSONField(default=dict, blank=True)
+    puntaje = models.PositiveSmallIntegerField(
+        default=0, validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'academy_course_assessments'
+        unique_together = [['enrollment', 'kind']]
+
+    def __str__(self):
+        return f'{self.enrollment_id} · {self.kind} = {self.puntaje}%'
 
 
 # ─── Onboarding sin registro (probar antes de registrarse) ────────────────────
