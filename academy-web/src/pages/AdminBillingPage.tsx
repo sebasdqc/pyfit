@@ -310,7 +310,7 @@ export function AdminBillingPage() {
           onClose={() => setDialogPago(null)}
           onDone={(email, hasta) => {
             setDialogPago(null)
-            setAviso({ tone: 'ok', text: `Pago registrado para ${email}. Tiene acceso Pro hasta el ${fechaLarga(hasta)}.` })
+            setAviso({ tone: 'ok', text: `Pago registrado para ${email}. Tiene acceso Pro hasta el ${fechaLarga(hasta)}. Se le envía un recibo por correo.` })
             void cargar()
           }}
         />

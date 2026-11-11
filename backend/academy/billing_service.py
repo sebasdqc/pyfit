@@ -14,14 +14,19 @@ lo registra aquí. Cada cobro queda en el libro `AcademyPayment` y extiende la
 Toda la lógica vive acá; las vistas solo validan entrada y traducen errores.
 """
 
+import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
 from .models import AcademyPayment, AcademySubscription
 from .payments import GATEWAY, _DIAS_POR_PLAN
+
+logger = logging.getLogger(__name__)
 
 # Meses que cubre cada plan: normaliza cualquier pago a un valor mensual (MRR).
 MESES_POR_PLAN = {'mensual': 1, 'trimestral': 3, 'anual': 12}
@@ -91,7 +96,45 @@ def registrar_pago(*, admin, user, plan_tipo, monto, metodo, referencia='',
 
     if solicitud_id:
         _confirmar_solicitud(solicitud_id, user)
+    # El recibo sale SOLO si la transacción se confirma: nunca un comprobante de
+    # un pago que después se revierte (p. ej. por la validación de la solicitud).
+    transaction.on_commit(lambda: _enviar_recibo(pago.pk))
     return pago, sub
+
+
+def _enviar_recibo(pago_id):
+    """Recibo del pago por correo al alumno (comprobante para él).
+
+    Best-effort: un fallo del correo NUNCA debe deshacer ni ocultar un cobro ya
+    registrado; solo se deja en el log para que el admin sepa que no salió."""
+    try:
+        pago = AcademyPayment.objects.select_related('user').filter(pk=pago_id).first()
+        if pago is None or pago.user is None or not pago.user.email:
+            return
+        nombre = (pago.user.first_name or pago.user.email.split('@')[0]).strip()
+        plan = dict(AcademySubscription.PLAN_TIPO_CHOICES).get(pago.plan_tipo, pago.plan_tipo)
+        metodo = dict(AcademyPayment.METODO_CHOICES).get(pago.metodo, pago.metodo)
+        referencia = f' (ref. {pago.referencia})' if pago.referencia else ''
+        send_mail(
+            subject='Recibo de tu pago — Zyfit Academy',
+            message=(
+                f'Hola {nombre},\n\n'
+                'Registramos tu pago de Zyfit Academy Pro.\n\n'
+                f'Plan: {plan}\n'
+                f'Monto: {pago.monto} {pago.moneda}\n'
+                f'Método: {metodo}{referencia}\n'
+                f'Fecha del pago: {pago.fecha_pago.isoformat()}\n'
+                f'Acceso Pro hasta: {pago.periodo_hasta.isoformat()}\n\n'
+                'Guarda este correo como comprobante. Si algo no es correcto, '
+                'responde a este mensaje.\n\n'
+                '— Equipo Zyfit Academy'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[pago.user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception('No se pudo enviar el recibo del pago %s', pago_id)
 
 
 def _confirmar_solicitud(solicitud_id, user):

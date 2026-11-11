@@ -7,7 +7,10 @@ y que los números del panel coincidan con los datos."""
 
 from datetime import date, timedelta
 
+from unittest import mock
+
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -373,3 +376,45 @@ class MetricasTests(_Base):
         f = self.metricas()['finanzas']
         self.assertEqual(f['bajas_periodo'], 1)
         self.assertIsNone(f['churn_aprox'])
+
+
+class ReciboPorCorreoTests(_Base):
+    def test_el_alumno_recibe_un_recibo_con_los_datos_del_pago(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.pagar(plan_tipo='trimestral', monto='50', metodo='zelle', referencia='ZL-9')
+        self.assertEqual(len(mail.outbox), 1)
+        m = mail.outbox[0]
+        self.assertEqual(m.to, ['alu@x.com'])
+        self.assertIn('Recibo', m.subject)
+        for dato in ('Trimestral', '50.00 USD', 'Zelle', 'ref. ZL-9', date.today().isoformat(),
+                     (date.today() + timedelta(days=90)).isoformat()):
+            self.assertIn(dato, m.body)
+
+    def test_un_fallo_del_correo_no_deshace_el_cobro(self):
+        with mock.patch('academy.billing_service.send_mail', side_effect=OSError('SMTP caído')):
+            with self.captureOnCommitCallbacks(execute=True):
+                res = self.pagar()
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(AcademyPayment.objects.count(), 1)
+        self.assertTrue(AcademySubscription.objects.get(user=self.student).da_acceso_pro())
+
+    def test_no_hay_recibo_si_el_pago_se_rechaza(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.pagar(monto='0')                       # monto inválido
+            self.pagar(referencia='R1')                 # válido...
+            self.pagar(referencia='R1')                 # ...y duplicado
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_anular_no_envia_correo(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            pago_id = self.pagar().json()['pago']['id']
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(f'{PAGOS}{pago_id}/anular/')
+        self.assertEqual(mail.outbox, [])
+
+    def test_solicitud_invalida_revierte_todo_y_no_manda_recibo(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            res = self.pagar(solicitud_id=99999)
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(mail.outbox, [])
