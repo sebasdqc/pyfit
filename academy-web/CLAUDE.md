@@ -184,7 +184,8 @@ de Academy, no con una pasarela externa). Flujo: el admin cobra por fuera
 (transferencia, pago móvil, Zelle, efectivo...) y lo registra →
 `billing_service.registrar_pago` crea una fila en el libro `AcademyPayment` y
 EXTIENDE la `AcademySubscription` (si ya tiene Pro vigente, suma al final del
-período; si venció, cuenta desde hoy). Un pago equivocado se ANULA, no se
+período; si venció, cuenta desde hoy). El alumno recibe un recibo por correo (`_enviar_recibo`, tras confirmar la
+transacción; si el SMTP falla solo queda en el log, nunca deshace el cobro). Un pago equivocado se ANULA, no se
 borra, y el acceso se recalcula con los pagos que quedan. No hay endpoint
 público para activarse Pro. ⚠️ **Regla nueva:** una suscripción `activa` con
 `fecha_renovacion` vencida deja de dar acceso tras 3 días de cortesía
@@ -351,6 +352,32 @@ racha ni badges core** — es una feature social aparte.
   del Hero debe quedar en un `<div>` interno que envuelve SOLO el fondo
   animado, nunca en el `<section>` completo, o cualquier card que se
   "derrame" fuera del Hero con margen negativo queda clipeada.
+
+## Calidad, CI y build del front (2026-11-11)
+
+- **CI propio** (`.github/workflows/academy-web.yml`): en cada push/PR que toque
+  `academy-web/` corre `npm ci` → `tsc` → `npm test` → `npm run build` y, sin
+  bloquear, `npm audit --omit=dev --audit-level=high`. Antes NADA lo compilaba hasta
+  que DigitalOcean fallaba el deploy.
+- **Tests (Vitest, `npm test`)**: lógica pura y render estático en node (sin
+  navegador): `MarkdownLite` (incluye que nunca inyecte HTML ni acepte `javascript:`),
+  `videoEmbed`, `QuestionOptions` (no revela la clave antes de responder) y
+  `router.test.ts`, que comprueba que cada página con carga bajo demanda apunta a un
+  export real (TypeScript no lo detecta: el módulo se tipa como `any` y en producción
+  sería una página en blanco). NO hay E2E de navegador todavía.
+- **Carga bajo demanda**: el router usa `page(() => import('@/pages/X'), 'X')`; solo
+  landing, login y registro (+ layout) van en el bloque de entrada. Vendor separado en
+  `vite.config.ts` (`manualChunks`). Primera carga ≈ 185 kB comprimidos (antes ≈ 257).
+  Al agregar una página: usar `page(...)`, no un `import` estático.
+- **Sitemap dinámico** (`scripts/generate-sitemap.mjs`, parte de `npm run build`):
+  trae cursos del catálogo anónimo y posts del blog de la API y escribe
+  `dist/sitemap.xml` (42 URLs hoy). Solo se refresca en cada deploy. Si la API no
+  responde NO rompe el build: conserva el `public/sitemap.xml` estático.
+- **Iconos**: `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png`,
+  `icon-maskable-512.png` y `manifest.webmanifest`, derivados de la Z real del logo
+  sobre `#cc1f36`. Falta una imagen Open Graph de 1200×630 para compartir en redes.
+- **Pendiente conocido**: el sitio estático de DO no permite cabeceras de seguridad
+  (HSTS, CSP, X-Frame-Options); haría falta un CDN/proxy delante.
 
 ## ⚠️ GOTCHA recurrente — headers custom y CORS (ya pasó 2 veces)
 
