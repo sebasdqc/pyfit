@@ -1,0 +1,29 @@
+{
+  "name": "Zyfit Academy",
+  "short_name": "Zyfit Academy",
+  "description": "Cursos, evaluaciones y certificaciones con base científica para entrenadores y profesionales del deporte.",
+  "lang": "es",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#cc1f36",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

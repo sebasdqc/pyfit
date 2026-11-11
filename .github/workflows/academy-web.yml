@@ -1,0 +1,63 @@
+name: Academy web
+
+# Hasta ahora NADA compilaba ni probaba academy-web antes de llegar a producción:
+# un error de TypeScript solo aparecía cuando DigitalOcean fallaba el deploy.
+# Este pipeline lo detecta en cada push/PR que toque el front.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'academy-web/**'
+      - '.github/workflows/academy-web.yml'
+  pull_request:
+    paths:
+      - 'academy-web/**'
+      - '.github/workflows/academy-web.yml'
+
+concurrency:
+  group: academy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: academy-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: academy-web/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: TypeScript
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        env:
+          # El generador del sitemap consulta la API; en CI no debe depender de
+          # producción. Un puerto cerrado falla al instante y el build sigue
+          # (el script nunca rompe el build, conserva el sitemap estático).
+          VITE_API_URL: http://127.0.0.1:9
+        run: npm run build
+
+      # Informativo, no bloquea: un aviso nuevo de una librería no debe tumbar
+      # un PR que no tocó dependencias. Revisar el log cuando salga en rojo.
+      - name: Auditoría de dependencias (producción)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
