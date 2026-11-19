@@ -1,0 +1,48 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #cri-wrap { position: absolute; inset: 0; }
+    #cri-lines { position: absolute; left: 0; top: 0; overflow: visible; }
+    #cri-center { position: absolute; left: 760px; top: 470px; width: 400px; height: 140px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    #cri-center .k { font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); }
+    #cri-center .t { font: 900 64px var(--font-display); letter-spacing: -0.03em; margin-top: 8px; }
+    .cri-item { position: absolute; width: 560px; }
+    .cri-item .n { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); margin-bottom: 10px; }
+    .cri-item .t { font: 800 60px var(--font-display); letter-spacing: -0.025em; line-height: 1.05; }
+    #cri-1 { left: 160px; top: 170px; }
+    #cri-2 { left: 1200px; top: 170px; text-align: right; }
+    #cri-3 { left: 160px; top: 760px; }
+    #cri-4 { left: 1200px; top: 760px; text-align: right; }
+  </style>
+  <div id="root" data-composition-id="criterios" data-width="1920" data-height="1080">
+    <div id="cri-wrap">
+      <svg id="cri-lines" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="cri-l1" x1="760" y1="480" x2="500" y2="320" stroke="#868b98" stroke-width="3" />
+        <line id="cri-l2" x1="1160" y1="480" x2="1420" y2="320" stroke="#868b98" stroke-width="3" />
+        <line id="cri-l3" x1="760" y1="600" x2="500" y2="750" stroke="#868b98" stroke-width="3" />
+        <line id="cri-l4" x1="1160" y1="600" x2="1420" y2="750" stroke="#868b98" stroke-width="3" />
+      </svg>
+      <div id="cri-center"><div class="k" id="cri-k">ENTONCES</div><div class="t" id="cri-t">¿Cómo elegir?</div></div>
+      <div class="cri-item" id="cri-1"><div class="n">01</div><div class="t">Adherencia</div></div>
+      <div class="cri-item" id="cri-2"><div class="n">02</div><div class="t">Preferencia<br />del atleta</div></div>
+      <div class="cri-item" id="cri-3"><div class="n">03</div><div class="t">Claridad<br />del plan</div></div>
+      <div class="cri-item" id="cri-4"><div class="n">04</div><div class="t">Fecha de<br />competencia</div></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.criterios;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#cri-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#cri-t", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" }, C.eleccion - 0.1);
+      tl.fromTo(["#cri-l1", "#cri-l2", "#cri-l3", "#cri-l4"], { opacity: 0 }, { opacity: 0.35, duration: 0.5, stagger: 0.1 }, C.criterios - 0.1);
+      [["#cri-1", "#cri-l1", C.adherencia], ["#cri-2", "#cri-l2", C.preferencia], ["#cri-3", "#cri-l3", C.claridad], ["#cri-4", "#cri-l4", C.fecha]].forEach(function (d) {
+        tl.fromTo(d[1], { attr: { "stroke-dasharray": "320", "stroke-dashoffset": "320" } }, { opacity: 1, attr: { "stroke-dashoffset": "0" }, duration: 0.4, ease: "power2.out" }, d[2] - 0.15);
+        tl.fromTo(d[0], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, d[2] - 0.05);
+      });
+      tl.to("#cri-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["criterios"] = tl;
+    })();
+  </script>
+</template>

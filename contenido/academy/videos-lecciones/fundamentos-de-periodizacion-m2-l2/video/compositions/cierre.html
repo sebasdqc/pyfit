@@ -1,0 +1,81 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #cie-wrap { position: absolute; inset: 0; }
+    #cie-a { position: absolute; inset: 0; }
+    #cie-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.16em; color: var(--lineal); }
+    #cie-t { position: absolute; left: 160px; top: 160px; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #cie-dots { position: absolute; left: 0; top: 0; overflow: visible; }
+    .cie-grp { position: absolute; top: 760px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-soft); width: 600px; text-align: center; }
+    #cie-g1 { left: 260px; } #cie-g2 { left: 1060px; }
+    #cie-mod { position: absolute; right: 160px; top: 130px; font: 700 30px var(--font-mono); letter-spacing: 0.12em;
+      padding: 14px 24px; border: 3px solid var(--lineal); border-radius: 999px; color: var(--ink); }
+
+    #cie-b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .cie-line { font: 900 112px var(--font-display); letter-spacing: -0.04em; line-height: 1.05; text-align: center; }
+    #cie-ne { color: var(--lineal); font-size: 150px; margin: 6px 0; }
+    #cie-l3 { color: var(--ink-soft); }
+    #cie-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; opacity: 0.85; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="cie-wrap">
+      <div id="cie-a">
+        <div id="cie-k">PERO HAY UN MATIZ</div>
+        <div id="cie-t">¿Y si separamos por nivel?</div>
+        <svg id="cie-dots" width="1920" height="1080" viewBox="0 0 1920 1080"></svg>
+        <div class="cie-grp" id="cie-g1">ENTRENADOS</div>
+        <div class="cie-grp" id="cie-g2">PRINCIPIANTES</div>
+        <div id="cie-mod">MÓDULO 3 →</div>
+      </div>
+      <div id="cie-b">
+        <div class="cie-line" id="cie-l1">Sin diferencias significativas</div>
+        <div class="cie-line" id="cie-ne">≠</div>
+        <div class="cie-line" id="cie-l3">sin efecto</div>
+      </div>
+      <img id="cie-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var NS = "http://www.w3.org/2000/svg";
+      var svg = document.getElementById("cie-dots");
+      // 16 atletas mezclados: 8 entrenados (llenos) y 8 principiantes (huecos).
+      var kinds = [1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1];
+      var mixed = [], sorted = [];
+      var gi = 0, gj = 0;
+      kinds.forEach(function (k, i) {
+        var c = document.createElementNS(NS, "circle");
+        c.setAttribute("r", 30);
+        c.setAttribute("cx", 0);
+        c.setAttribute("cy", 0);
+        c.setAttribute("fill", k ? "#f4f2ee" : "none");
+        c.setAttribute("stroke", "#f4f2ee");
+        c.setAttribute("stroke-width", 5);
+        svg.appendChild(c);
+        var mx = 300 + i * 88, my = 560;
+        var n = k ? gi++ : gj++;
+        var sx = (k ? 380 : 1180) + (n % 4) * 100, sy = 540 + Math.floor(n / 4) * 100;
+        mixed.push({ el: c, mx: mx, my: my, sx: sx, sy: sy });
+      });
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#cie-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.05);
+      tl.fromTo("#cie-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.modulo - 0.3);
+      mixed.forEach(function (d, i) {
+        tl.fromTo(d.el, { opacity: 0, x: d.mx, y: d.my }, { opacity: 1, x: d.mx, y: d.my, duration: 0.3 }, 0.3 + i * 0.04);
+        tl.to(d.el, { x: d.sx, y: d.sy, duration: 0.9, ease: "power3.inOut" }, C.separa + i * 0.02);
+      });
+      tl.fromTo("#cie-mod", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.modulo);
+      tl.fromTo(["#cie-g1", "#cie-g2"], { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.nivel - 0.1);
+
+      tl.to("#cie-a", { opacity: 0, duration: 0.4 }, C.sin - 0.5);
+      tl.fromTo("#cie-l1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.sin - 0.05);
+      tl.fromTo("#cie-ne", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" }, C.mismo - 0.05);
+      tl.fromTo("#cie-l3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.efecto - 0.35);
+      tl.fromTo("#cie-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.efecto + 0.8);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

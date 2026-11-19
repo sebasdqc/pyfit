@@ -1,0 +1,57 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+    #ci-a { position: absolute; inset: 0; }
+    #ci-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #ci-myth { position: absolute; left: 0; right: 0; top: 200px; text-align: center; }
+    #ci-myth-t { position: relative; display: inline-block; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #ci-strike { position: absolute; left: -20px; right: -20px; top: 54%; height: 12px; background: var(--lineal); transform-origin: 0 50%; border-radius: 6px; }
+    #ci-card { position: absolute; left: 460px; width: 1000px; top: 420px; padding: 44px 56px; border: 3px solid var(--ondulada); border-radius: 18px; }
+    #ci-card-k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ondulada); margin-bottom: 26px; }
+    .ci-item { font: 800 60px var(--font-display); letter-spacing: -0.02em; line-height: 1.2; }
+    .ci-item span { color: var(--ink-faint); }
+    #ci-b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #ci-b1 { font: 700 52px var(--font-display); color: var(--ink-soft); }
+    #ci-b2 { font: 900 104px var(--font-display); letter-spacing: -0.04em; margin-top: 18px; text-align: center; }
+    #ci-b2 span { color: var(--ondulada); }
+    #ci-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; opacity: 0.85; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div id="ci-a">
+        <div id="ci-k">LA CONCLUSIÓN</div>
+        <div id="ci-myth"><div id="ci-myth-t">«La ondulada es mejor»<div id="ci-strike"></div></div></div>
+        <div id="ci-card">
+          <div id="ci-card-k">TIENE RESPALDO EN UNA CONDICIÓN CONCRETA</div>
+          <div class="ci-item" id="ci-i1">Atleta entrenado</div>
+          <div class="ci-item" id="ci-i2"><span>+</span> objetivo: fuerza máxima</div>
+        </div>
+      </div>
+      <div id="ci-b">
+        <div id="ci-b1">No elijas el modelo en abstracto.</div>
+        <div id="ci-b2">Elige según <span>el atleta</span><br />y el objetivo.</div>
+      </div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ci-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.conclusion - 0.3);
+      tl.fromTo("#ci-myth", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.conclusion + 0.4);
+      tl.fromTo("#ci-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, C.mejor);
+      tl.to("#ci-myth-t", { color: "#868b98", duration: 0.4 }, C.mejor + 0.2);
+      tl.fromTo("#ci-card", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.respaldo - 0.2);
+      tl.fromTo("#ci-card-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.respaldo);
+      tl.fromTo("#ci-i1", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.atleta - 0.1);
+      tl.fromTo("#ci-i2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.fuerza - 0.4);
+      tl.to("#ci-a", { opacity: 0, duration: 0.4 }, C.elijas - 0.5);
+      tl.fromTo("#ci-b1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.elijas - 0.1);
+      tl.fromTo("#ci-b2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.segun - 0.6);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.segun + 1.6);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

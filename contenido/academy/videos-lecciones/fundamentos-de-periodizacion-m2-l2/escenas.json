@@ -1,0 +1,25 @@
+{
+  "voice_offset": 0.4,
+  "tail": 2.6,
+  "vtt_replace": {"diecisiete": "17", "quinientos diez": "510"},
+  "scenes": [
+    {"id": "intro", "start": null, "keys": [["uno", ["uno"]], ["lineal", ["lineal"]], ["ondulada", ["ondulada"]], ["cual", ["cual", "gana"]]]},
+    {"id": "evidencia", "start": ["para"], "keys": [
+      ["experimento", ["experimento"]], ["alcanza", ["alcanza"]], ["evidencia", ["evidencia"]],
+      ["harries", ["harr", "jarr"]], ["anio", ["2015", "dos"]], ["meta", ["meta"]], ["tres", ["tres", "3"]], ["medline", ["med"]],
+      ["scopus", ["scop", "esco"]], ["sportdiscus", ["sport", "spor", "esport"]],
+      ["diecisiete", ["diecisiete", "17"]], ["quinientos", ["quinientos", "510"]]]},
+    {"id": "resultado", "start": ["resultado"], "start_back": 1, "keys": [
+      ["hubo", ["hubo"]], ["significativas", ["significativas"]], ["entre", ["entre"]], ["superior", ["superior"]], ["inferior", ["inferior"]],
+      ["dibujamos", ["dibujamos"]], ["barras", ["barras"]], ["diferencia", ["diferencia"]], ["significacion", ["significacion"]]]},
+    {"id": "lectura", "start": ["ojo"], "keys": [
+      ["significa1", ["significa"]], ["funcione", ["funcione"]], ["dos", ["dos"]], ["ganancias", ["ganancias"]],
+      ["significa2", ["significa"]], ["superior", ["superior"]], ["inferior", ["inferior"]], ["general", ["general"]]]},
+    {"id": "criterios", "start": ["entonces"], "keys": [
+      ["eleccion", ["eleccion"]], ["criterios", ["criterios"]], ["adherencia", ["adherencia"]], ["preferencia", ["preferencia"]],
+      ["claridad", ["claridad"]], ["fecha", ["fecha"]]]},
+    {"id": "cierre", "start": ["pero"], "keys": [
+      ["modulo", ["modulo"]], ["separa", ["separa"]], ["nivel", ["nivel"]], ["sin", ["sin"], ["entrenamiento"]],
+      ["mismo", ["mismo"]], ["efecto", ["efecto"]]]}
+  ]
+}

@@ -1,0 +1,48 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #gan-wrap { position: absolute; inset: 0; }
+    #gan-kicker { position: absolute; left: 160px; top: 110px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    #gan-kicker b { color: var(--lineal); font-weight: 700; }
+    #gan-q { position: absolute; left: 160px; right: 160px; top: 250px; font: 900 104px var(--font-display);
+      letter-spacing: -0.04em; line-height: 1.04; }
+    #gan-q .r { color: var(--lineal); }
+    #gan-rule { position: absolute; left: 160px; top: 700px; overflow: visible; }
+    .gan-tick { font: 700 28px var(--font-mono); letter-spacing: 0.12em; fill: var(--ink-soft); }
+    #gan-sub { position: absolute; left: 160px; right: 160px; top: 820px; font: 700 52px var(--font-display);
+      letter-spacing: -0.02em; color: var(--ink-soft); }
+    #gan-sub b { color: var(--ink); }
+  </style>
+  <div id="root" data-composition-id="gancho" data-width="1920" data-height="1080">
+    <div id="gan-wrap">
+      <div id="gan-kicker">FUNDAMENTOS DE PERIODIZACIÓN · <b>MÓDULO 1</b> · LECCIÓN 2</div>
+      <div id="gan-q">¿Por qué seguimos usando un modelo que nació hace <span class="r">más de medio siglo</span>?</div>
+      <svg id="gan-rule" width="1600" height="80" viewBox="0 0 1600 80">
+        <line id="gan-line" x1="0" y1="20" x2="1600" y2="20" stroke="#868b98" stroke-width="4" />
+        <circle id="gan-a" cx="0" cy="20" r="12" fill="#cc1f36" />
+        <circle id="gan-b" cx="1600" cy="20" r="12" fill="#f4f2ee" />
+        <text id="gan-ta" class="gan-tick" x="0" y="74">ORIGEN</text>
+        <text id="gan-tb" class="gan-tick" x="1600" y="74" text-anchor="end">HOY</text>
+      </svg>
+      <div id="gan-sub">No es para desacreditarlo. <b id="gan-sub2">Es el punto de partida honesto.</b></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.gancho;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#gan-kicker", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.fromTo("#gan-q", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.3);
+      tl.fromTo("#gan-line", { attr: { x2: 0 } }, { attr: { x2: 1600 }, duration: 1.6, ease: "power2.inOut" }, C.nacio);
+      tl.fromTo(["#gan-a", "#gan-ta"], { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.nacio);
+      tl.fromTo(["#gan-b", "#gan-tb"], { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.nacio + 1.5);
+      tl.fromTo("#gan-q .r", { color: "#f4f2ee" }, { color: "#cc1f36", duration: 0.4 }, C.siglo - 0.8);
+      tl.to("#gan-q", { opacity: 0.45, duration: 0.5 }, C.desacreditarlo - 0.6);
+      tl.fromTo("#gan-sub", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.desacreditarlo - 0.5);
+      tl.fromTo("#gan-sub2", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.honesto - 0.9);
+      tl.to("#gan-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["gancho"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,44 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #alt-wrap { position: absolute; inset: 0; }
+    #alt-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #alt-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    #alt-root-l { position: absolute; left: 160px; top: 490px; width: 460px; font: 900 56px var(--font-display); letter-spacing: -0.03em; line-height: 1.05; }
+    #alt-root-l small { display: block; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); margin-bottom: 10px; }
+    .alt-leaf { position: absolute; left: 1220px; font: 900 76px var(--font-display); letter-spacing: -0.035em; }
+    #alt-l1 { top: 230px; } #alt-l2 { top: 480px; color: var(--ondulada); } #alt-l3 { top: 730px; color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="alternativas" data-width="1920" data-height="1080">
+    <div id="alt-wrap">
+      <div id="alt-k">DE ESAS CONTRADICCIONES NACIERON</div>
+      <div id="alt-root-l"><small>MODELO</small>Tradicional</div>
+      <svg id="alt-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <g id="alt-ghost" stroke="#868b98" stroke-width="5" fill="none"><path d="M640 560 C 900 560, 940 290, 1190 290" /><path d="M640 560 L1190 540" /><path d="M640 560 C 900 560, 940 790, 1190 790" /></g>
+        <path id="alt-b1" d="M640 560 C 900 560, 940 290, 1190 290" fill="none" stroke="#f4f2ee" stroke-width="5" />
+        <path id="alt-b2" d="M640 560 L1190 540" fill="none" stroke="#e8dcc2" stroke-width="5" />
+        <path id="alt-b3" d="M640 560 C 900 560, 940 790, 1190 790" fill="none" stroke="#cc1f36" stroke-width="5" />
+      </svg>
+      <div class="alt-leaf" id="alt-l1">En bloques</div>
+      <div class="alt-leaf" id="alt-l2">Ondulada</div>
+      <div class="alt-leaf" id="alt-l3">Polarizada</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.alternativas;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#alt-root-l", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0.2);
+      tl.fromTo("#alt-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.nacieron - 0.2);
+      tl.fromTo("#alt-ghost", { opacity: 0 }, { opacity: 0.4, duration: 0.6 }, C.nacieron + 1.0);
+      [["#alt-b1", "#alt-l1", C.bloques], ["#alt-b2", "#alt-l2", C.ondulada], ["#alt-b3", "#alt-l3", C.polarizada]].forEach(function (d) {
+        var p = document.querySelector(d[0]);
+        var L = p.getTotalLength();
+        tl.fromTo(p, { strokeDasharray: L, strokeDashoffset: L }, { strokeDashoffset: 0, duration: 0.5, ease: "power2.out" }, d[2] - 0.5);
+        tl.fromTo(d[1], { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, d[2] - 0.1);
+      });
+      tl.to("#alt-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["alternativas"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,54 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #in-wrap { position: absolute; inset: 0; }
+    #in-kicker { position: absolute; left: 160px; top: 110px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    #in-kicker b { color: var(--lineal); font-weight: 700; }
+    #in-title { position: absolute; left: 160px; top: 230px; font: 900 132px var(--font-display);
+      letter-spacing: -0.04em; line-height: 1; }
+    #in-sub { position: absolute; left: 160px; top: 390px; font: 700 52px var(--font-display);
+      letter-spacing: -0.02em; color: var(--ink-soft); }
+    #in-sub b { color: var(--ink); }
+    #in-scale { position: absolute; left: 160px; right: 160px; top: 640px; height: 220px; }
+    #in-scale-k { font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); margin-bottom: 22px; }
+    #in-track { position: relative; height: 56px; border-radius: 28px;
+      background: linear-gradient(90deg, #e8dcc2 0%, #3a3f4c 50%, #cc1f36 100%); transform-origin: 0 50%; }
+    #in-mid { position: absolute; left: 33%; width: 34%; top: 0; bottom: 0; background: var(--ground); opacity: 0.75; }
+    .in-pole { position: absolute; top: 140px; font: 700 34px var(--font-display); }
+    #in-p1 { left: 0; color: var(--ondulada); }
+    #in-p2 { right: 0; color: var(--lineal); text-align: right; }
+    #in-p0 { left: 0; right: 0; text-align: center; color: var(--ink-faint); }
+    .in-pole small { display: block; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); margin-top: 6px; }
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <div id="in-wrap">
+      <div id="in-kicker">FUNDAMENTOS DE PERIODIZACIÓN · <b>MÓDULO 4</b> · LECCIÓN 2</div>
+      <div id="in-title">Modelo polarizado</div>
+      <div id="in-sub">Nace de los <b>deportes de resistencia</b></div>
+      <div id="in-scale">
+        <div id="in-scale-k">SU FIRMA: CÓMO REPARTE LA INTENSIDAD</div>
+        <div id="in-track"><div id="in-mid"></div></div>
+        <div class="in-pole" id="in-p1">Baja<small>UN POLO</small></div>
+        <div class="in-pole" id="in-p0">Media</div>
+        <div class="in-pole" id="in-p2">Alta<small>EL OTRO POLO</small></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.intro;
+      var tl = gsap.timeline({ paused: true });
+            tl.fromTo("#in-title", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C.polarizado - 0.3);
+      tl.fromTo("#in-sub", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.resistencia - 0.6);
+      tl.fromTo("#in-scale-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.firma - 0.1);
+      tl.fromTo("#in-track", { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: "power2.inOut" }, C.firma);
+      tl.fromTo("#in-p0", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.firma + 0.6);
+      tl.fromTo("#in-mid", { opacity: 0 }, { opacity: 0.75, duration: 0.6 }, C.intensidad - 0.2);
+      tl.fromTo(["#in-p1", "#in-p2"], { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.2, ease: "power3.out" }, C.firma + 0.9);
+      tl.to("#in-p0", { opacity: 0.4, duration: 0.4 }, C.intensidad);
+      tl.to("#in-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["intro"] = tl;
+    })();
+  </script>
+</template>

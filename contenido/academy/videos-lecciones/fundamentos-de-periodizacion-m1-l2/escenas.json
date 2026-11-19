@@ -1,0 +1,296 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {},
+ "scenes": [
+  {
+   "id": "gancho",
+   "start": null,
+   "keys": [
+    [
+     "nacio",
+     [
+      "nacio"
+     ]
+    ],
+    [
+     "siglo",
+     [
+      "siglo"
+     ]
+    ],
+    [
+     "desacreditarlo",
+     [
+      "desacredit"
+     ]
+    ],
+    [
+     "honesto",
+     [
+      "honesto"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "origen",
+   "start": [
+    "tradicional"
+   ],
+   "start_back": 2,
+   "keys": [
+    [
+     "sovietica",
+     [
+      "sovietica"
+     ]
+    ],
+    [
+     "anio",
+     [
+      "2010",
+      "dos"
+     ]
+    ],
+    [
+     "issurin",
+     [
+      "ysur",
+      "issur",
+      "isur"
+     ]
+    ],
+    [
+     "decadas",
+     [
+      "decadas"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "desfase",
+   "start": [
+    "desde"
+   ],
+   "keys": [
+    [
+     "deporte",
+     [
+      "deporte"
+     ]
+    ],
+    [
+     "radicalmente",
+     [
+      "radicalmente"
+     ]
+    ],
+    [
+     "modelo",
+     [
+      "modelo"
+     ]
+    ],
+    [
+     "casi",
+     [
+      "casi"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "contradiccion",
+   "start": [
+    "ese"
+   ],
+   "keys": [
+    [
+     "contradicciones",
+     [
+      "contradicciones"
+     ]
+    ],
+    [
+     "principal",
+     [
+      "principal"
+     ]
+    ],
+    [
+     "demasiadas",
+     [
+      "demasiadas"
+     ]
+    ],
+    [
+     "capacidades",
+     [
+      "capacidades"
+     ]
+    ],
+    [
+     "mismo",
+     [
+      "mismo"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "alternativas",
+   "start": [
+    "esas"
+   ],
+   "start_back": 1,
+   "keys": [
+    [
+     "nacieron",
+     [
+      "nacieron"
+     ]
+    ],
+    [
+     "bloques",
+     [
+      "bloques"
+     ]
+    ],
+    [
+     "ondulada",
+     [
+      "ondulada"
+     ]
+    ],
+    [
+     "polarizada",
+     [
+      "polarizada"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "matiz",
+   "start": [
+    "ojo"
+   ],
+   "keys": [
+    [
+     "malo",
+     [
+      "malo"
+     ]
+    ],
+    [
+     "fuerza",
+     [
+      "fuerza"
+     ]
+    ],
+    [
+     "harries",
+     [
+      "harr",
+      "jarr"
+     ]
+    ],
+    [
+     "significativas",
+     [
+      "significativas"
+     ]
+    ],
+    [
+     "lineal",
+     [
+      "lineal"
+     ]
+    ],
+    [
+     "ondulada",
+     [
+      "ondulada"
+     ]
+    ],
+    [
+     "mensaje",
+     [
+      "mensaje"
+     ]
+    ],
+    [
+     "unica",
+     [
+      "unica"
+     ]
+    ],
+    [
+     "eleccion",
+     [
+      "eleccion"
+     ]
+    ],
+    [
+     "contexto",
+     [
+      "contexto"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "curso"
+   ],
+   "start_back": 2,
+   "keys": [
+    [
+     "clasico",
+     [
+      "clasico"
+     ]
+    ],
+    [
+     "alternativas",
+     [
+      "alternativas"
+     ]
+    ],
+    [
+     "evidencia",
+     [
+      "evidencia"
+     ]
+    ],
+    [
+     "elijas",
+     [
+      "elijas"
+     ]
+    ],
+    [
+     "tradicion",
+     [
+      "tradicion"
+     ]
+    ],
+    [
+     "moda",
+     [
+      "moda"
+     ]
+    ],
+    [
+     "estudios",
+     [
+      "estudios"
+     ]
+    ]
+   ]
+  }
+ ]
+}

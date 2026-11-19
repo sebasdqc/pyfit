@@ -1,0 +1,61 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #mo-wrap { position: absolute; inset: 0; }
+    #mo-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #mo-t { position: absolute; left: 160px; top: 160px; font: 900 80px var(--font-display); letter-spacing: -0.03em; }
+    #mo-t span { color: var(--ink-faint); font-weight: 700; }
+    #mo-matiz { position: absolute; left: 160px; top: 270px; font: 700 44px var(--font-display); color: var(--ink-soft); }
+    #mo-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .mo-lbl { font: 700 30px var(--font-mono); letter-spacing: 0.1em; }
+    #mo-eq { font: 900 120px var(--font-display); fill: #f4f2ee; }
+    #mo-cap { position: absolute; left: 0; right: 0; top: 930px; text-align: center; font: 700 40px var(--font-display); }
+    #mo-cap b { color: var(--ondulada); }
+  </style>
+  <div id="root" data-composition-id="moesgaard" data-width="1920" data-height="1080">
+    <div id="mo-wrap">
+      <div id="mo-k">META-ANÁLISIS</div>
+      <div id="mo-t">Moesgaard et al. <span id="mo-yr">· 2022</span></div>
+      <div id="mo-matiz">agregó un matiz</div>
+      <svg id="mo-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <g id="mo-sa"></g>
+        <g id="mo-sb"></g>
+        <text id="mo-la" class="mo-lbl" x="720" y="890" text-anchor="middle" fill="#cc1f36">LINEAL</text>
+        <text id="mo-lb" class="mo-lbl" x="1200" y="890" text-anchor="middle" fill="#e8dcc2">ONDULADA</text>
+        <text id="mo-eq" x="960" y="700" text-anchor="middle">=</text>
+      </svg>
+      <div id="mo-cap"><b>Volumen equiparado:</b> la misma cantidad de trabajo total</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.moesgaard;
+      var NS = "http://www.w3.org/2000/svg";
+      var bricksA = [], bricksB = [];
+      function stack(id, cx, color, out) {
+        var g = document.getElementById(id);
+        for (var i = 0; i < 9; i++) {
+          var r = document.createElementNS(NS, "rect");
+          r.setAttribute("x", cx - 120); r.setAttribute("y", 800 - (i + 1) * 46);
+          r.setAttribute("width", 240); r.setAttribute("height", 38); r.setAttribute("rx", 4);
+          r.setAttribute("fill", color);
+          g.appendChild(r); out.push(r);
+        }
+      }
+      stack("mo-sa", 720, "#cc1f36", bricksA);
+      stack("mo-sb", 1200, "#e8dcc2", bricksB);
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#mo-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.meta - 0.2);
+      tl.fromTo("#mo-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.moesgaard - 0.1);
+      tl.fromTo("#mo-yr", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.anio - 0.05);
+      tl.fromTo("#mo-matiz", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.matiz - 0.3);
+      tl.fromTo(bricksA, { opacity: 0, y: -40 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.07, ease: "power2.out" }, C.volumen - 0.2);
+      tl.fromTo(bricksB, { opacity: 0, y: -40 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.07, ease: "power2.out" }, C.volumen);
+      tl.fromTo(["#mo-la", "#mo-lb"], { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.volumen + 0.3);
+      tl.fromTo("#mo-cap", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.volumen + 0.6);
+      tl.fromTo("#mo-eq", { opacity: 0, scale: 0.5, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.misma - 0.1);
+      tl.to("#mo-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["moesgaard"] = tl;
+    })();
+  </script>
+</template>

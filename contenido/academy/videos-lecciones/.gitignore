@@ -1,0 +1,6 @@
+# Los medios finales viven en DO Spaces (zyfit-academy-media); en git solo va lo que los regenera.
+*.mp4
+*.mp3
+*.wav
+**/.hyperframes/
+**/node_modules/

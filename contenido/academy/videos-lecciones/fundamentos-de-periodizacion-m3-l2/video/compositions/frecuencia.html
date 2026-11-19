@@ -1,0 +1,49 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #fr-wrap { position: absolute; inset: 0; }
+    #fr-t1 { position: absolute; left: 160px; top: 150px; font: 900 104px var(--font-display); letter-spacing: -0.04em; }
+    #fr-t2 { position: absolute; left: 160px; top: 270px; font: 900 104px var(--font-display); letter-spacing: -0.04em; color: var(--ondulada); }
+    #fr-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .fr-lbl { font: 700 28px var(--font-mono); letter-spacing: 0.12em; fill: #a9adb8; }
+  </style>
+  <div id="root" data-composition-id="frecuencia" data-width="1920" data-height="1080">
+    <div id="fr-wrap">
+      <div id="fr-t1">Las dos ondulan.</div>
+      <div id="fr-t2">Cambia la frecuencia.</div>
+      <svg id="fr-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <text class="fr-lbl" x="160" y="540">DIARIA · DUP</text>
+        <path id="fr-fast" d="" fill="none" stroke="#e8dcc2" stroke-width="7" stroke-linejoin="round" />
+        <text class="fr-lbl" x="160" y="780">SEMANAL · WUP</text>
+        <path id="fr-slow" d="" fill="none" stroke="#e8dcc2" stroke-width="7" stroke-linejoin="round" />
+        <line x1="160" y1="960" x2="1760" y2="960" stroke="#868b98" stroke-width="2" />
+        <text class="fr-lbl" x="1760" y="1005" text-anchor="end">4 SEMANAS →</text>
+      </svg>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.frecuencia;
+      function wave(y0, amp, periods) {
+        var d = "";
+        for (var i = 0; i <= 320; i++) {
+          var t = i / 320, x = 160 + t * 1600, y = y0 - amp * Math.sin(t * periods * Math.PI * 2);
+          d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+        }
+        return d;
+      }
+      var f = document.getElementById("fr-fast"), s = document.getElementById("fr-slow");
+      f.setAttribute("d", wave(620, 50, 12));
+      s.setAttribute("d", wave(860, 50, 2));
+      var lf = f.getTotalLength(), ls = s.getTotalLength();
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(".fr-lbl", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo(f, { strokeDasharray: lf, strokeDashoffset: lf }, { strokeDashoffset: 0, duration: 1.6, ease: "none" }, 0.2);
+      tl.fromTo(s, { strokeDasharray: ls, strokeDashoffset: ls }, { strokeDashoffset: 0, duration: 1.6, ease: "none" }, 0.2);
+      tl.fromTo("#fr-t1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.ondulan - 0.4);
+      tl.fromTo("#fr-t2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.cambia - 0.1);
+      tl.to("#fr-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["frecuencia"] = tl;
+    })();
+  </script>
+</template>

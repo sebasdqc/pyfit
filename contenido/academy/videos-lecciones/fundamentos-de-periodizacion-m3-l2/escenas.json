@@ -1,0 +1,25 @@
+{
+  "voice_offset": 0.4,
+  "tail": 2.6,
+  "vtt_replace": {},
+  "scenes": [
+    {"id": "intro", "start": null, "keys": [["ondulada", ["ondulada"]], ["frecuencia", ["frecuencia"]], ["lineal", ["lineal"]], ["ritmos", ["ritmos"]]]},
+    {"id": "dup", "start": ["diaria"], "start_back": 3, "keys": [
+      ["diaria", ["diaria"]], ["cada", ["cada"]], ["estimulo", ["estimulo"]],
+      ["fuerza", ["fuerza"]], ["hipertrofia", ["hipertrofia"]], ["resistencia", ["resistencia"]]]},
+    {"id": "wup", "start": ["semanal"], "start_back": 3, "keys": [
+      ["semanal", ["semanal"]], ["parecen", ["parecen"]], ["enfasis", ["enfasis"]], ["siguiente", ["siguiente"]]]},
+    {"id": "frecuencia", "start": ["las"], "keys": [["ondulan", ["ondulan"]], ["cambia", ["cambia"]]]},
+    {"id": "harries", "start": ["mejor"], "keys": [
+      ["modulo", ["modulo"]], ["poblaciones", ["poblaciones"]], ["harries", ["harr", "jarr"]], ["significativas", ["significativas"]]]},
+    {"id": "moesgaard", "start": ["meta"], "start_back": 1, "keys": [
+      ["meta", ["meta"]], ["moesgaard", ["mois", "moes", "mos", "mues"]], ["anio", ["2022", "dos"]], ["matiz", ["matiz"]],
+      ["volumen", ["volumen"]], ["misma", ["misma"]], ["total", ["total"]]]},
+    {"id": "hallazgo", "start": ["hallazgo"], "start_back": 1, "keys": [
+      ["fuerza", ["fuerza"]], ["entrenados", ["entrenados"]], ["noentrenados", ["entrenados"]],
+      ["hipertrofia", ["hipertrofia"]], ["claras", ["claras"]]]},
+    {"id": "cierre", "start": ["por"], "keys": [
+      ["conclusion", ["conclusion"]], ["mejor", ["mejor"]], ["respaldo", ["respaldo"]], ["atleta", ["atleta"]],
+      ["fuerza", ["fuerza"]], ["elijas", ["elijas"]], ["segun", ["segun"]]]}
+  ]
+}

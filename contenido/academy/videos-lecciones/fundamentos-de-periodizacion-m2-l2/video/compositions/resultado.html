@@ -1,0 +1,85 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #res-wrap { position: absolute; inset: 0; }
+    #res-head { position: absolute; left: 160px; right: 160px; top: 300px; transform-origin: 0 0; }
+    #res-k { font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); margin-bottom: 22px; }
+    #res-title { font: 900 120px var(--font-display); letter-spacing: -0.04em; line-height: 1.02; }
+    #res-title .w { display: inline-block; }
+    #res-title .r { color: var(--lineal); }
+    #res-chips { margin-top: 48px; display: flex; gap: 22px; }
+    .res-chip { font: 700 30px var(--font-mono); letter-spacing: 0.08em; padding: 16px 26px;
+      border: 3px solid var(--ink-soft); border-radius: 999px; color: var(--ink); }
+    .res-chip i { font-style: normal; color: var(--lineal); margin-right: 10px; }
+
+    #res-chart { position: absolute; left: 0; top: 0; overflow: visible; }
+    .res-lbl { font: 700 30px var(--font-mono); letter-spacing: 0.1em; }
+    .res-note { font: 500 36px var(--font-display); fill: var(--ink-soft); }
+    #res-tag { position: absolute; right: 160px; bottom: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.12em; color: var(--ink-faint); text-align: right; }
+  </style>
+  <div id="root" data-composition-id="resultado" data-width="1920" data-height="1080">
+    <div id="res-wrap">
+      <div id="res-head">
+        <div id="res-k">EL RESULTADO · LINEAL vs. ONDULADA</div>
+        <div id="res-title"><span class="w">No</span> <span class="w">hubo</span> <span class="w">diferencias</span><br /><span class="w r" id="res-sig">significativas</span></div>
+        <div id="res-chips">
+          <div class="res-chip" id="res-c1"><i>n.s.</i>FUERZA TREN SUPERIOR</div>
+          <div class="res-chip" id="res-c2"><i>n.s.</i>FUERZA TREN INFERIOR</div>
+        </div>
+      </div>
+
+      <svg id="res-chart" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="res-base" x1="560" y1="880" x2="1360" y2="880" stroke="#868b98" stroke-width="3" />
+        <!-- Barras esquemáticas: casi iguales a propósito -->
+        <rect id="res-bar-a" x="660" y="880" width="220" height="0" fill="#cc1f36" />
+        <rect id="res-bar-b" x="1040" y="880" width="220" height="0" fill="#e8dcc2" />
+        <!-- Banda de incertidumbre que se superpone -->
+        <g id="res-unc">
+          <line x1="770" y1="440" x2="770" y2="580" stroke="#f4f2ee" stroke-width="4" />
+          <line x1="745" y1="440" x2="795" y2="440" stroke="#f4f2ee" stroke-width="4" />
+          <line x1="745" y1="580" x2="795" y2="580" stroke="#f4f2ee" stroke-width="4" />
+          <line x1="1150" y1="452" x2="1150" y2="592" stroke="#f4f2ee" stroke-width="4" />
+          <line x1="1125" y1="452" x2="1175" y2="452" stroke="#f4f2ee" stroke-width="4" />
+          <line x1="1125" y1="592" x2="1175" y2="592" stroke="#f4f2ee" stroke-width="4" />
+          <rect id="res-overlap" x="600" y="452" width="720" height="128" fill="#f4f2ee" opacity="0.08" />
+        </g>
+        <text class="res-lbl" x="770" y="930" text-anchor="middle" fill="#cc1f36">LINEAL</text>
+        <text class="res-lbl" x="1150" y="930" text-anchor="middle" fill="#e8dcc2">ONDULADA</text>
+        <text id="res-ylab" class="res-lbl" x="560" y="380" fill="#868b98" style="font-size:28px">GANANCIA DE FUERZA</text>
+        <g id="res-bracket">
+          <path d="M1400 510 h40 v6 h-40" fill="none" stroke="#f4f2ee" stroke-width="3" />
+          <text class="res-note" x="1460" y="500">La diferencia</text>
+          <text class="res-note" x="1460" y="550" style="fill:#f4f2ee;font-weight:700">no es significativa</text>
+        </g>
+      </svg>
+      <div id="res-tag">ESQUEMA ILUSTRATIVO · LAS ALTURAS NO SON VALORES DEL ESTUDIO</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.resultado;
+      var tl = gsap.timeline({ paused: true });
+      var words = document.querySelectorAll("#res-title .w");
+      tl.fromTo("#res-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.entre - 0.1);
+      tl.fromTo("#res-sig", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.significativas - 0.05);
+      tl.fromTo(["#res-title .w:not(#res-sig)"], { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.12, ease: "power3.out" }, C.hubo - 0.1);
+      tl.fromTo("#res-c1", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.superior - 0.3);
+      tl.fromTo("#res-c2", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.superior + 0.4);
+
+      // Pasa al dibujo
+      tl.to("#res-head", { y: -200, scale: 0.55, duration: 0.7, ease: "power3.inOut" }, C.dibujamos + 0.3);
+      tl.to(["#res-chips", "#res-k"], { opacity: 0, duration: 0.3 }, C.dibujamos + 0.3);
+      tl.fromTo(["#res-base", "#res-ylab", ".res-lbl"], { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.dibujamos + 0.2);
+      tl.fromTo("#res-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.dibujamos + 0.2);
+      tl.fromTo("#res-bar-a", { attr: { y: 880, height: 0 } }, { attr: { y: 510, height: 370 }, duration: 1.1, ease: "power2.out" }, C.barras - 0.1);
+      tl.fromTo("#res-bar-b", { attr: { y: 880, height: 0 } }, { attr: { y: 522, height: 358 }, duration: 1.1, ease: "power2.out" }, C.barras + 0.05);
+      tl.fromTo("#res-unc", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.diferencia - 0.1);
+      tl.fromTo("#res-bracket", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.significacion - 0.1);
+      tl.to("#res-overlap", { opacity: 0.16, duration: 0.6, yoyo: true, repeat: 1 }, C.significacion + 0.4);
+
+      tl.to("#res-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["resultado"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,38 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ot-wrap { position: absolute; inset: 0; }
+    #ot-k { position: absolute; left: 160px; top: 140px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); }
+    #ot-t { position: absolute; left: 160px; top: 190px; font: 900 84px var(--font-display); letter-spacing: -0.035em; }
+    .ot-row { position: absolute; left: 160px; right: 160px; height: 140px; border-top: 3px solid #2a2e39;
+      display: flex; align-items: center; justify-content: space-between; }
+    #ot-r1 { top: 400px; } #ot-r2 { top: 560px; } #ot-r3 { top: 720px; border-bottom: 3px solid #2a2e39; }
+    .ot-row .m { font: 800 60px var(--font-display); letter-spacing: -0.025em; }
+    .ot-row .s { font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); padding: 12px 20px;
+      border: 3px solid var(--ink-faint); border-radius: 999px; }
+  </style>
+  <div id="root" data-composition-id="otras" data-width="1920" data-height="1080">
+    <div id="ot-wrap">
+      <div id="ot-k">Y EN OTRAS MEDIDAS DE RENDIMIENTO</div>
+      <div id="ot-t">¿También fue superior?</div>
+      <div class="ot-row" id="ot-r1"><span class="m">Time trial</span><span class="s" id="ot-s1">SIN SUPERIORIDAD CLARA</span></div>
+      <div class="ot-row" id="ot-r2"><span class="m">Tiempo hasta el agotamiento</span><span class="s" id="ot-s2">SIN SUPERIORIDAD CLARA</span></div>
+      <div class="ot-row" id="ot-r3"><span class="m">Velocidad / potencia en el 2.º umbral</span><span class="s" id="ot-s3">SIN SUPERIORIDAD CLARA</span></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.otras;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ot-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#ot-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.3);
+      tl.fromTo("#ot-r1", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.time - 0.1);
+      tl.fromTo("#ot-r2", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.agotamiento - 0.6);
+      tl.fromTo("#ot-r3", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.velocidad - 0.2);
+      tl.fromTo(["#ot-s1", "#ot-s2", "#ot-s3"], { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.35, stagger: 0.1, ease: "back.out(2)" }, C.superioridad - 0.6);
+      tl.to("#ot-t", { opacity: 0.4, duration: 0.4 }, C.superioridad + 0.4);
+      tl.to("#ot-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["otras"] = tl;
+    })();
+  </script>
+</template>

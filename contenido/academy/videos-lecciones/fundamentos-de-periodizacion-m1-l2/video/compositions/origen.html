@@ -1,0 +1,55 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ori-wrap { position: absolute; inset: 0; }
+    #ori-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #ori-t { position: absolute; left: 160px; top: 160px; font: 900 88px var(--font-display); letter-spacing: -0.035em; }
+    #ori-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .ori-lbl { font: 700 28px var(--font-mono); letter-spacing: 0.12em; fill: #a9adb8; }
+    .ori-big { font: 800 48px var(--font-display); letter-spacing: -0.02em; fill: #f4f2ee; }
+    #ori-cite { position: absolute; left: 160px; bottom: 110px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="origen" data-width="1920" data-height="1080">
+    <div id="ori-wrap">
+      <div id="ori-k">EL MODELO TRADICIONAL</div>
+      <div id="ori-t">De dónde viene</div>
+      <svg id="ori-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="ori-line" x1="260" y1="600" x2="1660" y2="600" stroke="#868b98" stroke-width="4" />
+        <g id="ori-n0">
+          <circle cx="260" cy="600" r="16" fill="#cc1f36" />
+          <text class="ori-lbl" x="260" y="660" text-anchor="middle">ORIGEN</text>
+        </g>
+        <g id="ori-n1">
+          <text class="ori-big" x="260" y="740" text-anchor="middle">Ciencia deportiva</text>
+          <text class="ori-big" x="260" y="796" text-anchor="middle">soviética</text>
+        </g>
+        <g id="ori-n2">
+          <circle cx="1660" cy="600" r="16" fill="#f4f2ee" />
+          <text class="ori-lbl" x="1660" y="660" text-anchor="middle">ISSURIN</text>
+          <text class="ori-big" x="1660" y="740" text-anchor="middle" style="font-size:72px;font-weight:900">2010</text>
+        </g>
+        <g id="ori-br">
+          <path d="M260 520 V490 H1660 V520" fill="none" stroke="#e8dcc2" stroke-width="4" />
+          <text class="ori-big" x="960" y="460" text-anchor="middle" style="fill:#e8dcc2;font-size:56px;font-weight:900">≈ 5 décadas</text>
+        </g>
+      </svg>
+      <div id="ori-cite">Issurin (2010)</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.origen;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ori-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#ori-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.3);
+      tl.fromTo("#ori-n0", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 1.4);
+      tl.fromTo("#ori-line", { scaleX: 0 }, { scaleX: 1, duration: 2.4, ease: "power2.inOut", transformOrigin: "0% 50%" }, 2.6);
+      tl.fromTo("#ori-n1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.sovietica - 1.2);
+      tl.fromTo("#ori-n2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.anio - 0.1);
+      tl.fromTo("#ori-br", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.decadas - 0.9);
+      tl.fromTo("#ori-cite", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.issurin);
+      tl.to("#ori-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["origen"] = tl;
+    })();
+  </script>
+</template>

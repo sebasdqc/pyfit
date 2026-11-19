@@ -1,0 +1,74 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #in-wrap { position: absolute; inset: 0; }
+    #in-kicker { position: absolute; left: 160px; top: 110px; font: 500 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    #in-kicker b { color: var(--lineal); font-weight: 700; }
+    #in-title { position: absolute; left: 160px; top: 190px; font: 900 112px var(--font-display); letter-spacing: -0.04em; color: var(--ondulada); }
+    #in-sub { position: absolute; left: 160px; top: 330px; font: 700 44px var(--font-display); letter-spacing: -0.015em; color: var(--ink-soft); }
+    #in-sub b { color: var(--ink); }
+    #in-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .in-lbl { font: 700 28px var(--font-mono); letter-spacing: 0.12em; }
+    #in-two { position: absolute; right: 160px; top: 420px; font: 900 64px var(--font-display); letter-spacing: -0.03em; color: var(--ink); text-align: right; }
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <div id="in-wrap">
+      <div id="in-kicker">FUNDAMENTOS DE PERIODIZACIÓN · <b>MÓDULO 3</b> · LECCIÓN 2</div>
+      <div id="in-title">Periodización ondulada</div>
+      <div id="in-sub">La carga cambia <b>con más frecuencia</b> que en la lineal</div>
+      <svg id="in-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="in-lin" d="" fill="none" stroke="#cc1f36" stroke-width="5" opacity="0.55" />
+        <text id="in-lin-l" class="in-lbl" x="160" y="1000" fill="#cc1f36">LINEAL</text>
+        <path id="in-fast" d="" fill="none" stroke="#e8dcc2" stroke-width="7" stroke-linejoin="round" />
+        <path id="in-slow" d="" fill="none" stroke="#e8dcc2" stroke-width="7" stroke-linejoin="round" opacity="0.6" />
+        <text id="in-wave-l" class="in-lbl" x="1760" y="610" fill="#e8dcc2" text-anchor="end">ONDULADA</text>
+      </svg>
+      <div id="in-two">Dos ritmos<br />distintos</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.intro;
+      var X0 = 160, X1 = 1760;
+      function wave(y0, amp, periods) {
+        var d = "";
+        for (var i = 0; i <= 240; i++) {
+          var t = i / 240;
+          var x = X0 + t * (X1 - X0);
+          var y = y0 - amp * Math.sin(t * periods * Math.PI * 2);
+          d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+        }
+        return d;
+      }
+      // Lineal de referencia: escalones que suben (forma, no datos).
+      var lin = "M" + X0 + " 960";
+      var steps = [960, 900, 840, 780];
+      for (var s = 0; s < 4; s++) {
+        var xa = X0 + s * (X1 - X0) / 4, xb = X0 + (s + 1) * (X1 - X0) / 4;
+        lin += " L" + xa + " " + steps[s] + " L" + xb + " " + steps[s];
+      }
+      var pl = document.getElementById("in-lin");
+      var pf = document.getElementById("in-fast");
+      var ps = document.getElementById("in-slow");
+      pl.setAttribute("d", lin);
+      pf.setAttribute("d", wave(700, 70, 8));
+      ps.setAttribute("d", wave(890, 70, 2));
+      var lf = pf.getTotalLength(), ls = ps.getTotalLength(), ll = pl.getTotalLength();
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#in-kicker", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.fromTo("#in-title", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C.ondulada - 0.1);
+      tl.fromTo(pf, { strokeDasharray: lf, strokeDashoffset: lf }, { strokeDashoffset: 0, duration: 2.2, ease: "power1.inOut" }, C.ondulada + 0.2);
+      tl.fromTo("#in-wave-l", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.ondulada + 1.2);
+      tl.fromTo("#in-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.frecuencia - 0.3);
+      tl.fromTo(pl, { strokeDasharray: ll, strokeDashoffset: ll }, { strokeDashoffset: 0, duration: 1.0, ease: "power1.inOut" }, C.lineal - 0.2);
+      tl.fromTo("#in-lin-l", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.lineal);
+      tl.to(["#in-lin", "#in-lin-l"], { opacity: 0, duration: 0.4 }, C.ritmos - 1.0);
+      tl.fromTo(ps, { strokeDasharray: ls, strokeDashoffset: ls }, { strokeDashoffset: 0, duration: 1.2, ease: "power1.inOut" }, C.ritmos - 0.8);
+      tl.to("#in-wave-l", { opacity: 0, duration: 0.3 }, C.ritmos - 0.6);
+      tl.fromTo("#in-two", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.ritmos - 0.5);
+      tl.to("#in-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["intro"] = tl;
+    })();
+  </script>
+</template>

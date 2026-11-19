@@ -1,0 +1,346 @@
+{
+  "voice_offset": 0.4,
+  "tail": 2.6,
+  "vtt_replace": {
+    "VO dos pico": "VO2pico",
+    "cero coma veinticuatro": "0,24",
+    "doscientos ochenta y cuatro": "284",
+    "once estudios": "11 estudios",
+    "doce semanas": "12 semanas",
+    "setenta y cinco y un ochenta por ciento": "75 y un 80 %",
+    "cero y un cinco por ciento": "0 y un 5 %",
+    "quince y un veinte por ciento": "15 y un 20 %",
+    "con once": "con 11"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "start": null,
+      "keys": [
+        [
+          "polarizado",
+          [
+            "polarizado"
+          ]
+        ],
+        [
+          "resistencia",
+          [
+            "resistencia"
+          ]
+        ],
+        [
+          "firma",
+          [
+            "firma"
+          ]
+        ],
+        [
+          "intensidad",
+          [
+            "intensidad"
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "distribucion",
+      "start": [
+        "sto",
+        "sperl",
+        "spurl"
+      ],
+      "keys": [
+        [
+          "stoggl",
+          [
+            "sto",
+            "sperl",
+            "spurl"
+          ]
+        ],
+        [
+          "anio",
+          [
+            "2015",
+            "dos"
+          ]
+        ],
+        [
+          "atletas",
+          [
+            "atletas"
+          ]
+        ],
+        [
+          "elite",
+          [
+            "elite"
+          ]
+        ],
+        [
+          "lit",
+          [
+            "75",
+            "setenta"
+          ]
+        ],
+        [
+          "baja",
+          [
+            "baja"
+          ]
+        ],
+        [
+          "mit",
+          [
+            "0",
+            "cero"
+          ]
+        ],
+        [
+          "umbral",
+          [
+            "umbral"
+          ]
+        ],
+        [
+          "hit",
+          [
+            "15",
+            "quince"
+          ]
+        ],
+        [
+          "alta",
+          [
+            "alta"
+          ]
+        ],
+        [
+          "mucho",
+          [
+            "mucho"
+          ]
+        ],
+        [
+          "duro",
+          [
+            "duro"
+          ]
+        ],
+        [
+          "nada",
+          [
+            "nada"
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "meta",
+      "start": [
+        "mejor"
+      ],
+      "start_back": 1,
+      "keys": [
+        [
+          "meta",
+          [
+            "meta"
+          ]
+        ],
+        [
+          "silva",
+          [
+            "silva"
+          ]
+        ],
+        [
+          "anio",
+          [
+            "2024",
+            "dos"
+          ]
+        ],
+        [
+          "prisma",
+          [
+            "prisma"
+          ]
+        ],
+        [
+          "grade",
+          [
+            "grade",
+            "gra"
+          ]
+        ],
+        [
+          "polarizado",
+          [
+            "polarizado"
+          ]
+        ],
+        [
+          "vo",
+          [
+            "vo",
+            "uo",
+            "bo"
+          ]
+        ],
+        [
+          "diferencia",
+          [
+            "diferencia"
+          ]
+        ],
+        [
+          "dme",
+          [
+            "024",
+            "cero"
+          ]
+        ],
+        [
+          "once",
+          [
+            "11",
+            "once"
+          ]
+        ],
+        [
+          "n284",
+          [
+            "284",
+            "doscientos"
+          ]
+        ],
+        [
+          "certeza",
+          [
+            "certeza"
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "condiciones",
+      "start": [
+        "pero"
+      ],
+      "keys": [
+        [
+          "dos",
+          [
+            "dos"
+          ]
+        ],
+        [
+          "menos",
+          [
+            "menos"
+          ]
+        ],
+        [
+          "semanas",
+          [
+            "semanas"
+          ]
+        ],
+        [
+          "altamente",
+          [
+            "altamente"
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "otras",
+      "start": [
+        "otras"
+      ],
+      "start_back": 2,
+      "keys": [
+        [
+          "time",
+          [
+            "time",
+            "tai"
+          ]
+        ],
+        [
+          "agotamiento",
+          [
+            "agotamiento"
+          ]
+        ],
+        [
+          "velocidad",
+          [
+            "velocidad"
+          ]
+        ],
+        [
+          "superioridad",
+          [
+            "superioridad"
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "cierre",
+      "start": [
+        "ventaja"
+      ],
+      "start_back": 2,
+      "keys": [
+        [
+          "real",
+          [
+            "real"
+          ]
+        ],
+        [
+          "pequena",
+          [
+            "pequena"
+          ]
+        ],
+        [
+          "acotada",
+          [
+            "acotada"
+          ]
+        ],
+        [
+          "general",
+          [
+            "general"
+          ]
+        ],
+        [
+          "modulo",
+          [
+            "modulo"
+          ]
+        ],
+        [
+          "macro",
+          [
+            "macro"
+          ]
+        ],
+        [
+          "duracion",
+          [
+            "duracion"
+          ]
+        ]
+      ]
+    }
+  ]
+}

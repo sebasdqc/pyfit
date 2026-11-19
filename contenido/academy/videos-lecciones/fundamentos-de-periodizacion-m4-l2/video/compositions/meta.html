@@ -1,0 +1,61 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #me-wrap { position: absolute; inset: 0; }
+    #me-q { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); }
+    #me-k { position: absolute; left: 160px; top: 170px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #me-t { position: absolute; left: 160px; top: 215px; font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    #me-t span { color: var(--ink-faint); font-weight: 700; }
+    #me-stamps { position: absolute; left: 160px; top: 315px; display: flex; gap: 20px; }
+    .me-stamp { font: 700 28px var(--font-mono); letter-spacing: 0.1em; padding: 12px 22px; border: 3px solid var(--ink-soft);
+      border-radius: 8px; color: var(--ink); }
+    .me-stamp i { font-style: normal; color: var(--ink-faint); font-weight: 500; margin-left: 10px; }
+    #me-head { position: absolute; left: 160px; top: 470px; font: 900 84px var(--font-display); letter-spacing: -0.035em; }
+    #me-head b { color: var(--lineal); }
+    #me-figs { position: absolute; left: 160px; right: 160px; top: 650px; display: flex; gap: 56px; }
+    .me-fig { min-width: 260px; }
+    .me-fig .v { font: 900 108px var(--font-display); letter-spacing: -0.04em; line-height: 1; }
+    .me-fig .l { font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); margin-top: 14px; line-height: 1.35; }
+    #me-f1 .v { color: var(--lineal); }
+    #me-f4 .v { color: var(--ondulada); }
+  </style>
+  <div id="root" data-composition-id="meta" data-width="1920" data-height="1080">
+    <div id="me-wrap">
+      <div id="me-q">¿ES MEJOR QUE OTROS MODELOS?</div>
+      <div id="me-k">META-ANÁLISIS</div>
+      <div id="me-t">Silva Oliveira, Boppre y Fonseca <span id="me-year">· 2024</span></div>
+      <div id="me-stamps">
+        <div class="me-stamp" id="me-s1">PRISMA<i>lineamientos</i></div>
+        <div class="me-stamp" id="me-s2">GRADE<i>certeza</i></div>
+      </div>
+      <div id="me-head">POL mejoró más el <b>VO2pico</b></div>
+      <div id="me-figs">
+        <div class="me-fig" id="me-f1"><div class="v">0,24</div><div class="l">DIF. DE MEDIAS<br />ESTANDARIZADA · p = 0,040</div></div>
+        <div class="me-fig" id="me-f2"><div class="v">11</div><div class="l">ESTUDIOS</div></div>
+        <div class="me-fig" id="me-f3"><div class="v">284</div><div class="l">PARTICIPANTES</div></div>
+        <div class="me-fig" id="me-f4"><div class="v">Alta</div><div class="l">CERTEZA DE<br />LA EVIDENCIA</div></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.meta;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#me-q", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.15);
+      tl.fromTo("#me-k", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.meta - 0.05);
+      tl.fromTo("#me-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.silva - 0.05);
+      tl.fromTo("#me-year", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.anio - 0.05);
+      tl.fromTo("#me-s1", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.prisma - 1.4);
+      tl.fromTo("#me-s2", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.grade - 2.2);
+      tl.fromTo("#me-head", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.polarizado - 0.1);
+      tl.fromTo("#me-f1", { opacity: 0 }, { opacity: 1, duration: 0.01 }, C.diferencia - 0.15);
+      tl.fromTo("#me-f1 .l", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.diferencia - 0.1);
+      tl.fromTo("#me-f1 .v", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.dme - 0.25);
+      tl.fromTo("#me-f2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.once - 0.1);
+      tl.fromTo("#me-f3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.n284 - 0.1);
+      tl.fromTo("#me-f4", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.certeza - 0.1);
+      tl.to("#me-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["meta"] = tl;
+    })();
+  </script>
+</template>

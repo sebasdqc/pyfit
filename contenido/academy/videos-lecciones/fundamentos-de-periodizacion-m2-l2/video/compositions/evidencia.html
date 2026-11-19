@@ -1,0 +1,144 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ev-wrap { position: absolute; inset: 0; }
+    .ev-mono { font: 500 30px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+
+    /* Un solo estudio */
+    #ev-one {
+      position: absolute; left: 870px; top: 330px; width: 180px; height: 230px;
+      border: 3px solid var(--ink-soft); border-radius: 10px; background: var(--ground-2);
+      display: flex; align-items: flex-end; justify-content: center; padding-bottom: 22px;
+    }
+    #ev-one-label { position: absolute; left: 0; right: 0; top: 620px; text-align: center;
+      font: 700 52px var(--font-display); letter-spacing: -0.02em; }
+    #ev-one-label span { color: var(--ink-faint); }
+    #ev-one-n { font: 900 120px var(--font-display); position: absolute; top: 28px; left: 0; right: 0; text-align: center; color: var(--ink); }
+
+    /* Cita */
+    #ev-cite { position: absolute; left: 160px; top: 110px; }
+    #ev-cite-k { font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); margin-bottom: 14px; }
+    #ev-cite-t { font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    #ev-cite-t span { color: var(--ink-faint); font-weight: 700; }
+
+    /* Bases de datos */
+    .ev-db { position: absolute; top: 380px; width: 380px; text-align: center; }
+    #ev-db1 { left: 230px; } #ev-db2 { left: 770px; } #ev-db3 { left: 1310px; }
+    .ev-db-stack { position: relative; height: 300px; }
+    .ev-db-rec { position: absolute; left: 60px; right: 60px; height: 10px; border-radius: 3px; background: var(--ink-faint); }
+    .ev-db-name { font: 700 40px var(--font-display); letter-spacing: -0.01em; margin-top: 26px; }
+    #ev-three { position: absolute; left: 160px; top: 255px; font: 700 34px var(--font-display); color: var(--ink-soft); }
+    #ev-three b { color: var(--ink); font-weight: 900; }
+
+    /* 17 estudios + 510 participantes */
+    #ev-grid { position: absolute; left: 200px; top: 360px; width: 700px; height: 360px; }
+    .ev-tile { position: absolute; width: 112px; height: 140px; border: 3px solid var(--ink-soft);
+      border-radius: 8px; background: var(--ground-2); }
+    #ev-dots { position: absolute; left: 1040px; top: 360px; overflow: visible; }
+    .ev-big { position: absolute; top: 760px; font: 900 132px var(--font-display); letter-spacing: -0.04em; line-height: 1; }
+    .ev-big small { display: block; font: 500 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 14px; }
+    #ev-n17 { left: 200px; }
+    #ev-n510 { left: 1040px; color: var(--ondulada); }
+  </style>
+  <div id="root" data-composition-id="evidencia" data-width="1920" data-height="1080">
+    <div id="ev-wrap">
+      <div id="ev-one"><div id="ev-one-n">1</div><div class="ev-mono">ESTUDIO</div></div>
+      <div id="ev-one-label">Un solo experimento <span>no alcanza</span></div>
+
+      <div id="ev-cite">
+        <div id="ev-cite-k">META-ANÁLISIS</div>
+        <div id="ev-cite-t">Harries, Lubans y Callister <span id="ev-year">· 2015</span></div>
+      </div>
+      <div id="ev-three"><b>3</b> bases de datos revisadas</div>
+
+      <div class="ev-db" id="ev-db1"><div class="ev-db-stack" id="ev-st1"></div><div class="ev-db-name">MEDLINE</div></div>
+      <div class="ev-db" id="ev-db2"><div class="ev-db-stack" id="ev-st2"></div><div class="ev-db-name">SCOPUS</div></div>
+      <div class="ev-db" id="ev-db3"><div class="ev-db-stack" id="ev-st3"></div><div class="ev-db-name">SPORTDiscus</div></div>
+
+      <div id="ev-grid"></div>
+      <svg id="ev-dots" width="700" height="360" viewBox="0 0 700 360"></svg>
+      <div class="ev-big" id="ev-n17"><span id="ev-c17">0</span><small>ESTUDIOS INCLUIDOS</small></div>
+      <div class="ev-big" id="ev-n510"><span id="ev-c510">0</span><small>PARTICIPANTES EN TOTAL</small></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.evidencia;
+      var NS = "http://www.w3.org/2000/svg";
+
+      // Registros de cada base (decorativos): 14 líneas por columna.
+      ["ev-st1", "ev-st2", "ev-st3"].forEach(function (id) {
+        var st = document.getElementById(id);
+        for (var i = 0; i < 14; i++) {
+          var r = document.createElement("div");
+          r.className = "ev-db-rec";
+          r.style.top = (280 - i * 20) + "px";
+          st.appendChild(r);
+        }
+      });
+
+      // 17 estudios en una grilla de 6 columnas.
+      var grid = document.getElementById("ev-grid");
+      var tiles = [];
+      for (var k = 0; k < 17; k++) {
+        var t = document.createElement("div");
+        t.className = "ev-tile";
+        t.style.left = (k % 6) * 118 + "px";
+        t.style.top = Math.floor(k / 6) * 112 + "px";
+        t.style.height = "100px";
+        grid.appendChild(t);
+        tiles.push(t);
+      }
+
+      // 510 participantes: 30 x 17 puntos.
+      var svg = document.getElementById("ev-dots");
+      var dots = [];
+      for (var p = 0; p < 510; p++) {
+        var c = document.createElementNS(NS, "circle");
+        c.setAttribute("cx", 8 + (p % 30) * 22.6);
+        c.setAttribute("cy", 8 + Math.floor(p / 30) * 20.6);
+        c.setAttribute("r", 6.5);
+        c.setAttribute("fill", "#e8dcc2");
+        svg.appendChild(c);
+        dots.push(c);
+      }
+
+      var tl = gsap.timeline({ paused: true });
+      // 1 estudio solo
+      tl.fromTo("#ev-one", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 0.15);
+      tl.fromTo("#ev-one-label", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.experimento);
+      tl.to("#ev-one", { opacity: 0.3, scale: 0.9, duration: 0.4 }, C.alcanza);
+      tl.to(["#ev-one", "#ev-one-label"], { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, C.evidencia + 0.6);
+
+      // Cita y bases de datos
+      tl.fromTo("#ev-cite-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.harries - 0.05);
+      tl.fromTo("#ev-year", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.anio - 0.05);
+      tl.fromTo("#ev-cite-k", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.meta - 0.05);
+      tl.fromTo("#ev-three", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.tres - 0.05);
+      [["#ev-db1", "#ev-st1", C.medline], ["#ev-db2", "#ev-st2", C.scopus], ["#ev-db3", "#ev-st3", C.sportdiscus]].forEach(function (d) {
+        tl.fromTo(d[0], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, d[2] - 0.05);
+        tl.fromTo(d[1] + " .ev-db-rec", { scaleX: 0 }, { scaleX: 1, duration: 0.3, stagger: 0.025, ease: "power2.out" }, d[2]);
+      });
+
+      // Las bases se vacían en 17 estudios
+      tl.to([".ev-db", "#ev-three"], { opacity: 0, y: -40, duration: 0.45, ease: "power2.in" }, C.diecisiete - 0.5);
+      tl.fromTo(tiles, { opacity: 0, y: -60, scale: 0.6 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.05, ease: "back.out(1.4)" }, C.diecisiete - 0.1);
+      tl.fromTo("#ev-n17", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.diecisiete - 0.1);
+      var c17 = { v: 0 };
+      tl.fromTo(c17, { v: 0 }, { v: 17, duration: 0.9, ease: "power1.out", onUpdate: function () {
+        document.getElementById("ev-c17").textContent = Math.round(c17.v);
+      } }, C.diecisiete - 0.1);
+
+      // 510 participantes
+      tl.fromTo(dots, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.25, stagger: { each: 0.0028, from: "start" }, ease: "power2.out", transformOrigin: "50% 50%" }, C.quinientos - 0.1);
+      tl.fromTo("#ev-n510", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.quinientos - 0.1);
+      var c510 = { v: 0 };
+      tl.fromTo(c510, { v: 0 }, { v: 510, duration: 1.4, ease: "power1.out", onUpdate: function () {
+        document.getElementById("ev-c510").textContent = Math.round(c510.v);
+      } }, C.quinientos - 0.1);
+
+      tl.to("#ev-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["evidencia"] = tl;
+    })();
+  </script>
+</template>

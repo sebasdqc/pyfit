@@ -1,0 +1,54 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #cie-wrap { position: absolute; inset: 0; }
+    #cie-a { position: absolute; inset: 0; }
+    #cie-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    .cie-step { position: absolute; top: 380px; width: 480px; }
+    .cie-step .n { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); margin-bottom: 14px; }
+    .cie-step .t { font: 900 64px var(--font-display); letter-spacing: -0.03em; line-height: 1.05; }
+    #cie-s1 { left: 160px; } #cie-s2 { left: 720px; } #cie-s3 { left: 1280px; }
+    #cie-s3 .t { color: var(--ondulada); }
+    #cie-b { position: absolute; inset: 0; }
+    .cie-no { position: absolute; left: 160px; font: 900 96px var(--font-display); letter-spacing: -0.035em; color: var(--ink-soft); }
+    .cie-no .x { position: absolute; left: -12px; right: -12px; top: 52%; height: 12px; background: var(--lineal); border-radius: 6px; transform-origin: 0 50%; }
+    #cie-n1 { top: 220px; } #cie-n2 { top: 360px; }
+    #cie-yes { position: absolute; left: 160px; right: 160px; top: 560px; font: 900 112px var(--font-display); letter-spacing: -0.04em; line-height: 1.02; }
+    #cie-yes span { color: var(--lineal); }
+    #cie-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; opacity: 0.85; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="cie-wrap">
+      <div id="cie-a">
+        <div id="cie-k">EN ESTE CURSO</div>
+        <div class="cie-step" id="cie-s1"><div class="n">01</div><div class="t">El modelo clásico</div></div>
+        <div class="cie-step" id="cie-s2"><div class="n">02</div><div class="t">Las alternativas</div></div>
+        <div class="cie-step" id="cie-s3"><div class="n">03</div><div class="t">Qué dice la evidencia</div></div>
+      </div>
+      <div id="cie-b">
+        <div class="cie-no" id="cie-n1">Por tradición<i class="x" id="cie-x1"></i></div>
+        <div class="cie-no" id="cie-n2">Por moda<i class="x" id="cie-x2"></i></div>
+        <div id="cie-yes">Por lo que muestran <span>los estudios.</span></div>
+      </div>
+      <img id="cie-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#cie-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#cie-s1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.clasico - 0.4);
+      tl.fromTo("#cie-s2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.alternativas - 0.2);
+      tl.fromTo("#cie-s3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.evidencia - 0.4);
+      tl.to("#cie-a", { opacity: 0, duration: 0.35 }, C.elijas - 0.45);
+      tl.fromTo("#cie-n1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.elijas - 0.1);
+      tl.fromTo("#cie-x1", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.out" }, C.tradicion + 0.2);
+      tl.fromTo("#cie-n2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.moda - 0.3);
+      tl.fromTo("#cie-x2", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.out" }, C.moda + 0.1);
+      tl.fromTo("#cie-yes", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.moda + 0.5);
+      tl.fromTo("#cie-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.estudios + 1.0);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

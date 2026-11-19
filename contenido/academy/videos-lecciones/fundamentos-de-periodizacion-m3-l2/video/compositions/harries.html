@@ -1,0 +1,60 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ha-wrap { position: absolute; inset: 0; }
+    #ha-q { position: absolute; left: 160px; top: 150px; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #ha-k { position: absolute; left: 160px; top: 290px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #ha-dots { position: absolute; left: 0; top: 0; overflow: visible; }
+    #ha-pop { position: absolute; left: 160px; top: 880px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    #ha-cite { position: absolute; left: 1120px; top: 430px; }
+    #ha-cite-t { font: 900 56px var(--font-display); letter-spacing: -0.02em; }
+    #ha-cite-t span { color: var(--ink-faint); font-weight: 700; }
+    #ha-chip { display: inline-block; margin-top: 34px; font: 700 34px var(--font-mono); letter-spacing: 0.08em;
+      padding: 16px 28px; border: 3px solid var(--ink-soft); border-radius: 999px; }
+    #ha-chip i { font-style: normal; color: var(--lineal); margin-left: 12px; }
+    #ha-sub { margin-top: 26px; font: 500 36px var(--font-display); color: var(--ink-soft); }
+  </style>
+  <div id="root" data-composition-id="harries" data-width="1920" data-height="1080">
+    <div id="ha-wrap">
+      <div id="ha-q">¿Funciona mejor que la lineal?</div>
+      <div id="ha-k">RECUERDA · MÓDULO 2</div>
+      <svg id="ha-dots" width="1920" height="1080" viewBox="0 0 1920 1080"></svg>
+      <div id="ha-pop">POBLACIONES MEZCLADAS</div>
+      <div id="ha-cite">
+        <div id="ha-cite-t">Harries et al. <span>· 2015</span></div>
+        <div id="ha-chip">FUERZA<i>n.s.</i></div>
+        <div id="ha-sub">Sin diferencias significativas</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.harries;
+      var NS = "http://www.w3.org/2000/svg";
+      var svg = document.getElementById("ha-dots");
+      // 48 atletas mezclados: llenos = entrenados, huecos = no entrenados (patrón fijo).
+      var pat = [1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,1,1,0,0,1,0,1,0,0,1,1,0,1,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0];
+      var dots = [];
+      pat.forEach(function (k, i) {
+        var c = document.createElementNS(NS, "circle");
+        c.setAttribute("cx", 190 + (i % 8) * 100);
+        c.setAttribute("cy", 420 + Math.floor(i / 8) * 75);
+        c.setAttribute("r", 24);
+        c.setAttribute("fill", k ? "#f4f2ee" : "none");
+        c.setAttribute("stroke", "#f4f2ee");
+        c.setAttribute("stroke-width", 4);
+        svg.appendChild(c); dots.push(c);
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ha-q", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.05);
+      tl.fromTo("#ha-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.modulo - 0.2);
+      tl.fromTo(dots, { opacity: 0, scale: 0.4, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.3, stagger: 0.015, ease: "back.out(1.6)" }, C.poblaciones - 0.2);
+      tl.fromTo("#ha-pop", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.poblaciones + 0.2);
+      tl.fromTo("#ha-cite-t", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.harries - 0.1);
+      tl.fromTo("#ha-chip", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.significativas - 1.0);
+      tl.fromTo("#ha-sub", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.significativas - 0.3);
+      tl.to("#ha-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["harries"] = tl;
+    })();
+  </script>
+</template>

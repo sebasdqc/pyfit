@@ -1,0 +1,82 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #lec-wrap { position: absolute; inset: 0; }
+    #lec-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.16em; color: var(--lineal); }
+    #lec-myth { position: absolute; left: 0; right: 0; top: 330px; text-align: center; }
+    #lec-myth-t { position: relative; display: inline-block; font: 900 104px var(--font-display);
+      letter-spacing: -0.035em; color: var(--ink); }
+    #lec-strike { position: absolute; left: -20px; right: -20px; top: 54%; height: 12px;
+      background: var(--lineal); transform-origin: 0 50%; border-radius: 6px; }
+    #lec-truth { position: absolute; left: 0; right: 0; top: 560px; text-align: center; }
+    #lec-truth-t { font: 700 64px var(--font-display); letter-spacing: -0.02em; }
+    #lec-arrows { display: flex; justify-content: center; gap: 120px; margin-top: 40px; }
+    .lec-arrow { width: 22px; position: relative; height: 170px; }
+    .lec-arrow .s { position: absolute; bottom: 0; left: 4px; width: 14px; height: 100%; border-radius: 4px; transform-origin: 50% 100%; }
+    .lec-arrow .h { position: absolute; top: -26px; left: -14px; width: 0; height: 0;
+      border-left: 25px solid transparent; border-right: 25px solid transparent; }
+    #lec-aa .s { background: var(--lineal); } #lec-aa .h { border-bottom: 34px solid var(--lineal); }
+    #lec-ab .s { background: var(--ondulada); } #lec-ab .h { border-bottom: 34px solid var(--ondulada); }
+
+    #lec-cmp { position: absolute; left: 0; right: 0; top: 270px; text-align: center; }
+    .lec-row { position: relative; display: flex; justify-content: center; align-items: center; gap: 48px;
+      font: 900 92px var(--font-display); letter-spacing: -0.03em; height: 150px; }
+    .lec-row .a { color: var(--lineal); width: 520px; text-align: right; }
+    .lec-row .b { color: var(--ondulada); width: 520px; text-align: left; }
+    .lec-row .op { position: relative; width: 110px; text-align: center; color: var(--ink); }
+    .lec-x { position: absolute; left: -10px; right: -10px; top: 50%; height: 10px; margin-top: -5px;
+      background: var(--lineal); border-radius: 5px; transform: rotate(-35deg); }
+    .lec-row .tag { position: absolute; left: 50%; margin-left: 560px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.12em; color: var(--ink-faint); white-space: nowrap; }
+    #lec-foot { position: absolute; left: 0; right: 0; top: 720px; text-align: center;
+      font: 700 46px var(--font-display); color: var(--ink-soft); }
+    #lec-foot b { color: var(--ink); }
+  </style>
+  <div id="root" data-composition-id="lectura" data-width="1920" data-height="1080">
+    <div id="lec-wrap">
+      <div id="lec-k">CÓMO LEER EL RESULTADO</div>
+
+      <div id="lec-myth"><div id="lec-myth-t">«La lineal no funciona»<div id="lec-strike"></div></div></div>
+      <div id="lec-truth">
+        <div id="lec-truth-t">Las dos producen ganancias</div>
+        <div id="lec-arrows">
+          <div class="lec-arrow" id="lec-aa"><div class="s"></div><div class="h"></div></div>
+          <div class="lec-arrow" id="lec-ab"><div class="s"></div><div class="h"></div></div>
+        </div>
+      </div>
+
+      <div id="lec-cmp">
+        <div class="lec-row" id="lec-r1"><span class="a">Lineal</span><span class="op">&gt;<i class="lec-x" id="lec-x1"></i></span><span class="b">Ondulada</span></div>
+        <div class="lec-row" id="lec-r2"><span class="a">Lineal</span><span class="op">&lt;<i class="lec-x" id="lec-x2"></i></span><span class="b">Ondulada</span></div>
+      </div>
+      <div id="lec-foot">No se demostró ninguna de las dos, <b>para fuerza general</b></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.lectura;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#lec-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#lec-myth", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.significa1 - 0.1);
+      tl.fromTo("#lec-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, C.funcione);
+      tl.to("#lec-myth-t", { color: "#868b98", duration: 0.4 }, C.funcione + 0.2);
+      tl.fromTo("#lec-truth-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.dos - 0.1);
+      tl.fromTo(["#lec-aa", "#lec-ab"], { opacity: 0 }, { opacity: 1, duration: 0.2 }, C.ganancias - 0.2);
+      tl.fromTo(["#lec-aa .s", "#lec-ab .s"], { scaleY: 0 }, { scaleY: 1, duration: 0.7, stagger: 0.1, ease: "power2.out" }, C.ganancias - 0.2);
+      tl.fromTo(["#lec-aa .h", "#lec-ab .h"], { opacity: 0, y: 160 }, { opacity: 1, y: 0, duration: 0.7, stagger: 0.1, ease: "power2.out" }, C.ganancias - 0.2);
+
+      tl.to(["#lec-myth", "#lec-truth"], { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, C.significa2 + 0.9);
+      tl.fromTo("#lec-r1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.significa2 + 1.3);
+      tl.fromTo("#lec-r2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.significa2 + 1.5);
+      tl.fromTo("#lec-x1", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.out" }, C.superior);
+      tl.to("#lec-r1 .a, #lec-r1 .b", { opacity: 0.45, duration: 0.3 }, C.superior + 0.1);
+      tl.fromTo("#lec-x2", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.out" }, C.inferior);
+      tl.to("#lec-r2 .a, #lec-r2 .b", { opacity: 0.45, duration: 0.3 }, C.inferior + 0.1);
+      tl.fromTo("#lec-foot", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.superior + 0.5);
+
+      tl.to("#lec-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["lectura"] = tl;
+    })();
+  </script>
+</template>

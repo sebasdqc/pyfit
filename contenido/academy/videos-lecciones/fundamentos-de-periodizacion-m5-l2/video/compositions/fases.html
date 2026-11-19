@@ -1,0 +1,119 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #fas-wrap { position: absolute; inset: 0; }
+    .fas-blk { position: absolute; top: 230px; width: 393px; height: 100px; background: var(--ground-2);
+      border: 3px solid var(--ink-soft); border-radius: 10px; overflow: hidden; }
+    #fas-b1 { left: 160px; } #fas-b2 { left: 567px; } #fas-b3 { left: 974px; } #fas-b4 { left: 1381px; }
+    .fas-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; transform-origin: 0 50%; }
+    #fas-f1 { background: var(--lineal); }
+    #fas-f2 { background: var(--ondulada); }
+    #fas-f4 { background: var(--polarizada); left: auto; right: 0; width: 72%; transform-origin: 100% 50%; }
+    .fas-tag { position: absolute; top: 346px; line-height: 1.3; width: 393px; text-align: center; font: 700 28px var(--font-mono);
+      letter-spacing: 0.1em; color: var(--ink-faint); }
+    #fas-t1 { left: 160px; } #fas-t2 { left: 567px; } #fas-t3 { left: 974px; } #fas-t4 { left: 1381px; }
+    #fas-stamp { position: absolute; left: 160px; top: 140px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    #fas-brk { position: absolute; left: 0; top: 0; overflow: visible; }
+    #fas-brk-t { position: absolute; left: 1491px; top: 140px; width: 284px; text-align: center; font: 700 30px var(--font-mono);
+      letter-spacing: 0.08em; color: var(--polarizada); }
+
+    .fas-card { position: absolute; left: 160px; right: 160px; top: 470px; }
+    .fas-k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); margin-bottom: 14px; }
+    .fas-t { font: 900 96px var(--font-display); letter-spacing: -0.035em; line-height: 1.02; }
+    #fas-a .fas-t { color: var(--lineal); }
+    #fas-b .fas-t { color: var(--ondulada); }
+    #fas-c .fas-t { color: var(--polarizada); }
+    .fas-cond { display: inline-block; margin-bottom: 18px; font: 700 34px var(--font-display); color: var(--ink);
+      padding: 10px 22px; border: 3px solid var(--ink-soft); border-radius: 999px; }
+    .fas-ev { margin-top: 40px; display: flex; gap: 28px; align-items: baseline; }
+    .fas-ev .who { font: 700 30px var(--font-mono); letter-spacing: 0.06em; color: var(--ink-soft); white-space: nowrap; }
+    .fas-ev .what { font: 500 42px var(--font-display); color: var(--ink); line-height: 1.2; }
+    .fas-ev .what i { font-style: normal; font-weight: 800; }
+    .fas-so { margin-top: 26px; font: 800 48px var(--font-display); color: var(--ink); }
+    .fas-so span { color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="fases" data-width="1920" data-height="1080">
+    <div id="fas-wrap">
+      <div id="fas-stamp">CALENDARIO ILUSTRATIVO · LAS DECISIONES, CON EVIDENCIA</div>
+      <div class="fas-blk" id="fas-b1"><div class="fas-fill" id="fas-f1"></div></div>
+      <div class="fas-blk" id="fas-b2"><div class="fas-fill" id="fas-f2"></div></div>
+      <div class="fas-blk" id="fas-b3"></div>
+      <div class="fas-blk" id="fas-b4"><div class="fas-fill" id="fas-f4"></div></div>
+      <div class="fas-tag" id="fas-t1">BASE<br />LINEAL</div>
+      <div class="fas-tag" id="fas-t2">INTERMEDIA<br />ONDULADA</div>
+      <div class="fas-tag" id="fas-t3">ESPECÍFICA<br />&nbsp;</div>
+      <div class="fas-tag" id="fas-t4">PRECOMPETITIVA<br />POLARIZADA</div>
+      <svg id="fas-brk" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="fas-brk-p" d="M1491 212 V196 H1775 V212" fill="none" stroke="#e0973a" stroke-width="4" />
+      </svg>
+      <div id="fas-brk-t">&lt; 12 SEMANAS</div>
+
+      <div class="fas-card" id="fas-a">
+        <div class="fas-k">LA BASE · AL INICIO</div>
+        <div class="fas-t">Enfoque más lineal</div>
+        <div class="fas-ev" id="fas-a-ev"><div class="who">HARRIES ET AL. · 2015</div>
+          <div class="what" id="fas-a-what">Sin diferencias significativas entre lineal y ondulada <i>en fuerza</i></div></div>
+        <div class="fas-so" id="fas-a-so">→ Su <span>simplicidad</span> es una ventaja práctica</div>
+      </div>
+
+      <div class="fas-card" id="fas-b">
+        <div class="fas-k">FASES INTERMEDIAS</div>
+        <div class="fas-cond" id="fas-b-cond">Atleta ya entrenado + fuerza máxima</div>
+        <div class="fas-t" id="fas-b-t">Entra la ondulación</div>
+        <div class="fas-ev" id="fas-b-ev"><div class="who">MOESGAARD ET AL. · 2022</div>
+          <div class="what" id="fas-b-what">Es en ese perfil <i>donde más aporta</i></div></div>
+      </div>
+
+      <div class="fas-card" id="fas-c">
+        <div class="fas-k" id="fas-c-k">ANTES DE UNA COMPETENCIA CLAVE</div>
+        <div class="fas-cond" id="fas-c-cond">Deportes de resistencia</div>
+        <div class="fas-t" id="fas-c-t">Fase polarizada corta</div>
+        <div class="fas-ev" id="fas-c-ev"><div class="who">META-ANÁLISIS · 2024</div>
+          <div class="what">Silva Oliveira, Boppre y Fonseca: ventaja solo en <i id="fas-c-12">menos de 12 semanas</i> y en atletas altamente entrenados</div></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.fases;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(".fas-blk", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      tl.fromTo("#fas-stamp", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#fas-t3", { opacity: 0 }, { opacity: 0.8, duration: 0.4 }, 0.3);
+
+      // Base · lineal
+      tl.fromTo("#fas-f1", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "power2.inOut" }, 0.4);
+      tl.fromTo("#fas-a .fas-k", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 0.5);
+      tl.fromTo("#fas-a .fas-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.lineal - 0.9);
+      tl.fromTo("#fas-t1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.lineal - 0.6);
+      tl.fromTo("#fas-a-ev .who", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.4 }, C.harries - 0.05);
+      tl.fromTo("#fas-a-what", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.significativas + 0.2);
+      tl.fromTo("#fas-a-what i", { color: "#f4f2ee" }, { color: "#cc1f36", duration: 0.3 }, C.fuerza - 0.05);
+      tl.fromTo("#fas-a-so", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.simplicidad - 0.3);
+      tl.to("#fas-a", { opacity: 0, y: -20, duration: 0.35, ease: "power2.in" }, C.intermedias - 0.8);
+
+      // Intermedia · ondulada
+      tl.fromTo("#fas-f2", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "power2.inOut" }, C.intermedias - 0.4);
+      tl.fromTo("#fas-b .fas-k", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, C.intermedias - 0.3);
+      tl.fromTo("#fas-b-cond", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.entrenado - 0.5);
+      tl.fromTo("#fas-b-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.ondulacion - 0.3);
+      tl.fromTo("#fas-t2", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.ondulacion);
+      tl.fromTo("#fas-b-ev .who", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.4 }, C.moesgaard - 0.05);
+      tl.fromTo("#fas-b-what", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.aporta - 1.4);
+      tl.to("#fas-b", { opacity: 0, y: -20, duration: 0.35, ease: "power2.in" }, C.competencia - 1.0);
+
+      // Precompetitiva · polarizada
+      tl.fromTo("#fas-c-k", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, C.competencia - 0.6);
+      tl.fromTo("#fas-c-cond", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.resistencia - 0.9);
+      tl.fromTo("#fas-c-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.polarizada - 0.3);
+      tl.fromTo("#fas-f4", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "power2.inOut" }, C.polarizada - 0.2);
+      tl.fromTo("#fas-t4", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.polarizada + 0.2);
+      tl.fromTo(["#fas-brk-p", "#fas-brk-t"], { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.menos - 0.05);
+      tl.fromTo("#fas-c-ev", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.menos + 0.7);
+
+      tl.fromTo("#fas-c-12", { color: "#f4f2ee" }, { color: "#e0973a", duration: 0.3 }, C.meta - 0.05);
+      tl.to("#fas-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["fases"] = tl;
+    })();
+  </script>
+</template>

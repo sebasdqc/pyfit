@@ -1,0 +1,75 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #dup-wrap { position: absolute; inset: 0; }
+    #dup-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ondulada); }
+    #dup-t { position: absolute; left: 160px; top: 160px; font: 900 88px var(--font-display); letter-spacing: -0.035em; }
+    #dup-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .dup-day { font: 700 28px var(--font-mono); letter-spacing: 0.1em; fill: #868b98; }
+    .dup-lbl { font: 800 34px var(--font-display); fill: #f4f2ee; }
+    #dup-axis { font: 500 28px var(--font-mono); letter-spacing: 0.1em; fill: #868b98; }
+    #dup-tag { position: absolute; right: 160px; bottom: 70px; font: 500 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="dup" data-width="1920" data-height="1080">
+    <div id="dup-wrap">
+      <div id="dup-k">ONDULADA DIARIA · DUP</div>
+      <div id="dup-t">Cada día, un estímulo distinto</div>
+      <svg id="dup-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <g id="dup-cal"></g>
+        <text id="dup-axis" x="160" y="400">INTENSIDAD ↑</text>
+        <rect id="dup-b1" x="0" y="0" width="150" height="0" fill="#e8dcc2" />
+        <rect id="dup-b2" x="0" y="0" width="150" height="0" fill="#e8dcc2" opacity="0.75" />
+        <rect id="dup-b3" x="0" y="0" width="150" height="0" fill="#e8dcc2" opacity="0.5" />
+        <text id="dup-l1" class="dup-lbl" text-anchor="middle">FUERZA</text>
+        <text id="dup-l2" class="dup-lbl" text-anchor="middle">HIPERTROFIA</text>
+        <g id="dup-l3"><text class="dup-lbl" text-anchor="middle" id="dup-l3a">RESISTENCIA</text><text class="dup-lbl" text-anchor="middle" id="dup-l3b">MUSCULAR</text></g>
+      </svg>
+      <div id="dup-tag">SEMANA DE EJEMPLO · ALTURAS ESQUEMÁTICAS</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.dup;
+      var NS = "http://www.w3.org/2000/svg";
+      var days = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
+      var X0 = 160, W = 228, BASE = 840;
+      var cal = document.getElementById("dup-cal");
+      var cols = [];
+      days.forEach(function (d, i) {
+        var g = document.createElementNS(NS, "g");
+        var r = document.createElementNS(NS, "rect");
+        r.setAttribute("x", X0 + i * W + 6); r.setAttribute("y", 430);
+        r.setAttribute("width", W - 12); r.setAttribute("height", 480);
+        r.setAttribute("rx", 10); r.setAttribute("fill", "#161922"); r.setAttribute("stroke", "#2a2e3a"); r.setAttribute("stroke-width", 2);
+        var t = document.createElementNS(NS, "text");
+        t.setAttribute("x", X0 + i * W + W / 2); t.setAttribute("y", 890);
+        t.setAttribute("text-anchor", "middle"); t.setAttribute("class", "dup-day"); t.textContent = d;
+        g.appendChild(r); g.appendChild(t); cal.appendChild(g); cols.push(g);
+      });
+      // Lunes / miércoles / viernes: ejemplo ilustrativo de la lección de texto.
+      var spec = [[0, 360, "dup-b1", "dup-l1"], [2, 250, "dup-b2", "dup-l2"], [4, 150, "dup-b3", "dup-l3"]];
+      spec.forEach(function (s) {
+        var cx = X0 + s[0] * W + W / 2;
+        var b = document.getElementById(s[2]);
+        b.setAttribute("x", cx - 75); b.setAttribute("y", BASE); b.setAttribute("height", 0);
+        b.dataset.h = s[1]; b.dataset.cx = cx;
+      });
+      var l1 = document.getElementById("dup-l1"); l1.setAttribute("x", X0 + 0 * W + W / 2); l1.setAttribute("y", BASE - 360 - 22);
+      var l2 = document.getElementById("dup-l2"); l2.setAttribute("x", X0 + 2 * W + W / 2); l2.setAttribute("y", BASE - 250 - 22);
+      var l3a = document.getElementById("dup-l3a"); l3a.setAttribute("x", X0 + 4 * W + W / 2); l3a.setAttribute("y", BASE - 150 - 62);
+      var l3b = document.getElementById("dup-l3b"); l3b.setAttribute("x", X0 + 4 * W + W / 2); l3b.setAttribute("y", BASE - 150 - 22);
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#dup-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.diaria - 0.2);
+      tl.fromTo(cols, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.07, ease: "power3.out" }, C.diaria);
+      tl.fromTo("#dup-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.cada - 0.1);
+      tl.fromTo(["#dup-axis", "#dup-tag"], { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.estimulo - 0.2);
+      [["#dup-b1", "#dup-l1", 360, C.fuerza], ["#dup-b2", "#dup-l2", 250, C.hipertrofia], ["#dup-b3", "#dup-l3", 150, C.resistencia]].forEach(function (d) {
+        tl.fromTo(d[0], { attr: { y: BASE, height: 0 } }, { attr: { y: BASE - d[2], height: d[2] }, duration: 0.6, ease: "power2.out" }, d[3] - 0.15);
+        tl.fromTo(d[1], { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, d[3] + 0.1);
+      });
+      tl.to("#dup-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["dup"] = tl;
+    })();
+  </script>
+</template>

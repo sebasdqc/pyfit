@@ -1,0 +1,48 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #des-wrap { position: absolute; inset: 0; }
+    #des-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #des-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .des-lbl { font: 800 44px var(--font-display); letter-spacing: -0.02em; }
+    .des-ax { font: 700 28px var(--font-mono); letter-spacing: 0.12em; fill: #868b98; }
+    #des-tag { position: absolute; right: 160px; bottom: 90px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="desfase" data-width="1920" data-height="1080">
+    <div id="des-wrap">
+      <div id="des-k">EL DESFASE</div>
+      <svg id="des-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="des-axis" d="M260 260 V820 H1560" fill="none" stroke="#868b98" stroke-width="3" />
+        <text class="des-ax" x="260" y="870">ORIGEN</text>
+        <text class="des-ax" x="1560" y="870" text-anchor="end">HOY</text>
+        <path id="des-dep" d="M260 760 C 700 740, 1000 520, 1560 300" fill="none" stroke="#cc1f36" stroke-width="8" stroke-linecap="round" />
+        <text id="des-dep-l" class="des-lbl" x="1590" y="310" fill="#cc1f36">El deporte</text>
+        <text id="des-dep-s" class="des-ax" x="1590" y="356" style="fill:#cc1f36">CAMBIÓ</text>
+        <path id="des-mod" d="M260 760 L1560 740" fill="none" stroke="#e8dcc2" stroke-width="8" stroke-linecap="round" />
+        <text id="des-mod-l" class="des-lbl" x="1590" y="752" fill="#e8dcc2">El modelo</text>
+        <path id="des-gap" d="M1500 320 L1500 724" stroke="#f4f2ee" stroke-width="3" stroke-dasharray="10 10" />
+        <text id="des-gap-l" class="des-lbl" x="1460" y="540" text-anchor="end" fill="#f4f2ee" style="font-weight:900">desfase</text>
+      </svg>
+      <div id="des-tag">ESQUEMA · SIN ESCALA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.desfase;
+      var dep = document.getElementById("des-dep");
+      var mod = document.getElementById("des-mod");
+      var ld = dep.getTotalLength(), lm = mod.getTotalLength();
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#des-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo(["#des-axis", ".des-ax", "#des-tag"], { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0.2);
+      tl.fromTo(dep, { strokeDasharray: ld, strokeDashoffset: ld }, { strokeDashoffset: 0, duration: 2.4, ease: "power1.in" }, C.deporte - 0.1);
+      tl.fromTo("#des-dep-l", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4 }, C.deporte + 0.3);
+      tl.fromTo("#des-dep-s", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.radicalmente - 0.2);
+      tl.fromTo(mod, { strokeDasharray: lm, strokeDashoffset: lm }, { strokeDashoffset: 0, duration: 1.8, ease: "none" }, C.modelo - 0.1);
+      tl.fromTo("#des-mod-l", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4 }, C.modelo + 0.2);
+      tl.fromTo(["#des-gap", "#des-gap-l"], { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.casi);
+      tl.to("#des-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["desfase"] = tl;
+    })();
+  </script>
+</template>

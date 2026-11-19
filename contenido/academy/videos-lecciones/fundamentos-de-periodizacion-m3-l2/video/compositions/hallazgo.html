@@ -1,0 +1,50 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #hz-wrap { position: absolute; inset: 0; }
+    #hz-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-faint); }
+    #hz-goal { position: absolute; left: 160px; top: 160px; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #hz-goal span { color: var(--lineal); }
+    #hz-q { position: absolute; left: 160px; top: 300px; font: 700 40px var(--font-display); color: var(--ink-soft); }
+    .hz-row { position: absolute; left: 160px; width: 1600px; }
+    #hz-r1 { top: 410px; } #hz-r2 { top: 560px; }
+    .hz-name { font: 800 44px var(--font-display); margin-bottom: 18px; }
+    .hz-track { position: relative; height: 56px; border-radius: 8px; background: #161922; }
+    .hz-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; background: var(--ondulada); transform-origin: 0 50%; }
+    #hz-f1 { width: 1180px; } #hz-f2 { width: 420px; opacity: 0.6; }
+    #hz-tag { position: absolute; left: 160px; top: 720px; font: 500 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+    #hz-hip { position: absolute; left: 160px; top: 820px; display: flex; align-items: center; gap: 28px; }
+    #hz-chip { font: 700 34px var(--font-mono); letter-spacing: 0.08em; padding: 16px 28px; border: 3px solid var(--ink-soft); border-radius: 999px; }
+    #hz-chip i { font-style: normal; color: var(--lineal); margin-left: 12px; }
+    #hz-hip-t { font: 700 40px var(--font-display); color: var(--ink-soft); }
+  </style>
+  <div id="root" data-composition-id="hallazgo" data-width="1920" data-height="1080">
+    <div id="hz-wrap">
+      <div id="hz-k">EL HALLAZGO · MOESGAARD ET AL. 2022</div>
+      <div id="hz-goal">Objetivo: <span>fuerza máxima</span></div>
+      <div id="hz-q">¿Quién se beneficia más de la ondulación?</div>
+      <div class="hz-row" id="hz-r1"><div class="hz-name">Entrenados</div><div class="hz-track"><div class="hz-fill" id="hz-f1"></div></div></div>
+      <div class="hz-row" id="hz-r2"><div class="hz-name" style="color:#a9adb8">No entrenados</div><div class="hz-track"><div class="hz-fill" id="hz-f2"></div></div></div>
+      <div id="hz-tag">ESQUEMA · LAS LONGITUDES NO SON VALORES DEL ESTUDIO</div>
+      <div id="hz-hip"><div id="hz-chip">HIPERTROFIA<i>sin diferencias claras</i></div><div id="hz-hip-t">entre lineal y ondulada</div></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.hallazgo;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#hz-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#hz-goal", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.fuerza - 0.6);
+      tl.fromTo("#hz-q", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.fuerza + 0.4);
+      tl.fromTo("#hz-r1", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.entrenados - 0.1);
+      tl.fromTo("#hz-f1", { scaleX: 0 }, { scaleX: 1, duration: 1.1, ease: "power2.out" }, C.entrenados + 0.2);
+      tl.fromTo("#hz-r2", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.noentrenados - 0.4);
+      tl.fromTo("#hz-f2", { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: "power2.out" }, C.noentrenados);
+      tl.fromTo("#hz-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.entrenados + 0.4);
+      tl.fromTo("#hz-chip", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.hipertrofia - 0.1);
+      tl.fromTo("#hz-hip-t", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.claras - 0.4);
+      tl.to("#hz-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["hallazgo"] = tl;
+    })();
+  </script>
+</template>

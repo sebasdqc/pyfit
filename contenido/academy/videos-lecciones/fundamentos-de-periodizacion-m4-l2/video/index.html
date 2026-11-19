@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/cues.js"></script>
+    <style>
+      :root {
+        --ground: #0e1016;
+        --ground-2: #161922;
+        --ink: #f4f2ee;
+        --ink-soft: #a9adb8;
+        --ink-faint: #868b98;
+        --lineal: #cc1f36;
+        --ondulada: #e8dcc2;
+        --font-display: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--font-display);
+      }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="99.6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="intro" class="clip" data-composition-id="intro" data-composition-src="compositions/intro.html" data-start="0.0" data-duration="9.15" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="distribucion" class="clip" data-composition-id="distribucion" data-composition-src="compositions/distribucion.html" data-start="9.15" data-duration="28.77" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="meta" class="clip" data-composition-id="meta" data-composition-src="compositions/meta.html" data-start="37.92" data-duration="28.45" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="condiciones" class="clip" data-composition-id="condiciones" data-composition-src="compositions/condiciones.html" data-start="66.37" data-duration="7.92" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="otras" class="clip" data-composition-id="otras" data-composition-src="compositions/otras.html" data-start="74.29" data-duration="9.0" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="cierre" class="clip" data-composition-id="cierre" data-composition-src="compositions/cierre.html" data-start="83.29" data-duration="16.31" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <audio id="voz" src="assets/voz/voz-master.wav" data-start="0.4" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

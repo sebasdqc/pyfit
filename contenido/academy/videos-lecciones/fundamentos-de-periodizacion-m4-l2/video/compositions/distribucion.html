@@ -1,0 +1,67 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #di-wrap { position: absolute; inset: 0; }
+    #di-cite { position: absolute; left: 160px; top: 100px; font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    #di-cite span { color: var(--ink-faint); font-weight: 700; }
+    #di-who { position: absolute; left: 160px; top: 190px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    #di-who b { color: var(--ink); }
+    #di-chart { position: absolute; left: 0; top: 0; overflow: visible; }
+    .di-pct { font: 900 72px var(--font-display); letter-spacing: -0.03em; }
+    .di-zone { font: 700 28px var(--font-mono); letter-spacing: 0.12em; }
+    .di-note { position: absolute; top: 930px; width: 420px; text-align: center; font: 800 40px var(--font-display); letter-spacing: -0.015em; }
+    #di-n1 { left: 290px; color: var(--ondulada); }
+    #di-n2 { left: 750px; color: var(--ink-soft); }
+    #di-n3 { left: 1210px; color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="distribucion" data-width="1920" data-height="1080">
+    <div id="di-wrap">
+      <div id="di-cite">Stöggl y Sperlich <span id="di-year">· 2015</span></div>
+      <div id="di-who">LO QUE SUELEN HACER LOS <b>ATLETAS DE RESISTENCIA BIEN ENTRENADOS Y DE ÉLITE</b></div>
+      <svg id="di-chart" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="di-base" x1="260" y1="860" x2="1660" y2="860" stroke="#868b98" stroke-width="3" />
+        <!-- 100 % = 500 px. Rangos: tramo sólido hasta el mínimo, tramo claro hasta el máximo -->
+        <rect id="di-lit" x="380" y="860" width="220" height="0" fill="#e8dcc2" />
+        <rect id="di-lit-r" x="380" y="485" width="220" height="0" fill="#e8dcc2" opacity="0.4" />
+        <rect id="di-mit" x="840" y="860" width="220" height="0" fill="#a9adb8" opacity="0.4" />
+        <rect id="di-hit" x="1300" y="860" width="220" height="0" fill="#cc1f36" />
+        <rect id="di-hit-r" x="1300" y="785" width="220" height="0" fill="#cc1f36" opacity="0.4" />
+        <g id="di-g1"><text class="di-pct" x="490" y="440" text-anchor="middle" fill="#e8dcc2">75–80 %</text>
+          <text class="di-zone" x="490" y="905" text-anchor="middle" fill="#e8dcc2">BAJA · LIT</text></g>
+        <g id="di-g2"><text class="di-pct" x="950" y="820" text-anchor="middle" fill="#a9adb8">0–5 %</text>
+          <text class="di-zone" x="950" y="905" text-anchor="middle" fill="#a9adb8">UMBRAL · MIT</text></g>
+        <g id="di-g3"><text class="di-pct" x="1410" y="730" text-anchor="middle" fill="#cc1f36">15–20 %</text>
+          <text class="di-zone" x="1410" y="905" text-anchor="middle" fill="#cc1f36">ALTA · HIT</text></g>
+        <text id="di-vol" class="di-zone" x="260" y="300" fill="#868b98">% DEL VOLUMEN</text>
+      </svg>
+      <div class="di-note" id="di-n1">Mucho fácil</div>
+      <div class="di-note" id="di-n2">Casi nada de medio</div>
+      <div class="di-note" id="di-n3">Algo de muy duro</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.distribucion;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#di-cite", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.stoggl - 0.05);
+      tl.fromTo("#di-year", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.anio - 0.05);
+      tl.fromTo("#di-who", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.atletas - 0.1);
+      tl.fromTo(["#di-base", "#di-vol"], { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.elite);
+      tl.fromTo("#di-lit", { attr: { y: 860, height: 0 } }, { attr: { y: 485, height: 375 }, duration: 1.0, ease: "power2.out" }, C.lit - 0.1);
+      tl.fromTo("#di-lit-r", { attr: { y: 485, height: 0 } }, { attr: { y: 460, height: 25 }, duration: 0.4, ease: "power2.out" }, C.lit + 0.9);
+      tl.fromTo("#di-g1", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.lit + 0.3);
+      tl.fromTo("#di-mit", { attr: { y: 860, height: 0 } }, { attr: { y: 835, height: 25 }, duration: 0.5, ease: "power2.out" }, C.mit - 0.05);
+      tl.fromTo("#di-g2", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.mit + 0.1);
+      tl.fromTo("#di-hit", { attr: { y: 860, height: 0 } }, { attr: { y: 785, height: 75 }, duration: 0.7, ease: "power2.out" }, C.hit - 0.1);
+      tl.fromTo("#di-hit-r", { attr: { y: 785, height: 0 } }, { attr: { y: 760, height: 25 }, duration: 0.4, ease: "power2.out" }, C.hit + 0.6);
+      tl.fromTo("#di-g3", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.hit + 0.2);
+      tl.fromTo("#di-g1 .di-zone", { scale: 1 }, { scale: 1.15, duration: 0.3, yoyo: true, repeat: 1, transformOrigin: "50% 50%" }, C.baja);
+      tl.fromTo("#di-g2 .di-zone", { scale: 1 }, { scale: 1.15, duration: 0.3, yoyo: true, repeat: 1, transformOrigin: "50% 50%" }, C.umbral - 0.1);
+      tl.fromTo("#di-n1", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.mucho - 0.05);
+      tl.fromTo("#di-n3", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.duro - 0.3);
+      tl.fromTo("#di-n2", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.nada - 0.2);
+      tl.to("#di-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["distribucion"] = tl;
+    })();
+  </script>
+</template>

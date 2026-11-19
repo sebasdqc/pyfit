@@ -1,0 +1,61 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #mat-wrap { position: absolute; inset: 0; }
+    #mat-a { position: absolute; inset: 0; }
+    #mat-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #mat-q { position: absolute; left: 160px; top: 160px; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #mat-q .no { color: var(--lineal); }
+    #mat-card { position: absolute; left: 160px; right: 160px; top: 420px; padding: 44px 52px; border: 3px solid var(--ink-soft);
+      border-radius: 14px; background: var(--ground-2); }
+    #mat-card .c { font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 26px; }
+    #mat-cmp { display: flex; align-items: center; gap: 40px; font: 900 84px var(--font-display); letter-spacing: -0.03em; }
+    #mat-cmp .a { color: var(--lineal); } #mat-cmp .b { color: var(--ondulada); }
+    #mat-ns { font: 700 34px var(--font-mono); letter-spacing: 0.08em; padding: 12px 22px; border: 3px solid var(--ink); border-radius: 999px; }
+    #mat-cap { margin-top: 24px; font: 700 40px var(--font-display); color: var(--ink-soft); }
+    #mat-b { position: absolute; inset: 0; }
+    .mat-line { position: absolute; left: 160px; right: 160px; font: 900 100px var(--font-display); letter-spacing: -0.04em; line-height: 1.05; }
+    #mat-m1 { top: 300px; }
+    #mat-m2 { top: 560px; color: var(--ondulada); }
+    #mat-mk { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="matiz" data-width="1920" data-height="1080">
+    <div id="mat-wrap">
+      <div id="mat-a">
+        <div id="mat-k">OJO</div>
+        <div id="mat-q">¿El clásico es malo? <span class="no" id="mat-no">No.</span></div>
+        <div id="mat-card">
+          <div class="c">HARRIES ET AL. · 2015 · FUERZA</div>
+          <div id="mat-cmp"><span class="a" id="mat-ca">Lineal</span><span id="mat-ns">n.s.</span><span class="b" id="mat-cb">Ondulada</span></div>
+          <div id="mat-cap">Sin diferencias significativas</div>
+        </div>
+      </div>
+      <div id="mat-b">
+        <div id="mat-mk">EL MENSAJE</div>
+        <div class="mat-line" id="mat-m1">No es la única opción.</div>
+        <div class="mat-line" id="mat-m2">La elección depende del contexto.</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.matiz;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#mat-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#mat-q", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.8);
+      tl.fromTo("#mat-no", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.malo - 0.05);
+      tl.fromTo("#mat-card", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.fuerza - 0.1);
+      tl.fromTo("#mat-ca", { opacity: 0.25 }, { opacity: 1, duration: 0.4 }, C.lineal - 0.1);
+      tl.fromTo("#mat-cb", { opacity: 0.25 }, { opacity: 1, duration: 0.4 }, C.ondulada - 0.1);
+      tl.fromTo("#mat-card .c", { opacity: 0.3 }, { opacity: 1, duration: 0.4 }, C.harries - 0.1);
+      tl.fromTo("#mat-ns", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.significativas - 0.4);
+      tl.fromTo("#mat-cap", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.significativas - 0.2);
+      tl.to("#mat-a", { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, C.mensaje - 0.5);
+      tl.fromTo("#mat-mk", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.mensaje - 0.1);
+      tl.fromTo("#mat-m1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.unica - 1.2);
+      tl.fromTo("#mat-m2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.eleccion - 0.3);
+      tl.to("#mat-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["matiz"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,98 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #intro-kicker {
+      position: absolute; left: 160px; top: 110px;
+      font: 500 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint);
+    }
+    #intro-kicker b { color: var(--lineal); font-weight: 700; }
+    .intro-panel { position: absolute; top: 250px; width: 740px; height: 480px; }
+    #intro-pa { left: 160px; }
+    #intro-pb { left: 1020px; }
+    .intro-who {
+      font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft);
+      margin-bottom: 18px;
+    }
+    .intro-name { font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    #intro-pa .intro-name { color: var(--lineal); }
+    #intro-pb .intro-name { color: var(--ondulada); }
+    .intro-plot { position: absolute; left: 0; top: 215px; overflow: visible; }
+    .intro-axis { stroke: var(--ink-faint); stroke-width: 2; fill: none; }
+    .intro-axis-label { font: 500 28px var(--font-mono); letter-spacing: 0.1em; fill: var(--ink-faint); }
+    #intro-q {
+      position: absolute; left: 0; right: 0; bottom: 120px; text-align: center;
+      font: 900 96px var(--font-display); letter-spacing: -0.035em; color: var(--ink);
+    }
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <div id="intro-wrap" style="position:absolute;inset:0">
+    <div id="intro-kicker">FUNDAMENTOS DE PERIODIZACIÓN · <b>MÓDULO 2</b> · LECCIÓN 2</div>
+
+    <div class="intro-panel" id="intro-pa">
+      <div class="intro-who" id="intro-wa">ATLETA A</div>
+      <div class="intro-name" id="intro-na">Lineal</div>
+      <svg class="intro-plot" width="700" height="320" viewBox="0 0 700 320">
+        <path class="intro-axis" id="intro-ax-a" d="M0 0 V300 H680" />
+        <text class="intro-axis-label" x="0" y="-14">INTENSIDAD</text>
+        <text class="intro-axis-label" x="680" y="326" text-anchor="end">SEMANAS →</text>
+        <path id="intro-line-a" d="" fill="none" stroke="#cc1f36" stroke-width="7" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <div class="intro-panel" id="intro-pb">
+      <div class="intro-who" id="intro-wb">ATLETA B</div>
+      <div class="intro-name" id="intro-nb">Ondulada</div>
+      <svg class="intro-plot" width="700" height="320" viewBox="0 0 700 320">
+        <path class="intro-axis" id="intro-ax-b" d="M0 0 V300 H680" />
+        <text class="intro-axis-label" x="0" y="-14">INTENSIDAD</text>
+        <text class="intro-axis-label" x="680" y="326" text-anchor="end">SEMANAS →</text>
+        <path id="intro-line-b" d="" fill="none" stroke="#e8dcc2" stroke-width="7" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <div id="intro-q">¿Cuál gana más fuerza?</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.intro;
+      // Forma pedagógica del modelo (no son datos): 12 semanas.
+      var W = 680 / 12;
+      function y(v) { return 300 - v * 270; }
+      function steps(vals) {
+        var d = "M0 " + y(vals[0]);
+        for (var i = 0; i < vals.length; i++) {
+          d += " L" + (i * W) + " " + y(vals[i]) + " L" + ((i + 1) * W) + " " + y(vals[i]);
+        }
+        return d;
+      }
+      var lineal = [0.25, 0.25, 0.25, 0.45, 0.45, 0.45, 0.65, 0.65, 0.65, 0.88, 0.88, 0.88];
+      var ondulada = [0.35, 0.8, 0.55, 0.35, 0.8, 0.55, 0.35, 0.8, 0.55, 0.35, 0.8, 0.55];
+      var la = document.getElementById("intro-line-a");
+      var lb = document.getElementById("intro-line-b");
+      la.setAttribute("d", steps(lineal));
+      lb.setAttribute("d", steps(ondulada));
+      var lenA = la.getTotalLength();
+      var lenB = lb.getTotalLength();
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#intro-kicker", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.fromTo(["#intro-wa", "#intro-wb"], { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.5, ease: "power3.out" }, 0.4);
+      tl.fromTo(["#intro-ax-a", "#intro-ax-b"], { opacity: 0, attr: { "stroke-dasharray": "1000", "stroke-dashoffset": "1000" } }, { opacity: 1, attr: { "stroke-dashoffset": "0" }, duration: 1.6, stagger: 0.3, ease: "power1.inOut" }, 1.4);
+      tl.fromTo(".intro-axis-label", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 2.6);
+      tl.to("#intro-wa", { color: "#cc1f36", duration: 0.3 }, C.uno);
+      tl.to("#intro-wb", { color: "#e8dcc2", duration: 0.3 }, C.ondulada - 0.6);
+
+      tl.fromTo("#intro-na", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.lineal - 0.05);
+      tl.fromTo(la, { strokeDasharray: lenA, strokeDashoffset: lenA }, { strokeDashoffset: 0, duration: 1.8, ease: "power1.inOut" }, C.lineal);
+
+      tl.fromTo("#intro-nb", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.ondulada - 0.05);
+      tl.fromTo(lb, { strokeDasharray: lenB, strokeDashoffset: lenB }, { strokeDashoffset: 0, duration: 1.8, ease: "power1.inOut" }, C.ondulada);
+
+      tl.fromTo("#intro-q", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, C.cual - 0.55);
+      tl.to(["#intro-pa", "#intro-pb", "#intro-kicker"], { opacity: 0.35, duration: 0.6 }, C.cual - 0.5);
+      tl.to("#intro-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["intro"] = tl;
+    })();
+  </script>
+</template>

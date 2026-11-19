@@ -1,0 +1,85 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #wup-wrap { position: absolute; inset: 0; }
+    #wup-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--ondulada); }
+    #wup-t { position: absolute; left: 160px; top: 160px; font: 900 88px var(--font-display); letter-spacing: -0.035em; }
+    #wup-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .wup-wk { font: 700 28px var(--font-mono); letter-spacing: 0.1em; fill: #868b98; }
+    .wup-note { font: 700 34px var(--font-display); fill: #f4f2ee; }
+    #wup-tag { position: absolute; right: 160px; bottom: 70px; font: 500 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="wup" data-width="1920" data-height="1080">
+    <div id="wup-wrap">
+      <div id="wup-k">ONDULADA SEMANAL · WUP</div>
+      <div id="wup-t">Cada semana, un énfasis</div>
+      <svg id="wup-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <g id="wup-blocks"></g>
+        <g id="wup-same">
+          <path id="wup-same-p" d="" fill="none" stroke="#f4f2ee" stroke-width="3" />
+          <text id="wup-same-t" class="wup-note" text-anchor="middle">días parecidos</text>
+        </g>
+        <path id="wup-trend" d="" fill="none" stroke="#e8dcc2" stroke-width="4" stroke-dasharray="10 10" />
+        <text id="wup-trend-t" class="wup-note" x="1760" y="345" text-anchor="end">cambia el énfasis →</text>
+      </svg>
+      <div id="wup-tag">EJEMPLO ILUSTRATIVO · ALTURAS ESQUEMÁTICAS</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.wup;
+      var NS = "http://www.w3.org/2000/svg";
+      var X0 = 160, BW = 380, GAP = 26, BASE = 860;
+      var heights = [170, 300, 220, 360];
+      var blocks = [], bars = [], tops = [];
+      var g = document.getElementById("wup-blocks");
+      heights.forEach(function (h, w) {
+        var bx = X0 + w * (BW + GAP);
+        var blk = document.createElementNS(NS, "g");
+        var r = document.createElementNS(NS, "rect");
+        r.setAttribute("x", bx); r.setAttribute("y", 440); r.setAttribute("width", BW); r.setAttribute("height", 480);
+        r.setAttribute("rx", 10); r.setAttribute("fill", "#161922"); r.setAttribute("stroke", "#2a2e3a"); r.setAttribute("stroke-width", 2);
+        var t = document.createElementNS(NS, "text");
+        t.setAttribute("x", bx + BW / 2); t.setAttribute("y", 905); t.setAttribute("text-anchor", "middle");
+        t.setAttribute("class", "wup-wk"); t.textContent = "SEMANA " + (w + 1);
+        blk.appendChild(r); blk.appendChild(t); g.appendChild(blk); blocks.push(blk);
+        var wb = [];
+        for (var d = 0; d < 3; d++) {
+          var b = document.createElementNS(NS, "rect");
+          var x = bx + 40 + d * 110;
+          b.setAttribute("x", x); b.setAttribute("y", BASE - h); b.setAttribute("width", 80); b.setAttribute("height", h);
+          b.setAttribute("fill", "#e8dcc2");
+          g.appendChild(b); wb.push(b);
+        }
+        bars.push(wb);
+        tops.push([bx + BW / 2, BASE - h - 30]);
+      });
+      // Corchete sobre la semana 1
+      var s1x = X0, s1top = BASE - heights[0] - 30;
+      document.getElementById("wup-same-p").setAttribute("d", "M" + (s1x + 40) + " " + (s1top + 12) + " V" + s1top + " H" + (s1x + 340) + " V" + (s1top + 12));
+      var st = document.getElementById("wup-same-t"); st.setAttribute("x", s1x + BW / 2); st.setAttribute("y", s1top - 18);
+      var tr = "";
+      tops.forEach(function (p, i) { tr += (i ? " L" : "M") + p[0] + " " + (p[1] - 60); });
+      var trend = document.getElementById("wup-trend");
+      trend.setAttribute("d", tr);
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#wup-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.05);
+      tl.fromTo("#wup-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.semanal);
+      tl.fromTo(blocks, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: "power3.out" }, C.semanal + 0.4);
+      // Semana 1 primero: tres días iguales
+      tl.fromTo(bars[0], { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: 0.45, stagger: 0.12, ease: "power2.out" }, C.semanal + 1.2);
+      tl.fromTo("#wup-same", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.parecen - 0.2);
+      // Las demás semanas, cuando se nombra el cambio de énfasis
+      [1, 2, 3].forEach(function (w, k) {
+        tl.fromTo(bars[w], { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: 0.45, stagger: 0.08, ease: "power2.out" }, C.enfasis - 0.4 + k * 0.35);
+      });
+      tl.to("#wup-same", { opacity: 0, duration: 0.3 }, C.enfasis + 0.6);
+      tl.fromTo("#wup-trend", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.siguiente - 0.4);
+      tl.fromTo("#wup-trend-t", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.enfasis + 0.2);
+      tl.fromTo("#wup-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.semanal + 1.2);
+      tl.to("#wup-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["wup"] = tl;
+    })();
+  </script>
+</template>

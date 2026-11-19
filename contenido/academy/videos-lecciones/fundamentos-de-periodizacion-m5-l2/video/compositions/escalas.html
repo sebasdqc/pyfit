@@ -1,0 +1,95 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #esc-wrap { position: absolute; inset: 0; }
+    #esc-kicker { position: absolute; left: 160px; top: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.12em; color: var(--ink-faint); }
+    #esc-kicker b { color: var(--lineal); font-weight: 700; }
+    #esc-title { position: absolute; left: 160px; top: 150px; font: 900 88px var(--font-display);
+      letter-spacing: -0.035em; color: var(--ink); }
+    #esc-title span { color: var(--lineal); }
+
+    #esc-bar { position: absolute; left: 160px; top: 380px; width: 1600px; height: 84px;
+      background: var(--ground-2); border: 3px solid var(--ink-soft); border-radius: 10px; transform-origin: 0 50%; }
+    .esc-div { position: absolute; top: 368px; width: 14px; height: 108px; background: var(--ground); transform-origin: 50% 50%; }
+    #esc-d1 { left: 553px; } #esc-d2 { left: 953px; } #esc-d3 { left: 1353px; }
+    #esc-m1hl { position: absolute; left: 160px; top: 380px; width: 393px; height: 84px; border-radius: 10px 0 0 10px;
+      background: var(--lineal); opacity: 0; }
+
+    .esc-lbl { position: absolute; font: 700 28px var(--font-mono); letter-spacing: 0.12em; }
+    .esc-note { position: absolute; font: 500 34px var(--font-display); color: var(--ink-soft); }
+    #esc-macro { left: 160px; top: 320px; color: var(--ink); }
+    #esc-macro-n { right: 160px; top: 318px; text-align: right; }
+    #esc-macro-n b { color: var(--ink); font-weight: 700; }
+    #esc-meso { left: 160px; top: 500px; color: var(--ink); }
+    #esc-meso-n { left: 520px; top: 496px; }
+    #esc-meso-n2 { left: 520px; top: 542px; }
+
+    #esc-zoom { position: absolute; left: 0; top: 0; overflow: visible; }
+    #esc-cells { position: absolute; left: 160px; top: 690px; display: flex; gap: 14px; align-items: center; }
+    .esc-cell { width: 170px; height: 120px; border: 3px solid var(--ink-soft); border-radius: 8px; background: var(--ground-2);
+      display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;
+      font: 500 28px var(--font-mono); color: var(--ink-faint); letter-spacing: 0.08em; }
+    #esc-more { font: 900 64px var(--font-display); color: var(--ink-faint); padding-left: 10px; }
+    #esc-micro { left: 160px; top: 850px; color: var(--ink); }
+    #esc-micro-n { left: 520px; top: 846px; }
+  </style>
+  <div id="root" data-composition-id="escalas" data-width="1920" data-height="1080">
+    <div id="esc-wrap">
+      <div id="esc-kicker">FUNDAMENTOS DE PERIODIZACIÓN · <b>MÓDULO 5</b> · LECCIÓN 2</div>
+      <div id="esc-title">Una temporada, <span id="esc-tres">tres escalas</span></div>
+
+      <div class="esc-lbl" id="esc-macro">MACROCICLO</div>
+      <div class="esc-note" id="esc-macro-n">La temporada completa · <b>típicamente un año</b></div>
+      <div id="esc-bar"></div>
+      <div id="esc-m1hl"></div>
+      <div class="esc-div" id="esc-d1"></div>
+      <div class="esc-div" id="esc-d2"></div>
+      <div class="esc-div" id="esc-d3"></div>
+
+      <div class="esc-lbl" id="esc-meso">MESOCICLOS</div>
+      <div class="esc-note" id="esc-meso-n">Bloques de varias semanas</div>
+      <div class="esc-note" id="esc-meso-n2">enfocados en pocas capacidades</div>
+
+      <svg id="esc-zoom" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="esc-zl" d="M160 470 L160 680 M553 470 L1250 680" fill="none" stroke="#cc1f36" stroke-width="3" stroke-dasharray="10 8" />
+      </svg>
+      <div id="esc-cells">
+        <div class="esc-cell">SEMANA</div><div class="esc-cell">SEMANA</div><div class="esc-cell">SEMANA</div>
+        <div class="esc-cell">SEMANA</div><div class="esc-cell">SEMANA</div><div class="esc-cell">SEMANA</div>
+        <div id="esc-more">…</div>
+      </div>
+      <div class="esc-lbl" id="esc-micro">MICROCICLOS</div>
+      <div class="esc-note" id="esc-micro-n">Suelen ser una semana</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.escalas;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#esc-kicker", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.fromTo("#esc-title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.4);
+      tl.fromTo("#esc-tres", { color: "#f4f2ee" }, { color: "#cc1f36", duration: 0.4 }, C.tres - 0.05);
+
+      tl.fromTo("#esc-bar", { scaleX: 0, opacity: 1 }, { scaleX: 1, opacity: 1, duration: 1.1, ease: "power2.inOut" }, C.macrociclo - 0.1);
+      tl.fromTo("#esc-macro", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.macrociclo - 0.05);
+      tl.fromTo("#esc-macro-n", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.macrociclo + 1.0);
+      tl.fromTo("#esc-macro-n b", { color: "#a9adb8" }, { color: "#f4f2ee", duration: 0.3 }, C.anio - 0.6);
+
+      tl.fromTo([".esc-div"], { scaleY: 0 }, { scaleY: 1, duration: 0.4, stagger: 0.15, ease: "power2.out" }, C.mesociclos - 0.1);
+      tl.fromTo("#esc-meso", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.mesociclos - 0.05);
+      tl.fromTo("#esc-meso-n", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.varias - 0.5);
+      tl.fromTo("#esc-meso-n2", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.capacidades - 0.6);
+
+      tl.fromTo("#esc-m1hl", { opacity: 0 }, { opacity: 0.85, duration: 0.4 }, C.microciclos - 1.2);
+      tl.fromTo("#esc-zl", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.microciclos - 0.9);
+      tl.fromTo(".esc-cell", { opacity: 0, y: 20, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.35, stagger: 0.08, ease: "back.out(1.4)" }, C.microciclos - 0.6);
+      tl.fromTo("#esc-more", { opacity: 0 }, { opacity: 1, duration: 0.3 }, C.microciclos);
+      tl.fromTo("#esc-micro", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.microciclos - 0.05);
+      tl.fromTo("#esc-micro-n", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.microciclos + 0.6);
+
+      tl.to("#esc-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["escalas"] = tl;
+    })();
+  </script>
+</template>

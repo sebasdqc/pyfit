@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/cues.js"></script>
+    <style>
+      :root {
+        --ground: #0e1016;
+        --ground-2: #161922;
+        --ink: #f4f2ee;
+        --ink-soft: #a9adb8;
+        --ink-faint: #868b98;
+        --lineal: #cc1f36;
+        --ondulada: #e8dcc2;
+        --font-display: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--font-display);
+      }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="90.56"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="intro" class="clip" data-composition-id="intro" data-composition-src="compositions/intro.html" data-start="0.0" data-duration="10.08" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="evidencia" class="clip" data-composition-id="evidencia" data-composition-src="compositions/evidencia.html" data-start="10.08" data-duration="21.88" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="resultado" class="clip" data-composition-id="resultado" data-composition-src="compositions/resultado.html" data-start="31.96" data-duration="19.36" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="lectura" class="clip" data-composition-id="lectura" data-composition-src="compositions/lectura.html" data-start="51.32" data-duration="14.76" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="criterios" class="clip" data-composition-id="criterios" data-composition-src="compositions/criterios.html" data-start="66.08" data-duration="10.68" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="cierre" class="clip" data-composition-id="cierre" data-composition-src="compositions/cierre.html" data-start="76.76" data-duration="13.8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <audio id="voz" src="assets/voz/voz-master.wav" data-start="0.4" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

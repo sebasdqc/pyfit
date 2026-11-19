@@ -1,0 +1,57 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #hil-wrap { position: absolute; inset: 0; }
+    #hil-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); }
+    #hil-t { position: absolute; left: 160px; top: 160px; font: 900 80px var(--font-display); letter-spacing: -0.03em; }
+    .hil-seg { position: absolute; top: 360px; height: 40px; border-radius: 6px; }
+    #hil-s1 { left: 160px; width: 393px; background: var(--lineal); }
+    #hil-s2 { left: 567px; width: 393px; background: var(--ondulada); }
+    #hil-s3 { left: 974px; width: 393px; background: var(--ground-2); border: 3px solid var(--ink-soft); }
+    #hil-s4 { left: 1381px; width: 393px; background: var(--ground-2); border: 3px solid var(--ink-soft); overflow: hidden; }
+    #hil-s4 i { position: absolute; right: 0; top: 0; bottom: 0; width: 72%; background: var(--polarizada); }
+    #hil-line { position: absolute; left: 0; top: 0; overflow: visible; }
+    #hil-sub { position: absolute; left: 160px; top: 520px; font: 700 52px var(--font-display); color: var(--ink-soft); }
+    #hil-row { position: absolute; left: 160px; right: 160px; top: 640px; display: flex; align-items: center; gap: 48px; }
+    .hil-v { font: 900 96px var(--font-display); letter-spacing: -0.035em; line-height: 1; }
+    .hil-v small { display: block; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); margin-bottom: 14px; }
+    #hil-plus { font: 900 96px var(--font-display); color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="hilo" data-width="1920" data-height="1080">
+    <div id="hil-wrap">
+      <div id="hil-k">EL HILO CONDUCTOR</div>
+      <div id="hil-t">El mismo en todo el calendario</div>
+      <div class="hil-seg" id="hil-s1"></div>
+      <div class="hil-seg" id="hil-s2"></div>
+      <div class="hil-seg" id="hil-s3"></div>
+      <div class="hil-seg" id="hil-s4"><i></i></div>
+      <svg id="hil-line" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="hil-thread" d="M140 380 C 400 300, 700 460, 960 380 S 1500 300, 1790 380" fill="none" stroke="#f4f2ee" stroke-width="5" stroke-linecap="round" />
+      </svg>
+      <div id="hil-sub">Cada modelo se elige según</div>
+      <div id="hil-row">
+        <div class="hil-v" id="hil-v1"><small>1</small>El nivel del atleta</div>
+        <div id="hil-plus">+</div>
+        <div class="hil-v" id="hil-v2"><small>2</small>La duración de la fase</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.hilo;
+      var tl = gsap.timeline({ paused: true });
+      var th = document.getElementById("hil-thread");
+      var len = th.getTotalLength();
+      tl.fromTo(".hil-seg", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.06 }, 0.05);
+      tl.fromTo("#hil-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo(th, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.4, ease: "power1.inOut" }, 0.3);
+      tl.fromTo("#hil-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.calendario - 1.0);
+      tl.fromTo("#hil-sub", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.nivel - 2.2);
+      tl.fromTo("#hil-v1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.nivel - 0.2);
+      tl.fromTo("#hil-plus", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, C.duracion - 0.6);
+      tl.fromTo("#hil-v2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.duracion - 0.2);
+      tl.to("#hil-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["hilo"] = tl;
+    })();
+  </script>
+</template>

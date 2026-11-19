@@ -1,0 +1,1106 @@
+[
+  {
+    "text": "¿Por",
+    "start": 0.06,
+    "end": 0.22,
+    "id": "w0"
+  },
+  {
+    "text": "qué",
+    "start": 0.28,
+    "end": 0.4,
+    "id": "w1"
+  },
+  {
+    "text": "seguimos",
+    "start": 0.43,
+    "end": 0.9,
+    "id": "w2"
+  },
+  {
+    "text": "usando",
+    "start": 0.9,
+    "end": 1.26,
+    "id": "w3"
+  },
+  {
+    "text": "un",
+    "start": 1.26,
+    "end": 1.38,
+    "id": "w4"
+  },
+  {
+    "text": "modelo",
+    "start": 1.38,
+    "end": 1.76,
+    "id": "w5"
+  },
+  {
+    "text": "de",
+    "start": 1.76,
+    "end": 1.85,
+    "id": "w6"
+  },
+  {
+    "text": "entrenamiento",
+    "start": 1.86,
+    "end": 2.63,
+    "id": "w7"
+  },
+  {
+    "text": "que",
+    "start": 2.64,
+    "end": 2.8,
+    "id": "w8"
+  },
+  {
+    "text": "nació",
+    "start": 2.8,
+    "end": 3.39,
+    "id": "w9"
+  },
+  {
+    "text": "hace",
+    "start": 3.84,
+    "end": 3.97,
+    "id": "w10"
+  },
+  {
+    "text": "más",
+    "start": 3.97,
+    "end": 4.26,
+    "id": "w11"
+  },
+  {
+    "text": "de",
+    "start": 4.26,
+    "end": 4.46,
+    "id": "w12"
+  },
+  {
+    "text": "medio",
+    "start": 4.46,
+    "end": 5,
+    "id": "w13"
+  },
+  {
+    "text": "siglo?",
+    "start": 5,
+    "end": 5.88,
+    "id": "w14"
+  },
+  {
+    "text": "No",
+    "start": 5.99,
+    "end": 6.04,
+    "id": "w15"
+  },
+  {
+    "text": "es",
+    "start": 6.04,
+    "end": 6.2,
+    "id": "w16"
+  },
+  {
+    "text": "una",
+    "start": 6.2,
+    "end": 6.44,
+    "id": "w17"
+  },
+  {
+    "text": "pregunta",
+    "start": 6.44,
+    "end": 7.07,
+    "id": "w18"
+  },
+  {
+    "text": "para",
+    "start": 7.07,
+    "end": 7.39,
+    "id": "w19"
+  },
+  {
+    "text": "desacreditarlo,",
+    "start": 7.39,
+    "end": 8.65,
+    "id": "w20"
+  },
+  {
+    "text": "es",
+    "start": 8.66,
+    "end": 8.8,
+    "id": "w21"
+  },
+  {
+    "text": "el",
+    "start": 8.8,
+    "end": 8.94,
+    "id": "w22"
+  },
+  {
+    "text": "punto",
+    "start": 8.94,
+    "end": 9.25,
+    "id": "w23"
+  },
+  {
+    "text": "de",
+    "start": 9.25,
+    "end": 9.37,
+    "id": "w24"
+  },
+  {
+    "text": "partida",
+    "start": 9.72,
+    "end": 10,
+    "id": "w25"
+  },
+  {
+    "text": "honesto",
+    "start": 10,
+    "end": 10.64,
+    "id": "w26"
+  },
+  {
+    "text": "de",
+    "start": 10.64,
+    "end": 10.76,
+    "id": "w27"
+  },
+  {
+    "text": "la",
+    "start": 10.76,
+    "end": 10.88,
+    "id": "w28"
+  },
+  {
+    "text": "ciencia",
+    "start": 10.88,
+    "end": 11.12,
+    "id": "w29"
+  },
+  {
+    "text": "del",
+    "start": 11.12,
+    "end": 11.44,
+    "id": "w30"
+  },
+  {
+    "text": "entrenamiento.",
+    "start": 11.9,
+    "end": 12.83,
+    "id": "w31"
+  },
+  {
+    "text": "El",
+    "start": 12.95,
+    "end": 12.99,
+    "id": "w32"
+  },
+  {
+    "text": "modelo",
+    "start": 12.99,
+    "end": 13.46,
+    "id": "w33"
+  },
+  {
+    "text": "tradicional",
+    "start": 13.46,
+    "end": 14.31,
+    "id": "w34"
+  },
+  {
+    "text": "de",
+    "start": 14.33,
+    "end": 14.46,
+    "id": "w35"
+  },
+  {
+    "text": "periodización",
+    "start": 14.46,
+    "end": 15.52,
+    "id": "w36"
+  },
+  {
+    "text": "se",
+    "start": 15.52,
+    "end": 15.7,
+    "id": "w37"
+  },
+  {
+    "text": "construyó",
+    "start": 15.7,
+    "end": 16.55,
+    "id": "w38"
+  },
+  {
+    "text": "sobre",
+    "start": 16.68,
+    "end": 17.02,
+    "id": "w39"
+  },
+  {
+    "text": "la",
+    "start": 17.02,
+    "end": 17.2,
+    "id": "w40"
+  },
+  {
+    "text": "ciencia",
+    "start": 17.21,
+    "end": 17.86,
+    "id": "w41"
+  },
+  {
+    "text": "deportiva",
+    "start": 17.86,
+    "end": 18.7,
+    "id": "w42"
+  },
+  {
+    "text": "soviética.",
+    "start": 18.86,
+    "end": 19.6,
+    "id": "w43"
+  },
+  {
+    "text": "En",
+    "start": 19.71,
+    "end": 19.77,
+    "id": "w44"
+  },
+  {
+    "text": "2010",
+    "start": 19.77,
+    "end": 20.83,
+    "id": "w45"
+  },
+  {
+    "text": "Ysurin",
+    "start": 20.83,
+    "end": 21.34,
+    "id": "w46"
+  },
+  {
+    "text": "lo",
+    "start": 21.34,
+    "end": 21.51,
+    "id": "w47"
+  },
+  {
+    "text": "situaba",
+    "start": 21.51,
+    "end": 22.12,
+    "id": "w48"
+  },
+  {
+    "text": "unas",
+    "start": 22.12,
+    "end": 22.46,
+    "id": "w49"
+  },
+  {
+    "text": "cinco",
+    "start": 22.47,
+    "end": 22.91,
+    "id": "w50"
+  },
+  {
+    "text": "décadas",
+    "start": 22.91,
+    "end": 23.52,
+    "id": "w51"
+  },
+  {
+    "text": "atrás.",
+    "start": 23.52,
+    "end": 24.04,
+    "id": "w52"
+  },
+  {
+    "text": "Desde",
+    "start": 24.15,
+    "end": 24.44,
+    "id": "w53"
+  },
+  {
+    "text": "entonces",
+    "start": 24.47,
+    "end": 25.1,
+    "id": "w54"
+  },
+  {
+    "text": "el",
+    "start": 25.1,
+    "end": 25.25,
+    "id": "w55"
+  },
+  {
+    "text": "deporte",
+    "start": 25.25,
+    "end": 25.82,
+    "id": "w56"
+  },
+  {
+    "text": "de",
+    "start": 25.82,
+    "end": 25.98,
+    "id": "w57"
+  },
+  {
+    "text": "alto",
+    "start": 25.98,
+    "end": 26.3,
+    "id": "w58"
+  },
+  {
+    "text": "rendimiento",
+    "start": 26.3,
+    "end": 27.19,
+    "id": "w59"
+  },
+  {
+    "text": "cambió",
+    "start": 27.19,
+    "end": 27.68,
+    "id": "w60"
+  },
+  {
+    "text": "radicalmente.",
+    "start": 27.88,
+    "end": 28.72,
+    "id": "w61"
+  },
+  {
+    "text": "El",
+    "start": 28.83,
+    "end": 28.89,
+    "id": "w62"
+  },
+  {
+    "text": "modelo",
+    "start": 28.89,
+    "end": 29.41,
+    "id": "w63"
+  },
+  {
+    "text": "durante",
+    "start": 29.41,
+    "end": 30.02,
+    "id": "w64"
+  },
+  {
+    "text": "mucho",
+    "start": 30.02,
+    "end": 30.45,
+    "id": "w65"
+  },
+  {
+    "text": "tiempo",
+    "start": 30.45,
+    "end": 30.97,
+    "id": "w66"
+  },
+  {
+    "text": "casi",
+    "start": 30.97,
+    "end": 31.31,
+    "id": "w67"
+  },
+  {
+    "text": "no",
+    "start": 31.31,
+    "end": 31.49,
+    "id": "w68"
+  },
+  {
+    "text": "cambió.",
+    "start": 31.49,
+    "end": 32.13,
+    "id": "w69"
+  },
+  {
+    "text": "Ese",
+    "start": 32.4,
+    "end": 32.54,
+    "id": "w70"
+  },
+  {
+    "text": "desfase",
+    "start": 32.6,
+    "end": 33.14,
+    "id": "w71"
+  },
+  {
+    "text": "generó",
+    "start": 33.14,
+    "end": 33.64,
+    "id": "w72"
+  },
+  {
+    "text": "contradicciones.",
+    "start": 33.64,
+    "end": 35.19,
+    "id": "w73"
+  },
+  {
+    "text": "La",
+    "start": 35.31,
+    "end": 35.37,
+    "id": "w74"
+  },
+  {
+    "text": "principal,",
+    "start": 35.37,
+    "end": 36.31,
+    "id": "w75"
+  },
+  {
+    "text": "según",
+    "start": 36.31,
+    "end": 36.74,
+    "id": "w76"
+  },
+  {
+    "text": "Ysurin,",
+    "start": 36.74,
+    "end": 37.44,
+    "id": "w77"
+  },
+  {
+    "text": "intentar",
+    "start": 37.44,
+    "end": 38.02,
+    "id": "w78"
+  },
+  {
+    "text": "desarrollar",
+    "start": 38.02,
+    "end": 38.82,
+    "id": "w79"
+  },
+  {
+    "text": "demasiadas",
+    "start": 39.04,
+    "end": 39.55,
+    "id": "w80"
+  },
+  {
+    "text": "capacidades",
+    "start": 39.56,
+    "end": 40.37,
+    "id": "w81"
+  },
+  {
+    "text": "al",
+    "start": 40.37,
+    "end": 40.45,
+    "id": "w82"
+  },
+  {
+    "text": "mismo",
+    "start": 40.49,
+    "end": 40.88,
+    "id": "w83"
+  },
+  {
+    "text": "tiempo.",
+    "start": 41.22,
+    "end": 41.6,
+    "id": "w84"
+  },
+  {
+    "text": "De",
+    "start": 41.71,
+    "end": 41.75,
+    "id": "w85"
+  },
+  {
+    "text": "esas",
+    "start": 41.75,
+    "end": 42.06,
+    "id": "w86"
+  },
+  {
+    "text": "contradicciones",
+    "start": 42.06,
+    "end": 43.22,
+    "id": "w87"
+  },
+  {
+    "text": "nacieron",
+    "start": 43.22,
+    "end": 43.85,
+    "id": "w88"
+  },
+  {
+    "text": "modelos",
+    "start": 43.85,
+    "end": 44.39,
+    "id": "w89"
+  },
+  {
+    "text": "alternativos,",
+    "start": 44.39,
+    "end": 45.52,
+    "id": "w90"
+  },
+  {
+    "text": "la",
+    "start": 45.52,
+    "end": 45.62,
+    "id": "w91"
+  },
+  {
+    "text": "periodización",
+    "start": 45.64,
+    "end": 46.46,
+    "id": "w92"
+  },
+  {
+    "text": "en",
+    "start": 46.46,
+    "end": 46.58,
+    "id": "w93"
+  },
+  {
+    "text": "bloques,",
+    "start": 46.58,
+    "end": 47.2,
+    "id": "w94"
+  },
+  {
+    "text": "la",
+    "start": 47.2,
+    "end": 47.39,
+    "id": "w95"
+  },
+  {
+    "text": "ondulada",
+    "start": 47.58,
+    "end": 48.14,
+    "id": "w96"
+  },
+  {
+    "text": "y",
+    "start": 48.14,
+    "end": 48.22,
+    "id": "w97"
+  },
+  {
+    "text": "la",
+    "start": 48.23,
+    "end": 48.42,
+    "id": "w98"
+  },
+  {
+    "text": "polarizada.",
+    "start": 48.42,
+    "end": 49.67,
+    "id": "w99"
+  },
+  {
+    "text": "Ojo,",
+    "start": 49.76,
+    "end": 50.08,
+    "id": "w100"
+  },
+  {
+    "text": "eso",
+    "start": 50.08,
+    "end": 50.32,
+    "id": "w101"
+  },
+  {
+    "text": "no",
+    "start": 50.32,
+    "end": 50.48,
+    "id": "w102"
+  },
+  {
+    "text": "significa",
+    "start": 50.48,
+    "end": 51.2,
+    "id": "w103"
+  },
+  {
+    "text": "que",
+    "start": 51.2,
+    "end": 51.44,
+    "id": "w104"
+  },
+  {
+    "text": "el",
+    "start": 51.44,
+    "end": 51.6,
+    "id": "w105"
+  },
+  {
+    "text": "modelo",
+    "start": 51.6,
+    "end": 52.08,
+    "id": "w106"
+  },
+  {
+    "text": "clásico",
+    "start": 52.08,
+    "end": 52.63,
+    "id": "w107"
+  },
+  {
+    "text": "sea",
+    "start": 52.64,
+    "end": 52.88,
+    "id": "w108"
+  },
+  {
+    "text": "malo.",
+    "start": 52.88,
+    "end": 53.48,
+    "id": "w109"
+  },
+  {
+    "text": "En",
+    "start": 53.59,
+    "end": 53.63,
+    "id": "w110"
+  },
+  {
+    "text": "fuerza,",
+    "start": 53.63,
+    "end": 54.2,
+    "id": "w111"
+  },
+  {
+    "text": "por",
+    "start": 54.26,
+    "end": 54.47,
+    "id": "w112"
+  },
+  {
+    "text": "ejemplo,",
+    "start": 54.47,
+    "end": 55.15,
+    "id": "w113"
+  },
+  {
+    "text": "Harris",
+    "start": 55.15,
+    "end": 55.61,
+    "id": "w114"
+  },
+  {
+    "text": "y",
+    "start": 55.61,
+    "end": 55.68,
+    "id": "w115"
+  },
+  {
+    "text": "sus",
+    "start": 55.68,
+    "end": 55.91,
+    "id": "w116"
+  },
+  {
+    "text": "colegas",
+    "start": 55.91,
+    "end": 56.44,
+    "id": "w117"
+  },
+  {
+    "text": "no",
+    "start": 56.44,
+    "end": 56.59,
+    "id": "w118"
+  },
+  {
+    "text": "encontraron",
+    "start": 56.59,
+    "end": 57.43,
+    "id": "w119"
+  },
+  {
+    "text": "diferencias",
+    "start": 57.43,
+    "end": 58.26,
+    "id": "w120"
+  },
+  {
+    "text": "significativas",
+    "start": 58.26,
+    "end": 59.39,
+    "id": "w121"
+  },
+  {
+    "text": "entre",
+    "start": 59.5,
+    "end": 59.76,
+    "id": "w122"
+  },
+  {
+    "text": "la",
+    "start": 59.8,
+    "end": 59.96,
+    "id": "w123"
+  },
+  {
+    "text": "periodización",
+    "start": 59.96,
+    "end": 60.99,
+    "id": "w124"
+  },
+  {
+    "text": "lineal",
+    "start": 60.99,
+    "end": 61.48,
+    "id": "w125"
+  },
+  {
+    "text": "y",
+    "start": 61.48,
+    "end": 61.57,
+    "id": "w126"
+  },
+  {
+    "text": "la",
+    "start": 61.57,
+    "end": 61.73,
+    "id": "w127"
+  },
+  {
+    "text": "ondulada.",
+    "start": 61.73,
+    "end": 62.84,
+    "id": "w128"
+  },
+  {
+    "text": "El",
+    "start": 62.95,
+    "end": 62.99,
+    "id": "w129"
+  },
+  {
+    "text": "mensaje",
+    "start": 62.99,
+    "end": 63.52,
+    "id": "w130"
+  },
+  {
+    "text": "es",
+    "start": 63.52,
+    "end": 63.67,
+    "id": "w131"
+  },
+  {
+    "text": "otro,",
+    "start": 63.67,
+    "end": 64.12,
+    "id": "w132"
+  },
+  {
+    "text": "el",
+    "start": 64.12,
+    "end": 64.27,
+    "id": "w133"
+  },
+  {
+    "text": "modelo",
+    "start": 64.27,
+    "end": 64.73,
+    "id": "w134"
+  },
+  {
+    "text": "tradicional",
+    "start": 64.73,
+    "end": 65.55,
+    "id": "w135"
+  },
+  {
+    "text": "no",
+    "start": 65.6,
+    "end": 65.71,
+    "id": "w136"
+  },
+  {
+    "text": "es",
+    "start": 65.72,
+    "end": 65.87,
+    "id": "w137"
+  },
+  {
+    "text": "la",
+    "start": 65.87,
+    "end": 66.02,
+    "id": "w138"
+  },
+  {
+    "text": "única",
+    "start": 66.02,
+    "end": 66.24,
+    "id": "w139"
+  },
+  {
+    "text": "opción",
+    "start": 66.24,
+    "end": 66.92,
+    "id": "w140"
+  },
+  {
+    "text": "y",
+    "start": 66.92,
+    "end": 67,
+    "id": "w141"
+  },
+  {
+    "text": "la",
+    "start": 67,
+    "end": 67.16,
+    "id": "w142"
+  },
+  {
+    "text": "elección",
+    "start": 67.16,
+    "end": 67.78,
+    "id": "w143"
+  },
+  {
+    "text": "depende",
+    "start": 67.78,
+    "end": 68.08,
+    "id": "w144"
+  },
+  {
+    "text": "del",
+    "start": 68.08,
+    "end": 68.58,
+    "id": "w145"
+  },
+  {
+    "text": "contexto.",
+    "start": 68.86,
+    "end": 69.47,
+    "id": "w146"
+  },
+  {
+    "text": "En",
+    "start": 69.59,
+    "end": 69.67,
+    "id": "w147"
+  },
+  {
+    "text": "este",
+    "start": 69.67,
+    "end": 70.06,
+    "id": "w148"
+  },
+  {
+    "text": "curso",
+    "start": 70.06,
+    "end": 70.55,
+    "id": "w149"
+  },
+  {
+    "text": "va",
+    "start": 70.55,
+    "end": 70.74,
+    "id": "w150"
+  },
+  {
+    "text": "a",
+    "start": 70.74,
+    "end": 70.83,
+    "id": "w151"
+  },
+  {
+    "text": "saber",
+    "start": 70.83,
+    "end": 71.3,
+    "id": "w152"
+  },
+  {
+    "text": "el",
+    "start": 71.31,
+    "end": 71.51,
+    "id": "w153"
+  },
+  {
+    "text": "modelo",
+    "start": 71.51,
+    "end": 72.1,
+    "id": "w154"
+  },
+  {
+    "text": "clásico,",
+    "start": 72.1,
+    "end": 72.88,
+    "id": "w155"
+  },
+  {
+    "text": "las",
+    "start": 72.96,
+    "end": 72.98,
+    "id": "w156"
+  },
+  {
+    "text": "alternativas",
+    "start": 73.32,
+    "end": 74.52,
+    "id": "w157"
+  },
+  {
+    "text": "y",
+    "start": 74.52,
+    "end": 74.61,
+    "id": "w158"
+  },
+  {
+    "text": "sobre",
+    "start": 74.61,
+    "end": 74.73,
+    "id": "w159"
+  },
+  {
+    "text": "todo",
+    "start": 75.03,
+    "end": 75.39,
+    "id": "w160"
+  },
+  {
+    "text": "que",
+    "start": 75.5,
+    "end": 75.66,
+    "id": "w161"
+  },
+  {
+    "text": "dice",
+    "start": 75.66,
+    "end": 76.03,
+    "id": "w162"
+  },
+  {
+    "text": "la",
+    "start": 76.04,
+    "end": 76.21,
+    "id": "w163"
+  },
+  {
+    "text": "evidencia",
+    "start": 76.21,
+    "end": 76.99,
+    "id": "w164"
+  },
+  {
+    "text": "de",
+    "start": 76.99,
+    "end": 77.16,
+    "id": "w165"
+  },
+  {
+    "text": "cada",
+    "start": 77.16,
+    "end": 77.5,
+    "id": "w166"
+  },
+  {
+    "text": "una.",
+    "start": 77.5,
+    "end": 78.04,
+    "id": "w167"
+  },
+  {
+    "text": "No",
+    "start": 78.15,
+    "end": 78.18,
+    "id": "w168"
+  },
+  {
+    "text": "elijas",
+    "start": 78.18,
+    "end": 78.6,
+    "id": "w169"
+  },
+  {
+    "text": "un",
+    "start": 78.6,
+    "end": 78.74,
+    "id": "w170"
+  },
+  {
+    "text": "modelo",
+    "start": 78.74,
+    "end": 79.18,
+    "id": "w171"
+  },
+  {
+    "text": "por",
+    "start": 79.18,
+    "end": 79.4,
+    "id": "w172"
+  },
+  {
+    "text": "tradición",
+    "start": 79.4,
+    "end": 80.06,
+    "id": "w173"
+  },
+  {
+    "text": "ni",
+    "start": 80.06,
+    "end": 80.2,
+    "id": "w174"
+  },
+  {
+    "text": "por",
+    "start": 80.2,
+    "end": 80.42,
+    "id": "w175"
+  },
+  {
+    "text": "moda,",
+    "start": 80.42,
+    "end": 80.85,
+    "id": "w176"
+  },
+  {
+    "text": "elígelo",
+    "start": 80.85,
+    "end": 81.35,
+    "id": "w177"
+  },
+  {
+    "text": "por",
+    "start": 81.35,
+    "end": 81.45,
+    "id": "w178"
+  },
+  {
+    "text": "lo",
+    "start": 81.45,
+    "end": 81.71,
+    "id": "w179"
+  },
+  {
+    "text": "que",
+    "start": 81.88,
+    "end": 81.93,
+    "id": "w180"
+  },
+  {
+    "text": "muestran",
+    "start": 81.93,
+    "end": 82.51,
+    "id": "w181"
+  },
+  {
+    "text": "los",
+    "start": 82.51,
+    "end": 82.73,
+    "id": "w182"
+  },
+  {
+    "text": "estudios.",
+    "start": 82.73,
+    "end": 83.68,
+    "id": "w183"
+  }
+]

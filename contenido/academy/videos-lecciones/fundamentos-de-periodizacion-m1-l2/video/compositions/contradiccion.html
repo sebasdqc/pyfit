@@ -1,0 +1,46 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #con-wrap { position: absolute; inset: 0; }
+    #con-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); }
+    #con-t { position: absolute; left: 160px; top: 160px; font: 900 96px var(--font-display); letter-spacing: -0.035em; }
+    #con-sub { position: absolute; left: 160px; top: 300px; font: 700 52px var(--font-display); color: var(--ink-soft); letter-spacing: -0.02em; }
+    #con-sub b { color: var(--ink); }
+    #con-bar { position: absolute; left: 160px; top: 560px; width: 1600px; height: 170px; display: flex; gap: 10px; }
+    .con-seg { flex: 1; border-radius: 8px; background: var(--ground-2); border: 3px solid var(--ink-soft);
+      display: flex; align-items: flex-end; justify-content: center; padding-bottom: 20px;
+      font: 700 30px var(--font-mono); letter-spacing: 0.1em; color: var(--ink); transform-origin: 50% 100%; }
+    #con-fill { position: absolute; left: 160px; top: 760px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+    #con-cite { position: absolute; right: 160px; bottom: 110px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="contradiccion" data-width="1920" data-height="1080">
+    <div id="con-wrap">
+      <div id="con-k">LA CONTRADICCIÓN PRINCIPAL</div>
+      <div id="con-t">Demasiadas capacidades</div>
+      <div id="con-sub">al mismo tiempo <b>· según Issurin</b></div>
+      <div id="con-bar">
+        <div class="con-seg" id="con-s1">FUERZA</div>
+        <div class="con-seg" id="con-s2">RESISTENCIA</div>
+        <div class="con-seg" id="con-s3">POTENCIA</div>
+        <div class="con-seg" id="con-s4">TÉCNICA</div>
+      </div>
+      <div id="con-fill">UN SOLO PLAN · TODO A LA VEZ</div>
+      <div id="con-cite">Issurin (2010)</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.contradiccion;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#con-k", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.contradicciones - 0.2);
+      tl.fromTo("#con-cite", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.principal);
+      tl.fromTo(["#con-s1", "#con-s2", "#con-s3", "#con-s4"], { opacity: 0, scaleY: 0.2 }, { opacity: 1, scaleY: 1, duration: 0.45, stagger: 0.35, ease: "back.out(1.4)" }, C.principal + 0.3);
+      tl.fromTo("#con-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.demasiadas - 0.1);
+      tl.fromTo("#con-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.demasiadas + 0.1);
+      tl.to([".con-seg"], { opacity: 0.5, duration: 0.4 }, C.capacidades + 0.2);
+      tl.fromTo("#con-fill", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.principal + 1.8);
+      tl.to("#con-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["contradiccion"] = tl;
+    })();
+  </script>
+</template>

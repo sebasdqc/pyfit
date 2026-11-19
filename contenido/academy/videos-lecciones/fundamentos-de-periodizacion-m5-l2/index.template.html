@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/cues.js"></script>
+    <style>
+      :root {
+        --ground: #0e1016;
+        --ground-2: #161922;
+        --ink: #f4f2ee;
+        --ink-soft: #a9adb8;
+        --ink-faint: #868b98;
+        --lineal: #cc1f36;
+        --ondulada: #e8dcc2;
+        --polarizada: #e0973a;
+        --font-display: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--font-display);
+      }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="__TOTAL__"
+      data-width="1920"
+      data-height="1080"
+    >
+      __SCENES__
+      <audio id="voz" src="assets/voz/voz-master.wav" data-start="__VOICE_OFFSET__" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>
