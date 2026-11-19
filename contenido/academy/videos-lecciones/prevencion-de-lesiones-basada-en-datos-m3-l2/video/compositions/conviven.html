@@ -1,0 +1,51 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #co-wrap { position: absolute; inset: 0; }
+    #co-t { position: absolute; left: 120px; top: 120px; font: 900 84px var(--font-display); letter-spacing: -0.035em; }
+    .co-row { position: absolute; left: 120px; width: 1680px; display: flex; align-items: center; gap: 48px; }
+    #co-r1 { top: 340px; } #co-r2 { top: 640px; }
+    .co-key { width: 330px; flex: none; }
+    .co-key .k { font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    .co-key .v { font: 900 120px var(--font-display); letter-spacing: -0.04em; line-height: 1; }
+    #co-r1 .v { color: var(--lineal); }
+    .co-eq { font: 900 80px var(--font-display); color: var(--ink-faint); }
+    .co-txt { font: 700 56px var(--font-display); letter-spacing: -0.02em; line-height: 1.1; }
+    .co-txt b { color: var(--ondulada); }
+    .co-mini { display: flex; gap: 8px; margin-top: 18px; }
+    .co-mini i { display: block; width: 30px; height: 30px; border-radius: 4px; background: var(--ink-soft); }
+  </style>
+  <div id="root" data-composition-id="conviven" data-width="1920" data-height="1080">
+    <div id="co-wrap">
+      <div id="co-t">¿Cómo conviven las dos cosas?</div>
+      <div class="co-row" id="co-r1">
+        <div class="co-key"><div class="k">LA CIFRA</div><div class="v">51 %</div></div>
+        <div class="co-eq" id="co-e1">=</div>
+        <div><div class="co-txt" id="co-x1">el promedio de estudios<br>de <b>calidad desigual</b></div><div class="co-mini" id="co-mini"></div></div>
+      </div>
+      <div class="co-row" id="co-r2">
+        <div class="co-key"><div class="k">LA REEVALUACIÓN</div><div class="v">2021</div></div>
+        <div class="co-eq" id="co-e2">=</div>
+        <div class="co-txt" id="co-x2">cuánta <b>confianza</b><br>merece ese promedio</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.conviven;
+      var mini = document.getElementById("co-mini");
+      var ops = [1, 0.3, 0.45, 1, 0.25, 0.35, 1, 0.4, 0.3, 1, 0.5, 0.25, 0.35, 1, 0.3];
+      var cells = [];
+      for (var i = 0; i < 15; i++) { var c = document.createElement("i"); c.style.opacity = ops[i]; mini.appendChild(c); cells.push(c); }
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#co-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.15);
+      tl.fromTo("#co-r1 .co-key", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.cincuenta - 0.2);
+      tl.fromTo(["#co-e1", "#co-x1"], { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.12, ease: "power3.out" }, C.promedio - 0.3);
+      tl.fromTo(cells, { scale: 0 }, { scale: 1, duration: 0.25, stagger: 0.03, ease: "back.out(2)" }, C.desigual - 0.2);
+      tl.fromTo("#co-r2 .co-key", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.mide - 1.0);
+      tl.fromTo(["#co-e2", "#co-x2"], { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.12, ease: "power3.out" }, C.mide - 0.2);
+      tl.to("#co-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["conviven"] = tl;
+    })();
+  </script>
+</template>

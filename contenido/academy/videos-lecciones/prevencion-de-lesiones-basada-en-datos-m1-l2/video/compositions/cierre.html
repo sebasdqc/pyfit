@@ -1,0 +1,32 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+    #ci-k { position: absolute; left: 0; right: 0; top: 250px; text-align: center; font: 700 30px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-soft); }
+    #ci-q { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font: 900 120px var(--font-display);
+      letter-spacing: -0.045em; line-height: 1.05; }
+    #ci-q span { display: inline-block; }
+    #ci-q .r { color: var(--lineal); }
+    #ci-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div id="ci-k">ANTES DE ESTIMAR EL RIESGO DE UN ATLETA, LA PREGUNTA MÁS ÚTIL</div>
+      <div id="ci-q"><span id="ci-w1">¿Se lesionó <span class="r">antes</span>,</span><br /><span id="ci-w2">dónde</span> <span id="ci-w3">y hace cuánto?</span></div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ci-k", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.pregunta - 0.8);
+      tl.fromTo("#ci-w1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.lesiono - 0.2);
+      tl.fromTo("#ci-w2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.donde - 0.1);
+      tl.fromTo("#ci-w3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.cuanto - 0.3);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.cuanto + 1.0);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

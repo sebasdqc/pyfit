@@ -1,0 +1,269 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {
+  "FIFA once más": "FIFA 11+",
+  "ocho mil cuatrocientos cincuenta y nueve": "8.459",
+  "cincuenta y uno por ciento": "51 %",
+  "treinta y cuatro por ciento": "34 %",
+  "treinta y uno por ciento": "31 %",
+  "trece por ciento": "13 %",
+  "cuarenta y seis por ciento": "46 %",
+  "cuarenta por ciento": "40 %",
+  "sesenta y tres por ciento": "63 %",
+  "quince por ciento": "15 %",
+  "cero coma sesenta y nueve": "0,69",
+  "cero coma cuarenta y nueve": "0,49",
+  "quince estudios": "15 estudios"
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "start": null,
+   "keys": [
+    [
+     "destaca",
+     [
+      "destaca"
+     ]
+    ],
+    [
+     "haberse",
+     [
+      "haberse"
+     ]
+    ],
+    [
+     "revision",
+     [
+      "revision"
+     ]
+    ],
+    [
+     "predictor",
+     [
+      "predictor"
+     ]
+    ],
+    [
+     "recurrente",
+     [
+      "recurrente"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "linea",
+   "start": [
+    "las"
+   ],
+   "keys": [
+    [
+     "isquio",
+     [
+      "isquiotibiales"
+     ]
+    ],
+    [
+     "ano",
+     [
+      "ano"
+     ]
+    ],
+    [
+     "australiano",
+     [
+      "australiano"
+     ]
+    ],
+    [
+     "trece",
+     [
+      "13",
+      "trece"
+     ]
+    ],
+    [
+     "primera",
+     [
+      "primera"
+     ]
+    ],
+    [
+     "despues",
+     [
+      "despues"
+     ]
+    ],
+    [
+     "acumulando",
+     [
+      "acumulando"
+     ]
+    ],
+    [
+     "treintayuno",
+     [
+      "31",
+      "treinta"
+     ]
+    ],
+    [
+     "temporada",
+     [
+      "temporada"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "lectura",
+   "start": [
+    "ojo"
+   ],
+   "keys": [
+    [
+     "semana",
+     [
+      "semana"
+     ]
+    ],
+    [
+     "acumulado",
+     [
+      "acumulado"
+     ]
+    ],
+    [
+     "maneras",
+     [
+      "maneras"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "comparar",
+   "start": [
+    "ahora"
+   ],
+   "keys": [
+    [
+     "poblacion",
+     [
+      "poblacion"
+     ]
+    ],
+    [
+     "tobillo",
+     [
+      "tobillo"
+     ]
+    ],
+    [
+     "muslo",
+     [
+      "muslo"
+     ]
+    ],
+    [
+     "ligamento",
+     [
+      "ligamento"
+     ]
+    ],
+    [
+     "conmocion",
+     [
+      "conmocion",
+      "mocion"
+     ]
+    ],
+    [
+     "isquio",
+     [
+      "isquiotibiales"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "anidados",
+   "start": [
+    "pesa"
+   ],
+   "start_back": 2,
+   "keys": [
+    [
+     "previa",
+     [
+      "previa"
+     ]
+    ],
+    [
+     "fuerza",
+     [
+      "fuerza"
+     ]
+    ],
+    [
+     "flexibilidad",
+     [
+      "flexibilidad"
+     ]
+    ],
+    [
+     "estabilidad",
+     [
+      "estabilidad"
+     ]
+    ],
+    [
+     "anidados",
+     [
+      "anidados"
+     ]
+    ],
+    [
+     "separados",
+     [
+      "separados"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "por"
+   ],
+   "keys": [
+    [
+     "pregunta",
+     [
+      "pregunta"
+     ]
+    ],
+    [
+     "lesiono",
+     [
+      "lesiono"
+     ]
+    ],
+    [
+     "donde",
+     [
+      "donde"
+     ]
+    ],
+    [
+     "cuanto",
+     [
+      "cuanto"
+     ]
+    ]
+   ]
+  }
+ ]
+}

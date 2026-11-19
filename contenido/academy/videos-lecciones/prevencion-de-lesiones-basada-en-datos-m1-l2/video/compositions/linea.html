@@ -1,0 +1,72 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #li-wrap { position: absolute; inset: 0; }
+    #li-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--lineal); }
+    #li-title { position: absolute; left: 160px; top: 160px; font: 900 72px var(--font-display);
+      letter-spacing: -0.035em; }
+    #li-pop { position: absolute; left: 160px; top: 260px; font: 700 30px var(--font-mono);
+      letter-spacing: 0.1em; color: var(--ink-soft); padding: 10px 20px; border: 3px solid var(--ink-faint);
+      border-radius: 999px; }
+    #li-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .li-lab { font: 700 28px var(--font-mono); letter-spacing: 0.1em; }
+    .li-big { font: 900 72px var(--font-display); letter-spacing: -0.03em; }
+    #li-note { position: absolute; left: 160px; bottom: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="linea" data-width="1920" data-height="1080">
+    <div id="li-wrap">
+      <div id="li-k">LESIÓN DE ISQUIOTIBIALES</div>
+      <div id="li-title">El año después de la lesión</div>
+      <div id="li-pop">FÚTBOL AUSTRALIANO</div>
+      <svg id="li-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <!-- eje del tiempo -->
+        <line id="li-axis" x1="160" y1="860" x2="1440" y2="860" stroke="#868b98" stroke-width="3" />
+        <line id="li-reg" x1="200" y1="420" x2="200" y2="860" stroke="#f4f2ee" stroke-width="3" stroke-dasharray="8 8" />
+        <text id="li-reg-t" class="li-lab" x="200" y="905" text-anchor="middle" fill="#f4f2ee">REGRESO</text>
+        <text id="li-axis-t" class="li-lab" x="1440" y="905" text-anchor="end" fill="#868b98">SEMANAS →</text>
+        <!-- pico de la primera semana: 13 % (10 px por %) -->
+        <rect id="li-spike" x="204" y="730" width="44" height="130" fill="#cc1f36" />
+        <text id="li-spike-v" class="li-big" x="270" y="720" fill="#cc1f36">13 %</text>
+        <text id="li-spike-t" class="li-lab" x="270" y="760" fill="#f4f2ee">1.ª SEMANA DE REGRESO</text>
+        <!-- después: baja lento (forma esquemática, sin valores) -->
+        <path id="li-decay" d="M248 800 C 420 812, 700 836, 1440 852" fill="none" stroke="#cc1f36" stroke-width="5" stroke-opacity="0.7" />
+        <text id="li-decay-t" class="li-lab" x="760" y="800" fill="#a9adb8">BAJA, PERO LENTAMENTE</text>
+        <!-- acumulado: 31 % -->
+        <line x1="1560" y1="860" x2="1760" y2="860" stroke="#868b98" stroke-width="3" id="li-cum-base" />
+        <rect id="li-cum" x="1600" y="550" width="120" height="310" fill="#cc1f36" />
+        <text id="li-cum-v" class="li-big" x="1660" y="525" text-anchor="middle" fill="#f4f2ee">31 %</text>
+        <text id="li-cum-t" class="li-lab" x="1660" y="905" text-anchor="middle" fill="#f4f2ee">ACUMULADO</text>
+        <text id="li-cum-t2" class="li-lab" x="1660" y="945" text-anchor="middle" fill="#868b98">TEMPORADA</text>
+      </svg>
+      <div id="li-note">ESQUEMA · LA FORMA DE LA CURVA ES ILUSTRATIVA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.linea;
+      var tl = gsap.timeline({ paused: true });
+      var dec = document.getElementById("li-decay");
+      var L = dec.getTotalLength();
+      tl.fromTo("#li-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#li-title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.isquio - 0.1);
+      tl.fromTo("#li-axis", { attr: { x2: 160 } }, { attr: { x2: 1440 }, duration: 2.6, ease: "power2.inOut" }, C.isquio + 1.0);
+      tl.fromTo("#li-axis-t", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.ano + 0.6);
+      tl.fromTo(["#li-reg", "#li-reg-t"], { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.australiano + 2.0);
+      tl.fromTo("#li-pop", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.australiano - 0.6);
+      tl.fromTo("#li-spike", { attr: { y: 860, height: 0 } }, { attr: { y: 730, height: 130 }, duration: 0.5, ease: "power3.out" }, C.trece - 0.1);
+      tl.fromTo("#li-spike-v", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.trece);
+      tl.fromTo("#li-spike-t", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.primera - 0.1);
+      tl.fromTo("#li-spike", { opacity: 1 }, { opacity: 0.5, duration: 0.35, yoyo: true, repeat: 1 }, C.primera + 1.9);
+      tl.fromTo(dec, { strokeDasharray: L, strokeDashoffset: L }, { strokeDashoffset: 0, duration: 2.6, ease: "power1.inOut" }, C.despues - 0.1);
+      tl.fromTo("#li-decay-t", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.despues + 0.6);
+      tl.fromTo(["#li-cum-base", "#li-cum-t", "#li-cum-t2"], { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.acumulando - 0.2);
+      tl.fromTo("#li-cum", { attr: { y: 860, height: 0 } }, { attr: { y: 550, height: 310 }, duration: 3.0, ease: "power1.out" }, C.acumulando);
+      tl.fromTo("#li-cum-v", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, C.treintayuno - 0.1);
+      tl.fromTo("#li-note", { opacity: 0 }, { opacity: 1, duration: 0.5 }, C.despues + 1.2);
+      tl.to("#li-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["linea"] = tl;
+    })();
+  </script>
+</template>

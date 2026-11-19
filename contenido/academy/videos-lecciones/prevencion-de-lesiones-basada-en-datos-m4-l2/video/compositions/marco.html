@@ -1,0 +1,57 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ma-wrap { position: absolute; inset: 0; }
+    #ma-k { position: absolute; left: 160px; top: 100px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    #ma-t { position: absolute; left: 160px; top: 145px; font: 900 72px var(--font-display); letter-spacing: -0.035em; }
+    #ma-col { position: absolute; left: 300px; top: 300px; width: 320px; height: 640px; border: 3px dashed #4a4f5c; border-radius: 12px; overflow: hidden; }
+    #ma-main { position: absolute; left: 14px; right: 14px; bottom: 14px; height: 330px; background: var(--lineal); border-radius: 8px; transform-origin: 50% 100%; }
+    #ma-prev { position: absolute; left: 14px; right: 14px; bottom: 354px; height: 96px; background: var(--ondulada); border-radius: 8px; transform-origin: 50% 100%; }
+    .ma-line { position: absolute; left: 270px; width: 1490px; height: 0; border-top: 3px dashed #868b98; }
+    #ma-l1 { top: 840px; } #ma-l2 { top: 620px; } #ma-l3 { top: 420px; }
+    .ma-lab { position: absolute; left: 700px; transform: translateY(-50%); display: flex; align-items: baseline; gap: 26px; }
+    .ma-lab b { font: 900 56px var(--font-display); letter-spacing: -0.02em; width: 150px; }
+    .ma-lab span { font: 500 36px var(--font-display); color: var(--ink-soft); }
+    #ma-b1 { top: 800px; } #ma-b2 { top: 580px; } #ma-b3 { top: 380px; }
+    #ma-techo { position: absolute; left: 1560px; top: 356px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ground); background: var(--ink); padding: 8px 18px; border-radius: 6px; }
+    #ma-ok { position: absolute; left: 700px; top: 700px; font: 700 40px var(--font-display); color: var(--ondulada); letter-spacing: -0.015em; }
+  </style>
+  <div id="root" data-composition-id="marco" data-width="1920" data-height="1080">
+    <div id="ma-wrap">
+      <div id="ma-k">DEL CURSO GESTIÓN DE LA CARGA DE ENTRENAMIENTO</div>
+      <div id="ma-t">El marco MEV · MAV · MRV</div>
+      <div class="ma-line" id="ma-l1"></div>
+      <div class="ma-line" id="ma-l2"></div>
+      <div class="ma-line" id="ma-l3"></div>
+      <div id="ma-col"><div id="ma-main"></div><div id="ma-prev"></div></div>
+      <div class="ma-lab" id="ma-b1"><b>MEV</b><span>volumen mínimo efectivo</span></div>
+      <div class="ma-lab" id="ma-b2"><b>MAV</b><span>volumen máximo adaptativo</span></div>
+      <div class="ma-lab" id="ma-b3"><b>MRV</b><span>volumen máximo recuperable</span></div>
+      <div id="ma-techo">TECHO</div>
+      <div id="ma-ok">Principal + prevención, juntos, por debajo</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.marco;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ma-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.marco - 0.3);
+      tl.fromTo("#ma-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.marco);
+      tl.fromTo("#ma-col", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.entrenamiento - 0.2);
+      [["#ma-l1", "#ma-b1", C.minimo], ["#ma-l2", "#ma-b2", C.adaptativo], ["#ma-l3", "#ma-b3", C.recuperable]].forEach(function (d) {
+        tl.fromTo(d[0], { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, d[2] - 0.6);
+        tl.fromTo(d[1], { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, d[2] - 0.5);
+      });
+      tl.fromTo("#ma-b3", { scale: 1 }, { scale: 1.06, duration: 0.3, yoyo: true, repeat: 1, transformOrigin: "0% 50%" }, C.recuperable2 - 0.6);
+      tl.fromTo("#ma-b3 span", { color: "#a9adb8" }, { color: "#f4f2ee", duration: 0.4 }, C.recuperable2 - 0.6);
+      tl.to("#ma-l3", { borderTopWidth: 8, borderTopStyle: "solid", borderTopColor: "#f4f2ee", duration: 0.4 }, C.techo - 0.3);
+      tl.fromTo("#ma-techo", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.techo - 0.2);
+      tl.to(["#ma-b1", "#ma-b2", "#ma-l1", "#ma-l2"], { opacity: 0.35, duration: 0.4 }, C.techo);
+      tl.fromTo("#ma-main", { scaleY: 0 }, { scaleY: 1, duration: 0.7, ease: "power2.out" }, C.principal - 0.2);
+      tl.fromTo("#ma-prev", { scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1, duration: 0.5, ease: "power2.out" }, C.preventivo - 0.2);
+      tl.fromTo("#ma-ok", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.preventivo + 0.5);
+      tl.to("#ma-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["marco"] = tl;
+    })();
+  </script>
+</template>

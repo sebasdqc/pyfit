@@ -1,0 +1,1208 @@
+[
+  {
+    "text": "De",
+    "start": 0.07,
+    "end": 0.17,
+    "id": "w0"
+  },
+  {
+    "text": "todos",
+    "start": 0.25,
+    "end": 0.61,
+    "id": "w1"
+  },
+  {
+    "text": "los",
+    "start": 0.61,
+    "end": 0.87,
+    "id": "w2"
+  },
+  {
+    "text": "factores",
+    "start": 0.87,
+    "end": 1.57,
+    "id": "w3"
+  },
+  {
+    "text": "de",
+    "start": 1.57,
+    "end": 1.69,
+    "id": "w4"
+  },
+  {
+    "text": "riesgo",
+    "start": 1.75,
+    "end": 2.26,
+    "id": "w5"
+  },
+  {
+    "text": "de",
+    "start": 2.26,
+    "end": 2.43,
+    "id": "w6"
+  },
+  {
+    "text": "lesión,",
+    "start": 2.43,
+    "end": 3.12,
+    "id": "w7"
+  },
+  {
+    "text": "hay",
+    "start": 3.12,
+    "end": 3.31,
+    "id": "w8"
+  },
+  {
+    "text": "uno",
+    "start": 3.31,
+    "end": 3.5,
+    "id": "w9"
+  },
+  {
+    "text": "que",
+    "start": 3.5,
+    "end": 3.65,
+    "id": "w10"
+  },
+  {
+    "text": "destaca",
+    "start": 3.72,
+    "end": 4.09,
+    "id": "w11"
+  },
+  {
+    "text": "haberse",
+    "start": 4.29,
+    "end": 4.56,
+    "id": "w12"
+  },
+  {
+    "text": "lesionado",
+    "start": 4.56,
+    "end": 5.16,
+    "id": "w13"
+  },
+  {
+    "text": "antes.",
+    "start": 5.16,
+    "end": 6.2,
+    "id": "w14"
+  },
+  {
+    "text": "Una",
+    "start": 6.27,
+    "end": 6.37,
+    "id": "w15"
+  },
+  {
+    "text": "revisión",
+    "start": 6.45,
+    "end": 6.98,
+    "id": "w16"
+  },
+  {
+    "text": "sistemática",
+    "start": 7.03,
+    "end": 7.83,
+    "id": "w17"
+  },
+  {
+    "text": "lo",
+    "start": 7.83,
+    "end": 7.98,
+    "id": "w18"
+  },
+  {
+    "text": "señala",
+    "start": 7.98,
+    "end": 8.42,
+    "id": "w19"
+  },
+  {
+    "text": "como,",
+    "start": 8.42,
+    "end": 8.86,
+    "id": "w20"
+  },
+  {
+    "text": "posiblemente,",
+    "start": 9.22,
+    "end": 9.96,
+    "id": "w21"
+  },
+  {
+    "text": "el",
+    "start": 9.96,
+    "end": 10.05,
+    "id": "w22"
+  },
+  {
+    "text": "predictor",
+    "start": 10.08,
+    "end": 10.68,
+    "id": "w23"
+  },
+  {
+    "text": "más",
+    "start": 10.68,
+    "end": 10.87,
+    "id": "w24"
+  },
+  {
+    "text": "fuerte",
+    "start": 10.87,
+    "end": 11.28,
+    "id": "w25"
+  },
+  {
+    "text": "de",
+    "start": 11.28,
+    "end": 11.44,
+    "id": "w26"
+  },
+  {
+    "text": "una",
+    "start": 11.44,
+    "end": 11.69,
+    "id": "w27"
+  },
+  {
+    "text": "lesión,",
+    "start": 11.69,
+    "end": 12.69,
+    "id": "w28"
+  },
+  {
+    "text": "nueva",
+    "start": 12.69,
+    "end": 13.2,
+    "id": "w29"
+  },
+  {
+    "text": "o",
+    "start": 13.2,
+    "end": 13.29,
+    "id": "w30"
+  },
+  {
+    "text": "recurrente.",
+    "start": 13.31,
+    "end": 14.66,
+    "id": "w31"
+  },
+  {
+    "text": "Las",
+    "start": 14.77,
+    "end": 14.88,
+    "id": "w32"
+  },
+  {
+    "text": "lesiones",
+    "start": 14.95,
+    "end": 15.4,
+    "id": "w33"
+  },
+  {
+    "text": "de",
+    "start": 15.4,
+    "end": 15.48,
+    "id": "w34"
+  },
+  {
+    "text": "isquiotibiales",
+    "start": 15.52,
+    "end": 16.38,
+    "id": "w35"
+  },
+  {
+    "text": "lo",
+    "start": 16.38,
+    "end": 16.5,
+    "id": "w36"
+  },
+  {
+    "text": "muestran",
+    "start": 16.5,
+    "end": 17,
+    "id": "w37"
+  },
+  {
+    "text": "con",
+    "start": 17,
+    "end": 17.13,
+    "id": "w38"
+  },
+  {
+    "text": "claridad.",
+    "start": 17.13,
+    "end": 18,
+    "id": "w39"
+  },
+  {
+    "text": "Mira",
+    "start": 18.07,
+    "end": 18.34,
+    "id": "w40"
+  },
+  {
+    "text": "lo",
+    "start": 18.34,
+    "end": 18.5,
+    "id": "w41"
+  },
+  {
+    "text": "que",
+    "start": 18.52,
+    "end": 18.76,
+    "id": "w42"
+  },
+  {
+    "text": "pasa",
+    "start": 18.76,
+    "end": 19.1,
+    "id": "w43"
+  },
+  {
+    "text": "en",
+    "start": 19.1,
+    "end": 19.27,
+    "id": "w44"
+  },
+  {
+    "text": "el",
+    "start": 19.27,
+    "end": 19.43,
+    "id": "w45"
+  },
+  {
+    "text": "año",
+    "start": 19.43,
+    "end": 19.69,
+    "id": "w46"
+  },
+  {
+    "text": "siguiente",
+    "start": 19.69,
+    "end": 20.43,
+    "id": "w47"
+  },
+  {
+    "text": "a",
+    "start": 20.43,
+    "end": 20.52,
+    "id": "w48"
+  },
+  {
+    "text": "la",
+    "start": 20.52,
+    "end": 20.69,
+    "id": "w49"
+  },
+  {
+    "text": "lesión.",
+    "start": 20.7,
+    "end": 21.5,
+    "id": "w50"
+  },
+  {
+    "text": "En",
+    "start": 21.56,
+    "end": 21.66,
+    "id": "w51"
+  },
+  {
+    "text": "fútbol",
+    "start": 21.66,
+    "end": 22.15,
+    "id": "w52"
+  },
+  {
+    "text": "australiano,",
+    "start": 22.15,
+    "end": 23.19,
+    "id": "w53"
+  },
+  {
+    "text": "el",
+    "start": 23.25,
+    "end": 23.38,
+    "id": "w54"
+  },
+  {
+    "text": "riesgo",
+    "start": 23.38,
+    "end": 23.85,
+    "id": "w55"
+  },
+  {
+    "text": "más",
+    "start": 23.85,
+    "end": 23.95,
+    "id": "w56"
+  },
+  {
+    "text": "alto",
+    "start": 24.11,
+    "end": 24.41,
+    "id": "w57"
+  },
+  {
+    "text": "aparece",
+    "start": 24.53,
+    "end": 25.03,
+    "id": "w58"
+  },
+  {
+    "text": "justo",
+    "start": 25.03,
+    "end": 25.44,
+    "id": "w59"
+  },
+  {
+    "text": "al",
+    "start": 25.44,
+    "end": 25.59,
+    "id": "w60"
+  },
+  {
+    "text": "volver.",
+    "start": 25.79,
+    "end": 26.2,
+    "id": "w61"
+  },
+  {
+    "text": "Un",
+    "start": 26.27,
+    "end": 26.38,
+    "id": "w62"
+  },
+  {
+    "text": "13%",
+    "start": 26.45,
+    "end": 26.98,
+    "id": "w63"
+  },
+  {
+    "text": "de",
+    "start": 27.02,
+    "end": 27.08,
+    "id": "w64"
+  },
+  {
+    "text": "recurrencia",
+    "start": 27.21,
+    "end": 28.2,
+    "id": "w65"
+  },
+  {
+    "text": "en",
+    "start": 28.2,
+    "end": 28.38,
+    "id": "w66"
+  },
+  {
+    "text": "la",
+    "start": 28.38,
+    "end": 28.55,
+    "id": "w67"
+  },
+  {
+    "text": "primera",
+    "start": 28.55,
+    "end": 28.65,
+    "id": "w68"
+  },
+  {
+    "text": "semana",
+    "start": 29.23,
+    "end": 29.75,
+    "id": "w69"
+  },
+  {
+    "text": "de",
+    "start": 29.75,
+    "end": 29.93,
+    "id": "w70"
+  },
+  {
+    "text": "regreso",
+    "start": 29.93,
+    "end": 30.56,
+    "id": "w71"
+  },
+  {
+    "text": "a",
+    "start": 30.56,
+    "end": 30.64,
+    "id": "w72"
+  },
+  {
+    "text": "la",
+    "start": 30.68,
+    "end": 30.83,
+    "id": "w73"
+  },
+  {
+    "text": "competencia.",
+    "start": 30.83,
+    "end": 32.19,
+    "id": "w74"
+  },
+  {
+    "text": "Después",
+    "start": 32.27,
+    "end": 32.84,
+    "id": "w75"
+  },
+  {
+    "text": "baja,",
+    "start": 32.84,
+    "end": 33.39,
+    "id": "w76"
+  },
+  {
+    "text": "pero",
+    "start": 33.39,
+    "end": 33.76,
+    "id": "w77"
+  },
+  {
+    "text": "lentamente,",
+    "start": 33.76,
+    "end": 34.87,
+    "id": "w78"
+  },
+  {
+    "text": "y",
+    "start": 34.87,
+    "end": 34.97,
+    "id": "w79"
+  },
+  {
+    "text": "se",
+    "start": 34.97,
+    "end": 35.09,
+    "id": "w80"
+  },
+  {
+    "text": "va",
+    "start": 35.22,
+    "end": 35.33,
+    "id": "w81"
+  },
+  {
+    "text": "acumulando,",
+    "start": 35.33,
+    "end": 36.3,
+    "id": "w82"
+  },
+  {
+    "text": "semana",
+    "start": 36.49,
+    "end": 36.95,
+    "id": "w83"
+  },
+  {
+    "text": "a",
+    "start": 36.95,
+    "end": 37.04,
+    "id": "w84"
+  },
+  {
+    "text": "semana,",
+    "start": 37.04,
+    "end": 37.8,
+    "id": "w85"
+  },
+  {
+    "text": "hasta",
+    "start": 37.8,
+    "end": 38.28,
+    "id": "w86"
+  },
+  {
+    "text": "un",
+    "start": 38.28,
+    "end": 38.53,
+    "id": "w87"
+  },
+  {
+    "text": "31%",
+    "start": 38.53,
+    "end": 39.17,
+    "id": "w88"
+  },
+  {
+    "text": "en",
+    "start": 39.17,
+    "end": 39.36,
+    "id": "w89"
+  },
+  {
+    "text": "toda",
+    "start": 39.36,
+    "end": 39.77,
+    "id": "w90"
+  },
+  {
+    "text": "la",
+    "start": 39.77,
+    "end": 39.96,
+    "id": "w91"
+  },
+  {
+    "text": "temporada.",
+    "start": 39.97,
+    "end": 41.2,
+    "id": "w92"
+  },
+  {
+    "text": "Ojo,",
+    "start": 41.26,
+    "end": 41.7,
+    "id": "w93"
+  },
+  {
+    "text": "no",
+    "start": 41.72,
+    "end": 41.93,
+    "id": "w94"
+  },
+  {
+    "text": "es",
+    "start": 41.93,
+    "end": 42.08,
+    "id": "w95"
+  },
+  {
+    "text": "lo",
+    "start": 42.21,
+    "end": 42.35,
+    "id": "w96"
+  },
+  {
+    "text": "mismo",
+    "start": 42.35,
+    "end": 42.88,
+    "id": "w97"
+  },
+  {
+    "text": "el",
+    "start": 42.88,
+    "end": 43.09,
+    "id": "w98"
+  },
+  {
+    "text": "riesgo",
+    "start": 43.09,
+    "end": 43.64,
+    "id": "w99"
+  },
+  {
+    "text": "de",
+    "start": 43.64,
+    "end": 43.93,
+    "id": "w100"
+  },
+  {
+    "text": "cada",
+    "start": 44.22,
+    "end": 44.35,
+    "id": "w101"
+  },
+  {
+    "text": "semana",
+    "start": 44.35,
+    "end": 44.99,
+    "id": "w102"
+  },
+  {
+    "text": "que",
+    "start": 44.99,
+    "end": 45.29,
+    "id": "w103"
+  },
+  {
+    "text": "el",
+    "start": 45.49,
+    "end": 45.5,
+    "id": "w104"
+  },
+  {
+    "text": "riesgo",
+    "start": 45.53,
+    "end": 46.15,
+    "id": "w105"
+  },
+  {
+    "text": "acumulado.",
+    "start": 46.15,
+    "end": 47.2,
+    "id": "w106"
+  },
+  {
+    "text": "Son",
+    "start": 47.27,
+    "end": 47.38,
+    "id": "w107"
+  },
+  {
+    "text": "dos",
+    "start": 47.45,
+    "end": 47.58,
+    "id": "w108"
+  },
+  {
+    "text": "maneras",
+    "start": 47.58,
+    "end": 47.98,
+    "id": "w109"
+  },
+  {
+    "text": "distintas",
+    "start": 48.03,
+    "end": 48.61,
+    "id": "w110"
+  },
+  {
+    "text": "de",
+    "start": 48.61,
+    "end": 48.74,
+    "id": "w111"
+  },
+  {
+    "text": "leer",
+    "start": 48.74,
+    "end": 49,
+    "id": "w112"
+  },
+  {
+    "text": "el",
+    "start": 49,
+    "end": 49.13,
+    "id": "w113"
+  },
+  {
+    "text": "mismo",
+    "start": 49.13,
+    "end": 49.45,
+    "id": "w114"
+  },
+  {
+    "text": "fenómeno.",
+    "start": 49.45,
+    "end": 50.2,
+    "id": "w115"
+  },
+  {
+    "text": "Ahora",
+    "start": 50.27,
+    "end": 50.64,
+    "id": "w116"
+  },
+  {
+    "text": "compáralo",
+    "start": 50.64,
+    "end": 51.41,
+    "id": "w117"
+  },
+  {
+    "text": "con",
+    "start": 51.41,
+    "end": 51.67,
+    "id": "w118"
+  },
+  {
+    "text": "otras",
+    "start": 51.67,
+    "end": 52.1,
+    "id": "w119"
+  },
+  {
+    "text": "lesiones",
+    "start": 52.11,
+    "end": 52.64,
+    "id": "w120"
+  },
+  {
+    "text": "en",
+    "start": 52.64,
+    "end": 52.98,
+    "id": "w121"
+  },
+  {
+    "text": "la",
+    "start": 52.98,
+    "end": 53.09,
+    "id": "w122"
+  },
+  {
+    "text": "misma",
+    "start": 53.23,
+    "end": 53.59,
+    "id": "w123"
+  },
+  {
+    "text": "población.",
+    "start": 53.59,
+    "end": 54.7,
+    "id": "w124"
+  },
+  {
+    "text": "Es",
+    "start": 54.77,
+    "end": 54.87,
+    "id": "w125"
+  },
+  {
+    "text": "15",
+    "start": 54.95,
+    "end": 55.38,
+    "id": "w126"
+  },
+  {
+    "text": "de",
+    "start": 55.38,
+    "end": 55.55,
+    "id": "w127"
+  },
+  {
+    "text": "tobillo,",
+    "start": 55.55,
+    "end": 56.31,
+    "id": "w128"
+  },
+  {
+    "text": "15%,",
+    "start": 56.31,
+    "end": 57.05,
+    "id": "w129"
+  },
+  {
+    "text": "contusión",
+    "start": 57.05,
+    "end": 57.83,
+    "id": "w130"
+  },
+  {
+    "text": "de",
+    "start": 57.83,
+    "end": 58,
+    "id": "w131"
+  },
+  {
+    "text": "muslo,",
+    "start": 58,
+    "end": 58.55,
+    "id": "w132"
+  },
+  {
+    "text": "12%,",
+    "start": 58.59,
+    "end": 59.37,
+    "id": "w133"
+  },
+  {
+    "text": "ligamento",
+    "start": 59.4,
+    "end": 60.23,
+    "id": "w134"
+  },
+  {
+    "text": "colateral",
+    "start": 60.23,
+    "end": 61.08,
+    "id": "w135"
+  },
+  {
+    "text": "medial,",
+    "start": 61.08,
+    "end": 61.81,
+    "id": "w136"
+  },
+  {
+    "text": "11%,",
+    "start": 61.81,
+    "end": 62.7,
+    "id": "w137"
+  },
+  {
+    "text": "con",
+    "start": 62.7,
+    "end": 62.95,
+    "id": "w138"
+  },
+  {
+    "text": "moción,",
+    "start": 62.95,
+    "end": 63.6,
+    "id": "w139"
+  },
+  {
+    "text": "5%.",
+    "start": 63.6,
+    "end": 64.15,
+    "id": "w140"
+  },
+  {
+    "text": "Los",
+    "start": 64.27,
+    "end": 64.48,
+    "id": "w141"
+  },
+  {
+    "text": "isquiotibiales,",
+    "start": 64.48,
+    "end": 65.99,
+    "id": "w142"
+  },
+  {
+    "text": "con",
+    "start": 65.99,
+    "end": 66.27,
+    "id": "w143"
+  },
+  {
+    "text": "su",
+    "start": 66.27,
+    "end": 66.46,
+    "id": "w144"
+  },
+  {
+    "text": "31%,",
+    "start": 66.46,
+    "end": 67.31,
+    "id": "w145"
+  },
+  {
+    "text": "recurren",
+    "start": 67.31,
+    "end": 68.05,
+    "id": "w146"
+  },
+  {
+    "text": "mucho",
+    "start": 68.07,
+    "end": 68.53,
+    "id": "w147"
+  },
+  {
+    "text": "más.¿Por",
+    "start": 68.55,
+    "end": 69.49,
+    "id": "w148"
+  },
+  {
+    "text": "qué",
+    "start": 69.49,
+    "end": 69.7,
+    "id": "w149"
+  },
+  {
+    "text": "pesa",
+    "start": 69.72,
+    "end": 69.97,
+    "id": "w150"
+  },
+  {
+    "text": "tanto",
+    "start": 70.03,
+    "end": 70.37,
+    "id": "w151"
+  },
+  {
+    "text": "la",
+    "start": 70.37,
+    "end": 70.51,
+    "id": "w152"
+  },
+  {
+    "text": "lesión",
+    "start": 70.52,
+    "end": 70.95,
+    "id": "w153"
+  },
+  {
+    "text": "previa?",
+    "start": 70.96,
+    "end": 71.63,
+    "id": "w154"
+  },
+  {
+    "text": "Porque",
+    "start": 71.77,
+    "end": 72.12,
+    "id": "w155"
+  },
+  {
+    "text": "factores",
+    "start": 72.12,
+    "end": 72.58,
+    "id": "w156"
+  },
+  {
+    "text": "como",
+    "start": 72.71,
+    "end": 72.96,
+    "id": "w157"
+  },
+  {
+    "text": "la",
+    "start": 72.96,
+    "end": 73.1,
+    "id": "w158"
+  },
+  {
+    "text": "fuerza,",
+    "start": 73.1,
+    "end": 73.66,
+    "id": "w159"
+  },
+  {
+    "text": "la",
+    "start": 73.66,
+    "end": 73.8,
+    "id": "w160"
+  },
+  {
+    "text": "flexibilidad",
+    "start": 73.8,
+    "end": 74.15,
+    "id": "w161"
+  },
+  {
+    "text": "o",
+    "start": 74.72,
+    "end": 74.77,
+    "id": "w162"
+  },
+  {
+    "text": "la",
+    "start": 74.77,
+    "end": 74.91,
+    "id": "w163"
+  },
+  {
+    "text": "estabilidad",
+    "start": 74.91,
+    "end": 75.7,
+    "id": "w164"
+  },
+  {
+    "text": "suelen",
+    "start": 75.7,
+    "end": 76,
+    "id": "w165"
+  },
+  {
+    "text": "estar",
+    "start": 76.03,
+    "end": 76.27,
+    "id": "w166"
+  },
+  {
+    "text": "anidados",
+    "start": 76.27,
+    "end": 76.7,
+    "id": "w167"
+  },
+  {
+    "text": "dentro",
+    "start": 76.7,
+    "end": 77.25,
+    "id": "w168"
+  },
+  {
+    "text": "de",
+    "start": 77.25,
+    "end": 77.34,
+    "id": "w169"
+  },
+  {
+    "text": "esa",
+    "start": 77.41,
+    "end": 77.7,
+    "id": "w170"
+  },
+  {
+    "text": "historia",
+    "start": 78.03,
+    "end": 78.44,
+    "id": "w171"
+  },
+  {
+    "text": "de",
+    "start": 78.44,
+    "end": 78.62,
+    "id": "w172"
+  },
+  {
+    "text": "lesión.",
+    "start": 78.62,
+    "end": 79.2,
+    "id": "w173"
+  },
+  {
+    "text": "No",
+    "start": 79.26,
+    "end": 79.35,
+    "id": "w174"
+  },
+  {
+    "text": "separados",
+    "start": 79.35,
+    "end": 79.97,
+    "id": "w175"
+  },
+  {
+    "text": "de",
+    "start": 80.02,
+    "end": 80.08,
+    "id": "w176"
+  },
+  {
+    "text": "ella.",
+    "start": 80.21,
+    "end": 80.7,
+    "id": "w177"
+  },
+  {
+    "text": "Por",
+    "start": 80.77,
+    "end": 80.87,
+    "id": "w178"
+  },
+  {
+    "text": "eso,",
+    "start": 80.95,
+    "end": 81.31,
+    "id": "w179"
+  },
+  {
+    "text": "antes",
+    "start": 81.31,
+    "end": 81.58,
+    "id": "w180"
+  },
+  {
+    "text": "de",
+    "start": 81.71,
+    "end": 81.84,
+    "id": "w181"
+  },
+  {
+    "text": "estimar",
+    "start": 81.84,
+    "end": 82.37,
+    "id": "w182"
+  },
+  {
+    "text": "el",
+    "start": 82.37,
+    "end": 82.52,
+    "id": "w183"
+  },
+  {
+    "text": "riesgo",
+    "start": 82.52,
+    "end": 82.97,
+    "id": "w184"
+  },
+  {
+    "text": "de",
+    "start": 82.97,
+    "end": 83.12,
+    "id": "w185"
+  },
+  {
+    "text": "un",
+    "start": 83.12,
+    "end": 83.21,
+    "id": "w186"
+  },
+  {
+    "text": "atleta,",
+    "start": 83.21,
+    "end": 83.87,
+    "id": "w187"
+  },
+  {
+    "text": "la",
+    "start": 83.87,
+    "end": 84.02,
+    "id": "w188"
+  },
+  {
+    "text": "pregunta",
+    "start": 84.02,
+    "end": 84.63,
+    "id": "w189"
+  },
+  {
+    "text": "más",
+    "start": 84.63,
+    "end": 84.79,
+    "id": "w190"
+  },
+  {
+    "text": "útil",
+    "start": 84.99,
+    "end": 85.16,
+    "id": "w191"
+  },
+  {
+    "text": "es",
+    "start": 85.18,
+    "end": 85.31,
+    "id": "w192"
+  },
+  {
+    "text": "esta.",
+    "start": 85.31,
+    "end": 85.7,
+    "id": "w193"
+  },
+  {
+    "text": "Se",
+    "start": 85.76,
+    "end": 85.85,
+    "id": "w194"
+  },
+  {
+    "text": "lesionó",
+    "start": 85.85,
+    "end": 86.36,
+    "id": "w195"
+  },
+  {
+    "text": "antes",
+    "start": 86.36,
+    "end": 86.71,
+    "id": "w196"
+  },
+  {
+    "text": "dónde",
+    "start": 86.73,
+    "end": 87.1,
+    "id": "w197"
+  },
+  {
+    "text": "y",
+    "start": 87.1,
+    "end": 87.17,
+    "id": "w198"
+  },
+  {
+    "text": "hace",
+    "start": 87.17,
+    "end": 87.47,
+    "id": "w199"
+  },
+  {
+    "text": "cuánto.",
+    "start": 87.47,
+    "end": 88.13,
+    "id": "w200"
+  }
+]

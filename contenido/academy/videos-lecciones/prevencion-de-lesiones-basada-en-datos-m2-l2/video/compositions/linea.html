@@ -1,0 +1,105 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #li-wrap { position: absolute; inset: 0; }
+    #li-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    #li-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .li-lbl { font: 500 28px var(--font-mono); letter-spacing: 0.08em; fill: #868b98; }
+    #li-alta-t { font: 700 30px var(--font-mono); letter-spacing: 0.1em; fill: #cc1f36; }
+    #li-13 { position: absolute; left: 640px; top: 200px; font: 900 132px var(--font-display);
+      letter-spacing: -0.04em; color: var(--lineal); line-height: 1; }
+    #li-13-n { position: absolute; left: 640px; top: 340px; font: 500 30px var(--font-display); color: var(--ink-soft); }
+    #li-max { position: absolute; left: 640px; top: 400px; font: 700 30px var(--font-mono);
+      letter-spacing: 0.12em; color: var(--ink); }
+    #li-meter { position: absolute; left: 1560px; top: 300px; width: 160px; height: 360px;
+      border: 3px solid var(--ink-faint); border-radius: 8px; overflow: hidden; }
+    #li-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--lineal);
+      transform-origin: 50% 100%; }
+    #li-acc { position: absolute; left: 1520px; top: 190px; width: 240px; text-align: center;
+      font: 900 88px var(--font-display); letter-spacing: -0.04em; color: var(--ink); }
+    #li-acc-l { position: absolute; left: 1480px; top: 690px; width: 320px; text-align: center;
+      font: 700 28px var(--font-mono); letter-spacing: 0.08em; color: var(--ink-soft); }
+    #li-tag { position: absolute; left: 160px; bottom: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.1em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="linea" data-width="1920" data-height="1080">
+    <div id="li-wrap">
+      <div id="li-k">DESPUÉS DEL REGRESO · ISQUIOTIBIALES</div>
+      <svg id="li-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="li-axis" x1="260" y1="700" x2="1440" y2="700" stroke="#868b98" stroke-width="3" />
+        <rect id="li-week1" x="260" y="300" width="100" height="400" fill="#cc1f36" opacity="0.22" />
+        <path id="li-curve" d="" fill="none" stroke="#cc1f36" stroke-width="7" stroke-linecap="round" />
+        <g id="li-ticks"></g>
+        <line id="li-alta" x1="260" y1="270" x2="260" y2="740" stroke="#cc1f36" stroke-width="6" />
+        <text id="li-alta-t" x="260" y="790" text-anchor="middle">DÍA 0 · ALTA</text>
+        <text id="li-part" x="282" y="262" style="font: 900 64px Inter, sans-serif; letter-spacing: -0.03em; fill: #cc1f36">PARTIDA →</text>
+        <text id="li-w1" class="li-lbl" x="310" y="840" text-anchor="middle" style="fill:#f4f2ee">1.ª SEMANA</text>
+        <text id="li-x" class="li-lbl" x="1440" y="790" text-anchor="end">SEMANAS →</text>
+      </svg>
+      <div id="li-13">13 %</div>
+      <div id="li-13-n">riesgo de recaída · fútbol australiano</div>
+      <div id="li-max">← PUNTO DE MÁXIMO RIESGO</div>
+      <div id="li-acc"><span id="li-acc-n">0</span> %</div>
+      <div id="li-meter"><div id="li-fill"></div></div>
+      <div id="li-acc-l">ACUMULADO EN LA TEMPORADA</div>
+      <div id="li-tag">CURVA SEMANAL: ESQUEMA · CIFRAS: EVIDENCIA CITADA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.linea;
+      var NS = "http://www.w3.org/2000/svg";
+      var g = document.getElementById("li-ticks");
+      var ticks = [];
+      for (var i = 1; i <= 11; i++) {
+        var t = document.createElementNS(NS, "line");
+        var x = 260 + i * 100;
+        t.setAttribute("x1", x); t.setAttribute("x2", x);
+        t.setAttribute("y1", 690); t.setAttribute("y2", 710);
+        t.setAttribute("stroke", "#868b98"); t.setAttribute("stroke-width", 3);
+        g.appendChild(t); ticks.push(t);
+      }
+      // Riesgo por semana: alto la 1.ª semana y descenso lento (forma esquemática).
+      var d = "M260 330";
+      for (var k = 0; k <= 118; k++) {
+        var xx = 260 + k * 10;
+        var yy = 700 - 370 * Math.exp(-k / 38);
+        if (k < 10) yy = 330;
+        d += " L" + xx + " " + yy.toFixed(1);
+      }
+      var curve = document.getElementById("li-curve");
+      curve.setAttribute("d", d);
+      var len = curve.getTotalLength();
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#li-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#li-axis", { attr: { x2: 260 } }, { attr: { x2: 1440 }, duration: 1.0, ease: "power2.inOut" }, C.tiempo - 0.6);
+      tl.fromTo(ticks, { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.05 }, C.tiempo);
+      tl.fromTo("#li-x", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.tiempo + 0.4);
+      tl.fromTo("#li-alta", { attr: { y1: 270 } }, { attr: { y1: 270 }, duration: 0.1 }, 0);
+      tl.fromTo("#li-part", { opacity: 1 }, { opacity: 0, duration: 0.4 }, C.primera - 0.6);
+      tl.fromTo("#li-alta-t", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.cero - 0.3);
+      tl.fromTo("#li-week1", { opacity: 0, scaleY: 0, transformOrigin: "50% 100%" }, { opacity: 0.22, scaleY: 1, duration: 0.5, ease: "power3.out" }, C.primera);
+      tl.fromTo("#li-w1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.primera + 0.2);
+      tl.fromTo("#li-13", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.trece - 0.1);
+      tl.fromTo("#li-13-n", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, C.isquio - 1.5);
+      tl.fromTo("#li-week1", { opacity: 0.22 }, { opacity: 0.45, duration: 0.6, yoyo: true, repeat: 1 }, C.isquio - 0.4);
+      tl.fromTo(curve, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: len * 0.92, duration: 0.6, ease: "power2.out" }, C.trece);
+      tl.fromTo("#li-max", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.maximo - 0.2);
+      tl.to(curve, { strokeDashoffset: 0, duration: 2.6, ease: "power1.inOut" }, C.desciende - 0.1);
+      tl.to("#li-max", { opacity: 0.65, duration: 0.4 }, C.desciende);
+      tl.fromTo("#li-meter", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.acumula - 0.3);
+      tl.fromTo("#li-acc", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.acumula - 0.3);
+      tl.fromTo("#li-fill", { scaleY: 0 }, { scaleY: 0.31, duration: 1.4, ease: "power1.out" }, C.acumula);
+      var acc = { v: 0 };
+      tl.fromTo(acc, { v: 0 }, { v: 31, duration: 1.4, ease: "power1.out", onUpdate: function () {
+        document.getElementById("li-acc-n").textContent = Math.round(acc.v);
+      } }, C.acumula);
+      tl.fromTo("#li-acc-l", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.acumula + 0.3);
+      tl.fromTo("#li-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.desciende + 0.6);
+      tl.to("#li-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["linea"] = tl;
+    })();
+  </script>
+</template>

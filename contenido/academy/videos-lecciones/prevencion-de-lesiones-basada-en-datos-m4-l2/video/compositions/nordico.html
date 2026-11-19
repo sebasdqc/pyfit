@@ -1,0 +1,63 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #no-wrap { position: absolute; inset: 0; }
+    #no-k { position: absolute; left: 160px; top: 100px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    #no-t { position: absolute; left: 160px; top: 145px; font: 900 88px var(--font-display); letter-spacing: -0.035em; }
+    #no-t b { color: var(--ondulada); }
+    #no-u { width: 520px; height: 10px; margin-top: 14px; margin-left: 330px; background: var(--ondulada); border-radius: 5px; transform-origin: 0 50%; }
+    #no-stamp { position: absolute; left: 160px; top: 300px; font: 700 34px var(--font-mono); letter-spacing: 0.16em; color: var(--lineal); border: 4px solid var(--lineal); padding: 12px 24px; border-radius: 8px; }
+    #no-opts { position: absolute; left: 160px; top: 420px; display: flex; align-items: center; gap: 40px; }
+    .no-opt { font: 900 64px var(--font-display); letter-spacing: -0.03em; padding: 26px 44px; border: 4px solid #4a4f5c; border-radius: 14px; background: var(--ground-2); }
+    .no-opt small { display: block; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); margin-bottom: 8px; }
+    #no-vs { font: 900 80px var(--font-display); color: var(--ink-faint); }
+    #no-cons { position: absolute; left: 160px; top: 680px; font: 700 46px var(--font-display); letter-spacing: -0.015em; color: var(--ink-soft); }
+    #no-cons b { color: var(--ink); }
+    #no-series { position: absolute; right: 160px; top: 330px; width: 520px; height: 300px; border: 4px dashed var(--ondulada); border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #no-series .q { font: 900 150px var(--font-display); color: var(--ondulada); line-height: 1; }
+    #no-series .s { font: 700 36px var(--font-mono); letter-spacing: 0.16em; color: var(--ink-soft); margin-top: 12px; }
+    #no-rule { position: absolute; left: 160px; top: 820px; display: flex; gap: 24px; }
+    .no-chip { font: 700 44px var(--font-display); padding: 14px 34px; border-radius: 999px; border: 4px solid var(--ink); }
+    #no-src { position: absolute; right: 160px; bottom: 70px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="nordico" data-width="1920" data-height="1080">
+    <div id="no-wrap">
+      <div id="no-k">CASO · EJERCICIO NÓRDICO DE ISQUIOTIBIALES</div>
+      <div id="no-t">¿Cuánto <b>nórdico</b> hace falta?<div id="no-u"></div></div>
+      <div id="no-stamp">DEBATE ACTIVO</div>
+      <div id="no-opts">
+        <div class="no-opt" id="no-o1"><small>VOLUMEN</small>Alto</div>
+        <div id="no-vs">?</div>
+        <div class="no-opt" id="no-o2"><small>VOLUMEN</small>Bajo</div>
+      </div>
+      <div id="no-cons">Sin consenso sobre la <b>dosis mínima efectiva</b></div>
+      <div id="no-series"><div class="q">?</div><div class="s">SERIES</div></div>
+      <div id="no-rule">
+        <div class="no-chip" id="no-c1">Se decide con criterio</div>
+        <div class="no-chip" id="no-c2">Se monitorea</div>
+      </div>
+      <div id="no-src">EL DEBATE SOBRE LA DOSIS ES EVIDENCIA CITADA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.nordico;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#no-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.05);
+      tl.fromTo("#no-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.2);
+      tl.fromTo("#no-u", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.inOut" }, C.nordico - 0.3);
+      tl.fromTo("#no-stamp", { opacity: 0, scale: 1.3, rotation: -4 }, { opacity: 1, scale: 1, rotation: -2, duration: 0.35, ease: "power3.out" }, C.debate - 0.1);
+      tl.fromTo("#no-src", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.debate + 0.3);
+      tl.fromTo("#no-o1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.alto - 1.1);
+      tl.fromTo("#no-vs", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, C.alto - 0.6);
+      tl.fromTo("#no-o2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.alto - 0.2);
+      tl.fromTo("#no-cons", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.minima - 0.9);
+      tl.fromTo("#no-series", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, C.series - 3.0);
+      tl.fromTo("#no-series .q", { scale: 1 }, { scale: 1.18, duration: 0.3, yoyo: true, repeat: 1 }, C.series - 0.2);
+      tl.fromTo("#no-c1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.criterio - 0.4);
+      tl.fromTo("#no-c2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.monitorea - 0.3);
+      tl.to("#no-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["nordico"] = tl;
+    })();
+  </script>
+</template>

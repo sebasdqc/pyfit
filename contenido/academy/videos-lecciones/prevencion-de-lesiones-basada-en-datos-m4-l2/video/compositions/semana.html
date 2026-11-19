@@ -1,0 +1,77 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #se-wrap { position: absolute; inset: 0; }
+    #se-t { position: absolute; left: 160px; top: 100px; font: 900 80px var(--font-display); letter-spacing: -0.035em; }
+    #se-t b { color: var(--ondulada); }
+    #se-grid { position: absolute; left: 160px; top: 290px; width: 1600px; height: 560px; }
+    .se-col { position: absolute; top: 0; width: 176px; height: 500px; border: 3px dashed #4a4f5c; border-radius: 10px; overflow: hidden; }
+    .se-main { position: absolute; left: 10px; right: 10px; bottom: 10px; background: var(--lineal); border-radius: 6px; transform-origin: 50% 100%; }
+    .se-prev { position: absolute; left: 10px; right: 10px; height: 64px; background: var(--ondulada); border-radius: 6px; }
+    .se-day { position: absolute; top: 518px; width: 176px; text-align: center; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    #se-leg { position: absolute; left: 160px; top: 900px; display: flex; gap: 48px; font: 700 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-soft); }
+    #se-leg span { display: inline-flex; align-items: center; gap: 14px; }
+    #se-leg i { display: inline-block; width: 34px; height: 22px; border-radius: 4px; }
+    #se-note { position: absolute; right: 160px; top: 900px; font: 700 40px var(--font-display); color: var(--ondulada); letter-spacing: -0.015em; }
+  </style>
+  <div id="root" data-composition-id="semana" data-width="1920" data-height="1080">
+    <div id="se-wrap">
+      <div id="se-t">La semana como un <b>presupuesto de carga</b></div>
+      <div id="se-grid"></div>
+      <div id="se-leg">
+        <span id="se-l1"><i style="background:#cc1f36"></i>SESIÓN PRINCIPAL</span>
+        <span id="se-l2"><i style="background:#e8dcc2"></i>PREVENCIÓN</span>
+      </div>
+      <div id="se-note">Dentro del mismo presupuesto</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.semana;
+      var days = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
+      var main = [300, 180, 340, 120, 280, 200, 0];
+      var prev = [0, 1, 0, 1, 0, 1, 0];
+      var grid = document.getElementById("se-grid");
+      var gap = (1600 - 7 * 176) / 6;
+      var cols = [], mains = [], prevs = [];
+      days.forEach(function (d, i) {
+        var col = document.createElement("div");
+        col.className = "se-col";
+        col.style.left = (i * (176 + gap)) + "px";
+        grid.appendChild(col);
+        cols.push(col);
+        if (main[i]) {
+          var m = document.createElement("div");
+          m.className = "se-main";
+          m.style.height = main[i] + "px";
+          col.appendChild(m);
+          mains.push(m);
+        }
+        if (prev[i]) {
+          var p = document.createElement("div");
+          p.className = "se-prev";
+          p.style.bottom = (10 + main[i] + 8) + "px";
+          col.appendChild(p);
+          prevs.push(p);
+        }
+        var lab = document.createElement("div");
+        lab.className = "se-day";
+        lab.style.left = (i * (176 + gap)) + "px";
+        lab.textContent = d;
+        grid.appendChild(lab);
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(cols, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.07, ease: "power3.out" }, C.semana - 0.2);
+      tl.fromTo(".se-day", { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.05 }, C.semana);
+      tl.fromTo("#se-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.presupuesto - 0.3);
+      tl.fromTo(mains, { scaleY: 0 }, { scaleY: 1, duration: 0.6, stagger: 0.08, ease: "power2.out" }, C.principales - 0.4);
+      tl.fromTo("#se-l1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.principales);
+      tl.fromTo(prevs, { opacity: 0, y: -80 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.12, ease: "back.out(1.4)" }, C.trabajo);
+      tl.fromTo("#se-l2", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.trabajo + 0.2);
+      tl.fromTo("#se-note", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.dentro - 0.1);
+      tl.fromTo(prevs, { scale: 1 }, { scale: 1.08, duration: 0.25, yoyo: true, repeat: 1 }, C.dentro + 0.2);
+      tl.to("#se-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["semana"] = tl;
+    })();
+  </script>
+</template>

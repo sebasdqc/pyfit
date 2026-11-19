@@ -1,0 +1,346 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {
+  "FIFA once más": "FIFA 11+",
+  "ocho mil cuatrocientos cincuenta y nueve": "8.459",
+  "cincuenta y uno por ciento": "51 %",
+  "treinta y cuatro por ciento": "34 %",
+  "treinta y uno por ciento": "31 %",
+  "trece por ciento": "13 %",
+  "cuarenta y seis por ciento": "46 %",
+  "cuarenta por ciento": "40 %",
+  "sesenta y tres por ciento": "63 %",
+  "quince por ciento": "15 %",
+  "cero coma sesenta y nueve": "0,69",
+  "cero coma cuarenta y nueve": "0,49",
+  "quince estudios": "15 estudios",
+  "veinte minutos": "20 minutos"
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "start": null,
+   "keys": [
+    [
+     "niveles",
+     [
+      "niveles"
+     ]
+    ],
+    [
+     "distintos",
+     [
+      "distintos"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "fifa",
+   "start": [
+    "primero"
+   ],
+   "keys": [
+    [
+     "fifa",
+     [
+      "fifa"
+     ]
+    ],
+    [
+     "calentamiento",
+     [
+      "calentamiento"
+     ]
+    ],
+    [
+     "veinte",
+     [
+      "20",
+      "veinte"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "flechas",
+   "start": [
+    "varios"
+   ],
+   "keys": [
+    [
+     "meta",
+     [
+      "meta"
+     ]
+    ],
+    [
+     "lesiones",
+     [
+      "lesiones"
+     ]
+    ],
+    [
+     "direccion",
+     [
+      "direccion"
+     ]
+    ],
+    [
+     "rodilla",
+     [
+      "46",
+      "cuarenta"
+     ]
+    ],
+    [
+     "cabeza",
+     [
+      "40",
+      "cuarenta"
+     ]
+    ],
+    [
+     "lumbar",
+     [
+      "63",
+      "sesenta"
+     ]
+    ],
+    [
+     "reduccion",
+     [
+      "reduccion"
+     ]
+    ],
+    [
+     "global",
+     [
+      "global"
+     ]
+    ],
+    [
+     "rr",
+     [
+      "0",
+      "cero"
+     ]
+    ],
+    [
+     "flechas",
+     [
+      "flechas"
+     ]
+    ],
+    [
+     "confianza",
+     [
+      "confianza"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "nordico",
+   "start": [
+    "segundo"
+   ],
+   "keys": [
+    [
+     "nordico",
+     [
+      "nordico"
+     ]
+    ],
+    [
+     "meta",
+     [
+      "meta"
+     ]
+    ],
+    [
+     "atletas",
+     [
+      "atletas"
+     ]
+    ],
+    [
+     "cincuenta",
+     [
+      "51",
+      "cincuenta"
+     ]
+    ],
+    [
+     "famosa",
+     [
+      "famosa"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "reeval",
+   "start": [
+    "pero"
+   ],
+   "keys": [
+    [
+     "anio",
+     [
+      "2021",
+      "dos"
+     ]
+    ],
+    [
+     "reev",
+     [
+      "revaluacion",
+      "reevaluacion",
+      "reeval"
+     ]
+    ],
+    [
+     "quince",
+     [
+      "15",
+      "quince"
+     ]
+    ],
+    [
+     "cinco",
+     [
+      "cinco",
+      "5"
+     ]
+    ],
+    [
+     "aleatorizados",
+     [
+      "aleatorizados"
+     ]
+    ],
+    [
+     "esos",
+     [
+      "esos"
+     ]
+    ],
+    [
+     "conclusion",
+     [
+      "conclusion"
+     ]
+    ],
+    [
+     "evidencia",
+     [
+      "evidencia"
+     ]
+    ],
+    [
+     "inconclusa",
+     [
+      "inconclusa"
+     ]
+    ],
+    [
+     "condicional",
+     [
+      "condicional"
+     ]
+    ],
+    [
+     "futbol",
+     [
+      "futbol"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "conviven",
+   "start": [
+    "como"
+   ],
+   "keys": [
+    [
+     "convivir",
+     [
+      "convivir"
+     ]
+    ],
+    [
+     "cincuenta",
+     [
+      "51",
+      "cincuenta"
+     ]
+    ],
+    [
+     "promedio",
+     [
+      "promedio"
+     ]
+    ],
+    [
+     "desigual",
+     [
+      "desigual"
+     ]
+    ],
+    [
+     "mide",
+     [
+      "mide"
+     ]
+    ],
+    [
+     "merece",
+     [
+      "merece"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "el"
+   ],
+   "keys": [
+    [
+     "desacreditado",
+     [
+      "desacreditado"
+     ]
+    ],
+    [
+     "demostrado",
+     [
+      "demostrado"
+     ]
+    ],
+    [
+     "lugar",
+     [
+      "lugar"
+     ]
+    ],
+    [
+     "herramienta",
+     [
+      "herramienta"
+     ]
+    ],
+    [
+     "limitada",
+     [
+      "limitada"
+     ]
+    ]
+   ]
+  }
+ ]
+}

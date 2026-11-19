@@ -1,0 +1,39 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+    #ci-k { position: absolute; left: 120px; top: 120px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); }
+    .ci-w { position: absolute; left: 120px; font: 900 100px var(--font-display); letter-spacing: -0.04em; color: var(--ink-soft); }
+    .ci-w s { text-decoration: none; position: relative; }
+    .ci-x { position: absolute; left: -10px; right: -10px; top: 54%; height: 10px; background: var(--lineal); border-radius: 5px; transform-origin: 0 50%; }
+    #ci-w1 { top: 190px; } #ci-w2 { top: 320px; }
+    #ci-f1, #ci-f2 { position: absolute; left: 120px; font: 900 96px var(--font-display); letter-spacing: -0.04em; line-height: 1.05; }
+    #ci-f1 { top: 560px; } #ci-f2 { top: 670px; color: var(--ondulada); }
+    #ci-logo { position: absolute; right: 120px; bottom: 80px; width: 150px; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div id="ci-k">EL EJERCICIO NÓRDICO NO QUEDA…</div>
+      <div class="ci-w" id="ci-w1"><s>Desacreditado<i class="ci-x" id="ci-x1"></i></s></div>
+      <div class="ci-w" id="ci-w2"><s>Demostrado<i class="ci-x" id="ci-x2"></i></s></div>
+      <div id="ci-f1">Una herramienta razonable,</div>
+      <div id="ci-f2">con evidencia limitada.</div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ci-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.05);
+      tl.fromTo("#ci-w1", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.desacreditado - 0.25);
+      tl.fromTo("#ci-x1", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.inOut" }, C.desacreditado + 0.6);
+      tl.fromTo("#ci-w2", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.demostrado - 0.25);
+      tl.fromTo("#ci-x2", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.inOut" }, C.demostrado + 0.55);
+      tl.fromTo("#ci-f1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.herramienta - 0.3);
+      tl.fromTo("#ci-f2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.limitada - 0.6);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.limitada + 1.0);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

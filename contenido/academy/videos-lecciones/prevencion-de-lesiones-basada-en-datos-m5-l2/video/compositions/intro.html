@@ -1,0 +1,55 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #in-wrap { position: absolute; inset: 0; }
+
+    .in-gates { position: absolute; left: 160px; width: 1600px; display: flex; align-items: center; gap: 0; }
+    .in-gates .g { width: 362px; height: 116px; border-radius: 12px; padding: 18px 24px; border: 3px solid #2a2e3a; }
+    .in-gates .gar { width: 51px; text-align: center; font: 700 44px var(--font-display); color: #868b98; }
+    .in-gates .gn { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .in-gates .gq { font: 800 40px var(--font-display); letter-spacing: -0.02em; color: #868b98; margin-top: 4px; }
+    .in-gates .g-done { border-color: #5a1a24; background: #1a1015; }
+    .in-gates .g-done .gq { color: var(--ink-soft); }
+    .in-gates .g-done .gn { color: #b05565; }
+
+
+    #in-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    #in-k b { color: var(--lineal); }
+    #in-t { position: absolute; left: 160px; top: 200px; font: 900 132px var(--font-display); letter-spacing: -0.045em; line-height: 1; }
+    #in-tag { position: absolute; left: 160px; top: 360px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal);
+      border: 3px solid var(--lineal); border-radius: 999px; padding: 10px 22px; }
+    #in-a { position: absolute; left: 160px; top: 470px; font: 700 52px var(--font-display); letter-spacing: -0.02em; color: var(--ink-soft); }
+    #in-a b { color: var(--ink); }
+
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <div id="in-wrap">
+      <div id="in-k">PREVENCIÓN DE LESIONES BASADA EN DATOS · <b>MÓDULO 5</b> · LECCIÓN 2</div>
+      <div id="in-t">Caso práctico</div>
+      <div id="in-tag">CASO ILUSTRATIVO</div>
+      <div id="in-a">Un atleta vuelve de una <b>lesión de isquiotibiales</b></div>
+      <div class="in-gates" id="in-gates" style="top:700px">
+      <div class="g g-off" id="in-g0"><div class="gn">PASO 01</div><div class="gq">¿A quién?</div></div>
+      <div class="gar" id="in-a0">›</div>
+      <div class="g g-off" id="in-g1"><div class="gn">PASO 02</div><div class="gq">¿Cuándo?</div></div>
+      <div class="gar" id="in-a1">›</div>
+      <div class="g g-off" id="in-g2"><div class="gn">PASO 03</div><div class="gq">¿Con qué?</div></div>
+      <div class="gar" id="in-a2">›</div>
+      <div class="g g-off" id="in-g3"><div class="gn">PASO 04</div><div class="gq">¿Cuánto?</div></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.intro;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#in-t", { scale: 0.97, transformOrigin: "0% 50%" }, { scale: 1, duration: 1.2, ease: "power2.out" }, 0);
+      tl.fromTo("#in-tag", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.unir - 0.6);
+      tl.fromTo("#in-gates", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.unir);
+      tl.fromTo(["#in-g0", "#in-g1", "#in-g2", "#in-g3"], { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.12, ease: "power3.out" }, C.unir + 0.1);
+      tl.fromTo("#in-a", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.atleta - 0.1);
+      tl.to("#in-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["intro"] = tl;
+    })();
+  </script>
+</template>

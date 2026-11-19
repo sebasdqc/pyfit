@@ -1,0 +1,51 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #se-wrap { position: absolute; inset: 0; }
+    #se-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    #se-title { position: absolute; left: 160px; top: 160px; font: 900 76px var(--font-display); letter-spacing: -0.035em; }
+    .se-strip { position: absolute; height: 120px; border-radius: 12px; display: flex; align-items: center;
+      padding: 0 32px; font: 800 40px var(--font-display); letter-spacing: -0.01em; color: var(--ink);
+      background: rgba(232, 220, 194, 0.16); border: 3px solid rgba(232, 220, 194, 0.55); }
+    #se-s1 { left: 160px; top: 360px; width: 1060px; }
+    #se-s2 { left: 460px; top: 520px; width: 1060px; justify-content: flex-end; }
+    #se-s3 { left: 700px; top: 680px; width: 1060px; justify-content: flex-end; }
+    .se-strip small { font: 700 28px var(--font-mono); letter-spacing: 0.08em; color: var(--ink-soft); margin-left: 18px; }
+    #se-zone { position: absolute; left: 700px; top: 340px; width: 520px; height: 480px; border-radius: 16px;
+      background: rgba(204, 31, 54, 0.28); border: 4px solid var(--lineal); }
+    #se-zone-l { position: absolute; left: 700px; top: 850px; width: 520px; text-align: center;
+      font: 900 52px var(--font-display); letter-spacing: -0.02em; color: var(--lineal); }
+    #se-alone { position: absolute; left: 160px; top: 850px; font: 700 40px var(--font-display); color: var(--ink-soft); }
+  </style>
+  <div id="root" data-composition-id="senales" data-width="1920" data-height="1080">
+    <div id="se-wrap">
+      <div id="se-k">¿QUÉ MIRAR?</div>
+      <div id="se-title">Tres señales que se superponen</div>
+      <div id="se-zone"></div>
+      <div class="se-strip" id="se-s1">Historial de lesión reciente</div>
+      <div class="se-strip" id="se-s2">Ventana temporal de mayor riesgo</div>
+      <div class="se-strip" id="se-s3">Contexto de carga <small id="se-m4">→ MÓDULO 4</small></div>
+      <div id="se-alone">Ninguna basta por sí sola</div>
+      <div id="se-zone-l">VIGILANCIA MÁXIMA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.senales;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#se-k", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      tl.fromTo("#se-title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.tres - 0.1);
+      tl.fromTo("#se-s1", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.historial - 0.1);
+      tl.fromTo("#se-s2", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.ventana - 0.1);
+      tl.fromTo("#se-s3", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.contexto - 0.1);
+      tl.fromTo("#se-m4", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.modulo - 0.2);
+      tl.fromTo("#se-alone", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.ninguna - 0.1);
+      tl.to("#se-alone", { opacity: 0, duration: 0.3 }, C.coinciden - 0.4);
+      tl.fromTo("#se-zone", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" }, C.coinciden - 0.1);
+      tl.fromTo("#se-zone-l", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.maxima - 0.5);
+      tl.to("#se-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["senales"] = tl;
+    })();
+  </script>
+</template>

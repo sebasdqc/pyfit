@@ -1,0 +1,52 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #av-wrap { position: absolute; inset: 0; }
+    #av-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    .av-card { position: absolute; top: 330px; width: 680px; height: 360px; border-radius: 16px;
+      border: 3px solid var(--ink-faint); background: var(--ground-2); padding: 44px; }
+    #av-c1 { left: 160px; }
+    #av-c2 { left: 1080px; border-color: var(--ondulada); }
+    .av-card .t { font: 900 56px var(--font-display); letter-spacing: -0.03em; line-height: 1.05; }
+    .av-card .s { font: 700 28px var(--font-mono); letter-spacing: 0.08em; color: var(--ink-soft); margin-top: 26px; }
+    #av-chip { display: inline-block; margin-top: 26px; padding: 12px 22px; border-radius: 999px;
+      border: 3px solid var(--ink-soft); font: 700 30px var(--font-mono); letter-spacing: 0.04em; }
+    #av-stamp { position: absolute; left: 190px; top: 730px; font: 800 40px var(--font-display);
+      color: var(--lineal); letter-spacing: -0.01em; }
+    #av-arrow { position: absolute; left: 870px; top: 470px; font: 900 96px var(--font-display); color: var(--ondulada); }
+  </style>
+  <div id="root" data-composition-id="aviso" data-width="1920" data-height="1080">
+    <div id="av-wrap">
+      <div id="av-k">UN AVISO</div>
+      <div class="av-card" id="av-c1">
+        <div class="t">Monitoreo de carga</div>
+        <div id="av-chip">ratio agudo:crónico</div>
+        <div class="s">PICOS DE CARGA Y SU CÁLCULO</div>
+      </div>
+      <div id="av-stamp">✕ No se enseña en este curso</div>
+      <div id="av-arrow">→</div>
+      <div class="av-card" id="av-c2">
+        <div class="s" style="margin-top:0;color:var(--ondulada)">OTRO CURSO · ESCUELA DE ANALÍTICA</div>
+        <div class="t" style="margin-top:22px">ACWR y Prevención de Picos de Carga</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.aviso;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#av-k", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      tl.fromTo("#av-c1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.detalle - 0.1);
+      tl.fromTo("#av-chip", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, C.ratio - 0.1);
+      tl.fromTo("#av-stamp", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, C.aqui - 0.5);
+      tl.to("#av-c1", { opacity: 0.7, duration: 0.4 }, C.aqui - 0.3);
+      tl.fromTo("#av-arrow", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, C.tienes - 0.1);
+      tl.fromTo("#av-c2", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.acwr - 0.7);
+      tl.to("#av-c2", { scale: 1.04, borderColor: "#f4f2ee", duration: 0.5, ease: "power2.out" }, C.picos - 0.4);
+      tl.to("#av-arrow", { x: 16, duration: 0.5, ease: "power2.out" }, C.picos - 0.4);
+      tl.to("#av-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["aviso"] = tl;
+    })();
+  </script>
+</template>

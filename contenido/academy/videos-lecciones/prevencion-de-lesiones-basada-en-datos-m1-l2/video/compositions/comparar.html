@@ -1,0 +1,47 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #co-wrap { position: absolute; inset: 0; }
+    #co-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--ink-faint); }
+    #co-title { position: absolute; left: 160px; top: 160px; font: 900 72px var(--font-display); letter-spacing: -0.035em; }
+    .co-row { position: absolute; left: 160px; height: 96px; width: 1660px; }
+    .co-name { position: absolute; left: 0; top: 24px; width: 580px; white-space: nowrap; font: 700 40px var(--font-display); color: var(--ink-soft); }
+    .co-bar { position: absolute; left: 600px; top: 18px; height: 60px; background: #5d6170; transform-origin: 0 50%; }
+    .co-val { position: absolute; top: 18px; white-space: nowrap; font: 900 52px var(--font-display); color: var(--ink); }
+    #co-r0 .co-name { color: var(--lineal); font-weight: 900; }
+    #co-r0 .co-bar { background: var(--lineal); }
+    #co-r0 .co-val { color: var(--lineal); }
+    #co-note { position: absolute; left: 160px; bottom: 80px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="comparar" data-width="1920" data-height="1080">
+    <div id="co-wrap">
+      <div id="co-k">RECURRENCIA ACUMULADA · MISMA POBLACIÓN</div>
+      <div id="co-title">Compáralo con otras lesiones</div>
+      <!-- 30 px por punto porcentual -->
+      <div class="co-row" id="co-r0" style="top: 300px"><div class="co-name">Isquiotibiales</div><div class="co-bar" style="width: 930px"></div><div class="co-val" style="left: 1560px">31 %</div></div>
+      <div class="co-row" id="co-r1" style="top: 420px"><div class="co-name">Esguince de tobillo</div><div class="co-bar" style="width: 450px"></div><div class="co-val" style="left: 1080px">15 %</div></div>
+      <div class="co-row" id="co-r2" style="top: 540px"><div class="co-name">Contusión de muslo</div><div class="co-bar" style="width: 360px"></div><div class="co-val" style="left: 990px">12 %</div></div>
+      <div class="co-row" id="co-r3" style="top: 660px"><div class="co-name">Ligamento colateral medial</div><div class="co-bar" style="width: 330px"></div><div class="co-val" style="left: 960px">11 %</div></div>
+      <div class="co-row" id="co-r4" style="top: 780px"><div class="co-name">Conmoción</div><div class="co-bar" style="width: 150px"></div><div class="co-val" style="left: 780px">5 %</div></div>
+      <div id="co-note">RIESGO ACUMULADO DE RECURRENCIA EN LA TEMPORADA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.comparar;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#co-title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.1);
+      tl.fromTo("#co-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.poblacion - 0.6);
+      tl.fromTo("#co-note", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.poblacion);
+      [["#co-r1", C.tobillo - 0.9], ["#co-r2", C.muslo - 0.4], ["#co-r3", C.ligamento - 0.1], ["#co-r4", C.conmocion - 0.3], ["#co-r0", C.isquio - 0.1]].forEach(function (d) {
+        tl.fromTo(d[0] + " .co-name", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, d[1]);
+        tl.fromTo(d[0] + " .co-bar", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power3.out" }, d[1] + 0.1);
+        tl.fromTo(d[0] + " .co-val", { opacity: 0 }, { opacity: 1, duration: 0.3 }, d[1] + 0.5);
+      });
+      tl.to(["#co-r1", "#co-r2", "#co-r3", "#co-r4"], { opacity: 0.55, duration: 0.5 }, C.isquio + 0.8);
+      tl.to("#co-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["comparar"] = tl;
+    })();
+  </script>
+</template>

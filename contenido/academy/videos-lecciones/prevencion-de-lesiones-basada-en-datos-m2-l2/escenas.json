@@ -1,0 +1,360 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {
+  "FIFA once más": "FIFA 11+",
+  "ocho mil cuatrocientos cincuenta y nueve": "8.459",
+  "cincuenta y uno por ciento": "51 %",
+  "treinta y cuatro por ciento": "34 %",
+  "treinta y uno por ciento": "31 %",
+  "trece por ciento": "13 %",
+  "cuarenta y seis por ciento": "46 %",
+  "cuarenta por ciento": "40 %",
+  "sesenta y tres por ciento": "63 %",
+  "quince por ciento": "15 %",
+  "cero coma sesenta y nueve": "0,69",
+  "cero coma cuarenta y nueve": "0,49",
+  "quince estudios": "15 estudios"
+ },
+ "scenes": [
+  {
+   "id": "meta",
+   "start": null,
+   "keys": [
+    [
+     "meta",
+     [
+      "meta"
+     ]
+    ],
+    [
+     "datos",
+     [
+      "datos"
+     ]
+    ],
+    [
+     "partida",
+     [
+      "partida"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "linea",
+   "start": [
+    "ponlo"
+   ],
+   "keys": [
+    [
+     "tiempo",
+     [
+      "tiempo"
+     ]
+    ],
+    [
+     "alta",
+     [
+      "alta"
+     ]
+    ],
+    [
+     "cero",
+     [
+      "cero"
+     ]
+    ],
+    [
+     "primera",
+     [
+      "primera"
+     ]
+    ],
+    [
+     "isquio",
+     [
+      "isquio"
+     ]
+    ],
+    [
+     "trece",
+     [
+      "13",
+      "trece"
+     ]
+    ],
+    [
+     "australiano",
+     [
+      "australiano"
+     ]
+    ],
+    [
+     "maximo",
+     [
+      "maximo"
+     ]
+    ],
+    [
+     "desciende",
+     [
+      "desciende"
+     ]
+    ],
+    [
+     "acumula",
+     [
+      "acumula"
+     ]
+    ],
+    [
+     "treintayuno",
+     [
+      "31",
+      "treinta"
+     ]
+    ],
+    [
+     "temporada",
+     [
+      "temporada"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "vigilancia",
+   "start": [
+    "por"
+   ],
+   "keys": [
+    [
+     "vigilancia",
+     [
+      "vigilancia"
+     ]
+    ],
+    [
+     "forma",
+     [
+      "forma"
+     ]
+    ],
+    [
+     "maxima",
+     [
+      "maxima"
+     ]
+    ],
+    [
+     "regreso",
+     [
+      "regreso"
+     ]
+    ],
+    [
+     "relajada",
+     [
+      "relajada"
+     ]
+    ],
+    [
+     "semanas",
+     [
+      "semanas"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "guardia",
+   "start": [
+    "lo"
+   ],
+   "keys": [
+    [
+     "contra",
+     [
+      "contraintuitivo"
+     ]
+    ],
+    [
+     "momento",
+     [
+      "momento"
+     ]
+    ],
+    [
+     "atencion",
+     [
+      "atencion"
+     ]
+    ],
+    [
+     "practica",
+     [
+      "practica"
+     ]
+    ],
+    [
+     "equipos",
+     [
+      "equipos"
+     ]
+    ],
+    [
+     "guardia",
+     [
+      "guardia"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "senales",
+   "start": [
+    "que"
+   ],
+   "keys": [
+    [
+     "tres",
+     [
+      "tres"
+     ]
+    ],
+    [
+     "superponen",
+     [
+      "superponen"
+     ]
+    ],
+    [
+     "historial",
+     [
+      "historial"
+     ]
+    ],
+    [
+     "ventana",
+     [
+      "ventana"
+     ]
+    ],
+    [
+     "contexto",
+     [
+      "contexto"
+     ]
+    ],
+    [
+     "modulo",
+     [
+      "modulo"
+     ]
+    ],
+    [
+     "ninguna",
+     [
+      "ninguna"
+     ]
+    ],
+    [
+     "coinciden",
+     [
+      "coinciden"
+     ]
+    ],
+    [
+     "maxima",
+     [
+      "maxima"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "aviso",
+   "start": [
+    "un"
+   ],
+   "keys": [
+    [
+     "detalle",
+     [
+      "detalle"
+     ]
+    ],
+    [
+     "ratio",
+     [
+      "ratio"
+     ]
+    ],
+    [
+     "aqui",
+     [
+      "aqui"
+     ]
+    ],
+    [
+     "tienes",
+     [
+      "tienes"
+     ]
+    ],
+    [
+     "acwr",
+     [
+      "acwr",
+      "ac"
+     ]
+    ],
+    [
+     "picos",
+     [
+      "picos"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "las"
+   ],
+   "keys": [
+    [
+     "cifras",
+     [
+      "cifras"
+     ]
+    ],
+    [
+     "citada",
+     [
+      "citada"
+     ]
+    ],
+    [
+     "niveles",
+     [
+      "niveles"
+     ]
+    ],
+    [
+     "sintesis",
+     [
+      "sintesis"
+     ]
+    ],
+    [
+     "curso",
+     [
+      "curso"
+     ]
+    ]
+   ]
+  }
+ ]
+}

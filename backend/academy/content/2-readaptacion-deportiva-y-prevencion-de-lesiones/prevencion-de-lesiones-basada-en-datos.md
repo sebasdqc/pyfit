@@ -43,23 +43,57 @@ La lección de fondo del módulo queda planteada así: no tratamos a los atletas
 
 ### Lección 2 — Por qué la lesión previa pesa tanto (tipo: video)
 
-video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+video_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m1-l2-lesion-previa.mp4
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m1-l2-lesion-previa.vtt
 
-Descripción de apoyo: el objetivo del video es que el riesgo de recurrencia se vea, no solo se escuche. Abrir con una línea de tiempo horizontal que representa el año posterior a una lesión de isquiotibiales. Sobre esa línea, marcar de forma destacada la ventana de mayor riesgo: la primera semana de regreso a competencia, etiquetada con el 13% de riesgo de recurrencia observado en fútbol australiano. Visualmente, esa primera semana debe aparecer como un pico rojo y estrecho, para transmitir que el peligro está concentrado justo al inicio.
+De todos los factores de riesgo de lesión, hay uno que destaca: haberse lesionado antes.
 
-A continuación, mostrar cómo el riesgo no cae a cero al terminar esa primera semana, sino que se mantiene elevado durante varias semanas. La curva desciende, pero lentamente, y va acumulando riesgo hasta llegar al 31% de recurrencia acumulada durante toda la temporada. La animación debe dejar clara la diferencia entre "riesgo por semana" (pico inicial) y "riesgo acumulado" (la barra que crece hasta el 31%), porque son dos formas distintas de leer el mismo fenómeno y suelen confundirse.
+Una revisión sistemática lo señala como, posiblemente, el predictor más fuerte de una lesión nueva o recurrente.
 
-Para dar contexto comparativo, incorporar en pantalla una barra o columna adicional que contraste ese 31% de los isquiotibiales con las cifras de otras lesiones: 15% esguince de tobillo, 12% contusión de muslo, 11% ligamento colateral medial y 5% conmoción. La imagen debe transmitir que la barra de isquiotibiales es visiblemente la más alta. Todos estos datos provienen de la revisión de tasas y factores de riesgo de las lesiones de isquiotibiales, y del cuerpo de evidencia sobre recurrencia citado en el curso. Cerrar recordando que la revisión sistemática sobre lesión previa como predictor sostiene que otros factores (fuerza, flexibilidad, estabilidad) suelen estar anidados dentro de esa historia de lesión, no separados de ella.
+Las lesiones de isquiotibiales lo muestran con claridad. Mira lo que pasa en el año siguiente a la lesión.
+
+En fútbol australiano, el riesgo más alto aparece justo al volver: un trece por ciento de recurrencia en la primera semana de regreso a la competencia.
+
+Después baja, pero lentamente. Y se va acumulando, semana a semana, hasta un treinta y uno por ciento en toda la temporada.
+
+Ojo: no es lo mismo el riesgo de cada semana que el riesgo acumulado. Son dos maneras distintas de leer el mismo fenómeno.
+
+Ahora compáralo con otras lesiones en la misma población. Esguince de tobillo, quince por ciento. Contusión de muslo, doce. Ligamento colateral medial, once. Conmoción, cinco.
+
+Los isquiotibiales, con su treinta y uno por ciento, recurren mucho más.
+
+¿Por qué pesa tanto la lesión previa? Porque factores como la fuerza, la flexibilidad o la estabilidad suelen estar anidados dentro de esa historia de lesión, no separados de ella.
+
+Por eso, antes de estimar el riesgo de un atleta, la pregunta más útil es esta: ¿se lesionó antes, dónde y hace cuánto?
 
 ### Lección 3 — El mito de "ya estoy recuperado" (tipo: audio)
 
-audio_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+audio_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m1-l3-ya-estoy-recuperado.mp3
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m1-l3-ya-estoy-recuperado.vtt
 
-Descripción de apoyo: tono directo y sin rodeos, como una conversación honesta entre profesional y atleta. La pieza debe desmontar una creencia muy extendida: la idea de que volver a jugar sin dolor significa riesgo cero. El guion arranca reconociendo la lógica intuitiva del atleta —"no me duele, luego estoy bien"— para luego contraponerle los datos.
+Hola. Este es el episodio del módulo uno de Prevención de Lesiones Basada en Datos. Hoy quiero hablarte de una frase que seguro escuchaste muchas veces: ya estoy recuperado.
 
-El mensaje central: el riesgo de recurrencia se mantiene elevado durante semanas después del regreso, no solo el día del alta. Apoyar esa afirmación con las cifras del fútbol australiano: el pico del 13% en la primera semana tras el regreso, y el hecho de que el 34% de los jugadores sufrió una nueva lesión de isquiotibiales dentro del año siguiente, acumulando hasta un 31% de recurrencia a lo largo de la temporada. La ausencia de dolor puntual no borra ese riesgo estadístico.
+Empecemos por reconocer que tiene lógica. Si no me duele, estoy bien. Si puedo correr, saltar y patear sin molestias, el problema terminó. Es lo que dicta la intuición, y es lo que siente cualquier atleta que lleva semanas esperando volver.
 
-El locutor debe insistir en la distinción entre "sentirse recuperado" y "estar fuera de la ventana de riesgo". Son dos cosas distintas. La revisión sistemática sobre lesión previa refuerza esto: la historia de lesión es el predictor más fuerte precisamente porque los factores neuromusculares causativos pueden seguir presentes aunque el dolor haya desaparecido. Cerrar con una idea accionable: el alta sin dolor es el comienzo de una fase de vigilancia, no el certificado de que el problema terminó. Distinguir con claridad que el marco temporal ("semanas de riesgo elevado") es evidencia citada, mientras que cualquier recomendación conductual concreta que se sugiera es una síntesis aplicada del curso.
+Pero la intuición y los datos no siempre dicen lo mismo. Y en este caso, no lo dicen.
+
+Vamos con las cifras. Hablamos de lesiones de isquiotibiales, que son el caso más estudiado. En fútbol australiano, el treinta y cuatro por ciento de los jugadores sufrió una nueva lesión de isquiotibiales dentro del año siguiente a la lesión inicial.
+
+Y ese riesgo no se reparte de forma pareja. Se concentra al principio. El riesgo más alto, un trece por ciento, aparece en la primera semana tras el regreso a la competencia. Es decir, más o menos uno de cada ocho jugadores que vuelve se relesiona en esos primeros siete días.
+
+Después de esa semana, el riesgo baja, pero no desaparece. Sigue elevado durante varias semanas y se acumula hasta un treinta y uno por ciento de recurrencia a lo largo de la temporada.
+
+Fíjate que ninguna de estas cifras dice nada del dolor. El atleta de la primera semana probablemente se siente bien. Por eso le dieron el alta.
+
+Entonces, ¿por qué el riesgo sigue ahí si ya no duele? Una revisión sistemática lo explica: la lesión previa es posiblemente el predictor más fuerte de una lesión nueva o recurrente, porque arrastra factores neuromusculares que la causan. Déficits de fuerza, alteraciones del control motor, cambios en el músculo. Esos factores pueden seguir presentes aunque el dolor ya se haya ido.
+
+Así que hay que separar dos cosas que solemos mezclar. Una es sentirse recuperado. La otra es estar fuera de la ventana de riesgo. Puedes estar en la primera sin haber salido de la segunda.
+
+Te dejo una idea para llevar. El alta sin dolor no es el certificado de que el problema terminó. Es el comienzo de una fase de vigilancia.
+
+Una aclaración honesta antes de cerrar. Que el riesgo se mantenga elevado durante semanas es evidencia citada. Lo que hagas con eso en el día a día, cómo vigilar y cómo ajustar, es una síntesis aplicada de este curso, y lo vas a trabajar en los próximos módulos.
+
+Nos escuchamos en el módulo dos.
 
 ### Lección 4 — Evaluación inicial (tipo: quiz)
 
@@ -116,23 +150,55 @@ En síntesis, este módulo no aporta una fórmula nueva, sino un reencuadre: el 
 
 ### Lección 2 — Vigilancia reforzada tras el regreso (tipo: video)
 
-video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+video_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m2-l2-vigilancia.mp4
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m2-l2-vigilancia.vtt
 
-Descripción de apoyo: el video traduce a imagen la idea de "ventana de vigilancia reforzada". Mostrar en pantalla una línea de tiempo post-regreso, con el día del alta médica marcado como punto de partida, no como línea de meta. Sobre esa línea, señalar de forma explícita la ventana de mayor riesgo —la primera semana— conectando visualmente con los datos del Módulo 1: el 13% de riesgo de recurrencia de isquiotibiales en esos primeros siete días.
+El día del alta médica suele vivirse como una línea de meta. Los datos dicen que es una línea de partida.
 
-La animación debe representar cómo la intensidad de vigilancia recomendada sigue la forma del riesgo: máxima justo al regreso y descendiendo de forma gradual a medida que pasan las semanas, en paralelo con la acumulación del riesgo hacia el 31% durante la temporada. La imagen contraintuitiva que hay que lograr es que el pico de atención coincida con el momento en que muchos entornos, en la práctica, bajan la guardia.
+Ponlo en una línea de tiempo. El alta es el día cero.
 
-Incluir un recordatorio en pantalla de que el detalle cuantitativo del monitoreo de carga —ratio agudo:crónico, picos de carga— no se desarrolla en este curso, sino en el curso "ACWR y Prevención de Picos de Carga" de la Escuela de Analítica, para que el video no prometa más de lo que enseña. Cerrar mostrando los tres ejes de las señales tempranas —historial de lesión reciente, ventana temporal de mayor riesgo y contexto de carga (Módulo 4)— como tres franjas que se superponen: cuando coinciden, la vigilancia debe ser máxima. Distinguir claramente que las cifras (13%, 31%) son evidencia citada y que la representación de "niveles de vigilancia" es una síntesis aplicada del curso.
+En la primera semana después del regreso, el riesgo de recaída de isquiotibiales llega al trece por ciento en fútbol australiano. Es el punto de máximo riesgo.
+
+Después desciende poco a poco, mientras la recurrencia se acumula hasta un treinta y uno por ciento en la temporada.
+
+Por eso, la vigilancia debería seguir la forma del riesgo: máxima justo al regreso, y más relajada a medida que pasan las semanas.
+
+Lo contraintuitivo es esto: el momento de máxima atención es justo cuando, en la práctica, muchos equipos bajan la guardia.
+
+¿Qué mirar? Tres señales que se superponen. El historial de lesión reciente. La ventana temporal de mayor riesgo. Y el contexto de carga, que verás en el Módulo 4.
+
+Ninguna basta por sí sola. Cuando las tres coinciden, la vigilancia debe ser máxima.
+
+Un aviso: el detalle del monitoreo de carga, como el ratio agudo crónico, no se enseña aquí. Lo tienes en el curso ACWR y Prevención de Picos de Carga.
+
+Las cifras son evidencia citada. Los niveles de vigilancia son una síntesis aplicada de este curso.
 
 ### Lección 3 — El alta médica no es el final (tipo: audio)
 
-audio_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+audio_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m2-l3-el-alta-no-es-el-final.mp3
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m2-l3-el-alta-no-es-el-final.vtt
 
-Descripción de apoyo: caso narrado en primera persona o en tercera persona cercana, sobre un atleta que vuelve a competir tras una lesión de isquiotibiales. El relato debe seguir su experiencia desde el día del alta: la sensación de alivio, la ausencia de dolor, la tentación de considerar el episodio cerrado. Es el momento donde la narración introduce la tensión: justo cuando el atleta cree que terminó, empieza la fase de mayor riesgo.
+Hola. Este es el episodio del módulo dos de Prevención de Lesiones Basada en Datos. Hoy te cuento una historia. El protagonista se llama Matías y es un personaje inventado, un ejemplo ilustrativo. Las cifras que vas a escuchar, en cambio, son reales.
 
-Apoyar la narración con los datos del Módulo 1 sin recitarlos como una lista, sino integrándolos en la historia: recordar que en fútbol australiano el 34% de los jugadores se relesionó dentro del año, con el pico del 13% en la primera semana de regreso, y una recurrencia acumulada del 31% a lo largo de la temporada. El personaje necesita vigilancia reforzada durante las semanas siguientes, no solo el día del regreso; ese es el corazón del episodio.
+Matías es futbolista. Hace unas semanas sintió un pinchazo en la parte de atrás del muslo, en plena carrera. Lesión de isquiotibiales.
 
-El cierre debe conectar con la revisión sistemática que sitúa la lesión previa como el predictor más fuerte: el atleta de la historia sigue cargando ese factor de riesgo aunque ya no lo sienta. La moraleja, dicha en tono conversacional, es que el alta médica es un cambio de fase —de tratamiento a vigilancia—, no el final del proceso. Señalar que el caso narrado es un ejemplo ilustrativo propio, construido para transmitir los principios, mientras que las cifras de recurrencia son evidencia citada del curso.
+Vinieron las semanas de tratamiento, de ejercicios, de paciencia. Y por fin llegó el día: el alta médica. Matías sale del consultorio con una sensación enorme de alivio. Ya no le duele. Puede correr. Vuelve a entrenar con el grupo.
+
+Para él, la historia terminó. Y aquí es donde empieza lo importante.
+
+Porque justo cuando Matías cree que terminó, empieza la fase de mayor riesgo. En fútbol australiano, el riesgo más alto de volver a lesionarse los isquiotibiales aparece en la primera semana de regreso a la competencia: un trece por ciento. Es el momento exacto en que él se siente mejor que nunca.
+
+Matías juega su primer partido. Y el segundo. Se siente bien. Pero el riesgo no se apagó con la primera semana: se mantiene elevado durante varias más. A lo largo de la temporada, la recurrencia acumulada llega al treinta y uno por ciento. Y si se mira el año completo después de la lesión, el treinta y cuatro por ciento de los jugadores volvió a lesionarse.
+
+¿Qué necesita Matías, entonces? No necesita miedo. Necesita vigilancia reforzada durante las semanas siguientes al regreso, no solo el día del alta. Que alguien mire con atención cómo responde, cuánto se le está exigiendo y cómo evoluciona, sobre todo en esas primeras semanas.
+
+Hay algo más que Matías no siente, pero sigue ahí. Una revisión sistemática señala que la lesión previa es posiblemente el predictor más fuerte de una lesión nueva o recurrente. Matías carga con ese factor de riesgo aunque ya no lo note. El dolor se fue. La historia de la lesión, no.
+
+Por eso, la moraleja de hoy es simple. El alta médica no es el final del proceso. Es un cambio de fase: se pasa del tratamiento a la vigilancia.
+
+Recuerda: Matías es inventado. Las cifras de recurrencia son evidencia citada del curso.
+
+En el próximo módulo vamos a ver qué herramientas de prevención existen, y qué tan segura es la evidencia de cada una. Nos escuchamos ahí.
 
 ### Lección 4 — Evaluación de señales tempranas (tipo: quiz)
 
@@ -189,27 +255,55 @@ Es fundamental entender cómo pueden coexistir "51% de reducción" y "evidencia 
 
 ### Lección 2 — Dos programas, dos niveles de certeza (tipo: video)
 
-video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+video_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m3-l2-dos-programas.mp4
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m3-l2-dos-programas.vtt
 
-Descripción de apoyo: el video presenta una comparación en pantalla dividida entre dos programas de prevención con niveles de certeza distintos, para que el contraste sea inmediatamente visible.
+Dos programas de prevención muy conocidos. Dos niveles de certeza muy distintos.
 
-En el lado del **FIFA 11+**, mostrar la acumulación de evidencia consistente en múltiples meta-análisis, apilando visualmente sus resultados: 46% de reducción en lesiones de rodilla; 40% de reducción en lesiones de cabeza y cuello (razón de riesgo 0.60); 63% de reducción en lesión lumbar aguda (razón de riesgo de incidencia 0.37); y la reducción del riesgo global de lesión (razón de riesgo = 0.69). La idea gráfica es que varias flechas independientes apuntan en la misma dirección protectora — eso es lo que da confianza.
+Primero, el FIFA once más: un calentamiento neuromuscular de unos veinte minutos.
 
-En el lado del **NHE**, mostrar primero la cifra que se hizo famosa: reducción del 51% en el riesgo de lesión de isquiotibiales, meta-análisis de 8,459 atletas (razón de riesgo = 0.49, IC 95% 0.32-0.74, p=0.0008). Luego, animar la reevaluación metodológica de 2021: de los 15 estudios originales, "apagar" visualmente los 10 que no eran ECA verdaderos, dejando encendidos solo 5. Sobre ese filtro, aparece la conclusión: la evidencia del efecto protector "permanece inconclusa", con como máximo una recomendación condicional para fútbol.
+Varios meta-análisis, sobre distintas lesiones, apuntan en la misma dirección. Cuarenta y seis por ciento menos lesiones de rodilla. Cuarenta por ciento menos en cabeza y cuello. Sesenta y tres por ciento menos en lesión lumbar aguda. Y una reducción del riesgo global de lesión, con una razón de riesgo de cero coma sesenta y nueve.
 
-El objetivo didáctico explícito del video es explicar por qué "51% de reducción" y "evidencia inconclusa" pueden coexistir sobre el mismo cuerpo de estudios: la cifra resume el promedio de estudios de calidad heterogénea, mientras que la conclusión de 2021 evalúa cuánta confianza merece ese promedio cuando solo se conservan los diseños fuertes. El video no debe presentar el NHE como desacreditado ni como probado — debe dejar al espectador con la capacidad de sostener ambas ideas a la vez. Todas las cifras son evidencia citada del curso.
+Varias flechas independientes que apuntan al mismo lado. Eso es lo que da confianza.
+
+Segundo, el ejercicio nórdico de isquiotibiales. Un meta-análisis de ocho mil cuatrocientos cincuenta y nueve atletas reportó un cincuenta y uno por ciento menos de lesiones de isquiotibiales. Una cifra que se hizo famosa.
+
+Pero en 2021, una reevaluación metodológica revisó los mismos quince estudios. Solo cinco eran ensayos controlados aleatorizados de verdad.
+
+Con solo esos cinco, la conclusión cambió: la evidencia del efecto protector permanece inconclusa. Como mucho, una recomendación condicional para el fútbol.
+
+¿Cómo pueden convivir las dos cosas? El cincuenta y uno por ciento es el promedio de estudios de calidad desigual. La reevaluación mide cuánta confianza merece ese promedio.
+
+El nórdico no queda desacreditado, ni demostrado. Queda en su lugar: una herramienta razonable, con evidencia limitada.
 
 ### Lección 3 — Por qué revisar la metodología importa (tipo: audio)
 
-audio_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+audio_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m3-l3-metodologia-importa.mp3
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m3-l3-metodologia-importa.vtt
 
-Descripción de apoyo: conversación honesta, en tono reflexivo, sobre un fenómeno frecuente en el deporte y la salud: cómo una cifra atractiva puede sobrevivir mucho después de que la evidencia que la sostiene haya sido cuestionada. El caso conductor es el del Nordic Hamstring Exercise.
+Hola. Este es el episodio del módulo tres de Prevención de Lesiones Basada en Datos. Hoy quiero hablarte de algo que pasa mucho en el deporte y en la salud: cómo una cifra atractiva puede sobrevivir mucho tiempo después de que la evidencia que la sostiene fue cuestionada.
 
-El guion arranca con la seducción de la cifra: "reduce las lesiones de isquiotibiales a la mitad", un mensaje casi publicitario, respaldado en su momento por un meta-análisis de 8,459 atletas que reportó un 51% de reducción (razón de riesgo = 0.49, IC 95% 0.32-0.74, p=0.0008). Es fácil de recordar, fácil de repetir y difícil de resistir. Por eso se volvió parte del discurso estándar.
+El caso es el del ejercicio nórdico de isquiotibiales.
 
-Luego llega el giro: la reevaluación metodológica de 2021. El locutor explica, sin tecnicismos excesivos, que al mirar bajo el capó del meta-análisis original se descubrió que de los 15 estudios, solo 5 eran verdaderos ensayos controlados aleatorizados con asignación al NHE, y que el resto arrastraba alto riesgo de sesgo. Con criterios más estrictos, la evidencia del efecto protector "permanece inconclusa", y a lo sumo se sostiene una recomendación condicional para fútbol. El punto emocional del episodio es la incomodidad de descubrir que una certeza cómoda era más frágil de lo que parecía.
+Empecemos por la cifra. Reduce las lesiones de isquiotibiales a la mitad. Suena casi a publicidad. Y no salió de la nada: un meta-análisis de ocho mil cuatrocientos cincuenta y nueve atletas reportó un cincuenta y uno por ciento de reducción del riesgo, con una razón de riesgo de cero coma cuarenta y nueve, un intervalo de confianza estrecho y un valor de p muy pequeño.
 
-El cierre entrega la moraleja profesional: un practicante serio debe conocer ambas versiones —la cifra y su reevaluación— y comunicarlas con honestidad, sin ocultar el matiz para que el mensaje suene más potente. La metodología no es un detalle académico; es lo que separa una recomendación responsable de un eslogan. Aclarar que las cifras y la reevaluación de 2021 son evidencia citada, mientras que la reflexión sobre "cifras de marketing" es el marco pedagógico del curso.
+Es fácil de recordar. Es fácil de repetir. Y es difícil de resistir. Por eso pasó a formar parte del discurso de muchos entrenadores, cursos y presentaciones.
+
+Ahora viene el giro. En 2021 se publicó una reevaluación metodológica. Sus autores miraron, por así decirlo, bajo el capó del meta-análisis original. Y encontraron algo importante: de los quince estudios incluidos, solo cinco eran verdaderos ensayos controlados aleatorizados con asignación al ejercicio nórdico. El resto tenía diseños con mayor riesgo de sesgo.
+
+Con criterios más estrictos, quedándose solo con los ensayos de mayor calidad, la conclusión fue otra: la evidencia del efecto protector permanece inconclusa. Como mucho, se puede sostener una recomendación condicional para el fútbol.
+
+Aquí aparece la incomodidad. Descubrir que una certeza cómoda era más frágil de lo que parecía no es agradable. Pero es justamente lo que hace la buena ciencia.
+
+Y quiero ser claro en algo. Nadie mintió. El cincuenta y uno por ciento es el resultado matemático de agrupar esos quince estudios. La reevaluación no dice que la cuenta esté mal hecha. Dice que la calidad de los estudios no alcanza para confiar en que ese efecto sea real y generalizable.
+
+¿Significa esto que el nórdico no sirve? No. Puede seguir siendo una herramienta razonable, sobre todo en el fútbol. Lo que cambia es cómo se comunica: no como una garantía de reducir las lesiones a la mitad, sino como una intervención plausible, con evidencia de máxima calidad todavía limitada.
+
+La moraleja profesional es esta: un practicante serio conoce las dos versiones, la cifra y su reevaluación, y las comunica con honestidad. La metodología no es un detalle académico. Es lo que separa una recomendación responsable de un eslogan.
+
+Las cifras y la reevaluación de 2021 son evidencia citada. La reflexión sobre las cifras de marketing es el marco de este curso.
+
+Nos escuchamos en el módulo cuatro.
 
 ### Lección 4 — Evaluación de diseño de trabajo preventivo (tipo: quiz)
 
@@ -268,13 +362,28 @@ La conclusión del módulo es directa: elegir bien el ejercicio (Módulo 3) y do
 
 ### Lección 2 — Integrando prevención sin sacrificar rendimiento (tipo: video)
 
-video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+video_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m4-l2-dosis-prevencion.mp4
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m4-l2-dosis-prevencion.vtt
 
-Descripción de apoyo: el video muestra en pantalla un microciclo semanal (por ejemplo, una grilla de lunes a domingo) con el trabajo preventivo integrado dentro de la planificación, no colgando al margen. La animación debe representar cada día como un "presupuesto" de carga: sesiones principales de rendimiento y, junto a ellas, el trabajo preventivo ubicado en los momentos donde no compite con las jornadas de mayor demanda.
+Un ejercicio preventivo no funciona aislado. También importa cuánto haces, y cuándo.
 
-Conectar explícitamente con el marco MEV/MAV/MRV del Curso 2 de la Escuela de Ciencia del Entrenamiento (Gestión de la Carga de Entrenamiento): mostrar visualmente el techo del volumen máximo recuperable como una línea que no se debe rebasar, y cómo el trabajo preventivo debe encajar por debajo de esa línea sumado a la carga principal, no ignorándola. La idea gráfica clave es que la prevención ocupa espacio dentro del mismo presupuesto de recuperación.
+Imagina la semana como un presupuesto de carga. Cada día tiene sus sesiones principales de rendimiento.
 
-Usar el Nordic Hamstring Exercise como caso para ilustrar la incertidumbre de dosis: señalar en pantalla que existe debate activo sobre si conviene un volumen alto o bajo para mejorar los factores de riesgo modificables, y que no hay consenso sobre la dosis mínima efectiva. El video no debe proponer una cifra concreta de series como si fuera la verdad establecida —eso sería contradecir el propio mensaje del curso—; debe transmitir que la dosis se decide con criterio y se monitorea. Distinguir que el debate sobre la dosis del NHE es evidencia citada, y que la disposición concreta del microciclo mostrada en pantalla es una síntesis aplicada ilustrativa.
+Y el trabajo preventivo no cuelga al margen: ocupa espacio dentro del mismo presupuesto.
+
+Aquí vuelve el marco del curso de Gestión de la Carga de Entrenamiento: volumen mínimo efectivo, volumen máximo adaptativo y volumen máximo recuperable.
+
+El volumen máximo recuperable es el techo. La carga principal y el trabajo preventivo, juntos, tienen que caber por debajo.
+
+Si te quedas corto, la prevención puede no generar la adaptación que buscas. Si te pasas, suma fatiga, y puede aumentar el riesgo en lugar de reducirlo.
+
+Por eso conviene ubicar la prevención en los momentos de la semana donde no compita con las sesiones de mayor demanda.
+
+¿Y cuánto ejercicio nórdico hace falta? Todavía hay debate activo: no hay consenso sobre si conviene un volumen alto o bajo, ni sobre la dosis mínima efectiva.
+
+Por eso, este video no te da un número de series. La dosis se decide con criterio, y se monitorea.
+
+La semana que ves es un ejemplo ilustrativo. El debate sobre la dosis es evidencia citada.
 
 ### Lección 3 — La prevención no compite con el rendimiento (tipo: audio)
 
@@ -337,13 +446,22 @@ Los casos prácticos que siguen —que aquí se plantean como ejemplos ilustrati
 
 ### Lección 2 — Caso práctico completo, paso a paso (tipo: video)
 
-video_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
+video_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m5-l2-caso-practico.mp4
+subtitulos_url: https://zyfit-academy-media.sfo3.cdn.digitaloceanspaces.com/academy/prevencion-de-lesiones-basada-en-datos/m5-l2-caso-practico.vtt
 
-Descripción de apoyo: el video recorre en pantalla un caso completo de un atleta que regresa de una lesión de isquiotibiales, aplicando los cuatro módulos del curso en secuencia, como un flujo de decisiones encadenadas. Presentarlo como un caso ilustrativo propio, no como un estudio.
+Un caso ilustrativo para unir todo el curso: un atleta que vuelve de una lesión de isquiotibiales.
 
-Paso 1 (Módulo 1): identificar al atleta como perfil de máximo riesgo por su lesión previa —el predictor más fuerte según la revisión sistemática citada—, recordando en pantalla que la recurrencia de isquiotibiales alcanza el 34% en el año y el 31% acumulado en la temporada. Paso 2 (Módulo 2): situar al atleta en la ventana de vigilancia reforzada, destacando el 13% de riesgo de la primera semana de regreso y marcando el alta como inicio, no como final, del monitoreo. Paso 3 (Módulo 3): elegir las herramientas preventivas mostrando la evidencia consistente del FIFA 11+ (46% rodilla, 40% cabeza y cuello con RR 0.60, 63% lumbar aguda con RR de incidencia 0.37, RR global 0.69) y, si se incorpora el NHE, comunicar con honestidad que su cifra del 51% (RR = 0.49) quedó en evidencia inconclusa tras la reevaluación de 2021. Paso 4 (Módulo 4): dosificar ese trabajo preventivo dentro del presupuesto de carga del atleta (MEV/MAV/MRV), sin rebasar su volumen máximo recuperable y reconociendo el debate abierto sobre la dosis del NHE.
+Paso uno: a quién mirar. Su lesión previa lo convierte en un perfil de máximo riesgo: es el predictor más fuerte. En isquiotibiales, la recurrencia llega al treinta y cuatro por ciento en el año, y al treinta y uno por ciento acumulado en la temporada.
 
-El video debe dejar claro que la potencia del método está en la secuencia completa, no en un paso aislado. Distinguir a lo largo del recorrido qué es evidencia citada (todas las cifras) y qué es la aplicación ilustrativa propia (las decisiones concretas del caso).
+Paso dos: cuándo. Entra en la ventana de vigilancia reforzada. En la primera semana de regreso, el riesgo es del trece por ciento. El alta es el inicio del monitoreo, no el final.
+
+Paso tres: con qué. El FIFA once más tiene evidencia consistente en varios meta-análisis, con una razón de riesgo global de cero coma sesenta y nueve. Si sumas el ejercicio nórdico, comunícalo con honestidad: su cincuenta y uno por ciento quedó en evidencia inconclusa tras la reevaluación de 2021.
+
+Paso cuatro: cuánto. Dosifica la prevención dentro de su presupuesto de carga, sin pasar su volumen máximo recuperable. Y recuerda que la dosis del nórdico sigue en debate.
+
+La fuerza del método no está en un paso aislado. Está en la secuencia completa: a quién, cuándo, con qué y cuánto.
+
+Las cifras son evidencia citada. Las decisiones del caso son un ejemplo ilustrativo.
 
 ### Lección 3 — Resumen conversacional del curso (tipo: audio)
 

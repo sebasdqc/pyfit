@@ -1,0 +1,60 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #le-wrap { position: absolute; inset: 0; }
+    #le-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--lineal); }
+    #le-title { position: absolute; left: 160px; top: 160px; font: 900 80px var(--font-display);
+      letter-spacing: -0.035em; }
+    .le-card { position: absolute; top: 340px; width: 720px; height: 520px; border: 3px solid var(--ink-faint);
+      border-radius: 16px; background: var(--ground-2); }
+    #le-a { left: 160px; } #le-b { left: 1040px; }
+    .le-h { position: absolute; left: 48px; top: 40px; font: 700 30px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    .le-q { position: absolute; left: 48px; top: 90px; font: 800 52px var(--font-display); letter-spacing: -0.02em; }
+    .le-svg { position: absolute; left: 48px; top: 200px; overflow: visible; }
+    .le-v { font: 900 64px var(--font-display); }
+    #le-foot { position: absolute; left: 0; right: 0; top: 920px; text-align: center; font: 700 44px var(--font-display); color: var(--ink-soft); }
+    #le-foot b { color: var(--ink); }
+  </style>
+  <div id="root" data-composition-id="lectura" data-width="1920" data-height="1080">
+    <div id="le-wrap">
+      <div id="le-k">OJO</div>
+      <div id="le-title">No es lo mismo</div>
+      <div class="le-card" id="le-a">
+        <div class="le-h">RIESGO POR SEMANA</div>
+        <div class="le-q">¿Cuándo es más alto?</div>
+        <svg class="le-svg" width="620" height="280" viewBox="0 0 620 280">
+          <line x1="0" y1="260" x2="620" y2="260" stroke="#868b98" stroke-width="3" />
+          <rect id="le-sp" x="10" y="130" width="40" height="130" fill="#cc1f36" />
+          <path d="M50 200 C 200 220, 360 245, 620 255" fill="none" stroke="#cc1f36" stroke-width="5" stroke-opacity="0.7" />
+          <text class="le-v" x="70" y="140" fill="#cc1f36">13 %</text>
+          <text x="70" y="180" fill="#a9adb8" style="font: 500 28px var(--font-mono); letter-spacing: 0.08em">1.ª SEMANA</text>
+        </svg>
+      </div>
+      <div class="le-card" id="le-b">
+        <div class="le-h">RIESGO ACUMULADO</div>
+        <div class="le-q">¿Cuánto suma en total?</div>
+        <svg class="le-svg" width="620" height="280" viewBox="0 0 620 280">
+          <line x1="0" y1="260" x2="620" y2="260" stroke="#868b98" stroke-width="3" />
+          <rect id="le-cu" x="40" y="80" width="140" height="180" fill="#cc1f36" />
+          <text class="le-v" x="220" y="160" fill="#f4f2ee">31 %</text>
+          <text x="220" y="200" fill="#a9adb8" style="font: 500 28px var(--font-mono); letter-spacing: 0.08em">EN LA TEMPORADA</text>
+        </svg>
+      </div>
+      <div id="le-foot">Dos maneras <b>distintas</b> de leer el mismo fenómeno</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.lectura;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#le-k", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      tl.fromTo("#le-title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.4);
+      tl.fromTo("#le-a", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.semana - 0.4);
+      tl.fromTo("#le-b", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.acumulado - 0.4);
+      tl.fromTo("#le-foot", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.maneras - 0.3);
+      tl.to("#le-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["lectura"] = tl;
+    })();
+  </script>
+</template>

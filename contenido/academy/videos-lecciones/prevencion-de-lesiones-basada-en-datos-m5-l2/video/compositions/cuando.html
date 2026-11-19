@@ -1,0 +1,77 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #cu-wrap { position: absolute; inset: 0; }
+
+    .cu-gates { position: absolute; left: 160px; width: 1600px; display: flex; align-items: center; gap: 0; }
+    .cu-gates .g { width: 362px; height: 116px; border-radius: 12px; padding: 18px 24px; border: 3px solid #2a2e3a; }
+    .cu-gates .gar { width: 51px; text-align: center; font: 700 44px var(--font-display); color: #868b98; }
+    .cu-gates .gn { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .cu-gates .gq { font: 800 40px var(--font-display); letter-spacing: -0.02em; color: #868b98; margin-top: 4px; }
+    .cu-gates .g-done { border-color: #5a1a24; background: #1a1015; }
+    .cu-gates .g-done .gq { color: var(--ink-soft); }
+    .cu-gates .g-done .gn { color: #b05565; }
+
+
+    #cu-t { position: absolute; left: 160px; top: 320px; font: 900 96px var(--font-display); letter-spacing: -0.04em; }
+    #cu-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .cu-lbl { font: 700 28px var(--font-mono); letter-spacing: 0.12em; }
+    #cu-alta { position: absolute; left: 160px; top: 840px; font: 700 40px var(--font-display); }
+    #cu-alta b { color: var(--lineal); }
+    #cu-fin { position: absolute; left: 160px; top: 900px; font: 700 34px var(--font-display); color: var(--ink-faint); }
+    #cu-fin span { position: relative; }
+    #cu-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 6px; background: var(--lineal); transform-origin: 0 50%; }
+    #cu-p13 { position: absolute; left: 1000px; top: 450px; font: 900 120px var(--font-display); letter-spacing: -0.05em; color: var(--lineal); line-height: 1; }
+    #cu-p13 small { display: block; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); margin-top: 10px; }
+    #cu-esq { position: absolute; right: 160px; top: 840px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); text-align: right; }
+
+  </style>
+  <div id="root" data-composition-id="cuando" data-width="1920" data-height="1080">
+    <div id="cu-wrap">
+      <div class="cu-gates" id="cu-gates" style="top:120px">
+      <div class="g g-done" id="cu-g0"><div class="gn">PASO 01</div><div class="gq">¿A quién?</div></div>
+      <div class="gar" id="cu-a0">›</div>
+      <div class="g g-on" id="cu-g1"><div class="gn">PASO 02</div><div class="gq">¿Cuándo?</div></div>
+      <div class="gar" id="cu-a1">›</div>
+      <div class="g g-off" id="cu-g2"><div class="gn">PASO 03</div><div class="gq">¿Con qué?</div></div>
+      <div class="gar" id="cu-a2">›</div>
+      <div class="g g-off" id="cu-g3"><div class="gn">PASO 04</div><div class="gq">¿Cuánto?</div></div>
+      </div>
+      <div id="cu-t">Vigilancia reforzada</div>
+      <svg id="cu-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line id="cu-axis" x1="200" y1="780" x2="1760" y2="780" stroke="#868b98" stroke-width="3" />
+        <rect id="cu-wk" x="200" y="560" width="110" height="220" fill="#cc1f36" opacity="0.28" />
+        <path id="cu-curve" d="M200 580 C 330 590, 420 690, 760 735 S 1400 772, 1760 776" fill="none" stroke="#cc1f36" stroke-width="6" />
+        <circle id="cu-dot" cx="200" cy="780" r="14" fill="#f4f2ee" />
+        <text class="cu-lbl" x="1760" y="822" text-anchor="end" fill="#868b98">SEMANAS →</text>
+        <text id="cu-vlbl" class="cu-lbl" x="800" y="700" fill="#e8dcc2">INTENSIDAD DE VIGILANCIA</text>
+      </svg>
+      <div id="cu-p13">13 %<small>RIESGO EN LA 1.ª SEMANA DE REGRESO</small></div>
+      <div id="cu-alta"><b>Alta</b> = inicio del monitoreo</div>
+      <div id="cu-fin"><span>no el final<i id="cu-strike"></i></span></div>
+      <div id="cu-esq">VIGILANCIA: ESQUEMA ILUSTRATIVO</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cuando;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#cu-gates", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.05);
+      tl.fromTo("#cu-g1", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.cuando - 0.5);
+      tl.fromTo("#cu-g1 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cuando - 0.5);
+      tl.fromTo("#cu-g1 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cuando - 0.5);
+      tl.fromTo("#cu-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.vigilancia - 0.4);
+      tl.fromTo("#cu-axis", { opacity: 0, attr: { "stroke-dasharray": "1600", "stroke-dashoffset": "1600" } }, { opacity: 1, attr: { "stroke-dashoffset": "0" }, duration: 0.9, ease: "power2.out" }, C.vigilancia + 0.3);
+      tl.fromTo("#cu-dot", { opacity: 0, scale: 0, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.3 }, C.vigilancia + 0.3);
+      tl.fromTo("#cu-curve", { opacity: 0, attr: { "stroke-dasharray": "1700", "stroke-dashoffset": "1700" } }, { opacity: 1, attr: { "stroke-dashoffset": "0" }, duration: 1.4, ease: "power1.inOut" }, C.vigilancia + 0.6);
+      tl.fromTo(["#cu-vlbl", "#cu-esq"], { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.vigilancia + 1.5);
+      tl.fromTo("#cu-wk", { opacity: 0 }, { opacity: 0.28, duration: 0.4 }, C.semana - 0.2);
+      tl.fromTo("#cu-p13", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.p13 - 0.1);
+      tl.fromTo("#cu-alta", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.alta - 0.1);
+      tl.fromTo("#cu-fin", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.inicio + 0.6);
+      tl.fromTo("#cu-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.inOut" }, C.inicio + 1.3);
+      tl.to("#cu-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["cuando"] = tl;
+    })();
+  </script>
+</template>

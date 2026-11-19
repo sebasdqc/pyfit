@@ -1,0 +1,76 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #re-wrap { position: absolute; inset: 0; }
+    #re-l { position: absolute; left: 120px; top: 230px; width: 300px; opacity: 0.4; }
+    #re-l .k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ondulada); }
+    #re-l .n { margin-top: 14px; font: 900 56px var(--font-display); letter-spacing: -0.03em; color: var(--ondulada); }
+    #re-l .s { margin-top: 18px; font: 700 28px var(--font-mono); letter-spacing: 0.06em; color: var(--ink-soft); line-height: 1.3; }
+    #re-div { position: absolute; left: 479px; top: 200px; width: 3px; height: 680px; background: var(--ink-faint); opacity: 0.24; }
+    #re-k { position: absolute; left: 560px; top: 130px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); }
+    #re-t { position: absolute; left: 560px; top: 175px; font: 900 76px var(--font-display); letter-spacing: -0.035em; }
+    #re-grid { position: absolute; left: 560px; top: 330px; width: 700px; height: 380px; }
+    .re-sq { position: absolute; width: 110px; height: 110px; border: 4px solid var(--ink-soft); border-radius: 8px; background: var(--ground-2); }
+    .re-sq .f { position: absolute; inset: 0; background: var(--lineal); opacity: 0; border-radius: 4px; }
+    #re-gl { position: absolute; left: 560px; top: 720px; font: 700 30px var(--font-mono); letter-spacing: 0.08em; color: var(--ink-soft); }
+    #re-gl2 { position: absolute; left: 560px; top: 720px; font: 700 30px var(--font-mono); letter-spacing: 0.08em; color: var(--ink); }
+    #re-gl2 b { color: var(--lineal); }
+    #re-gl3 { position: absolute; left: 560px; top: 768px; font: 500 30px var(--font-display); color: var(--ink-soft); }
+    #re-stamp { position: absolute; left: 1300px; top: 380px; width: 520px; padding: 22px 26px; border: 6px solid var(--lineal); border-radius: 10px; text-align: center; transform-origin: 50% 50%; }
+    #re-stamp .a { font: 900 58px var(--font-display); letter-spacing: -0.02em; color: var(--lineal); line-height: 1.02; }
+    #re-ch { position: absolute; left: 1300px; top: 300px; width: 520px; text-align: center; font: 700 40px var(--font-display); color: var(--ink-soft); }
+    #re-cond { position: absolute; left: 1300px; top: 640px; width: 520px; text-align: center; font: 700 30px var(--font-mono); letter-spacing: 0.04em; padding: 14px 18px; border: 3px solid var(--ink-soft); border-radius: 999px; }
+  </style>
+  <div id="root" data-composition-id="reeval" data-width="1920" data-height="1080">
+    <div id="re-wrap">
+      <div id="re-l"><div class="k">PROGRAMA 1</div><div class="n">FIFA 11+</div><div class="s">EVIDENCIA<br>CONSISTENTE</div></div>
+      <div id="re-div"></div>
+      <div id="re-k">REEVALUACIÓN METODOLÓGICA · 2021</div>
+      <div id="re-t">Los mismos estudios, de cerca</div>
+      <div id="re-grid"></div>
+      <div id="re-gl">15 ESTUDIOS ORIGINALES</div>
+      <div id="re-gl2">SOLO <b>5</b> ERAN ECA DE VERDAD</div>
+      <div id="re-gl3">ensayos controlados aleatorizados</div>
+      <div id="re-ch">La conclusión cambió:</div>
+      <div id="re-stamp"><div class="a"><span id="re-s1">EVIDENCIA</span><br><span id="re-s2">INCONCLUSA</span></div></div>
+      <div id="re-cond">Recomendación condicional · fútbol</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.reeval;
+      var grid = document.getElementById("re-grid");
+      var eca = [1, 4, 7, 10, 13];
+      var sq = [], off = [], on = [], onBox = [];
+      for (var i = 0; i < 15; i++) {
+        var d = document.createElement("div");
+        d.className = "re-sq" + (eca.indexOf(i) >= 0 ? " eca" : "");
+        d.style.left = (i % 5) * 132 + "px";
+        d.style.top = Math.floor(i / 5) * 128 + "px";
+        var f = document.createElement("div"); f.className = "f"; d.appendChild(f);
+        grid.appendChild(d); sq.push(d);
+        if (eca.indexOf(i) >= 0) { on.push(f); onBox.push(d); } else off.push(d);
+      }
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(["#re-l", "#re-div"], { opacity: 0 }, { opacity: 0.4, duration: 0.4 }, 0.05);
+      tl.fromTo("#re-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.anio - 0.3);
+      tl.fromTo("#re-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.reev - 0.1);
+      tl.fromTo(sq, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, stagger: 0.04, ease: "back.out(1.6)" }, C.quince - 0.3);
+      tl.fromTo("#re-gl", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.quince - 0.1);
+      tl.to(off, { opacity: 0.14, duration: 0.5, stagger: 0.04 }, C.cinco - 0.1);
+      tl.fromTo(on, { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.08 }, C.cinco);
+      tl.fromTo(onBox, { borderColor: "#a9adb8" }, { borderColor: "#cc1f36", duration: 0.4, stagger: 0.08 }, C.cinco);
+      tl.to("#re-gl", { opacity: 0, duration: 0.25 }, C.cinco - 0.1);
+      tl.fromTo("#re-gl2", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.cinco + 0.1);
+      tl.fromTo("#re-gl3", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.aleatorizados - 0.6);
+      tl.fromTo(on, { scale: 1 }, { scale: 1.12, duration: 0.25, stagger: 0.06, yoyo: true, repeat: 1, ease: "power1.inOut" }, C.esos - 0.1);
+      tl.fromTo("#re-ch", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.conclusion - 0.2);
+      tl.fromTo("#re-stamp", { opacity: 0, scale: 1.2, rotation: -8 }, { opacity: 1, scale: 1, rotation: -4, duration: 0.35, ease: "power3.out" }, C.evidencia - 0.2);
+      tl.fromTo("#re-s2", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C.inconclusa - 0.1);
+      tl.fromTo("#re-stamp", { scale: 1 }, { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1 }, C.inconclusa - 0.1);
+      tl.fromTo("#re-cond", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.condicional - 0.3);
+      tl.to("#re-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["reeval"] = tl;
+    })();
+  </script>
+</template>

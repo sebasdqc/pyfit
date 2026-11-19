@@ -1,0 +1,63 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #vi-wrap { position: absolute; inset: 0; }
+    #vi-title { position: absolute; left: 160px; top: 120px; font: 900 76px var(--font-display);
+      letter-spacing: -0.035em; line-height: 1.05; }
+    #vi-title .r { color: var(--lineal); }
+    #vi-title .w { display: inline-block; }
+    #vi-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .vi-lbl { font: 700 30px var(--font-mono); letter-spacing: 0.1em; }
+    #vi-tag { position: absolute; left: 160px; bottom: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.1em; color: var(--ink-faint); }
+    #vi-legend { position: absolute; right: 160px; top: 330px; text-align: right;
+      font: 700 28px var(--font-mono); letter-spacing: 0.08em; line-height: 1.8; }
+    #vi-legend .a { color: var(--ondulada); }
+    #vi-legend .b { color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="vigilancia" data-width="1920" data-height="1080">
+    <div id="vi-wrap">
+      <div id="vi-title"><span class="w">La</span> <span class="w" id="vi-v">vigilancia</span> <span class="w">sigue</span><br /><span class="w r" id="vi-f">la forma del riesgo</span></div>
+      <div id="vi-legend"><div class="a" id="vi-la">▬ INTENSIDAD DE VIGILANCIA</div><div class="b" id="vi-lb">— RIESGO POR SEMANA</div></div>
+      <svg id="vi-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <path id="vi-band" d="" fill="#e8dcc2" opacity="0.85" />
+        <path id="vi-risk" d="" fill="none" stroke="#cc1f36" stroke-width="6" stroke-linecap="round" />
+        <line x1="260" y1="840" x2="1660" y2="840" stroke="#868b98" stroke-width="3" />
+        <line x1="260" y1="420" x2="260" y2="880" stroke="#cc1f36" stroke-width="6" />
+        <text class="vi-lbl" x="260" y="930" text-anchor="middle" fill="#cc1f36">DÍA 0 · ALTA</text>
+        <text class="vi-lbl" x="1660" y="930" text-anchor="end" fill="#868b98">SEMANAS →</text>
+        <text id="vi-max" class="vi-lbl" x="290" y="400" fill="#f4f2ee">MÁXIMA AL REGRESO</text>
+        <text id="vi-rel" class="vi-lbl" x="1660" y="790" text-anchor="end" fill="#f4f2ee">MÁS RELAJADA CON LAS SEMANAS</text>
+      </svg>
+      <div id="vi-tag">ESQUEMA · LOS NIVELES DE VIGILANCIA SON UNA SÍNTESIS APLICADA DEL CURSO</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.vigilancia;
+      function y(k) { return 840 - 400 * (k < 10 ? 1 : Math.exp(-(k - 10) / 38)); }
+      var risk = "M260 " + y(0), top = [];
+      for (var k = 0; k <= 140; k++) { risk += " L" + (260 + k * 10) + " " + y(k).toFixed(1); top.push([260 + k * 10, y(k) + 20]); }
+      var band = "M260 840";
+      top.forEach(function (p) { band += " L" + p[0] + " " + p[1].toFixed(1); });
+      band += " L1660 840 Z";
+      var r = document.getElementById("vi-risk");
+      r.setAttribute("d", risk);
+      document.getElementById("vi-band").setAttribute("d", band);
+      var len = r.getTotalLength();
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#vi-title .w", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" }, C.vigilancia - 0.6);
+      tl.fromTo(r, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.4, ease: "power1.inOut" }, C.forma - 0.2);
+      tl.fromTo("#vi-lb", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.forma);
+      // La banda de vigilancia crece desde el alta hacia la derecha, siguiendo al riesgo
+      tl.fromTo("#vi-band", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 3.2, ease: "power1.inOut" }, C.maxima - 0.3);
+      tl.fromTo("#vi-la", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.maxima - 0.3);
+      tl.fromTo("#vi-max", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.regreso - 0.4);
+      tl.fromTo("#vi-rel", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.relajada);
+      tl.fromTo("#vi-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.maxima + 0.5);
+      tl.to("#vi-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["vigilancia"] = tl;
+    })();
+  </script>
+</template>

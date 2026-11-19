@@ -1,0 +1,67 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+
+    .ci-gates { position: absolute; left: 160px; width: 1600px; display: flex; align-items: center; gap: 0; }
+    .ci-gates .g { width: 362px; height: 116px; border-radius: 12px; padding: 18px 24px; border: 3px solid #2a2e3a; }
+    .ci-gates .gar { width: 51px; text-align: center; font: 700 44px var(--font-display); color: #868b98; }
+    .ci-gates .gn { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .ci-gates .gq { font: 800 40px var(--font-display); letter-spacing: -0.02em; color: #868b98; margin-top: 4px; }
+    .ci-gates .g-done { border-color: #5a1a24; background: #1a1015; }
+    .ci-gates .g-done .gq { color: var(--ink-soft); }
+    .ci-gates .g-done .gn { color: #b05565; }
+
+
+    #ci-t { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font: 900 84px var(--font-display); letter-spacing: -0.04em; line-height: 1.05; }
+    #ci-t i { font-style: normal; color: var(--lineal); }
+    #ci-no { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font: 700 40px var(--font-display); color: var(--ink-faint); }
+    #ci-tag { position: absolute; left: 0; right: 0; top: 760px; text-align: center; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-soft); }
+    #ci-tag b { color: var(--lineal); }
+    #ci-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; opacity: 0.85; }
+
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div id="ci-no" data-layout-allow-overlap>No está en un paso aislado</div>
+      <div id="ci-t" data-layout-allow-overlap>Está en la <i>secuencia completa</i></div>
+      <div class="ci-gates" id="ci-gates" style="top:470px">
+      <div class="g g-off" id="ci-g0"><div class="gn">PASO 01</div><div class="gq">¿A quién?</div></div>
+      <div class="gar" id="ci-a0">›</div>
+      <div class="g g-off" id="ci-g1"><div class="gn">PASO 02</div><div class="gq">¿Cuándo?</div></div>
+      <div class="gar" id="ci-a1">›</div>
+      <div class="g g-off" id="ci-g2"><div class="gn">PASO 03</div><div class="gq">¿Con qué?</div></div>
+      <div class="gar" id="ci-a2">›</div>
+      <div class="g g-off" id="ci-g3"><div class="gn">PASO 04</div><div class="gq">¿Cuánto?</div></div>
+      </div>
+      <div id="ci-tag"><b>CASO ILUSTRATIVO</b> · LAS CIFRAS SON EVIDENCIA CITADA</div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ci-no", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.aislado - 1.2);
+      tl.fromTo("#ci-gates", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.aislado - 0.6);
+      tl.to("#ci-no", { opacity: 0, duration: 0.3 }, C.secuencia - 0.4);
+      tl.fromTo("#ci-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.secuencia - 0.2);
+      tl.fromTo("#ci-g0", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.q - 0.15);
+      tl.fromTo("#ci-g0 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.q - 0.15);
+      tl.fromTo("#ci-g0 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.q - 0.15);
+      tl.fromTo("#ci-g1", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.c - 0.15);
+      tl.fromTo("#ci-g1 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.c - 0.15);
+      tl.fromTo("#ci-g1 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.c - 0.15);
+      tl.fromTo("#ci-g2", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.cq - 0.15);
+      tl.fromTo("#ci-g2 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cq - 0.15);
+      tl.fromTo("#ci-g2 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cq - 0.15);
+      tl.fromTo("#ci-g3", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.cu - 0.15);
+      tl.fromTo("#ci-g3 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cu - 0.15);
+      tl.fromTo("#ci-g3 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.cu - 0.15);
+      tl.fromTo("#ci-tag", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.cifras - 0.1);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.decisiones + 0.4);
+      tl.to("#ci-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

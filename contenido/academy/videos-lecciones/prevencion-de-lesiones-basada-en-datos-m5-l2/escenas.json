@@ -1,0 +1,324 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {
+  "FIFA once más": "FIFA 11+",
+  "ocho mil cuatrocientos cincuenta y nueve": "8.459",
+  "cincuenta y uno por ciento": "51 %",
+  "treinta y cuatro por ciento": "34 %",
+  "treinta y uno por ciento": "31 %",
+  "trece por ciento": "13 %",
+  "cuarenta y seis por ciento": "46 %",
+  "cuarenta por ciento": "40 %",
+  "sesenta y tres por ciento": "63 %",
+  "quince por ciento": "15 %",
+  "cero coma sesenta y nueve": "0,69",
+  "cero coma cuarenta y nueve": "0,49",
+  "quince estudios": "15 estudios"
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "start": null,
+   "keys": [
+    [
+     "unir",
+     [
+      "unir"
+     ]
+    ],
+    [
+     "atleta",
+     [
+      "atleta"
+     ]
+    ],
+    [
+     "isquio",
+     [
+      "isquiotibiales"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "quien",
+   "start": [
+    "paso"
+   ],
+   "keys": [
+    [
+     "quien",
+     [
+      "quien"
+     ]
+    ],
+    [
+     "previa",
+     [
+      "previa"
+     ]
+    ],
+    [
+     "riesgo",
+     [
+      "riesgo"
+     ]
+    ],
+    [
+     "predictor",
+     [
+      "predictor"
+     ]
+    ],
+    [
+     "p34",
+     [
+      "34",
+      "treinta"
+     ]
+    ],
+    [
+     "p31",
+     [
+      "31",
+      "treinta"
+     ]
+    ],
+    [
+     "temporada",
+     [
+      "temporada"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cuando",
+   "start": [
+    "paso"
+   ],
+   "keys": [
+    [
+     "cuando",
+     [
+      "2cuando",
+      "cuando"
+     ]
+    ],
+    [
+     "vigilancia",
+     [
+      "vigilancia"
+     ]
+    ],
+    [
+     "semana",
+     [
+      "semana"
+     ]
+    ],
+    [
+     "p13",
+     [
+      "13",
+      "trece"
+     ]
+    ],
+    [
+     "alta",
+     [
+      "alta"
+     ]
+    ],
+    [
+     "inicio",
+     [
+      "inicio"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "conque",
+   "start": [
+    "paso"
+   ],
+   "keys": [
+    [
+     "conque",
+     [
+      "3con",
+      "con"
+     ]
+    ],
+    [
+     "fifa",
+     [
+      "fifa"
+     ]
+    ],
+    [
+     "consistente",
+     [
+      "consistente"
+     ]
+    ],
+    [
+     "meta",
+     [
+      "metaanalisis",
+      "meta"
+     ]
+    ],
+    [
+     "razon",
+     [
+      "razon"
+     ]
+    ],
+    [
+     "rr",
+     [
+      "069",
+      "cero"
+     ]
+    ],
+    [
+     "nordico",
+     [
+      "nordico"
+     ]
+    ],
+    [
+     "honestidad",
+     [
+      "honestidad"
+     ]
+    ],
+    [
+     "p51",
+     [
+      "51",
+      "cincuenta"
+     ]
+    ],
+    [
+     "inconclusa",
+     [
+      "inconclusa"
+     ]
+    ],
+    [
+     "reeval",
+     [
+      "reevaluacion"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cuanto",
+   "start": [
+    "paso"
+   ],
+   "keys": [
+    [
+     "cuanto",
+     [
+      "4cuanto",
+      "cuanto"
+     ]
+    ],
+    [
+     "presupuesto",
+     [
+      "presupuesto"
+     ]
+    ],
+    [
+     "maximo",
+     [
+      "maximo"
+     ]
+    ],
+    [
+     "recuerda",
+     [
+      "yrecuerda",
+      "recuerda"
+     ]
+    ],
+    [
+     "dosis",
+     [
+      "dosis"
+     ]
+    ],
+    [
+     "debate",
+     [
+      "debate"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "fuerza"
+   ],
+   "start_back": 1,
+   "keys": [
+    [
+     "aislado",
+     [
+      "aislado"
+     ]
+    ],
+    [
+     "secuencia",
+     [
+      "secuencia"
+     ]
+    ],
+    [
+     "q",
+     [
+      "quien"
+     ]
+    ],
+    [
+     "c",
+     [
+      "cuando"
+     ]
+    ],
+    [
+     "cq",
+     [
+      "con"
+     ]
+    ],
+    [
+     "cu",
+     [
+      "cuanto"
+     ]
+    ],
+    [
+     "cifras",
+     [
+      "cifras"
+     ]
+    ],
+    [
+     "decisiones",
+     [
+      "decisiones"
+     ]
+    ]
+   ]
+  }
+ ]
+}

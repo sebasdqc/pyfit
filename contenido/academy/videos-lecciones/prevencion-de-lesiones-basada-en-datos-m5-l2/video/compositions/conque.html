@@ -1,0 +1,84 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #cq-wrap { position: absolute; inset: 0; }
+
+    .cq-gates { position: absolute; left: 160px; width: 1600px; display: flex; align-items: center; gap: 0; }
+    .cq-gates .g { width: 362px; height: 116px; border-radius: 12px; padding: 18px 24px; border: 3px solid #2a2e3a; }
+    .cq-gates .gar { width: 51px; text-align: center; font: 700 44px var(--font-display); color: #868b98; }
+    .cq-gates .gn { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .cq-gates .gq { font: 800 40px var(--font-display); letter-spacing: -0.02em; color: #868b98; margin-top: 4px; }
+    .cq-gates .g-done { border-color: #5a1a24; background: #1a1015; }
+    .cq-gates .g-done .gq { color: var(--ink-soft); }
+    .cq-gates .g-done .gn { color: #b05565; }
+
+
+    .cq-card { position: absolute; top: 330px; width: 760px; height: 600px; border: 3px solid #2a2e3a; border-radius: 16px; padding: 40px 44px; background: var(--ground-2); }
+    #cq-f { left: 160px; }
+    #cq-n { left: 1000px; }
+    .cq-card .k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .cq-card .h { font: 900 76px var(--font-display); letter-spacing: -0.04em; margin-top: 8px; }
+    #cq-f .h { color: var(--ondulada); }
+    .cq-row { font: 700 34px var(--font-display); color: var(--ink-soft); margin-top: 30px; }
+    .cq-row b { color: var(--ink); }
+    .cq-big { font: 900 120px var(--font-display); letter-spacing: -0.05em; line-height: 1; margin-top: 26px; }
+    .cq-big small { display: block; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); margin-top: 12px; }
+    #cq-rr { color: var(--ondulada); }
+    #cq-51 { color: var(--ink); }
+    #cq-stamp { position: absolute; left: 1060px; top: 760px; font: 900 64px var(--font-display); letter-spacing: 0.02em; color: var(--lineal);
+      border: 6px solid var(--lineal); border-radius: 10px; padding: 6px 26px; transform: rotate(-6deg); }
+    #cq-re { position: absolute; left: 1060px; top: 878px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    #cq-hon { position: absolute; left: 1000px; top: 278px; font: 700 28px var(--font-mono); letter-spacing: 0.1em; color: var(--lineal); }
+
+  </style>
+  <div id="root" data-composition-id="conque" data-width="1920" data-height="1080">
+    <div id="cq-wrap">
+      <div class="cq-gates" id="cq-gates" style="top:120px">
+      <div class="g g-done" id="cq-g0"><div class="gn">PASO 01</div><div class="gq">¿A quién?</div></div>
+      <div class="gar" id="cq-a0">›</div>
+      <div class="g g-done" id="cq-g1"><div class="gn">PASO 02</div><div class="gq">¿Cuándo?</div></div>
+      <div class="gar" id="cq-a1">›</div>
+      <div class="g g-on" id="cq-g2"><div class="gn">PASO 03</div><div class="gq">¿Con qué?</div></div>
+      <div class="gar" id="cq-a2">›</div>
+      <div class="g g-off" id="cq-g3"><div class="gn">PASO 04</div><div class="gq">¿Cuánto?</div></div>
+      </div>
+      <div class="cq-card" id="cq-f">
+        <div class="k">PROGRAMA DE CALENTAMIENTO</div>
+        <div class="h">FIFA 11+</div>
+        <div class="cq-row" id="cq-cons"><b>Evidencia consistente</b></div><div class="cq-row" id="cq-meta" style="margin-top:6px">en varios meta-análisis</div>
+        <div class="cq-big" id="cq-rr"><span id="cq-rrn">0,69</span><small id="cq-rrl">RAZÓN DE RIESGO GLOBAL</small></div>
+      </div>
+      <div class="cq-card" id="cq-n">
+        <div class="k">SI LO SUMAS</div>
+        <div class="h">Ejercicio nórdico</div>
+        <div class="cq-big" id="cq-51">51 %<small>MENOS LESIONES (META-ANÁLISIS)</small></div>
+      </div>
+      <div id="cq-hon">COMUNÍCALO CON HONESTIDAD</div>
+      <div id="cq-stamp">INCONCLUSA</div>
+      <div id="cq-re">TRAS LA REEVALUACIÓN DE 2021</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.conque;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#cq-gates", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.05);
+      tl.fromTo("#cq-g2", { borderColor: "#2a2e3a", backgroundColor: "rgba(204,31,54,0)" }, { borderColor: "#cc1f36", backgroundColor: "rgba(204,31,54,1)", duration: 0.35, ease: "power2.out" }, C.conque - 0.6);
+      tl.fromTo("#cq-g2 .gq", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.conque - 0.6);
+      tl.fromTo("#cq-g2 .gn", { color: "#868b98" }, { color: "#f4f2ee", duration: 0.35 }, C.conque - 0.6);
+      tl.fromTo("#cq-f", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.fifa - 0.2);
+      tl.fromTo("#cq-cons", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.consistente - 0.3);
+      tl.fromTo("#cq-meta", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.meta - 0.1);
+      tl.fromTo("#cq-rrl", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.razon - 0.1);
+      tl.fromTo("#cq-rrn", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.rr - 0.1);
+      tl.fromTo("#cq-n", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.nordico - 0.4);
+      tl.fromTo("#cq-hon", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.honestidad - 0.5);
+      tl.fromTo("#cq-51", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.p51 - 0.1);
+      tl.to("#cq-51", { opacity: 0.4, duration: 0.4 }, C.inconclusa - 0.1);
+      tl.fromTo("#cq-stamp", { opacity: 0, scale: 1.5, rotation: -6 }, { opacity: 1, scale: 1, rotation: -6, duration: 0.35, ease: "back.out(2)" }, C.inconclusa - 0.05);
+      tl.fromTo("#cq-re", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, C.reeval - 0.3);
+      tl.to("#cq-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["conque"] = tl;
+    })();
+  </script>
+</template>

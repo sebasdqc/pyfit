@@ -1,0 +1,70 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #do-wrap { position: absolute; inset: 0; }
+    #do-k { position: absolute; left: 160px; top: 100px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ink-faint); }
+    .do-panel { position: absolute; top: 170px; width: 720px; height: 800px; }
+    #do-pa { left: 160px; } #do-pb { left: 1040px; }
+    .do-h { font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    .do-col { position: absolute; left: 0; top: 130px; width: 260px; height: 520px; border: 3px dashed #4a4f5c; border-radius: 12px; }
+    .do-line { position: absolute; left: -20px; width: 640px; height: 0; border-top: 3px dashed #868b98; }
+    .do-line.mrv { border-top: 6px solid #f4f2ee; }
+    .do-lt { position: absolute; left: 300px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); transform: translateY(-110%); }
+    .do-main { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--lineal); border-radius: 6px; transform-origin: 50% 100%; }
+    .do-prev { position: absolute; left: 12px; right: 12px; background: var(--ondulada); border-radius: 6px; transform-origin: 50% 100%; }
+    .do-over { position: absolute; left: 12px; right: 12px; border-radius: 6px; background: repeating-linear-gradient(135deg, #cc1f36 0 14px, #e8dcc2 14px 28px); transform-origin: 50% 100%; }
+    .do-note { position: absolute; left: 300px; font: 700 42px var(--font-display); letter-spacing: -0.015em; line-height: 1.12; width: 420px; }
+    #do-na { top: 330px; color: var(--ink-soft); }
+    #do-nb { top: 300px; color: var(--ink); }
+    #do-nb2 { top: 370px; color: var(--lineal); }
+    #do-tag { position: absolute; right: 160px; bottom: 70px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="dosis" data-width="1920" data-height="1080">
+    <div id="do-wrap">
+      <div id="do-k">LA DOSIS DE LA PREVENCIÓN</div>
+      <div class="do-panel" id="do-pa">
+        <div class="do-h">Si te quedas corto</div>
+        <div class="do-col">
+          <div class="do-main" style="height:220px"></div>
+          <div class="do-prev" id="do-pa-prev" style="bottom:240px;height:22px"></div>
+        </div>
+        <div class="do-line" style="top:560px"></div><div class="do-lt" style="top:560px">MEV</div>
+        <div class="do-line mrv" style="top:250px"></div><div class="do-lt" style="top:250px">MRV</div>
+        <div class="do-note" id="do-na">Puede no generar la adaptación que buscas</div>
+      </div>
+      <div class="do-panel" id="do-pb">
+        <div class="do-h">Si te pasas</div>
+        <div class="do-col">
+          <div class="do-main" style="height:300px"></div>
+          <div class="do-prev" style="bottom:320px;height:60px"></div>
+          <div class="do-over" id="do-over" style="bottom:388px;height:150px"></div>
+        </div>
+        <div class="do-line" style="top:560px"></div><div class="do-lt" style="top:560px">MEV</div>
+        <div class="do-line mrv" style="top:250px"></div><div class="do-lt" style="top:250px">MRV</div>
+        <div class="do-note" id="do-nb">Suma fatiga</div>
+        <div class="do-note" id="do-nb2">y puede aumentar el riesgo</div>
+      </div>
+      <div id="do-tag">ESQUEMA · SIN ESCALA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.dosis;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#do-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#do-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.3);
+      tl.fromTo("#do-pa", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.corto - 0.6);
+      tl.fromTo("#do-pa .do-main", { scaleY: 0 }, { scaleY: 1, duration: 0.5, ease: "power2.out" }, C.corto - 0.2);
+      tl.fromTo("#do-pa-prev", { scaleY: 0 }, { scaleY: 1, duration: 0.4, ease: "power2.out" }, C.corto + 0.2);
+      tl.fromTo("#do-na", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.adaptacion - 0.4);
+      tl.fromTo("#do-pb", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.pasas - 0.5);
+      tl.fromTo("#do-pb .do-main", { scaleY: 0 }, { scaleY: 1, duration: 0.5, ease: "power2.out" }, C.pasas - 0.2);
+      tl.fromTo("#do-pb .do-prev", { scaleY: 0 }, { scaleY: 1, duration: 0.4, ease: "power2.out" }, C.pasas + 0.2);
+      tl.fromTo("#do-over", { scaleY: 0 }, { scaleY: 1, duration: 0.6, ease: "power2.out" }, C.fatiga - 0.5);
+      tl.fromTo("#do-nb", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.fatiga - 0.3);
+      tl.fromTo("#do-nb2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.riesgo - 0.6);
+      tl.to("#do-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["dosis"] = tl;
+    })();
+  </script>
+</template>

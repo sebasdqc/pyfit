@@ -1,0 +1,36 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #fi-wrap { position: absolute; inset: 0; }
+    #fi-k { position: absolute; left: 120px; top: 230px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ondulada); }
+    #fi-n { position: absolute; left: 120px; top: 290px; font: 900 150px var(--font-display); letter-spacing: -0.04em; color: var(--ondulada); line-height: 1; }
+    #fi-s { position: absolute; left: 120px; top: 480px; font: 700 52px var(--font-display); letter-spacing: -0.02em; }
+    #fi-chip { position: absolute; left: 120px; top: 580px; font: 700 34px var(--font-mono); letter-spacing: 0.08em; padding: 12px 26px; border: 3px solid var(--ondulada); border-radius: 999px; color: var(--ink); }
+    #fi-div { position: absolute; left: 1439px; top: 200px; width: 3px; height: 680px; background: var(--ink-faint); opacity: 0.6; }
+    #fi-r { position: absolute; left: 1500px; top: 230px; width: 320px; opacity: 0.28; }
+    #fi-r .k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); }
+    #fi-r .n { margin-top: 14px; font: 900 56px var(--font-display); letter-spacing: -0.03em; line-height: 1.05; color: var(--lineal); }
+  </style>
+  <div id="root" data-composition-id="fifa" data-width="1920" data-height="1080">
+    <div id="fi-wrap">
+      <div id="fi-k">PROGRAMA 1</div>
+      <div id="fi-n">FIFA 11+</div>
+      <div id="fi-s">Calentamiento neuromuscular</div>
+      <div id="fi-chip">≈ 20 MIN</div>
+      <div id="fi-div"></div>
+      <div id="fi-r"><div class="k">PROGRAMA 2</div><div class="n">Ejercicio nórdico</div></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.fifa;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(["#fi-div", "#fi-r"], { opacity: 0 }, { opacity: 0.4, duration: 0.5 }, 0.05);
+      tl.fromTo("#fi-k", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.1);
+      tl.fromTo("#fi-n", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.fifa - 0.25);
+      tl.fromTo("#fi-s", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.calentamiento - 0.1);
+      tl.fromTo("#fi-chip", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.veinte - 0.9);
+      window.__timelines["fifa"] = tl;
+    })();
+  </script>
+</template>

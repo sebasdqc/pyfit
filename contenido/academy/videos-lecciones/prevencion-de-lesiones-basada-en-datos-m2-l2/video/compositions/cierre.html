@@ -1,0 +1,39 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+    .ci-row { position: absolute; left: 160px; right: 160px; display: flex; align-items: baseline; gap: 48px; }
+    #ci-r1 { top: 260px; }
+    #ci-r2 { top: 470px; }
+    .ci-what { font: 900 92px var(--font-display); letter-spacing: -0.04em; width: 900px; }
+    .ci-is { font: 700 34px var(--font-mono); letter-spacing: 0.1em; padding: 14px 26px; border-radius: 999px; }
+    #ci-i1 { border: 3px solid var(--lineal); color: var(--ink); }
+    #ci-i2 { border: 3px solid var(--ondulada); color: var(--ondulada); }
+    #ci-w1 { color: var(--lineal); }
+    #ci-end { position: absolute; left: 160px; top: 720px; font: 800 56px var(--font-display);
+      letter-spacing: -0.02em; color: var(--ink-soft); }
+    #ci-end b { color: var(--ink); }
+    #ci-logo { position: absolute; left: 50%; bottom: 80px; width: 150px; margin-left: -75px; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div class="ci-row" id="ci-r1"><div class="ci-what" id="ci-w1">13 % · 31 %</div><div class="ci-is" id="ci-i1">EVIDENCIA CITADA</div></div>
+      <div class="ci-row" id="ci-r2"><div class="ci-what" id="ci-w2">Niveles de vigilancia</div><div class="ci-is" id="ci-i2">SÍNTESIS APLICADA</div></div>
+      <div id="ci-end">El alta no es la meta. <b>Es la partida.</b></div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ci-w1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.cifras - 0.3);
+      tl.fromTo("#ci-i1", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, C.citada - 0.4);
+      tl.fromTo("#ci-w2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.niveles - 0.2);
+      tl.fromTo("#ci-i2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, C.sintesis - 0.3);
+      tl.fromTo("#ci-end", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.curso + 0.5);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.curso + 1.4);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

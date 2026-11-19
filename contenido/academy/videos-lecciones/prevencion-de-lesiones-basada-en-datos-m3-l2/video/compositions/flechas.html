@@ -1,0 +1,63 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #fl-wrap { position: absolute; inset: 0; }
+    #fl-head { position: absolute; left: 0; top: 0; width: 1400px; height: 700px; transform-origin: 120px 230px; }
+    #fl-k { position: absolute; left: 120px; top: 230px; font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--ondulada); }
+    #fl-n { position: absolute; left: 120px; top: 290px; font: 900 150px var(--font-display); letter-spacing: -0.04em; color: var(--ondulada); line-height: 1; }
+    #fl-s { position: absolute; left: 120px; top: 480px; font: 700 52px var(--font-display); letter-spacing: -0.02em; }
+    #fl-chip { position: absolute; left: 120px; top: 580px; font: 700 34px var(--font-mono); letter-spacing: 0.08em; padding: 12px 26px; border: 3px solid var(--ondulada); border-radius: 999px; }
+    #fl-div { position: absolute; left: 1439px; top: 200px; width: 3px; height: 680px; background: var(--ink-faint); opacity: 0.24; }
+    #fl-r { position: absolute; left: 1500px; top: 230px; width: 320px; opacity: 0.4; }
+    #fl-r .k { font: 700 28px var(--font-mono); letter-spacing: 0.14em; color: var(--lineal); }
+    #fl-r .n { margin-top: 14px; font: 900 56px var(--font-display); letter-spacing: -0.03em; line-height: 1.05; color: var(--lineal); }
+    .fl-line { position: absolute; left: 120px; top: 300px; font: 700 34px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-soft); }
+    #fl-l2 b { color: var(--ondulada); font-weight: 700; }
+    #fl-dir { position: absolute; left: 1150px; top: 420px; font: 700 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+    .fl-col { position: absolute; top: 420px; width: 290px; }
+    #fl-c1 { left: 120px; } #fl-c2 { left: 430px; } #fl-c3 { left: 740px; } #fl-c4 { left: 1050px; }
+    .fl-col svg { display: block; overflow: visible; }
+    .fl-lab { margin-top: 18px; font: 700 28px var(--font-mono); letter-spacing: 0.08em; color: var(--ink-soft); line-height: 1.2; height: 70px; }
+    .fl-val { margin-top: 6px; font: 900 64px var(--font-display); letter-spacing: -0.03em; color: var(--ondulada); }
+    .fl-sub { margin-top: 4px; font: 500 28px var(--font-mono); letter-spacing: 0.04em; color: var(--ink-soft); line-height: 1.2; }
+  </style>
+  <div id="root" data-composition-id="flechas" data-width="1920" data-height="1080">
+    <div id="fl-wrap">
+      <div id="fl-head">
+        <div id="fl-n">FIFA 11+</div>
+      </div>
+      <div id="fl-div"></div>
+      <div id="fl-r"><div class="k">PROGRAMA 2</div><div class="n">Ejercicio nórdico</div></div>
+      <div class="fl-line" id="fl-l1">VARIOS META-ANÁLISIS <span id="fl-l1b">· DISTINTAS LESIONES</span></div>
+      <div class="fl-line" id="fl-l2">FLECHAS INDEPENDIENTES, MISMO LADO <b>= CONFIANZA</b></div>
+      <div id="fl-dir">↓ MENOS RIESGO</div>
+      <div class="fl-col" id="fl-c1"><svg width="60" height="130" viewBox="0 0 60 130"><g class="fl-arr"><rect x="22" y="0" width="16" height="96" fill="#e8dcc2"/><path d="M0 92 L60 92 L30 130 Z" fill="#e8dcc2"/></g></svg><div class="fl-lab">RODILLA</div><div class="fl-val">−46 %</div></div>
+      <div class="fl-col" id="fl-c2"><svg width="60" height="130" viewBox="0 0 60 130"><g class="fl-arr"><rect x="22" y="0" width="16" height="96" fill="#e8dcc2"/><path d="M0 92 L60 92 L30 130 Z" fill="#e8dcc2"/></g></svg><div class="fl-lab">CABEZA<br>Y CUELLO</div><div class="fl-val">−40 %</div><div class="fl-sub">RR 0,60</div></div>
+      <div class="fl-col" id="fl-c3"><svg width="60" height="130" viewBox="0 0 60 130"><g class="fl-arr"><rect x="22" y="0" width="16" height="96" fill="#e8dcc2"/><path d="M0 92 L60 92 L30 130 Z" fill="#e8dcc2"/></g></svg><div class="fl-lab">LUMBAR<br>AGUDA</div><div class="fl-val">−63 %</div><div class="fl-sub" id="fl-s3">RR DE INCIDENCIA<br>0,37</div></div>
+      <div class="fl-col" id="fl-c4"><svg width="60" height="130" viewBox="0 0 60 130"><g class="fl-arr"><rect x="22" y="0" width="16" height="96" fill="#e8dcc2"/><path d="M0 92 L60 92 L30 130 Z" fill="#e8dcc2"/></g></svg><div class="fl-lab">RIESGO<br>GLOBAL</div><div class="fl-val" id="fl-rr">RR 0,69</div></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.flechas;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#fl-head", { scale: 1, y: 0 }, { scale: 0.5, y: -130, duration: 0.7, ease: "power3.inOut" }, 0.1);
+      tl.fromTo("#fl-l1", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.meta - 0.05);
+      tl.fromTo("#fl-l1b", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.lesiones - 0.1);
+      tl.fromTo("#fl-dir", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.direccion - 0.2);
+      var cols = [["#fl-c1", C.rodilla, C.rodilla], ["#fl-c2", C.cabeza, C.cabeza], ["#fl-c3", C.lumbar, C.lumbar], ["#fl-c4", C.reduccion, C.global]];
+      cols.forEach(function (c) {
+        tl.fromTo(c[0], { opacity: 0 }, { opacity: 1, duration: 0.3 }, c[1] - 0.15);
+        tl.fromTo(c[0] + " .fl-arr", { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, c[2] - 0.15);
+      });
+      tl.fromTo("#fl-s3", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.lumbar + 1.2);
+      tl.fromTo("#fl-rr", { opacity: 0 }, { opacity: 1, duration: 0.35 }, C.rr - 0.1);
+      tl.to("#fl-l1", { opacity: 0, duration: 0.3 }, C.flechas - 0.3);
+      tl.fromTo("#fl-l2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.flechas - 0.05);
+      tl.fromTo(".fl-arr", { y: 0 }, { y: 18, duration: 0.35, stagger: 0.08, yoyo: true, repeat: 1, ease: "power1.inOut" }, C.flechas + 0.4);
+      tl.fromTo("#fl-l2 b", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.confianza - 0.1);
+      tl.to("#fl-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["flechas"] = tl;
+    })();
+  </script>
+</template>

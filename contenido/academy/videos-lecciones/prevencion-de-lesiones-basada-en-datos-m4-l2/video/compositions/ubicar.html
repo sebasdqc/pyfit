@@ -1,0 +1,78 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ub-wrap { position: absolute; inset: 0; }
+    #ub-t { position: absolute; left: 160px; top: 80px; font: 900 80px var(--font-display); letter-spacing: -0.035em; }
+    #ub-grid { position: absolute; left: 160px; top: 290px; width: 1600px; height: 560px; }
+    .ub-col { position: absolute; top: 0; width: 176px; height: 500px; border: 3px dashed #4a4f5c; border-radius: 10px; overflow: hidden; }
+    .ub-main { position: absolute; left: 10px; right: 10px; bottom: 10px; background: var(--lineal); border-radius: 6px; }
+    .ub-prev { position: absolute; left: 10px; right: 10px; height: 64px; background: var(--ondulada); border-radius: 6px; }
+    .ub-day { position: absolute; top: 518px; width: 176px; text-align: center; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    .ub-hi { position: absolute; top: -84px; width: 176px; text-align: center; font: 700 28px var(--font-mono); letter-spacing: 0.06em; color: var(--lineal); }
+    #ub-note { position: absolute; left: 160px; top: 910px; font: 700 44px var(--font-display); letter-spacing: -0.015em; color: var(--ink); }
+    #ub-note b { color: var(--ondulada); }
+  </style>
+  <div id="root" data-composition-id="ubicar" data-width="1920" data-height="1080">
+    <div id="ub-wrap">
+      <div id="ub-t">¿Dónde va la prevención?</div>
+      <div id="ub-grid" data-layout-allow-overflow></div>
+      <div id="ub-note">En los días donde <b>no compite</b> con las sesiones de mayor demanda</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.ubicar;
+      var days = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
+      var main = [300, 180, 340, 120, 280, 200, 0];
+      var prev = [0, 1, 0, 1, 0, 1, 0];
+      var high = [1, 0, 1, 0, 1, 0, 0];
+      var grid = document.getElementById("ub-grid");
+      var gap = (1600 - 7 * 176) / 6;
+      var prevs = [], highs = [], cols = [];
+      days.forEach(function (d, i) {
+        var x = i * (176 + gap);
+        var col = document.createElement("div");
+        col.className = "ub-col";
+        col.style.left = x + "px";
+        grid.appendChild(col);
+        cols.push(col);
+        if (main[i]) {
+          var m = document.createElement("div");
+          m.className = "ub-main";
+          m.style.height = main[i] + "px";
+          col.appendChild(m);
+        }
+        if (prev[i]) {
+          var p = document.createElement("div");
+          p.className = "ub-prev";
+          p.style.bottom = (10 + main[i] + 8) + "px";
+          col.appendChild(p);
+          prevs.push(p);
+        }
+        if (high[i]) {
+          var h = document.createElement("div");
+          h.className = "ub-hi";
+          h.style.left = x + "px";
+          h.textContent = "ALTA DEMANDA";
+          grid.appendChild(h);
+          highs.push(h);
+        }
+        var lab = document.createElement("div");
+        lab.className = "ub-day";
+        lab.style.left = x + "px";
+        lab.textContent = d;
+        grid.appendChild(lab);
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#ub-t", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.1);
+      tl.fromTo(cols, { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.05 }, 0.2);
+      tl.fromTo(".ub-day", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.3);
+      tl.fromTo(highs, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: "power3.out" }, C.ubicar - 0.6);
+      tl.fromTo(prevs, { opacity: 0, y: -90 }, { opacity: 1, y: 0, duration: 0.55, stagger: 0.15, ease: "back.out(1.4)" }, C.ubicar);
+      tl.fromTo("#ub-note", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, C.compita - 0.6);
+      tl.fromTo(highs, { scale: 1 }, { scale: 1.1, duration: 0.25, yoyo: true, repeat: 1 }, C.demanda - 0.3);
+      tl.to("#ub-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["ubicar"] = tl;
+    })();
+  </script>
+</template>

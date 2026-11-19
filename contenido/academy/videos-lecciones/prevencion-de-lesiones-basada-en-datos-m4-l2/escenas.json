@@ -1,0 +1,306 @@
+{
+ "voice_offset": 0.4,
+ "tail": 2.6,
+ "vtt_replace": {
+  "FIFA once más": "FIFA 11+",
+  "ocho mil cuatrocientos cincuenta y nueve": "8.459",
+  "cincuenta y uno por ciento": "51 %",
+  "treinta y cuatro por ciento": "34 %",
+  "treinta y uno por ciento": "31 %",
+  "trece por ciento": "13 %",
+  "cuarenta y seis por ciento": "46 %",
+  "cuarenta por ciento": "40 %",
+  "sesenta y tres por ciento": "63 %",
+  "quince por ciento": "15 %",
+  "cero coma sesenta y nueve": "0,69",
+  "cero coma cuarenta y nueve": "0,49",
+  "quince estudios": "15 estudios"
+ },
+ "scenes": [
+  {
+   "id": "intro",
+   "start": null,
+   "keys": [
+    [
+     "aislado",
+     [
+      "aislado"
+     ]
+    ],
+    [
+     "cuanto",
+     [
+      "cuanto"
+     ]
+    ],
+    [
+     "cuando",
+     [
+      "cuando"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "semana",
+   "start": [
+    "imagina"
+   ],
+   "keys": [
+    [
+     "semana",
+     [
+      "semana"
+     ]
+    ],
+    [
+     "presupuesto",
+     [
+      "presupuesto"
+     ]
+    ],
+    [
+     "principales",
+     [
+      "principales",
+      "suscesiones"
+     ]
+    ],
+    [
+     "trabajo",
+     [
+      "trabajo"
+     ]
+    ],
+    [
+     "margen",
+     [
+      "margen"
+     ]
+    ],
+    [
+     "dentro",
+     [
+      "dentro"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "marco",
+   "start": [
+    "aqui"
+   ],
+   "keys": [
+    [
+     "marco",
+     [
+      "marco"
+     ]
+    ],
+    [
+     "entrenamiento",
+     [
+      "entrenamiento"
+     ]
+    ],
+    [
+     "minimo",
+     [
+      "minimo"
+     ]
+    ],
+    [
+     "adaptativo",
+     [
+      "adaptativo"
+     ]
+    ],
+    [
+     "recuperable",
+     [
+      "recuperable"
+     ]
+    ],
+    [
+     "recuperable2",
+     [
+      "recuperable"
+     ]
+    ],
+    [
+     "techo",
+     [
+      "techo"
+     ]
+    ],
+    [
+     "principal",
+     [
+      "principal"
+     ]
+    ],
+    [
+     "preventivo",
+     [
+      "preventivo"
+     ]
+    ],
+    [
+     "debajo",
+     [
+      "debajo"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "dosis",
+   "start": [
+    "si"
+   ],
+   "keys": [
+    [
+     "corto",
+     [
+      "corto"
+     ]
+    ],
+    [
+     "adaptacion",
+     [
+      "adaptacion"
+     ]
+    ],
+    [
+     "pasas",
+     [
+      "pasas"
+     ]
+    ],
+    [
+     "fatiga",
+     [
+      "fatiga"
+     ]
+    ],
+    [
+     "riesgo",
+     [
+      "riesgo"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "ubicar",
+   "start": [
+    "por"
+   ],
+   "keys": [
+    [
+     "ubicar",
+     [
+      "ubicar"
+     ]
+    ],
+    [
+     "compita",
+     [
+      "compita"
+     ]
+    ],
+    [
+     "demanda",
+     [
+      "demanda"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "nordico",
+   "start": [
+    "ycuanto",
+    "cuanto"
+   ],
+   "keys": [
+    [
+     "nordico",
+     [
+      "nordico"
+     ]
+    ],
+    [
+     "debate",
+     [
+      "debate"
+     ]
+    ],
+    [
+     "consenso",
+     [
+      "consenso"
+     ]
+    ],
+    [
+     "alto",
+     [
+      "alto"
+     ]
+    ],
+    [
+     "minima",
+     [
+      "minima"
+     ]
+    ],
+    [
+     "series",
+     [
+      "series"
+     ]
+    ],
+    [
+     "criterio",
+     [
+      "criterio"
+     ]
+    ],
+    [
+     "monitorea",
+     [
+      "monitorea"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "cierre",
+   "start": [
+    "semana"
+   ],
+   "start_back": 1,
+   "keys": [
+    [
+     "ilustrativo",
+     [
+      "ilustrativo"
+     ]
+    ],
+    [
+     "debate",
+     [
+      "debate"
+     ]
+    ],
+    [
+     "citada",
+     [
+      "citada"
+     ]
+    ]
+   ]
+  }
+ ]
+}

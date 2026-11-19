@@ -1,0 +1,52 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #gu-wrap { position: absolute; inset: 0; }
+    #gu-k { position: absolute; left: 160px; top: 110px; font: 700 28px var(--font-mono);
+      letter-spacing: 0.14em; color: var(--lineal); }
+    #gu-title { position: absolute; left: 160px; top: 160px; font: 900 76px var(--font-display);
+      letter-spacing: -0.035em; line-height: 1.05; max-width: 1500px; }
+    #gu-title .w { display: inline-block; }
+    #gu-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+    .gu-lbl { font: 700 30px var(--font-mono); letter-spacing: 0.08em; }
+    #gu-note { position: absolute; left: 300px; top: 372px; font: 800 52px var(--font-display);
+      letter-spacing: -0.02em; color: var(--lineal); }
+    #gu-tag { position: absolute; right: 160px; bottom: 90px; font: 500 28px var(--font-mono);
+      letter-spacing: 0.1em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="guardia" data-width="1920" data-height="1080">
+    <div id="gu-wrap">
+      <div id="gu-k">LO CONTRAINTUITIVO</div>
+      <div id="gu-title"><span class="w">El</span> <span class="w">momento</span> <span class="w">de</span> <span class="w">máxima</span> <span class="w">atención</span> <span class="w">es</span> <span class="w">justo</span> <span class="w">el</span> <span class="w">del</span> <span class="w">regreso</span></div>
+      <svg id="gu-svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <line x1="260" y1="880" x2="1660" y2="880" stroke="#868b98" stroke-width="3" />
+        <line x1="260" y1="420" x2="260" y2="900" stroke="#cc1f36" stroke-width="6" />
+        <text class="gu-lbl" x="260" y="950" text-anchor="middle" fill="#cc1f36">DÍA 0 · ALTA</text>
+        <path id="gu-rec" d="M160 760 L260 760 L260 470 C 600 470, 900 700, 1660 800" fill="none" stroke="#e8dcc2" stroke-width="8" stroke-linecap="round" />
+        <path id="gu-real" d="M160 470 L240 470 C 260 470, 270 830, 320 840 L1660 840" fill="none" stroke="#868b98" stroke-width="8" stroke-dasharray="18 14" stroke-linecap="round" />
+        <text id="gu-rec-l" class="gu-lbl" x="1660" y="470" text-anchor="end" fill="#e8dcc2">━ VIGILANCIA RECOMENDADA</text>
+        <text id="gu-real-l" class="gu-lbl" x="1660" y="515" text-anchor="end" fill="#868b98">┅ LO QUE PASA EN LA PRÁCTICA</text>
+      </svg>
+      <div id="gu-note">← aquí muchos equipos bajan la guardia</div>
+      <div id="gu-tag">ESQUEMA ILUSTRATIVO · SÍNTESIS APLICADA DEL CURSO</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.guardia;
+      var rec = document.getElementById("gu-rec"), real = document.getElementById("gu-real");
+      var lr = rec.getTotalLength();
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#gu-k", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      tl.fromTo("#gu-title .w", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.08, ease: "power3.out" }, C.momento - 0.2);
+      tl.fromTo(rec, { strokeDasharray: lr, strokeDashoffset: lr }, { strokeDashoffset: 0, duration: 1.4, ease: "power1.inOut" }, C.atencion);
+      tl.fromTo("#gu-rec-l", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.atencion + 0.6);
+      tl.fromTo(real, { opacity: 0, clipPath: "inset(0 100% 0 0)" }, { opacity: 1, clipPath: "inset(0 0% 0 0)", duration: 1.2, ease: "power1.inOut" }, C.practica - 0.2);
+      tl.fromTo("#gu-real-l", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.practica + 0.4);
+      tl.fromTo("#gu-note", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.equipos - 0.2);
+      tl.fromTo("#gu-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.practica + 0.6);
+      tl.to("#gu-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["guardia"] = tl;
+    })();
+  </script>
+</template>

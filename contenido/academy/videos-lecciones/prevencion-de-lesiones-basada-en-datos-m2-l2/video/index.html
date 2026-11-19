@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/cues.js"></script>
+    <style>
+      :root {
+        --ground: #0e1016;
+        --ground-2: #161922;
+        --ink: #f4f2ee;
+        --ink-soft: #a9adb8;
+        --ink-faint: #868b98;
+        --lineal: #cc1f36;
+        --ondulada: #e8dcc2;
+        --font-display: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--font-display);
+      }
+      #root { position: relative; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="87.15"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="meta" class="clip" data-composition-id="meta" data-composition-src="compositions/meta.html" data-start="0.0" data-duration="6.71" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="linea" class="clip" data-composition-id="linea" data-composition-src="compositions/linea.html" data-start="6.71" data-duration="22.2" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="vigilancia" class="clip" data-composition-id="vigilancia" data-composition-src="compositions/vigilancia.html" data-start="28.91" data-duration="9.28" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="guardia" class="clip" data-composition-id="guardia" data-composition-src="compositions/guardia.html" data-start="38.19" data-duration="9.32" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="senales" class="clip" data-composition-id="senales" data-composition-src="compositions/senales.html" data-start="47.51" data-duration="17.32" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="aviso" class="clip" data-composition-id="aviso" data-composition-src="compositions/aviso.html" data-start="64.83" data-duration="12.28" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="cierre" class="clip" data-composition-id="cierre" data-composition-src="compositions/cierre.html" data-start="77.11" data-duration="10.04" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <audio id="voz" src="assets/voz/voz-master.wav" data-start="0.4" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

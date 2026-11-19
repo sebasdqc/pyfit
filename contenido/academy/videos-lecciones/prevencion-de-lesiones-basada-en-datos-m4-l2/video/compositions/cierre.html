@@ -1,0 +1,53 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #ci-wrap { position: absolute; inset: 0; }
+    #ci-t { position: absolute; left: 160px; right: 160px; top: 170px; font: 900 96px var(--font-display); letter-spacing: -0.04em; line-height: 1.05; }
+    #ci-t b { color: var(--ondulada); }
+    #ci-grid { position: absolute; left: 160px; top: 480px; width: 1600px; height: 260px; }
+    .ci-col { position: absolute; top: 0; width: 176px; height: 230px; border: 3px dashed #4a4f5c; border-radius: 8px; overflow: hidden; }
+    .ci-main { position: absolute; left: 8px; right: 8px; bottom: 8px; background: var(--lineal); border-radius: 4px; }
+    .ci-prev { position: absolute; left: 8px; right: 8px; height: 30px; background: var(--ondulada); border-radius: 4px; }
+    #ci-tags { position: absolute; left: 160px; top: 800px; display: flex; flex-direction: column; gap: 16px; }
+    .ci-tag { font: 700 30px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    .ci-tag b { color: var(--ink); }
+    #ci-logo { position: absolute; right: 160px; bottom: 90px; width: 150px; opacity: 0.85; }
+  </style>
+  <div id="root" data-composition-id="cierre" data-width="1920" data-height="1080">
+    <div id="ci-wrap">
+      <div id="ci-t">La prevención ocupa espacio <b>en el mismo presupuesto.</b></div>
+      <div id="ci-grid"></div>
+      <div id="ci-tags">
+        <div class="ci-tag" id="ci-g1"><b>SEMANA ILUSTRATIVA</b> · un ejemplo, no una receta</div>
+        <div class="ci-tag" id="ci-g2"><b>DEBATE SOBRE LA DOSIS</b> · evidencia citada</div>
+      </div>
+      <img id="ci-logo" src="assets/logo-zyfit.png" alt="Zyfit" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.cierre;
+      var main = [140, 84, 160, 56, 130, 94, 0];
+      var prev = [0, 1, 0, 1, 0, 1, 0];
+      var grid = document.getElementById("ci-grid");
+      var gap = (1600 - 7 * 176) / 6;
+      var cols = [];
+      main.forEach(function (h, i) {
+        var col = document.createElement("div");
+        col.className = "ci-col";
+        col.style.left = (i * (176 + gap)) + "px";
+        if (h) { var m = document.createElement("div"); m.className = "ci-main"; m.style.height = h + "px"; col.appendChild(m); }
+        if (prev[i]) { var p = document.createElement("div"); p.className = "ci-prev"; p.style.bottom = (8 + h + 6) + "px"; col.appendChild(p); }
+        grid.appendChild(col);
+        cols.push(col);
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(cols, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: "power3.out" }, 0.1);
+      tl.fromTo("#ci-g1", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.ilustrativo - 0.6);
+      tl.fromTo("#ci-g2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, C.debate - 0.2);
+      tl.fromTo("#ci-t", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C.citada + 0.7);
+      tl.fromTo("#ci-logo", { opacity: 0 }, { opacity: 0.85, duration: 0.6 }, C.citada + 1.3);
+      window.__timelines["cierre"] = tl;
+    })();
+  </script>
+</template>

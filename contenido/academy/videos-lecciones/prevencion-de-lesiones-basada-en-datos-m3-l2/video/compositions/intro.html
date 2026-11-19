@@ -1,0 +1,48 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--ground); }
+    #in-wrap { position: absolute; inset: 0; }
+    #in-k { position: absolute; left: 120px; top: 100px; font: 500 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+    #in-k b { color: var(--lineal); font-weight: 700; }
+    #in-t1, #in-t2 { position: absolute; left: 120px; font: 900 110px var(--font-display); letter-spacing: -0.04em; line-height: 1; }
+    #in-t1 { top: 220px; }
+    #in-t2 { top: 350px; color: var(--ink-soft); }
+    #in-t2 b { color: var(--ink); font-weight: 900; }
+    #in-div { position: absolute; left: 959px; top: 590px; width: 3px; height: 330px; background: var(--ink-faint); transform-origin: 50% 0; }
+    .in-col { position: absolute; top: 600px; width: 720px; }
+    #in-ca { left: 120px; } #in-cb { left: 1080px; }
+    .in-n { font: 900 64px var(--font-display); letter-spacing: -0.03em; }
+    #in-ca .in-n { color: var(--ondulada); } #in-cb .in-n { color: var(--lineal); }
+    .in-lab { margin-top: 40px; font: 700 28px var(--font-mono); letter-spacing: 0.12em; color: var(--ink-soft); }
+    .in-bar { margin-top: 16px; height: 22px; background: var(--ground-2); border: 2px solid var(--ink-faint); border-radius: 4px; overflow: hidden; }
+    .in-fill { height: 100%; transform-origin: 0 50%; }
+    #in-ca .in-fill { width: 85%; background: var(--ondulada); }
+    #in-cb .in-fill { width: 35%; background: var(--lineal); }
+    #in-tag { position: absolute; right: 120px; bottom: 70px; font: 500 28px var(--font-mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+  </style>
+  <div id="root" data-composition-id="intro" data-width="1920" data-height="1080">
+    <div id="in-wrap">
+      <div id="in-k">PREVENCIÓN DE LESIONES BASADA EN DATOS · <b>MÓDULO 3</b> · LECCIÓN 2</div>
+      <div id="in-t1">Dos programas.</div>
+      <div id="in-t2">Dos <b>niveles de certeza.</b></div>
+      <div id="in-div"></div>
+      <div class="in-col" id="in-ca"><div class="in-n">FIFA 11+</div><div class="in-lab">CERTEZA</div><div class="in-bar"><div class="in-fill"></div></div></div>
+      <div class="in-col" id="in-cb"><div class="in-n">Ejercicio nórdico</div><div class="in-lab">CERTEZA</div><div class="in-bar"><div class="in-fill"></div></div></div>
+      <div id="in-tag">ESQUEMA</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var C = window.CUES.intro;
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#in-t1", { y: 12 }, { y: 0, duration: 0.8, ease: "power2.out" }, 0);
+      tl.fromTo("#in-div", { scaleY: 0 }, { scaleY: 1, duration: 0.6, ease: "power2.out" }, 1.1);
+      tl.fromTo(["#in-ca", "#in-cb"], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.25, ease: "power3.out" }, 1.3);
+      tl.fromTo("#in-t2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, C.niveles - 0.45);
+      tl.fromTo(".in-fill", { scaleX: 0 }, { scaleX: 1, duration: 0.8, stagger: 0.2, ease: "power2.out" }, C.niveles + 0.1);
+      tl.fromTo("#in-tag", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.niveles + 0.1);
+      tl.to("#in-wrap", { opacity: 0, duration: 0.2 }, C.end - 0.2);
+      window.__timelines["intro"] = tl;
+    })();
+  </script>
+</template>
