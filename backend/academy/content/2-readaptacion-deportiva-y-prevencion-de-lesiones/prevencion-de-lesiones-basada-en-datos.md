@@ -389,11 +389,27 @@ La semana que ves es un ejemplo ilustrativo. El debate sobre la dosis es evidenc
 
 audio_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
 
-Descripción de apoyo: pieza breve en tono argumentativo que desmonta una idea muy común entre atletas y entrenadores: que el trabajo preventivo "resta" tiempo y energía del entrenamiento real. El guion debe reconocer primero por qué esa idea es intuitiva —el tiempo y la recuperación son finitos— para luego reencuadrarla.
+Hola. Este es el episodio del módulo cuatro de Prevención de Lesiones Basada en Datos. Hoy quiero discutir una idea muy común entre atletas y entrenadores: que el trabajo preventivo le resta tiempo y energía al entrenamiento de verdad.
 
-El argumento central: bien integrado, con criterio de dosis, el trabajo preventivo no es un competidor externo del rendimiento, sino parte del mismo sistema de gestión de carga. Apoyarse en el marco MEV/MAV/MRV del Curso 2 de la Escuela de Ciencia del Entrenamiento para explicar que la prevención y el entrenamiento principal comparten el mismo presupuesto de recuperación, y que la pregunta correcta no es "prevención o rendimiento", sino "cómo distribuyo la carga total para sostener ambos".
+Primero, reconozcamos que la idea tiene sentido. El tiempo es finito. La energía también. Y la capacidad de recuperarse, más todavía. Si una sesión dura una hora y le dedico quince minutos a la prevención, son quince minutos menos de lo que vine a entrenar. ¿No?
 
-Matizar con honestidad, en línea con el resto del curso: incluso para un ejercicio preventivo popular como el Nordic Hamstring Exercise, la dosis óptima sigue en debate, así que integrarlo bien implica dosificar con criterio y observar la respuesta del atleta, no aplicar una receta fija. Cerrar con la idea de que un atleta que se lesiona menos entrena más y mejor a lo largo de la temporada: la prevención, lejos de restar, protege la continuidad que el rendimiento necesita. Señalar que el debate sobre la dosis del NHE es evidencia citada, mientras que el argumento sobre continuidad es una síntesis del curso.
+El problema es cómo está planteada la pregunta. Prevención o rendimiento. Como si fueran dos cosas que compiten entre sí.
+
+Te propongo otra forma de verlo. Bien integrado, el trabajo preventivo no es un competidor externo del rendimiento. Es parte del mismo sistema de gestión de carga.
+
+Aquí sirve el marco del curso de Gestión de la Carga de Entrenamiento: volumen mínimo efectivo, volumen máximo adaptativo y volumen máximo recuperable. La prevención y el entrenamiento principal comparten el mismo presupuesto de recuperación. Cada serie preventiva consume una parte de esa capacidad, igual que cualquier otra serie.
+
+Entonces la pregunta correcta no es prevención o rendimiento. Es: ¿cómo reparto la carga total para sostener las dos cosas?
+
+Visto así, cambian las decisiones. Si un atleta ya está cerca de su volumen máximo recuperable, apilar encima mucho trabajo preventivo podría empujarlo por encima del techo. Y una intervención pensada para reducir el riesgo terminaría sumando fatiga. La solución no es quitar la prevención. Es dosificarla y ubicarla donde no compita con las sesiones más exigentes.
+
+Ahora, un matiz honesto, en la línea de todo el curso. Incluso para un ejercicio preventivo tan popular como el nórdico de isquiotibiales, la dosis óptima sigue en debate. No hay consenso sobre si conviene un volumen alto o bajo, ni sobre la dosis mínima efectiva. Así que integrarlo bien no es aplicar una receta fija. Es dosificar con criterio y observar cómo responde el atleta.
+
+Y ahora el argumento de fondo. Un atleta que se lesiona menos entrena más, y entrena mejor, a lo largo de la temporada. Cada semana fuera por lesión es una semana sin estímulo. Por eso la prevención, lejos de restar, protege la continuidad que el rendimiento necesita.
+
+Una aclaración para cerrar. El debate sobre la dosis del ejercicio nórdico es evidencia citada. El argumento sobre la continuidad es una síntesis de este curso.
+
+Nos escuchamos en el último módulo.
 
 ### Lección 4 — Evaluación de integración de carga y prevención (tipo: quiz)
 
@@ -467,11 +483,27 @@ Las cifras son evidencia citada. Las decisiones del caso son un ejemplo ilustrat
 
 audio_url: [PLACEHOLDER: producción pendiente — guion base a continuación]
 
-Descripción de apoyo: cierre del curso en tono conversacional y cercano, como una charla final que ordena las ideas sin sonar a examen. El mensaje que debe quedar grabado es que la prevención basada en datos exige tanto conocer qué funciona como reconocer honestamente qué tan segura es esa evidencia.
+Hola. Este es el último episodio de Prevención de Lesiones Basada en Datos. Hoy no hay datos nuevos. Hoy vamos a ordenar todo lo que vimos, como en una charla final.
 
-Recorrer el arco del curso de forma fluida: la lesión previa como predictor más fuerte y la recurrencia de isquiotibiales (34% en el año, 31% acumulado, 13% en la primera semana de regreso); la ventana de vigilancia reforzada tras el alta; la comparación entre el FIFA 11+ —con su evidencia consistente en múltiples meta-análisis (46% rodilla, 40% cabeza y cuello, 63% lumbar aguda, RR global 0.69)— y el NHE, cuya cifra del 51% (RR = 0.49) convive con la conclusión de "evidencia inconclusa" de la reevaluación de 2021; y la integración de todo eso dentro de la gestión de carga con criterio de dosis (MEV/MAV/MRV).
+Si tuviera que resumir el curso en una frase, sería esta: la prevención basada en datos exige dos cosas a la vez. Saber qué funciona, y ser honesto sobre qué tan segura es esa evidencia.
 
-El corazón del cierre es la doble exigencia: saber qué funciona y ser honesto sobre el nivel de certeza. El locutor debe insistir en que la honestidad metodológica no es un lujo académico, sino lo que distingue a un profesional serio de quien repite eslóganes. Terminar con una nota de aliento: la incertidumbre no paraliza; obliga a decidir con humildad, monitorear y ajustar. Aclarar que las cifras son evidencia citada del curso y que las conclusiones sobre la actitud profesional son la síntesis pedagógica.
+Empezamos por a quién mirar. La lesión previa es posiblemente el predictor más fuerte de una lesión nueva o recurrente. Y los isquiotibiales son el ejemplo más claro: en fútbol australiano, el treinta y cuatro por ciento de los jugadores se volvió a lesionar dentro del año, con un treinta y uno por ciento de recurrencia acumulada en la temporada.
+
+Después vimos cuándo mirar. El riesgo más alto aparece al volver: un trece por ciento en la primera semana de regreso a la competencia. Por eso el alta médica no es una línea de meta. Es el inicio de una fase de vigilancia reforzada.
+
+Luego, con qué herramientas. El FIFA once más tiene evidencia consistente en varios meta-análisis: cuarenta y seis por ciento menos lesiones de rodilla, cuarenta por ciento menos en cabeza y cuello, sesenta y tres por ciento menos en lesión lumbar aguda, y una razón de riesgo global de cero coma sesenta y nueve.
+
+Y el ejercicio nórdico, con su famoso cincuenta y uno por ciento de reducción, que convive con la conclusión de la reevaluación de 2021: con solo los ensayos de mayor calidad, la evidencia quedó inconclusa. Las dos cosas son ciertas a la vez, y un buen profesional sabe sostenerlas juntas.
+
+Por último, cuánto. La prevención ocupa espacio en el mismo presupuesto de carga que el resto del entrenamiento: volumen mínimo efectivo, máximo adaptativo y máximo recuperable. Y hasta la dosis del nórdico sigue en debate.
+
+Ahora, lo más importante. La honestidad metodológica no es un lujo académico. Es lo que distingue a un profesional serio de alguien que repite eslóganes. Decir esta herramienta funciona, pero su evidencia es limitada, no es debilidad. Es rigor.
+
+Y quiero cerrar con una nota de aliento. La incertidumbre no paraliza. Hay que decidir igual. Lo que cambia es cómo: con humildad, monitoreando y ajustando sobre la marcha.
+
+Las cifras son evidencia citada del curso. Las conclusiones sobre la actitud profesional son la síntesis de lo que trabajamos juntos.
+
+Gracias por acompañarme en Prevención de Lesiones Basada en Datos. Nos vemos en el próximo curso.
 
 ### Lección 4 — Evaluación final del curso (tipo: quiz)
 
